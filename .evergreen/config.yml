@@ -598,12 +598,14 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_regular_aws.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py regular
     - command: shell.exec
       type: test
       params:
@@ -628,12 +630,14 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_assume_role.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py assume-role
     - command: shell.exec
       type: test
       params:
@@ -665,15 +669,17 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_ec2.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py ec2
     - command: shell.exec
       type: test
       params:
@@ -694,15 +700,17 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_web_identity.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py web-identity
     - command: shell.exec
       type: test
       params:
@@ -857,6 +865,7 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
@@ -864,14 +873,12 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          cat <<EOF > setup.js
-          const mongo_binaries = "$MONGODB_BINARIES";
-          const project_dir = "$PROJECT_DIRECTORY";
-          EOF
-
-          mongo --nodb setup.js aws_e2e_ecs.js
+          . ./activate-authawsvenv.sh
+          export MONGODB_BINARIES="${MONGODB_BINARIES}";
+          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
+          python aws_tester.py ecs
           cd -
 
   "cleanup":
@@ -1042,6 +1049,18 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "teardown_aws":
+    - command: shell.exec
+      params:
+        shell: "bash"
+        script: |
+          ${PREPARE_SHELL}
+          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
+          if [ -f "./aws_e2e_setup.json" ]; then
+            . ./activate-authawsvenv.sh
+            python ./lib/aws_assign_instance_profile.py
+          fi
+
   "build release":
     - command: shell.exec
       type: test
@@ -1137,6 +1156,7 @@ post:
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
+  - func: "teardown_aws"
   - func: "cleanup"
   - func: "teardown_docker"
 
@@ -2309,14 +2329,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: awslinux
-        display_name: "Amazon Linux 2018 (Enterprise)"
-        run_on: amazon1-2018-test
-        batchtime: 10080  # 7 days
-        variables:
-          skip_crypt_shared: true
-          python3_binary: "/opt/python/3.8/bin/python3"
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/linux-64-amazon-ami/master/latest/libmongocrypt.tar.gz
       - id: archlinux-test
         display_name: "Archlinux"
         run_on: archlinux-test
@@ -2355,6 +2367,12 @@ axes:
           skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
+      - id: rhel76
+        display_name: "RHEL 7.6"
+        run_on: rhel76-small
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel84
         display_name: "RHEL 8.4"
         run_on: rhel84-small
@@ -2370,6 +2388,12 @@ axes:
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
+        batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
+      - id: ubuntu-18.04
+        display_name: "Ubuntu 18.04"
+        run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
@@ -3009,7 +3033,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
   matrix_spec:
-    platform: awslinux
+    platform: rhel76
     # Python 3.10+ requires OpenSSL 1.1.1+
     python-version: ["3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
     auth-ssl: "*"
@@ -3225,7 +3249,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ ubuntu-20.04 ]
+    platform: [ rhel84 ]
     python-version: ["3.9"]
   display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
   tasks:
@@ -3240,7 +3264,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-20.04]
+    platform: [ubuntu-18.04]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:

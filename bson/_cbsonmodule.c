@@ -55,6 +55,7 @@ struct module_state {
     PyObject* DatetimeMS;
     PyObject* _min_datetime_ms;
     PyObject* _max_datetime_ms;
+    PyObject* _type_marker_str;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -80,6 +81,99 @@ struct module_state {
 #define DATETIME_CLAMP 2
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
+
+/* Converts integer to its string representation in decimal notation. */
+extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
+    // Buffer should fit 64-bit signed integer
+    if (size < 21) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "Buffer too small to hold long long: %d < 21", size);
+        return -1;
+    }
+    int index = 0;
+    int sign = 1;
+    // Convert to unsigned to handle -LLONG_MIN overflow
+    unsigned long long absNum;
+    // Handle the case of 0
+    if (num == 0) {
+        str[index++] = '0';
+        str[index] = '\0';
+        return 0;
+    }
+    // Handle negative numbers
+    if (num < 0) {
+        sign = -1;
+        absNum = 0ULL - (unsigned long long)num;
+    } else {
+        absNum = (unsigned long long)num;
+    }
+    // Convert the number to string
+    unsigned long long digit;
+    while (absNum > 0) {
+        digit = absNum % 10ULL;
+        str[index++] = (char)digit + '0';  // Convert digit to character
+        absNum /= 10;
+    }
+    // Add minus sign if negative
+    if (sign == -1) {
+        str[index++] = '-';
+    }
+    str[index] = '\0';  // Null terminator
+    // Reverse the string
+    int start = 0;
+    int end = index - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start++] = str[end];
+        str[end--] = temp;
+    }
+    return 0;
+}
+
+static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
+    // Test extreme values
+    Py_ssize_t maxNum = PY_SSIZE_T_MAX;
+    Py_ssize_t minNum = PY_SSIZE_T_MIN;
+    Py_ssize_t num;
+    char str_1[BUF_SIZE];
+    char str_2[BUF_SIZE];
+    int res = LL2STR(str_1, (long long)minNum);
+    if (res == -1) {
+        return NULL;
+    }
+    INT2STRING(str_2, (long long)minNum);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
+    LL2STR(str_1, (long long)maxNum);
+    INT2STRING(str_2, (long long)maxNum);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
+
+    // Test common values
+    for (num = 0; num < 10000; num++) {
+        char str_1[BUF_SIZE];
+        char str_2[BUF_SIZE];
+        LL2STR(str_1, (long long)num);
+        INT2STRING(str_2, (long long)num);
+        if (strcmp(str_1, str_2) != 0) {
+            PyErr_Format(
+                PyExc_RuntimeError,
+                "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+            return NULL;
+        }
+    }
+
+    return args;
+}
 
 /* Get an error class from the bson.errors module.
  *
@@ -210,19 +304,15 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
     long long millis;
 
     if (!(ll_millis = PyNumber_Long(dt))){
-        if (PyErr_Occurred()) { // TypeError
-            return 0;
-        }
+        return 0;
     }
-
-    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        if (PyErr_Occurred()) { /* Overflow */
-            PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB datetimes can only handle up to 8-byte ints");
-            return 0;
-        }
-    }
+    millis = PyLong_AsLongLong(ll_millis);
     Py_DECREF(ll_millis);
+    if (millis == -1 && PyErr_Occurred()) { /* Overflow */
+        PyErr_SetString(PyExc_OverflowError,
+                        "MongoDB datetimes can only handle up to 8-byte ints");
+        return 0;
+    }
     *out = millis;
     return 1;
 }
@@ -378,6 +468,9 @@ static int _load_python_objects(PyObject* module) {
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
 
+    /* Python str for faster _type_marker check */
+    state->_type_marker_str = PyUnicode_FromString("_type_marker");
+
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
         _load_object(&state->Code, "bson.code", "Code") ||
         _load_object(&state->ObjectId, "bson.objectid", "ObjectId") ||
@@ -428,12 +521,12 @@ static int _load_python_objects(PyObject* module) {
  *
  * Return the type marker, 0 if there is no marker, or -1 on failure.
  */
-static long _type_marker(PyObject* object) {
+static long _type_marker(PyObject* object, PyObject* _type_marker_str) {
     PyObject* type_marker = NULL;
     long type = 0;
 
-    if (PyObject_HasAttrString(object, "_type_marker")) {
-        type_marker = PyObject_GetAttrString(object, "_type_marker");
+    if (PyObject_HasAttr(object, _type_marker_str)) {
+        type_marker = PyObject_GetAttr(object, _type_marker_str);
         if (type_marker == NULL) {
             return -1;
         }
@@ -450,13 +543,6 @@ static long _type_marker(PyObject* object) {
     if (type_marker && PyLong_CheckExact(type_marker)) {
         type = PyLong_AsLong(type_marker);
         Py_DECREF(type_marker);
-        /*
-         * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
-         * so we call PyErr_Occurred to differentiate.
-         */
-        if (type == -1 && PyErr_Occurred()) {
-            return -1;
-        }
     } else {
         Py_XDECREF(type_marker);
     }
@@ -504,14 +590,12 @@ fail:
     return 0;
 }
 
-/* Fill out a codec_options_t* from a CodecOptions object. Use with the "O&"
- * format spec in PyArg_ParseTuple.
+/* Fill out a codec_options_t* from a CodecOptions object.
  *
  * Return 1 on success. options->document_class is a new reference.
  * Return 0 on failure.
  */
-int convert_codec_options(PyObject* options_obj, void* p) {
-    codec_options_t* options = (codec_options_t*)p;
+int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t* options) {
     PyObject* type_registry_obj = NULL;
     long type_marker;
 
@@ -524,10 +608,12 @@ int convert_codec_options(PyObject* options_obj, void* p) {
                           &options->unicode_decode_error_handler,
                           &options->tzinfo,
                           &type_registry_obj,
-                          &options->datetime_conversion))
+                          &options->datetime_conversion)) {
         return 0;
+    }
 
-    type_marker = _type_marker(options->document_class);
+    type_marker = _type_marker(options->document_class,
+                               GETSTATE(self)->_type_marker_str);
     if (type_marker < 0) {
         return 0;
     }
@@ -730,7 +816,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      * problems with python sub interpreters. Our custom types should
      * have a _type_marker attribute, which we can switch on instead.
      */
-    long type = _type_marker(value);
+    long type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
         return 0;
     }
@@ -1030,13 +1116,16 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         for(i = 0; i < items; i++) {
             int list_type_byte = pymongo_buffer_save_space(buffer, 1);
-            char name[16];
+            char name[BUF_SIZE];
             PyObject* item_value;
 
             if (list_type_byte == -1) {
                 return 0;
             }
-            INT2STRING(name, (int)i);
+            int res = LL2STR(name, (long long)i);
+            if (res == -1) {
+                return 0;
+            }
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
@@ -1382,7 +1471,7 @@ int write_dict(PyObject* self, buffer_t buffer,
     long type_marker;
 
     /* check for RawBSONDocument */
-    type_marker = _type_marker(dict);
+    type_marker = _type_marker(dict, state->_type_marker_str);
     if (type_marker < 0) {
         return 0;
     }
@@ -1504,18 +1593,20 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* result;
     unsigned char check_keys;
     unsigned char top_level = 1;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer;
     PyObject* raw_bson_document_bytes_obj;
     long type_marker;
 
-    if (!PyArg_ParseTuple(args, "ObO&|b", &dict, &check_keys,
-                          convert_codec_options, &options, &top_level)) {
+    if (!(PyArg_ParseTuple(args, "ObO|b", &dict, &check_keys,
+                          &options_obj, &top_level) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
     /* check for RawBSONDocument */
-    type_marker = _type_marker(dict);
+    type_marker = _type_marker(dict, GETSTATE(self)->_type_marker_str);
     if (type_marker < 0) {
         destroy_codec_options(&options);
         return NULL;
@@ -1986,7 +2077,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                         millis = max_millis;
                     }
                     // Continues from here to return a datetime.
-                } else if (dt_auto) {
+                } else { // dt_auto
                     if (millis < min_millis || millis > max_millis){
                         value = datetime_ms_from_millis(self, millis);
                         break; // Out-of-range so done.
@@ -2526,6 +2617,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     /* TODO: Support buffer protocol */
     char* string;
     PyObject* bson;
+    PyObject* options_obj;
     codec_options_t options;
     unsigned position;
     unsigned max;
@@ -2535,8 +2627,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OIIO&p", &bson, &position, &max,
-                          convert_codec_options, &options, &raw_array)) {
+    if (!(PyArg_ParseTuple(args, "OIIOp", &bson, &position, &max,
+                          &options_obj, &raw_array) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
@@ -2638,7 +2731,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     Py_buffer view = {0};
 
     if (! (PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
-            convert_codec_options(options_obj, &options))) {
+            convert_codec_options(self, options_obj, &options))) {
         return result;
     }
 
@@ -2715,10 +2808,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     Py_buffer view = {0};
 
-    if (!PyArg_ParseTuple(args, "OO", &bson, &options_obj)) {
-        return NULL;
-    }
-    if (!convert_codec_options(options_obj, &options)) {
+    if (!(PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
@@ -2935,6 +3026,7 @@ static PyMethodDef _CBSONMethods[] = {
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
     {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
+    {"_test_long_long_to_str", _test_long_long_to_str, METH_VARARGS, "Test conversion of extreme and common Py_ssize_t values to str."},
     {NULL, NULL, 0, NULL}
 };
 
@@ -2966,6 +3058,7 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->MaxKey);
     Py_CLEAR(GETSTATE(m)->UTC);
     Py_CLEAR(GETSTATE(m)->REType);
+    Py_CLEAR(GETSTATE(m)->_type_marker_str);
     return 0;
 }
 

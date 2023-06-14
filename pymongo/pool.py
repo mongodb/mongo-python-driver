@@ -758,7 +758,9 @@ class SocketInfo:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
             auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
-                cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
+                speculative_authenticate = auth_ctx.speculate_command()
+                if speculative_authenticate is not None:
+                    cmd["speculativeAuthenticate"] = speculative_authenticate
         else:
             auth_ctx = None
 

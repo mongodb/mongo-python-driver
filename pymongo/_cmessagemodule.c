@@ -75,19 +75,21 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     int num_to_return;
     PyObject* query;
     PyObject* field_selector;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
     PyObject* result = NULL;
 
-    if (!PyArg_ParseTuple(args, "Iet#iiOOO&",
+    if (!(PyArg_ParseTuple(args, "Iet#iiOOO",
                           &flags,
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &num_to_skip, &num_to_return,
                           &query, &field_selector,
-                          convert_codec_options, &options)) {
+                          &options_obj) &&
+            convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
     buffer = pymongo_buffer_new();
@@ -220,6 +222,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     Py_ssize_t identifier_length = 0;
     PyObject* docs;
     PyObject* doc;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
@@ -229,14 +232,15 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     PyObject* iterator = NULL;
 
     /*flags, command, identifier, docs, opts*/
-    if (!PyArg_ParseTuple(args, "IOet#OO&",
+    if (!(PyArg_ParseTuple(args, "IOet#OO",
                           &flags,
                           &command,
                           "utf-8",
                           &identifier,
                           &identifier_length,
                           &docs,
-                          convert_codec_options, &options)) {
+                          &options_obj) &&
+            convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
     buffer = pymongo_buffer_new();
@@ -528,14 +532,15 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "bOObO&O",
+    if (!(PyArg_ParseTuple(args, "bOObOO",
                           &op, &command, &docs, &ack,
-                          convert_codec_options, &options,
-                          &ctx)) {
+                          &options_obj, &ctx) &&
+            convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
     if (!(buffer = pymongo_buffer_new())) {
@@ -581,14 +586,15 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "bOObO&O",
+    if (!(PyArg_ParseTuple(args, "bOObOO",
                           &op, &command, &docs, &ack,
-                          convert_codec_options, &options,
-                          &ctx)) {
+                          &options_obj, &ctx) &&
+            convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
     if (!(buffer = pymongo_buffer_new())) {
@@ -761,8 +767,11 @@ _batched_write_command(
         int cur_doc_begin;
         int cur_size;
         int enough_data = 0;
-        char key[16];
-        INT2STRING(key, idx);
+        char key[BUF_SIZE];
+        int res = LL2STR(key, (long long)idx);
+        if (res == -1) {
+            return 0;
+        }
         if (!buffer_write_bytes(buffer, "\x03", 1) ||
             !buffer_write_bytes(buffer, key, (int)strlen(key) + 1)) {
             goto fail;
@@ -850,14 +859,15 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "et#bOOO&O", "utf-8",
+    if (!(PyArg_ParseTuple(args, "et#bOOOO", "utf-8",
                           &ns, &ns_len, &op, &command, &docs,
-                          convert_codec_options, &options,
-                          &ctx)) {
+                          &options_obj, &ctx) &&
+            convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
     if (!(buffer = pymongo_buffer_new())) {
