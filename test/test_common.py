@@ -170,7 +170,7 @@ class TestCommon(IntegrationTest):
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})
+            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":
