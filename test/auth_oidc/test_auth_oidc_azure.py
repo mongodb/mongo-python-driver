@@ -28,6 +28,9 @@ from pymongo import MongoClient
 from pymongo.auth_oidc import _CACHE as _oidc_cache
 from pymongo.azure_helpers import _CACHE
 
+# Force MONGODB-OIDC to be enabled.
+_AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
+
 
 class TestAuthOIDCAzure(unittest.TestCase):
     uri: str
