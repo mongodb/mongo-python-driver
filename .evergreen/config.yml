@@ -2350,6 +2350,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
+      - id: ubuntu-20.04
+        display_name: "Ubuntu 20.04"
+        run_on: ubuntu2004-small
+        batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
