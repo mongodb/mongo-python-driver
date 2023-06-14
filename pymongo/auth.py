@@ -23,7 +23,7 @@ import socket
 import typing
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -202,7 +202,7 @@ def _parse_scram_response(response: bytes) -> dict:
 
 def _authenticate_scram_start(
     credentials: MongoCredential, mechanism: str
-) -> tuple[bytes, bytes, SON]:
+) -> tuple[bytes, bytes, MutableMapping[str, Any]]:
     username = credentials.username
     user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
     nonce = standard_b64encode(os.urandom(32))
@@ -552,7 +552,7 @@ class _AuthContext:
             return spec_cls(creds, address)
         return None
 
-    def speculate_command(self) -> Optional[SON[str, Any]]:
+    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         raise NotImplementedError
 
     def parse_response(self, hello: Hello) -> None:
@@ -570,7 +570,7 @@ class _ScramContext(_AuthContext):
         self.scram_data: Optional[tuple[bytes, bytes]] = None
         self.mechanism = mechanism
 
-    def speculate_command(self) -> Optional[SON[str, Any]]:
+    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         nonce, first_bare, cmd = _authenticate_scram_start(self.credentials, self.mechanism)
         # The 'db' field is included only on the speculative command.
         cmd["db"] = self.credentials.source
@@ -580,7 +580,7 @@ class _ScramContext(_AuthContext):
 
 
 class _X509Context(_AuthContext):
-    def speculate_command(self) -> Optional[SON[str, Any]]:
+    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         cmd = SON([("authenticate", 1), ("mechanism", "MONGODB-X509")])
         if self.credentials.username is not None:
             cmd["user"] = self.credentials.username
@@ -588,7 +588,7 @@ class _X509Context(_AuthContext):
 
 
 class _OIDCContext(_AuthContext):
-    def speculate_command(self) -> Optional[SON[str, Any]]:
+    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         authenticator = _get_authenticator(self.credentials, self.address)
         cmd = authenticator.auth_start_cmd(False)
         if cmd is None:
