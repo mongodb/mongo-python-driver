@@ -16,7 +16,9 @@ Changes in Version 4.4
 - pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB Server 7.0 introduced a backwards breaking
   change to the QE protocol. Users taking advantage of the Queryable Encryption beta must now upgrade to
   MongoDB 7.0+ and PyMongo 4.4+.
+- Previously, PyMongo's docs recommended using :meth:`datetime.datetime.utcnow` and :meth:`datetime.datetime.utcfromtimestamp`. utcnow and utcfromtimestamp are deprecated in Python 3.12, for reasons explained `in this Github issue`_. Instead, users should use :meth:`datetime.datetime.now(tz=timezone.utc)` and :meth:`datetime.datetime.fromtimestamp(tz=timezone.utc)` instead.
 
+.. _in this Github issue: https://github.com/python/cpython/issues/103857
 Issues Resolved
 ...............
 
