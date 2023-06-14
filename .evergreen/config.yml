@@ -99,6 +99,7 @@ functions:
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
             git clone --branch DRIVERS-2416-2 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            cat $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/test.py
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
