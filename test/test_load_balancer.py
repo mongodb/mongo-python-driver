@@ -37,6 +37,8 @@ class TestLB(IntegrationTest):
     RUN_ON_SERVERLESS = True
 
     def test_connections_are_only_returned_once(self):
+        if "PyPy" in sys.version:
+            self.skipTest("Test is flaky on PyPy")
         pool = get_pool(self.client)
         nconns = len(pool.sockets)
         self.db.test.find_one({})
