@@ -26,6 +26,7 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth_oidc import _CACHE as _oidc_cache
+from pymongo.auth_oidc import _authenticate_oidc
 from pymongo.azure_helpers import _CACHE
 
 # Force MONGODB-OIDC to be enabled.
