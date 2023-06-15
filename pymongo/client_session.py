@@ -133,6 +133,8 @@ Classes
 =======
 """
 
+from __future__ import annotations
+
 import collections
 import time
 import uuid
@@ -478,7 +480,7 @@ class ClientSession:
 
     def __init__(
         self,
-        client: "MongoClient",
+        client: MongoClient,
         server_session: Any,
         options: SessionOptions,
         implicit: bool,
@@ -524,7 +526,7 @@ class ClientSession:
         self._end_session(lock=True)
 
     @property
-    def client(self) -> "MongoClient":
+    def client(self) -> MongoClient:
         """The :class:`~pymongo.mongo_client.MongoClient` this session was
         created from.
         """

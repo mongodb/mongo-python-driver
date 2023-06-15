@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Database level operations."""
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -74,10 +76,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         client: "MongoClient[_DocumentType]",
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional["WriteConcern"] = None,
-        read_concern: Optional["ReadConcern"] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -154,10 +156,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional["WriteConcern"] = None,
-        read_concern: Optional["ReadConcern"] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
     ) -> "Database[_DocumentType]":
         """Get a clone of this database changing the specified settings.
 
@@ -241,10 +243,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def get_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional["WriteConcern"] = None,
-        read_concern: Optional["ReadConcern"] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
     ) -> Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
@@ -319,11 +321,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def create_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional["WriteConcern"] = None,
-        read_concern: Optional["ReadConcern"] = None,
-        session: Optional["ClientSession"] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+        session: Optional[ClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
@@ -472,7 +474,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     def aggregate(
-        self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
+        self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> CommandCursor[_DocumentType]:
         """Perform a database-level aggregation.
 
@@ -557,7 +559,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
         start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
@@ -720,7 +722,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: "Optional[bson.codec_options.CodecOptions[_CodecDocumentType]]" = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
@@ -883,7 +885,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def list_collections(
         self,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -924,7 +926,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def list_collection_names(
         self,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -989,7 +991,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -1069,7 +1071,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
         scandata: bool = False,
         full: bool = False,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         background: Optional[bool] = None,
         comment: Optional[Any] = None,
     ) -> Dict[str, Any]:
@@ -1165,7 +1167,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def dereference(
         self,
         dbref: DBRef,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> Optional[_DocumentType]:
