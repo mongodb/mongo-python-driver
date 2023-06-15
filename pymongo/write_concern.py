@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, Union
 from pymongo.errors import ConfigurationError
 
 
+# Moved here to avoid a circular import.
 def validate_boolean(option: str, value: Any) -> bool:
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
