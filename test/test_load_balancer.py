@@ -38,6 +38,7 @@ class TestLB(IntegrationTest):
 
     def test_connections_are_only_returned_once(self):
         if "PyPy" in sys.version:
+            # Tracked in PYTHON-3011
             self.skipTest("Test is flaky on PyPy")
         pool = get_pool(self.client)
         nconns = len(pool.sockets)
