@@ -37,6 +37,7 @@ from pymongo.ocsp_cache import _OCSPCache
 from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
 from pymongo.socket_checker import SocketChecker as _SocketChecker
 from pymongo.socket_checker import _errno_from_exception
+from pymongo.write_concern import validate_boolean
 
 try:
     import certifi
@@ -228,8 +229,7 @@ class SSLContext:
         return self._check_hostname
 
     def __set_check_hostname(self, value):
-        if not isinstance(value, bool):
-            raise TypeError("check_hostname must be True or False")
+        validate_boolean("check_hostname", value)
         self._check_hostname = value
 
     check_hostname = property(__get_check_hostname, __set_check_hostname)
@@ -238,8 +238,7 @@ class SSLContext:
         return self._callback_data.check_ocsp_endpoint
 
     def __set_check_ocsp_endpoint(self, value):
-        if not isinstance(value, bool):
-            raise TypeError("check_ocsp must be True or False")
+        validate_boolean("check_ocsp", value)
         self._callback_data.check_ocsp_endpoint = value
 
     check_ocsp_endpoint = property(__get_check_ocsp_endpoint, __set_check_ocsp_endpoint)

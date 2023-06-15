@@ -397,7 +397,7 @@ else:
                     "subclass of collections.abc.MutableMapping"
                 )
             if not isinstance(tz_aware, bool):
-                raise TypeError("tz_aware must be True or False")
+                raise TypeError(f"tz_aware must be True or False, was: tz_aware={tz_aware}")
             if uuid_representation not in ALL_UUID_REPRESENTATIONS:
                 raise ValueError(
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
