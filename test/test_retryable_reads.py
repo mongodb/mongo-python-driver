@@ -162,6 +162,8 @@ class TestPoolPausedError(IntegrationTest):
     @client_context.require_failCommand_blockConnection
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
+        if "PyPy" in sys.version:
+            self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
         client = rs_or_single_client(maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener])
