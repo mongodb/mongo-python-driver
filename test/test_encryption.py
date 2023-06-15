@@ -639,6 +639,11 @@ class TestSpec(SpecRunner):
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
         desc = test["description"].lower()
+        if (
+            "timeoutms applied to listcollections to get collection schema" in desc
+            and sys.platform in ("win32", "darwin")
+        ):
+            self.skipTest("PYTHON-3706 flaky test on Windows/macOS")
         if "type=symbol" in desc:
             self.skipTest("PyMongo does not support the symbol type")
 
