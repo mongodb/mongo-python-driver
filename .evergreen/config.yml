@@ -2273,7 +2273,6 @@ tasks:
             set -o errexit
             ${PREPARE_SHELL}
             cd src
-            export SET_XTRACE_ON=1
             PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
