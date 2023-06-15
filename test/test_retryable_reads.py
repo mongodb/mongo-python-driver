@@ -163,6 +163,7 @@ class TestPoolPausedError(IntegrationTest):
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
         if "PyPy" in sys.version:
+            # Tracked in PYTHON-3519
             self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
