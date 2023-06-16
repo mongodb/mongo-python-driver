@@ -212,7 +212,8 @@ def _build_ocsp_request(cert, issuer):
 
 
 def _verify_response(issuer, response):
-    _LOGGER.debug("Verifying response")
+    now = _datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    _LOGGER.debug("Verifying response for: % and %", now, response.this_update)
     # RFC6960, Section 3.2, Number 2, 3 and 4 happen here.
     res = _verify_response_signature(issuer, response)
     if not res:
