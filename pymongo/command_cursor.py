@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """CommandCursor class to iterate over command results."""
+from __future__ import annotations
 
 from collections import deque
 from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, NoReturn, Optional
@@ -36,12 +37,12 @@ class CommandCursor(Generic[_DocumentType]):
 
     def __init__(
         self,
-        collection: "Collection[_DocumentType]",
+        collection: Collection[_DocumentType],
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
@@ -267,7 +268,7 @@ class CommandCursor(Generic[_DocumentType]):
         return self.__address
 
     @property
-    def session(self) -> Optional["ClientSession"]:
+    def session(self) -> Optional[ClientSession]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
@@ -312,12 +313,12 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
 
     def __init__(
         self,
-        collection: "Collection[_DocumentType]",
+        collection: Collection[_DocumentType],
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
     ) -> None:

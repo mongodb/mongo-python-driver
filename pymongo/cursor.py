@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+from __future__ import annotations
+
 import copy
 import warnings
 from collections import deque
@@ -163,7 +165,7 @@ class Cursor(Generic[_DocumentType]):
 
     def __init__(
         self,
-        collection: "Collection[_DocumentType]",
+        collection: Collection[_DocumentType],
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
@@ -184,7 +186,7 @@ class Cursor(Generic[_DocumentType]):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Optional[Any] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
     ) -> None:
@@ -202,7 +204,7 @@ class Cursor(Generic[_DocumentType]):
         self.__exhaust = False
         self.__sock_mgr: Any = None
         self.__killed = False
-        self.__session: Optional["ClientSession"]
+        self.__session: Optional[ClientSession]
 
         if session:
             self.__session = session
@@ -312,7 +314,7 @@ class Cursor(Generic[_DocumentType]):
         self.__collname = collection.name
 
     @property
-    def collection(self) -> "Collection[_DocumentType]":
+    def collection(self) -> Collection[_DocumentType]:
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
         """
@@ -1230,7 +1232,7 @@ class Cursor(Generic[_DocumentType]):
         return self.__address
 
     @property
-    def session(self) -> Optional["ClientSession"]:
+    def session(self) -> Optional[ClientSession]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
@@ -1313,7 +1315,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self, collection: "Collection[_DocumentType]", *args: Any, **kwargs: Any) -> None:
+    def __init__(self, collection: Collection[_DocumentType], *args: Any, **kwargs: Any) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -

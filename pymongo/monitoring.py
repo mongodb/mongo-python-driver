@@ -183,6 +183,8 @@ will not add that listener to existing client instances.
   handler first.
 """
 
+from __future__ import annotations
+
 import datetime
 from collections import abc, namedtuple
 from typing import TYPE_CHECKING, Any, Dict, Optional
@@ -1128,8 +1130,8 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     def __init__(
         self,
-        previous_description: "ServerDescription",
-        new_description: "ServerDescription",
+        previous_description: ServerDescription,
+        new_description: ServerDescription,
         *args: Any,
     ) -> None:
         super().__init__(*args)
@@ -1137,14 +1139,14 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         self.__new_description = new_description
 
     @property
-    def previous_description(self) -> "ServerDescription":
+    def previous_description(self) -> ServerDescription:
         """The previous
         :class:`~pymongo.server_description.ServerDescription`.
         """
         return self.__previous_description
 
     @property
-    def new_description(self) -> "ServerDescription":
+    def new_description(self) -> ServerDescription:
         """The new
         :class:`~pymongo.server_description.ServerDescription`.
         """
@@ -1204,8 +1206,8 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     def __init__(
         self,
-        previous_description: "TopologyDescription",
-        new_description: "TopologyDescription",
+        previous_description: TopologyDescription,
+        new_description: TopologyDescription,
         *args: Any,
     ) -> None:
         super().__init__(*args)
@@ -1213,14 +1215,14 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         self.__new_description = new_description
 
     @property
-    def previous_description(self) -> "TopologyDescription":
+    def previous_description(self) -> TopologyDescription:
         """The previous
         :class:`~pymongo.topology_description.TopologyDescription`.
         """
         return self.__previous_description
 
     @property
-    def new_description(self) -> "TopologyDescription":
+    def new_description(self) -> TopologyDescription:
         """The new
         :class:`~pymongo.topology_description.TopologyDescription`.
         """

@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Watch changes on a collection, a database, or the entire cluster."""
+from __future__ import annotations
 
 import copy
 from typing import TYPE_CHECKING, Any, Dict, Generic, Mapping, Optional, Union
@@ -96,7 +97,7 @@ class ChangeStream(Generic[_DocumentType]):
     def __init__(
         self,
         target: Union[
-            "MongoClient[_DocumentType]", "Database[_DocumentType]", "Collection[_DocumentType]"
+            MongoClient[_DocumentType], Database[_DocumentType], Collection[_DocumentType]
         ],
         pipeline: Optional[_Pipeline],
         full_document: Optional[str],
@@ -105,7 +106,7 @@ class ChangeStream(Generic[_DocumentType]):
         batch_size: Optional[int],
         collation: Optional[_CollationIn],
         start_at_operation_time: Optional[Timestamp],
-        session: Optional["ClientSession"],
+        session: Optional[ClientSession],
         start_after: Optional[Mapping[str, Any]],
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,

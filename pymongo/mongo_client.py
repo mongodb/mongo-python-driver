@@ -30,6 +30,7 @@ access:
   >>> c["test-database"]
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
+from __future__ import annotations
 
 import contextlib
 import os
@@ -1762,7 +1763,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.contextmanager
     def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
-    ) -> "Generator[Optional[client_session.ClientSession], None, None]":
+    ) -> Generator[Optional[client_session.ClientSession], None, None]:
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.ClientSession):
@@ -1939,10 +1940,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_default_database(
         self,
         default: Optional[str] = None,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional["ReadConcern"] = None,
+        read_concern: Optional[ReadConcern] = None,
     ) -> database.Database[_DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
@@ -2000,10 +2001,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_database(
         self,
         name: Optional[str] = None,
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional["ReadConcern"] = None,
+        read_concern: Optional[ReadConcern] = None,
     ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
