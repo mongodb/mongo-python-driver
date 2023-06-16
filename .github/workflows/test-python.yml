@@ -80,12 +80,9 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           cache: 'pip'
-          cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip
-          python -m pip install sphinx
+          pip install tox
       - name: Check links
         run: |
-          cd doc
-          make linkcheck
+          tox -e linkcheck
