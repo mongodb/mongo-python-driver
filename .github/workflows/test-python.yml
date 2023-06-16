@@ -80,6 +80,7 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           cache: 'pip'
+          cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
           pip install tox
