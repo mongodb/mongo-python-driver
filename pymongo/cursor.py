@@ -274,6 +274,7 @@ class Cursor(Generic[_DocumentType]):
         self.__show_record_id = show_record_id
         self.__allow_disk_use = allow_disk_use
         self.__snapshot = snapshot
+        self.__hint: Union[str, SON[str, Any], None]
         self.__set_hint(hint)
 
         # Exhaust cursor support
@@ -437,7 +438,7 @@ class Cursor(Generic[_DocumentType]):
 
     def __query_spec(self):
         """Get the spec to use for a query."""
-        operators = {}
+        operators: Dict[str, Any] = {}
         if self.__ordering:
             operators["$orderby"] = self.__ordering
         if self.__explain:

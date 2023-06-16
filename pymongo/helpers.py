@@ -17,10 +17,25 @@
 import sys
 import traceback
 from collections import abc
-from typing import Any, List, NoReturn
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from bson.son import SON
 from pymongo import ASCENDING
+from pymongo.cursor import _Hint
 from pymongo.errors import (
     CursorNotFound,
     DuplicateKeyError,
@@ -33,9 +48,10 @@ from pymongo.errors import (
     _wtimeout_error,
 )
 from pymongo.hello import HelloCompat
+from pymongo.operations import _IndexList
 
 # From the SDAM spec, the "node is shutting down" codes.
-_SHUTDOWN_CODES = frozenset(
+_SHUTDOWN_CODES: frozenset = frozenset(
     [
         11600,  # InterruptedAtShutdown
         91,  # ShutdownInProgress
@@ -69,15 +85,17 @@ _RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
 )
 
 # Server code raised when re-authentication is required
-_REAUTHENTICATION_REQUIRED_CODE = 391
+_REAUTHENTICATION_REQUIRED_CODE: int = 391
 
 
-def _gen_index_name(keys):
+def _gen_index_name(keys: _IndexList) -> str:
     """Generate an index name from the set of fields it is over."""
     return "_".join(["{}_{}".format(*item) for item in keys])
 
 
-def _index_list(key_or_list, direction=None):
+def _index_list(
+    key_or_list: _Hint, direction: Optional[Union[int, str]] = None
+) -> Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]:
     """Helper to generate a list of (key, direction) pairs.
 
     Takes such a list, or a single key, or a single key and direction.
@@ -93,7 +111,7 @@ def _index_list(key_or_list, direction=None):
             return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
-        values = []
+        values: List[Tuple[str, int]] = []
         for item in key_or_list:
             if isinstance(item, str):
                 item = (item, ASCENDING)
@@ -101,7 +119,7 @@ def _index_list(key_or_list, direction=None):
         return values
 
 
-def _index_document(index_list):
+def _index_document(index_list: _IndexList) -> SON[str, Any]:
     """Helper to generate an index specifying document.
 
     Takes a list of (key, direction) pairs.
@@ -134,13 +152,19 @@ def _index_document(index_list):
 
 
 def _check_command_response(
-    response, max_wire_version, allowable_errors=None, parse_write_concern_error=False
-):
+    response: Dict[str, Any],
+    max_wire_version: int,
+    allowable_errors: Optional[List[int]] = None,
+    parse_write_concern_error: bool = False,
+) -> None:
     """Check the response to a command for errors."""
     if "ok" not in response:
         # Server didn't recognize our message as a command.
         raise OperationFailure(
-            response.get("$err"), response.get("code"), response, max_wire_version
+            response.get("$err"),  # type: ignore[arg-type]
+            response.get("code"),
+            response,
+            max_wire_version,
         )
 
     if parse_write_concern_error and "writeConcernError" in response:
@@ -210,7 +234,7 @@ def _raise_write_concern_error(error: Any) -> NoReturn:
     raise WriteConcernError(error.get("errmsg"), error.get("code"), error)
 
 
-def _get_wce_doc(result):
+def _get_wce_doc(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Return the writeConcernError or None."""
     wce = result.get("writeConcernError")
     if wce:
@@ -222,7 +246,7 @@ def _get_wce_doc(result):
     return wce
 
 
-def _check_write_command_response(result):
+def _check_write_command_response(result: Dict[str, Any]) -> None:
     """Backward compatibility helper for write command error handling."""
     # Prefer write errors over write concern errors
     write_errors = result.get("writeErrors")
@@ -234,7 +258,9 @@ def _check_write_command_response(result):
         _raise_write_concern_error(wce)
 
 
-def _fields_list_to_dict(fields, option_name):
+def _fields_list_to_dict(
+    fields: Union[Mapping[str, Any], Iterable[str]], option_name: str
+) -> Mapping[str, Any]:
     """Takes a sequence of field names and returns a matching dictionary.
 
     ["a", "b"] becomes {"a": 1, "b": 1}
@@ -254,7 +280,7 @@ def _fields_list_to_dict(fields, option_name):
     raise TypeError(f"{option_name} must be a mapping or list of key names")
 
 
-def _handle_exception():
+def _handle_exception() -> None:
     """Print exceptions raised by subscribers to stderr."""
     # Heavily influenced by logging.Handler.handleError.
 
@@ -270,8 +296,12 @@ def _handle_exception():
             del einfo
 
 
-def _handle_reauth(func):
-    def inner(*args, **kwargs):
+# See https://mypy.readthedocs.io/en/stable/generics.html?#decorator-factories
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def _handle_reauth(func: F) -> F:
+    def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
         from pymongo.pool import SocketInfo
 
@@ -299,4 +329,4 @@ def _handle_reauth(func):
                 return func(*args, **kwargs)
             raise
 
-    return inner
+    return cast(F, inner)

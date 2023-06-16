@@ -94,7 +94,7 @@ class DeleteOne:
             validate_is_mapping("filter", filter)
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
         self._filter = filter
         self._collation = collation
         self._hint = hint
@@ -150,7 +150,7 @@ class DeleteMany:
             validate_is_mapping("filter", filter)
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
         self._filter = filter
         self._collation = collation
         self._hint = hint
@@ -213,7 +213,7 @@ class ReplaceOne(Generic[_DocumentType]):
             validate_boolean("upsert", upsert)
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
 
         self._filter = filter
         self._doc = replacement
