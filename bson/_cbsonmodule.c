@@ -662,6 +662,13 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
 
 static void
 _set_cannot_encode(PyObject* value) {
+    if (PyLong_Check(value)) {
+        if ((PyLong_AsLongLong(value) == -1) && PyErr_Occurred()) {
+            return PyErr_SetString(PyExc_OverflowError,
+                    "MongoDB can only handle up to 8-byte ints");
+        }
+    }
+
     PyObject* type = NULL;
     PyObject* InvalidDocument = _error("InvalidDocument");
     if (InvalidDocument == NULL) {
@@ -1069,16 +1076,17 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             long long long_long_value;
             PyErr_Clear();
             long_long_value = PyLong_AsLongLong(value);
-            if (PyErr_Occurred()) { /* Overflow AGAIN */
-                PyErr_SetString(PyExc_OverflowError,
-                                "MongoDB can only handle up to 8-byte ints");
-                return 0;
+            if (PyErr_Occurred()) {
+                /* Ignore error and give the fallback_encoder a chance. */
+                PyErr_Clear();
+            } else {
+                *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x12;
+                return buffer_write_int64(buffer, (int64_t)long_long_value);
             }
-            *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x12;
-            return buffer_write_int64(buffer, (int64_t)long_long_value);
+        } else {
+            *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x10;
+            return buffer_write_int32(buffer, (int32_t)int_value);
         }
-        *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x10;
-        return buffer_write_int32(buffer, (int32_t)int_value);
     } else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x01;

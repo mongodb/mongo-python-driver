@@ -623,6 +623,15 @@ class TestCollectionWCustomType(IntegrationTest):
     def tearDown(self):
         self.db.test.drop()
 
+    def test_overflow_int_w_custom_decoder(self):
+        type_registry = TypeRegistry(fallback_encoder=lambda val: str(val))
+        codec_options = CodecOptions(type_registry=type_registry)
+        collection = self.db.get_collection("test", codec_options=codec_options)
+
+        collection.insert_one({"_id": 1, "data": 2**520})
+        ret = collection.find_one()
+        self.assertEqual(ret["data"], str(2**520))
+
     def test_command_errors_w_custom_type_decoder(self):
         db = self.db
         test_doc = {"_id": 1, "data": "a"}
