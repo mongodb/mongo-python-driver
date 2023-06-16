@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Bits and pieces used by the driver that don't really fit elsewhere."""
+from __future__ import annotations
 
 import sys
 import traceback
