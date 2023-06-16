@@ -31,7 +31,7 @@ from test import (
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    TestCreator,
+    SpecTestCreator,
     rs_or_single_client,
 )
 from test.utils_spec_runner import SpecRunner
@@ -138,7 +138,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
+test_creator = SpecTestCreator(create_test, TestSpec, _TEST_PATH)
 test_creator.create_tests()
 
 

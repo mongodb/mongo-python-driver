@@ -19,7 +19,7 @@ import threading
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    TestCreator,
+    SpecTestCreator,
     get_pool,
     rs_client,
     wait_until,
@@ -76,7 +76,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-class CustomTestCreator(TestCreator):
+class CustomSpecTestCreator(SpecTestCreator):
     def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
@@ -86,7 +86,7 @@ class CustomTestCreator(TestCreator):
         return [scenario_def]
 
 
-CustomTestCreator(create_test, TestAllScenarios, TEST_PATH).create_tests()
+CustomSpecTestCreator(create_test, TestAllScenarios, TEST_PATH).create_tests()
 
 
 class FinderThread(threading.Thread):

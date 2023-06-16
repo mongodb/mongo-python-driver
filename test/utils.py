@@ -391,7 +391,7 @@ class FunctionCallRecorder:
         return len(self._call_list)
 
 
-class TestCreator:
+class SpecTestCreator:
     """Class to create test cases from specifications."""
 
     def __init__(self, create_test, test_class, test_path):
