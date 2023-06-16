@@ -26,10 +26,10 @@ time into MongoDB:
 .. doctest::
 
    >>> result = db.objects.insert_one(
-   ...     {"last_modified": datetime.datetime.now(tz=timezone.utc)}
+   ...     {"last_modified": datetime.datetime.now(tz=datetime.timezone.utc)}
    ... )
 
-Always use :meth:`datetime.datetime.now(tz=timezone.utc)`, which explicitly returns the current time in
+Always use :meth:`datetime.datetime.now(tz=datetime.timezone.utc)`, which explicitly returns the current time in
 UTC, instead of :meth:`datetime.datetime.now`, with no arguments, which returns the current local
 time. Avoid doing this:
 
