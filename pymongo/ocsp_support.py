@@ -220,7 +220,7 @@ def _verify_response(issuer, response):
 
     # Note that we are not using a "tolerance period" as discussed in
     # https://tools.ietf.org/rfc/rfc5019.txt?
-    now = _datetime.now(tz=timezone.utc)
+    now = _datetime.now(tz=timezone.utc).replace(tzinfo=None)
     # RFC6960, Section 3.2, Number 5
     if response.this_update > now:
         _LOGGER.debug("thisUpdate is in the future")
