@@ -321,7 +321,7 @@ functions:
           ${PREPARE_SHELL}
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          VARIANT=rhel87-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -1372,7 +1372,7 @@ tasks:
 
     - name: "release-combine"
       tags: ["release_tag"]
-      run_on: rhel87-small
+      run_on: rhel84-small
       depends_on:
         - name: "*"
           variant: ".release_tag"
@@ -2325,14 +2325,14 @@ axes:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
-        run_on: rhel79-small
+        run_on: rhel76-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
-        run_on: rhel87-small
+        run_on: rhel84-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: "/opt/python/3.8/bin/python3"
@@ -2818,7 +2818,7 @@ buildvariants:
   tasks:
     - ".6.0"
 
-- matrix_name: "tests-python-version-rhel8.4-test-ssl"
+- matrix_name: "tests-python-version-rhel8-test-ssl"
   matrix_spec:
     platform: rhel8
     python-version: "*"
@@ -3097,7 +3097,7 @@ buildvariants:
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - rhel87-small
+    - rhel84-small
   tasks:
     - name: "no-server"
   expansions:
@@ -3106,7 +3106,7 @@ buildvariants:
 - name: "Coverage Report"
   display_name: "Coverage Report"
   run_on:
-    - rhel87-small
+    - rhel84-small
   tasks:
      - name: "coverage-report"
   expansions:
