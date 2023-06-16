@@ -18,6 +18,7 @@ import sys
 import traceback
 from collections import abc
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -35,7 +36,6 @@ from typing import (
 
 from bson.son import SON
 from pymongo import ASCENDING
-from pymongo.cursor import _Hint
 from pymongo.errors import (
     CursorNotFound,
     DuplicateKeyError,
@@ -48,7 +48,10 @@ from pymongo.errors import (
     _wtimeout_error,
 )
 from pymongo.hello import HelloCompat
-from pymongo.operations import _IndexList
+
+if TYPE_CHECKING:
+    from pymongo.cursor import _Hint
+    from pymongo.operations import _IndexList
 
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES: frozenset = frozenset(
