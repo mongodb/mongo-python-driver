@@ -113,9 +113,9 @@ class _Run:
 
 def _merge_command(
     run: _Run,
-    full_result: Dict[str, Any],
+    full_result: MutableMapping[str, Any],
     offset: int,
-    result: Dict[str, Any],
+    result: MutableMapping[str, Any],
 ) -> None:
     """Merge a write command result into the full bulk result."""
     affected = result.get("n", 0)
@@ -218,9 +218,8 @@ class _Bulk:
         self,
         selector: MutableMapping[str, Any],
         update: Union[
-            Dict[str, Dict[str, int]],
-            Dict[str, Dict[str, str]],
-            List[Dict[str, Dict[str, str]]],
+            MutableMapping[str, Any],
+            List[MutableMapping[str, Any]],
         ],
         multi: bool = False,
         upsert: bool = False,
@@ -252,8 +251,8 @@ class _Bulk:
 
     def add_replace(
         self,
-        selector: Dict[str, Any],
-        replacement: Dict[str, Any],
+        selector: MutableMapping[str, Any],
+        replacement: MutableMapping[str, Any],
         upsert: bool = False,
         collation: Optional[Collation] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -274,7 +273,7 @@ class _Bulk:
 
     def add_delete(
         self,
-        selector: Dict[str, Any],
+        selector: MutableMapping[str, Any],
         limit: int,
         collation: Optional[Collation] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -329,7 +328,7 @@ class _Bulk:
         sock_info: SocketInfo,
         op_id: int,
         retryable: bool,
-        full_result: Dict[str, Any],
+        full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
     ) -> None:
         db_name = self.collection.database.name
