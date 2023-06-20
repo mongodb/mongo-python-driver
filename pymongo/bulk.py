@@ -276,7 +276,9 @@ class _Bulk:
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = SON([("q", selector), ("limit", limit)])
-        collation: Optional[Dict[str, Any]] = validate_collation_or_none(collation)
+        collation: Optional[Dict[str, Any]] = validate_collation_or_none(  # type: ignore[no-redef]
+            collation
+        )
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
