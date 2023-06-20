@@ -16,6 +16,8 @@
 
 .. versionadded:: 2.7
 """
+from __future__ import annotations
+
 import copy
 from collections.abc import MutableMapping
 from itertools import islice
