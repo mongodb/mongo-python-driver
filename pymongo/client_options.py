@@ -267,7 +267,7 @@ class ClientOptions:
     def timeout(self) -> Optional[float]:
         """The configured timeoutMS converted to seconds, or None.
 
-        ..versionadded: 4.2
+        .. versionadded: 4.2
         """
         return self.__timeout
 

@@ -5,18 +5,28 @@ Changes in Version 4.4
 -----------------------
 
 - Added support for MongoDB 7.0.
+- Added support for Python 3.11.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
-- pymongocrypt 1.6.0 or later is now required for client side field level
-  encryption support.
+- Improved bson encoding performance (`PYTHON-3717`_ and `PYTHON-3718`_).
 - Improved support for Pyright to improve typing support for IDEs like Visual Studio Code
   or Visual Studio.
 - Improved support for type-checking with MyPy "strict" mode (`--strict`).
-- Added support for Python 3.11.
-- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB Server 7.0 introduced a backwards breaking
-  change to the QE protocol. Users taking advantage of the Queryable Encryption beta must now upgrade to
-  MongoDB 7.0+ and PyMongo 4.4+.
-- Previously, PyMongo's docs recommended using :meth:`datetime.datetime.utcnow` and :meth:`datetime.datetime.utcfromtimestamp`. utcnow and utcfromtimestamp are deprecated in Python 3.12, for reasons explained `in this Github issue`_. Instead, users should use :meth:`datetime.datetime.now(tz=timezone.utc)` and :meth:`datetime.datetime.fromtimestamp(tz=timezone.utc)` instead.
+- Added :meth:`~pymongo.encryption.ClientEncryption.create_encrypted_collection`,
+  :class:`~pymongo.errors.EncryptedCollectionError`,
+  :meth:`~pymongo.encryption.ClientEncryption.encrypt_expression`,
+  :class:`~pymongo.encryption_options.RangeOpts`,
+  and :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW` as part of the experimental
+  Queryable Encryption beta.
+- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB
+  Server 7.0 introduced a backwards breaking change to the QE protocol. Users taking
+  advantage of the Queryable Encryption beta must now upgrade to MongoDB 7.0+ and
+  PyMongo 4.4+.
+- Previously, PyMongo's docs recommended using :meth:`datetime.datetime.utcnow` and
+  :meth:`datetime.datetime.utcfromtimestamp`. utcnow and utcfromtimestamp are deprecated
+  in Python 3.12, for reasons explained `in this Github issue`_. Instead, users should
+  use :meth:`datetime.datetime.now(tz=timezone.utc)` and
+  :meth:`datetime.datetime.fromtimestamp(tz=timezone.utc)` instead.
 
 .. _in this Github issue: https://github.com/python/cpython/issues/103857
 
@@ -27,6 +37,9 @@ See the `PyMongo 4.4 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=34354
+
+.. _PYTHON-3717: https://jira.mongodb.org/browse/PYTHON-3717
+.. _PYTHON-3718: https://jira.mongodb.org/browse/PYTHON-3718
 
 Changes in Version 4.3.3
 ------------------------

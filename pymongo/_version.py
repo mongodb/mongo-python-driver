@@ -15,7 +15,7 @@
 """Current version of PyMongo."""
 from typing import Tuple, Union
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 4, 0, ".dev1")
+version_tuple: Tuple[Union[int, str], ...] = (4, 4, 0)
 
 
 def get_version_string() -> str:
