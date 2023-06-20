@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple,
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.message import _convert_exception, _GetMore, _OpMsg, _OpReply, _Query
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from queue import Queue
     from weakref import ReferenceType
 
-    from bson.codec_options import CodecOptions
     from bson.objectid import ObjectId
     from pymongo.mongo_client import _MongoClientErrorHandler
     from pymongo.monitor import Monitor
