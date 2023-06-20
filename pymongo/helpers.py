@@ -156,7 +156,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
 
 def _check_command_response(
-    response: Dict[str, Any],
+    response: Mapping[str, Any],
     max_wire_version: Optional[int],
     allowable_errors: Optional[List[int]] = None,
     parse_write_concern_error: bool = False,
