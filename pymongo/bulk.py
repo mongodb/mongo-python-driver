@@ -17,6 +17,7 @@
 .. versionadded:: 2.7
 """
 import copy
+from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
@@ -62,11 +63,10 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-
     from pymongo.collection import Collection
     from pymongo.operations import _IndexKeyHint
     from pymongo.pool import SocketInfo
+    from pymongo.typings import _DocumentType
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
@@ -165,7 +165,7 @@ class _Bulk:
 
     def __init__(
         self,
-        collection: Collection,
+        collection: Collection[_DocumentType],
         ordered: bool,
         bypass_document_validation: bool,
         comment: Optional[str] = None,
