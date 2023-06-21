@@ -805,7 +805,7 @@ def _encode_int(name: bytes, value: int, dummy0: Any, dummy1: Any) -> bytes:
         try:
             return b"\x12" + name + _PACK_LONG(value)
         except struct.error:
-            raise IntegerOverflow()
+            raise OverflowError("BSON can only handle up to 8-byte ints")
 
 
 def _encode_timestamp(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
@@ -905,7 +905,9 @@ def _name_value_to_bson(
         return _ENCODERS[type(value)](name, value, check_keys, opts)  # type: ignore
     except KeyError:
         pass
-    except IntegerOverflow:
+    except OverflowError as error:
+        if error.args != ("BSON can only handle up to 8-byte ints",):
+            raise
         # Give the fallback_encoder a chance
         was_integer_overflow = True
 
@@ -1387,10 +1389,6 @@ class BSON(bytes):
            `codec_options`.
         """
         return decode(self, codec_options)
-
-
-class IntegerOverflow(Exception):
-    pass
 
 
 def has_c() -> bool:
