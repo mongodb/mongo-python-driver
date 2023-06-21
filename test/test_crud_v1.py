@@ -21,7 +21,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 from test.utils import (
-    TestCreator,
+    SpecTestCreator,
     camel_to_snake,
     camel_to_snake_args,
     camel_to_upper_camel,
@@ -171,7 +171,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
+test_creator = SpecTestCreator(create_test, TestAllScenarios, _TEST_PATH)
 test_creator.create_tests()
 
 

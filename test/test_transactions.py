@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 from test import client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    TestCreator,
+    SpecTestCreator,
     rs_client,
     single_client,
     wait_until,
@@ -581,11 +581,11 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestTransactions, TEST_PATH)
+test_creator = SpecTestCreator(create_test, TestTransactions, TEST_PATH)
 test_creator.create_tests()
 
 
-TestCreator(
+SpecTestCreator(
     create_test, TestTransactionsConvenientAPI, TestTransactionsConvenientAPI.TEST_PATH
 ).create_tests()
 
