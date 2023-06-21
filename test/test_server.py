@@ -14,7 +14,6 @@
 
 """Test the server module."""
 
-import sys
 from test import unittest
 
 from pymongo.hello import Hello
