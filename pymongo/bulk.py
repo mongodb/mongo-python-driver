@@ -40,7 +40,6 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import _csot, common
 from pymongo.client_session import ClientSession, _validate_session_write_concern
-from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -68,7 +67,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.operations import _IndexKeyHint
     from pymongo.pool import SocketInfo
-    from pymongo.typings import _CollationIn, _DocumentType
+    from pymongo.typings import _DocumentType
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
