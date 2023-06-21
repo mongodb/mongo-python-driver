@@ -1121,7 +1121,8 @@ functions:
           done
           # Build source distribution.
           cd src/
-          /opt/python/3.7/bin/python3 setup.py sdist
+          /opt/python/3.7/bin/python3 -m pip install build
+          /opt/python/3.7/bin/python3 -m build --sdist .
           cp dist/* ../releases
     - command: archive.targz_pack
       params:

@@ -14,9 +14,8 @@ PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
 rm -rf build
 
 createvirtualenv $PYTHON releasevenv
-python -m pip install --upgrade wheel
-python -m pip install setuptools==63.2.0
-python setup.py bdist_wheel
+python -m pip install build
+python -m build --wheel .
 deactivate || true
 rm -rf releasevenv
 
