@@ -732,7 +732,7 @@ class Topology:
                 )
 
                 weak = None
-                if self._publish_server:
+                if self._publish_server and self._events is not None:
                     weak = weakref.ref(self._events)
                 server = Server(
                     server_description=sd,

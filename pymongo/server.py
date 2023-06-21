@@ -47,7 +47,7 @@ class Server:
         monitor: Monitor,
         topology_id: Optional[ObjectId] = None,
         listeners: Optional[_EventListeners] = None,
-        events: Optional[ReferenceType[Optional[Queue]]] = None,
+        events: Optional[ReferenceType[Queue]] = None,
     ) -> None:
         """Represent one MongoDB server."""
         self._description = server_description
