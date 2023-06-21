@@ -14,6 +14,10 @@
 
 """Test the server module."""
 
+import sys
+
+sys.path[0:0] = [""]
+
 from test import unittest
 
 from pymongo.hello import Hello
