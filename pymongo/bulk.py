@@ -222,7 +222,7 @@ class _Bulk:
         ],
         multi: bool = False,
         upsert: bool = False,
-        collation: Optional[Dict[str, Any]] = None,
+        collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[List[MutableMapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
@@ -250,7 +250,7 @@ class _Bulk:
         selector: MutableMapping[str, Any],
         replacement: MutableMapping[str, Any],
         upsert: bool = False,
-        collation: Optional[Dict[str, Any]] = None,
+        collation: Optional[Mapping[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
@@ -268,7 +268,7 @@ class _Bulk:
         self,
         selector: MutableMapping[str, Any],
         limit: int,
-        collation: Optional[Dict[str, Any]] = None,
+        collation: Optional[Mapping[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
