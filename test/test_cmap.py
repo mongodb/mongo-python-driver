@@ -24,7 +24,7 @@ from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.utils import (
     CMAPListener,
-    TestCreator,
+    SpecTestCreator,
     camel_to_snake,
     client_context,
     get_pool,
@@ -455,7 +455,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-class CMAPTestCreator(TestCreator):
+class CMAPSpecTestCreator(SpecTestCreator):
     def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
@@ -465,7 +465,7 @@ class CMAPTestCreator(TestCreator):
         return [scenario_def]
 
 
-test_creator = CMAPTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
+test_creator = CMAPSpecTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
 test_creator.create_tests()
 
 

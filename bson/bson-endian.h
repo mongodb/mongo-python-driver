@@ -25,7 +25,6 @@
 
 
 #ifdef _MSC_VER
-# include "bson-stdint-win32.h"
 # define BSON_INLINE __inline
 #else
 # include <stdint.h>

@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     EventListener,
-    TestCreator,
+    SpecTestCreator,
     disable_replication,
     enable_replication,
     rs_or_single_client,
@@ -337,7 +337,7 @@ def create_operation_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_operation_test, TestOperation, TestOperation.TEST_PATH)
+test_creator = SpecTestCreator(create_operation_test, TestOperation, TestOperation.TEST_PATH)
 test_creator.create_tests()
 
 
