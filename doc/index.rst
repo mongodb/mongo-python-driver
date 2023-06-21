@@ -102,7 +102,8 @@ following command from the root directory of the **PyMongo** source:
 
 .. code-block:: bash
 
-  $ python setup.py doc
+  $ pip install tox
+  $ tox -e docs
 
 Indices and tables
 ------------------
