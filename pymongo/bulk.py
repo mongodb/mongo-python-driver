@@ -40,7 +40,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import _csot, common
 from pymongo.client_session import ClientSession, _validate_session_write_concern
-from pymongo.collation import Collation, validate_collation_or_none
+from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -68,7 +68,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.operations import _IndexKeyHint
     from pymongo.pool import SocketInfo
-    from pymongo.typings import _DocumentType
+    from pymongo.typings import _CollationIn, _DocumentType
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
@@ -223,7 +223,7 @@ class _Bulk:
         ],
         multi: bool = False,
         upsert: bool = False,
-        collation: Optional[Collation] = None,
+        collation: Optional[Dict[str, Any]] = None,
         array_filters: Optional[List[MutableMapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
@@ -231,9 +231,6 @@ class _Bulk:
         validate_ok_for_update(update)
         cmd: Dict[str, Any] = dict(
             [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
-        )
-        collation: Optional[Dict[str, Any]] = validate_collation_or_none(  # type: ignore[no-redef]
-            collation
         )
         if collation is not None:
             self.uses_collation = True
@@ -254,15 +251,12 @@ class _Bulk:
         selector: MutableMapping[str, Any],
         replacement: MutableMapping[str, Any],
         upsert: bool = False,
-        collation: Optional[Collation] = None,
+        collation: Optional[Dict[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
         cmd = SON([("q", selector), ("u", replacement), ("multi", False), ("upsert", upsert)])
-        collation: Optional[Dict[str, Any]] = validate_collation_or_none(  # type: ignore[no-redef]
-            collation
-        )
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -275,14 +269,11 @@ class _Bulk:
         self,
         selector: MutableMapping[str, Any],
         limit: int,
-        collation: Optional[Collation] = None,
+        collation: Optional[Dict[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = SON([("q", selector), ("limit", limit)])
-        collation: Optional[Dict[str, Any]] = validate_collation_or_none(  # type: ignore[no-redef]
-            collation
-        )
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation

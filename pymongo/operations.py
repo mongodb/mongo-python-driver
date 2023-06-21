@@ -101,7 +101,12 @@ class DeleteOne:
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 1, collation=self._collation, hint=self._hint)
+        bulkobj.add_delete(
+            self._filter,
+            1,
+            collation=validate_collation_or_none(self._collation),
+            hint=self._hint,
+        )
 
     def __repr__(self):
         return f"DeleteOne({self._filter!r}, {self._collation!r})"
@@ -157,7 +162,12 @@ class DeleteMany:
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 0, collation=self._collation, hint=self._hint)
+        bulkobj.add_delete(
+            self._filter,
+            0,
+            collation=validate_collation_or_none(self._collation),
+            hint=self._hint,
+        )
 
     def __repr__(self):
         return f"DeleteMany({self._filter!r}, {self._collation!r})"
@@ -224,12 +234,16 @@ class ReplaceOne(Generic[_DocumentType]):
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_replace(
-            self._filter, self._doc, self._upsert, collation=self._collation, hint=self._hint
+            self._filter,
+            self._doc,
+            self._upsert,
+            collation=validate_collation_or_none(self._collation),
+            hint=self._hint,
         )
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._doc, other._upsert, other._collation, other._hint) == (
+            return (other._filter, other._doc, other._upsert, other._collation, other._hint,) == (
                 self._filter,
                 self._doc,
                 self._upsert,
@@ -361,7 +375,7 @@ class UpdateOne(_UpdateOp):
             self._doc,
             False,
             self._upsert,
-            collation=self._collation,
+            collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
         )
@@ -419,7 +433,7 @@ class UpdateMany(_UpdateOp):
             self._doc,
             True,
             self._upsert,
-            collation=self._collation,
+            collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
         )
