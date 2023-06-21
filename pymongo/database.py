@@ -841,18 +841,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: "Optional[bson.codec_options.CodecOptions[_CodecDocumentType]]" = None,
+        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _CodecDocumentType:
+    ) -> CommandCursor:
         """Issue a MongoDB command and parse the response as a cursor.
 
-        Send command `command` to the database and return the
-        response. If `command` is an instance of :class:`basestring`
-        (:class:`str` in python 3) then the command {`command`: `value`}
-        will be sent. Otherwise, `command` must be an instance of
-        :class:`dict` and will be sent as is.
+        If the response from the server does not include a cursor field, an error will be thrown.
 
         Any additional keyword arguments will be added to the final
         command document before it is sent.
@@ -917,18 +913,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
 
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-
-        .. versionchanged:: 3.0
-           Removed the `as_class`, `fields`, `uuid_subtype`, `tag_sets`,
-           and `secondary_acceptable_latency_ms` option.
-           Removed `compile_re` option: PyMongo now always represents BSON
-           regular expressions as :class:`~bson.regex.Regex` objects. Use
-           :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
-           BSON regular expression to a Python regular expression object.
-           Added the ``codec_options`` parameter.
-
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         opts = codec_options or DEFAULT_CODEC_OPTIONS
@@ -941,7 +925,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             sock_info,
             read_preference,
         ):
-            return self._command(
+            cmd = self._command(
                 sock_info,
                 command,
                 value,
@@ -952,6 +936,21 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 **kwargs,
             )
+            coll = self.get_collection("$cmd", read_preference=read_preference)
+            cursor = cmd["cursor"]
+            if cursor is not None:
+                cmd_cursor = CommandCursor(
+                    coll,
+                    cursor,
+                    sock_info.address,
+                    session=session,
+                    explicit_session=session is not None,
+                    comment=cmd.get("comment"),
+                )
+                cmd_cursor._maybe_pin_connection(sock_info)
+                return cmd_cursor
+            else:
+                raise TypeError("Command does not return a cursor.")
 
     def _retryable_read_command(
         self,
