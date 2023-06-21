@@ -186,10 +186,7 @@ class Server:
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
-                res = {
-                    "cursor": {"id": reply.cursor_id, "ns": operation.namespace()},
-                    "ok": 1,
-                }
+                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs
                 else:

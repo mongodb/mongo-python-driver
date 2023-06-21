@@ -21,8 +21,6 @@ from pymongo.hello import Hello
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 
-sys.path[0:0] = [""]
-
 
 class TestServer(unittest.TestCase):
     def test_repr(self):
