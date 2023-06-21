@@ -1,3 +1,4 @@
+import os
 import platform
 import re
 import sys
@@ -196,7 +197,7 @@ ext_modules = [
 ]
 
 
-if "--no_ext" in sys.argv:
+if "--no_ext" in sys.argv or "NO_EXT" in os.environ:
     sys.argv.remove("--no_ext")
     ext_modules = []
 elif sys.platform.startswith("java") or sys.platform == "cli" or "PyPy" in sys.version:
