@@ -238,7 +238,6 @@ class ChangeStream(Generic[_DocumentType]):
             explicit_session,
             result_processor=self._process_result,
             comment=self._comment,
-            show_expanded_events=self._show_expanded_events,
         )
         return self._client._retryable_read(
             cmd.get_cursor, self._target._read_preference_for(session), session
