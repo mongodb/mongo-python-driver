@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from pymongo.database import Database
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
+    from pymongo.server import Server
     from pymongo.typings import _Pipeline
 
 
@@ -132,6 +133,7 @@ class _AggregationCommand:
     def get_cursor(
         self,
         session: ClientSession,
+        server: Server,
         sock_info: SocketInfo,
         read_preference: _ServerMode,
     ) -> CommandCursor:
