@@ -1087,6 +1087,22 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         kwargs["command"] = ordered_command
         return target.command(**kwargs)
 
+    def _databaseOperation_runCursorCommand(self, target, **kwargs):
+        self.__raise_if_unsupported("runCursorCommand", target, Database)
+        # Ensure the first key is the command name.
+        ordered_command = SON([(kwargs.pop("command_name"), 1)])
+        ordered_command.update(kwargs["command"])
+        kwargs["command"] = ordered_command
+        return list(target.cursor_command(**kwargs))
+
+    def _databaseOperation_createCommandCursor(self, target, **kwargs):
+        self.__raise_if_unsupported("createCommandCursor", target, Database)
+        # Ensure the first key is the command name.
+        ordered_command = SON([(kwargs.pop("command_name"), 1)])
+        ordered_command.update(kwargs["command"])
+        kwargs["command"] = ordered_command
+        return target.cursor_command(**kwargs)
+
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}

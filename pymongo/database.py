@@ -850,23 +850,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         If the response from the server does not include a cursor field, an error will be thrown.
 
-        Any additional keyword arguments will be added to the final
-        command document before it is sent.
-
-        For example, a command like ``{buildinfo: 1}`` can be sent
-        using:
-
-        >>> db.command("buildinfo")
-
-        For a command where the value matters, like ``{count:
-        collection_name}`` we can do:
-
-        >>> db.command("count", collection_name)
-
-        For commands that take additional arguments we can use
-        kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
-
-        >>> db.command("filemd5", object_id, root=file_root)
+        Otherwise, behaves identically to issuing a normal MongoDB command.
 
         :Parameters:
           - `command`: document representing the command to be issued,
@@ -915,42 +899,45 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        opts = codec_options or DEFAULT_CODEC_OPTIONS
-        if comment is not None:
-            kwargs["comment"] = comment
+        with self.__client._tmp_session(session, close=False) as tmp_session:
+            opts = codec_options or DEFAULT_CODEC_OPTIONS
+            if comment is not None:
+                kwargs["comment"] = comment
 
-        if read_preference is None:
-            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._socket_for_reads(read_preference, session) as (
-            sock_info,
-            read_preference,
-        ):
-            cmd = self._command(
+            if read_preference is None:
+                read_preference = (
+                    tmp_session and tmp_session._txn_read_preference()
+                ) or ReadPreference.PRIMARY
+            with self.__client._socket_for_reads(read_preference, tmp_session) as (
                 sock_info,
-                command,
-                value,
-                check,
-                allowable_errors,
                 read_preference,
-                opts,
-                session=session,
-                **kwargs,
-            )
-            coll = self.get_collection("$cmd", read_preference=read_preference)
-            cursor = cmd["cursor"]
-            if cursor is not None:
-                cmd_cursor = CommandCursor(
-                    coll,
-                    cursor,
-                    sock_info.address,
-                    session=session,
-                    explicit_session=session is not None,
-                    comment=cmd.get("comment"),
+            ):
+                cmd = self._command(
+                    sock_info,
+                    command,
+                    value,
+                    check,
+                    allowable_errors,
+                    read_preference,
+                    opts,
+                    session=tmp_session,
+                    **kwargs,
                 )
-                cmd_cursor._maybe_pin_connection(sock_info)
-                return cmd_cursor
-            else:
-                raise TypeError("Command does not return a cursor.")
+                coll = self.get_collection("$cmd", read_preference=read_preference)
+                cursor = cmd["cursor"]
+                if cursor is not None:
+                    cmd_cursor = CommandCursor(
+                        coll,
+                        cursor,
+                        sock_info.address,
+                        session=tmp_session,
+                        explicit_session=session is not None,
+                        comment=cmd.get("comment"),
+                    )
+                    cmd_cursor._maybe_pin_connection(sock_info)
+                    return cmd_cursor
+                else:
+                    raise TypeError("Command does not return a cursor.")
 
     def _retryable_read_command(
         self,
