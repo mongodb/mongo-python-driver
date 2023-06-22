@@ -174,6 +174,7 @@ ext_modules = [
     ),
 ]
 
+
 if "--no_ext" in sys.argv or "NO_EXT" in os.environ:
     sys.argv.remove("--no_ext")
     ext_modules = []
