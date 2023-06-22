@@ -13,22 +13,42 @@
 # permissions and limitations under the License.
 
 """Communicate with one MongoDB server in a topology."""
+from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple, Union
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.message import _convert_exception, _OpMsg
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
+
+if TYPE_CHECKING:
+    from contextlib import _GeneratorContextManager
+    from queue import Queue
+    from weakref import ReferenceType
+
+    from bson.objectid import ObjectId
+    from pymongo.mongo_client import _MongoClientErrorHandler
+    from pymongo.monitor import Monitor
+    from pymongo.monitoring import _EventListeners
+    from pymongo.pool import Pool, SocketInfo
+    from pymongo.server_description import ServerDescription
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server:
     def __init__(
-        self, server_description, pool, monitor, topology_id=None, listeners=None, events=None
-    ):
+        self,
+        server_description: ServerDescription,
+        pool: Pool,
+        monitor: Monitor,
+        topology_id: Optional[ObjectId] = None,
+        listeners: Optional[_EventListeners] = None,
+        events: Optional[ReferenceType[Queue]] = None,
+    ) -> None:
         """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
@@ -38,9 +58,9 @@ class Server:
         self._listener = listeners
         self._events = None
         if self._publish:
-            self._events = events()
+            self._events = events()  # type: ignore[misc]
 
-    def open(self):
+    def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.
@@ -48,11 +68,11 @@ class Server:
         if not self._pool.opts.load_balanced:
             self._monitor.open()
 
-    def reset(self, service_id=None):
+    def reset(self, service_id: Optional[ObjectId] = None) -> None:
         """Clear the connection pool."""
         self.pool.reset(service_id)
 
-    def close(self):
+    def close(self) -> None:
         """Clear the connection pool and stop the monitor.
 
         Reconnect with open().
@@ -69,12 +89,19 @@ class Server:
         self._monitor.close()
         self._pool.reset_without_pause()
 
-    def request_check(self):
+    def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
 
     @_handle_reauth
-    def run_operation(self, sock_info, operation, read_preference, listeners, unpack_res):
+    def run_operation(
+        self,
+        sock_info: SocketInfo,
+        operation: Union[_Query, _GetMore],
+        read_preference: bool,
+        listeners: _EventListeners,
+        unpack_res: Callable[..., List[Mapping[str, Any]]],
+    ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -84,7 +111,7 @@ class Server:
         :Parameters:
           - `sock_info`: A SocketInfo instance.
           - `operation`: A _Query or _GetMore object.
-          - `set_secondary_okay`: Pass to operation.get_message.
+          - `read_preference`: The read preference to use.
           - `listeners`: Instance of _EventListeners or None.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
@@ -215,34 +242,38 @@ class Server:
 
         return response
 
-    def get_socket(self, handler=None):
+    def get_socket(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> _GeneratorContextManager[SocketInfo]:
         return self.pool.get_socket(handler)
 
     @property
-    def description(self):
+    def description(self) -> ServerDescription:
         return self._description
 
     @description.setter
-    def description(self, server_description):
+    def description(self, server_description: ServerDescription) -> None:
         assert server_description.address == self._description.address
         self._description = server_description
 
     @property
-    def pool(self):
+    def pool(self) -> Pool:
         return self._pool
 
-    def _split_message(self, message):
+    def _split_message(
+        self, message: Union[Tuple[int, Any], Tuple[int, Any, int]]
+    ) -> Tuple[int, Any, int]:
         """Return request_id, data, max_doc_size.
 
         :Parameters:
           - `message`: (request_id, data, max_doc_size) or (request_id, data)
         """
         if len(message) == 3:
-            return message
+            return message  # type: ignore[return-value]
         else:
             # get_more and kill_cursors messages don't include BSON documents.
-            request_id, data = message
+            request_id, data = message  # type: ignore[misc]
             return request_id, data, 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self._description!r}>"
