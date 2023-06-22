@@ -182,17 +182,17 @@ class _Bulk:
         if self.let is not None:
             common.validate_is_document_type("let", self.let)
         self.comment: Optional[str] = comment
-        self.ordered: bool = ordered
+        self.ordered = ordered
         self.ops: List[Tuple[int, Union[MutableMapping[str, Any], RawBSONDocument]]] = []
-        self.executed: bool = False
-        self.bypass_doc_val: bool = bypass_document_validation
-        self.uses_collation: bool = False
-        self.uses_array_filters: bool = False
-        self.uses_hint_update: bool = False
-        self.uses_hint_delete: bool = False
-        self.is_retryable: bool = True
-        self.retrying: bool = False
-        self.started_retryable_write: bool = False
+        self.executed = False
+        self.bypass_doc_val = bypass_document_validation
+        self.uses_collation = False
+        self.uses_array_filters = False
+        self.uses_hint_update = False
+        self.uses_hint_delete = False
+        self.is_retryable = True
+        self.retrying = False
+        self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
         self.next_run = None
