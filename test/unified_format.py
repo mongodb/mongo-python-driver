@@ -1093,6 +1093,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
+        if "maxTimeMS" in kwargs:
+            kwargs["max_time_ms"] = kwargs["maxTimeMS"]
+            del kwargs["maxTimeMS"]
         return list(target.cursor_command(**kwargs))
 
     def _databaseOperation_createCommandCursor(self, target, **kwargs):

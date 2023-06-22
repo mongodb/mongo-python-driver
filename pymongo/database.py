@@ -36,7 +36,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import _csot, common
+from pymongo import CursorType, _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
@@ -844,6 +844,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
+        batch_size: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
+        cursor_type: Optional[int] = None,
         **kwargs: Any,
     ) -> CommandCursor:
         """Issue a MongoDB command and parse the response as a cursor.
@@ -901,8 +904,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """
         with self.__client._tmp_session(session, close=False) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
-            if comment is not None:
-                kwargs["comment"] = comment
 
             if read_preference is None:
                 read_preference = (
@@ -912,7 +913,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 sock_info,
                 read_preference,
             ):
-                cmd = self._command(
+                response = self._command(
                     sock_info,
                     command,
                     value,
@@ -924,15 +925,18 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     **kwargs,
                 )
                 coll = self.get_collection("$cmd", read_preference=read_preference)
-                cursor = cmd["cursor"]
+                cursor = response["cursor"]
                 if cursor is not None:
                     cmd_cursor = CommandCursor(
                         coll,
                         cursor,
                         sock_info.address,
+                        batch_size=batch_size or 0,
+                        cursor_type=cursor_type or CursorType.NON_TAILABLE,
+                        max_await_time_ms=max_time_ms,
                         session=tmp_session,
                         explicit_session=session is not None,
-                        comment=cmd.get("comment"),
+                        comment=comment,
                     )
                     cmd_cursor._maybe_pin_connection(sock_info)
                     return cmd_cursor

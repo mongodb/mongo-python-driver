@@ -19,7 +19,7 @@ from collections import deque
 from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, NoReturn, Optional
 
 from bson import _convert_raw_document_lists_to_streams
-from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
+from pymongo.cursor import _CURSOR_CLOSED_ERRORS, CursorType, _SocketManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _RawBatchGetMore
 from pymongo.response import PinnedResponse
@@ -41,6 +41,7 @@ class CommandCursor(Generic[_DocumentType]):
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,
+        cursor_type: int = CursorType.NON_TAILABLE,
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
         explicit_session: bool = False,
@@ -71,6 +72,15 @@ class CommandCursor(Generic[_DocumentType]):
 
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
+
+        if cursor_type not in (
+            CursorType.NON_TAILABLE,
+            CursorType.TAILABLE,
+            CursorType.TAILABLE_AWAIT,
+        ):
+            raise ValueError("not a valid value for cursor_type")
+        else:
+            self.__cursor_type = cursor_type
 
     def __del__(self) -> None:
         self.__die()
