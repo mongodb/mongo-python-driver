@@ -1,6 +1,11 @@
 #!/bin/bash -ex
 
 docker version
+
+# Set up qemu support using the method used in docker/setup-qemu-action
+# https://github.com/docker/setup-qemu-action/blob/2b82ce82d56a2a04d2637cd93a637ae1b359c0a7/README.md?plain=1#L46
+docker run --rm --privileged tonistiigi/binfmt:latest --install all
+
 # manylinux1 2021-05-05-b64d921 and manylinux2014 2021-05-05-1ac6ef3 were
 # the last releases to generate pip < 20.3 compatible wheels. After that
 # auditwheel was upgraded to v4 which produces PEP 600 manylinux_x_y wheels
