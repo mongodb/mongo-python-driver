@@ -89,7 +89,7 @@ latest source from GitHub and install the driver from the resulting tree::
 
   $ git clone https://github.com/mongodb/mongo-python-driver.git pymongo
   $ cd pymongo/
-  $ python3 setup.py install
+  $ pip install .
 
 Installing from source on Unix
 ..............................
@@ -186,7 +186,7 @@ If you wish to install PyMongo without the C extensions, even if the
 extensions build properly, it can be done using a command line option to
 *setup.py*::
 
-  $ python3 setup.py --no_ext install
+  $ NO_EXT=1 python -m pip install .
 
 Installing a beta or release candidate
 --------------------------------------
