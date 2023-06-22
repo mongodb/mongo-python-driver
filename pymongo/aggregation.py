@@ -54,6 +54,7 @@ class _AggregationCommand:
         user_fields: Optional[MutableMapping[str, Any]] = None,
         result_processor: Optional[Callable[[Mapping[str, Any], SocketInfo], None]] = None,
         comment: Optional[str] = None,
+        show_expanded_events: Optional[str] = None,
     ) -> None:
         if "explain" in options:
             raise ConfigurationError(
