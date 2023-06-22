@@ -1111,23 +1111,16 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         return buffer_write_bytes(buffer, &c, 1);
     }
     else if (PyLong_Check(value)) {
-        const long long_value = PyLong_AsLong(value);
-
-        const int int_value = (int)long_value;
-        if (PyErr_Occurred() || long_value != int_value) { /* Overflow */
-            long long long_long_value;
+        const long long long_long_value = PyLong_AsLongLong(value);
+        if (long_long_value == -1 && PyErr_Occurred()) {
+            /* Ignore error and give the fallback_encoder a chance. */
             PyErr_Clear();
-            long_long_value = PyLong_AsLongLong(value);
-            if (PyErr_Occurred()) {
-                /* Ignore error and give the fallback_encoder a chance. */
-                PyErr_Clear();
-            } else {
-                *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x12;
-                return buffer_write_int64(buffer, (int64_t)long_long_value);
-            }
-        } else {
+        } else if (-2147483648LL <= long_long_value && long_long_value <= 2147483647LL) {
             *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x10;
-            return buffer_write_int32(buffer, (int32_t)int_value);
+            return buffer_write_int32(buffer, (int32_t)long_long_value);
+        } else {
+            *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x12;
+            return buffer_write_int64(buffer, (int64_t)long_long_value);
         }
     } else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
