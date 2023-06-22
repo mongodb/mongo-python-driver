@@ -1462,7 +1462,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         # not support retryable reads, raise the last error.
                         assert last_error is not None
                         raise last_error
-                    return func(session, server, sock_info, read_pref)
+                    return func(session, sock_info, read_pref)
             except ServerSelectionTimeoutError:
                 if retrying:
                     # The application may think the write was never attempted
