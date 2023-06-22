@@ -114,7 +114,7 @@ def _merge_command(
     run: _Run,
     full_result: MutableMapping[str, Any],
     offset: int,
-    result: MutableMapping[str, Any],
+    result: Mapping[str, Any],
 ) -> None:
     """Merge a write command result into the full bulk result."""
     affected = result.get("n", 0)
@@ -183,7 +183,7 @@ class _Bulk:
             common.validate_is_document_type("let", self.let)
         self.comment: Optional[str] = comment
         self.ordered = ordered
-        self.ops: List[Tuple[int, Union[MutableMapping[str, Any], RawBSONDocument]]] = []
+        self.ops: List[Tuple[int, Mapping[str, Any]]] = []
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
@@ -205,7 +205,7 @@ class _Bulk:
         else:
             return _BulkWriteContext
 
-    def add_insert(self, document: MutableMapping[str, Union[int, str, ObjectId]]) -> None:
+    def add_insert(self, document: MutableMapping[str, Any]) -> None:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
@@ -215,15 +215,15 @@ class _Bulk:
 
     def add_update(
         self,
-        selector: MutableMapping[str, Any],
+        selector: Mapping[str, Any],
         update: Union[
-            MutableMapping[str, Any],
-            List[MutableMapping[str, Any]],
+            Mapping[str, Any],
+            List[Mapping[str, Any]],
         ],
         multi: bool = False,
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        array_filters: Optional[List[MutableMapping[str, Any]]] = None,
+        array_filters: Optional[List[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
@@ -247,8 +247,8 @@ class _Bulk:
 
     def add_replace(
         self,
-        selector: MutableMapping[str, Any],
-        replacement: MutableMapping[str, Any],
+        selector: Mapping[str, Any],
+        replacement: Mapping[str, Any],
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -266,7 +266,7 @@ class _Bulk:
 
     def add_delete(
         self,
-        selector: MutableMapping[str, Any],
+        selector: Mapping[str, Any],
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
         hint: Optional[_IndexKeyHint] = None,
