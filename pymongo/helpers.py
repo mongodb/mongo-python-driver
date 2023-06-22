@@ -22,7 +22,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Iterable,
     List,
     Mapping,
@@ -238,7 +237,7 @@ def _raise_write_concern_error(error: Any) -> NoReturn:
     raise WriteConcernError(error.get("errmsg"), error.get("code"), error)
 
 
-def _get_wce_doc(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _get_wce_doc(result: Mapping[str, Any]) -> Optional[Mapping[str, Any]]:
     """Return the writeConcernError or None."""
     wce = result.get("writeConcernError")
     if wce:
@@ -250,7 +249,7 @@ def _get_wce_doc(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return wce
 
 
-def _check_write_command_response(result: Dict[str, Any]) -> None:
+def _check_write_command_response(result: Mapping[str, Any]) -> None:
     """Backward compatibility helper for write command error handling."""
     # Prefer write errors over write concern errors
     write_errors = result.get("writeErrors")
