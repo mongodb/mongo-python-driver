@@ -304,19 +304,15 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
     long long millis;
 
     if (!(ll_millis = PyNumber_Long(dt))){
-        if (PyErr_Occurred()) { // TypeError
-            return 0;
-        }
+        return 0;
     }
-
-    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        if (PyErr_Occurred()) { /* Overflow */
-            PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB datetimes can only handle up to 8-byte ints");
-            return 0;
-        }
-    }
+    millis = PyLong_AsLongLong(ll_millis);
     Py_DECREF(ll_millis);
+    if (millis == -1 && PyErr_Occurred()) { /* Overflow */
+        PyErr_SetString(PyExc_OverflowError,
+                        "MongoDB datetimes can only handle up to 8-byte ints");
+        return 0;
+    }
     *out = millis;
     return 1;
 }
@@ -599,8 +595,7 @@ fail:
  * Return 1 on success. options->document_class is a new reference.
  * Return 0 on failure.
  */
-int convert_codec_options(PyObject* self, PyObject* options_obj, void* p) {
-    codec_options_t* options = (codec_options_t*)p;
+int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t* options) {
     PyObject* type_registry_obj = NULL;
     long type_marker;
 
@@ -613,8 +608,9 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, void* p) {
                           &options->unicode_decode_error_handler,
                           &options->tzinfo,
                           &type_registry_obj,
-                          &options->datetime_conversion))
+                          &options->datetime_conversion)) {
         return 0;
+    }
 
     type_marker = _type_marker(options->document_class,
                                GETSTATE(self)->_type_marker_str);
@@ -2081,7 +2077,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                         millis = max_millis;
                     }
                     // Continues from here to return a datetime.
-                } else if (dt_auto) {
+                } else { // dt_auto
                     if (millis < min_millis || millis > max_millis){
                         value = datetime_ms_from_millis(self, millis);
                         break; // Out-of-range so done.

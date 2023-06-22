@@ -31,7 +31,7 @@ from test import (
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    TestCreator,
+    SpecTestCreator,
     rs_or_single_client,
 )
 from test.utils_spec_runner import SpecRunner
@@ -138,7 +138,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
+test_creator = SpecTestCreator(create_test, TestSpec, _TEST_PATH)
 test_creator.create_tests()
 
 
@@ -162,6 +162,9 @@ class TestPoolPausedError(IntegrationTest):
     @client_context.require_failCommand_blockConnection
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
+        if "PyPy" in sys.version:
+            # Tracked in PYTHON-3519
+            self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
         client = rs_or_single_client(maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener])

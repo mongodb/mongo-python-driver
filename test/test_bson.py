@@ -986,7 +986,7 @@ class TestCodecOptions(unittest.TestCase):
     def test_decode_all_defaults(self):
         # Test decode_all()'s default document_class is dict and tz_aware is
         # False.
-        doc = {"sub_document": {}, "dt": datetime.datetime.utcnow()}
+        doc = {"sub_document": {}, "dt": datetime.datetime.now(tz=datetime.timezone.utc)}
 
         decoded = bson.decode_all(bson.encode(doc))[0]
         self.assertIsInstance(decoded["sub_document"], dict)
@@ -998,7 +998,7 @@ class TestCodecOptions(unittest.TestCase):
     def test_decode_all_no_options(self):
         # Test decode_all()'s default document_class is dict and tz_aware is
         # False.
-        doc = {"sub_document": {}, "dt": datetime.datetime.utcnow()}
+        doc = {"sub_document": {}, "dt": datetime.datetime.now(tz=datetime.timezone.utc)}
 
         decoded = bson.decode_all(bson.encode(doc), None)[0]
         self.assertIsInstance(decoded["sub_document"], dict)

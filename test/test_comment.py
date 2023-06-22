@@ -14,9 +14,10 @@
 
 """Test the keyword argument 'comment' in various helpers."""
 
+from __future__ import annotations
+
 import inspect
 import sys
-from typing import Any, Union
 
 sys.path[0:0] = [""]
 
@@ -69,7 +70,7 @@ class TestComment(IntegrationTest):
                         "signature of function %s" % (h.__name__),
                     )
                     self.assertEqual(
-                        inspect.signature(h).parameters["comment"].annotation, Union[Any, None]
+                        inspect.signature(h).parameters["comment"].annotation, "Optional[Any]"
                     )
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()

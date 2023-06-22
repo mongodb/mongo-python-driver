@@ -292,7 +292,7 @@ class GridIn:
             self.__flush_buffer()
             # The GridFS spec says length SHOULD be an Int64.
             self._file["length"] = Int64(self._position)
-            self._file["uploadDate"] = datetime.datetime.utcnow()
+            self._file["uploadDate"] = datetime.datetime.now(tz=datetime.timezone.utc)
 
             return self._coll.files.insert_one(self._file, session=self._session)
         except DuplicateKeyError:

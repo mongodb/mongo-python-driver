@@ -16,7 +16,8 @@ for PYTHON in /opt/python/*/bin/python; do
     fi
     # https://github.com/pypa/manylinux/issues/49
     rm -rf build
-    $PYTHON setup.py bdist_wheel
+    $PYTHON -m pip install build
+    $PYTHON -m build --wheel .
     rm -rf build
 
     # Audit wheels and write manylinux tag

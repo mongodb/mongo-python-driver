@@ -79,7 +79,7 @@ Or ``easy_install`` from
 
 You can also download the project source and do::
 
-  $ python setup.py install
+  $ pip install .
 
 Do **not** install the "bson" package from pypi. PyMongo comes with its own
 bson package; doing "easy_install bson" installs a third-party package that

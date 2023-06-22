@@ -23,7 +23,7 @@ from test import IntegrationTest, client_context, unittest
 from test.crud_v2_format import TestCrudV2
 from test.utils import (
     OvertCommandListener,
-    TestCreator,
+    SpecTestCreator,
     rs_client_noauth,
     rs_or_single_client,
 )
@@ -115,7 +115,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-TestCreator(create_test, DataLakeTestSpec, _TEST_PATH).create_tests()
+SpecTestCreator(create_test, DataLakeTestSpec, _TEST_PATH).create_tests()
 
 
 if __name__ == "__main__":

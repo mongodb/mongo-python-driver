@@ -109,7 +109,7 @@ post:
   ...     "author": "Mike",
   ...     "text": "My first blog post!",
   ...     "tags": ["mongodb", "python", "pymongo"],
-  ...     "date": datetime.datetime.utcnow(),
+  ...     "date": datetime.datetime.now(tz=datetime.timezone.utc),
   ... }
 
 Note that documents can contain native Python types (like

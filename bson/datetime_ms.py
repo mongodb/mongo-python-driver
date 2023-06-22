@@ -26,7 +26,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConv
 from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
+EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
 
 
 class DatetimeMS:
