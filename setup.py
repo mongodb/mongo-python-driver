@@ -126,6 +126,8 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
         try:
             build_ext.run(self)
         except Exception:
+            if "TOX_ENV_NAME" in os.environ:
+                raise
             e = sys.exc_info()[1]
             sys.stdout.write("%s\n" % str(e))
             warnings.warn(
@@ -141,6 +143,8 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
         try:
             build_ext.build_extension(self, ext)
         except Exception:
+            if "TOX_ENV_NAME" in os.environ:
+                raise
             e = sys.exc_info()[1]
             sys.stdout.write("%s\n" % str(e))
             warnings.warn(
@@ -169,7 +173,6 @@ ext_modules = [
         ],
     ),
 ]
-
 
 if "--no_ext" in sys.argv or "NO_EXT" in os.environ:
     sys.argv.remove("--no_ext")
