@@ -905,9 +905,10 @@ def _name_value_to_bson(
         return _ENCODERS[type(value)](name, value, check_keys, opts)  # type: ignore
     except KeyError:
         pass
-    except OverflowError as error:
-        if error.args != ("BSON can only handle up to 8-byte ints",):
+    except OverflowError:
+        if not isinstance(value, int):
             raise
+
         # Give the fallback_encoder a chance
         was_integer_overflow = True
 
