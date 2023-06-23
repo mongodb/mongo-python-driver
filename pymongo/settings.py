@@ -16,8 +16,7 @@
 
 import threading
 import traceback
-from collections.abc import Collection
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Collection, Dict, Optional, Tuple, Type, Union
 
 from bson.objectid import ObjectId
 from pymongo import common, monitor, pool
