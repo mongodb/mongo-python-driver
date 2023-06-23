@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.7", "3.10", "pypy-3.8"]
+        python-version: ["3.7", "3.11", "pypy-3.8"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -44,6 +44,7 @@ jobs:
         run: |
           tox -e test
       - name: Doc Test
+        if: ${{matrix.python-version != "3.7" }}
         run: |
           tox -e doc-test
 
@@ -52,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.10']
+        python-version: ['3.7', '3.11']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
