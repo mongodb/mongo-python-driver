@@ -16,34 +16,36 @@
 
 import threading
 import traceback
+from collections.abc import Collection
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from bson.objectid import ObjectId
 from pymongo import common, monitor, pool
 from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.errors import ConfigurationError
-from pymongo.pool import PoolOptions
+from pymongo.pool import Pool, PoolOptions
 from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
 
 class TopologySettings:
     def __init__(
         self,
-        seeds=None,
-        replica_set_name=None,
-        pool_class=None,
-        pool_options=None,
-        monitor_class=None,
-        condition_class=None,
-        local_threshold_ms=LOCAL_THRESHOLD_MS,
-        server_selection_timeout=SERVER_SELECTION_TIMEOUT,
-        heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
-        server_selector=None,
-        fqdn=None,
-        direct_connection=False,
-        load_balanced=None,
-        srv_service_name=common.SRV_SERVICE_NAME,
-        srv_max_hosts=0,
+        seeds: Optional[Collection[Tuple[str, int]]] = None,
+        replica_set_name: Optional[str] = None,
+        pool_class: Optional[Type[Pool]] = None,
+        pool_options: Optional[PoolOptions] = None,
+        monitor_class: Optional[Type[monitor.Monitor]] = None,
+        condition_class: Optional[Type[threading.Condition]] = None,
+        local_threshold_ms: int = LOCAL_THRESHOLD_MS,
+        server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
+        heartbeat_frequency: int = common.HEARTBEAT_FREQUENCY,
+        server_selector: Optional[_ServerSelector] = None,
+        fqdn: Optional[str] = None,
+        direct_connection: Optional[bool] = False,
+        load_balanced: Optional[bool] = None,
+        srv_service_name: str = common.SRV_SERVICE_NAME,
+        srv_max_hosts: int = 0,
     ):
         """Represent MongoClient's configuration.
 
@@ -55,12 +57,12 @@ class TopologySettings:
                 % (common.MIN_HEARTBEAT_INTERVAL * 1000,)
             )
 
-        self._seeds = seeds or [("localhost", 27017)]
+        self._seeds: Collection[Tuple[str, int]] = seeds or [("localhost", 27017)]
         self._replica_set_name = replica_set_name
-        self._pool_class = pool_class or pool.Pool
-        self._pool_options = pool_options or PoolOptions()
-        self._monitor_class = monitor_class or monitor.Monitor
-        self._condition_class = condition_class or threading.Condition
+        self._pool_class: Type[Pool] = pool_class or pool.Pool
+        self._pool_options: PoolOptions = pool_options or PoolOptions()
+        self._monitor_class: Type[monitor.Monitor] = monitor_class or monitor.Monitor
+        self._condition_class: Type[threading.Condition] = condition_class or threading.Condition
         self._local_threshold_ms = local_threshold_ms
         self._server_selection_timeout = server_selection_timeout
         self._server_selector = server_selector
@@ -77,52 +79,52 @@ class TopologySettings:
         self._stack = "".join(traceback.format_stack())
 
     @property
-    def seeds(self):
+    def seeds(self) -> Collection[Tuple[str, int]]:
         """List of server addresses."""
         return self._seeds
 
     @property
-    def replica_set_name(self):
+    def replica_set_name(self) -> Optional[str]:
         return self._replica_set_name
 
     @property
-    def pool_class(self):
+    def pool_class(self) -> Type[Pool]:
         return self._pool_class
 
     @property
-    def pool_options(self):
+    def pool_options(self) -> PoolOptions:
         return self._pool_options
 
     @property
-    def monitor_class(self):
+    def monitor_class(self) -> Optional[Type[monitor.Monitor]]:
         return self._monitor_class
 
     @property
-    def condition_class(self):
+    def condition_class(self) -> Optional[Type[threading.Condition]]:
         return self._condition_class
 
     @property
-    def local_threshold_ms(self):
+    def local_threshold_ms(self) -> int:
         return self._local_threshold_ms
 
     @property
-    def server_selection_timeout(self):
+    def server_selection_timeout(self) -> int:
         return self._server_selection_timeout
 
     @property
-    def server_selector(self):
+    def server_selector(self) -> Optional[_ServerSelector]:
         return self._server_selector
 
     @property
-    def heartbeat_frequency(self):
+    def heartbeat_frequency(self) -> int:
         return self._heartbeat_frequency
 
     @property
-    def fqdn(self):
+    def fqdn(self) -> Optional[str]:
         return self._fqdn
 
     @property
-    def direct(self):
+    def direct(self) -> Optional[bool]:
         """Connect directly to a single server, or use a set of servers?
 
         True if there is one seed and no replica_set_name.
@@ -130,21 +132,21 @@ class TopologySettings:
         return self._direct
 
     @property
-    def load_balanced(self):
+    def load_balanced(self) -> Optional[bool]:
         """True if the client was configured to connect to a load balancer."""
         return self._load_balanced
 
     @property
-    def srv_service_name(self):
+    def srv_service_name(self) -> str:
         """The srvServiceName."""
         return self._srv_service_name
 
     @property
-    def srv_max_hosts(self):
+    def srv_max_hosts(self) -> int:
         """The srvMaxHosts."""
         return self._srv_max_hosts
 
-    def get_topology_type(self):
+    def get_topology_type(self) -> int:
         if self.load_balanced:
             return TOPOLOGY_TYPE.LoadBalanced
         elif self.direct:
@@ -154,6 +156,6 @@ class TopologySettings:
         else:
             return TOPOLOGY_TYPE.Unknown
 
-    def get_server_descriptions(self):
+    def get_server_descriptions(self) -> Dict[Union[Tuple[str, int], Any], ServerDescription]:
         """Initial dict of (address, ServerDescription) for all seeds."""
         return {address: ServerDescription(address) for address in self.seeds}
