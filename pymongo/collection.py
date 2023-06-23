@@ -2369,7 +2369,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if comment is not None:
             kwargs["comment"] = comment
-        names = []
 
         def gen_indexes():
             for index in descriptions:
@@ -2377,26 +2376,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     raise TypeError(
                         f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
                     )
-                doc = index.document
-                if "name" in doc:
-                    names.append(doc["name"])
-                else:
-                    names.append("default")
-                yield doc
+                yield index.document
 
         cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
         cmd.update(kwargs)
 
         with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
-                return sock_info.command(
+                resp = sock_info.command(
                     cmd,
                     read_preference=ReadPreference.PRIMARY,
                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                     write_concern=self._write_concern_for(session),
                     session=session,
                 )
-        return names
+                return [index["name"] for index in resp["indexesCreated"]]
 
     def drop_search_index(
         self,

@@ -44,6 +44,7 @@ jobs:
         run: |
           tox -e test
       - name: Doc Test
+        run: |
           tox -e doc-test
 
   typing:
@@ -90,4 +91,5 @@ jobs:
         run: |
           tox -e linkcheck
       - name: Build docs
+        run: |
           tox -e doc
