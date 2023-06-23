@@ -44,7 +44,7 @@ jobs:
         run: |
           tox -e test
       - name: Doc Test
-        if: startsWith(matrix.python-version, "3.7")
+        if: startsWith(matrix.python-version, '3.7')
         run: |
           tox -e doc-test
 
