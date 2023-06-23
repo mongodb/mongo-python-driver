@@ -28,6 +28,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 from bson.codec_options import CodecOptions
@@ -2312,7 +2313,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
             pipeline = [{"$listSearchIndexes": {"name": name}}]
-        return self.aggregate(pipeline, session, comment=comment, **kwargs)
+        value = self.aggregate(pipeline, session, comment=comment, **kwargs)
+        return cast(CommandCursor[Mapping[str, Any]], value)
 
     def create_search_index(
         self,
@@ -2388,7 +2390,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     read_preference=ReadPreference.PRIMARY,
                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                     write_concern=self._write_concern_for(session),
-                    session=session,
+                    session=s,
                 )
                 return [index["name"] for index in resp["indexesCreated"]]
 
@@ -2425,7 +2427,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     read_preference=ReadPreference.PRIMARY,
                     allowable_errors=["ns not found", 26],
                     write_concern=self._write_concern_for(session),
-                    session=session,
+                    session=s,
                 )
 
     def update_search_index(
@@ -2463,7 +2465,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     read_preference=ReadPreference.PRIMARY,
                     allowable_errors=["ns not found", 26],
                     write_concern=self._write_concern_for(session),
-                    session=session,
+                    session=s,
                 )
 
     def options(
