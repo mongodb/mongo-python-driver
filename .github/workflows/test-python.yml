@@ -43,9 +43,11 @@ jobs:
       - name: Run tests
         run: |
           tox -e test
+      - name: Doc Test
+          tox -e doc-test
 
-  mypytest:
-    name: Run mypy
+  typing:
+    name: Typing Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -72,8 +74,8 @@ jobs:
         run: |
           tox -e typecheck-pyright-strict
 
-  linkcheck:
-    name: Check Links
+  docs:
+    name: Docs Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -87,3 +89,5 @@ jobs:
       - name: Check links
         run: |
           tox -e linkcheck
+      - name: Build docs
+          tox -e doc

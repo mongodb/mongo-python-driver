@@ -2288,17 +2288,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> CommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
 
         :Parameters:
-            `name` (optional) - If given, the name of the index to search
-                for.  Only indexes with matching index names will be returned.
-                If not given, all search indexes for the current collection
-                will be returned.
-            - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-            - `comment` (optional): A user-provided comment to attach to this
+          - `name` (optional): If given, the name of the index to search
+            for.  Only indexes with matching index names will be returned.
+            If not given, all search indexes for the current collection
+            will be returned.
+          - `session` (optional): a :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
             command.
 
         :Returns:
@@ -2317,15 +2316,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def create_search_index(
         self,
-        description: Mapping[str, Any],
+        description: Union[Mapping[str, Any], SearchIndexModel],
         session: Optional["ClientSession"] = None,
         comment: Any = None,
         **kwargs: Any,
     ) -> str:
-        """Create a single search index for the collection.
+        """Create a single search index for the current collection.
 
         :Parameters:
-          - `description` - The index description for the new search index.
+          - `description`: The index description for the new search index.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
@@ -2340,11 +2339,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
+        if not isinstance(description, SearchIndexModel):
+            description = SearchIndexModel(description["definition"], description.get("name"))
         return self.create_search_indexes([description], session, comment, **kwargs)[0]
 
     def create_search_indexes(
         self,
-        descriptions: List[Mapping[str, Any]],
+        descriptions: List[SearchIndexModel],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2352,9 +2353,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Create multiple search indexes for the current collection.
 
         :Parameters:
-          - `descriptions` - A list of `SearchIndexDescription`s for the new search indexes.
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
+          - `descriptions`: A list of :class:`~pymongo.operations.SearchIndexModel` instances.
+          - `session` (optional): a :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): optional arguments to the createSearchIndexes
@@ -2373,22 +2373,29 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def gen_indexes():
             for index in descriptions:
-                index = SearchIndexModel(index["definition"], index.get("name"))
+                if not isinstance(index, SearchIndexModel):
+                    raise TypeError(
+                        f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
+                    )
                 doc = index.document
                 if "name" in doc:
                     names.append(doc["name"])
+                else:
+                    names.append("default")
                 yield doc
 
         cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
         cmd.update(kwargs)
 
-        self.database.command(
-            cmd,
-            read_preference=ReadPreference.PRIMARY,
-            codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-            write_concern=self._write_concern_for(session),
-            session=session,
-        )
+        with self._socket_for_writes(session) as sock_info:
+            with self.__database.client._tmp_session(session) as s:
+                return sock_info.command(
+                    cmd,
+                    read_preference=ReadPreference.PRIMARY,
+                    codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                    write_concern=self._write_concern_for(session),
+                    session=session,
+                )
         return names
 
     def drop_search_index(
@@ -2401,7 +2408,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Delete a search index by index name.
 
         :Parameters:
-          - `name` - The name of the search index to be deleted.
+          - `name`: The name of the search index to be deleted.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
@@ -2417,13 +2424,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        self.database.command(
-            cmd,
-            read_preference=ReadPreference.PRIMARY,
-            allowable_errors=["ns not found", 26],
-            write_concern=self._write_concern_for(session),
-            session=session,
-        )
+        with self._socket_for_writes(session) as sock_info:
+            with self.__database.client._tmp_session(session) as s:
+                return sock_info.command(
+                    cmd,
+                    read_preference=ReadPreference.PRIMARY,
+                    allowable_errors=["ns not found", 26],
+                    write_concern=self._write_concern_for(session),
+                    session=session,
+                )
 
     def update_search_index(
         self,
@@ -2436,8 +2445,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Update a search index by replacing the existing index definition with the provided definition.
 
         :Parameters:
-          - `name` - The name of the search index to be updated.
-          - `definition` - The new search index definition.
+          - `name`: The name of the search index to be updated.
+          - `definition`: The new search index definition.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
@@ -2453,13 +2462,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        self.database.command(
-            cmd,
-            read_preference=ReadPreference.PRIMARY,
-            allowable_errors=["ns not found", 26],
-            write_concern=self._write_concern_for(session),
-            session=session,
-        )
+        with self._socket_for_writes(session) as sock_info:
+            with self.__database.client._tmp_session(session) as s:
+                return sock_info.command(
+                    cmd,
+                    read_preference=ReadPreference.PRIMARY,
+                    allowable_errors=["ns not found", 26],
+                    write_concern=self._write_concern_for(session),
+                    session=session,
+                )
 
     def options(
         self,
