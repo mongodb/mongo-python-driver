@@ -2164,13 +2164,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        self.database.command(
-            cmd,
-            read_preference=ReadPreference.PRIMARY,
-            allowable_errors=["ns not found", 26],
-            write_concern=self._write_concern_for(session),
-            session=session,
-        )
+        with self._socket_for_writes(session) as sock_info:
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                session=session,
+            )
 
     def list_indexes(
         self,
@@ -2304,6 +2306,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           set.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
         """
         if name is None:
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
@@ -2313,9 +2317,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def create_search_index(
         self,
-        description: SearchIndexModel,
+        description: Mapping[str, Any],
         session: Optional["ClientSession"] = None,
-        comment: Optional[Any] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> str:
         """Create a single search index for the collection.
@@ -2333,12 +2337,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           The name of the new search index.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
         """
         return self.create_search_indexes([description], session, comment, **kwargs)[0]
 
     def create_search_indexes(
         self,
-        descriptions: List[SearchIndexModel],
+        descriptions: List[Mapping[str, Any]],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2358,6 +2364,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             A list of the newly created search index names.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
         """
         if comment is not None:
             kwargs["comment"] = comment
@@ -2365,10 +2373,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def gen_indexes():
             for index in descriptions:
-                if not isinstance(index, SearchIndexModel):
-                    raise TypeError(
-                        f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
-                    )
+                index = SearchIndexModel(index["definition"], index.get("name"))
                 doc = index.document
                 if "name" in doc:
                     names.append(doc["name"])
@@ -2405,6 +2410,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
         """
         cmd = SON([("dropSearchIndex", self.__name), ("name", name)])
         cmd.update(kwargs)
@@ -2438,7 +2445,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): optional arguments to the updateSearchIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
 
-         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
         """
         cmd = SON([("updateSearchIndex", self.__name), ("name", name), ("definition", definition)])
         cmd.update(kwargs)

@@ -518,13 +518,15 @@ class SearchIndexModel:
     def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
         """Create a Search Index instance.
 
-        For use with :meth:`~pymongo.collection.Collection.create_search_indexes`.
+                For use with
+                :meth:`~pymongo.collection.Collection.create_search_index` and
+        :meth:`~pymongo.collection.Collection.create_search_indexes`.
 
-        :Parameters:
-          - `definition` - The definition for this index.
-          - `name` (optional) - The name for this index, if present.
+                :Parameters:
+                  - `definition` - The definition for this index.
+                  - `name` (optional) - The name for this index, if present.
 
-        .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
+                .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
         """
         if name is not None:
             self.__document = dict(name=name, definition=definition)
