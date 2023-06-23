@@ -17,10 +17,12 @@
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
-
-from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
+from typing import TYPE_CHECKING
 
 from pymongo.lock import _create_lock
+
+if TYPE_CHECKING:
+    from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
 
 
 class _OCSPCache:
