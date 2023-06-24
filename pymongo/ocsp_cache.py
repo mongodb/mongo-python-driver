@@ -14,6 +14,8 @@
 
 """Utilities for caching OCSP responses."""
 
+from __future__ import annotations
+
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
