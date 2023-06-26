@@ -925,11 +925,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     **kwargs,
                 )
                 coll = self.get_collection("$cmd", read_preference=read_preference)
-                cursor = response["cursor"]
-                if cursor is not None:
+                if response.get("cursor"):
                     cmd_cursor = CommandCursor(
                         coll,
-                        cursor,
+                        response["cursor"],
                         sock_info.address,
                         batch_size=batch_size or 0,
                         cursor_type=cursor_type or CursorType.NON_TAILABLE,
