@@ -36,7 +36,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import CursorType, _csot, common
+from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
@@ -931,7 +931,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         response["cursor"],
                         sock_info.address,
                         batch_size=batch_size or 0,
-                        cursor_type=cursor_type or CursorType.NON_TAILABLE,
                         max_await_time_ms=max_time_ms,
                         session=tmp_session,
                         explicit_session=session is not None,
