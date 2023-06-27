@@ -577,12 +577,12 @@ class ClientSession:
 
     def _inherit_option(
         self, name: str, val: Union[ReadConcern, _ServerMode, WriteConcern, None]
-    ) -> Union[ReadConcern, _ServerMode, WriteConcern, None]:
+    ) -> Union[ReadConcern, _ServerMode, WriteConcern, TransactionOptions, str]:
         """Return the inherited TransactionOption value."""
         if val:
             return val
         txn_opts = self.options.default_transaction_options
-        val = txn_opts and getattr(txn_opts, name)  # type: ignore[assignment]
+        val: Union[TransactionOptions, str, None] = txn_opts and getattr(txn_opts, name)  # type: ignore[no-redef]
         if val:
             return val
         return getattr(self.client, name)
