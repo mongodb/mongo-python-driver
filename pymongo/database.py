@@ -42,7 +42,7 @@ from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.errors import CollectionInvalid, InvalidName
+from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -846,7 +846,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         batch_size: Optional[int] = None,
         max_time_ms: Optional[int] = None,
-        cursor_type: Optional[int] = None,
         **kwargs: Any,
     ) -> CommandCursor:
         """Issue a MongoDB command and parse the response as a cursor.
@@ -939,7 +938,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     cmd_cursor._maybe_pin_connection(sock_info)
                     return cmd_cursor
                 else:
-                    raise TypeError("Command does not return a cursor.")
+                    raise InvalidOperation("Command does not return a cursor.")
 
     def _retryable_read_command(
         self,

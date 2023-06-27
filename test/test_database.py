@@ -42,6 +42,7 @@ from pymongo.errors import (
     CollectionInvalid,
     ExecutionTimeout,
     InvalidName,
+    InvalidOperation,
     OperationFailure,
     WriteConcernError,
 )
@@ -429,7 +430,7 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
 
-        self.assertRaises(TypeError, db.cursor_command, "usersInfo", "test")
+        self.assertRaises(InvalidOperation, db.cursor_command, "usersInfo", "test")
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
