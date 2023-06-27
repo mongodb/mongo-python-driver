@@ -553,11 +553,11 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o errexit
-          set -o xtrace
           . ./prepare_atlas_connectivity.sh
           rm -f ./prepare_atlas_connectivity.sh
 
+          set -o errexit
+          set -o xtrace
           cd ${PROJECT_DIRECTORY}
           alias python=${PYTHON_BINARY}
           python -m pip install --upgrade pip
