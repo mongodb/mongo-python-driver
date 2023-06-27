@@ -559,6 +559,7 @@ functions:
           rm -f ./prepare_atlas_connectivity.sh
 
           cd ${PROJECT_DIRECTORY}
+          python -m pip install tox
           tox -e test-atlas
 
   "add aws auth variables to file":
