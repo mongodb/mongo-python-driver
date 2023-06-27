@@ -13,12 +13,30 @@
 # limitations under the License.
 
 """Represent a response from the server."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, List, Mapping, Union
+
+if TYPE_CHECKING:
+    from datetime import datetime, timedelta
+
+    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.pool import SocketInfo
+    from pymongo.typings import _Address
 
 
 class Response:
     __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")
 
-    def __init__(self, data, address, request_id, duration, from_command, docs):
+    def __init__(
+        self,
+        data: Union[_OpMsg, _OpReply],
+        address: _Address,
+        request_id: int,
+        duration: Union[timedelta, datetime, None],
+        from_command: bool,
+        docs: List[Mapping[str, Any]],
+    ):
         """Represent a response from the server.
 
         :Parameters:
@@ -36,32 +54,32 @@ class Response:
         self._docs = docs
 
     @property
-    def data(self):
+    def data(self) -> Union[_OpMsg, _OpReply]:
         """Server response's raw BSON bytes."""
         return self._data
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """(host, port) of the source server."""
         return self._address
 
     @property
-    def request_id(self):
+    def request_id(self) -> int:
         """The request id of this operation."""
         return self._request_id
 
     @property
-    def duration(self):
+    def duration(self) -> Union[timedelta, datetime, None]:
         """The duration of the operation."""
         return self._duration
 
     @property
-    def from_command(self):
+    def from_command(self) -> bool:
         """If the response is a result from a db command."""
         return self._from_command
 
     @property
-    def docs(self):
+    def docs(self) -> List[Mapping[str, Any]]:
         """The decoded document(s)."""
         return self._docs
 
@@ -70,7 +88,15 @@ class PinnedResponse(Response):
     __slots__ = ("_socket_info", "_more_to_come")
 
     def __init__(
-        self, data, address, socket_info, request_id, duration, from_command, docs, more_to_come
+        self,
+        data: Union[_OpMsg, _OpReply],
+        address: _Address,
+        socket_info: SocketInfo,
+        request_id: int,
+        duration: Union[timedelta, datetime, None],
+        from_command: bool,
+        docs: List[Mapping[str, Any]],
+        more_to_come: bool,
     ):
         """Represent a response to an exhaust cursor's initial query.
 
@@ -78,7 +104,6 @@ class PinnedResponse(Response):
           - `data`:  A network response message.
           - `address`: (host, port) of the source server.
           - `socket_info`: The SocketInfo used for the initial query.
-          - `pool`: The Pool from which the SocketInfo came.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.
@@ -91,7 +116,7 @@ class PinnedResponse(Response):
         self._more_to_come = more_to_come
 
     @property
-    def socket_info(self):
+    def socket_info(self) -> SocketInfo:
         """The SocketInfo used for the initial query.
 
         The server will send batches on this socket, without waiting for
@@ -101,7 +126,7 @@ class PinnedResponse(Response):
         return self._socket_info
 
     @property
-    def more_to_come(self):
+    def more_to_come(self) -> bool:
         """If true, server is ready to send batches on the socket until the
         result set is exhausted or there is an error.
         """
