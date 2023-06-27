@@ -16,7 +16,17 @@
 
 import threading
 import traceback
-from typing import Any, Collection, Dict, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from bson.objectid import ObjectId
 from pymongo import common, monitor, pool
@@ -25,6 +35,9 @@ from pymongo.errors import ConfigurationError
 from pymongo.pool import Pool, PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
+
+if TYPE_CHECKING:
+    from pymongo.server_selectors import Selection
 
 
 class TopologySettings:
@@ -39,7 +52,7 @@ class TopologySettings:
         local_threshold_ms: int = LOCAL_THRESHOLD_MS,
         server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
         heartbeat_frequency: int = common.HEARTBEAT_FREQUENCY,
-        server_selector: Optional[_ServerSelector] = None,
+        server_selector: Union[_ServerSelector, Callable[[Selection], Selection], None] = None,
         fqdn: Optional[str] = None,
         direct_connection: Optional[bool] = False,
         load_balanced: Optional[bool] = None,
@@ -111,7 +124,7 @@ class TopologySettings:
         return self._server_selection_timeout
 
     @property
-    def server_selector(self) -> Optional[_ServerSelector]:
+    def server_selector(self) -> Union[_ServerSelector, Callable[[Selection], Selection], None]:
         return self._server_selector
 
     @property
