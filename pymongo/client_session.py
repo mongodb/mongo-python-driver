@@ -575,16 +575,14 @@ class ClientSession:
         """
         return self._operation_time
 
-    def _inherit_option(
-        self, name: str, val: Union[ReadConcern, _ServerMode, WriteConcern, None]
-    ) -> Union[ReadConcern, _ServerMode, WriteConcern, str]:
+    def _inherit_option(self, name: str, val: _T) -> _T:
         """Return the inherited TransactionOption value."""
         if val:
             return val
         txn_opts = self.options.default_transaction_options
-        txn_opts_name = txn_opts and getattr(txn_opts, name)
-        if txn_opts_name:
-            return txn_opts_name
+        parent_val = txn_opts and getattr(txn_opts, name)
+        if parent_val:
+            return parent_val
         return getattr(self.client, name)
 
     def with_transaction(
@@ -747,15 +745,9 @@ class ClientSession:
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
-        read_concern = cast(
-            Optional[ReadConcern], self._inherit_option("read_concern", read_concern)
-        )
-        write_concern = cast(
-            Optional[WriteConcern], self._inherit_option("write_concern", write_concern)
-        )
-        read_preference = cast(
-            Optional[_ServerMode], self._inherit_option("read_preference", read_preference)
-        )
+        read_concern = self._inherit_option("read_concern", read_concern)
+        write_concern = self._inherit_option("write_concern", write_concern)
+        read_preference = self._inherit_option("read_preference", read_preference)
         if max_commit_time_ms is None:
             opts = self.options.default_transaction_options
             if opts:
