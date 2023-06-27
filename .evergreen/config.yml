@@ -553,8 +553,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          # Disable xtrace (just in case it was accidentally set).
-          set +x
+          set -o errexit
+          set -o xtrace
           . ./prepare_atlas_connectivity.sh
           rm -f ./prepare_atlas_connectivity.sh
 
