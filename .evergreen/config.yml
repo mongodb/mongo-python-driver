@@ -558,7 +558,8 @@ functions:
           . ./prepare_atlas_connectivity.sh
           rm -f ./prepare_atlas_connectivity.sh
 
-          PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
+          cd ${PROJECT_DIRECTORY}
+          tox -e test-atlas
 
   "add aws auth variables to file":
     - command: shell.exec
