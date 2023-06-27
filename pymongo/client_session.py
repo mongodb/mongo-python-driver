@@ -50,6 +50,7 @@ Then, execute an operation within the transaction by passing the session to the
 operation:
 
 .. code-block:: python
+
   orders = client.db.orders
   inventory = client.db.inventory
   with client.start_session() as session:
