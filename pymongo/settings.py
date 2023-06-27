@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Represent MongoClient's configuration."""
+from __future__ import annotations
 
 import threading
 import traceback
