@@ -274,6 +274,22 @@ class TestBSONFallbackEncoder(unittest.TestCase):
         with self.assertRaises(TypeError):
             encode(document, codec_options=codecopts)
 
+    def test_call_only_once_for_not_handled_big_integers(self):
+        called_with = []
+
+        def fallback_encoder(value):
+            called_with.append(value)
+            return value
+
+        codecopts = self._get_codec_options(fallback_encoder)
+        document = {"a": {"b": {"c": 2 << 65}}}
+
+        msg = "MongoDB can only handle up to 8-byte ints"
+        with self.assertRaises(OverflowError, msg=msg):
+            encode(document, codec_options=codecopts)
+
+        self.assertEqual(called_with, [2 << 65])
+
 
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
@@ -622,6 +638,15 @@ class TestCollectionWCustomType(IntegrationTest):
 
     def tearDown(self):
         self.db.test.drop()
+
+    def test_overflow_int_w_custom_decoder(self):
+        type_registry = TypeRegistry(fallback_encoder=lambda val: str(val))
+        codec_options = CodecOptions(type_registry=type_registry)
+        collection = self.db.get_collection("test", codec_options=codec_options)
+
+        collection.insert_one({"_id": 1, "data": 2**520})
+        ret = collection.find_one()
+        self.assertEqual(ret["data"], str(2**520))
 
     def test_command_errors_w_custom_type_decoder(self):
         db = self.db
