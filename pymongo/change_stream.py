@@ -16,13 +16,24 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Dict, Generic, Mapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Type,
+    Union,
+)
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.aggregation import (
+    _AggregationCommand,
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
@@ -67,6 +78,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.database import Database
     from pymongo.mongo_client import MongoClient
+    from pymongo.pool import SocketInfo
 
 
 def _resumable(exc: PyMongoError) -> bool:
@@ -150,18 +162,18 @@ class ChangeStream(Generic[_DocumentType]):
         self._cursor = self._create_cursor()
 
     @property
-    def _aggregation_command_class(self):
+    def _aggregation_command_class(self) -> Type[_AggregationCommand]:
         """The aggregation command class to be used."""
         raise NotImplementedError
 
     @property
-    def _client(self):
+    def _client(self) -> MongoClient:
         """The client against which the aggregation commands for
         this ChangeStream will be run.
         """
         raise NotImplementedError
 
-    def _change_stream_options(self):
+    def _change_stream_options(self) -> Dict[str, Any]:
         """Return the options dict for the $changeStream pipeline stage."""
         options: Dict[str, Any] = {}
         if self._full_document is not None:
@@ -185,7 +197,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         return options
 
-    def _command_options(self):
+    def _command_options(self) -> Dict[str, Any]:
         """Return the options dict for the aggregation command."""
         options = {}
         if self._max_await_time_ms is not None:
@@ -194,14 +206,14 @@ class ChangeStream(Generic[_DocumentType]):
             options["batchSize"] = self._batch_size
         return options
 
-    def _aggregation_pipeline(self):
+    def _aggregation_pipeline(self) -> List[Dict[str, Any]]:
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
         full_pipeline: list = [{"$changeStream": options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result, sock_info):
+    def _process_result(self, result: Mapping[str, Any], sock_info: SocketInfo) -> None:
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.
@@ -226,7 +238,9 @@ class ChangeStream(Generic[_DocumentType]):
                         "response : {!r}".format(result)
                     )
 
-    def _run_aggregation_cmd(self, session, explicit_session):
+    def _run_aggregation_cmd(
+        self, session: Optional[ClientSession], explicit_session: bool
+    ) -> CommandCursor:
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
@@ -247,7 +261,7 @@ class ChangeStream(Generic[_DocumentType]):
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 
-    def _resume(self):
+    def _resume(self) -> None:
         """Reestablish this change stream after a resumable error."""
         try:
             self._cursor.close()
@@ -437,12 +451,14 @@ class CollectionChangeStream(ChangeStream, Generic[_DocumentType]):
     .. versionadded:: 3.7
     """
 
+    _target: Collection[_DocumentType]
+
     @property
-    def _aggregation_command_class(self):
+    def _aggregation_command_class(self) -> Type[_CollectionAggregationCommand]:
         return _CollectionAggregationCommand
 
     @property
-    def _client(self):
+    def _client(self) -> MongoClient:
         return self._target.database.client
 
 
@@ -455,12 +471,14 @@ class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
     .. versionadded:: 3.7
     """
 
+    _target: Database[_DocumentType]
+
     @property
-    def _aggregation_command_class(self):
+    def _aggregation_command_class(self) -> Type[_DatabaseAggregationCommand]:
         return _DatabaseAggregationCommand
 
     @property
-    def _client(self):
+    def _client(self) -> MongoClient:
         return self._target.client
 
 
@@ -473,7 +491,7 @@ class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     .. versionadded:: 3.7
     """
 
-    def _change_stream_options(self):
+    def _change_stream_options(self) -> Dict[str, Any]:
         options = super()._change_stream_options()
         options["allChangesForCluster"] = True
         return options
