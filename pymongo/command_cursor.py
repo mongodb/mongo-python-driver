@@ -301,6 +301,9 @@ class CommandCursor(Generic[_DocumentType]):
         else:
             return None
 
+    def try_next(self):
+        return self._try_next(get_more_allowed=True)
+
     def __enter__(self) -> "CommandCursor[_DocumentType]":
         return self
 
