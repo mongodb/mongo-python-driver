@@ -279,7 +279,7 @@ class _OIDCAuthenticator:
             resp = self.run_command(sock_info, cmd)
 
         if resp["done"]:
-            sock_info.oidc_token_gen_id = self.token_gen_id  # type: ignore[attr-defined]
+            sock_info.oidc_token_gen_id = self.token_gen_id
             return None
 
         server_resp: Dict = bson.decode(resp["payload"])
@@ -289,7 +289,7 @@ class _OIDCAuthenticator:
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
-        sock_info.oidc_token_gen_id = self.token_gen_id  # type: ignore[attr-defined]
+        sock_info.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
         cmd = SON(
             [
