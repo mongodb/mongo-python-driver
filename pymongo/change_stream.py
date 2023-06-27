@@ -260,7 +260,6 @@ class ChangeStream(Generic[_DocumentType]):
 
     def _create_cursor(self):
         with self._client._tmp_session(self._session, close=False) as s:
-            assert s
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 
     def _resume(self) -> None:
