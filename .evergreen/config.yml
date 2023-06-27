@@ -559,7 +559,7 @@ functions:
           rm -f ./prepare_atlas_connectivity.sh
 
           cd ${PROJECT_DIRECTORY}
-          alias python=python3
+          alias python=${PYTHON_BINARY}
           python -m pip install --upgrade pip
           python -m pip install -vvv tox
           tox -e test-atlas
