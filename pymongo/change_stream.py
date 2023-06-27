@@ -238,7 +238,9 @@ class ChangeStream(Generic[_DocumentType]):
                         "response : {!r}".format(result)
                     )
 
-    def _run_aggregation_cmd(self, session: ClientSession, explicit_session: bool) -> CommandCursor:
+    def _run_aggregation_cmd(
+        self, session: Optional[ClientSession], explicit_session: bool
+    ) -> CommandCursor:
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
