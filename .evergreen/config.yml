@@ -560,7 +560,7 @@ functions:
 
           cd ${PROJECT_DIRECTORY}
           alias python=python3
-          python -m pip install tox
+          python -m pip3 install tox
           tox -e test-atlas
 
   "add aws auth variables to file":
