@@ -50,7 +50,6 @@ Then, execute an operation within the transaction by passing the session to the
 operation:
 
 .. code-block:: python
-
   orders = client.db.orders
   inventory = client.db.inventory
   with client.start_session() as session:
@@ -144,10 +143,16 @@ from typing import (
     Any,
     Callable,
     ContextManager,
+    List,
     Mapping,
+    MutableMapping,
     NoReturn,
     Optional,
+    Tuple,
+    Type,
     TypeVar,
+    Union,
+    cast,
 )
 
 from bson.binary import Binary
@@ -169,6 +174,12 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from pymongo.pool import SocketInfo
+    from pymongo.server import Server
 
 
 class SessionOptions:
@@ -326,7 +337,9 @@ class TransactionOptions:
         return self._max_commit_time_ms
 
 
-def _validate_session_write_concern(session, write_concern):
+def _validate_session_write_concern(
+    session: Optional[ClientSession], write_concern: Optional[WriteConcern]
+) -> Optional[ClientSession]:
     """Validate that an explicit session is not used with an unack'ed write.
 
     Returns the session to use for the next operation.
@@ -351,13 +364,18 @@ def _validate_session_write_concern(session, write_concern):
 class _TransactionContext:
     """Internal transaction context manager for start_transaction."""
 
-    def __init__(self, session):
+    def __init__(self, session: ClientSession):
         self.__session = session
 
-    def __enter__(self):
+    def __enter__(self) -> _TransactionContext:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         if self.__session.in_transaction:
             if exc_val is None:
                 self.__session.commit_transaction()
@@ -377,49 +395,49 @@ class _TxnState:
 class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
-    def __init__(self, opts, client):
+    def __init__(self, opts: Optional[TransactionOptions], client: MongoClient):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
-        self.pinned_address = None
-        self.sock_mgr = None
+        self.pinned_address: Optional[Tuple[str, Optional[int]]] = None
+        self.sock_mgr: Optional[_SocketManager] = None
         self.recovery_token = None
         self.attempt = 0
         self.client = client
 
-    def active(self):
+    def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
-    def starting(self):
+    def starting(self) -> bool:
         return self.state == _TxnState.STARTING
 
     @property
-    def pinned_conn(self):
+    def pinned_conn(self) -> Optional[SocketInfo]:
         if self.active() and self.sock_mgr:
             return self.sock_mgr.sock
         return None
 
-    def pin(self, server, sock_info):
+    def pin(self, server: Server, sock_info: SocketInfo) -> None:
         self.sharded = True
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
             sock_info.pin_txn()
             self.sock_mgr = _SocketManager(sock_info, False)
 
-    def unpin(self):
+    def unpin(self) -> None:
         self.pinned_address = None
         if self.sock_mgr:
             self.sock_mgr.close()
         self.sock_mgr = None
 
-    def reset(self):
+    def reset(self) -> None:
         self.unpin()
         self.state = _TxnState.NONE
         self.sharded = False
         self.recovery_token = None
         self.attempt = 0
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self.sock_mgr:
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon.
@@ -433,7 +451,7 @@ def _reraise_with_unknown_commit(exc: Any) -> NoReturn:
     raise
 
 
-def _max_time_expired_error(exc):
+def _max_time_expired_error(exc: PyMongoError) -> bool:
     """Return true if exc is a MaxTimeMSExpired error."""
     return isinstance(exc, OperationFailure) and exc.code == 50
 
@@ -454,7 +472,7 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
 
 
-def _within_time_limit(start_time):
+def _within_time_limit(start_time: float) -> bool:
     """Are we within the with_transaction retry limit?"""
     return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
@@ -489,8 +507,8 @@ class ClientSession:
         self._client: MongoClient = client
         self._server_session = server_session
         self._options = options
-        self._cluster_time = None
-        self._operation_time = None
+        self._cluster_time: Optional[Mapping[str, Any]] = None
+        self._operation_time: Optional[Timestamp] = None
         self._snapshot_time = None
         # Is this an implicitly created session?
         self._implicit = implicit
@@ -503,7 +521,7 @@ class ClientSession:
         """
         self._end_session(lock=True)
 
-    def _end_session(self, lock):
+    def _end_session(self, lock: bool) -> None:
         if self._server_session is not None:
             try:
                 if self.in_transaction:
@@ -515,7 +533,7 @@ class ClientSession:
                 self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
 
-    def _check_ended(self):
+    def _check_ended(self) -> None:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
@@ -557,12 +575,14 @@ class ClientSession:
         """
         return self._operation_time
 
-    def _inherit_option(self, name, val):
+    def _inherit_option(
+        self, name: str, val: Union[ReadConcern, _ServerMode, WriteConcern, None]
+    ) -> Union[ReadConcern, _ServerMode, WriteConcern, None]:
         """Return the inherited TransactionOption value."""
         if val:
             return val
         txn_opts = self.options.default_transaction_options
-        val = txn_opts and getattr(txn_opts, name)
+        val = txn_opts and getattr(txn_opts, name)  # type: ignore[assignment]
         if val:
             return val
         return getattr(self.client, name)
@@ -727,9 +747,15 @@ class ClientSession:
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
-        read_concern = self._inherit_option("read_concern", read_concern)
-        write_concern = self._inherit_option("write_concern", write_concern)
-        read_preference = self._inherit_option("read_preference", read_preference)
+        read_concern = cast(
+            Optional[ReadConcern], self._inherit_option("read_concern", read_concern)
+        )
+        write_concern = cast(
+            Optional[WriteConcern], self._inherit_option("write_concern", write_concern)
+        )
+        read_preference = cast(
+            Optional[_ServerMode], self._inherit_option("read_preference", read_preference)
+        )
         if max_commit_time_ms is None:
             opts = self.options.default_transaction_options
             if opts:
@@ -814,21 +840,22 @@ class ClientSession:
             self._transaction.state = _TxnState.ABORTED
             self._unpin()
 
-    def _finish_transaction_with_retry(self, command_name):
+    def _finish_transaction_with_retry(self, command_name: str) -> List[Any]:
         """Run commit or abort with one retry after any retryable error.
 
         :Parameters:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(session, sock_info, retryable):
+        def func(session: ClientSession, sock_info: SocketInfo, retryable: bool) -> List[Any]:
             return self._finish_transaction(sock_info, command_name)
 
         return self._client._retry_internal(True, func, self, None)
 
-    def _finish_transaction(self, sock_info, command_name):
+    def _finish_transaction(self, sock_info: SocketInfo, command_name: str) -> List[Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
+        assert opts
         wc = opts.write_concern
         cmd = SON([(command_name, 1)])
         if command_name == "commitTransaction":
@@ -839,6 +866,7 @@ class ClientSession:
             # subsequent commitTransaction commands should be upgraded to use
             # w:"majority" and set a default value of 10 seconds for wtimeout.
             if self._transaction.attempt > 1:
+                assert wc
                 wc_doc = wc.document
                 wc_doc["w"] = "majority"
                 wc_doc.setdefault("wtimeout", 10000)
@@ -851,7 +879,7 @@ class ClientSession:
             sock_info, cmd, session=self, write_concern=wc, parse_write_concern_error=True
         )
 
-    def _advance_cluster_time(self, cluster_time):
+    def _advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
         """Internal cluster time helper."""
         if self._cluster_time is None:
             self._cluster_time = cluster_time
@@ -873,7 +901,7 @@ class ClientSession:
             raise ValueError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
 
-    def _advance_operation_time(self, operation_time):
+    def _advance_operation_time(self, operation_time: Timestamp) -> None:
         """Internal operation time helper."""
         if self._operation_time is None:
             self._operation_time = operation_time
@@ -893,10 +921,10 @@ class ClientSession:
             raise TypeError("operation_time must be an instance of bson.timestamp.Timestamp")
         self._advance_operation_time(operation_time)
 
-    def _process_response(self, reply):
+    def _process_response(self, reply: Mapping[str, Any]) -> None:
         """Process a response to a command that was run with this session."""
-        self._advance_cluster_time(reply.get("$clusterTime"))
-        self._advance_operation_time(reply.get("operationTime"))
+        self._advance_cluster_time(cast(Mapping[str, Any], reply.get("$clusterTime")))
+        self._advance_operation_time(cast(Timestamp, reply.get("operationTime")))
         if self._options.snapshot and self._snapshot_time is None:
             if "cursor" in reply:
                 ct = reply["cursor"].get("atClusterTime")
@@ -922,44 +950,51 @@ class ClientSession:
         return self._transaction.active()
 
     @property
-    def _starting_transaction(self):
+    def _starting_transaction(self) -> bool:
         """True if this session is starting a multi-statement transaction."""
         return self._transaction.starting()
 
     @property
-    def _pinned_address(self):
+    def _pinned_address(self) -> Optional[Tuple[str, Optional[int]]]:
         """The mongos address this transaction was created on."""
         if self._transaction.active():
             return self._transaction.pinned_address
         return None
 
     @property
-    def _pinned_connection(self):
+    def _pinned_connection(self) -> Optional[SocketInfo]:
         """The connection this transaction was started on."""
         return self._transaction.pinned_conn
 
-    def _pin(self, server, sock_info):
+    def _pin(self, server: Server, sock_info: SocketInfo) -> None:
         """Pin this session to the given Server or to the given connection."""
         self._transaction.pin(server, sock_info)
 
-    def _unpin(self):
+    def _unpin(self) -> None:
         """Unpin this session from any pinned Server."""
         self._transaction.unpin()
 
-    def _txn_read_preference(self):
+    def _txn_read_preference(self) -> Optional[_ServerMode]:
         """Return read preference of this transaction or None."""
         if self.in_transaction:
+            assert self._transaction.opts
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self):
+    def _materialize(self) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session()
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
-    def _apply_to(self, command, is_retryable, read_preference, sock_info):
+    def _apply_to(
+        self,
+        command: MutableMapping[str, Any],
+        is_retryable: bool,
+        read_preference: ReadPreference,
+        sock_info: SocketInfo,
+    ) -> None:
         self._check_ended()
         self._materialize()
         if self.options.snapshot:
@@ -984,6 +1019,7 @@ class ClientSession:
                 self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
+                assert self._transaction.opts
                 if self._transaction.opts.read_concern:
                     rc = self._transaction.opts.read_concern.document
                     if rc:
@@ -993,11 +1029,11 @@ class ClientSession:
             command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
 
-    def _start_retryable_write(self):
+    def _start_retryable_write(self) -> None:
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def _update_read_concern(self, cmd, sock_info):
+    def _update_read_concern(self, cmd: MutableMapping[str, Any], sock_info: SocketInfo) -> None:
         if self.options.causal_consistency and self.operation_time is not None:
             cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
@@ -1019,15 +1055,15 @@ class _EmptyServerSession:
         self.dirty = False
         self.started_retryable_write = False
 
-    def mark_dirty(self):
+    def mark_dirty(self) -> None:
         self.dirty = True
 
-    def inc_transaction_id(self):
+    def inc_transaction_id(self) -> None:
         self.started_retryable_write = True
 
 
 class _ServerSession:
-    def __init__(self, generation):
+    def __init__(self, generation: int):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
         self.last_use = time.monotonic()
@@ -1035,7 +1071,7 @@ class _ServerSession:
         self.dirty = False
         self.generation = generation
 
-    def mark_dirty(self):
+    def mark_dirty(self) -> None:
         """Mark this session as dirty.
 
         A server session is marked dirty when a command fails with a network
@@ -1043,18 +1079,18 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes):
+    def timed_out(self, session_timeout_minutes: float) -> bool:
         idle_seconds = time.monotonic() - self.last_use
 
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60
 
     @property
-    def transaction_id(self):
+    def transaction_id(self) -> Int64:
         """Positive 64-bit integer."""
         return Int64(self._transaction_id)
 
-    def inc_transaction_id(self):
+    def inc_transaction_id(self) -> None:
         self._transaction_id += 1
 
 
@@ -1064,21 +1100,21 @@ class _ServerSessionPool(collections.deque):
     This class is not thread-safe, access it while holding the Topology lock.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.generation = 0
 
-    def reset(self):
+    def reset(self) -> None:
         self.generation += 1
         self.clear()
 
-    def pop_all(self):
+    def pop_all(self) -> List[_ServerSession]:
         ids = []
         while self:
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self, session_timeout_minutes):
+    def get_server_session(self, session_timeout_minutes: float) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -1094,20 +1130,22 @@ class _ServerSessionPool(collections.deque):
 
         return _ServerSession(self.generation)
 
-    def return_server_session(self, server_session, session_timeout_minutes):
+    def return_server_session(
+        self, server_session: _ServerSession, session_timeout_minutes: Optional[float]
+    ) -> None:
         if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
             if server_session.timed_out(session_timeout_minutes):
                 return
         self.return_server_session_no_lock(server_session)
 
-    def return_server_session_no_lock(self, server_session):
+    def return_server_session_no_lock(self, server_session: _ServerSession) -> None:
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes):
+    def _clear_stale(self, session_timeout_minutes: float) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):
