@@ -207,13 +207,13 @@ class ClientOptions:
         self.__replica_set_name = options.get("replicaset")
         self.__write_concern = _parse_write_concern(options)
         self.__read_concern = _parse_read_concern(options)
-        self.__connect: bool = options.get("connect")  # type: ignore[assignment]
+        self.__connect = bool(options.get("connect"))
         self.__heartbeat_frequency = options.get("heartbeatfrequencyms", common.HEARTBEAT_FREQUENCY)
         self.__retry_writes = options.get("retrywrites", common.RETRY_WRITES)
         self.__retry_reads = options.get("retryreads", common.RETRY_READS)
         self.__server_selector = options.get("server_selector", any_server_selector)
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
-        self.__load_balanced: bool = options.get("loadbalanced")  # type: ignore[assignment]
+        self.__load_balanced = bool(options.get("loadbalanced"))
         self.__timeout = options.get("timeoutms")
 
     @property
