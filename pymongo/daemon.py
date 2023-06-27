@@ -23,13 +23,14 @@ import os
 import subprocess
 import sys
 import warnings
+from typing import Optional, Sequence
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
 
 
-def _popen_wait(popen, timeout):
+def _popen_wait(popen: subprocess.Popen, timeout: Optional[float]) -> Optional[int]:
     """Implement wait timeout support for Python 3."""
     try:
         return popen.wait(timeout=timeout)
@@ -38,7 +39,7 @@ def _popen_wait(popen, timeout):
         return None
 
 
-def _silence_resource_warning(popen):
+def _silence_resource_warning(popen: Optional[subprocess.Popen]) -> None:
     """Silence Popen's ResourceWarning.
 
     Note this should only be used if the process was created as a daemon.
@@ -56,7 +57,7 @@ if sys.platform == "win32":
     # On Windows we spawn the daemon process simply by using DETACHED_PROCESS.
     _DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
 
-    def _spawn_daemon(args):
+    def _spawn_daemon(args: Sequence[str]) -> None:
         """Spawn a daemon process (Windows)."""
         try:
             with open(os.devnull, "r+b") as devnull:
@@ -87,7 +88,7 @@ else:
     # to be safe to call from any thread. Using Popen instead of fork also
     # avoids triggering the application's os.register_at_fork() callbacks when
     # we spawn the mongocryptd daemon process.
-    def _spawn(args):
+    def _spawn(args: Sequence[str]) -> Optional[subprocess.Popen]:
         """Spawn the process and silence stdout/stderr."""
         try:
             with open(os.devnull, "r+b") as devnull:
@@ -100,8 +101,9 @@ else:
                 RuntimeWarning,
                 stacklevel=2,
             )
+        return None
 
-    def _spawn_daemon_double_popen(args):
+    def _spawn_daemon_double_popen(args: Sequence[str]) -> None:
         """Spawn a daemon process using a double subprocess.Popen."""
         spawner_args = [sys.executable, _THIS_FILE]
         spawner_args.extend(args)
@@ -110,7 +112,7 @@ else:
         # processes.
         _popen_wait(temp_proc, _WAIT_TIMEOUT)
 
-    def _spawn_daemon(args):
+    def _spawn_daemon(args: Sequence[str]) -> None:
         """Spawn a daemon process (Unix)."""
         # "If Python is unable to retrieve the real path to its executable,
         # sys.executable will be an empty string or None".
