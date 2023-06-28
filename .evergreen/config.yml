@@ -560,8 +560,6 @@ functions:
           set -o xtrace
           cd ${PROJECT_DIRECTORY}
           alias python=${PYTHON_BINARY}
-          python -m pip install --upgrade pip
-          python -m pip install tox
           python -m tox -e test-atlas
 
   "add aws auth variables to file":
