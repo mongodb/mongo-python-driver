@@ -358,7 +358,6 @@ functions:
           set -o xtrace
           ${PREPARE_SHELL}
 
-          cd ${PROJECT_DIRECTORY}
           alias python=${PYTHON_BINARY}
           python -m tox -e test-mockupdb
 
