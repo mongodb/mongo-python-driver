@@ -358,8 +358,7 @@ functions:
           set -o xtrace
           ${PREPARE_SHELL}
 
-          alias python=${PYTHON_BINARY}
-          python -m tox -e test-mockupdb
+          tox.sh ${PYTHON_BINARY} -e test-mockupdb
 
   "run doctests":
      - command: shell.exec
