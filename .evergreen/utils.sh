@@ -11,7 +11,7 @@ createvirtualenv () {
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
         VIRTUALENV="$PYTHON -m virtualenv"
-    elif $PYTHON -m venv -h>/dev/null; then
+    elif $PYTHON -m venv -h > /dev/null; then
         # System virtualenv might not be compatible with the python3 on our path
         VIRTUALENV="$PYTHON -m venv"
     else

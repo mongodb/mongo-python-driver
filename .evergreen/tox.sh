@@ -3,7 +3,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 PYTHON_BINARY="$1"
 
-. ./utils.sh
+. .evergreen/utils.sh
 
 if $PYTHON_BINARY -m tox --version; then
     alias run_tox='$PYTHON_BINARY -m tox'
