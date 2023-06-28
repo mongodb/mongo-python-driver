@@ -68,6 +68,7 @@ from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
+from pymongo.command_cursor import CommandCursor
 from pymongo.database import Database
 from pymongo.encryption import ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
@@ -1183,6 +1184,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 pass
         return None
 
+    def _command_cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, CommandCursor)
+        while target.alive:
+            try:
+                return next(target)
+            except StopIteration:
+                pass
+        return None
+
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
         return target.close()
@@ -1277,6 +1287,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             method_name = f"_changeStreamOperation_{opname}"
         elif isinstance(target, NonLazyCursor):
             method_name = f"_cursor_{opname}"
+        elif isinstance(target, CommandCursor):
+            method_name = f"_command_cursor_{opname}"
         elif isinstance(target, ClientSession):
             method_name = f"_sessionOperation_{opname}"
         elif isinstance(target, GridFSBucket):
