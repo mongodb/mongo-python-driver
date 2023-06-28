@@ -1176,16 +1176,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return next(target)
 
     def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, NonLazyCursor)
-        while target.alive:
-            try:
-                return next(target)
-            except StopIteration:
-                pass
-        return None
-
-    def _command_cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, CommandCursor)
+        self.__raise_if_unsupported(
+            "iterateUntilDocumentOrError", target, NonLazyCursor, CommandCursor
+        )
         while target.alive:
             try:
                 return next(target)
@@ -1194,7 +1187,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return None
 
     def _cursor_close(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("close", target, NonLazyCursor)
+        self.__raise_if_unsupported("close", target, NonLazyCursor, CommandCursor)
         return target.close()
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
@@ -1285,10 +1278,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                         doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
         elif isinstance(target, ChangeStream):
             method_name = f"_changeStreamOperation_{opname}"
-        elif isinstance(target, NonLazyCursor):
+        elif isinstance(target, (NonLazyCursor, CommandCursor)):
             method_name = f"_cursor_{opname}"
-        elif isinstance(target, CommandCursor):
-            method_name = f"_command_cursor_{opname}"
         elif isinstance(target, ClientSession):
             method_name = f"_sessionOperation_{opname}"
         elif isinstance(target, GridFSBucket):
