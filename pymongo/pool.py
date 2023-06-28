@@ -647,6 +647,7 @@ class SocketInfo:
         self.compression_settings = pool.opts._compression_settings
         self.compression_context = None
         self.socket_checker = SocketChecker()
+        self.oidc_token_gen_id = None
         # Support for mechanism negotiation on the initial handshake.
         self.negotiated_mechs = None
         self.auth_ctx = None
