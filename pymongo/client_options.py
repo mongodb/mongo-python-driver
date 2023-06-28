@@ -15,7 +15,7 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.encryption import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
-    from pymongo.server_selectors import Selection
+    from pymongo.topology_description import _ServerSelector
 
 
 def _parse_credentials(
@@ -247,7 +247,7 @@ class ClientOptions:
         return self.__server_selection_timeout
 
     @property
-    def server_selector(self) -> Callable[[Selection], Selection]:
+    def server_selector(self) -> _ServerSelector:
         return self.__server_selector
 
     @property
