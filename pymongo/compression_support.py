@@ -80,7 +80,7 @@ def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> List[s
     return compressors
 
 
-def validate_zlib_compression_level(option: Any, value: Any) -> int:
+def validate_zlib_compression_level(option: str, value: Any) -> int:
     try:
         level = int(value)
     except Exception:
