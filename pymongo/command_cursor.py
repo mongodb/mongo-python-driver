@@ -292,7 +292,7 @@ class CommandCursor(Generic[_DocumentType]):
 
     __next__ = next
 
-    def _try_next(self, get_more_allowed) -> Optional[_DocumentType]:
+    def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
         """Advance the cursor blocking for at most one getMore command."""
         if not len(self.__data) and not self.__killed and get_more_allowed:
             self._refresh()
