@@ -413,19 +413,16 @@ class TestDatabase(IntegrationTest):
     def test_cursor_command(self):
         db = self.client.pymongo_test
         db.test.drop()
-        db.test.insert_one(SON([("hello", "world"), ("_id", 5)]))
-        db.test.insert_one(SON([("hello2", "world2"), ("_id", 6)]))
-        db.test.insert_one(SON([("hello3", "world3"), ("_id", 7)]))
+
+        docs = [{"_id": i, "doc": i} for i in range(3)]
+        db.test.insert_many(docs)
 
         cursor = db.cursor_command("find", "test")
 
         self.assertIsInstance(cursor, CommandCursor)
 
-        count = 0
-        for _ in cursor:
-            count += 1
-
-        self.assertEqual(count, 3)
+        result_docs = list(cursor)
+        self.assertEqual(docs, result_docs)
 
     def test_cursor_command_invalid(self):
         self.assertRaises(InvalidOperation, self.db.cursor_command, "usersInfo", "test")
