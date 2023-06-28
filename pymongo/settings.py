@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Represent MongoClient's configuration."""
+
 import threading
 import traceback
 from typing import Any, Collection, Dict, Optional, Tuple, Type, Union
