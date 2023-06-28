@@ -18,6 +18,8 @@ import re
 import sys
 from typing import Any, Iterable, List, Mapping, Union
 
+from pymongo.command_cursor import CommandCursor
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
@@ -409,28 +411,24 @@ class TestDatabase(IntegrationTest):
             self.assertTrue(isinstance(doc["r"], Regex))
 
     def test_cursor_command(self):
-        # PyMongo attempts to have _id show up first
-        # when you iterate key/value pairs in a document.
-        # This isn't reliable since python dicts don't
-        # guarantee any particular order. This will never
-        # work right in Jython or any Python or environment
-        # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one(SON([("hello", "world"), ("_id", 5)]))
+        db.test.insert_one(SON([("hello2", "world2"), ("_id", 6)]))
+        db.test.insert_one(SON([("hello3", "world3"), ("_id", 7)]))
 
         cursor = db.cursor_command("find", "test")
-        for x in cursor:
-            for (k, _v) in x.items():
-                self.assertEqual(k, "_id")
-                break
+
+        self.assertIsInstance(cursor, CommandCursor)
+
+        count = 0
+        for _ in cursor:
+            count += 1
+
+        self.assertEqual(count, 3)
 
     def test_cursor_command_invalid(self):
-        # All commands that do not return a cursor should cause a TypeError to be raised.
-        db = self.client.pymongo_test
-        db.test.drop()
-
-        self.assertRaises(InvalidOperation, db.cursor_command, "usersInfo", "test")
+        self.assertRaises(InvalidOperation, self.db.cursor_command, "usersInfo", "test")
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
