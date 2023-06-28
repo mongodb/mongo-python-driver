@@ -292,7 +292,7 @@ class CommandCursor(Generic[_DocumentType]):
 
     __next__ = next
 
-    def _try_next(self, get_more_allowed):
+    def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
         """Advance the cursor blocking for at most one getMore command."""
         if not len(self.__data) and not self.__killed and get_more_allowed:
             self._refresh()
@@ -300,6 +300,25 @@ class CommandCursor(Generic[_DocumentType]):
             return self.__data.popleft()
         else:
             return None
+
+    def try_next(self) -> Optional[_DocumentType]:
+        """Advance the cursor without blocking indefinitely.
+
+        This method returns the next document without waiting
+        indefinitely for data.
+
+        If no document is cached locally then this method runs a single
+        getMore command. If the getMore yields any documents, the next
+        document is returned, otherwise, if the getMore returns no documents
+        (because there is no additional data) then ``None`` is returned.
+
+        :Returns:
+          The next document or ``None`` when no document is available
+          after running a single getMore or when the cursor is closed.
+
+        .. versionadded:: 4.5
+        """
+        return self._try_next(get_more_allowed=True)
 
     def __enter__(self) -> "CommandCursor[_DocumentType]":
         return self

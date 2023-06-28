@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Version 4.5
+-----------------------
+
+- Added :meth:`~pymongo.database.Database.cursor_command`
+  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
+
 Changes in Version 4.4
 -----------------------
 
