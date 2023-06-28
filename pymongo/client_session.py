@@ -152,7 +152,6 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    cast,
 )
 
 from bson.binary import Binary
@@ -871,7 +870,7 @@ class ClientSession:
             sock_info, cmd, session=self, write_concern=wc, parse_write_concern_error=True
         )
 
-    def _advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
+    def _advance_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
         """Internal cluster time helper."""
         if self._cluster_time is None:
             self._cluster_time = cluster_time
@@ -893,7 +892,7 @@ class ClientSession:
             raise ValueError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
 
-    def _advance_operation_time(self, operation_time: Timestamp) -> None:
+    def _advance_operation_time(self, operation_time: Optional[Timestamp]) -> None:
         """Internal operation time helper."""
         if self._operation_time is None:
             self._operation_time = operation_time
@@ -915,8 +914,8 @@ class ClientSession:
 
     def _process_response(self, reply: Mapping[str, Any]) -> None:
         """Process a response to a command that was run with this session."""
-        self._advance_cluster_time(cast(Mapping[str, Any], reply.get("$clusterTime")))
-        self._advance_operation_time(cast(Timestamp, reply.get("operationTime")))
+        self._advance_cluster_time(reply.get("$clusterTime"))
+        self._advance_operation_time(reply.get("operationTime"))
         if self._options.snapshot and self._snapshot_time is None:
             if "cursor" in reply:
                 ct = reply["cursor"].get("atClusterTime")
