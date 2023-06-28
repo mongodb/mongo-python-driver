@@ -28,6 +28,10 @@
 
 struct module_state {
     PyObject* _cbson;
+    PyObject* _max_bson_size;
+    PyObject* _max_message_size;
+    PyObject* _max_write_batch_size;
+    PyObject* _max_split_size;
 };
 
 /* See comments about module initialization in _cbsonmodule.c */
@@ -366,21 +370,21 @@ _batched_op_msg(
     PyObject* iterator = NULL;
     char* flags = ack ? "\x00\x00\x00\x00" : "\x02\x00\x00\x00";
 
-    max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttr(ctx, state->_max_bson_size);
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
         return 0;
     }
 
-    max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
+    max_write_batch_size_obj = PyObject_GetAttr(ctx, state->_max_write_batch_size);
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
         return 0;
     }
 
-    max_message_size_obj = PyObject_GetAttrString(ctx, "max_message_size");
+    max_message_size_obj = PyObject_GetAttr(ctx, state->_max_message_size);
     max_message_size = PyLong_AsLong(max_message_size_obj);
     Py_XDECREF(max_message_size_obj);
     if (max_message_size == -1) {
@@ -667,7 +671,7 @@ _batched_write_command(
     PyObject* doc = NULL;
     PyObject* iterator = NULL;
 
-    max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttr(ctx, state->_max_bson_size);
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
@@ -679,7 +683,7 @@ _batched_write_command(
      */
     max_cmd_size = max_bson_size + 16382;
 
-    max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
+    max_write_batch_size_obj = PyObject_GetAttr(ctx, state->_max_write_batch_size);
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
@@ -689,7 +693,7 @@ _batched_write_command(
     // max_split_size is the size at which to perform a batch split.
     // Normally this this value is equal to max_bson_size (16MiB). However,
     // when auto encryption is enabled max_split_size is reduced to 2MiB.
-    max_split_size_obj = PyObject_GetAttrString(ctx, "max_split_size");
+    max_split_size_obj = PyObject_GetAttr(ctx, state->_max_split_size);
     max_split_size = PyLong_AsLong(max_split_size_obj);
     Py_XDECREF(max_split_size_obj);
     if (max_split_size == -1) {
@@ -950,6 +954,7 @@ PyInit__cmessage(void)
     PyObject *_cbson = NULL;
     PyObject *c_api_object = NULL;
     PyObject *m = NULL;
+    struct module_state* state = NULL;
 
     /* Store a reference to the _cbson module since it's needed to call some
      * of its functions
@@ -977,7 +982,12 @@ PyInit__cmessage(void)
         goto fail;
     }
 
-    GETSTATE(m)->_cbson = _cbson;
+    state = GETSTATE(m);
+    state->_cbson = _cbson;
+    state->_max_bson_size = PyUnicode_FromString("max_bson_size");
+    state->_max_message_size = PyUnicode_FromString("max_message_size");
+    state->_max_write_batch_size = PyUnicode_FromString("max_write_batch_size");
+    state->_max_split_size = PyUnicode_FromString("max_split_size");
 
     Py_DECREF(c_api_object);
 
