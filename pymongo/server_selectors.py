@@ -15,13 +15,16 @@
 """Criteria to select some ServerDescriptions from a TopologyDescription."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, TypeVar
 
 from pymongo.server_type import SERVER_TYPE
 
 if TYPE_CHECKING:
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
+
+
+T = TypeVar("T")
 
 
 class Selection:
@@ -86,7 +89,7 @@ class Selection:
         return self.server_descriptions[item]
 
 
-def any_server_selector(selection: Selection) -> Selection:
+def any_server_selector(selection: T) -> T:
     return selection
 
 
