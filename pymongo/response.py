@@ -15,10 +15,10 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import SocketInfo
@@ -33,7 +33,7 @@ class Response:
         data: Union[_OpMsg, _OpReply],
         address: _Address,
         request_id: int,
-        duration: Union[timedelta, datetime, None],
+        duration: Optional[timedelta],
         from_command: bool,
         docs: List[Mapping[str, Any]],
     ):
@@ -69,7 +69,7 @@ class Response:
         return self._request_id
 
     @property
-    def duration(self) -> Union[timedelta, datetime, None]:
+    def duration(self) -> Optional[timedelta]:
         """The duration of the operation."""
         return self._duration
 
@@ -93,7 +93,7 @@ class PinnedResponse(Response):
         address: _Address,
         socket_info: SocketInfo,
         request_id: int,
-        duration: Union[timedelta, datetime, None],
+        duration: Optional[timedelta],
         from_command: bool,
         docs: List[Mapping[str, Any]],
         more_to_come: bool,
