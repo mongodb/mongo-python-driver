@@ -25,4 +25,7 @@ fi
 
 alias python='$PYTHON_BINARY'
 run_tox "${@:2}"
-deactivate
+
+if command -v deactivate &> /dev/null; then
+    deactivate
+fi
