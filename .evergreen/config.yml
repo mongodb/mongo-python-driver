@@ -357,8 +357,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-
-          bash -i ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -e test-mockupdb
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -e test-mockupdb
 
   "run doctests":
      - command: shell.exec
