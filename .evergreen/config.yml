@@ -559,8 +559,8 @@ functions:
           set -o errexit
           set -o xtrace
           cd ${PROJECT_DIRECTORY}
-          alias python=${PYTHON_BINARY}
-          python -m tox -e test-atlas
+          export LANG=en_US.UTF-8
+          ${PYTHON_BINARY} -m tox -e test-atlas
 
   "add aws auth variables to file":
     - command: shell.exec
