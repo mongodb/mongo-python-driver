@@ -3055,7 +3055,7 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
 }
 
 static int _cbson_clear(PyObject *m) {
-    Py_CLEAR(GETSTATE(m)->Binary);
+    Py_CLEAR(GETSTATE(m)->Binary)
     Py_CLEAR(GETSTATE(m)->Code);
     Py_CLEAR(GETSTATE(m)->ObjectId);
     Py_CLEAR(GETSTATE(m)->DBRef);
