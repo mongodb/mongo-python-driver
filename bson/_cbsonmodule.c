@@ -485,7 +485,7 @@ static int _load_python_objects(PyObject* module) {
     /* Python str for faster _type_marker check */
     state->_type_marker_str = PyUnicode_FromString("_type_marker");
     state->_flags = PyUnicode_FromString("flags");
-    state->_flags = PyUnicode_FromString("pattern");
+    state->_pattern = PyUnicode_FromString("pattern");
     state->_encoder_map = PyUnicode_FromString("_encoder_map");
     state->_decoder_map = PyUnicode_FromString("_decoder_map");
     state->_fallback_encoder = PyUnicode_FromString("_fallback_encoder");
