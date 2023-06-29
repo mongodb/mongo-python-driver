@@ -560,7 +560,6 @@ functions:
 
           set -o errexit
           set -o xtrace
-          cd ${PROJECT_DIRECTORY}
           export LC_ALL=en_US.UTF-8
           ${PYTHON_BINARY} -m tox -e test-atlas
 
