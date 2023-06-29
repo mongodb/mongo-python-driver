@@ -18,6 +18,8 @@ import re
 import sys
 from typing import Any, Iterable, List, Mapping, Union
 
+from pymongo.command_cursor import CommandCursor
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
@@ -42,6 +44,7 @@ from pymongo.errors import (
     CollectionInvalid,
     ExecutionTimeout,
     InvalidName,
+    InvalidOperation,
     OperationFailure,
     WriteConcernError,
 )
@@ -406,6 +409,23 @@ class TestDatabase(IntegrationTest):
         result = db.command("aggregate", "test", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
             self.assertTrue(isinstance(doc["r"], Regex))
+
+    def test_cursor_command(self):
+        db = self.client.pymongo_test
+        db.test.drop()
+
+        docs = [{"_id": i, "doc": i} for i in range(3)]
+        db.test.insert_many(docs)
+
+        cursor = db.cursor_command("find", "test")
+
+        self.assertIsInstance(cursor, CommandCursor)
+
+        result_docs = list(cursor)
+        self.assertEqual(docs, result_docs)
+
+    def test_cursor_command_invalid(self):
+        self.assertRaises(InvalidOperation, self.db.cursor_command, "usersInfo", "test")
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)

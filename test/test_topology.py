@@ -52,7 +52,7 @@ def create_mock_topology(
     topology_settings = TopologySettings(
         partitioned_seeds,
         replica_set_name=replica_set_name,
-        pool_class=MockPool,
+        pool_class=MockPool,  # type: ignore[arg-type]
         monitor_class=monitor_class,
         direct_connection=direct_connection,
     )
@@ -451,7 +451,7 @@ class TestMultiServerTopology(TopologyTest):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Topology can do it.
         topology_settings = SetNameDiscoverySettings(
-            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor
+            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor  # type: ignore[arg-type]
         )
 
         t = Topology(topology_settings)
@@ -479,7 +479,7 @@ class TestMultiServerTopology(TopologyTest):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Topology can do it.
         topology_settings = SetNameDiscoverySettings(
-            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor
+            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor  # type: ignore[arg-type]
         )
 
         t = Topology(topology_settings)

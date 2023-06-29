@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """MONGODB-AWS Authentication helpers."""
+from __future__ import annotations
 
 try:
     import pymongo_auth_aws
@@ -38,10 +39,17 @@ except ImportError:
         pass
 
 
+from typing import TYPE_CHECKING, Any, Mapping
+
 import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
+
+if TYPE_CHECKING:
+    from bson.typings import _DocumentIn, _ReadableBuffer
+    from pymongo.auth import MongoCredential
+    from pymongo.pool import SocketInfo
 
 
 class _AwsSaslContext(AwsSaslContext):  # type: ignore
@@ -50,16 +58,16 @@ class _AwsSaslContext(AwsSaslContext):  # type: ignore
         """Return the bson.binary.Binary type."""
         return Binary
 
-    def bson_encode(self, doc):
+    def bson_encode(self, doc: _DocumentIn) -> bytes:
         """Encode a dictionary to BSON."""
         return bson.encode(doc)
 
-    def bson_decode(self, data):
+    def bson_decode(self, data: _ReadableBuffer) -> Mapping[str, Any]:
         """Decode BSON to a dictionary."""
         return bson.decode(data)
 
 
-def _authenticate_aws(credentials, sock_info):
+def _authenticate_aws(credentials: MongoCredential, sock_info: SocketInfo) -> None:
     """Authenticate using MONGODB-AWS."""
     if not _HAVE_MONGODB_AWS:
         raise ConfigurationError(
