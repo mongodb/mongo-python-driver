@@ -555,6 +555,9 @@ functions:
       params:
         working_dir: "src"
         script: |
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+
           . ./prepare_atlas_connectivity.sh
           rm -f ./prepare_atlas_connectivity.sh
 
