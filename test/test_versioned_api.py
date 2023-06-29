@@ -56,9 +56,9 @@ class TestServerApi(IntegrationTest):
         with self.assertRaises(ValueError):
             ServerApi("2")
         with self.assertRaises(TypeError):
-            ServerApi("1", strict="not-a-bool")
+            ServerApi("1", strict="not-a-bool")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            ServerApi("1", deprecation_errors="not-a-bool")
+            ServerApi("1", deprecation_errors="not-a-bool")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
             MongoClient(server_api="not-a-ServerApi")
 

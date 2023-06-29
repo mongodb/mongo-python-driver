@@ -98,7 +98,8 @@ use the script provided in ``.evergreen/resync-specs.sh``.::
     git clone git@github.com:mongodb/specifications.git
     export MDB_SPECS=~/specifications
     cd ~/mongo-python-driver/.evergreen
-    ./resync-specs.sh -b "connection-string*" crud bson-corpus
+    ./resync-specs.sh -b "<regex>" spec1 spec2 ...
+    ./resync-specs.sh -b "connection-string*" crud bson-corpus # Updates crud and bson-corpus specs while ignoring all files with the regex "connection-string*"
     cd ..
 
 The ``-b`` flag adds as a regex pattern to block files you do not wish to

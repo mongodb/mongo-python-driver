@@ -13,12 +13,26 @@
 # permissions and limitations under the License.
 
 """Perform aggregation operations on a collection or database."""
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference, _AggWritePref
+
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.collection import Collection
+    from pymongo.command_cursor import CommandCursor
+    from pymongo.database import Database
+    from pymongo.pool import SocketInfo
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server import Server
+    from pymongo.typings import _Pipeline
 
 
 class _AggregationCommand:
@@ -31,17 +45,16 @@ class _AggregationCommand:
 
     def __init__(
         self,
-        target,
-        cursor_class,
-        pipeline,
-        options,
-        explicit_session,
-        let=None,
-        user_fields=None,
-        result_processor=None,
-        comment=None,
-        show_expanded_events=None,
-    ):
+        target: Union[Database, Collection],
+        cursor_class: type[CommandCursor],
+        pipeline: _Pipeline,
+        options: MutableMapping[str, Any],
+        explicit_session: bool,
+        let: Optional[Mapping[str, Any]] = None,
+        user_fields: Optional[MutableMapping[str, Any]] = None,
+        result_processor: Optional[Callable[[Mapping[str, Any], SocketInfo], None]] = None,
+        comment: Any = None,
+    ) -> None:
         if "explain" in options:
             raise ConfigurationError(
                 "The explain option is not supported. Use Database.command instead."
@@ -85,28 +98,31 @@ class _AggregationCommand:
         self._collation = validate_collation_or_none(options.pop("collation", None))
 
         self._max_await_time_ms = options.pop("maxAwaitTimeMS", None)
-        self._write_preference = None
+        self._write_preference: Optional[_AggWritePref] = None
 
     @property
-    def _aggregation_target(self):
+    def _aggregation_target(self) -> Union[str, int]:
         """The argument to pass to the aggregate command."""
         raise NotImplementedError
 
     @property
-    def _cursor_namespace(self):
+    def _cursor_namespace(self) -> str:
         """The namespace in which the aggregate command is run."""
         raise NotImplementedError
 
-    def _cursor_collection(self, cursor_doc):
+    def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> Collection:
         """The Collection used for the aggregate command cursor."""
         raise NotImplementedError
 
     @property
-    def _database(self):
+    def _database(self) -> Database:
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
-    def get_read_preference(self, session):
+    def get_read_preference(
+        self, session: Optional[ClientSession]
+    ) -> Union[_AggWritePref, _ServerMode]:
+
         if self._write_preference:
             return self._write_preference
         pref = self._target._read_preference_for(session)
@@ -114,7 +130,13 @@ class _AggregationCommand:
             self._write_preference = pref = _AggWritePref(pref)
         return pref
 
-    def get_cursor(self, session, server, sock_info, read_preference):
+    def get_cursor(
+        self,
+        session: ClientSession,
+        server: Server,
+        sock_info: SocketInfo,
+        read_preference: _ServerMode,
+    ) -> CommandCursor:
         # Serialize command.
         cmd = SON([("aggregate", self._aggregation_target), ("pipeline", self._pipeline)])
         cmd.update(self._options)
@@ -183,25 +205,27 @@ class _AggregationCommand:
 
 
 class _CollectionAggregationCommand(_AggregationCommand):
+    _target: Collection
+
     @property
-    def _aggregation_target(self):
+    def _aggregation_target(self) -> str:
         return self._target.name
 
     @property
-    def _cursor_namespace(self):
+    def _cursor_namespace(self) -> str:
         return self._target.full_name
 
-    def _cursor_collection(self, cursor):
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
         """The Collection used for the aggregate command cursor."""
         return self._target
 
     @property
-    def _database(self):
+    def _database(self) -> Database:
         return self._target.database
 
 
 class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         # For raw-batches, we set the initial batchSize for the cursor to 0.
@@ -210,19 +234,21 @@ class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
 
 
 class _DatabaseAggregationCommand(_AggregationCommand):
+    _target: Database
+
     @property
-    def _aggregation_target(self):
+    def _aggregation_target(self) -> int:
         return 1
 
     @property
-    def _cursor_namespace(self):
+    def _cursor_namespace(self) -> str:
         return f"{self._target.name}.$cmd.aggregate"
 
     @property
-    def _database(self):
+    def _database(self) -> Database:
         return self._target
 
-    def _cursor_collection(self, cursor):
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
         """The Collection used for the aggregate command cursor."""
         # Collection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level

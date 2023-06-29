@@ -16,16 +16,30 @@
 
 .. versionadded:: 2.7
 """
+from __future__ import annotations
+
 import copy
+from collections.abc import MutableMapping
 from itertools import islice
-from typing import Any, NoReturn
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import _csot, common
-from pymongo.client_session import _validate_session_write_concern
-from pymongo.collation import validate_collation_or_none
+from pymongo.client_session import ClientSession, _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -49,28 +63,34 @@ from pymongo.message import (
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
-_DELETE_ALL = 0
-_DELETE_ONE = 1
+if TYPE_CHECKING:
+    from pymongo.collection import Collection
+    from pymongo.operations import _IndexKeyHint
+    from pymongo.pool import SocketInfo
+    from pymongo.typings import _DocumentType
+
+_DELETE_ALL: int = 0
+_DELETE_ONE: int = 1
 
 # For backwards compatibility. See MongoDB src/mongo/base/error_codes.err
-_BAD_VALUE = 2
-_UNKNOWN_ERROR = 8
-_WRITE_CONCERN_ERROR = 64
+_BAD_VALUE: int = 2
+_UNKNOWN_ERROR: int = 8
+_WRITE_CONCERN_ERROR: int = 64
 
-_COMMANDS = ("insert", "update", "delete")
+_COMMANDS: Tuple[str, str, str] = ("insert", "update", "delete")
 
 
 class _Run:
     """Represents a batch of write operations."""
 
-    def __init__(self, op_type):
+    def __init__(self, op_type: int) -> None:
         """Initialize a new Run object."""
-        self.op_type = op_type
-        self.index_map = []
-        self.ops = []
-        self.idx_offset = 0
+        self.op_type: int = op_type
+        self.index_map: List[int] = []
+        self.ops: List[Any] = []
+        self.idx_offset: int = 0
 
-    def index(self, idx):
+    def index(self, idx: int) -> int:
         """Get the original index of an operation in this run.
 
         :Parameters:
@@ -78,7 +98,7 @@ class _Run:
         """
         return self.index_map[idx]
 
-    def add(self, original_index, operation):
+    def add(self, original_index: int, operation: Any) -> None:
         """Add an operation to this Run instance.
 
         :Parameters:
@@ -90,7 +110,12 @@ class _Run:
         self.ops.append(operation)
 
 
-def _merge_command(run, full_result, offset, result):
+def _merge_command(
+    run: _Run,
+    full_result: MutableMapping[str, Any],
+    offset: int,
+    result: Mapping[str, Any],
+) -> None:
     """Merge a write command result into the full bulk result."""
     affected = result.get("n", 0)
 
@@ -129,7 +154,7 @@ def _merge_command(run, full_result, offset, result):
         full_result["writeConcernErrors"].append(wce)
 
 
-def _raise_bulk_write_error(full_result: Any) -> NoReturn:
+def _raise_bulk_write_error(full_result: Mapping[str, Any]) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])
@@ -139,7 +164,14 @@ def _raise_bulk_write_error(full_result: Any) -> NoReturn:
 class _Bulk:
     """The private guts of the bulk write API."""
 
-    def __init__(self, collection, ordered, bypass_document_validation, comment=None, let=None):
+    def __init__(
+        self,
+        collection: Collection[_DocumentType],
+        ordered: bool,
+        bypass_document_validation: bool,
+        comment: Optional[str] = None,
+        let: Optional[Any] = None,
+    ) -> None:
         """Initialize a _Bulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
@@ -149,9 +181,9 @@ class _Bulk:
         self.let = let
         if self.let is not None:
             common.validate_is_document_type("let", self.let)
-        self.comment = comment
+        self.comment: Optional[str] = comment
         self.ordered = ordered
-        self.ops = []
+        self.ops: List[Tuple[int, Mapping[str, Any]]] = []
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
@@ -166,14 +198,14 @@ class _Bulk:
         self.next_run = None
 
     @property
-    def bulk_ctx_class(self):
+    def bulk_ctx_class(self) -> Type[_BulkWriteContext]:
         encrypter = self.collection.database.client._encrypter
         if encrypter and not encrypter._bypass_auto_encryption:
             return _EncryptedBulkWriteContext
         else:
             return _BulkWriteContext
 
-    def add_insert(self, document):
+    def add_insert(self, document: MutableMapping[str, Any]) -> None:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
@@ -183,18 +215,22 @@ class _Bulk:
 
     def add_update(
         self,
-        selector,
-        update,
-        multi=False,
-        upsert=False,
-        collation=None,
-        array_filters=None,
-        hint=None,
-    ):
+        selector: Mapping[str, Any],
+        update: Union[
+            Mapping[str, Any],
+            List[Mapping[str, Any]],
+        ],
+        multi: bool = False,
+        upsert: bool = False,
+        collation: Optional[Mapping[str, Any]] = None,
+        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd = SON([("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)])
-        collation = validate_collation_or_none(collation)
+        cmd: Dict[str, Any] = dict(
+            [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
+        )
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -209,11 +245,17 @@ class _Bulk:
             self.is_retryable = False
         self.ops.append((_UPDATE, cmd))
 
-    def add_replace(self, selector, replacement, upsert=False, collation=None, hint=None):
+    def add_replace(
+        self,
+        selector: Mapping[str, Any],
+        replacement: Mapping[str, Any],
+        upsert: bool = False,
+        collation: Optional[Mapping[str, Any]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
         cmd = SON([("q", selector), ("u", replacement), ("multi", False), ("upsert", upsert)])
-        collation = validate_collation_or_none(collation)
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -222,10 +264,15 @@ class _Bulk:
             cmd["hint"] = hint
         self.ops.append((_UPDATE, cmd))
 
-    def add_delete(self, selector, limit, collation=None, hint=None):
+    def add_delete(
+        self,
+        selector: Mapping[str, Any],
+        limit: int,
+        collation: Optional[Mapping[str, Any]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = SON([("q", selector), ("limit", limit)])
-        collation = validate_collation_or_none(collation)
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -237,7 +284,7 @@ class _Bulk:
             self.is_retryable = False
         self.ops.append((_DELETE, cmd))
 
-    def gen_ordered(self):
+    def gen_ordered(self) -> Iterator[Optional[_Run]]:
         """Generate batches of operations, batched by type of
         operation, in the order **provided**.
         """
@@ -251,7 +298,7 @@ class _Bulk:
             run.add(idx, operation)
         yield run
 
-    def gen_unordered(self):
+    def gen_unordered(self) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in arbitrary order.
         """
@@ -265,15 +312,15 @@ class _Bulk:
 
     def _execute_command(
         self,
-        generator,
-        write_concern,
-        session,
-        sock_info,
-        op_id,
-        retryable,
-        full_result,
-        final_write_concern=None,
-    ):
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+        session: Optional[ClientSession],
+        sock_info: SocketInfo,
+        op_id: int,
+        retryable: bool,
+        full_result: MutableMapping[str, Any],
+        final_write_concern: Optional[WriteConcern] = None,
+    ) -> None:
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
@@ -366,7 +413,12 @@ class _Bulk:
             # Reset our state
             self.current_run = run = self.next_run
 
-    def execute_command(self, generator, write_concern, session):
+    def execute_command(
+        self,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+        session: Optional[ClientSession],
+    ) -> Dict[str, Any]:
         """Execute using write commands."""
         # nModified is only reported for write commands, not legacy ops.
         full_result = {
@@ -381,9 +433,17 @@ class _Bulk:
         }
         op_id = _randint()
 
-        def retryable_bulk(session, sock_info, retryable):
+        def retryable_bulk(
+            session: Optional[ClientSession], sock_info: SocketInfo, retryable: bool
+        ) -> None:
             self._execute_command(
-                generator, write_concern, session, sock_info, op_id, retryable, full_result
+                generator,
+                write_concern,
+                session,
+                sock_info,
+                op_id,
+                retryable,
+                full_result,
             )
 
         client = self.collection.database.client
@@ -394,7 +454,7 @@ class _Bulk:
             _raise_bulk_write_error(full_result)
         return full_result
 
-    def execute_op_msg_no_results(self, sock_info, generator):
+    def execute_op_msg_no_results(self, sock_info: SocketInfo, generator: Iterator[Any]) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
         client = self.collection.database.client
@@ -433,7 +493,12 @@ class _Bulk:
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 
-    def execute_command_no_results(self, sock_info, generator, write_concern):
+    def execute_command_no_results(
+        self,
+        sock_info: SocketInfo,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+    ) -> None:
         """Execute write commands with OP_MSG and w=0 WriteConcern, ordered."""
         full_result = {
             "writeErrors": [],
@@ -464,7 +529,12 @@ class _Bulk:
         except OperationFailure:
             pass
 
-    def execute_no_results(self, sock_info, generator, write_concern):
+    def execute_no_results(
+        self,
+        sock_info: SocketInfo,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+    ) -> None:
         """Execute all operations, returning no results (w=0)."""
         if self.uses_collation:
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
@@ -490,7 +560,7 @@ class _Bulk:
             return self.execute_command_no_results(sock_info, generator, write_concern)
         return self.execute_op_msg_no_results(sock_info, generator)
 
-    def execute(self, write_concern, session):
+    def execute(self, write_concern: WriteConcern, session: Optional[ClientSession]) -> Any:
         """Execute operations."""
         if not self.ops:
             raise InvalidOperation("No operations to execute")
