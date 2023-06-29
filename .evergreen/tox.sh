@@ -17,10 +17,11 @@ elif tox --version; then
     run_tox() {
       tox "$@"
     }
-else # No toolchain present, set up venv before installing tox
-    createvirtualenv PYTHON_BINARY env
+else # No toolchain present, set up virtualenv before installing tox
+    createvirtualenv "$PYTHON_BINARY" toxenv
+    python -m pip install tox
     run_tox() {
-      $PYTHON_BINARY -m tox "$@"
+      python -m tox "$@"
     }
 fi
 
