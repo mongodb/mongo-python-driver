@@ -562,6 +562,7 @@ functions:
           export LANG=en_US.UTF-8
           export PYTHONIOENCODING=utf_8
           env
+          locale
           ${PYTHON_BINARY} -m tox -e test-atlas
 
   "add aws auth variables to file":
