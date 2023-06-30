@@ -992,10 +992,10 @@ PyInit__cmessage(void)
 
     state = GETSTATE(m);
     state->_cbson = _cbson;
-    if ((state->_max_bson_size_str = PyUnicode_FromString("max_bson_size")) &&
+    if (!((state->_max_bson_size_str = PyUnicode_FromString("max_bson_size")) &&
         (state->_max_message_size_str = PyUnicode_FromString("max_message_size")) &&
         (state->_max_write_batch_size_str = PyUnicode_FromString("max_write_batch_size")) &&
-        (state->_max_split_size_str = PyUnicode_FromString("max_split_size"))) {
+        (state->_max_split_size_str = PyUnicode_FromString("max_split_size")))) {
             goto fail;
         }
 

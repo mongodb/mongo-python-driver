@@ -483,7 +483,7 @@ static int _load_python_objects(PyObject* module) {
     struct module_state *state = GETSTATE(module);
 
     /* Python str for faster string checking */
-    if ((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
+    if (!((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
         (state->_flags_str = PyUnicode_FromString("flags")) &&
         (state->_pattern_str = PyUnicode_FromString("pattern")) &&
         (state->_encoder_map_str = PyUnicode_FromString("_encoder_map")) &&
@@ -497,7 +497,7 @@ static int _load_python_objects(PyObject* module) {
         (state->_time_str = PyUnicode_FromString("time")) &&
         (state->_bid_str = PyUnicode_FromString("bid")) &&
         (state->_replace_str = PyUnicode_FromString("replace")) &&
-        (state->_astimezone_str = PyUnicode_FromString("astimezone"))) {
+        (state->_astimezone_str = PyUnicode_FromString("astimezone")))) {
             return 1;
     }
 
