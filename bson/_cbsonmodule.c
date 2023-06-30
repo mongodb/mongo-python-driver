@@ -482,7 +482,7 @@ static int _load_python_objects(PyObject* module) {
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
 
-    /* Python str for faster string checking */
+    /* Cache commonly used attribute names to improve performance. */
     if (!((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
         (state->_flags_str = PyUnicode_FromString("flags")) &&
         (state->_pattern_str = PyUnicode_FromString("pattern")) &&
@@ -627,6 +627,7 @@ fail:
  */
 int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t* options) {
     PyObject* type_registry_obj = NULL;
+    struct module_state *state = GETSTATE(self);
     long type_marker;
 
     options->unicode_decode_error_handler = NULL;
@@ -643,11 +644,11 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t
     }
 
     type_marker = _type_marker(options->document_class,
-                               GETSTATE(self)->_type_marker_str);
+                               state->_type_marker_str);
     if (type_marker < 0) {
         return 0;
     }
-    struct module_state *state = GETSTATE(self);
+
     if (!cbson_convert_type_registry(type_registry_obj,
                                &options->type_registry, state->_encoder_map_str, state->_decoder_map_str, state->_fallback_encoder_str)) {
         return 0;
@@ -3112,7 +3113,6 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->MaxKey);
     Py_CLEAR(GETSTATE(m)->UTC);
     Py_CLEAR(GETSTATE(m)->REType);
-    Py_CLEAR(GETSTATE(m)->_type_marker_str);
     Py_CLEAR(GETSTATE(m)->_type_marker_str);
     Py_CLEAR(GETSTATE(m)->_flags_str);
     Py_CLEAR(GETSTATE(m)->_pattern_str);
