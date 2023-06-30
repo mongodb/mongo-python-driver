@@ -482,22 +482,24 @@ static int _load_python_objects(PyObject* module) {
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
 
-    /* Python str for faster _type_marker check */
-    state->_type_marker_str = PyUnicode_FromString("_type_marker");
-    state->_flags_str = PyUnicode_FromString("flags");
-    state->_pattern_str = PyUnicode_FromString("pattern");
-    state->_encoder_map_str = PyUnicode_FromString("_encoder_map");
-    state->_decoder_map_str = PyUnicode_FromString("_decoder_map");
-    state->_fallback_encoder_str = PyUnicode_FromString("_fallback_encoder");
-    state->_raw_str = PyUnicode_FromString("raw");
-    state->_subtype_str = PyUnicode_FromString("subtype");
-    state->_binary_str = PyUnicode_FromString("binary");
-    state->_scope_str = PyUnicode_FromString("scope");
-    state->_inc_str = PyUnicode_FromString("inc");
-    state->_time_str = PyUnicode_FromString("time");
-    state->_bid_str = PyUnicode_FromString("bid");
-    state->_replace_str = PyUnicode_FromString("replace");
-    state->_astimezone_str = PyUnicode_FromString("astimezone");
+    /* Python str for faster string checking */
+    if ((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
+        (state->_flags_str = PyUnicode_FromString("flags")) &&
+        (state->_pattern_str = PyUnicode_FromString("pattern")) &&
+        (state->_encoder_map_str = PyUnicode_FromString("_encoder_map")) &&
+        (state->_decoder_map_str = PyUnicode_FromString("_decoder_map")) &&
+        (state->_fallback_encoder_str = PyUnicode_FromString("_fallback_encoder")) &&
+        (state->_raw_str = PyUnicode_FromString("raw")) &&
+        (state->_subtype_str = PyUnicode_FromString("subtype")) &&
+        (state->_binary_str = PyUnicode_FromString("binary")) &&
+        (state->_scope_str = PyUnicode_FromString("scope")) &&
+        (state->_inc_str = PyUnicode_FromString("inc")) &&
+        (state->_time_str = PyUnicode_FromString("time")) &&
+        (state->_bid_str = PyUnicode_FromString("bid")) &&
+        (state->_replace_str = PyUnicode_FromString("replace")) &&
+        (state->_astimezone_str = PyUnicode_FromString("astimezone"))) {
+            return 1;
+    }
 
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
         _load_object(&state->Code, "bson.code", "Code") ||
@@ -3080,6 +3082,21 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->MaxKey);
     Py_VISIT(GETSTATE(m)->UTC);
     Py_VISIT(GETSTATE(m)->REType);
+    Py_VISIT(GETSTATE(m)->_type_marker_str);
+    Py_VISIT(GETSTATE(m)->_flags_str);
+    Py_VISIT(GETSTATE(m)->_pattern_str);
+    Py_VISIT(GETSTATE(m)->_encoder_map_str);
+    Py_VISIT(GETSTATE(m)->_decoder_map_str);
+    Py_VISIT(GETSTATE(m)->_fallback_encoder_str);
+    Py_VISIT(GETSTATE(m)->_raw_str);
+    Py_VISIT(GETSTATE(m)->_subtype_str);
+    Py_VISIT(GETSTATE(m)->_binary_str);
+    Py_VISIT(GETSTATE(m)->_scope_str);
+    Py_VISIT(GETSTATE(m)->_inc_str);
+    Py_VISIT(GETSTATE(m)->_time_str);
+    Py_VISIT(GETSTATE(m)->_bid_str);
+    Py_VISIT(GETSTATE(m)->_replace_str);
+    Py_VISIT(GETSTATE(m)->_astimezone_str);
     return 0;
 }
 
@@ -3096,6 +3113,21 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->UTC);
     Py_CLEAR(GETSTATE(m)->REType);
     Py_CLEAR(GETSTATE(m)->_type_marker_str);
+    Py_CLEAR(GETSTATE(m)->_type_marker_str);
+    Py_CLEAR(GETSTATE(m)->_flags_str);
+    Py_CLEAR(GETSTATE(m)->_pattern_str);
+    Py_CLEAR(GETSTATE(m)->_encoder_map_str);
+    Py_CLEAR(GETSTATE(m)->_decoder_map_str);
+    Py_CLEAR(GETSTATE(m)->_fallback_encoder_str);
+    Py_CLEAR(GETSTATE(m)->_raw_str);
+    Py_CLEAR(GETSTATE(m)->_subtype_str);
+    Py_CLEAR(GETSTATE(m)->_binary_str);
+    Py_CLEAR(GETSTATE(m)->_scope_str);
+    Py_CLEAR(GETSTATE(m)->_inc_str);
+    Py_CLEAR(GETSTATE(m)->_time_str);
+    Py_CLEAR(GETSTATE(m)->_bid_str);
+    Py_CLEAR(GETSTATE(m)->_replace_str);
+    Py_CLEAR(GETSTATE(m)->_astimezone_str);
     return 0;
 }
 
