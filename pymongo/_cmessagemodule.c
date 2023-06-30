@@ -671,7 +671,7 @@ _batched_write_command(
     PyObject* doc = NULL;
     PyObject* iterator = NULL;
 
-    max_bson_size_obj = PyObject_GetAttr(ctx, state->_max_bson_size);
+    max_bson_size_obj = PyObject_GetAttr(ctx, state->_max_bson_size_str);
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
@@ -683,7 +683,7 @@ _batched_write_command(
      */
     max_cmd_size = max_bson_size + 16382;
 
-    max_write_batch_size_obj = PyObject_GetAttr(ctx, state->_max_write_batch_size);
+    max_write_batch_size_obj = PyObject_GetAttr(ctx, state->_max_write_batch_size_str);
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
