@@ -1467,14 +1467,14 @@ int decode_and_write_pair(PyObject* self, buffer_t buffer,
 /* Write a RawBSONDocument to the buffer.
  * Returns the number of bytes written or 0 on failure.
  */
-static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw) {
+static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw_str) {
     char* bytes;
     Py_ssize_t len;
     int len_int;
     int bytes_written = 0;
     PyObject* bytes_obj = NULL;
 
-    bytes_obj = PyObject_GetAttr(raw, _raw);
+    bytes_obj = PyObject_GetAttr(raw, _raw_str);
     if (!bytes_obj) {
         goto fail;
     }
