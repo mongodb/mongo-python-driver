@@ -21,7 +21,7 @@ from typing import (
     Any,
     Callable,
     Container,
-    Generator,
+    ContextManager,
     Generic,
     Iterable,
     Iterator,
@@ -119,7 +119,6 @@ class ReturnDocument:
 
 
 if TYPE_CHECKING:
-    from contextlib import _GeneratorContextManager
 
     import bson
     from pymongo.aggregation import _AggregationCommand
@@ -265,12 +264,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _socket_for_reads(
         self, session: _ServerMode
-    ) -> Generator[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
+    ) -> ContextManager[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
 
-    def _socket_for_writes(
-        self, session: Optional[ClientSession]
-    ) -> _GeneratorContextManager[SocketInfo]:
+    def _socket_for_writes(self, session: Optional[ClientSession]) -> ContextManager[SocketInfo]:
         return self.__database.client._socket_for_writes(session)
 
     def _command(
