@@ -263,7 +263,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.__create(name, kwargs, collation, session)
 
     def _socket_for_reads(
-        self, session: _ServerMode
+        self, session: ClientSession
     ) -> ContextManager[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
 
