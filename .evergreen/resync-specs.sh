@@ -56,7 +56,7 @@ cpjson () {
     cd "$SPECS"/source/$1
     find . -name '*.json' | grep -Ev "${BLOCKLIST}" | cpio -pdm \
     $PYMONGO/test/$2
-    printf "\nIgnored files for ${PWD}\n"
+    printf "\nIgnored files for ${PWD}:\n"
     IGNORED_FILES="$(printf "\n%s\n" "$(diff <(find . -name '*.json' | sort) \
     <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
     sed -e '/^[0-9]/d' | sed -e 's|< ./||g' )"
@@ -128,6 +128,9 @@ do
       ;;
     retryable-writes|retryable_writes)
       cpjson retryable-writes/tests/ retryable_writes
+      ;;
+    run-command|run_command)
+      cpjson run-command/tests/ run_command
       ;;
     sdam|SDAM|server-discovery-and-monitoring|discovery_and_monitoring)
       cpjson server-discovery-and-monitoring/tests/errors \

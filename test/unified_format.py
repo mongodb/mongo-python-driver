@@ -64,10 +64,11 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
-from pymongo import ASCENDING, MongoClient, _csot
+from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
+from pymongo.command_cursor import CommandCursor
 from pymongo.database import Database
 from pymongo.encryption import ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
@@ -1088,6 +1089,31 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         kwargs["command"] = ordered_command
         return target.command(**kwargs)
 
+    def _databaseOperation_runCursorCommand(self, target, **kwargs):
+        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+
+    def _databaseOperation_createCommandCursor(self, target, **kwargs):
+        self.__raise_if_unsupported("createCommandCursor", target, Database)
+        # Ensure the first key is the command name.
+        ordered_command = SON([(kwargs.pop("command_name"), 1)])
+        ordered_command.update(kwargs["command"])
+        kwargs["command"] = ordered_command
+
+        cursor_type = kwargs.pop("cursor_type", "nonTailable")
+        if cursor_type == CursorType.TAILABLE:
+            ordered_command["tailable"] = True
+        elif cursor_type == CursorType.TAILABLE_AWAIT:
+            ordered_command["tailable"] = True
+            ordered_command["awaitData"] = True
+        elif cursor_type != "nonTailable":
+            self.fail(f"unknown cursorType: {cursor_type}")
+
+        if "maxTimeMS" in kwargs:
+            kwargs["max_time_ms"] = kwargs["maxTimeMS"]
+            del kwargs["maxTimeMS"]
+
+        return target.cursor_command(**kwargs)
+
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
@@ -1169,7 +1195,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return next(target)
 
     def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, NonLazyCursor)
+        self.__raise_if_unsupported(
+            "iterateUntilDocumentOrError", target, NonLazyCursor, CommandCursor
+        )
         while target.alive:
             try:
                 return next(target)
@@ -1178,7 +1206,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return None
 
     def _cursor_close(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("close", target, NonLazyCursor)
+        self.__raise_if_unsupported("close", target, NonLazyCursor, CommandCursor)
         return target.close()
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
@@ -1269,7 +1297,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                         doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
         elif isinstance(target, ChangeStream):
             method_name = f"_changeStreamOperation_{opname}"
-        elif isinstance(target, NonLazyCursor):
+        elif isinstance(target, (NonLazyCursor, CommandCursor)):
             method_name = f"_cursor_{opname}"
         elif isinstance(target, ClientSession):
             method_name = f"_sessionOperation_{opname}"

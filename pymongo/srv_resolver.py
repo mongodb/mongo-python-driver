@@ -13,9 +13,11 @@
 # permissions and limitations under the License.
 
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
+from __future__ import annotations
 
 import ipaddress
 import random
+from typing import Any, List, Optional, Tuple, Union
 
 try:
     from dns import resolver
@@ -30,14 +32,14 @@ from pymongo.errors import ConfigurationError
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
-def maybe_decode(text):
+def maybe_decode(text: Union[str, bytes]) -> str:
     if isinstance(text, bytes):
         return text.decode()
     return text
 
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
-def _resolve(*args, **kwargs):
+def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
     if hasattr(resolver, "resolve"):
         # dnspython >= 2
         return resolver.resolve(*args, **kwargs)
@@ -52,7 +54,13 @@ _INVALID_HOST_MSG = (
 
 
 class _SrvResolver:
-    def __init__(self, fqdn, connect_timeout, srv_service_name, srv_max_hosts=0):
+    def __init__(
+        self,
+        fqdn: str,
+        connect_timeout: Optional[float],
+        srv_service_name: str,
+        srv_max_hosts: int = 0,
+    ):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
@@ -72,7 +80,7 @@ class _SrvResolver:
         if self.__slen < 2:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
 
-    def get_options(self):
+    def get_options(self) -> Optional[str]:
         try:
             results = _resolve(self.__fqdn, "TXT", lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
@@ -84,7 +92,7 @@ class _SrvResolver:
             raise ConfigurationError("Only one TXT record is supported")
         return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")
 
-    def _resolve_uri(self, encapsulate_errors):
+    def _resolve_uri(self, encapsulate_errors: bool) -> resolver.Answer:
         try:
             results = _resolve(
                 "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout
@@ -97,7 +105,9 @@ class _SrvResolver:
             raise ConfigurationError(str(exc))
         return results
 
-    def _get_srv_response_and_hosts(self, encapsulate_errors):
+    def _get_srv_response_and_hosts(
+        self, encapsulate_errors: bool
+    ) -> Tuple[resolver.Answer, List[Tuple[str, Any]]]:
         results = self._resolve_uri(encapsulate_errors)
 
         # Construct address tuples
@@ -117,10 +127,12 @@ class _SrvResolver:
             nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
-    def get_hosts(self):
+    def get_hosts(self) -> List[Tuple[str, Any]]:
         _, nodes = self._get_srv_response_and_hosts(True)
         return nodes
 
-    def get_hosts_and_min_ttl(self):
+    def get_hosts_and_min_ttl(self) -> Tuple[List[Tuple[str, Any]], int]:
         results, nodes = self._get_srv_response_and_hosts(False)
-        return nodes, results.rrset.ttl
+        rrset = results.rrset
+        ttl = rrset.ttl if rrset else 0
+        return nodes, ttl

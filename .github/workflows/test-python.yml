@@ -42,11 +42,11 @@ jobs:
           mongodb-version: 4.4
       - name: Run tests
         run: |
-          tox -e test
+          tox -m test
       - name: Doc Test
         if: ${{ !startsWith(matrix.python-version, '3.7') }}
         run: |
-          tox -e doc-test
+          tox -m doc-test
 
   typing:
     name: Typing Tests
@@ -68,13 +68,13 @@ jobs:
           pip install tox
       - name: Run mypy
         run: |
-          tox -e typecheck-mypy
+          tox -m typecheck-mypy
       - name: Run pyright
         run: |
-          tox -e typecheck-pyright
+          tox -m typecheck-pyright
       - name: Run pyright strict
         run: |
-          tox -e typecheck-pyright-strict
+          tox -m typecheck-pyright-strict
 
   docs:
     name: Docs Checks
@@ -90,7 +90,7 @@ jobs:
           pip install tox
       - name: Check links
         run: |
-          tox -e linkcheck
+          tox -m linkcheck
       - name: Build docs
         run: |
-          tox -e doc
+          tox -m doc

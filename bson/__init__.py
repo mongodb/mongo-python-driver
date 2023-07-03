@@ -896,12 +896,21 @@ def _name_value_to_bson(
     in_fallback_call: bool = False,
 ) -> bytes:
     """Encode a single name, value pair."""
+
+    was_integer_overflow = False
+
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
     try:
         return _ENCODERS[type(value)](name, value, check_keys, opts)  # type: ignore
     except KeyError:
         pass
+    except OverflowError:
+        if not isinstance(value, int):
+            raise
+
+        # Give the fallback_encoder a chance
+        was_integer_overflow = True
 
     # Second, fall back to trying _type_marker. This has to be done
     # before the loop below since users could subclass one of our
@@ -927,7 +936,7 @@ def _name_value_to_bson(
     # is done after trying the custom type encoder because checking for each
     # subtype is expensive.
     for base in _BUILT_IN_TYPES:
-        if isinstance(value, base):
+        if not was_integer_overflow and isinstance(value, base):
             func = _ENCODERS[base]
             # Cache this type for faster subsequent lookup.
             _ENCODERS[type(value)] = func
@@ -941,6 +950,8 @@ def _name_value_to_bson(
             name, fallback_encoder(value), check_keys, opts, in_fallback_call=True
         )
 
+    if was_integer_overflow:
+        raise OverflowError("BSON can only handle up to 8-byte ints")
     raise InvalidDocument(f"cannot encode object: {value!r}, of type: {type(value)!r}")
 
 

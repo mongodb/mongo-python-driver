@@ -14,11 +14,17 @@
 
 """Utilities for caching OCSP responses."""
 
+from __future__ import annotations
+
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
+from typing import TYPE_CHECKING
 
 from pymongo.lock import _create_lock
+
+if TYPE_CHECKING:
+    from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
 
 
 class _OCSPCache:
@@ -34,7 +40,7 @@ class _OCSPCache:
         # Hold this lock when accessing _data.
         self._lock = _create_lock()
 
-    def _get_cache_key(self, ocsp_request):
+    def _get_cache_key(self, ocsp_request: OCSPRequest) -> CACHE_KEY_TYPE:
         return self.CACHE_KEY_TYPE(
             hash_algorithm=ocsp_request.hash_algorithm.name.lower(),
             issuer_name_hash=ocsp_request.issuer_name_hash,
@@ -42,7 +48,7 @@ class _OCSPCache:
             serial_number=ocsp_request.serial_number,
         )
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: OCSPRequest, value: OCSPResponse) -> None:
         """Add/update a cache entry.
 
         'key' is of type cryptography.x509.ocsp.OCSPRequest
@@ -74,7 +80,7 @@ class _OCSPCache:
             if cached_value is None or cached_value.next_update < value.next_update:
                 self._data[cache_key] = value
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: OCSPRequest) -> OCSPResponse:
         """Get a cache entry if it exists.
 
         'item' is of type cryptography.x509.ocsp.OCSPRequest
