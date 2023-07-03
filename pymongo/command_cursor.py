@@ -71,7 +71,9 @@ class CommandCursor(Generic[_DocumentType]):
         self.__collection: Collection[_DocumentType] = collection
         self.__id = cursor_info["id"]
         self.__data = deque(cursor_info["firstBatch"])
-        self.__postbatchresumetoken: int = cast(int, cursor_info.get("postBatchResumeToken"))
+        self.__postbatchresumetoken: Optional[Mapping[str, Any]] = cursor_info.get(
+            "postBatchResumeToken"
+        )
         self.__address = address
         self.__batch_size = batch_size
         self.__max_await_time_ms = max_await_time_ms
@@ -158,7 +160,7 @@ class CommandCursor(Generic[_DocumentType]):
         return len(self.__data) > 0
 
     @property
-    def _post_batch_resume_token(self) -> int:
+    def _post_batch_resume_token(self) -> Optional[Mapping[str, Any]]:
         """Retrieve the postBatchResumeToken from the response to a
         changeStream aggregate or getMore.
         """
@@ -178,7 +180,7 @@ class CommandCursor(Generic[_DocumentType]):
             else:
                 self.__sock_mgr = sock_mgr
 
-    def __send_message(self, operation: Union[_Query, _GetMore]) -> None:
+    def __send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
         client = self.__collection.database.client
         try:
