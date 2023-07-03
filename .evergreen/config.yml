@@ -359,7 +359,7 @@ functions:
           ${PREPARE_SHELL}
 
           alias python=${PYTHON_BINARY}
-          python -m tox -e test-mockupdb
+          python -m tox -m test-mockupdb
 
   "run doctests":
      - command: shell.exec
