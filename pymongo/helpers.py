@@ -158,7 +158,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 def _check_command_response(
     response: Mapping[str, Any],
     max_wire_version: Optional[int],
-    allowable_errors: Optional[Container[int]] = None,
+    allowable_errors: Optional[Container[Union[int, str]]] = None,
     parse_write_concern_error: bool = False,
 ) -> None:
     """Check the response to a command for errors."""

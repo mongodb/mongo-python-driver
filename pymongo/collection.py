@@ -21,6 +21,7 @@ from typing import (
     Any,
     Callable,
     Container,
+    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -264,7 +265,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _socket_for_reads(
         self, session: _ServerMode
-    ) -> Iterator[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
+    ) -> Generator[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
 
     def _socket_for_writes(
@@ -282,7 +283,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Container[Any]] = None,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
-        collation: Union[Collation, Mapping[str, Any], None] = None,
+        collation: Optional[_CollationIn] = None,
         session: Optional[ClientSession] = None,
         retryable_write: bool = False,
         user_fields: Optional[Any] = None,
@@ -336,7 +337,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         name: str,
         options: MutableMapping[str, Any],
-        collation: Union[Collation, Mapping[str, Any], None],
+        collation: Optional[_CollationIn],
         session: Optional[ClientSession],
         encrypted_fields: Optional[Mapping[str, Any]] = None,
         qev2_required: bool = False,
@@ -590,7 +591,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_doc_val: bool,
         session: Optional[ClientSession],
         comment: Optional[Any] = None,
-    ) -> Optional[int]:
+    ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -619,7 +620,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database.client._retryable_write(acknowledged, _insert_command, session)
 
         if not isinstance(doc, RawBSONDocument):
-            return cast(int, doc.get("_id"))
+            return doc.get("_id")
         return None
 
     def insert_one(
@@ -776,7 +777,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         op_id: Optional[int] = None,
         ordered: bool = True,
         bypass_doc_val: Optional[bool] = False,
-        collation: Union[Collation, Mapping[str, Any], None] = None,
+        collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
@@ -857,7 +858,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         op_id: Optional[int] = None,
         ordered: bool = True,
         bypass_doc_val: Optional[bool] = False,
-        collation: Union[Collation, Mapping[str, Any], None] = None,
+        collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
@@ -1263,7 +1264,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        collation: Union[Collation, Mapping[str, Any], None] = None,
+        collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         retryable_write: bool = False,
@@ -1318,7 +1319,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        collation: Union[Collation, Mapping[str, Any], None] = None,
+        collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
@@ -1767,7 +1768,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sock_info: SocketInfo,
         read_preference: Optional[_ServerMode],
         cmd: Mapping[str, Any],
-        collation: Union[Collation, Mapping[str, Any], None],
+        collation: Optional[_CollationIn],
         session: ClientSession,
     ) -> Optional[Mapping[str, Any]]:
         """Internal helper to run an aggregate that returns a single result."""
