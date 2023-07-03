@@ -26,20 +26,12 @@ from typing import (
     NoReturn,
     Optional,
     Union,
-    cast,
 )
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.message import (
-    _CursorAddress,
-    _GetMore,
-    _OpMsg,
-    _OpReply,
-    _Query,
-    _RawBatchGetMore,
-)
+from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentType
 
