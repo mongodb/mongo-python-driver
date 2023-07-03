@@ -469,7 +469,9 @@ static int _load_python_objects(PyObject* module) {
     struct module_state *state = GETSTATE(module);
 
     /* Python str for faster _type_marker check */
-    state->_type_marker_str = PyUnicode_FromString("_type_marker");
+    if (!(state->_type_marker_str = PyUnicode_FromString("_type_marker"))) {
+        return 1;
+    }
 
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
         _load_object(&state->Code, "bson.code", "Code") ||
@@ -3043,6 +3045,7 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->MaxKey);
     Py_VISIT(GETSTATE(m)->UTC);
     Py_VISIT(GETSTATE(m)->REType);
+    Py_VISIT(GETSTATE(m)->_type_marker_str);
     return 0;
 }
 
