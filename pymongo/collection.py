@@ -2386,11 +2386,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 resp = sock_info.command(
+                    self.__database.name,
                     cmd,
                     read_preference=ReadPreference.PRIMARY,
                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                    write_concern=self._write_concern_for(session),
+                    write_concern=self._write_concern_for(s),
                     session=s,
+                    client=self.__database.client,
                 )
                 return [index["name"] for index in resp["indexesCreated"]]
 
@@ -2423,11 +2425,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 return sock_info.command(
+                    self.__database.name,
                     cmd,
                     read_preference=ReadPreference.PRIMARY,
                     allowable_errors=["ns not found", 26],
-                    write_concern=self._write_concern_for(session),
+                    write_concern=self._write_concern_for(s),
                     session=s,
+                    client=self.__database.client,
                 )
 
     def update_search_index(
@@ -2461,11 +2465,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 return sock_info.command(
+                    self.__database.name,
                     cmd,
                     read_preference=ReadPreference.PRIMARY,
                     allowable_errors=["ns not found", 26],
-                    write_concern=self._write_concern_for(session),
+                    write_concern=self._write_concern_for(s),
                     session=s,
+                    client=self.__database.client,
                 )
 
     def options(

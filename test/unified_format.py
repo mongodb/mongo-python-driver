@@ -1135,7 +1135,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.skipTest("PyMongo does not support list_index_names")
 
     def _collectionOperation_createSearchIndex(self, target, *args, **kwargs):
-        return target.create_search_index(SearchIndexModel(**kwargs["model"]))
+        return target.create_search_index(kwargs["model"])
 
     def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
         models = [SearchIndexModel(**i) for i in kwargs["models"]]
