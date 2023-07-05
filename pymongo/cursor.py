@@ -62,6 +62,8 @@ if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
+    from pymongo.client_session import ClientSession
+    from pymongo.collection import Collection
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
@@ -161,11 +163,6 @@ class _SocketManager:
 
 _Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
 _Hint = Union[str, _Sort]
-
-
-if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
 
 
 class Cursor(Generic[_DocumentType]):
