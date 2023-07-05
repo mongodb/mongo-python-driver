@@ -26,7 +26,6 @@ from typing import (
     Iterable,
     List,
     Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
     Sequence,
