@@ -108,7 +108,7 @@ class _SrvResolver:
         # Validate hosts
         for node in nodes:
             try:
-                nlist = node[0].split(".")[1:][-self.__slen :]
+                nlist = node[0].lower().split(".")[1:][-self.__slen :]
             except Exception:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}")
             if self.__plist != nlist:
