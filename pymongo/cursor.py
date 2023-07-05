@@ -142,10 +142,9 @@ class CursorType:
 class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned."""
 
-    def __init__(self, sock: SocketInfo, more_to_come: bool):
+    def __init__(self, sock: Optional[SocketInfo], more_to_come: bool):
         self.sock = sock
         self.more_to_come = more_to_come
-        self.closed = False
         self.lock = _create_lock()
 
     def update_exhaust(self, more_to_come: bool) -> None:
@@ -153,10 +152,9 @@ class _SocketManager:
 
     def close(self) -> None:
         """Return this instance's socket to the connection pool."""
-        if not self.closed:
-            self.closed = True
+        if self.sock:
             self.sock.unpin()
-            self.sock = None  # type: ignore[assignment]
+            self.sock = None
 
 
 _Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
