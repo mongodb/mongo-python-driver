@@ -14,15 +14,18 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+from __future__ import annotations
 
 import datetime
 import inspect
 import warnings
 from collections import OrderedDict, abc
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
+    Iterator,
     List,
     Mapping,
     MutableMapping,
@@ -32,6 +35,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    overload,
 )
 from urllib.parse import unquote_plus
 
@@ -51,6 +55,10 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
+
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -823,12 +831,21 @@ def get_validated_options(
     validated_options: MutableMapping[str, Any]
     if isinstance(options, _CaseInsensitiveDictionary):
         validated_options = _CaseInsensitiveDictionary()
-        get_normed_key = lambda x: x  # noqa: E731
-        get_setter_key = lambda x: options.cased_key(x)  # noqa: E731
+
+        def get_normed_key(x: str) -> str:
+            return x  # noqa: E731
+
+        def get_setter_key(x: str) -> str:
+            return options.cased_key(x)  # type: ignore[attr-defined] # noqa: E731
+
     else:
         validated_options = {}
-        get_normed_key = lambda x: x.lower()  # noqa: E731
-        get_setter_key = lambda x: x  # noqa: E731
+
+        def get_normed_key(x: str) -> str:
+            return x.lower()  # noqa: E731
+
+        def get_setter_key(x: str) -> str:
+            return x  # noqa: E731
 
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
@@ -845,11 +862,11 @@ def get_validated_options(
     return validated_options
 
 
-def _esc_coll_name(encrypted_fields, name):
+def _esc_coll_name(encrypted_fields: Mapping[str, Any], name: str) -> Any:
     return encrypted_fields.get("escCollection", f"enxcol_.{name}.esc")
 
 
-def _ecoc_coll_name(encrypted_fields, name):
+def _ecoc_coll_name(encrypted_fields: Mapping[str, Any], name: str) -> Any:
     return encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
 
 
@@ -910,7 +927,7 @@ class BaseObject:
         """
         return self.__write_concern
 
-    def _write_concern_for(self, session):
+    def _write_concern_for(self, session: Optional[ClientSession]) -> WriteConcern:
         """Read only access to the write concern of this instance or session."""
         # Override this operation's write concern with the transaction's.
         if session and session.in_transaction:
@@ -926,7 +943,7 @@ class BaseObject:
         """
         return self.__read_preference
 
-    def _read_preference_for(self, session):
+    def _read_preference_for(self, session: Optional[ClientSession]) -> _ServerMode:
         """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:
@@ -943,38 +960,38 @@ class BaseObject:
         return self.__read_concern
 
 
-class _CaseInsensitiveDictionary(abc.MutableMapping):
-    def __init__(self, *args, **kwargs):
-        self.__casedkeys = {}
-        self.__data = {}
+class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
+    def __init__(self, *args: Any, **kwargs: Any):
+        self.__casedkeys: Dict[str, Any] = {}
+        self.__data: Dict[str, Any] = {}
         self.update(dict(*args, **kwargs))
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:  # type: ignore[override]
         return key.lower() in self.__data
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return (key for key in self.__casedkeys)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str({self.__casedkeys[k]: self.__data[k] for k in self})
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         lc_key = key.lower()
         self.__casedkeys[lc_key] = key
         self.__data[lc_key] = value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self.__data[key.lower()]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         lc_key = key.lower()
         del self.__casedkeys[lc_key]
         del self.__data[lc_key]
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, abc.Mapping):
             return NotImplemented
         if len(self) != len(other):
@@ -985,24 +1002,32 @@ class _CaseInsensitiveDictionary(abc.MutableMapping):
 
         return True
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
         return self.__data.get(key.lower(), default)
 
-    def pop(self, key, *args, **kwargs):
+    def pop(self, key: str, *args: Any, **kwargs: Any) -> Any:
         lc_key = key.lower()
         self.__casedkeys.pop(lc_key, None)
         return self.__data.pop(lc_key, *args, **kwargs)
 
-    def popitem(self):
+    def popitem(self) -> Tuple[str, Any]:
         lc_key, cased_key = self.__casedkeys.popitem()
         value = self.__data.pop(lc_key)
         return cased_key, value
 
-    def clear(self):
+    def clear(self) -> None:
         self.__casedkeys.clear()
         self.__data.clear()
 
-    def setdefault(self, key, default=None):
+    @overload
+    def setdefault(self, key: str, default: None = None) -> Optional[Any]:
+        ...
+
+    @overload
+    def setdefault(self, key: str, default: Any) -> Any:
+        ...
+
+    def setdefault(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         lc_key = key.lower()
         if key in self:
             return self.__data[lc_key]
@@ -1011,7 +1036,7 @@ class _CaseInsensitiveDictionary(abc.MutableMapping):
             self.__data[lc_key] = default
             return default
 
-    def update(self, other):
+    def update(self, other: Mapping[str, Any]) -> None:  # type: ignore[override]
         if isinstance(other, _CaseInsensitiveDictionary):
             for key in other:
                 self[other.cased_key(key)] = other[key]
@@ -1019,5 +1044,5 @@ class _CaseInsensitiveDictionary(abc.MutableMapping):
             for key in other:
                 self[key] = other[key]
 
-    def cased_key(self, key):
+    def cased_key(self, key: str) -> Any:
         return self.__casedkeys[key.lower()]
