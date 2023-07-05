@@ -68,7 +68,6 @@ if TYPE_CHECKING:
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
 
-_CursorType = TypeVar("_CursorType", bound="Cursor")
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
