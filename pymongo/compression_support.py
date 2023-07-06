@@ -121,7 +121,7 @@ class SnappyContext:
 class ZlibContext:
     compressor_id = 2
 
-    def __init__(self, level):
+    def __init__(self, level: int):
         self.level = level
 
     def compress(self, data: bytes) -> bytes:
