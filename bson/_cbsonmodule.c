@@ -71,9 +71,9 @@ struct module_state {
     PyObject* _replace_str;
     PyObject* _astimezone_str;
     PyObject* _id_str;
-    PyObject* _$ref_str;
-    PyObject* _$id_str;
-    PyObject* _$db_str;
+    PyObject* _ref_str;
+    PyObject* __id_str;
+    PyObject* _db_str;
     PyObject* _tzinfo_str;
 };
 
@@ -504,9 +504,9 @@ static int _load_python_objects(PyObject* module) {
         (state->_replace_str = PyUnicode_FromString("replace")) &&
         (state->_astimezone_str = PyUnicode_FromString("astimezone")) &&
         (state->_id_str = PyUnicode_FromString("_id")) &&
-        (state->_$ref_str = PyUnicode_FromString("$ref")) &&
-        (state->_$id_str = PyUnicode_FromString("$id")) &&
-        (state->_$db_str = PyUnicode_FromString("$db")) &&
+        (state->_ref_str = PyUnicode_FromString("$ref")) &&
+        (state->__id_str = PyUnicode_FromString("$id")) &&
+        (state->_db_str = PyUnicode_FromString("$db")) &&
         (state->_tzinfo_str = PyUnicode_FromString("tzinfo")))) {
             return 1;
     }
@@ -1704,7 +1704,7 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     int db_present = 0;
 
     /* Decoding for DBRefs */
-    if (PyMapping_HasKey(value, state->_$ref_str) && PyMapping_HasKey(value, state->_$id_str)) { /* DBRef */
+    if (PyMapping_HasKey(value, state->_ref_str) && PyMapping_HasKey(value, state->__id_str)) { /* DBRef */
         ref = PyMapping_GetItemString(value, "$ref");
         /* PyMapping_GetItemString returns NULL to indicate error. */
         if (!ref) {
@@ -1716,7 +1716,7 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
             goto invalid;
         }
 
-        if (PyMapping_HasKey(value, state->_$db_str)) {
+        if (PyMapping_HasKey(value, state->_db_str)) {
             database = PyMapping_GetItemString(value, "$db");
             if (!database) {
                 goto invalid;
@@ -1733,10 +1733,10 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
             goto invalid;
         }
 
-        PyMapping_DelItem(value, state->_$ref_str);
-        PyMapping_DelItem(value, state->_$id_str);
+        PyMapping_DelItem(value, state->_ref_str);
+        PyMapping_DelItem(value, state->__id_str);
         if (db_present) {
-            PyMapping_DelItem(value, state->_$db_str);
+            PyMapping_DelItem(value, state->_db_str);
         }
 
         if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
@@ -3110,9 +3110,9 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->_replace_str);
     Py_VISIT(GETSTATE(m)->_astimezone_str);
     Py_VISIT(GETSTATE(m)->_id_str);
-    Py_VISIT(GETSTATE(m)->_$ref_str);
-    Py_VISIT(GETSTATE(m)->_$id_str);
-    Py_VISIT(GETSTATE(m)->_$db_str);
+    Py_VISIT(GETSTATE(m)->_ref_str);
+    Py_VISIT(GETSTATE(m)->__id_str);
+    Py_VISIT(GETSTATE(m)->_db_str);
     Py_VISIT(GETSTATE(m)->_tzinfo_str);
     return 0;
 }
@@ -3145,9 +3145,9 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->_replace_str);
     Py_CLEAR(GETSTATE(m)->_astimezone_str);
     Py_CLEAR(GETSTATE(m)->_id_str);
-    Py_CLEAR(GETSTATE(m)->_$ref_str);
-    Py_CLEAR(GETSTATE(m)->_$id_str);
-    Py_CLEAR(GETSTATE(m)->_$db_str);
+    Py_CLEAR(GETSTATE(m)->_ref_str);
+    Py_CLEAR(GETSTATE(m)->__id_str);
+    Py_CLEAR(GETSTATE(m)->_db_str);
     Py_CLEAR(GETSTATE(m)->_tzinfo_str);
     return 0;
 }
