@@ -142,8 +142,8 @@ class CursorType:
 class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned."""
 
-    def __init__(self, sock: Optional[SocketInfo], more_to_come: bool):
-        self.sock = sock
+    def __init__(self, sock: SocketInfo, more_to_come: bool):
+        self.sock: Optional[SocketInfo] = sock
         self.more_to_come = more_to_come
         self.lock = _create_lock()
 
