@@ -2460,6 +2460,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
             return self._command(
+                sock_info,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
