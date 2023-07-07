@@ -1574,7 +1574,7 @@ int write_dict(PyObject* self, buffer_t buffer,
     if (top_level) {
         /*
          * If "dict" is a defaultdict we don't want to call
-         * PyMapping_GetItemString on it. That would **create**
+         * PyObject_GetItem on it. That would **create**
          * an _id where one didn't previously exist (PYTHON-871).
          */
         if (PyDict_Check(dict)) {
@@ -1587,7 +1587,7 @@ int write_dict(PyObject* self, buffer_t buffer,
                 }
             }
         } else if (PyMapping_HasKey(dict, state->_id_str)) {
-            PyObject* _id = PyMapping_GetItemString(dict, "_id");
+            PyObject* _id = PyObject_GetItem(dict, state->_id_str);
             if (!_id) {
                 return 0;
             }
@@ -1596,7 +1596,7 @@ int write_dict(PyObject* self, buffer_t buffer,
                 Py_DECREF(_id);
                 return 0;
             }
-            /* PyMapping_GetItemString returns a new reference. */
+            /* PyObject_GetItem returns a new reference. */
             Py_DECREF(_id);
         }
     }
@@ -1705,19 +1705,19 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
 
     /* Decoding for DBRefs */
     if (PyMapping_HasKey(value, state->_dollar_ref_str) && PyMapping_HasKey(value, state->_dollar_id_str)) { /* DBRef */
-        ref = PyMapping_GetItemString(value, "$ref");
-        /* PyMapping_GetItemString returns NULL to indicate error. */
+        ref = PyObject_GetItem(value, state->_dollar_ref_str);
+        /* PyObject_GetItem returns NULL to indicate error. */
         if (!ref) {
             goto invalid;
         }
-        id = PyMapping_GetItemString(value, "$id");
-        /* PyMapping_GetItemString returns NULL to indicate error. */
+        id = PyObject_GetItem(value, state->_dollar_id_str);
+        /* PyObject_GetItem returns NULL to indicate error. */
         if (!id) {
             goto invalid;
         }
 
         if (PyMapping_HasKey(value, state->_dollar_db_str)) {
-            database = PyMapping_GetItemString(value, "$db");
+            database = PyObject_GetItem(value, state->_dollar_db_str);
             if (!database) {
                 goto invalid;
             }
