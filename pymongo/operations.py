@@ -538,6 +538,8 @@ class SearchIndexModel:
           - `definition` - The definition for this index.
           - `name` (optional) - The name for this index, if present.
 
+        .. versionadded:: 4.5
+
         .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
         """
         if name is not None:

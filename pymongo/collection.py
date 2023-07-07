@@ -2286,7 +2286,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def list_search_indexes(
         self,
         name: Optional[str] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> CommandCursor[Mapping[str, Any]]:
@@ -2313,20 +2313,24 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
             pipeline = [{"$listSearchIndexes": {"name": name}}]
+        kwargs["codec_options"] = CodecOptions(SON)
         value = self.aggregate(pipeline, session, comment=comment, **kwargs)
         return cast(CommandCursor[Mapping[str, Any]], value)
 
     def create_search_index(
         self,
-        description: Union[Mapping[str, Any], SearchIndexModel],
-        session: Optional["ClientSession"] = None,
+        model: Union[Mapping[str, Any], SearchIndexModel],
+        session: Optional[ClientSession] = None,
         comment: Any = None,
         **kwargs: Any,
     ) -> str:
         """Create a single search index for the current collection.
 
         :Parameters:
-          - `description`: The index description for the new search index.
+          - `model`: The model for the new search index.
+            It can be given as a :class:`~pymongo.operations.SearchIndexModel`
+            instance or a dictionary with a model "definition"  and optional
+            "name".
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
@@ -2341,21 +2345,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        if not isinstance(description, SearchIndexModel):
-            description = SearchIndexModel(description["definition"], description.get("name"))
-        return self.create_search_indexes([description], session, comment, **kwargs)[0]
+        if not isinstance(model, SearchIndexModel):
+            model = SearchIndexModel(model["definition"], model.get("name"))
+        return self.create_search_indexes([model], session, comment, **kwargs)[0]
 
     def create_search_indexes(
         self,
-        descriptions: List[SearchIndexModel],
-        session: Optional["ClientSession"] = None,
+        models: List[SearchIndexModel],
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[str]:
         """Create multiple search indexes for the current collection.
 
         :Parameters:
-          - `descriptions`: A list of :class:`~pymongo.operations.SearchIndexModel` instances.
+          - `models`: A list of :class:`~pymongo.operations.SearchIndexModel` instances.
           - `session` (optional): a :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
@@ -2373,7 +2377,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def gen_indexes():
-            for index in descriptions:
+            for index in models:
                 if not isinstance(index, SearchIndexModel):
                     raise TypeError(
                         f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
@@ -2384,22 +2388,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
 
         with self._socket_for_writes(session) as sock_info:
-            with self.__database.client._tmp_session(session) as s:
-                resp = sock_info.command(
-                    self.__database.name,
-                    cmd,
-                    read_preference=ReadPreference.PRIMARY,
-                    codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                    write_concern=self._write_concern_for(s),
-                    session=s,
-                    client=self.__database.client,
-                )
-                return [index["name"] for index in resp["indexesCreated"]]
+            resp = self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            )
+            return [index["name"] for index in resp["indexesCreated"]]
 
     def drop_search_index(
         self,
         name: str,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
@@ -2423,22 +2423,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
-            with self.__database.client._tmp_session(session) as s:
-                return sock_info.command(
-                    self.__database.name,
-                    cmd,
-                    read_preference=ReadPreference.PRIMARY,
-                    allowable_errors=["ns not found", 26],
-                    write_concern=self._write_concern_for(s),
-                    session=s,
-                    client=self.__database.client,
-                )
+            return self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+            )
 
     def update_search_index(
         self,
         name: str,
         definition: Mapping[str, Any],
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
@@ -2463,16 +2459,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
-            with self.__database.client._tmp_session(session) as s:
-                return sock_info.command(
-                    self.__database.name,
-                    cmd,
-                    read_preference=ReadPreference.PRIMARY,
-                    allowable_errors=["ns not found", 26],
-                    write_concern=self._write_concern_for(s),
-                    session=s,
-                    client=self.__database.client,
-                )
+            return self._command(
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+            )
 
     def options(
         self,
