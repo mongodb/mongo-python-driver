@@ -53,8 +53,6 @@ bytes [#bytes]_                          binary         both
 .. [#bytes] The bytes type is encoded as BSON binary with
    subtype 0. It will be decoded back to bytes.
 """
-from __future__ import annotations
-
 import datetime
 import itertools
 import os
@@ -1033,7 +1031,9 @@ def decode(data: "_ReadableBuffer", codec_options: None = None) -> Dict[str, Any
 
 
 @overload
-def decode(data: "_ReadableBuffer", codec_options: CodecOptions[_DocumentType]) -> "_DocumentType":
+def decode(
+    data: "_ReadableBuffer", codec_options: "CodecOptions[_DocumentType]"
+) -> "_DocumentType":
     ...
 
 
