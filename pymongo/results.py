@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Mapping, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -100,12 +100,12 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result",)
 
-    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
+    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Dict[str, Any]:
+    def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -139,12 +139,12 @@ class DeleteResult(_WriteResult):
 
     __slots__ = ("__raw_result",)
 
-    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
+    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Dict[str, Any]:
+    def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 

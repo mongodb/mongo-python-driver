@@ -70,6 +70,11 @@ struct module_state {
     PyObject* _bid_str;
     PyObject* _replace_str;
     PyObject* _astimezone_str;
+    PyObject* _id_str;
+    PyObject* _dollar_ref_str;
+    PyObject* _dollar_id_str;
+    PyObject* _dollar_db_str;
+    PyObject* _tzinfo_str;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -497,7 +502,12 @@ static int _load_python_objects(PyObject* module) {
         (state->_time_str = PyUnicode_FromString("time")) &&
         (state->_bid_str = PyUnicode_FromString("bid")) &&
         (state->_replace_str = PyUnicode_FromString("replace")) &&
-        (state->_astimezone_str = PyUnicode_FromString("astimezone")))) {
+        (state->_astimezone_str = PyUnicode_FromString("astimezone")) &&
+        (state->_id_str = PyUnicode_FromString("_id")) &&
+        (state->_dollar_ref_str = PyUnicode_FromString("$ref")) &&
+        (state->_dollar_id_str = PyUnicode_FromString("$id")) &&
+        (state->_dollar_db_str = PyUnicode_FromString("$db")) &&
+        (state->_tzinfo_str = PyUnicode_FromString("tzinfo")))) {
             return 1;
     }
 
@@ -1509,6 +1519,7 @@ int write_dict(PyObject* self, buffer_t buffer,
     PyObject* mapping_type;
     long type_marker;
 
+
     /* check for RawBSONDocument */
     type_marker = _type_marker(dict, state->_type_marker_str);
     if (type_marker < 0) {
@@ -1563,20 +1574,20 @@ int write_dict(PyObject* self, buffer_t buffer,
     if (top_level) {
         /*
          * If "dict" is a defaultdict we don't want to call
-         * PyMapping_GetItemString on it. That would **create**
+         * PyObject_GetItem on it. That would **create**
          * an _id where one didn't previously exist (PYTHON-871).
          */
         if (PyDict_Check(dict)) {
-            /* PyDict_GetItemString returns a borrowed reference. */
-            PyObject* _id = PyDict_GetItemString(dict, "_id");
+            /* PyDict_GetItem returns a borrowed reference. */
+            PyObject* _id = PyDict_GetItem(dict, state->_id_str);
             if (_id) {
                 if (!write_pair(self, buffer, "_id", 3,
                                 _id, check_keys, options, 1)) {
                     return 0;
                 }
             }
-        } else if (PyMapping_HasKeyString(dict, "_id")) {
-            PyObject* _id = PyMapping_GetItemString(dict, "_id");
+        } else if (PyMapping_HasKey(dict, state->_id_str)) {
+            PyObject* _id = PyObject_GetItem(dict, state->_id_str);
             if (!_id) {
                 return 0;
             }
@@ -1585,7 +1596,7 @@ int write_dict(PyObject* self, buffer_t buffer,
                 Py_DECREF(_id);
                 return 0;
             }
-            /* PyMapping_GetItemString returns a new reference. */
+            /* PyObject_GetItem returns a new reference. */
             Py_DECREF(_id);
         }
     }
@@ -1693,20 +1704,20 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     int db_present = 0;
 
     /* Decoding for DBRefs */
-    if (PyMapping_HasKeyString(value, "$ref") && PyMapping_HasKeyString(value, "$id")) { /* DBRef */
-        ref = PyMapping_GetItemString(value, "$ref");
-        /* PyMapping_GetItemString returns NULL to indicate error. */
+    if (PyMapping_HasKey(value, state->_dollar_ref_str) && PyMapping_HasKey(value, state->_dollar_id_str)) { /* DBRef */
+        ref = PyObject_GetItem(value, state->_dollar_ref_str);
+        /* PyObject_GetItem returns NULL to indicate error. */
         if (!ref) {
             goto invalid;
         }
-        id = PyMapping_GetItemString(value, "$id");
-        /* PyMapping_GetItemString returns NULL to indicate error. */
+        id = PyObject_GetItem(value, state->_dollar_id_str);
+        /* PyObject_GetItem returns NULL to indicate error. */
         if (!id) {
             goto invalid;
         }
 
-        if (PyMapping_HasKeyString(value, "$db")) {
-            database = PyMapping_GetItemString(value, "$db");
+        if (PyMapping_HasKey(value, state->_dollar_db_str)) {
+            database = PyObject_GetItem(value, state->_dollar_db_str);
             if (!database) {
                 goto invalid;
             }
@@ -1722,10 +1733,10 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
             goto invalid;
         }
 
-        PyMapping_DelItemString(value, "$ref");
-        PyMapping_DelItemString(value, "$id");
+        PyMapping_DelItem(value, state->_dollar_ref_str);
+        PyMapping_DelItem(value, state->_dollar_id_str);
         if (db_present) {
-            PyMapping_DelItemString(value, "$db");
+            PyMapping_DelItem(value, state->_dollar_db_str);
         }
 
         if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
@@ -2151,7 +2162,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
             utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
-            if (!utc_type || PyDict_SetItemString(kwargs, "tzinfo", utc_type) == -1) {
+            if (!utc_type || PyDict_SetItem(kwargs, state->_tzinfo_str, utc_type) == -1) {
                 Py_DECREF(replace);
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
@@ -3098,6 +3109,11 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->_bid_str);
     Py_VISIT(GETSTATE(m)->_replace_str);
     Py_VISIT(GETSTATE(m)->_astimezone_str);
+    Py_VISIT(GETSTATE(m)->_id_str);
+    Py_VISIT(GETSTATE(m)->_dollar_ref_str);
+    Py_VISIT(GETSTATE(m)->_dollar_id_str);
+    Py_VISIT(GETSTATE(m)->_dollar_db_str);
+    Py_VISIT(GETSTATE(m)->_tzinfo_str);
     return 0;
 }
 
@@ -3128,6 +3144,11 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->_bid_str);
     Py_CLEAR(GETSTATE(m)->_replace_str);
     Py_CLEAR(GETSTATE(m)->_astimezone_str);
+    Py_CLEAR(GETSTATE(m)->_id_str);
+    Py_CLEAR(GETSTATE(m)->_dollar_ref_str);
+    Py_CLEAR(GETSTATE(m)->_dollar_id_str);
+    Py_CLEAR(GETSTATE(m)->_dollar_db_str);
+    Py_CLEAR(GETSTATE(m)->_tzinfo_str);
     return 0;
 }
 

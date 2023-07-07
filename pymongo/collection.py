@@ -19,14 +19,21 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
+    Container,
+    ContextManager,
     Generic,
     Iterable,
+    Iterator,
     List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Sequence,
+    Tuple,
+    Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -67,7 +74,12 @@ from pymongo.operations import (
     _IndexKeyHint,
     _IndexList,
 )
-from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.read_preferences import (
+    Primary,
+    PrimaryPreferred,
+    ReadPreference,
+    _ServerMode,
+)
 from pymongo.results import (
     BulkWriteResult,
     DeleteResult,
@@ -77,6 +89,8 @@ from pymongo.results import (
 )
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern
+
+T = TypeVar("T")
 
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 
@@ -106,10 +120,15 @@ class ReturnDocument:
 
 
 if TYPE_CHECKING:
+
     import bson
+    from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession
+    from pymongo.collation import Collation
     from pymongo.database import Database
+    from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
+    from pymongo.server import Server
 
 
 class Collection(common.BaseObject, Generic[_DocumentType]):
@@ -244,32 +263,35 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 self.__create(name, kwargs, collation, session)
 
-    def _socket_for_reads(self, session):
+    def _socket_for_reads(
+        self, session: ClientSession
+    ) -> ContextManager[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
 
-    def _socket_for_writes(self, session):
+    def _socket_for_writes(self, session: Optional[ClientSession]) -> ContextManager[SocketInfo]:
         return self.__database.client._socket_for_writes(session)
 
     def _command(
         self,
-        sock_info,
-        command,
-        read_preference=None,
-        codec_options=None,
-        check=True,
-        allowable_errors=None,
-        read_concern=None,
-        write_concern=None,
-        collation=None,
-        session=None,
-        retryable_write=False,
-        user_fields=None,
-    ):
+        sock_info: SocketInfo,
+        command: Mapping[str, Any],
+        read_preference: Optional[_ServerMode] = None,
+        codec_options: Optional[CodecOptions] = None,
+        check: bool = True,
+        allowable_errors: Optional[Container[Any]] = None,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        collation: Optional[_CollationIn] = None,
+        session: Optional[ClientSession] = None,
+        retryable_write: bool = False,
+        user_fields: Optional[Any] = None,
+    ) -> Mapping[str, Any]:
         """Internal command helper.
 
         :Parameters:
           - `sock_info` - A SocketInfo instance.
           - `command` - The command itself, as a :class:`~bson.son.SON` instance.
+          - `read_preference` (optional) - The read preference to use.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
@@ -310,10 +332,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
 
     def __create(
-        self, name, options, collation, session, encrypted_fields=None, qev2_required=False
-    ):
+        self,
+        name: str,
+        options: MutableMapping[str, Any],
+        collation: Optional[_CollationIn],
+        session: Optional[ClientSession],
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        qev2_required: bool = False,
+    ) -> None:
         """Sends a create command with the given options."""
-        cmd = SON([("create", name)])
+        cmd: SON[str, Any] = SON([("create", name)])
         if encrypted_fields:
             cmd["encryptedFields"] = encrypted_fields
 
@@ -365,7 +393,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.read_concern,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Collection({self.__database!r}, {self.__name!r})"
 
     def __eq__(self, other: Any) -> bool:
@@ -553,8 +581,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return BulkWriteResult({}, False)
 
     def _insert_one(
-        self, doc, ordered, write_concern, op_id, bypass_doc_val, session, comment=None
-    ):
+        self,
+        doc: Mapping[str, Any],
+        ordered: bool,
+        write_concern: WriteConcern,
+        op_id: Optional[int],
+        bypass_doc_val: bool,
+        session: Optional[ClientSession],
+        comment: Optional[Any] = None,
+    ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -562,7 +597,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        def _insert_command(session, sock_info, retryable_write):
+        def _insert_command(
+            session: ClientSession, sock_info: SocketInfo, retryable_write: bool
+        ) -> None:
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
 
@@ -711,7 +748,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("documents must be a non-empty list")
         inserted_ids: List[ObjectId] = []
 
-        def gen():
+        def gen() -> Iterator[Tuple[int, Mapping[str, Any]]]:
             """A generator that validates documents and handles _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
@@ -729,29 +766,31 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _update(
         self,
-        sock_info,
-        criteria,
-        document,
-        upsert=False,
-        multi=False,
-        write_concern=None,
-        op_id=None,
-        ordered=True,
-        bypass_doc_val=False,
-        collation=None,
-        array_filters=None,
-        hint=None,
-        session=None,
-        retryable_write=False,
-        let=None,
-        comment=None,
-    ):
+        sock_info: SocketInfo,
+        criteria: Mapping[str, Any],
+        document: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        multi: bool = False,
+        write_concern: Optional[WriteConcern] = None,
+        op_id: Optional[int] = None,
+        ordered: bool = True,
+        bypass_doc_val: Optional[bool] = False,
+        collation: Optional[_CollationIn] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        retryable_write: bool = False,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+    ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        update_doc = SON([("q", criteria), ("u", document), ("multi", multi), ("upsert", upsert)])
+        update_doc: SON[str, Any] = SON(
+            [("q", criteria), ("u", document), ("multi", multi), ("upsert", upsert)]
+        )
         if collation is not None:
             if not acknowledged:
                 raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
@@ -768,7 +807,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
             update_doc["hint"] = hint
         command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
         if let is not None:
@@ -809,24 +848,26 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _update_retryable(
         self,
-        criteria,
-        document,
-        upsert=False,
-        multi=False,
-        write_concern=None,
-        op_id=None,
-        ordered=True,
-        bypass_doc_val=False,
-        collation=None,
-        array_filters=None,
-        hint=None,
-        session=None,
-        let=None,
-        comment=None,
-    ):
+        criteria: Mapping[str, Any],
+        document: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        multi: bool = False,
+        write_concern: Optional[WriteConcern] = None,
+        op_id: Optional[int] = None,
+        ordered: bool = True,
+        bypass_doc_val: Optional[bool] = False,
+        collation: Optional[_CollationIn] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+    ) -> Mapping[str, Any]:
         """Internal update / replace helper."""
 
-        def _update(session, sock_info, retryable_write):
+        def _update(
+            session: Optional[ClientSession], sock_info: SocketInfo, retryable_write: bool
+        ) -> Optional[Mapping[str, Any]]:
             return self._update(
                 sock_info,
                 criteria,
@@ -1215,19 +1256,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _delete(
         self,
-        sock_info,
-        criteria,
-        multi,
-        write_concern=None,
-        op_id=None,
-        ordered=True,
-        collation=None,
-        hint=None,
-        session=None,
-        retryable_write=False,
-        let=None,
-        comment=None,
-    ):
+        sock_info: SocketInfo,
+        criteria: Mapping[str, Any],
+        multi: bool,
+        write_concern: Optional[WriteConcern] = None,
+        op_id: Optional[int] = None,
+        ordered: bool = True,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        retryable_write: bool = False,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+    ) -> Mapping[str, Any]:
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
@@ -1245,7 +1286,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
             delete_doc["hint"] = hint
         command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
 
@@ -1271,20 +1312,22 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _delete_retryable(
         self,
-        criteria,
-        multi,
-        write_concern=None,
-        op_id=None,
-        ordered=True,
-        collation=None,
-        hint=None,
-        session=None,
-        let=None,
-        comment=None,
-    ):
+        criteria: Mapping[str, Any],
+        multi: bool,
+        write_concern: Optional[WriteConcern] = None,
+        op_id: Optional[int] = None,
+        ordered: bool = True,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+    ) -> Mapping[str, Any]:
         """Internal delete helper."""
 
-        def _delete(session, sock_info, retryable_write):
+        def _delete(
+            session: Optional[ClientSession], sock_info: SocketInfo, retryable_write: bool
+        ) -> Mapping[str, Any]:
             return self._delete(
                 sock_info,
                 criteria,
@@ -1693,7 +1736,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("find_raw_batches does not support auto encryption")
         return RawBatchCursor(self, *args, **kwargs)
 
-    def _count_cmd(self, session, sock_info, read_preference, cmd, collation):
+    def _count_cmd(
+        self,
+        session: ClientSession,
+        sock_info: SocketInfo,
+        read_preference: Optional[_ServerMode],
+        cmd: Mapping[str, Any],
+        collation: Optional[Collation],
+    ) -> int:
         """Internal count command helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
@@ -1711,7 +1761,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return 0
         return int(res["n"])
 
-    def _aggregate_one_result(self, sock_info, read_preference, cmd, collation, session):
+    def _aggregate_one_result(
+        self,
+        sock_info: SocketInfo,
+        read_preference: Optional[_ServerMode],
+        cmd: Mapping[str, Any],
+        collation: Optional[_CollationIn],
+        session: ClientSession,
+    ) -> Optional[Mapping[str, Any]]:
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             sock_info,
@@ -1762,8 +1819,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        def _cmd(session, server, sock_info, read_preference):
-            cmd = SON([("count", self.__name)])
+        def _cmd(
+            session: ClientSession,
+            server: Server,
+            sock_info: SocketInfo,
+            read_preference: Optional[_ServerMode],
+        ) -> int:
+            cmd: SON[str, Any] = SON([("count", self.__name)])
             cmd.update(kwargs)
             return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
 
@@ -1846,7 +1908,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
-        def _cmd(session, server, sock_info, read_preference):
+        def _cmd(
+            session: ClientSession,
+            server: Server,
+            sock_info: SocketInfo,
+            read_preference: Optional[_ServerMode],
+        ) -> int:
             result = self._aggregate_one_result(sock_info, read_preference, cmd, collation, session)
             if not result:
                 return 0
@@ -1854,7 +1921,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self._retryable_non_cursor_read(_cmd, session)
 
-    def _retryable_non_cursor_read(self, func, session):
+    def _retryable_non_cursor_read(
+        self,
+        func: Callable[[ClientSession, Server, SocketInfo, Optional[_ServerMode]], T],
+        session: Optional[ClientSession],
+    ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
         client = self.__database.client
         with client._tmp_session(session) as s:
@@ -1909,7 +1980,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__create_indexes(indexes, session, **kwargs)
 
     @_csot.apply
-    def __create_indexes(self, indexes, session, **kwargs):
+    def __create_indexes(
+        self, indexes: Sequence[IndexModel], session: Optional[ClientSession], **kwargs: Any
+    ) -> List[str]:
         """Internal createIndexes helper.
 
         :Parameters:
@@ -1924,7 +1997,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         with self._socket_for_writes(session) as sock_info:
             supports_quorum = sock_info.max_wire_version >= 9
 
-            def gen_indexes():
+            def gen_indexes() -> Iterator[Mapping[str, Any]]:
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
@@ -2211,7 +2284,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         explicit_session = session is not None
 
-        def _cmd(session, server, sock_info, read_preference):
+        def _cmd(
+            session: ClientSession,
+            server: Server,
+            sock_info: SocketInfo,
+            read_preference: _ServerMode,
+        ) -> CommandCursor[_DocumentType]:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
@@ -2516,15 +2594,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def _aggregate(
         self,
-        aggregation_command,
-        pipeline,
-        cursor_class,
-        session,
-        explicit_session,
-        let=None,
-        comment=None,
-        **kwargs,
-    ):
+        aggregation_command: Type[_AggregationCommand],
+        pipeline: _Pipeline,
+        cursor_class: Type[CommandCursor],
+        session: Optional[ClientSession],
+        explicit_session: bool,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Union[CommandCursor[_DocumentType], RawBatchCursor[_DocumentType]]:
         if comment is not None:
             kwargs["comment"] = comment
         cmd = aggregation_command(
@@ -2630,15 +2708,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
         with self.__database.client._tmp_session(session, close=False) as s:
-            return self._aggregate(
-                _CollectionAggregationCommand,
-                pipeline,
-                CommandCursor,
-                session=s,
-                explicit_session=session is not None,
-                let=let,
-                comment=comment,
-                **kwargs,
+            return cast(
+                CommandCursor[_DocumentType],
+                self._aggregate(
+                    _CollectionAggregationCommand,
+                    pipeline,
+                    CommandCursor,
+                    session=s,
+                    explicit_session=session is not None,
+                    let=let,
+                    comment=comment,
+                    **kwargs,
+                ),
             )
 
     def aggregate_raw_batches(
@@ -2677,13 +2758,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         with self.__database.client._tmp_session(session, close=False) as s:
-            return self._aggregate(
-                _CollectionRawAggregationCommand,
-                pipeline,
-                RawBatchCommandCursor,
-                session=s,
-                explicit_session=session is not None,
-                **kwargs,
+            return cast(
+                RawBatchCursor[_DocumentType],
+                self._aggregate(
+                    _CollectionRawAggregationCommand,
+                    pipeline,
+                    RawBatchCommandCursor,
+                    session=s,
+                    explicit_session=session is not None,
+                    **kwargs,
+                ),
             )
 
     def watch(
@@ -2946,7 +3030,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
 
-        def _cmd(session, server, sock_info, read_preference):
+        def _cmd(
+            session: ClientSession,
+            server: Server,
+            sock_info: SocketInfo,
+            read_preference: Optional[_ServerMode],
+        ) -> List:
             return self._command(
                 sock_info,
                 cmd,
@@ -2959,7 +3048,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self._retryable_non_cursor_read(_cmd, session)
 
-    def _write_concern_for_cmd(self, cmd, session):
+    def _write_concern_for_cmd(
+        self, cmd: Mapping[str, Any], session: Optional[ClientSession]
+    ) -> WriteConcern:
         raw_wc = cmd.get("writeConcern")
         if raw_wc is not None:
             return WriteConcern(**raw_wc)
@@ -2968,17 +3059,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def __find_and_modify(
         self,
-        filter,
-        projection,
-        sort,
-        upsert=None,
-        return_document=ReturnDocument.BEFORE,
-        array_filters=None,
-        hint=None,
-        session=None,
-        let=None,
-        **kwargs,
-    ):
+        filter: Mapping[str, Any],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
+        sort: Optional[_IndexList],
+        upsert: Optional[bool] = None,
+        return_document: bool = ReturnDocument.BEFORE,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping] = None,
+        **kwargs: Any,
+    ) -> Any:
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
@@ -3000,11 +3091,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers._index_document(hint)  # type: ignore[assignment]
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        def _find_and_modify(session, sock_info, retryable_write):
+        def _find_and_modify(
+            session: ClientSession, sock_info: SocketInfo, retryable_write: bool
+        ) -> Any:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
                 if not acknowledged:
