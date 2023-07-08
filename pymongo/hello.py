@@ -33,7 +33,7 @@ class HelloCompat:
     LEGACY_ERROR = "not master"
 
 
-def _get_server_type(doc):
+def _get_server_type(doc: Mapping[str, Any]) -> int:
     """Determine the server type from a hello response."""
     if not doc.get("ok"):
         return SERVER_TYPE.Unknown
