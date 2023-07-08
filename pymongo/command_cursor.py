@@ -56,7 +56,6 @@ class CommandCursor(Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
-        codec_options: Optional[CodecOptions] = None,
     ) -> None:
         """Create a new command cursor."""
         self.__sock_mgr: Any = None
@@ -73,7 +72,6 @@ class CommandCursor(Generic[_DocumentType]):
         self.__explicit_session = explicit_session
         self.__killed = self.__id == 0
         self.__comment = comment
-        self.__codec_options = codec_options
         if self.__killed:
             self.__end_session(True)
 
@@ -236,14 +234,13 @@ class CommandCursor(Generic[_DocumentType]):
         if self.__id:  # Get More
             dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)
-            codec_options = self.__codec_options or self.__collection.codec_options
             self.__send_message(
                 self._getmore_class(
                     dbname,
                     collname,
                     self.__batch_size,
                     self.__id,
-                    codec_options,
+                    self.__collection.codec_options,
                     read_pref,
                     self.__session,
                     self.__collection.database.client,

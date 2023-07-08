@@ -54,6 +54,7 @@ class _AggregationCommand:
         user_fields: Optional[MutableMapping[str, Any]] = None,
         result_processor: Optional[Callable[[Mapping[str, Any], SocketInfo], None]] = None,
         comment: Any = None,
+        codec_options: Optional[CodecOptions] = None,
     ) -> None:
         if "explain" in options:
             raise ConfigurationError(
@@ -76,6 +77,7 @@ class _AggregationCommand:
             options["comment"] = comment
 
         self._options = options
+        self._codec_options = codec_options
 
         # This is the batchSize that will be used for setting the initial
         # batchSize for the cursor, as well as the subsequent getMores.
@@ -161,11 +163,12 @@ class _AggregationCommand:
             write_concern = None
 
         # Run command.
+        codec_options = self._codec_options or self._target.codec_options
         result = sock_info.command(
             self._database.name,
             cmd,
             read_preference,
-            self._target.codec_options,
+            codec_options,
             parse_write_concern_error=True,
             read_concern=read_concern,
             write_concern=write_concern,

@@ -2605,6 +2605,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> Union[CommandCursor[_DocumentType], RawBatchCursor[_DocumentType]]:
         if comment is not None:
             kwargs["comment"] = comment
+        codec_options = kwargs.pop("codec_options", None)
         cmd = aggregation_command(
             self,
             cursor_class,
@@ -2613,6 +2614,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             explicit_session,
             let,
             user_fields={"cursor": {"firstBatch": 1}},
+            codec_options=codec_options,
         )
 
         return self.__database.client._retryable_read(
