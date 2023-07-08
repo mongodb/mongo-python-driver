@@ -44,11 +44,11 @@ class PyMongoError(Exception):
         """
         return label in self._error_labels
 
-    def _add_error_label(self, label):
+    def _add_error_label(self, label: str) -> None:
         """Add the given label to this error."""
         self._error_labels.add(label)
 
-    def _remove_error_label(self, label):
+    def _remove_error_label(self, label: str) -> None:
         """Remove the given label from this error."""
         self._error_labels.discard(label)
 
@@ -123,7 +123,7 @@ class NetworkTimeout(AutoReconnect):
         return True
 
 
-def _format_detailed_error(message, details):
+def _format_detailed_error(message: str, details: Optional[Union[Mapping[str, Any], List]]) -> str:
     if details is not None:
         message = f"{message}, full error: {details}"
     return message
@@ -195,7 +195,7 @@ class OperationFailure(PyMongoError):
         self.__max_wire_version = max_wire_version
 
     @property
-    def _max_wire_version(self):
+    def _max_wire_version(self) -> Optional[int]:
         return self.__max_wire_version
 
     @property
