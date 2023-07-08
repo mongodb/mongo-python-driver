@@ -62,7 +62,7 @@ from bson.son import SON
 
 def _inflate_bson(
     bson_bytes: bytes, codec_options: CodecOptions, raw_array: bool = False
-) -> Mapping[Any, Any]:
+) -> SON[Any, Any]:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:

@@ -195,6 +195,8 @@ from pymongo.helpers import _handle_exception
 from pymongo.typings import _Address, _DocumentOut
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
 
@@ -1512,14 +1514,14 @@ class _EventListeners:
 
     def publish_command_failure(
         self,
-        duration,
-        failure,
-        command_name,
-        request_id,
-        connection_id,
-        op_id=None,
-        service_id=None,
-    ):
+        duration: timedelta,
+        failure: _DocumentOut,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        op_id: Optional[int] = None,
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 
         :Parameters:

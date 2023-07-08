@@ -13,7 +13,16 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
-from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from bson.errors import InvalidDocument
 
@@ -145,9 +154,10 @@ class NotPrimaryError(AutoReconnect):
     .. versionadded:: 3.12
     """
 
-    def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], List]] = None
-    ) -> None:
+    details: Mapping[str, Any]
+
+    def __init__(self, message: str = "", errors: Optional[Mapping[str, Any]] = None) -> None:
+        errors = errors or {}
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
 
@@ -191,7 +201,7 @@ class OperationFailure(PyMongoError):
             error_labels = details.get("errorLabels")
         super().__init__(_format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
-        self.__details = details
+        self.__details = details or {}
         self.__max_wire_version = max_wire_version
 
     @property
@@ -204,7 +214,7 @@ class OperationFailure(PyMongoError):
         return self.__code
 
     @property
-    def details(self) -> Optional[Mapping[str, Any]]:
+    def details(self) -> Mapping[str, Any]:
         """The complete error document returned by the server.
 
         Depending on the error that occurred, the error document
