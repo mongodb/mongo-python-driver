@@ -36,7 +36,6 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
-    from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
     from pymongo.pool import SocketInfo
@@ -222,7 +221,6 @@ class CommandCursor(Generic[_DocumentType]):
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> List[Mapping[str, Any]]:
-        codec_options = codec_options or self.__codec_options
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self) -> int:

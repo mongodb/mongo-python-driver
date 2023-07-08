@@ -2501,7 +2501,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
-            return self._command(
+            self._command(
                 sock_info,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2537,7 +2537,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
-            return self._command(
+            self._command(
                 sock_info,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
