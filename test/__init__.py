@@ -27,7 +27,6 @@ import time
 import traceback
 import unittest
 import warnings
-from typing import Mapping
 
 try:
     from xmlrunner import XMLTestRunner
@@ -269,7 +268,7 @@ class ClientContext:
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
         self.test_commands_enabled = False
-        self.server_parameters: Mapping[str, Any] = {}
+        self.server_parameters = {}
         self._hello = None
         self.is_mongos = False
         self.mongoses = []
