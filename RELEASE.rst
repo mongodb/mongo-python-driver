@@ -36,7 +36,7 @@ Doing a Release
    To test locally, ``python3 setup.py test`` will build the C extensions and
    test. ``python3 tools/clean.py`` will remove the extensions,
    and then ``python3 setup.py --no_ext test`` will run the tests without
-   them. You can also run the doctests: ``tox -e doc-test``.
+   them. You can also run the doctests: ``tox -m doc-test``.
 
 2. Check Jira to ensure all the tickets in this version have been completed.
 

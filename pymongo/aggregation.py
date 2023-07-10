@@ -127,7 +127,7 @@ class _AggregationCommand:
             return self._write_preference
         pref = self._target._read_preference_for(session)
         if self._performs_write and pref != ReadPreference.PRIMARY:
-            self._write_preference = pref = _AggWritePref(pref)
+            self._write_preference = pref = _AggWritePref(pref)  # type: ignore[assignment]
         return pref
 
     def get_cursor(
