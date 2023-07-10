@@ -358,7 +358,7 @@ functions:
           set -o xtrace
           ${PREPARE_SHELL}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-mockupdb
-          
+
   "run doctests":
      - command: shell.exec
        type: test
