@@ -155,6 +155,7 @@ _Hint = Union[str, _Sort]
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
+    from pymongo.read_preferences import _ServerMode
 
 
 class Cursor(Generic[_DocumentType]):
@@ -299,7 +300,7 @@ class Cursor(Generic[_DocumentType]):
 
         self.__codec_options = collection.codec_options
         # Read preference is set when the initial find is sent.
-        self.__read_preference = None
+        self.__read_preference: Optional[_ServerMode] = None
         self.__read_concern = collection.read_concern
 
         self.__query_flags = cursor_type

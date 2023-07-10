@@ -1329,6 +1329,9 @@ class _OpReply:
             valid at server response
           - `codec_options` (optional): an instance of
             :class:`~bson.codec_options.CodecOptions`
+          - `user_fields` (optional): Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
         """
         self.raw_response(cursor_id)
         if legacy_response:
@@ -1401,6 +1404,9 @@ class _OpMsg:
           - `cursor_id` (optional): Ignored, for compatibility with _OpReply.
           - `codec_options` (optional): an instance of
             :class:`~bson.codec_options.CodecOptions`
+          - `user_fields` (optional): Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
         """
         # If _OpMsg is in-use, this cannot be a legacy response.
         assert not legacy_response

@@ -16,7 +16,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -25,7 +35,6 @@ from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
-    from contextlib import _GeneratorContextManager
     from queue import Queue
     from weakref import ReferenceType
 
@@ -244,7 +253,7 @@ class Server:
 
     def get_socket(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> _GeneratorContextManager[SocketInfo]:
+    ) -> ContextManager[SocketInfo]:
         return self.pool.get_socket(handler)
 
     @property

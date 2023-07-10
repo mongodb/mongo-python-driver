@@ -359,7 +359,7 @@ functions:
           ${PREPARE_SHELL}
 
           alias python=${PYTHON_BINARY}
-          python -m tox -e test-mockupdb
+          python -m tox -m test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -1356,7 +1356,7 @@ tasks:
 
     - name: "release-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2004-large
+      run_on: ubuntu2204-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
@@ -1364,7 +1364,7 @@ tasks:
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2004-large
+      run_on: ubuntu2204-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -2296,13 +2296,6 @@ axes:
         display_name: "Archlinux"
         run_on: archlinux-test
         batchtime: 10080  # 7 days
-      - id: debian92
-        display_name: "Debian 9.2"
-        run_on: debian92-test
-        batchtime: 10080  # 7 days
-        variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/debian92/master/latest/libmongocrypt.tar.gz
       - id: macos-1014
         display_name: "macOS 10.14"
         run_on: macos-1014
@@ -2332,14 +2325,14 @@ axes:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
-        run_on: rhel76-small
+        run_on: rhel79-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
-        run_on: rhel84-small
+        run_on: rhel87-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: "/opt/python/3.8/bin/python3"
