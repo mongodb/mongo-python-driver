@@ -485,7 +485,7 @@ else:
             return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS: "CodecOptions[Dict[str, Any]]" = CodecOptions()
+DEFAULT_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:

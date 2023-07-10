@@ -28,7 +28,7 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
-from typing import Any, List
+from typing import Any, List, Mapping
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -615,7 +615,7 @@ def ensure_all_connected(client: MongoClient) -> None:
     Depending on the use-case, the caller may need to clear any event listeners
     that are configured on the client.
     """
-    hello: dict = client.admin.command(HelloCompat.LEGACY_CMD)
+    hello: Mapping[str, Any] = client.admin.command(HelloCompat.LEGACY_CMD)
     if "setName" not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
@@ -626,7 +626,7 @@ def ensure_all_connected(client: MongoClient) -> None:
     def discover():
         i = 0
         while i < 100 and connected_host_list != target_host_list:
-            hello: dict = client.admin.command(
+            hello: Mapping[str, Any] = client.admin.command(
                 HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
             )
             connected_host_list.update([hello["me"]])

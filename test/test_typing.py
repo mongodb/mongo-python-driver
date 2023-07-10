@@ -19,7 +19,28 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
+from test import IntegrationTest, client_context
+from test.utils import rs_or_single_client
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Union,
+    cast,
+)
+
+from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
+from bson.raw_bson import RawBSONDocument
+from bson.son import SON
+from pymongo import ASCENDING, MongoClient
+from pymongo.collection import Collection
+from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
+from pymongo.read_preferences import ReadPreference
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -55,16 +76,6 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context
-from test.utils import rs_or_single_client
-
-from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
-from bson.raw_bson import RawBSONDocument
-from bson.son import SON
-from pymongo import ASCENDING, MongoClient
-from pymongo.collection import Collection
-from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
-from pymongo.read_preferences import ReadPreference
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -164,7 +175,7 @@ class TestPymongo(IntegrationTest):
         self.assertTrue(coll.bulk_write(requests_two).acknowledged)
 
     def test_command(self) -> None:
-        result: Dict = self.client.admin.command("ping")
+        result: Mapping[str, Any] = self.client.admin.command("ping")
         result.items()
 
     def test_list_collections(self) -> None:
@@ -479,7 +490,7 @@ class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
-        result: Dict = client.admin.command("ping")
+        result: MutableMapping[str, Any] = cast(MutableMapping, client.admin.command("ping"))
         result["a"] = 1
 
     @only_type_check

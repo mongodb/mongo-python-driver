@@ -696,12 +696,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
-        codec_options: CodecOptions[Dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
+        codec_options: CodecOptions[Mapping[str, Any]] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         ...
 
     @overload
@@ -730,13 +730,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
         codec_options: Union[
-            CodecOptions[Dict[str, Any]], CodecOptions[_CodecDocumentType]
+            CodecOptions[Mapping[str, Any]], CodecOptions[_CodecDocumentType]
         ] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> Union[Dict[str, Any], _CodecDocumentType]:
+    ) -> Union[Mapping[str, Any], _CodecDocumentType]:
         """Internal command helper."""
         if isinstance(command, str):
             command = SON([(command, value)])
@@ -768,7 +768,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         ...
 
     @overload
@@ -798,7 +798,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Union[Dict[str, Any], _CodecDocumentType]:
+    ) -> Union[Mapping[str, Any], _CodecDocumentType]:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -1176,13 +1176,16 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         with self.__client._socket_for_writes(session) as sock_info:
-            return self._command(
-                sock_info,
-                command,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
+            return cast(
+                Dict[str, Any],
+                self._command(
+                    sock_info,
+                    command,
+                    allowable_errors=["ns not found", 26],
+                    write_concern=self._write_concern_for(session),
+                    parse_write_concern_error=True,
+                    session=session,
+                ),
             )
 
     @_csot.apply
