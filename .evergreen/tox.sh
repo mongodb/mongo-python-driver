@@ -11,6 +11,7 @@ if $PYTHON_BINARY -m tox --version; then
     }
 else # No toolchain present, set up virtualenv before installing tox
     createvirtualenv "$PYTHON_BINARY" toxenv
+    trap "deactivate; rm -rf toxenv" EXIT HUP
     python -m pip install tox
     run_tox() {
       python -m tox "$@"
@@ -18,7 +19,3 @@ else # No toolchain present, set up virtualenv before installing tox
 fi
 
 run_tox "${@:2}"
-
-if command -v deactivate &> /dev/null; then
-    trap "deactivate; rm -rf env" EXIT HUP
-fi
