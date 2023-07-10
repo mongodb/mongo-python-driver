@@ -9,14 +9,6 @@ if $PYTHON_BINARY -m tox --version; then
     run_tox() {
       $PYTHON_BINARY -m tox "$@"
     }
-elif python3 -m tox --version; then
-    run_tox() {
-      python3 -m tox "$@"
-    }
-elif tox --version; then
-    run_tox() {
-      tox "$@"
-    }
 else # No toolchain present, set up virtualenv before installing tox
     createvirtualenv "$PYTHON_BINARY" toxenv
     python -m pip install tox
