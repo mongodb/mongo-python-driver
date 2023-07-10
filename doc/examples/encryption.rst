@@ -659,6 +659,12 @@ as demonstrated by the following example:
   )
   key_vault = key_vault_client["keyvault"]["datakeys"]
   key_vault.drop()
+  # Ensure that two data keys cannot share the same keyAltName.
+  key_vault.create_index(
+      "keyAltNames",
+      unique=True,
+      partialFilterExpression={"keyAltNames": {"$exists": True}},
+  )
   key1_id = client_encryption.create_data_key("local", key_alt_names=["firstName"])
   key2_id = client_encryption.create_data_key("local", key_alt_names=["lastName"])
 
