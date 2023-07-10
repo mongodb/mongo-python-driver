@@ -1016,17 +1016,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def _retryable_read_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
-        value: int = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
         session: Optional[ClientSession] = None,
-        **kwargs: Any,
     ) -> Dict[str, Any]:
         """Same as command but used for retryable read commands."""
-        if read_preference is None:
-            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(
             session: Optional[ClientSession],
@@ -1037,13 +1030,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return self._command(
                 sock_info,
                 command,
-                value,
-                check,
-                allowable_errors,
-                read_preference,
-                codec_options,
+                read_preference=read_preference,
                 session=session,
-                **kwargs,
             )
 
         return self.__client._retryable_read(_cmd, read_preference, session)
