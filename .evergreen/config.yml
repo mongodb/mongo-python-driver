@@ -563,6 +563,7 @@ functions:
 
           set -o errexit
           set -o xtrace
+          # This is required for pypy3.7 UTF encoding
           export LC_ALL=en_US.UTF-8
           ${PYTHON_BINARY} -m tox -e test-atlas
 
