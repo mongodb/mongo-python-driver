@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional
 
 try:
     import pymongocrypt  # noqa: F401
@@ -245,7 +245,7 @@ class RangeOpts:
         self.precision = precision
 
     @property
-    def document(self) -> Mapping[str, Any]:
+    def document(self) -> Dict[str, Any]:
         doc = {}
         for k, v in [
             ("sparsity", int64.Int64(self.sparsity)),

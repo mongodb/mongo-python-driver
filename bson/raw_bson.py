@@ -51,7 +51,7 @@ blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
 """
 
-from typing import Any, ItemsView, Iterator, Mapping, Optional
+from typing import Any, Dict, ItemsView, Iterator, Mapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
@@ -62,7 +62,7 @@ from bson.son import SON
 
 def _inflate_bson(
     bson_bytes: bytes, codec_options: CodecOptions, raw_array: bool = False
-) -> Mapping[Any, Any]:
+) -> Dict[Any, Any]:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:
