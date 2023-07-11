@@ -1601,31 +1601,42 @@ int write_dict(PyObject* self, buffer_t buffer,
         }
     }
 
-    iter = PyObject_GetIter(dict);
-    if (iter == NULL) {
-        return 0;
-    }
-    while ((key = PyIter_Next(iter)) != NULL) {
-        PyObject* value = PyObject_GetItem(dict, key);
-        if (!value) {
-            PyErr_SetObject(PyExc_KeyError, key);
-            Py_DECREF(key);
-            Py_DECREF(iter);
+    if (PyDict_Check(dict)) {
+        PyObject* value;
+        Py_ssize_t pos = 0;
+        while (PyDict_Next(dict, &pos, &key, &value)) {
+            if (!decode_and_write_pair(self, buffer, key, value,
+                                    check_keys, options, top_level)) {
+                return 0;
+            }
+        }
+    } else {
+        iter = PyObject_GetIter(dict);
+        if (iter == NULL) {
             return 0;
         }
-        if (!decode_and_write_pair(self, buffer, key, value,
-                                   check_keys, options, top_level)) {
+        while ((key = PyIter_Next(iter)) != NULL) {
+            PyObject* value = PyObject_GetItem(dict, key);
+            if (!value) {
+                PyErr_SetObject(PyExc_KeyError, key);
+                Py_DECREF(key);
+                Py_DECREF(iter);
+                return 0;
+            }
+            if (!decode_and_write_pair(self, buffer, key, value,
+                                    check_keys, options, top_level)) {
+                Py_DECREF(key);
+                Py_DECREF(value);
+                Py_DECREF(iter);
+                return 0;
+            }
             Py_DECREF(key);
             Py_DECREF(value);
-            Py_DECREF(iter);
+        }
+        Py_DECREF(iter);
+        if (PyErr_Occurred()) {
             return 0;
         }
-        Py_DECREF(key);
-        Py_DECREF(value);
-    }
-    Py_DECREF(iter);
-    if (PyErr_Occurred()) {
-        return 0;
     }
 
     /* write null byte and fill in length */
