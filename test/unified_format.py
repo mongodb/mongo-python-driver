@@ -1108,8 +1108,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.fail(f"unknown cursorType: {cursor_type}")
 
         if "maxTimeMS" in kwargs:
-            kwargs["max_time_ms"] = kwargs["maxTimeMS"]
+            kwargs["max_await_time_ms"] = kwargs["maxTimeMS"]
             del kwargs["maxTimeMS"]
+
+        if "batch_size" in kwargs:
+            del kwargs["batch_size"]
 
         return target.cursor_command(**kwargs)
 

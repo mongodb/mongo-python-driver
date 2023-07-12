@@ -911,14 +911,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        batch_size: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
+        max_await_time_ms: Optional[int] = None,
         **kwargs: Any,
     ) -> CommandCursor:
         """Issue a MongoDB command and parse the response as a cursor.
@@ -939,10 +936,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
           - `value` (optional): value to use for the command verb when
             `command` is passed as a string
-          - `check` (optional): check the response for errors, raising
-            :class:`~pymongo.errors.OperationFailure` if there are any
-          - `allowable_errors`: if `check` is ``True``, error messages
-            in this list will be ignored by error-checking
           - `read_preference` (optional): The read preference for this
             operation. See :mod:`~pymongo.read_preferences` for options.
             If the provided `session` is in a transaction, defaults to the
@@ -953,11 +946,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             instance.
           - `session` (optional): A
             :class:`~pymongo.client_session.ClientSession`.
-          - `comment` (optional): A user-provided comment to attach to this
+          - `comment` (optional): A user-provided comment to attach to future getMores for this
             command.
+          - `max_await_time_ms` (optional): The number of ms to wait for more data on future getMores for this command.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
-
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
@@ -989,8 +982,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     sock_info,
                     command,
                     value,
-                    check,
-                    allowable_errors,
+                    True,
+                    None,
                     read_preference,
                     opts,
                     session=tmp_session,
@@ -1002,8 +995,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         coll,
                         response["cursor"],
                         sock_info.address,
-                        batch_size=batch_size or 0,
-                        max_await_time_ms=max_time_ms,
+                        max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
                         explicit_session=session is not None,
                         comment=comment,
