@@ -43,8 +43,26 @@ jobs:
       - name: Run tests
         run: |
           tox -m test
-      - name: Doc Test
-        if: ${{ startsWith(matrix.python-version, '3.11') }}
+
+  doctest:
+    runs-on: ubuntu-latest
+    name: DocTest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+          cache: 'pip'
+          cache-dependency-path: 'setup.py'
+      - name: Install dependencies
+        run: |
+          pip install tox
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: 4.4
+      - name: Run tests
         run: |
           tox -m doc-test
 
