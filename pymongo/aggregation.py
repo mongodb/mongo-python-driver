@@ -25,7 +25,6 @@ from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
-    from bson import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
     from pymongo.command_cursor import CommandCursor
