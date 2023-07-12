@@ -357,9 +357,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-
-          alias python=${PYTHON_BINARY}
-          python -m tox -m test-mockupdb
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-mockupdb
 
   "run doctests":
      - command: shell.exec

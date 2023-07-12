@@ -53,7 +53,6 @@ bytes [#bytes]_                          binary         both
 .. [#bytes] The bytes type is encoded as BSON binary with
    subtype 0. It will be decoded back to bytes.
 """
-
 import datetime
 import itertools
 import os
@@ -84,6 +83,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from bson.binary import (
@@ -1025,9 +1025,21 @@ def encode(
     return _dict_to_bson(document, check_keys, codec_options)
 
 
+@overload
+def decode(data: "_ReadableBuffer", codec_options: None = None) -> Dict[str, Any]:
+    ...
+
+
+@overload
+def decode(
+    data: "_ReadableBuffer", codec_options: "CodecOptions[_DocumentType]"
+) -> "_DocumentType":
+    ...
+
+
 def decode(
     data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "_DocumentType":
+) -> Union[Dict[str, Any], "_DocumentType"]:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
