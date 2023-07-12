@@ -1167,16 +1167,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         models = [SearchIndexModel(**i) for i in kwargs["models"]]
         return target.create_search_indexes(models)
 
-    def _collectionOperation_dropSearchIndex(self, target, *args, **kwargs):
-        return target.drop_search_index(*args, **kwargs)
-
     def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
         name = kwargs.get("name")
         agg_kwargs = kwargs.get("aggregation_options", dict())
         return list(target.list_search_indexes(name, **agg_kwargs))
-
-    def _collectionOperation_updateSearchIndex(self, target, *args, **kwargs):
-        return target.update_search_index(*args, **kwargs)
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":

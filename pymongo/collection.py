@@ -38,7 +38,7 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import CodecOptions
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
@@ -2391,9 +2391,25 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
             pipeline = [{"$listSearchIndexes": {"name": name}}]
-        kwargs["codec_options"] = CodecOptions(SON)
-        value = self.aggregate(pipeline, session, comment=comment, **kwargs)
-        return cast(CommandCursor[Mapping[str, Any]], value)
+
+        coll = self.with_options(
+            codec_options=DEFAULT_CODEC_OPTIONS, read_preference=ReadPreference.PRIMARY
+        )
+        cmd = _CollectionAggregationCommand(
+            coll,
+            CommandCursor,
+            pipeline,
+            kwargs,
+            explicit_session=session is not None,
+            user_fields={"cursor": {"firstBatch": 1}},
+        )
+
+        return self.__database.client._retryable_read(
+            cmd.get_cursor,
+            cmd.get_read_preference(session),
+            session,
+            retryable=not cmd._performs_write,
+        )
 
     def create_search_index(
         self,
@@ -2506,6 +2522,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
             )
 
     def update_search_index(
@@ -2542,6 +2559,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
             )
 
     def options(
@@ -2605,7 +2623,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> Union[CommandCursor[_DocumentType], RawBatchCursor[_DocumentType]]:
         if comment is not None:
             kwargs["comment"] = comment
-        codec_options = kwargs.pop("codec_options", None)
         cmd = aggregation_command(
             self,
             cursor_class,
@@ -2614,7 +2631,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             explicit_session,
             let,
             user_fields={"cursor": {"firstBatch": 1}},
-            codec_options=codec_options,
         )
 
         return self.__database.client._retryable_read(
