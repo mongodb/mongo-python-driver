@@ -1,6 +1,27 @@
 Changelog
 =========
 
+Changes in Version 4.4.1
+------------------------
+
+Version 4.4.1 fixes the following bugs:
+
+- Fixed a bug where pymongo would raise a ``ConfigurationError: Invalid SRV host``
+  error when connecting to a "mongodb+srv://" URI that included capital letters
+  in the SRV hosts returned from DNS. (`PYTHON-3800`_).
+- Fixed a minor reference counting bug in the C extension (`PYTHON-3798`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.4.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3798: https://jira.mongodb.org/browse/PYTHON-3798
+.. _PYTHON-3800: https://jira.mongodb.org/browse/PYTHON-3800
+.. _PyMongo 4.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36329
+
+
 Changes in Version 4.4
 -----------------------
 
