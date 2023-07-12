@@ -1205,64 +1205,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         buffer_write_int32_at_position(
             buffer, length_location, (int32_t)length);
         return 1;
-    } else if (PyTuple_Check(value)) {
-        Py_ssize_t items, i;
-        int start_position,
-            length_location,
-            length;
-        char zero = 0;
-
-        *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x04;
-        start_position = pymongo_buffer_get_position(buffer);
-
-        /* save space for length */
-        length_location = pymongo_buffer_save_space(buffer, 4);
-        if (length_location == -1) {
-            return 0;
-        }
-
-        if ((items = PyTuple_Size(value)) > BSON_MAX_SIZE) {
-            PyObject* BSONError = _error("BSONError");
-            if (BSONError) {
-                PyErr_SetString(BSONError,
-                                "Too many items to serialize.");
-                Py_DECREF(BSONError);
-            }
-            return 0;
-        }
-        for(i = 0; i < items; i++) {
-            int list_type_byte = pymongo_buffer_save_space(buffer, 1);
-            char name[BUF_SIZE];
-            PyObject* item_value;
-
-            if (list_type_byte == -1) {
-                return 0;
-            }
-            int res = LL2STR(name, (long long)i);
-            if (res == -1) {
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
-                return 0;
-            }
-
-            if (!(item_value = PyTuple_GetItem(value, i)))
-                return 0;
-            if (!write_element_to_buffer(self, buffer, list_type_byte,
-                                         item_value, check_keys, options,
-                                         0, 0)) {
-                return 0;
-            }
-        }
-
-        /* write null byte and fill in length */
-        if (!buffer_write_bytes(buffer, &zero, 1)) {
-            return 0;
-        }
-        length = pymongo_buffer_get_position(buffer) - start_position;
-        buffer_write_int32_at_position(
-            buffer, length_location, (int32_t)length);
-        return 1;
     /* Python3 special case. Store bytes as BSON binary subtype 0. */
     } else if (PyBytes_Check(value)) {
         char subtype = 0;
