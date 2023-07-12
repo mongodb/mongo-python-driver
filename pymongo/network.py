@@ -13,12 +13,23 @@
 # limitations under the License.
 
 """Internal network layer helper methods."""
+from __future__ import annotations
 
 import datetime
 import errno
 import socket
 import struct
 import time
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, message, ssl_support
@@ -30,37 +41,50 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.message import _UNPACK_REPLY, _OpMsg
+from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
+
+if TYPE_CHECKING:
+    from bson import CodecOptions
+    from pymongo.client_session import ClientSession
+    from pymongo.collation import Collation
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.mongo_client import MongoClient
+    from pymongo.monitoring import _EventListeners
+    from pymongo.pool import SocketInfo
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import _Address
+    from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 def command(
-    sock_info,
-    dbname,
-    spec,
-    is_mongos,
-    read_preference,
-    codec_options,
-    session,
-    client,
-    check=True,
-    allowable_errors=None,
-    address=None,
-    listeners=None,
-    max_bson_size=None,
-    read_concern=None,
-    parse_write_concern_error=False,
-    collation=None,
-    compression_ctx=None,
-    use_op_msg=False,
-    unacknowledged=False,
-    user_fields=None,
-    exhaust_allowed=False,
-    write_concern=None,
-):
+    sock_info: SocketInfo,
+    dbname: str,
+    spec: MutableMapping[str, Any],
+    is_mongos: bool,
+    read_preference: _ServerMode,
+    codec_options: CodecOptions,
+    session: Optional[ClientSession],
+    client: Optional[MongoClient],
+    check: bool = True,
+    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    address: Optional[_Address] = None,
+    listeners: Optional[_EventListeners] = None,
+    max_bson_size: Optional[int] = None,
+    read_concern: Optional[ReadConcern] = None,
+    parse_write_concern_error: bool = False,
+    collation: Optional[Collation] = None,
+    compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    use_op_msg: bool = False,
+    unacknowledged: bool = False,
+    user_fields: Optional[Mapping[str, Any]] = None,
+    exhaust_allowed: bool = False,
+    write_concern: Optional[WriteConcern] = None,
+) -> Dict[str, Any]:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -141,6 +165,7 @@ def command(
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
+        assert listeners is not None
         listeners.publish_command_start(
             orig, dbname, request_id, address, service_id=sock_info.service_id
         )
@@ -176,12 +201,14 @@ def command(
                 failure = exc.details
             else:
                 failure = message._convert_exception(exc)
-            listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=sock_info.service_id
-            )
+        assert listeners is not None
+        listeners.publish_command_failure(
+            duration, failure, name, request_id, address, service_id=sock_info.service_id
+        )
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
+        assert listeners is not None
         listeners.publish_command_success(
             duration,
             response_doc,
@@ -202,7 +229,9 @@ def command(
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
-def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
+def receive_message(
+    sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
@@ -247,7 +276,7 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
 _POLL_TIMEOUT = 0.5
 
 
-def wait_for_read(sock_info, deadline):
+def wait_for_read(sock_info: SocketInfo, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     context = sock_info.cancel_context
     # Only Monitor connections can be cancelled.
@@ -284,7 +313,9 @@ def wait_for_read(sock_info, deadline):
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-def _receive_data_on_socket(sock_info, length, deadline):
+def _receive_data_on_socket(
+    sock_info: SocketInfo, length: int, deadline: Optional[float]
+) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0
@@ -294,7 +325,7 @@ def _receive_data_on_socket(sock_info, length, deadline):
             # CSOT: Update timeout. When the timeout has expired perform one
             # final non-blocking recv. This helps avoid spurious timeouts when
             # the response is actually already buffered on the client.
-            if _csot.get_timeout():
+            if _csot.get_timeout() and deadline is not None:
                 sock_info.set_socket_timeout(max(deadline - time.monotonic(), 0))
             chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
