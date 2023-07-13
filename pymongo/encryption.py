@@ -23,6 +23,7 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generic,
     Iterator,
     Mapping,
@@ -388,8 +389,8 @@ class _Encrypter:
         self._closed = False
 
     def encrypt(
-        self, database: Database, cmd: Mapping[str, Any], codec_options: CodecOptions
-    ) -> Mapping[Any, Any]:
+        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions
+    ) -> Dict[Any, Any]:
         """Encrypt a MongoDB command.
 
         :Parameters:
