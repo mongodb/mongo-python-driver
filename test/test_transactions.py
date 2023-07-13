@@ -17,9 +17,6 @@
 import os
 import sys
 from io import BytesIO
-
-sys.path[0:0] = [""]
-
 from test import client_context, unittest
 from test.utils import (
     OvertCommandListener,
@@ -29,6 +26,7 @@ from test.utils import (
     wait_until,
 )
 from test.utils_spec_runner import SpecRunner
+from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
@@ -47,6 +45,9 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+
+sys.path[0:0] = [""]
+
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "legacy")
@@ -335,10 +336,12 @@ class TestTransactions(TransactionsBase):
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
-        ops = [InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)]
+        ops: List[InsertOne[RawBSONDocument]] = [
+            InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)
+        ]
         with client.start_session() as session:
             with session.start_transaction():
-                coll.bulk_write(ops, session=session)
+                coll.bulk_write(ops, session=session)  # type: ignore[arg-type]
         # Assert commands were constructed properly.
         self.assertEqual(
             ["insert", "insert", "commitTransaction"], listener.started_command_names()

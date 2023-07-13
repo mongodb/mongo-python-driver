@@ -65,9 +65,8 @@ from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
-    from pymongo.operations import _IndexKeyHint
     from pymongo.pool import SocketInfo
-    from pymongo.typings import _DocumentType
+    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
@@ -205,7 +204,7 @@ class _Bulk:
         else:
             return _BulkWriteContext
 
-    def add_insert(self, document: MutableMapping[str, Any]) -> None:
+    def add_insert(self, document: _DocumentOut) -> None:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
@@ -216,15 +215,12 @@ class _Bulk:
     def add_update(
         self,
         selector: Mapping[str, Any],
-        update: Union[
-            Mapping[str, Any],
-            List[Mapping[str, Any]],
-        ],
+        update: Union[Mapping[str, Any], _Pipeline],
         multi: bool = False,
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -251,7 +247,7 @@ class _Bulk:
         replacement: Mapping[str, Any],
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -269,7 +265,7 @@ class _Bulk:
         selector: Mapping[str, Any],
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = SON([("q", selector), ("limit", limit)])
