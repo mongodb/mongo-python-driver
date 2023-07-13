@@ -15,7 +15,7 @@
 """Type aliases used by PyMongo"""
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, Union
 
-from bson.typings import _DocumentType, _DocumentTypeArg
+from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 
 if TYPE_CHECKING:
     from pymongo.collation import Collation
@@ -36,6 +36,7 @@ def strip_optional(elem):
 
 
 __all__ = [
+    "_DocumentOut",
     "_DocumentType",
     "_DocumentTypeArg",
     "_Address",

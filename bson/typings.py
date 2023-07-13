@@ -13,14 +13,17 @@
 # limitations under the License.
 
 """Type aliases used by bson"""
-from typing import TYPE_CHECKING, Any, Mapping, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, TypeVar, Union
 
 if TYPE_CHECKING:
     from array import array
     from mmap import mmap
 
+    from bson.raw_bson import RawBSONDocument
+
 
 # Common Shared Types.
+_DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 _DocumentTypeArg = TypeVar("_DocumentTypeArg", bound=Mapping[str, Any])
 _ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]
