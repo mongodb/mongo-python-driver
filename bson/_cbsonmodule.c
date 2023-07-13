@@ -1184,9 +1184,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 return 0;
             }
             if (is_list) {
-                item_value = PyList_GetItem(value, i);
+                item_value = PyList_GET_ITEM(value, i);
             } else {
-                item_value = PyTuple_GetItem(value, i);
+                item_value = PyTuple_GET_ITEM(value, i);
             }
             if (!item_value) {
                 return 0;
