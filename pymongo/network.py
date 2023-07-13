@@ -201,10 +201,10 @@ def command(
                 failure = exc.details
             else:
                 failure = message._convert_exception(exc)
-        assert listeners is not None
-        listeners.publish_command_failure(
-            duration, failure, name, request_id, address, service_id=sock_info.service_id
-        )
+            assert listeners is not None
+            listeners.publish_command_failure(
+                duration, failure, name, request_id, address, service_id=sock_info.service_id
+            )
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
