@@ -13,13 +13,11 @@
 # limitations under the License.
 
 """Type aliases used by bson"""
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Mapping, TypeVar, Union
 
 if TYPE_CHECKING:
     from array import array
     from mmap import mmap
-
-    from bson.raw_bson import RawBSONDocument
 
 
 # Common Shared Types.
