@@ -19,7 +19,7 @@ import logging as _logging
 import re as _re
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Iterable, List, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Iterable, List, Optional, Type, Union
 
 from cryptography.exceptions import InvalidSignature as _InvalidSignature
 from cryptography.hazmat.backends import default_backend as _default_backend
@@ -30,6 +30,12 @@ from cryptography.hazmat.primitives.asymmetric.ec import (
 )
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15 as _PKCS1v15
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey as _RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.x448 import (
+    X448PublicKey as _X448PublicKey,
+)
+from cryptography.hazmat.primitives.asymmetric.x25519 import (
+    X25519PublicKey as _X25519PublicKey,
+)
 from cryptography.hazmat.primitives.hashes import SHA1 as _SHA1
 from cryptography.hazmat.primitives.hashes import Hash as _Hash
 from cryptography.hazmat.primitives.serialization import Encoding as _Encoding
@@ -54,7 +60,15 @@ from requests.exceptions import RequestException as _RequestException
 from pymongo import _csot
 
 if TYPE_CHECKING:
-    from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa
+    from cryptography.hazmat.primitives.asymmetric import (
+        dsa,
+        ec,
+        ed448,
+        ed25519,
+        rsa,
+        x448,
+        x25519,
+    )
     from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
     from cryptography.hazmat.primitives.hashes import HashAlgorithm
     from cryptography.x509 import Certificate, Name
@@ -71,6 +85,8 @@ if TYPE_CHECKING:
         ec.EllipticCurvePublicKey,
         ed25519.Ed25519PublicKey,
         ed448.Ed448PublicKey,
+        x25519.X25519PublicKey,
+        x448.X448PublicKey,
     ]
 
 # Note: the functions in this module generally return 1 or 0. The reason
@@ -132,6 +148,10 @@ def _verify_signature(
             key.verify(signature, data, algorithm)  # type: ignore[arg-type]
         elif isinstance(key, _EllipticCurvePublicKey):
             key.verify(signature, data, _ECDSA(algorithm))  # type: ignore[arg-type]
+        elif isinstance(key, _X25519PublicKey) or isinstance(
+            key, _X448PublicKey
+        ):  # Curve25519 and Curve448 keys do not require verification
+            return 1
         else:
             key.verify(signature, data)
     except _InvalidSignature:
@@ -220,7 +240,7 @@ def _verify_response_signature(issuer: Certificate, response: OCSPResponse) -> i
             _LOGGER.debug("Delegate not authorized for OCSP signing")
             return 0
         if not _verify_signature(
-            cast(CertificateIssuerPublicKeyTypes, issuer.public_key()),
+            issuer.public_key(),
             responder_cert.signature,
             responder_cert.signature_hash_algorithm,
             responder_cert.tbs_certificate_bytes,
@@ -229,7 +249,7 @@ def _verify_response_signature(issuer: Certificate, response: OCSPResponse) -> i
             return 0
     # RFC6960, Section 3.2, Number 2
     ret = _verify_signature(
-        cast(CertificateIssuerPublicKeyTypes, responder_cert.public_key()),
+        responder_cert.public_key(),
         response.signature,
         response.signature_hash_algorithm,
         response.tbs_response_bytes,
