@@ -187,12 +187,12 @@ from __future__ import annotations
 
 import datetime
 from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
-from pymongo.typings import _Address, _DocumentOut
+from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.server_description import ServerDescription
@@ -619,7 +619,7 @@ class CommandStartedEvent(_CommandEvent):
 
     def __init__(
         self,
-        command: _DocumentOut,
+        command: Mapping[str, Any],
         database_name: str,
         request_id: int,
         connection_id: _Address,
@@ -635,13 +635,13 @@ class CommandStartedEvent(_CommandEvent):
         )
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
-            self.__cmd: _DocumentOut = {}
+            self.__cmd: Mapping[str, Any] = {}
         else:
             self.__cmd = command
         self.__db = database_name
 
     @property
-    def command(self) -> _DocumentOut:
+    def command(self) -> Mapping[str, Any]:
         """The command document."""
         return self.__cmd
 
@@ -680,7 +680,7 @@ class CommandSucceededEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        reply: _DocumentOut,
+        reply: Mapping[str, Any],
         command_name: str,
         request_id: int,
         connection_id: _Address,
@@ -693,7 +693,7 @@ class CommandSucceededEvent(_CommandEvent):
         self.__duration_micros = _to_micros(duration)
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, reply):
-            self.__reply: _DocumentOut = {}
+            self.__reply: Mapping[str, Any] = {}
         else:
             self.__reply = reply
 
@@ -703,7 +703,7 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def reply(self) -> _DocumentOut:
+    def reply(self) -> Mapping[str, Any]:
         """The server failure document for this operation."""
         return self.__reply
 
@@ -739,7 +739,7 @@ class CommandFailedEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        failure: _DocumentOut,
+        failure: Mapping[str, Any],
         command_name: str,
         request_id: int,
         connection_id: _Address,
@@ -758,7 +758,7 @@ class CommandFailedEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def failure(self) -> _DocumentOut:
+    def failure(self) -> Mapping[str, Any]:
         """The server failure document for this operation."""
         return self.__failure
 
