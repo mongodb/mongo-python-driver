@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
     from pymongo.server import Server
-    from pymongo.typings import _Pipeline
+    from pymongo.typings import _DocumentType, _Pipeline
 
 
 class _AggregationCommand:
@@ -132,11 +132,11 @@ class _AggregationCommand:
 
     def get_cursor(
         self,
-        session: ClientSession,
+        session: Optional[ClientSession],
         server: Server,
         sock_info: SocketInfo,
         read_preference: _ServerMode,
-    ) -> CommandCursor:
+    ) -> CommandCursor[_DocumentType]:
         # Serialize command.
         cmd = SON([("aggregate", self._aggregation_target), ("pipeline", self._pipeline)])
         cmd.update(self._options)

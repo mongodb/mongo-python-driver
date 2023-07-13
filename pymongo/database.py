@@ -554,7 +554,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return self.client._retryable_read(
-                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write
+                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write  # type: ignore[arg-type]
             )
 
     def watch(
@@ -1068,7 +1068,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[Dict[str, Any]]:
+    ) -> CommandCursor[_DocumentType]:
         """Get a cursor over the collections of this database.
 
         :Parameters:

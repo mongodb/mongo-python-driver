@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Utilities for choosing which member of a replica set to read from."""
-
+from abc import abstractmethod
 from collections import abc
 from typing import Any, Dict, Mapping, Optional, Sequence
 
@@ -249,6 +249,10 @@ class _ServerMode:
         self.__tag_sets = _validate_tag_sets(value["tag_sets"])
         self.__max_staleness = _validate_max_staleness(value["max_staleness"])
         self.__hedge = _validate_hedge(value["hedge"])
+
+    @abstractmethod
+    def __call__(self, selection: Any) -> Any:
+        ...
 
 
 class Primary(_ServerMode):
