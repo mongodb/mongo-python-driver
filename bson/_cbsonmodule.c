@@ -859,6 +859,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     PyObject* new_value = NULL;
     int retval;
     PyObject* uuid_type;
+    int is_list;
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
      * problems with python sub interpreters. Our custom types should
@@ -1138,7 +1139,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     } else if (PyDict_Check(value)) {
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x03;
         return write_dict(self, buffer, value, check_keys, options, 0);
-    } else if (PyList_Check(value) || PyTuple_Check(value)) {
+    } else if ((is_list = PyList_Check(value)) || PyTuple_Check(value)) {
         Py_ssize_t items, i;
         int start_position,
             length_location,
@@ -1153,8 +1154,12 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         if (length_location == -1) {
             return 0;
         }
-
-        if ((items = PySequence_Size(value)) > BSON_MAX_SIZE) {
+        if (is_list) {
+            items = PyList_Size(value);
+        } else {
+            items = PyTuple_Size(value);
+        }
+        if (items > BSON_MAX_SIZE) {
             PyObject* BSONError = _error("BSONError");
             if (BSONError) {
                 PyErr_SetString(BSONError,
@@ -1178,16 +1183,19 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
-
-            if (!(item_value = PySequence_GetItem(value, i)))
+            if (is_list) {
+                item_value = PyList_GET_ITEM(value, i);
+            } else {
+                item_value = PyTuple_GET_ITEM(value, i);
+            }
+            if (!item_value) {
                 return 0;
+            }
             if (!write_element_to_buffer(self, buffer, list_type_byte,
                                          item_value, check_keys, options,
                                          0, 0)) {
-                Py_DECREF(item_value);
                 return 0;
             }
-            Py_DECREF(item_value);
         }
 
         /* write null byte and fill in length */

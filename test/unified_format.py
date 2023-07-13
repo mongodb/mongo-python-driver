@@ -1098,6 +1098,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
+        batch_size = 0
 
         cursor_type = kwargs.pop("cursor_type", "nonTailable")
         if cursor_type == CursorType.TAILABLE:
@@ -1109,10 +1110,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.fail(f"unknown cursorType: {cursor_type}")
 
         if "maxTimeMS" in kwargs:
-            kwargs["max_time_ms"] = kwargs["maxTimeMS"]
-            del kwargs["maxTimeMS"]
+            kwargs["max_await_time_ms"] = kwargs.pop("maxTimeMS")
 
-        return target.cursor_command(**kwargs)
+        if "batch_size" in kwargs:
+            batch_size = kwargs.pop("batch_size")
+
+        cursor = target.cursor_command(**kwargs)
+
+        if batch_size > 0:
+            cursor.batch_size(batch_size)
+
+        return cursor
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
