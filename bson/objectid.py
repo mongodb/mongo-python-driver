@@ -183,9 +183,8 @@ class ObjectId(object):
     def __validate(self, oid: Any) -> None:
         """Validate and use the given id for this ObjectId.
 
-        Raises TypeError if id is not an instance of
-        ((:class:`str` or :class:`bytes`
-        in python 3), ObjectId) and InvalidId if it is not a
+        Raises TypeError if id is not an instance of :class:`str`,
+        :class:`bytes`, or ObjectId. Raises InvalidId if it is not a
         valid ObjectId.
 
         :Parameters:
