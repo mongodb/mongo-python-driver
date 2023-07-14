@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -995,7 +995,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of Code
 
 
 def encode(
-    document: "_DocumentIn",
+    document: Mapping[str, Any],
     check_keys: bool = False,
     codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
 ) -> bytes:
@@ -1343,7 +1343,7 @@ class BSON(bytes):
     @classmethod
     def encode(
         cls: Type["BSON"],
-        document: "_DocumentIn",
+        document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
     ) -> "BSON":
