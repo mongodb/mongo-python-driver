@@ -518,12 +518,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `tlsCertificateKeyFile`: A file containing the client certificate
             and private key. Implies ``tls=True``. Defaults to ``None``.
           - `tlsCRLFile`: A file containing a PEM or DER formatted
-            certificate revocation list. Only supported by python 2.7.9+
-            (pypy 2.5.1+). Implies ``tls=True``. Defaults to ``None``.
+            certificate revocation list. Implies ``tls=True``. Defaults to
+            ``None``.
           - `tlsCertificateKeyFilePassword`: The password or passphrase for
             decrypting the private key in ``tlsCertificateKeyFile``. Only
-            necessary if the private key is encrypted. Only supported by
-            python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults to ``None``.
+            necessary if the private key is encrypted. Defaults to ``None``.
           - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
             certificate revocation status checking via the OCSP responder
             specified on the server certificate.

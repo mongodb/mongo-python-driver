@@ -529,8 +529,8 @@ class TestBSON(unittest.TestCase):
     def test_bytes_as_keys(self):
         doc = {b"foo": "bar"}
         # Since `bytes` are stored as Binary you can't use them
-        # as keys in python 3.x. Using binary data as a key makes
-        # no sense in BSON anyway and little sense in python.
+        # as keys. Using binary data as a key makes no sense in BSON
+        # anyway and little sense in python.
         self.assertRaises(InvalidDocument, encode, doc)
 
     def test_datetime_encode_decode(self):

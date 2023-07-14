@@ -663,9 +663,8 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
 
 def _make_name(string: str) -> bytes:
     """Make a 'C' string suitable for a BSON key."""
-    # Keys can only be text in python 3.
     if "\x00" in string:
-        raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
+        raise InvalidDocument("BSON keys must not contain a NUL character")
     return _utf_8_encode(string)[0] + b"\x00"
 
 

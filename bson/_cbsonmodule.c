@@ -3211,7 +3211,6 @@ PyInit__cbson(void)
         (void *) buffer_write_int32_at_position;
     _cbson_API[_cbson_downcast_and_check_INDEX] = (void *) _downcast_and_check;
 
-    /* PyCapsule is new in python 3.1 */
     c_api_object = PyCapsule_New((void *) _cbson_API, "_cbson._C_API", NULL);
     if (c_api_object == NULL)
         INITERROR;
