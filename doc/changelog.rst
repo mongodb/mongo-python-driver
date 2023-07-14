@@ -2,8 +2,13 @@ Changelog
 =========
 
 Changes in Version 4.5
------------------------
-
+----------------------
+- Added new helper methods for Atlas Search Index (requires MongoDB Server 7.0+):
+  :meth:`~pymongo.collection.Collection.list_search_indexes`,
+  :meth:`~pymongo.collection.Collection.create_search_index`,
+  :meth:`~pymongo.collection.Collection.create_search_indexes`,
+  :meth:`~pymongo.collection.Collection.drop_search_index`,
+  :meth:`~pymongo.collection.Collection.update_search_index`
 - Added :meth:`~pymongo.database.Database.cursor_command`
   and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
 

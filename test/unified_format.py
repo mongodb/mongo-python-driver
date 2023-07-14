@@ -108,6 +108,7 @@ from pymongo.monitoring import (
     _PoolEvent,
     _ServerEvent,
 )
+from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -1166,6 +1167,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
+
+    def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
+        models = [SearchIndexModel(**i) for i in kwargs["models"]]
+        return target.create_search_indexes(models)
+
+    def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
+        name = kwargs.get("name")
+        agg_kwargs = kwargs.get("aggregation_options", dict())
+        return list(target.list_search_indexes(name, **agg_kwargs))
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":

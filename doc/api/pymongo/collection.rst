@@ -61,6 +61,11 @@
       .. automethod:: drop_indexes
       .. automethod:: list_indexes
       .. automethod:: index_information
+      .. automethod:: create_search_index
+      .. automethod:: create_search_indexes
+      .. automethod:: drop_search_index
+      .. automethod:: list_search_indexes
+      .. automethod:: update_search_index
       .. automethod:: drop
       .. automethod:: rename
       .. automethod:: options
