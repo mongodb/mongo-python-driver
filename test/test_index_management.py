@@ -20,9 +20,32 @@ import unittest
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 
+from pymongo.errors import OperationFailure
+from pymongo.operations import SearchIndexModel
+
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "index_management")
+
+
+class TestCreateSearchIndex(IntegrationTest):
+    @client_context.require_version_min(7, 0, -1)
+    @client_context.require_no_serverless
+    def test_inputs(self):
+        coll = self.client.test.test
+        coll.drop()
+        definition = dict(mappings=dict(dynamic=True))
+        model_kwarg_list = [
+            dict(definition=definition, name=None),
+            dict(definition=definition, name="test"),
+        ]
+        for model_kwargs in model_kwarg_list:
+            model = SearchIndexModel(**model_kwargs)
+            with self.assertRaises(OperationFailure):
+                coll.create_search_index(model)
+            with self.assertRaises(OperationFailure):
+                coll.create_search_index(model_kwargs)
 
 
 globals().update(
