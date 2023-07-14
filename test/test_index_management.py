@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Run the auth spec tests."""
+from __future__ import annotations
 
 import os
 import sys
 import unittest
+from typing import Any, Mapping
 
 sys.path[0:0] = [""]
 
@@ -36,7 +38,7 @@ class TestCreateSearchIndex(IntegrationTest):
         coll = self.client.test.test
         coll.drop()
         definition = dict(mappings=dict(dynamic=True))
-        model_kwarg_list = [
+        model_kwarg_list: list[Mapping[str, Any]] = [
             dict(definition=definition, name=None),
             dict(definition=definition, name="test"),
         ]
