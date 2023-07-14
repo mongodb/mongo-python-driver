@@ -148,8 +148,8 @@ def _verify_signature(
             key.verify(signature, data, algorithm)  # type: ignore[arg-type]
         elif isinstance(key, _EllipticCurvePublicKey):
             key.verify(signature, data, _ECDSA(algorithm))  # type: ignore[arg-type]
-        elif isinstance(key, _X25519PublicKey) or isinstance(
-            key, _X448PublicKey
+        elif isinstance(
+            key, (_X25519PublicKey, _X448PublicKey)
         ):  # Curve25519 and Curve448 keys do not require verification
             return 1
         else:
