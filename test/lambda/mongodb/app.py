@@ -101,6 +101,7 @@ client = MongoClient(os.environ["MONGODB_URI"], event_listeners=listeners)
 # Populate the connection pool.
 client.lambdaTest.list_collections()
 
+
 # Create the response to send back.
 def create_response():
     return dict(
@@ -121,13 +122,11 @@ def reset():
     total_command_duration = 0
 
 
-"""
-The handler function itself performs an insert/delete and returns the
-id of the document in play.
-"""
-
-
 def lambda_handler(event):
+    """
+    The handler function itself performs an insert/delete and returns the
+    id of the document in play.
+    """
     db = client.lambdaTest
     collection = db.test
     inserted_id = collection.insert_one({"n": 1})
