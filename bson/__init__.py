@@ -815,7 +815,7 @@ def _encode_timestamp(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> byte
 
 
 def _encode_long(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
-    """Encode a python long (python 2.x)"""
+    """Encode a bson.int64.Int64."""
     try:
         return b"\x12" + name + _PACK_LONG(value)
     except struct.error:
