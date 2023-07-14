@@ -41,10 +41,10 @@ class DBRef:
         """Initialize a new :class:`DBRef`.
 
         Raises :class:`TypeError` if `collection` or `database` is not
-        an instance of :class:`basestring` (:class:`str` in python 3).
-        `database` is optional and allows references to documents to work
-        across databases. Any additional keyword arguments will create
-        additional fields in the resultant embedded document.
+        an instance of :class:`str`. `database` is optional and allows
+        references to documents to work across databases. Any additional
+        keyword arguments will create additional fields in the resultant
+        embedded document.
 
         :Parameters:
           - `collection`: name of the collection the document is stored in

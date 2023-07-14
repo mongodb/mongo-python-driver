@@ -149,9 +149,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        collection name. Any additional keyword arguments will be used
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
+        not a valid collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
         :meth:`~pymongo.database.Database.create_collection` for valid
         options.
@@ -2037,9 +2036,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
         be assumed.
-        The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        The key(s) must be an instance of :class:`str`and the direction(s) must
+        be one of (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
         :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
@@ -2940,8 +2938,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`
-        (:class:`str` in python 3). Raises :class:`~pymongo.errors.InvalidName`
+        `new_name` is not an instance of :class:`str`.
+        Raises :class:`~pymongo.errors.InvalidName`
         if `new_name` is not a valid collection name.
 
         :Parameters:
@@ -3005,7 +3003,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         All optional distinct parameters should be passed as keyword arguments
         to this method. Valid options include:

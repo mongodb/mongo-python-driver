@@ -1894,8 +1894,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
-        :class:`basestring` (:class:`str` in python 3) or
-        :class:`~pymongo.database.Database`.
+        :class:`str` or :class:`~pymongo.database.Database`.
 
         :Parameters:
           - `name_or_database`: the name of a database to drop, or a

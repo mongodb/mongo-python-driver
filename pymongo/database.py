@@ -89,9 +89,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        database name.
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
+        `name` is not a valid database name.
 
         :Parameters:
           - `client`: A :class:`~pymongo.mongo_client.MongoClient` instance.
@@ -802,9 +801,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
-        response. If `command` is an instance of :class:`basestring`
-        (:class:`str` in python 3) then the command {`command`: `value`}
-        will be sent. Otherwise, `command` must be an instance of
+        response. If `command` is an instance of :class:`str`
+        then the command {`command`: `value`} will be sent.
+        Otherwise, `command` must be an instance of
         :class:`dict` and will be sent as is.
 
         Any additional keyword arguments will be added to the final
