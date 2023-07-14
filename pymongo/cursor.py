@@ -978,10 +978,10 @@ class Cursor(Generic[_DocumentType]):
         """Adds a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`str` or
-        :class:`~bson.code.Code` containing a JavaScript expression. 
-        This expression will be evaluated for each document scanned. 
+        :class:`~bson.code.Code` containing a JavaScript expression.
+        This expression will be evaluated for each document scanned.
         Only those documents for which the expression evaluates to
-        *true* will be returned as results. The keyword *this* refers 
+        *true* will be returned as results. The keyword *this* refers
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
