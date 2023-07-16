@@ -95,11 +95,14 @@ class ConnectionHandler(ConnectionPoolListener):
 
 
 listeners = [CommandHandler(), ServerHeartbeatHandler(), ConnectionHandler()]
+print("Creating client")
 client = MongoClient(os.environ["MONGODB_URI"], event_listeners=listeners)
 
 
 # Populate the connection pool.
+print("Connecting")
 client.lambdaTest.list_collections()
+print("Connected")
 
 
 # Create the response to send back.
@@ -127,6 +130,7 @@ def lambda_handler(event):
     The handler function itself performs an insert/delete and returns the
     id of the document in play.
     """
+    print("initializing")
     db = client.lambdaTest
     collection = db.test
     inserted_id = collection.insert_one({"n": 1})
