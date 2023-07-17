@@ -125,7 +125,7 @@ def reset():
     total_command_duration = 0
 
 
-def lambda_handler(event):
+def lambda_handler(event, context):
     """
     The handler function itself performs an insert/delete and returns the
     id of the document in play.
@@ -133,8 +133,8 @@ def lambda_handler(event):
     print("initializing")
     db = client.lambdaTest
     collection = db.test
-    inserted_id = collection.insert_one({"n": 1})
-    collection.delete_one({"_id": inserted_id})
+    result = collection.insert_one({"n": 1})
+    collection.delete_one({"_id": result.inserted_id})
     # Create the response and then reset the numbers.
     response = json.dumps(create_response())
     reset()
