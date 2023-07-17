@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentOut, _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -1138,7 +1138,7 @@ def decode_all(
     return _decode_all(data, opts)  # type:ignore[arg-type]
 
 
-def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
+def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> "_DocumentOut":
     if _raw_document_class(codec_options.document_class):
         # If document_class is RawBSONDocument, use vanilla dictionary for
         # decoding command response.

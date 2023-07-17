@@ -26,6 +26,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    MutableMapping,
     NoReturn,
     Optional,
     Sequence,
@@ -66,6 +67,7 @@ if TYPE_CHECKING:
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import _Address, _DocumentOut
 
 
 # These errors mean that the server has already killed the cursor so there is
@@ -170,7 +172,7 @@ class Cursor(Generic[_DocumentType]):
     def __init__(
         self,
         collection: Collection[_DocumentType],
-        filter: Optional[Mapping[str, Any]] = None,
+        filter: Optional[MutableMapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
         limit: int = 0,
@@ -217,7 +219,7 @@ class Cursor(Generic[_DocumentType]):
             self.__session = None
             self.__explicit_session = False
 
-        spec: Mapping[str, Any] = filter or {}
+        spec: MutableMapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
@@ -298,7 +300,7 @@ class Cursor(Generic[_DocumentType]):
         self.__empty = False
 
         self.__data: deque = deque()
-        self.__address = None
+        self.__address: Optional[_Address] = None
         self.__retrieved = 0
 
         self.__codec_options = collection.codec_options
@@ -419,6 +421,7 @@ class Cursor(Generic[_DocumentType]):
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
+            assert self.__address is not None
             address = _CursorAddress(self.__address, f"{self.__dbname}.{self.__collname}")
         else:
             # Skip killCursors.
@@ -440,7 +443,7 @@ class Cursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self.__die(True)
 
-    def __query_spec(self) -> Mapping[str, Any]:
+    def __query_spec(self) -> MutableMapping[str, Any]:
         """Get the spec to use for a query."""
         operators: Dict[str, Any] = {}
         if self.__ordering:
@@ -1127,7 +1130,7 @@ class Cursor(Generic[_DocumentType]):
         codec_options: CodecOptions,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _read_preference(self) -> _ServerMode:
@@ -1353,13 +1356,13 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return raw_response
+        return cast(List[_DocumentOut], raw_response)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

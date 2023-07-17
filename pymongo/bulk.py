@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.operations import _IndexKeyHint
     from pymongo.pool import SocketInfo
-    from pymongo.typings import _DocumentType
+    from pymongo.typings import _DocumentOut, _DocumentType
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
@@ -154,7 +154,7 @@ def _merge_command(
         full_result["writeConcernErrors"].append(wce)
 
 
-def _raise_bulk_write_error(full_result: Mapping[str, Any]) -> NoReturn:
+def _raise_bulk_write_error(full_result: _DocumentOut) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])

@@ -23,12 +23,13 @@ import time
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 from bson import _decode_all_selective
@@ -55,7 +56,7 @@ if TYPE_CHECKING:
     from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address
+    from pymongo.typings import _Address, _DocumentOut
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -84,7 +85,7 @@ def command(
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
-) -> Dict[str, Any]:
+) -> _DocumentOut:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -176,7 +177,7 @@ def command(
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
-            response_doc = {"ok": 1}
+            response_doc: _DocumentOut = {"ok": 1}
         else:
             reply = receive_message(sock_info, request_id)
             sock_info.more_to_come = reply.more_to_come
@@ -202,6 +203,7 @@ def command(
             else:
                 failure = message._convert_exception(exc)
             assert listeners is not None
+            assert address is not None
             listeners.publish_command_failure(
                 duration, failure, name, request_id, address, service_id=sock_info.service_id
             )
@@ -267,7 +269,9 @@ def receive_message(
         data = _receive_data_on_socket(sock_info, length - 16, deadline)
 
     try:
-        unpack_reply = _UNPACK_REPLY[op_code]
+        unpack_reply: Callable[[bytes], _OpReply] = cast(
+            Callable[[bytes], _OpReply], _UNPACK_REPLY[op_code]
+        )
     except KeyError:
         raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
     return unpack_reply(data)

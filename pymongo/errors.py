@@ -13,11 +13,14 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
+from __future__ import annotations
+
 from typing import (
+    TYPE_CHECKING,
     Any,
     Iterable,
+    List,
     Mapping,
-    MutableMapping,
     Optional,
     Sequence,
     Tuple,
@@ -25,6 +28,9 @@ from typing import (
 )
 
 from bson.errors import InvalidDocument
+
+if TYPE_CHECKING:
+    from pymongo.typings import _DocumentOut
 
 try:
     # CPython 3.7+
@@ -154,9 +160,9 @@ class NotPrimaryError(AutoReconnect):
     .. versionadded:: 3.12
     """
 
-    details: Mapping[str, Any]
+    details: _DocumentOut
 
-    def __init__(self, message: str = "", errors: Optional[Mapping[str, Any]] = None) -> None:
+    def __init__(self, message: str = "", errors: Optional[_DocumentOut] = None) -> None:
         errors = errors or {}
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
@@ -193,7 +199,7 @@ class OperationFailure(PyMongoError):
         self,
         error: str,
         code: Optional[int] = None,
-        details: Optional[Mapping[str, Any]] = None,
+        details: Optional[_DocumentOut] = None,
         max_wire_version: Optional[int] = None,
     ) -> None:
         error_labels = None
@@ -214,7 +220,7 @@ class OperationFailure(PyMongoError):
         return self.__code
 
     @property
-    def details(self) -> Mapping[str, Any]:
+    def details(self) -> _DocumentOut:
         """The complete error document returned by the server.
 
         Depending on the error that occurred, the error document
@@ -296,9 +302,9 @@ class BulkWriteError(OperationFailure):
     .. versionadded:: 2.7
     """
 
-    details: Mapping[str, Any]
+    details: _DocumentOut
 
-    def __init__(self, results: Mapping[str, Any]) -> None:
+    def __init__(self, results: _DocumentOut) -> None:
         super().__init__("batch op errors occurred", 65, results)
 
     def __reduce__(self) -> Tuple[Any, Any]:

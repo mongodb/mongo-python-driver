@@ -22,7 +22,6 @@ from typing import (
     Callable,
     ContextManager,
     List,
-    Mapping,
     Optional,
     Tuple,
     Union,
@@ -43,7 +42,9 @@ if TYPE_CHECKING:
     from pymongo.monitor import Monitor
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Pool, SocketInfo
+    from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -107,9 +108,9 @@ class Server:
         self,
         sock_info: SocketInfo,
         operation: Union[_Query, _GetMore],
-        read_preference: bool,
+        read_preference: _ServerMode,
         listeners: _EventListeners,
-        unpack_res: Callable[..., List[Mapping[str, Any]]],
+        unpack_res: Callable[..., List[_DocumentOut]],
     ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -173,7 +174,7 @@ class Server:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
+                    failure: _DocumentOut = exc.details
                 else:
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(

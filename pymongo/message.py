@@ -76,7 +76,6 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.client_session import ClientSession
-    from pymongo.collation import Collation
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.mongo_client import MongoClient
     from pymongo.monitoring import _EventListeners
@@ -216,7 +215,7 @@ def _gen_find_command(
     batch_size: Optional[int],
     options: Optional[int],
     read_concern: ReadConcern,
-    collation: Optional[Collation] = None,
+    collation: Optional[Mapping[str, Any]] = None,
     session: Optional[ClientSession] = None,
     allow_disk_use: Optional[bool] = None,
 ) -> SON[str, Any]:
@@ -318,8 +317,8 @@ class _Query:
         limit: int,
         batch_size: int,
         read_concern: ReadConcern,
-        collation: Collation,
-        session: ClientSession,
+        collation: Optional[Mapping[str, Any]],
+        session: Optional[ClientSession],
         client: MongoClient,
         allow_disk_use: Optional[bool],
         exhaust: bool,
@@ -491,9 +490,9 @@ class _GetMore:
         cursor_id: int,
         codec_options: CodecOptions,
         read_preference: _ServerMode,
-        session: ClientSession,
+        session: Optional[ClientSession],
         client: MongoClient,
-        max_await_time_ms: int,
+        max_await_time_ms: Optional[int],
         sock_mgr: Any,
         exhaust: bool,
         comment: Any,
@@ -1517,7 +1516,7 @@ class _OpReply:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         """Unpack a response from the database and decode the BSON document(s).
 
         Check the response for errors and unpack, returning a dictionary
@@ -1585,8 +1584,10 @@ class _OpMsg:
         self.payload_document = payload_document
 
     def raw_response(
-        self, cursor_id: Optional[int] = None, user_fields: Mapping[str, Any] = {}  # noqa: B006
-    ) -> List[Mapping[str, Any]]:
+        self,
+        cursor_id: Optional[int] = None,
+        user_fields: Optional[Mapping[str, Any]] = {},  # noqa: B006
+    ) -> List[_DocumentOut]:
         """
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
@@ -1602,7 +1603,7 @@ class _OpMsg:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         """Unpack a OP_MSG command response.
 
         :Parameters:

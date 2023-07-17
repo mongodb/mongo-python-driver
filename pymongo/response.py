@@ -15,14 +15,14 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import SocketInfo
-    from pymongo.typings import _Address
+    from pymongo.typings import _Address, _DocumentOut
 
 
 class Response:
@@ -35,7 +35,7 @@ class Response:
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: List[Mapping[str, Any]],
+        docs: List[_DocumentOut],
     ):
         """Represent a response from the server.
 
@@ -79,7 +79,7 @@ class Response:
         return self._from_command
 
     @property
-    def docs(self) -> List[Mapping[str, Any]]:
+    def docs(self) -> List[_DocumentOut]:
         """The decoded document(s)."""
         return self._docs
 
@@ -95,7 +95,7 @@ class PinnedResponse(Response):
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: List[Mapping[str, Any]],
+        docs: List[_DocumentOut],
         more_to_come: bool,
     ):
         """Represent a response to an exhaust cursor's initial query.
