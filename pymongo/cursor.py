@@ -887,7 +887,7 @@ class Cursor(Generic[_DocumentType]):
         in the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         The :meth:`distinct` method obeys the
         :attr:`~pymongo.collection.Collection.read_preference` of the
@@ -984,21 +984,19 @@ class Cursor(Generic[_DocumentType]):
     def where(self, code: Union[str, Code]) -> "Cursor[_DocumentType]":
         """Adds a `$where`_ clause to this query.
 
-        The `code` argument must be an instance of :class:`basestring`
-        (:class:`str` in python 3) or :class:`~bson.code.Code`
-        containing a JavaScript expression. This expression will be
-        evaluated for each document scanned. Only those documents
-        for which the expression evaluates to *true* will be returned
-        as results. The keyword *this* refers to the object currently
-        being scanned. For example::
+        The `code` argument must be an instance of :class:`str` or
+        :class:`~bson.code.Code` containing a JavaScript expression.
+        This expression will be evaluated for each document scanned.
+        Only those documents for which the expression evaluates to
+        *true* will be returned as results. The keyword *this* refers
+        to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
             for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidOperation` if this
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`Cursor` has any effect.
 
