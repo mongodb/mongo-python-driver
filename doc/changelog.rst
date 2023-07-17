@@ -13,7 +13,8 @@ PyMongo 4.5 brings a number of improvements including:
   :meth:`~pymongo.collection.Collection.drop_search_index`,
   :meth:`~pymongo.collection.Collection.update_search_index`
 - Added :meth:`~pymongo.database.Database.cursor_command`
-  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
+  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support
+  executing an arbitrary command that returns a cursor.
 - cryptography 2.5 or later is now required for :ref:`OCSP` support.
 
 Issues Resolved
