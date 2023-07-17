@@ -1739,8 +1739,6 @@ tasks:
               - ${DRIVERS_TOOLS}/.evergreen/aws_lambda/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
-              LAMBDA_STACK_NAME: dbx-python-lambda
-              AWS_REGION: us-east-1
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
