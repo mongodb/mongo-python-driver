@@ -15,9 +15,6 @@
 """Test compliance with the connections survive primary step down spec."""
 
 import sys
-
-sys.path[0:0] = [""]
-
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     CMAPListener,
@@ -31,6 +28,8 @@ from pymongo import monitoring
 from pymongo.collection import Collection
 from pymongo.errors import NotPrimaryError
 from pymongo.write_concern import WriteConcern
+
+sys.path[0:0] = [""]
 
 
 class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
@@ -111,7 +110,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})
-        self.assertEqual(exc.exception.details["code"], error_code)  # type: ignore
+        self.assertEqual(exc.exception.details["code"], error_code)
         # Retry before CMAPListener assertion if retry_before=True.
         if retry:
             self.coll.insert_one({"test": 1})
