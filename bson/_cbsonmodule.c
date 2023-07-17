@@ -2504,7 +2504,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 }
                 value = PyObject_CallMethodObjArgs(dec128,
                                             state->_from_bid_str,
-                                            state->_y_pound_str,
                                             _bytes_obj, NULL);
                 Py_DECREF(dec128);
             }
