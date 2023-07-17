@@ -163,7 +163,6 @@ class NotPrimaryError(AutoReconnect):
     details: _DocumentOut
 
     def __init__(self, message: str = "", errors: Optional[_DocumentOut] = None) -> None:
-        errors = errors or {}
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
 
