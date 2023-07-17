@@ -44,13 +44,6 @@ in this release.
 .. _PYTHON-3798: https://jira.mongodb.org/browse/PYTHON-3798
 .. _PYTHON-3800: https://jira.mongodb.org/browse/PYTHON-3800
 .. _PyMongo 4.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36329
-||||||| 7bcbb0de9
-  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
-=======
-  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
-- cryptography 2.5 or later is now required for :ref:`OCSP` support.
-
->>>>>>> master
 
 Changes in Version 4.4
 -----------------------
