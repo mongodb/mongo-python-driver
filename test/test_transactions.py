@@ -17,6 +17,9 @@
 import os
 import sys
 from io import BytesIO
+
+sys.path[0:0] = [""]
+
 from test import client_context, unittest
 from test.utils import (
     OvertCommandListener,
@@ -45,9 +48,6 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-
-sys.path[0:0] = [""]
-
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "legacy")
