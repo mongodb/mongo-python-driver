@@ -47,7 +47,7 @@ from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
-    from bson.typings import _DocumentIn, _ReadableBuffer
+    from bson.typings import _ReadableBuffer
     from pymongo.auth import MongoCredential
     from pymongo.pool import SocketInfo
 
@@ -58,7 +58,7 @@ class _AwsSaslContext(AwsSaslContext):  # type: ignore
         """Return the bson.binary.Binary type."""
         return Binary
 
-    def bson_encode(self, doc: _DocumentIn) -> bytes:
+    def bson_encode(self, doc: Mapping[str, Any]) -> bytes:
         """Encode a dictionary to BSON."""
         return bson.encode(doc)
 

@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -663,9 +663,8 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
 
 def _make_name(string: str) -> bytes:
     """Make a 'C' string suitable for a BSON key."""
-    # Keys can only be text in python 3.
     if "\x00" in string:
-        raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
+        raise InvalidDocument("BSON keys must not contain a NUL character")
     return _utf_8_encode(string)[0] + b"\x00"
 
 
@@ -814,7 +813,7 @@ def _encode_timestamp(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> byte
 
 
 def _encode_long(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
-    """Encode a python long (python 2.x)"""
+    """Encode a bson.int64.Int64."""
     try:
         return b"\x12" + name + _PACK_LONG(value)
     except struct.error:
@@ -995,7 +994,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of Code
 
 
 def encode(
-    document: "_DocumentIn",
+    document: Mapping[str, Any],
     check_keys: bool = False,
     codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
 ) -> bytes:
@@ -1004,8 +1003,7 @@ def encode(
     A document can be any mapping type (like :class:`dict`).
 
     Raises :class:`TypeError` if `document` is not a mapping type,
-    or contains keys that are not instances of
-    :class:`basestring` (:class:`str` in python 3). Raises
+    or contains keys that are not instances of :class:`str`. Raises
     :class:`~bson.errors.InvalidDocument` if `document` cannot be
     converted to :class:`BSON`.
 
@@ -1316,7 +1314,7 @@ def is_valid(bson: bytes) -> bool:
     """Check that the given string represents valid :class:`BSON` data.
 
     Raises :class:`TypeError` if `bson` is not an instance of
-    :class:`str` (:class:`bytes` in python 3). Returns ``True``
+    :class:`bytes`. Returns ``True``
     if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
     :Parameters:
@@ -1343,7 +1341,7 @@ class BSON(bytes):
     @classmethod
     def encode(
         cls: Type["BSON"],
-        document: "_DocumentIn",
+        document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
     ) -> "BSON":
@@ -1353,9 +1351,8 @@ class BSON(bytes):
 
         Raises :class:`TypeError` if `document` is not a mapping type,
         or contains keys that are not instances of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~bson.errors.InvalidDocument` if `document` cannot be
-        converted to :class:`BSON`.
+        :class:`str'. Raises :class:`~bson.errors.InvalidDocument`
+        if `document` cannot be converted to :class:`BSON`.
 
         :Parameters:
           - `document`: mapping type representing a document

@@ -23,8 +23,7 @@ if TYPE_CHECKING:
 
 
 # Common Shared Types.
-_DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
-_DocumentOut = _DocumentIn
+_DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 _DocumentTypeArg = TypeVar("_DocumentTypeArg", bound=Mapping[str, Any])
 _ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]
