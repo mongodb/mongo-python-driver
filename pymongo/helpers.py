@@ -52,7 +52,7 @@ from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
     from pymongo.cursor import _Hint
-    from pymongo.operations import _IndexKeyHint, _IndexList
+    from pymongo.operations import _IndexList
 
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES: frozenset = frozenset(
@@ -123,28 +123,24 @@ def _index_list(
         return values
 
 
-def _index_document(index_hint: Optional[_IndexKeyHint]) -> Union[str, SON[str, Any], None]:
+def _index_document(index_list: _IndexList) -> SON[str, Any]:
     """Helper to generate an index specifying document.
 
     Takes a list of (key, direction) pairs.
     """
-    if index_hint is None:
-        return None
-    if isinstance(index_hint, str):
-        return index_hint
-    if isinstance(index_hint, abc.Mapping):
+    if isinstance(index_list, abc.Mapping):
         raise TypeError(
             "passing a dict to sort/create_index/hint is not "
             "allowed - use a list of tuples instead. did you "
-            "mean %r?" % list(index_hint.items())
+            "mean %r?" % list(index_list.items())
         )
-    elif not isinstance(index_hint, (list, tuple)):
-        raise TypeError("must use a list of (key, direction) pairs, not: " + repr(index_hint))
-    if not len(index_hint):
+    elif not isinstance(index_list, (list, tuple)):
+        raise TypeError("must use a list of (key, direction) pairs, not: " + repr(index_list))
+    if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
     index: SON[str, Any] = SON()
-    for item in index_hint:
+    for item in index_list:
         if isinstance(item, str):
             item = (item, ASCENDING)
         key, value = item

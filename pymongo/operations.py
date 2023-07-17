@@ -36,6 +36,7 @@ from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 if TYPE_CHECKING:
+    from bson.son import SON
     from pymongo.bulk import _Bulk
 
 # Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
@@ -108,9 +109,12 @@ class DeleteOne:
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._collation = collation
-        self._hint = helpers._index_document(hint)
 
     def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -166,9 +170,12 @@ class DeleteMany:
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._collation = collation
-        self._hint = helpers._index_document(hint)
 
     def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -231,12 +238,14 @@ class ReplaceOne(Generic[_DocumentType]):
             validate_is_mapping("filter", filter)
         if upsert is not None:
             validate_boolean("upsert", upsert)
-
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
         self._collation = collation
-        self._hint = helpers._index_document(hint)
 
     def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -293,13 +302,16 @@ class _UpdateOp:
             validate_boolean("upsert", upsert)
         if array_filters is not None:
             validate_list("array_filters", array_filters)
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
 
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
         self._collation = collation
         self._array_filters = array_filters
-        self._hint = helpers._index_document(hint)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
