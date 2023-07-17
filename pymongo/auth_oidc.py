@@ -250,7 +250,7 @@ class _OIDCAuthenticator:
         except OperationFailure as exc:
             self.clear()
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                if "jwt" in bson.decode(cmd["payload"]):  # type:ignore[attr-defined]
+                if "jwt" in bson.decode(cmd["payload"]):
                     if self.idp_info_gen_id > self.reauth_gen_id:
                         raise
                     return self.authenticate(sock_info, reauthenticate=True)

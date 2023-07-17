@@ -11,7 +11,7 @@ createvirtualenv () {
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
         VIRTUALENV="$PYTHON -m virtualenv"
-    elif $PYTHON -m venv -h>/dev/null; then
+    elif $PYTHON -m venv -h > /dev/null; then
         # System virtualenv might not be compatible with the python3 on our path
         VIRTUALENV="$PYTHON -m venv"
     else
@@ -33,7 +33,6 @@ createvirtualenv () {
     python -m pip install --upgrade setuptools wheel
     # lxml only has wheels for macos 10.15+
     python -m pip install unittest-xml-reporting || true
-
 }
 
 # Usage:

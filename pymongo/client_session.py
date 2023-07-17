@@ -144,6 +144,7 @@ from typing import (
     Any,
     Callable,
     ContextManager,
+    Dict,
     List,
     Mapping,
     MutableMapping,
@@ -831,19 +832,19 @@ class ClientSession:
             self._transaction.state = _TxnState.ABORTED
             self._unpin()
 
-    def _finish_transaction_with_retry(self, command_name: str) -> List[Any]:
+    def _finish_transaction_with_retry(self, command_name: str) -> Dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
 
         :Parameters:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(session: ClientSession, sock_info: SocketInfo, retryable: bool) -> List[Any]:
+        def func(session: ClientSession, sock_info: SocketInfo, retryable: bool) -> Dict[str, Any]:
             return self._finish_transaction(sock_info, command_name)
 
         return self._client._retry_internal(True, func, self, None)
 
-    def _finish_transaction(self, sock_info: SocketInfo, command_name: str) -> List[Any]:
+    def _finish_transaction(self, sock_info: SocketInfo, command_name: str) -> Dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts

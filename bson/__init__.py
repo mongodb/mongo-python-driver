@@ -53,7 +53,6 @@ bytes [#bytes]_                          binary         both
 .. [#bytes] The bytes type is encoded as BSON binary with
    subtype 0. It will be decoded back to bytes.
 """
-
 import datetime
 import itertools
 import os
@@ -84,6 +83,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from bson.binary import (
@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -995,7 +995,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of Code
 
 
 def encode(
-    document: "_DocumentIn",
+    document: Mapping[str, Any],
     check_keys: bool = False,
     codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
 ) -> bytes:
@@ -1025,9 +1025,21 @@ def encode(
     return _dict_to_bson(document, check_keys, codec_options)
 
 
+@overload
+def decode(data: "_ReadableBuffer", codec_options: None = None) -> Dict[str, Any]:
+    ...
+
+
+@overload
+def decode(
+    data: "_ReadableBuffer", codec_options: "CodecOptions[_DocumentType]"
+) -> "_DocumentType":
+    ...
+
+
 def decode(
     data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "_DocumentType":
+) -> Union[Dict[str, Any], "_DocumentType"]:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -1331,7 +1343,7 @@ class BSON(bytes):
     @classmethod
     def encode(
         cls: Type["BSON"],
-        document: "_DocumentIn",
+        document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
     ) -> "BSON":

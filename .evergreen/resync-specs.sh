@@ -114,6 +114,9 @@ do
     gridfs)
       cpjson gridfs/tests gridfs
       ;;
+    index|index-management)
+      cpjson index-management/tests index_management
+      ;;
     load-balancers|load_balancer)
       cpjson load-balancers/tests load_balancer
       ;;

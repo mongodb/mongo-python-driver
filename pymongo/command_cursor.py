@@ -28,7 +28,7 @@ from typing import (
     Union,
 )
 
-from bson import _convert_raw_document_lists_to_streams
+from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
@@ -36,7 +36,6 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
-    from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
     from pymongo.pool import SocketInfo

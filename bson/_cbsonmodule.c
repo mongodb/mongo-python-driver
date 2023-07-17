@@ -859,6 +859,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     PyObject* new_value = NULL;
     int retval;
     PyObject* uuid_type;
+    int is_list;
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
      * problems with python sub interpreters. Our custom types should
@@ -1138,7 +1139,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     } else if (PyDict_Check(value)) {
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x03;
         return write_dict(self, buffer, value, check_keys, options, 0);
-    } else if (PyList_Check(value) || PyTuple_Check(value)) {
+    } else if ((is_list = PyList_Check(value)) || PyTuple_Check(value)) {
         Py_ssize_t items, i;
         int start_position,
             length_location,
@@ -1153,8 +1154,12 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         if (length_location == -1) {
             return 0;
         }
-
-        if ((items = PySequence_Size(value)) > BSON_MAX_SIZE) {
+        if (is_list) {
+            items = PyList_Size(value);
+        } else {
+            items = PyTuple_Size(value);
+        }
+        if (items > BSON_MAX_SIZE) {
             PyObject* BSONError = _error("BSONError");
             if (BSONError) {
                 PyErr_SetString(BSONError,
@@ -1178,16 +1183,19 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
-
-            if (!(item_value = PySequence_GetItem(value, i)))
+            if (is_list) {
+                item_value = PyList_GET_ITEM(value, i);
+            } else {
+                item_value = PyTuple_GET_ITEM(value, i);
+            }
+            if (!item_value) {
                 return 0;
+            }
             if (!write_element_to_buffer(self, buffer, list_type_byte,
                                          item_value, check_keys, options,
                                          0, 0)) {
-                Py_DECREF(item_value);
                 return 0;
             }
-            Py_DECREF(item_value);
         }
 
         /* write null byte and fill in length */
@@ -1518,50 +1526,52 @@ int write_dict(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
     long type_marker;
+    int is_dict = PyDict_Check(dict);
 
-
-    /* check for RawBSONDocument */
-    type_marker = _type_marker(dict, state->_type_marker_str);
-    if (type_marker < 0) {
-        return 0;
-    }
-
-    if (101 == type_marker) {
-        return write_raw_doc(buffer, dict, state->_raw_str);
-    }
-
-    mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
-
-    if (mapping_type) {
-        if (!PyObject_IsInstance(dict, mapping_type)) {
-            PyObject* repr;
-            Py_DECREF(mapping_type);
-            if ((repr = PyObject_Repr(dict))) {
-                PyObject* errmsg = PyUnicode_FromString(
-                    "encoder expected a mapping type but got: ");
-                if (errmsg) {
-                    PyObject* error = PyUnicode_Concat(errmsg, repr);
-                    if (error) {
-                        PyErr_SetObject(PyExc_TypeError, error);
-                        Py_DECREF(error);
-                    }
-                    Py_DECREF(errmsg);
-                    Py_DECREF(repr);
-                }
-                else {
-                    Py_DECREF(repr);
-                }
-            } else {
-                PyErr_SetString(PyExc_TypeError,
-                                "encoder expected a mapping type");
-            }
-
+    if (!is_dict) {
+        /* check for RawBSONDocument */
+        type_marker = _type_marker(dict, state->_type_marker_str);
+        if (type_marker < 0) {
             return 0;
         }
-        Py_DECREF(mapping_type);
-        /* PyObject_IsInstance returns -1 on error */
-        if (PyErr_Occurred()) {
-            return 0;
+
+        if (101 == type_marker) {
+            return write_raw_doc(buffer, dict, state->_raw_str);
+        }
+
+        mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
+
+        if (mapping_type) {
+            if (!PyObject_IsInstance(dict, mapping_type)) {
+                PyObject* repr;
+                Py_DECREF(mapping_type);
+                if ((repr = PyObject_Repr(dict))) {
+                    PyObject* errmsg = PyUnicode_FromString(
+                        "encoder expected a mapping type but got: ");
+                    if (errmsg) {
+                        PyObject* error = PyUnicode_Concat(errmsg, repr);
+                        if (error) {
+                            PyErr_SetObject(PyExc_TypeError, error);
+                            Py_DECREF(error);
+                        }
+                        Py_DECREF(errmsg);
+                        Py_DECREF(repr);
+                    }
+                    else {
+                        Py_DECREF(repr);
+                    }
+                } else {
+                    PyErr_SetString(PyExc_TypeError,
+                                    "encoder expected a mapping type");
+                }
+
+                return 0;
+            }
+            Py_DECREF(mapping_type);
+            /* PyObject_IsInstance returns -1 on error */
+            if (PyErr_Occurred()) {
+                return 0;
+            }
         }
     }
 
@@ -1577,7 +1587,7 @@ int write_dict(PyObject* self, buffer_t buffer,
          * PyObject_GetItem on it. That would **create**
          * an _id where one didn't previously exist (PYTHON-871).
          */
-        if (PyDict_Check(dict)) {
+        if (is_dict) {
             /* PyDict_GetItem returns a borrowed reference. */
             PyObject* _id = PyDict_GetItem(dict, state->_id_str);
             if (_id) {
@@ -1601,31 +1611,42 @@ int write_dict(PyObject* self, buffer_t buffer,
         }
     }
 
-    iter = PyObject_GetIter(dict);
-    if (iter == NULL) {
-        return 0;
-    }
-    while ((key = PyIter_Next(iter)) != NULL) {
-        PyObject* value = PyObject_GetItem(dict, key);
-        if (!value) {
-            PyErr_SetObject(PyExc_KeyError, key);
-            Py_DECREF(key);
-            Py_DECREF(iter);
+    if (is_dict) {
+        PyObject* value;
+        Py_ssize_t pos = 0;
+        while (PyDict_Next(dict, &pos, &key, &value)) {
+            if (!decode_and_write_pair(self, buffer, key, value,
+                                    check_keys, options, top_level)) {
+                return 0;
+            }
+        }
+    } else {
+        iter = PyObject_GetIter(dict);
+        if (iter == NULL) {
             return 0;
         }
-        if (!decode_and_write_pair(self, buffer, key, value,
-                                   check_keys, options, top_level)) {
+        while ((key = PyIter_Next(iter)) != NULL) {
+            PyObject* value = PyObject_GetItem(dict, key);
+            if (!value) {
+                PyErr_SetObject(PyExc_KeyError, key);
+                Py_DECREF(key);
+                Py_DECREF(iter);
+                return 0;
+            }
+            if (!decode_and_write_pair(self, buffer, key, value,
+                                    check_keys, options, top_level)) {
+                Py_DECREF(key);
+                Py_DECREF(value);
+                Py_DECREF(iter);
+                return 0;
+            }
             Py_DECREF(key);
             Py_DECREF(value);
-            Py_DECREF(iter);
+        }
+        Py_DECREF(iter);
+        if (PyErr_Occurred()) {
             return 0;
         }
-        Py_DECREF(key);
-        Py_DECREF(value);
-    }
-    Py_DECREF(iter);
-    if (PyErr_Occurred()) {
-        return 0;
     }
 
     /* write null byte and fill in length */
