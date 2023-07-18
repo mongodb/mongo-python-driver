@@ -1736,10 +1736,9 @@ tasks:
             binary: bash
             add_expansions_to_env: true
             args:
-              - ${DRIVERS_TOOLS}/.evergreen/aws_lambda/run-deployed-lambda-aws-tests.sh
+              - .evergreen/aws_lambda/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
-              PATH: /opt/python/3.9/bin:${PATH}
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
