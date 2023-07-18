@@ -23,13 +23,12 @@ import time
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Mapping,
     MutableMapping,
     Optional,
     Sequence,
+    TypeVar,
     Union,
-    cast,
 )
 
 from bson import _decode_all_selective
@@ -56,7 +55,7 @@ if TYPE_CHECKING:
     from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -68,7 +67,7 @@ def command(
     spec: MutableMapping[str, Any],
     is_mongos: bool,
     read_preference: _ServerMode,
-    codec_options: CodecOptions,
+    codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
     client: Optional[MongoClient],
     check: bool = True,
@@ -85,7 +84,7 @@ def command(
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
-) -> _DocumentOut:
+) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -225,7 +224,7 @@ def command(
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
 
-    return response_doc
+    return response_doc  # type: ignore[return-value]
 
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
