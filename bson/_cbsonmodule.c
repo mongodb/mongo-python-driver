@@ -80,7 +80,6 @@ struct module_state {
     PyObject* _from_uuid_str;
     PyObject* _as_uuid_str;
     PyObject* _from_bid_str;
-    PyObject* _y_pound_str;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -518,8 +517,7 @@ static int _load_python_objects(PyObject* module) {
         (state->_utcoffset_str = PyUnicode_FromString("utcoffset")) &&
         (state->_from_uuid_str = PyUnicode_FromString("from_uuid")) &&
         (state->_as_uuid_str = PyUnicode_FromString("as_uuid")) &&
-        (state->_from_bid_str = PyUnicode_FromString("from_bid")) &&
-        (state->_y_pound_str = PyUnicode_FromString("y#")))) {
+        (state->_from_bid_str = PyUnicode_FromString("from_bid")))) {
             return 1;
     }
 
@@ -1299,6 +1297,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             return 0;
         }
         binary_value = PyObject_CallMethodObjArgs(binary_type, state->_from_uuid_str, value, uuid_rep_obj, NULL);
+        Py_DECREF(uuid_rep_obj);
+
         if (binary_value == NULL) {
             Py_DECREF(binary_type);
             return 0;
@@ -2014,6 +2014,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                         goto uuiderror;
                     }
                     value = PyObject_CallMethodObjArgs(binary_value, state->_as_uuid_str, uuid_rep_obj, NULL);
+                    Py_DECREF(uuid_rep_obj);
                 }
 
             uuiderror:
@@ -2506,6 +2507,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                                             state->_from_bid_str,
                                             _bytes_obj, NULL);
                 Py_DECREF(dec128);
+                Py_DECREF(_bytes_obj);
             }
             *position += 16;
             break;
@@ -3154,7 +3156,6 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->_from_uuid_str);
     Py_VISIT(GETSTATE(m)->_as_uuid_str);
     Py_VISIT(GETSTATE(m)->_from_bid_str);
-    Py_VISIT(GETSTATE(m)->_y_pound_str);
     return 0;
 }
 
@@ -3195,7 +3196,6 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->_from_uuid_str);
     Py_CLEAR(GETSTATE(m)->_as_uuid_str);
     Py_CLEAR(GETSTATE(m)->_from_bid_str);
-    Py_CLEAR(GETSTATE(m)->_y_pound_str);
     return 0;
 }
 
