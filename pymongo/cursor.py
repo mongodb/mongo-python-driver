@@ -50,15 +50,13 @@ from pymongo.lock import _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
+    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentType
-
-if TYPE_CHECKING:
-    from pymongo.message import _OpReply
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
