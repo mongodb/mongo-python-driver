@@ -50,6 +50,7 @@ from pymongo.lock import _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
+    _OpMsg,
     _OpReply,
     _Query,
     _RawBatchGetMore,
@@ -64,7 +65,6 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import SocketInfo
     from pymongo.read_preferences import _ServerMode
 
