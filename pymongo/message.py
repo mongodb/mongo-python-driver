@@ -28,6 +28,7 @@ from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterable,
     List,
@@ -310,7 +311,7 @@ class _Query:
         db: str,
         coll: str,
         ntoskip: int,
-        spec: MutableMapping[str, Any],
+        spec: Mapping[str, Any],
         fields: Optional[Mapping[str, Any]],
         codec_options: CodecOptions,
         read_preference: _ServerMode,
@@ -447,6 +448,7 @@ class _Query:
                 ntoreturn = self.limit
 
         if sock_info.is_mongos:
+            assert isinstance(spec, MutableMapping)
             spec = _maybe_add_read_preference(spec, read_preference)
 
         return _query(
@@ -1651,7 +1653,7 @@ class _OpMsg:
         return cls(flags, payload_document)
 
 
-_UNPACK_REPLY = {
+_UNPACK_REPLY: Dict[int, Callable[[bytes], Union[_OpReply, _OpMsg]]] = {
     _OpReply.OP_CODE: _OpReply.unpack,
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }

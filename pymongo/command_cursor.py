@@ -26,7 +26,6 @@ from typing import (
     NoReturn,
     Optional,
     Union,
-    cast,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -381,20 +380,20 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             comment,
         )
 
-    def _unpack_response(
+    def _unpack_response(  # type: ignore[override]
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
         codec_options: CodecOptions,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> List[Mapping[str, Any]]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List[_DocumentOut], raw_response)
+        return raw_response  # type: ignore[return-value]
 
     def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

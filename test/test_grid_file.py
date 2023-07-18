@@ -20,6 +20,11 @@ import io
 import sys
 import zipfile
 from io import BytesIO
+
+from pymongo.database import Database
+
+sys.path[0:0] = [""]
+
 from test import IntegrationTest, qcheck, unittest
 from test.utils import EventListener, rs_or_single_client
 
@@ -35,11 +40,8 @@ from gridfs.grid_file import (
     GridOutCursor,
 )
 from pymongo import MongoClient
-from pymongo.database import Database
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
-
-sys.path[0:0] = [""]
 
 
 class TestGridFileNoConnect(unittest.TestCase):

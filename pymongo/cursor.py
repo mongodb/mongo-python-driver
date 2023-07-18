@@ -26,7 +26,6 @@ from typing import (
     Iterable,
     List,
     Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
     Sequence,
@@ -172,7 +171,7 @@ class Cursor(Generic[_DocumentType]):
     def __init__(
         self,
         collection: Collection[_DocumentType],
-        filter: Optional[MutableMapping[str, Any]] = None,
+        filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
         limit: int = 0,
@@ -219,7 +218,7 @@ class Cursor(Generic[_DocumentType]):
             self.__session = None
             self.__explicit_session = False
 
-        spec: MutableMapping[str, Any] = filter or {}
+        spec: Mapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
@@ -443,7 +442,7 @@ class Cursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self.__die(True)
 
-    def __query_spec(self) -> MutableMapping[str, Any]:
+    def __query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
         operators: Dict[str, Any] = {}
         if self.__ordering:

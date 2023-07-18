@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, MutableMapping, NoReturn, Optional
+from typing import Any, Iterable, List, Mapping, NoReturn, Optional
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -854,7 +854,7 @@ class GridOutCursor(Cursor):
     def __init__(
         self,
         collection: Collection,
-        filter: Optional[MutableMapping[str, Any]] = None,
+        filter: Optional[Mapping[str, Any]] = None,
         skip: int = 0,
         limit: int = 0,
         no_cursor_timeout: bool = False,
