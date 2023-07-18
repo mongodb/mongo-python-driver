@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentOut, _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
