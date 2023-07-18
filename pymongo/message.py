@@ -1589,7 +1589,7 @@ class _OpMsg:
         self,
         cursor_id: Optional[int] = None,
         user_fields: Optional[Mapping[str, Any]] = {},  # noqa: B006
-    ) -> List[_DocumentOut]:
+    ) -> List[Mapping[str, Any]]:
         """
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
