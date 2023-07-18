@@ -1736,7 +1736,7 @@ tasks:
             binary: bash
             add_expansions_to_env: true
             args:
-              - .evergreen/aws_lambda/run-deployed-lambda-aws-tests.sh
+              - .evergreen/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
