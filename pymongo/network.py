@@ -31,6 +31,9 @@ from typing import (
     Union,
 )
 
+import grpc
+from grpc._channel import _MultiThreadedRendezvous
+
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, message, ssl_support
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -229,7 +232,7 @@ def command(
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
-def receive_message(
+def receive_message_tcp(
     sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
@@ -265,6 +268,38 @@ def receive_message(
         data = decompress(_receive_data_on_socket(sock_info, length - 25, deadline), compressor_id)
     else:
         data = _receive_data_on_socket(sock_info, length - 16, deadline)
+
+    try:
+        unpack_reply = _UNPACK_REPLY[op_code]
+    except KeyError:
+        raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
+    return unpack_reply(data)
+
+
+def receive_message(
+    response: _MultiThreadedRendezvous, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+) -> Union[_OpReply, _OpMsg]:
+    """Receive a raw BSON message or raise socket.error."""
+    # Ignore the response's request id.
+    length, _, response_to, op_code = _UNPACK_HEADER(response[:16])
+    # No request_id for exhaust cursor "getMore".
+    if request_id is not None:
+        if request_id != response_to:
+            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
+    if length <= 16:
+        raise ProtocolError(
+            f"Message length ({length!r}) not longer than standard message header size (16)"
+        )
+    if length > max_message_size:
+        raise ProtocolError(
+            "Message length ({!r}) is larger than server max "
+            "message size ({!r})".format(length, max_message_size)
+        )
+    if op_code == 2012:
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(response[:9])
+        data = decompress(response[25:], compressor_id)
+    else:
+        data = response[16:]
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]

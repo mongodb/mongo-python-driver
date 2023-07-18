@@ -1528,6 +1528,9 @@ class Pool:
     #             conn_id = self.next_connection_id
     #             self.next_connection_id += 1
     #
+    #         channel = grpc.insecure_channel("host9.local.10gen.cc:9901",
+    #                                         options=[("grpc.default_authority", "host.local.10gen.cc")])
+    #
     #         stream = channel.stream_stream("/MongoDB/CommandStream")
 
     @contextlib.contextmanager
