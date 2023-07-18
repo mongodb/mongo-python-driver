@@ -1362,7 +1362,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List[_DocumentOut], raw_response)
+        return cast(List["_DocumentOut"], raw_response)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
