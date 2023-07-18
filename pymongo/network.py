@@ -269,9 +269,7 @@ def receive_message(
         data = _receive_data_on_socket(sock_info, length - 16, deadline)
 
     try:
-        unpack_reply: Callable[[bytes], _OpReply] = cast(
-            Callable[[bytes], _OpReply], _UNPACK_REPLY[op_code]
-        )
+        unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
         raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
     return unpack_reply(data)
