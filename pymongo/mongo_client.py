@@ -1674,6 +1674,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     # If this is an exhaust cursor and we haven't completely
                     # exhausted the result set we *must* close the socket
                     # to stop the server from sending more data.
+                    assert sock_mgr.sock is not None
                     sock_mgr.sock.close_socket(ConnectionClosedReason.ERROR)
                 else:
                     self._close_cursor_now(cursor_id, address, session=session, sock_mgr=sock_mgr)
@@ -1714,6 +1715,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 with sock_mgr.lock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
+                    assert sock_mgr.sock is not None
                     self._kill_cursor_impl([cursor_id], address, session, sock_mgr.sock)
             else:
                 self._kill_cursors([cursor_id], address, self._get_topology(), session)

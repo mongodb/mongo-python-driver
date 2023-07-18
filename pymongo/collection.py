@@ -2405,7 +2405,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self.__database.client._retryable_read(
             cmd.get_cursor,
-            cmd.get_read_preference(session),
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
         )
