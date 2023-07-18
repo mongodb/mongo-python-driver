@@ -25,6 +25,8 @@ import time
 import weakref
 from typing import Any, Dict, NoReturn, Optional
 
+import grpc
+
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -1454,49 +1456,79 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self, handler=None):
-        """Connect to Mongo and return a new SocketInfo.
+    # def connect(self, handler=None):
+    #     """Connect to Mongo and return a new SocketInfo.
+    #
+    #     Can raise ConnectionFailure.
+    #
+    #     Note that the pool does not keep a reference to the socket -- you
+    #     must call return_socket() when you're done with it.
+    #     """
+    #     with self.lock:
+    #         conn_id = self.next_connection_id
+    #         self.next_connection_id += 1
+    #
+    #     listeners = self.opts._event_listeners
+    #     if self.enabled_for_cmap:
+    #         listeners.publish_connection_created(self.address, conn_id)
+    #
+    #     try:
+    #         sock = _configured_socket(self.address, self.opts)
+    #     except BaseException as error:
+    #         if self.enabled_for_cmap:
+    #             listeners.publish_connection_closed(
+    #                 self.address, conn_id, ConnectionClosedReason.ERROR
+    #             )
+    #
+    #         if isinstance(error, (IOError, OSError, SSLError)):
+    #             _raise_connection_failure(self.address, error)
+    #
+    #         raise
+    #
+    #     sock_info = SocketInfo(sock, self, self.address, conn_id)
+    #     try:
+    #         if self.handshake:
+    #             sock_info.hello()
+    #             self.is_writable = sock_info.is_writable
+    #         if handler:
+    #             handler.contribute_socket(sock_info, completed_handshake=False)
+    #
+    #         sock_info.authenticate()
+    #     except BaseException:
+    #         sock_info.close_socket(ConnectionClosedReason.ERROR)
+    #         raise
+    #
+    #     return sock_info
 
-        Can raise ConnectionFailure.
+    def grpc_metadata(self):
+        return [
+            ("security-uuid", "client-uuid"),
+            ("username", "user"),
+            ("servername", "host.local.10gen.cc"),
+            ("mongodb-wireversion", 18),
+            ("x-forwarded-for", "127.0.0.1:9901"),
+        ]
 
-        Note that the pool does not keep a reference to the socket -- you
-        must call return_socket() when you're done with it.
-        """
-        with self.lock:
-            conn_id = self.next_connection_id
-            self.next_connection_id += 1
+    def grpc_channel_options(self):
+        return [
+            ("grpc.default_authority", "host.local.10gen.cc"),
+            ("grpc.max_receive_message_length", 48000000),
+            ("grpc.max_send_message_length", 48000000),
+        ]
 
-        listeners = self.opts._event_listeners
-        if self.enabled_for_cmap:
-            listeners.publish_connection_created(self.address, conn_id)
-
-        try:
-            sock = _configured_socket(self.address, self.opts)
-        except BaseException as error:
-            if self.enabled_for_cmap:
-                listeners.publish_connection_closed(
-                    self.address, conn_id, ConnectionClosedReason.ERROR
-                )
-
-            if isinstance(error, (IOError, OSError, SSLError)):
-                _raise_connection_failure(self.address, error)
-
-            raise
-
-        sock_info = SocketInfo(sock, self, self.address, conn_id)
-        try:
-            if self.handshake:
-                sock_info.hello()
-                self.is_writable = sock_info.is_writable
-            if handler:
-                handler.contribute_socket(sock_info, completed_handshake=False)
-
-            sock_info.authenticate()
-        except BaseException:
-            sock_info.close_socket(ConnectionClosedReason.ERROR)
-            raise
-
-        return sock_info
+    #     def connect(self, handler=None):
+    #         """Connect to Mongo and return a new gRPC Channel.
+    #
+    #         Can raise ConnectionFailure.
+    # `
+    #         Note that the pool does not keep a reference to the socket -- you
+    #         must call return_socket() when you're done with it.
+    #         """
+    #         with self.lock:
+    #             conn_id = self.next_connection_id
+    #             self.next_connection_id += 1
+    #
+    #         stream = channel.stream_stream("/MongoDB/CommandStream")
 
     @contextlib.contextmanager
     def get_socket(self, handler=None):
