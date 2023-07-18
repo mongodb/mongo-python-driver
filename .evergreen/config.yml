@@ -3310,7 +3310,7 @@ buildvariants:
 
 - name: rhel8-test-lambda
   display_name: AWS Lambda handler tests
-  run_on: rhel84-large
+  run_on: rhel87-large
   tasks:
     - name: test_aws_lambda_task_group
 
