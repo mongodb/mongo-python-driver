@@ -108,6 +108,7 @@ from pymongo.monitoring import (
     _PoolEvent,
     _ServerEvent,
 )
+from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -1097,6 +1098,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
+        batch_size = 0
 
         cursor_type = kwargs.pop("cursor_type", "nonTailable")
         if cursor_type == CursorType.TAILABLE:
@@ -1108,10 +1110,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.fail(f"unknown cursorType: {cursor_type}")
 
         if "maxTimeMS" in kwargs:
-            kwargs["max_time_ms"] = kwargs["maxTimeMS"]
-            del kwargs["maxTimeMS"]
+            kwargs["max_await_time_ms"] = kwargs.pop("maxTimeMS")
 
-        return target.cursor_command(**kwargs)
+        if "batch_size" in kwargs:
+            batch_size = kwargs.pop("batch_size")
+
+        cursor = target.cursor_command(**kwargs)
+
+        if batch_size > 0:
+            cursor.batch_size(batch_size)
+
+        return cursor
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
@@ -1158,6 +1167,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
+
+    def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
+        models = [SearchIndexModel(**i) for i in kwargs["models"]]
+        return target.create_search_indexes(models)
+
+    def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
+        name = kwargs.get("name")
+        agg_kwargs = kwargs.get("aggregation_options", dict())
+        return list(target.list_search_indexes(name, **agg_kwargs))
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":

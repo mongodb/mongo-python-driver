@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.7", "3.10", "pypy-3.8"]
+        python-version: ["3.7", "3.11", "pypy-3.8"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -44,12 +44,34 @@ jobs:
         run: |
           tox -m test
 
-  mypytest:
-    name: Run mypy
+  doctest:
+    runs-on: ubuntu-latest
+    name: DocTest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+          cache: 'pip'
+          cache-dependency-path: 'setup.py'
+      - name: Install dependencies
+        run: |
+          pip install tox
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: 4.4
+      - name: Run tests
+        run: |
+          tox -m doc-test
+
+  typing:
+    name: Typing Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.10']
+        python-version: ['3.7', '3.11']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -72,8 +94,8 @@ jobs:
         run: |
           tox -m typecheck-pyright-strict
 
-  linkcheck:
-    name: Check Links
+  docs:
+    name: Docs Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -87,3 +109,6 @@ jobs:
       - name: Check links
         run: |
           tox -m linkcheck
+      - name: Build docs
+        run: |
+          tox -m doc

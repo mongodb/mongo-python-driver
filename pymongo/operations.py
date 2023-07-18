@@ -13,7 +13,20 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
@@ -21,6 +34,10 @@ from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+
+if TYPE_CHECKING:
+    from bson.son import SON
+    from pymongo.bulk import _Bulk
 
 # Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
 _IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
@@ -32,7 +49,7 @@ class InsertOne(Generic[_DocumentType]):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: Union[_DocumentType, RawBSONDocument]) -> None:
+    def __init__(self, document: _DocumentType) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -43,11 +60,11 @@ class InsertOne(Generic[_DocumentType]):
         """
         self._doc = document
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_insert(self._doc)
+        bulkobj.add_insert(self._doc)  # type: ignore[arg-type]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"InsertOne({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
@@ -92,14 +109,14 @@ class DeleteOne:
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
-        if hint is not None:
-            if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._collation = collation
-        self._hint = hint
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_delete(
             self._filter,
@@ -108,7 +125,7 @@ class DeleteOne:
             hint=self._hint,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"DeleteOne({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
@@ -153,14 +170,14 @@ class DeleteMany:
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
-        if hint is not None:
-            if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._collation = collation
-        self._hint = hint
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_delete(
             self._filter,
@@ -169,7 +186,7 @@ class DeleteMany:
             hint=self._hint,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"DeleteMany({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
@@ -221,17 +238,16 @@ class ReplaceOne(Generic[_DocumentType]):
             validate_is_mapping("filter", filter)
         if upsert is not None:
             validate_boolean("upsert", upsert)
-        if hint is not None:
-            if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
-
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
         self._collation = collation
-        self._hint = hint
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_replace(
             self._filter,
@@ -255,7 +271,7 @@ class ReplaceOne(Generic[_DocumentType]):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
@@ -271,26 +287,34 @@ class _UpdateOp:
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters", "_hint")
 
-    def __init__(self, filter, doc, upsert, collation, array_filters, hint):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        doc: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool,
+        collation: Optional[_CollationIn],
+        array_filters: Optional[List[Mapping[str, Any]]],
+        hint: Optional[_IndexKeyHint],
+    ):
         if filter is not None:
             validate_is_mapping("filter", filter)
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if array_filters is not None:
             validate_list("array_filters", array_filters)
-        if hint is not None:
-            if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+        else:
+            self._hint = hint
 
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
         self._collation = collation
         self._array_filters = array_filters
-        self._hint = hint
 
-    def __eq__(self, other):
-        if type(other) == type(self):
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
             return (
                 other._filter,
                 other._doc,
@@ -308,10 +332,7 @@ class _UpdateOp:
             )
         return NotImplemented
 
-    def __ne__(self, other):
-        return not self == other
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
@@ -368,7 +389,7 @@ class UpdateOne(_UpdateOp):
         """
         super().__init__(filter, update, upsert, collation, array_filters, hint)
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(
             self._filter,
@@ -426,7 +447,7 @@ class UpdateMany(_UpdateOp):
         """
         super().__init__(filter, update, upsert, collation, array_filters, hint)
 
-    def _add_to_bulk(self, bulkobj):
+    def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(
             self._filter,
@@ -452,9 +473,8 @@ class IndexModel:
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
         be assumed.
-        The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        The key(s) must be an instance of :class:`str`, and the direction(s) must
+        be one of (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
         :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
@@ -521,4 +541,33 @@ class IndexModel:
         """An index document suitable for passing to the createIndexes
         command.
         """
+        return self.__document
+
+
+class SearchIndexModel:
+    """Represents a search index to create."""
+
+    __slots__ = "__document"
+
+    def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
+        """Create a Search Index instance.
+
+        For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
+
+        :Parameters:
+          - `definition` - The definition for this index.
+          - `name` (optional) - The name for this index, if present.
+
+        .. versionadded:: 4.5
+
+        .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
+        """
+        if name is not None:
+            self.__document = dict(name=name, definition=definition)
+        else:
+            self.__document = dict(definition=definition)
+
+    @property
+    def document(self) -> Mapping[str, Any]:
+        """The document for this index."""
         return self.__document
