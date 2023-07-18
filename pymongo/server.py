@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from pymongo.monitor import Monitor
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Pool, SocketInfo
-    from pymongo.read_preferences import _AggWritePref, _ServerMode
+    from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
@@ -108,7 +108,7 @@ class Server:
         self,
         sock_info: SocketInfo,
         operation: Union[_Query, _GetMore],
-        read_preference: Union[_AggWritePref, _ServerMode],
+        read_preference: _ServerMode,
         listeners: _EventListeners,
         unpack_res: Callable[..., List[Mapping[str, Any]]],
     ) -> Response:
