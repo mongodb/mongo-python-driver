@@ -81,8 +81,8 @@ if hasattr(gc, "set_debug"):
 
 # The host and port of a single mongod or mongos, or the seed host
 # for a replica set.
-host = os.environ.get("DB_IP", "localhost")
-port = int(os.environ.get("DB_PORT", 27017))
+host = os.environ.get("DB_IP", "host9.local.10gen.cc")
+port = int(os.environ.get("DB_PORT", 9901))
 
 db_user = os.environ.get("DB_USER", "user")
 db_pwd = os.environ.get("DB_PASSWORD", "password")
@@ -91,7 +91,7 @@ CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certifica
 CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
 CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
 
-TLS_OPTIONS: Dict = {"tls": True}
+TLS_OPTIONS: Dict = {"tls": False}
 if CLIENT_PEM:
     TLS_OPTIONS["tlsCertificateKeyFile"] = CLIENT_PEM
 if CA_PEM:
@@ -100,7 +100,7 @@ if CA_PEM:
 COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
 TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
-TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
+TEST_SERVERLESS = True
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 if TEST_LOADBALANCER:
@@ -108,15 +108,15 @@ if TEST_LOADBALANCER:
     host, port = res["nodelist"][0]
     db_user = res["username"] or db_user
     db_pwd = res["password"] or db_pwd
-elif TEST_SERVERLESS:
-    TEST_LOADBALANCER = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
-    host, port = res["nodelist"][0]
-    db_user = res["username"] or db_user
-    db_pwd = res["password"] or db_pwd
-    TLS_OPTIONS = {"tls": True}
-    # Spec says serverless tests must be run with compression.
-    COMPRESSORS = COMPRESSORS or "zlib"
+# elif TEST_SERVERLESS:
+#     TEST_LOADBALANCER = True
+#     res = parse_uri(SINGLE_MONGOS_LB_URI or "")
+#     host, port = res["nodelist"][0]
+#     db_user = res["username"] or db_user
+#     db_pwd = res["password"] or db_pwd
+#     TLS_OPTIONS = {"tls": True}
+#     # Spec says serverless tests must be run with compression.
+#     COMPRESSORS = COMPRESSORS or "zlib"
 
 
 # Shared KMS data.

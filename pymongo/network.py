@@ -175,7 +175,23 @@ def command(
         start = datetime.datetime.now()
 
     try:
-        sock_info.sock.sendall(msg)
+        sock_info.data = (
+            sock_info.connector.stream_stream(
+                "/mongodb.CommandService/UnauthenticatedCommandStream"
+            )
+            .__call__(
+                iter([msg]),
+                metadata=[
+                    ("security-uuid", "uuid"),
+                    ("username", "user"),
+                    ("servername", "host.local.10gen.cc"),
+                    ("mongodb-wireversion", "18"),
+                    ("x-forwarded-for", "127.0.0.1:9901"),
+                ],
+            )
+            .next()
+        )
+        # sock_info.connector.sendall(msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
@@ -239,7 +255,7 @@ def receive_message_tcp(
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = sock_info.sock.gettimeout()
+        timeout = sock_info.connector.gettimeout()
         if timeout:
             deadline = time.monotonic() + timeout
         else:
@@ -277,11 +293,11 @@ def receive_message_tcp(
 
 
 def receive_message(
-    response: _MultiThreadedRendezvous, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    response: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(response[:16])
+    length, _, response_to, op_code = _UNPACK_HEADER(response.data[:16])
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -296,10 +312,10 @@ def receive_message(
             "message size ({!r})".format(length, max_message_size)
         )
     if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(response[:9])
-        data = decompress(response[25:], compressor_id)
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(response.data[:9])
+        data = decompress(response.data[25:], compressor_id)
     else:
-        data = response[16:]
+        data = response.data[16:]
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -316,7 +332,7 @@ def wait_for_read(sock_info: SocketInfo, deadline: Optional[float]) -> None:
     context = sock_info.cancel_context
     # Only Monitor connections can be cancelled.
     if context:
-        sock = sock_info.sock
+        sock = sock_info.connector
         timed_out = False
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
@@ -362,7 +378,7 @@ def _receive_data_on_socket(
             # the response is actually already buffered on the client.
             if _csot.get_timeout() and deadline is not None:
                 sock_info.set_socket_timeout(max(deadline - time.monotonic(), 0))
-            chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
+            chunk_length = sock_info.connector.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
             raise socket.timeout("timed out")
         except OSError as exc:  # noqa: B014

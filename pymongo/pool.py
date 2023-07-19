@@ -620,15 +620,15 @@ class SocketInfo:
     """Store a socket with some metadata.
 
     :Parameters:
-      - `sock`: a raw socket object
+      - `connector`: a raw connector implementation, currently either a TCP Socket or a gRPC Channel
       - `pool`: a Pool instance
       - `address`: the server's (host, port)
-      - `id`: the id of this socket in it's pool
+      - `id`: the id of this socket in its pool
     """
 
-    def __init__(self, sock, pool, address, id):
+    def __init__(self, connector, pool, address, id):
         self.pool_ref = weakref.ref(pool)
-        self.sock = sock
+        self.connector = connector
         self.address = address
         self.id = id
         self.authed = set()
@@ -643,7 +643,7 @@ class SocketInfo:
         self.supports_sessions = False
         self.hello_ok = None
         self.is_mongos = False
-        self.op_msg_enabled = False
+        self.op_msg_enabled = True
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.compression_settings = pool.opts._compression_settings
@@ -673,14 +673,16 @@ class SocketInfo:
         self.pinned_cursor = False
         self.active = False
         self.last_timeout = self.opts.socket_timeout
+        self.current_timeout = self.last_timeout
         self.connect_rtt = 0.0
+        self.data = None
 
-    def set_socket_timeout(self, timeout):
-        """Cache last timeout to avoid duplicate calls to sock.settimeout."""
+    def set_connector_timeout(self, timeout):
+        """Cache last timeout to avoid duplicate calls to connector timeout implementations."""
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
-        self.sock.settimeout(timeout)
+        self.current_timeout = timeout
 
     def apply_timeout(self, client, cmd):
         # CSOT: use remaining timeout when set.
@@ -688,7 +690,7 @@ class SocketInfo:
         if timeout is None:
             # Reset the socket timeout unless we're performing a streaming monitor check.
             if not self.more_to_come:
-                self.set_socket_timeout(self.opts.socket_timeout)
+                self.set_connector_timeout(self.opts.socket_timeout)
             return None
         # RTT validation.
         rtt = _csot.get_rtt()
@@ -703,7 +705,7 @@ class SocketInfo:
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
-        self.set_socket_timeout(timeout)
+        self.set_connector_timeout(timeout)
         return timeout
 
     def pin_txn(self):
@@ -750,7 +752,7 @@ class SocketInfo:
             awaitable = True
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
-                self.set_socket_timeout(self.opts.connect_timeout + heartbeat_frequency)
+                self.set_connector_timeout(self.opts.connect_timeout + heartbeat_frequency)
 
         if not performing_handshake and cluster_time is not None:
             cmd["$clusterTime"] = cluster_time
@@ -921,7 +923,21 @@ class SocketInfo:
             )
 
         try:
-            self.sock.sendall(message)
+            # self.connector.sendall(message)
+            self.data = (
+                self.connector.stream_stream("/mongodb.CommandService/UnauthenticatedCommandStream")
+                .__call__(
+                    iter([message]),
+                    metadata=[
+                        ("security-uuid", "uuid"),
+                        ("username", "user"),
+                        ("servername", "host.local.10gen.cc"),
+                        ("mongodb-wireversion", "18"),
+                        ("x-forwarded-for", "127.0.0.1:9901"),
+                    ],
+                )
+                .next()
+            )
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1019,13 +1035,13 @@ class SocketInfo:
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
         try:
-            self.sock.close()
+            self.connector.close()
         except Exception:
             pass
 
     def socket_closed(self):
         """Return True if we know socket has been closed, False otherwise."""
-        return self.socket_checker.socket_closed(self.sock)
+        return self.socket_checker.socket_closed(self.connector)
 
     def send_cluster_time(self, command, session, client):
         """Add $clusterTime."""
@@ -1075,17 +1091,17 @@ class SocketInfo:
             raise
 
     def __eq__(self, other):
-        return self.sock == other.sock
+        return self.connector == other.connector
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        return hash(self.sock)
+        return hash(self.connector)
 
     def __repr__(self):
         return "SocketInfo({}){} at {}".format(
-            repr(self.sock),
+            repr(self.connector),
             self.closed and " CLOSED" or "",
             id(self),
         )
@@ -1516,22 +1532,31 @@ class Pool:
             ("grpc.max_send_message_length", 48000000),
         ]
 
-    #     def connect(self, handler=None):
-    #         """Connect to Mongo and return a new gRPC Channel.
-    #
-    #         Can raise ConnectionFailure.
-    # `
-    #         Note that the pool does not keep a reference to the socket -- you
-    #         must call return_socket() when you're done with it.
-    #         """
-    #         with self.lock:
-    #             conn_id = self.next_connection_id
-    #             self.next_connection_id += 1
-    #
-    #         channel = grpc.insecure_channel("host9.local.10gen.cc:9901",
-    #                                         options=[("grpc.default_authority", "host.local.10gen.cc")])
-    #
-    #         stream = channel.stream_stream("/MongoDB/CommandStream")
+    def connect(self, handler=None):
+        """Connect to Mongo and return a new gRPC Channel.
+
+                Can raise ConnectionFailure.
+        `
+                Note that the pool does not keep a reference to the socket -- you
+                must call return_socket() when you're done with it.
+        """
+        with self.lock:
+            conn_id = self.next_connection_id
+            self.next_connection_id += 1
+
+        try:
+            connection_string = self.address[0] + ":" + str(self.address[1])
+            channel = grpc.insecure_channel(
+                connection_string,
+                options=[
+                    ("grpc.default_authority", "host.local.10gen.cc"),
+                    ("channel_id", conn_id),
+                ],
+            )
+            socket_info = SocketInfo(channel, self, self.address, conn_id)
+            return socket_info
+        except:
+            raise
 
     @contextlib.contextmanager
     def get_socket(self, handler=None):
