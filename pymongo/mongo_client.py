@@ -694,6 +694,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                client.__my_database__
         """
+        raise ValueError("haha!")
         doc_class = document_class or dict
         self.__init_kwargs: Dict[str, Any] = {
             "host": host,

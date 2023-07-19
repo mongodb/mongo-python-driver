@@ -138,5 +138,6 @@ def lambda_handler(event, context):
     # Create the response and then reset the numbers.
     response = json.dumps(create_response())
     reset()
+    print("finished!")
 
     return dict(statusCode=200, body=response)
