@@ -20,6 +20,13 @@ PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(
 
 export MOD_WSGI_SO=/opt/python/mod_wsgi/python_version/$PYTHON_VERSION/mod_wsgi_version/$MOD_WSGI_VERSION/mod_wsgi.so
 export PYTHONHOME=/opt/python/$PYTHON_VERSION
+# If MOD_WSGI_EMBEDDED is set use the default embedded mode behavior instead
+# of daemon mode (WSGIDaemonProcess).
+if [ -n "$MOD_WSGI_EMBEDDED" ]; then
+    export MOD_WSGI_CONF=mod_wsgi_test_embedded.conf
+else
+    export MOD_WSGI_CONF=mod_wsgi_test.conf
+fi
 
 cd ..
 $APACHE -k start -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}
@@ -37,6 +44,10 @@ if [ $STATUS != 0 ]; then
     exit $STATUS
 fi
 
-${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 -t 100 parallel http://localhost:8080${PROJECT_DIRECTORY}
+${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 -t 100 parallel \
+    http://localhost:8080${PROJECT_DIRECTORY} http://localhost:8080/mod_wsgi_test${PROJECT_DIRECTORY} || \
+    (cat error_log && exit 1)
 
-${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 serial http://localhost:8080${PROJECT_DIRECTORY}
+${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 serial \
+    http://localhost:8080${PROJECT_DIRECTORY} http://localhost:8080/mod_wsgi_test${PROJECT_DIRECTORY} || \
+    (tail -n 100 error_log && exit 1)
