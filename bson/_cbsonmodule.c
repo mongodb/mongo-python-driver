@@ -2500,12 +2500,11 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                                       "bson.decimal128",
                                       "Decimal128"))) {
                 PyObject *_bytes_obj = PyBytes_FromStringAndSize(buffer + *position, (Py_ssize_t)16);
-                if(!_bytes_obj) {
+                if (!_bytes_obj) {
+                    Py_DECREF(dec128);
                     goto invalid;
                 }
-                value = PyObject_CallMethodObjArgs(dec128,
-                                            state->_from_bid_str,
-                                            _bytes_obj, NULL);
+                value = PyObject_CallMethodObjArgs(dec128, state->_from_bid_str, _bytes_obj, NULL);
                 Py_DECREF(dec128);
                 Py_DECREF(_bytes_obj);
             }
