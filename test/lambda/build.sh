@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
+set -o xtrace
 
 rm -rf mongodb/pymongo
 rm -rf mongodb/gridfs
@@ -15,6 +16,7 @@ if [ -n "$DOCKER" ]; then
     PODMAN=$(command -v podman) || true
     if [ -n "$PODMAN" ]; then
         echo "docker or podman are required!"
+        exit 1
     fi
     DOCKER=podman
 fi
