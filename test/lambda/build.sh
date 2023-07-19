@@ -12,9 +12,9 @@ rm -f bson/*.so
 image="quay.io/pypa/manylinux2014_x86_64:latest"
 
 DOCKER=$(command -v docker) || true
-if [ -n "$DOCKER" ]; then
+if [ -z "$DOCKER" ]; then
     PODMAN=$(command -v podman) || true
-    if [ -n "$PODMAN" ]; then
+    if [ -z "$PODMAN" ]; then
         echo "docker or podman are required!"
         exit 1
     fi
