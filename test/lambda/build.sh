@@ -9,8 +9,18 @@ pushd ../..
 rm -f pymongo/*.so
 rm -f bson/*.so
 image="quay.io/pypa/manylinux2014_x86_64:latest"
-docker pull $image
-docker run --rm -v "`pwd`:/src" $image /src/test/lambda/build_internal.sh
+
+DOCKER=$(command -v docker) || true
+if [ -n "$DOCKER" ]; then
+    PODMAN=$(command -v podman) || true
+    if [ -n "$PODMAN" ]; then
+        echo "docker or podman are required!"
+    fi
+    DOCKER=podman
+fi
+
+$DOCKER pull $image
+$DOCKER run --rm -v "`pwd`:/src" $image /src/test/lambda/build_internal.sh
 cp -r pymongo ./test/lambda/mongodb/pymongo
 cp -r bson ./test/lambda/mongodb/bson
 cp -r gridfs ./test/lambda/mongodb/gridfs
