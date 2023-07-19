@@ -35,11 +35,11 @@ Resources:
 
 Outputs:
   MongoDBApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    Description: "API Gateway endpoint URL for Prod stage for Python driver lambda function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
   MongoDBFunction:
-    Description: "Hello World Lambda Function ARN"
+    Description: "Python driver lambda Function ARN"
     Value: !GetAtt MongoDBFunction.Arn
   MongoDBFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
+    Description: "Implicit IAM Role created for Python driver lambda function"
     Value: !GetAtt MongoDBFunctionRole.Arn
