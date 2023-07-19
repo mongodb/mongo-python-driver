@@ -19,7 +19,6 @@ if [ -n "$DOCKER" ]; then
     DOCKER=podman
 fi
 
-$DOCKER pull $image
 $DOCKER run --rm -v "`pwd`:/src" $image /src/test/lambda/build_internal.sh
 cp -r pymongo ./test/lambda/mongodb/pymongo
 cp -r bson ./test/lambda/mongodb/bson
