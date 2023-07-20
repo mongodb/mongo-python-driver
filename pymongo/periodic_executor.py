@@ -14,6 +14,8 @@
 
 """Run a target function on a background thread."""
 
+from __future__ import annotations
+
 import threading
 import time
 import weakref
