@@ -29,6 +29,7 @@ from test.utils import (
     wait_until,
 )
 from test.utils_spec_runner import SpecRunner
+from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
@@ -335,10 +336,12 @@ class TestTransactions(TransactionsBase):
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
-        ops = [InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)]
+        ops: List[InsertOne[RawBSONDocument]] = [
+            InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)
+        ]
         with client.start_session() as session:
             with session.start_transaction():
-                coll.bulk_write(ops, session=session)
+                coll.bulk_write(ops, session=session)  # type: ignore[arg-type]
         # Assert commands were constructed properly.
         self.assertEqual(
             ["insert", "insert", "commitTransaction"], listener.started_command_names()

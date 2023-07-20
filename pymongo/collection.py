@@ -38,7 +38,7 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import CodecOptions
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
@@ -68,6 +68,7 @@ from pymongo.operations import (
     IndexModel,
     InsertOne,
     ReplaceOne,
+    SearchIndexModel,
     UpdateMany,
     UpdateOne,
     _IndexKeyHint,
@@ -148,9 +149,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        collection name. Any additional keyword arguments will be used
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
+        not a valid collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
         :meth:`~pymongo.database.Database.create_collection` for valid
         options.
@@ -2036,9 +2036,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
         be assumed.
-        The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        The key(s) must be an instance of :class:`str`and the direction(s) must
+        be one of (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
         :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
@@ -2359,6 +2358,207 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             index = dict(index)
             info[index.pop("name")] = index
         return info
+
+    def list_search_indexes(
+        self,
+        name: Optional[str] = None,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[Mapping[str, Any]]:
+        """Return a cursor over search indexes for the current collection.
+
+        :Parameters:
+          - `name` (optional): If given, the name of the index to search
+            for.  Only indexes with matching index names will be returned.
+            If not given, all search indexes for the current collection
+            will be returned.
+          - `session` (optional): a :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        :Returns:
+          A :class:`~pymongo.command_cursor.CommandCursor` over the result
+          set.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
+        """
+        if name is None:
+            pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
+        else:
+            pipeline = [{"$listSearchIndexes": {"name": name}}]
+
+        coll = self.with_options(
+            codec_options=DEFAULT_CODEC_OPTIONS, read_preference=ReadPreference.PRIMARY
+        )
+        cmd = _CollectionAggregationCommand(
+            coll,
+            CommandCursor,
+            pipeline,
+            kwargs,
+            explicit_session=session is not None,
+            user_fields={"cursor": {"firstBatch": 1}},
+        )
+
+        return self.__database.client._retryable_read(
+            cmd.get_cursor,
+            cmd.get_read_preference(session),
+            session,
+            retryable=not cmd._performs_write,
+        )
+
+    def create_search_index(
+        self,
+        model: Union[Mapping[str, Any], SearchIndexModel],
+        session: Optional[ClientSession] = None,
+        comment: Any = None,
+        **kwargs: Any,
+    ) -> str:
+        """Create a single search index for the current collection.
+
+        :Parameters:
+          - `model`: The model for the new search index.
+            It can be given as a :class:`~pymongo.operations.SearchIndexModel`
+            instance or a dictionary with a model "definition"  and optional
+            "name".
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the createSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+
+        :Returns:
+          The name of the new search index.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
+        """
+        if not isinstance(model, SearchIndexModel):
+            model = SearchIndexModel(model["definition"], model.get("name"))
+        return self.create_search_indexes([model], session, comment, **kwargs)[0]
+
+    def create_search_indexes(
+        self,
+        models: List[SearchIndexModel],
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Create multiple search indexes for the current collection.
+
+        :Parameters:
+          - `models`: A list of :class:`~pymongo.operations.SearchIndexModel` instances.
+          - `session` (optional): a :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the createSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+
+        :Returns:
+            A list of the newly created search index names.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
+        """
+        if comment is not None:
+            kwargs["comment"] = comment
+
+        def gen_indexes():
+            for index in models:
+                if not isinstance(index, SearchIndexModel):
+                    raise TypeError(
+                        f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
+                    )
+                yield index.document
+
+        cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
+        cmd.update(kwargs)
+
+        with self._socket_for_writes(session) as sock_info:
+            resp = self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            )
+            return [index["name"] for index in resp["indexesCreated"]]
+
+    def drop_search_index(
+        self,
+        name: str,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Delete a search index by index name.
+
+        :Parameters:
+          - `name`: The name of the search index to be deleted.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the dropSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
+        """
+        cmd = SON([("dropSearchIndex", self.__name), ("name", name)])
+        cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
+        with self._socket_for_writes(session) as sock_info:
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            )
+
+    def update_search_index(
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Update a search index by replacing the existing index definition with the provided definition.
+
+        :Parameters:
+          - `name`: The name of the search index to be updated.
+          - `definition`: The new search index definition.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the updateSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+
+        .. versionadded:: 4.5
+        """
+        cmd = SON([("updateSearchIndex", self.__name), ("name", name), ("definition", definition)])
+        cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
+        with self._socket_for_writes(session) as sock_info:
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            )
 
     def options(
         self,
@@ -2738,8 +2938,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`
-        (:class:`str` in python 3). Raises :class:`~pymongo.errors.InvalidName`
+        `new_name` is not an instance of :class:`str`.
+        Raises :class:`~pymongo.errors.InvalidName`
         if `new_name` is not a valid collection name.
 
         :Parameters:
@@ -2803,7 +3003,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         All optional distinct parameters should be passed as keyword arguments
         to this method. Valid options include:

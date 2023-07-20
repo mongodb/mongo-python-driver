@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Database",
     "Typing :: Typed",
 ]
@@ -65,6 +66,7 @@ ocsp = [
     "certifi;os.name=='nt' or sys_platform=='darwin'",
     "pyopenssl>=17.2.0",
     "requests<3.0.0",
+    "cryptography>=2.5",
     "service_identity>=18.1.0",
 ]
 snappy = [
