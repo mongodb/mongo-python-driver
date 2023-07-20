@@ -91,7 +91,7 @@ CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certifica
 CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
 CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
 
-TLS_OPTIONS: Dict = {"tls": False}
+TLS_OPTIONS: Dict = {"tls": True}
 if CLIENT_PEM:
     TLS_OPTIONS["tlsCertificateKeyFile"] = CLIENT_PEM
 if CA_PEM:

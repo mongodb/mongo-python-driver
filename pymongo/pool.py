@@ -372,6 +372,12 @@ def _cond_wait(condition, deadline):
     return condition.wait(timeout)
 
 
+class ConnectionProtocol:
+    TCP_SOCKET = 0
+
+    GRPC = 1
+
+
 class PoolOptions:
     """Read only connection pool options for a MongoClient.
 
@@ -404,6 +410,7 @@ class PoolOptions:
         "__server_api",
         "__load_balanced",
         "__credentials",
+        "__protocol",
     )
 
     def __init__(
@@ -425,6 +432,7 @@ class PoolOptions:
         server_api=None,
         load_balanced=None,
         credentials=None,
+        protocol=ConnectionProtocol.GRPC,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -443,6 +451,7 @@ class PoolOptions:
         self.__server_api = server_api
         self.__load_balanced = load_balanced
         self.__credentials = credentials
+        self.__protocol = protocol
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -474,6 +483,11 @@ class PoolOptions:
             self.__metadata["env"] = env
 
         _truncate_metadata(self.__metadata)
+
+    @property
+    def protocol(self):
+        """A :class:`~pymongo.pool.ConnectionProtocol` value."""
+        return self.__protocol
 
     @property
     def _credentials(self):
@@ -675,7 +689,7 @@ class SocketInfo:
         self.last_timeout = self.opts.socket_timeout
         self.current_timeout = self.last_timeout
         self.connect_rtt = 0.0
-        self.data = None
+        self.response = None
 
     def set_connector_timeout(self, timeout):
         """Cache last timeout to avoid duplicate calls to connector timeout implementations."""
@@ -923,20 +937,15 @@ class SocketInfo:
             )
 
         try:
-            # self.connector.sendall(message)
-            self.data = (
-                self.connector.stream_stream("/mongodb.CommandService/UnauthenticatedCommandStream")
-                .__call__(
-                    iter([message]),
-                    metadata=[
-                        ("security-uuid", "uuid"),
-                        ("username", "user"),
-                        ("servername", "host.local.10gen.cc"),
-                        ("mongodb-wireversion", "18"),
-                        ("x-forwarded-for", "127.0.0.1:9901"),
-                    ],
-                )
-                .next()
+            self.response = self.connector.__call__(
+                iter([message]),
+                metadata=[
+                    ("security-uuid", "uuid"),
+                    ("username", "user"),
+                    ("servername", "host.local.10gen.cc"),
+                    ("mongodb-wireversion", "18"),
+                    ("x-forwarded-for", "127.0.0.1:9901"),
+                ],
             )
         except BaseException as error:
             self._raise_connection_failure(error)
@@ -1336,6 +1345,11 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
 
+        if self.opts.protocol == ConnectionProtocol.GRPC:
+            self.channel = self._create_grpc_channel()
+        else:
+            self.channel = None
+
     def ready(self):
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
@@ -1413,6 +1427,10 @@ class Pool:
     def close(self):
         self._reset(close=True)
 
+    def _create_grpc_channel(self):
+        connection_string = self.address[0] + ":" + str(self.address[1])
+        return grpc.insecure_channel(connection_string, options=self.grpc_channel_options())
+
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
@@ -1472,49 +1490,51 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    # def connect(self, handler=None):
-    #     """Connect to Mongo and return a new SocketInfo.
-    #
-    #     Can raise ConnectionFailure.
-    #
-    #     Note that the pool does not keep a reference to the socket -- you
-    #     must call return_socket() when you're done with it.
-    #     """
-    #     with self.lock:
-    #         conn_id = self.next_connection_id
-    #         self.next_connection_id += 1
-    #
-    #     listeners = self.opts._event_listeners
-    #     if self.enabled_for_cmap:
-    #         listeners.publish_connection_created(self.address, conn_id)
-    #
-    #     try:
-    #         sock = _configured_socket(self.address, self.opts)
-    #     except BaseException as error:
-    #         if self.enabled_for_cmap:
-    #             listeners.publish_connection_closed(
-    #                 self.address, conn_id, ConnectionClosedReason.ERROR
-    #             )
-    #
-    #         if isinstance(error, (IOError, OSError, SSLError)):
-    #             _raise_connection_failure(self.address, error)
-    #
-    #         raise
-    #
-    #     sock_info = SocketInfo(sock, self, self.address, conn_id)
-    #     try:
-    #         if self.handshake:
-    #             sock_info.hello()
-    #             self.is_writable = sock_info.is_writable
-    #         if handler:
-    #             handler.contribute_socket(sock_info, completed_handshake=False)
-    #
-    #         sock_info.authenticate()
-    #     except BaseException:
-    #         sock_info.close_socket(ConnectionClosedReason.ERROR)
-    #         raise
-    #
-    #     return sock_info
+    def connect(self, handler=None):
+        """Connect to Mongo and return a new SocketInfo.
+
+        Can raise ConnectionFailure.
+
+        Note that the pool does not keep a reference to the socket -- you
+        must call return_socket() when you're done with it.
+        """
+        with self.lock:
+            conn_id = self.next_connection_id
+            self.next_connection_id += 1
+
+        listeners = self.opts._event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_created(self.address, conn_id)
+
+        try:
+            stream = self.channel.stream_stream(
+                "/mongodb.CommandService/UnauthenticatedCommandStream"
+            )
+        except BaseException as error:
+            if self.enabled_for_cmap:
+                listeners.publish_connection_closed(
+                    self.address, conn_id, ConnectionClosedReason.ERROR
+                )
+
+            if isinstance(error, (IOError, OSError, SSLError)):
+                _raise_connection_failure(self.address, error)
+
+            raise
+
+        sock_info = SocketInfo(stream, self, self.address, conn_id)
+        try:
+            if self.handshake:
+                sock_info.hello()
+                self.is_writable = sock_info.is_writable
+            if handler:
+                handler.contribute_socket(sock_info, completed_handshake=False)
+
+            sock_info.authenticate()
+        except BaseException:
+            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            raise
+
+        return sock_info
 
     def grpc_metadata(self):
         return [
@@ -1531,32 +1551,6 @@ class Pool:
             ("grpc.max_receive_message_length", 48000000),
             ("grpc.max_send_message_length", 48000000),
         ]
-
-    def connect(self, handler=None):
-        """Connect to Mongo and return a new gRPC Channel.
-
-                Can raise ConnectionFailure.
-        `
-                Note that the pool does not keep a reference to the socket -- you
-                must call return_socket() when you're done with it.
-        """
-        with self.lock:
-            conn_id = self.next_connection_id
-            self.next_connection_id += 1
-
-        try:
-            connection_string = self.address[0] + ":" + str(self.address[1])
-            channel = grpc.insecure_channel(
-                connection_string,
-                options=[
-                    ("grpc.default_authority", "host.local.10gen.cc"),
-                    ("channel_id", conn_id),
-                ],
-            )
-            socket_info = SocketInfo(channel, self, self.address, conn_id)
-            return socket_info
-        except:
-            raise
 
     @contextlib.contextmanager
     def get_socket(self, handler=None):

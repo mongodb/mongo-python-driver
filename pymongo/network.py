@@ -175,21 +175,15 @@ def command(
         start = datetime.datetime.now()
 
     try:
-        sock_info.data = (
-            sock_info.connector.stream_stream(
-                "/mongodb.CommandService/UnauthenticatedCommandStream"
-            )
-            .__call__(
-                iter([msg]),
-                metadata=[
-                    ("security-uuid", "uuid"),
-                    ("username", "user"),
-                    ("servername", "host.local.10gen.cc"),
-                    ("mongodb-wireversion", "18"),
-                    ("x-forwarded-for", "127.0.0.1:9901"),
-                ],
-            )
-            .next()
+        sock_info.response = sock_info.connector.__call__(
+            iter([msg]),
+            metadata=[
+                ("security-uuid", "uuid"),
+                ("username", "user"),
+                ("servername", "host.local.10gen.cc"),
+                ("mongodb-wireversion", "18"),
+                ("x-forwarded-for", "127.0.0.1:9901"),
+            ],
         )
         # sock_info.connector.sendall(msg)
         if use_op_msg and unacknowledged:
@@ -293,11 +287,12 @@ def receive_message_tcp(
 
 
 def receive_message(
-    response: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(response.data[:16])
+    data = sock_info.response.next()
+    length, _, response_to, op_code = _UNPACK_HEADER(data[:16])
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -312,10 +307,10 @@ def receive_message(
             "message size ({!r})".format(length, max_message_size)
         )
     if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(response.data[:9])
-        data = decompress(response.data[25:], compressor_id)
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(data[:9])
+        data = decompress(data[25:], compressor_id)
     else:
-        data = response.data[16:]
+        data = data[16:]
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
