@@ -504,7 +504,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             with self.assertRaises(TypeError):
                 cls(hedge=[])  # type: ignore
 
-            pref = cls(hedge={})
+            pref = cls(hedge={})  # type: ignore[abstract]
             self.assertEqual(pref.document, {"mode": mode})
             out = _maybe_add_read_preference({}, pref)
             if cls == SecondaryPreferred:
@@ -514,19 +514,19 @@ class TestMongosAndReadPreference(IntegrationTest):
                 self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
             hedge = {"enabled": True}
-            pref = cls(hedge=hedge)
+            pref = cls(hedge=hedge)  # type: ignore[abstract]
             self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
             out = _maybe_add_read_preference({}, pref)
             self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
             hedge = {"enabled": False}
-            pref = cls(hedge=hedge)
+            pref = cls(hedge=hedge)  # type: ignore[abstract]
             self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
             out = _maybe_add_read_preference({}, pref)
             self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
             hedge = {"enabled": False, "extra": "option"}
-            pref = cls(hedge=hedge)
+            pref = cls(hedge=hedge)  # type: ignore[abstract]
             self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
             out = _maybe_add_read_preference({}, pref)
             self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
@@ -544,7 +544,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         self.addCleanup(client.close)
         client.admin.command("ping")
         for _mode, cls in cases.items():
-            pref = cls(hedge={"enabled": True})
+            pref = cls(hedge={"enabled": True})  # type: ignore[abstract]
             coll = client.test.get_collection("test", read_preference=pref)
             listener.reset()
             coll.find_one()
