@@ -31,7 +31,7 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _OpReply, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -195,6 +195,7 @@ class Server:
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
+                assert isinstance(reply, _OpReply)
                 res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs

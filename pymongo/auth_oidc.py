@@ -19,7 +19,17 @@ import os
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+)
 
 import bson
 from bson.binary import Binary
@@ -243,7 +253,7 @@ class _OIDCAuthenticator:
         self.token_exp_utc = None
 
     def run_command(
-        self, sock_info: SocketInfo, cmd: Mapping[str, Any]
+        self, sock_info: SocketInfo, cmd: MutableMapping[str, Any]
     ) -> Optional[Mapping[str, Any]]:
         try:
             return sock_info.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
@@ -277,7 +287,7 @@ class _OIDCAuthenticator:
             cmd = self.auth_start_cmd()
             assert cmd is not None
             resp = self.run_command(sock_info, cmd)
-
+        assert resp is not None
         if resp["done"]:
             sock_info.oidc_token_gen_id = self.token_gen_id
             return None
@@ -299,6 +309,7 @@ class _OIDCAuthenticator:
             ]
         )
         resp = self.run_command(sock_info, cmd)
+        assert resp is not None
         if not resp["done"]:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")

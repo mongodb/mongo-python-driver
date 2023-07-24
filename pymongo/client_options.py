@@ -316,4 +316,5 @@ class ClientOptions:
 
         .. versionadded:: 4.0
         """
+        assert self.__pool_options._event_listeners is not None
         return self.__pool_options._event_listeners.event_listeners()

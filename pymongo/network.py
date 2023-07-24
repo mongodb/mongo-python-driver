@@ -48,14 +48,13 @@ from pymongo.socket_checker import _errno_from_exception
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo.client_session import ClientSession
-    from pymongo.collation import Collation
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.mongo_client import MongoClient
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address
+    from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -66,7 +65,7 @@ def command(
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
-    read_preference: _ServerMode,
+    read_preference: Optional[_ServerMode],
     codec_options: CodecOptions,
     session: Optional[ClientSession],
     client: Optional[MongoClient],
@@ -77,7 +76,7 @@ def command(
     max_bson_size: Optional[int] = None,
     read_concern: Optional[ReadConcern] = None,
     parse_write_concern_error: bool = False,
-    collation: Optional[Collation] = None,
+    collation: Optional[_CollationIn] = None,
     compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
     use_op_msg: bool = False,
     unacknowledged: bool = False,
@@ -142,7 +141,7 @@ def command(
 
     # Support CSOT
     if client:
-        sock_info.apply_timeout(client, spec)
+        sock_info.apply_timeout(spec)
     _csot.apply_write_concern(spec, write_concern)
 
     if use_op_msg:
@@ -230,7 +229,7 @@ _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
 def receive_message(
-    sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    sock_info: SocketInfo, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():

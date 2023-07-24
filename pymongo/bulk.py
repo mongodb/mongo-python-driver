@@ -373,7 +373,7 @@ class _Bulk:
                 sock_info.send_cluster_time(cmd, session, client)
                 sock_info.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
-                sock_info.apply_timeout(client, cmd)
+                sock_info.apply_timeout(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
 
                 # Run as many ops as possible in one command.
