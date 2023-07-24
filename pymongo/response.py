@@ -15,7 +15,7 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -35,7 +35,7 @@ class Response:
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: List[_DocumentOut],
+        docs: Sequence[Mapping[str, Any]],
     ):
         """Represent a response from the server.
 
@@ -79,7 +79,7 @@ class Response:
         return self._from_command
 
     @property
-    def docs(self) -> List[_DocumentOut]:
+    def docs(self) -> Sequence[Mapping[str, Any]]:
         """The decoded document(s)."""
         return self._docs
 
