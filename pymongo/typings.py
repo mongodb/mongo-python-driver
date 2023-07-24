@@ -13,7 +13,16 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 
@@ -26,8 +35,10 @@ _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _Pipeline = Sequence[Mapping[str, Any]]
 
+_T = TypeVar("_T")
 
-def strip_optional(elem):
+
+def strip_optional(elem: Optional[_T]) -> _T:
     """This function is to allow us to cast all of the elements of an iterator from Optional[_T] to _T
     while inside a list comprehension.
     """
