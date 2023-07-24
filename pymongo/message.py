@@ -366,7 +366,7 @@ class _Query:
             cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
-            sock_info.apply_timeout(client, cmd)
+            sock_info.apply_timeout(cmd)
         self._as_command = cmd, self.db
         return self._as_command
 
@@ -511,7 +511,7 @@ class _GetMore:
             cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
-            sock_info.apply_timeout(client, cmd=None)
+            sock_info.apply_timeout(cmd=None)
         self._as_command = cmd, self.db
         return self._as_command
 
