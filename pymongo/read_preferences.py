@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from collections import abc
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence
 
