@@ -28,6 +28,7 @@ from pymongo.server_selectors import (
 )
 
 if TYPE_CHECKING:
+    from pymongo.server_selectors import Selection
     from pymongo.topology_description import TopologyDescription
 
 _PRIMARY = 0
@@ -255,9 +256,8 @@ class _ServerMode:
         self.__max_staleness = _validate_max_staleness(value["max_staleness"])
         self.__hedge = _validate_hedge(value["hedge"])
 
-    @abstractmethod
-    def __call__(self, selection: Any) -> Any:
-        ...
+    def __call__(self, selection: Selection) -> Selection:
+        return selection
 
 
 class Primary(_ServerMode):
@@ -275,7 +275,7 @@ class Primary(_ServerMode):
     def __init__(self) -> None:
         super().__init__(_PRIMARY)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to a Selection."""
         return selection.primary_selection
 
@@ -326,7 +326,7 @@ class PrimaryPreferred(_ServerMode):
     ) -> None:
         super().__init__(_PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         if selection.primary:
             return selection.primary_selection
@@ -369,7 +369,7 @@ class Secondary(_ServerMode):
     ) -> None:
         super().__init__(_SECONDARY, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         return secondary_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -413,7 +413,7 @@ class SecondaryPreferred(_ServerMode):
     ) -> None:
         super().__init__(_SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         secondaries = secondary_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -458,7 +458,7 @@ class Nearest(_ServerMode):
     ) -> None:
         super().__init__(_NEAREST, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         return member_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -493,7 +493,7 @@ class _AggWritePref:
         else:
             self.effective_pref = self.pref
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to a Selection."""
         return self.effective_pref(selection)
 
