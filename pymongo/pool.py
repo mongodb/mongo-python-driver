@@ -724,7 +724,9 @@ class SocketInfo:
         self.last_timeout = timeout
         self.sock.settimeout(timeout)
 
-    def apply_timeout(self, cmd: Optional[MutableMapping[str, Any]]) -> Optional[float]:
+    def apply_timeout(
+        self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
+    ) -> Optional[float]:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:

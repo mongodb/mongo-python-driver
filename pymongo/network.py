@@ -141,7 +141,7 @@ def command(
 
     # Support CSOT
     if client:
-        sock_info.apply_timeout(spec)
+        sock_info.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
     if use_op_msg:
