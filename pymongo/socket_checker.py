@@ -25,7 +25,7 @@ _HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith("java")
 _SelectError = getattr(select, "error", OSError)
 
 
-def _errno_from_exception(exc):
+def _errno_from_exception(exc: BaseException) -> Optional[int]:
     if hasattr(exc, "errno"):
         return exc.errno
     if exc.args:
