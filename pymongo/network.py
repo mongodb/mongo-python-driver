@@ -31,9 +31,6 @@ from typing import (
     Union,
 )
 
-import grpc
-from grpc._channel import _MultiThreadedRendezvous
-
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, message, ssl_support
 from pymongo.common import MAX_MESSAGE_SIZE
