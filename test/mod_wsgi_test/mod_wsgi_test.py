@@ -57,7 +57,6 @@ doc = {
     "list": [1, 2, 3],
     "dict": {"a": 1, "b": 2, "c": 3},
     "datetime": datetime.datetime.fromtimestamp(1690328577.446),
-    "datetime_ms": DatetimeMS(1690328577446),
     "datetime_ms_out_of_range": DatetimeMS(-2 << 60),
     "regex_native": re.compile("regex*"),
     "regex_pymongo": Regex("regex*"),
@@ -86,6 +85,8 @@ def application(environ, start_response):
     # Test encoding and decoding works (for sub interpreter support).
     decoded = bson.decode(bson.encode(doc, codec_options=OPTS), codec_options=OPTS)
     for key, value in doc.items():
+        if key == "regex_native":
+            value = Regex.from_native(value)
         assert decoded[key] == value, f"failed on doc[{key!r}]: {decoded[key]!r} != {value!r}"
         assert isinstance(
             decoded[key], type(value)
