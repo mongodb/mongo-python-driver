@@ -15,7 +15,7 @@ Test Matrix
 
 PyMongo should be tested with several versions of mod_wsgi and a selection
 of Python versions. Each combination of mod_wsgi and Python version should
-be tested with a standalone and a replica set. ``mod_wsgi_test.wsgi``
+be tested with a standalone and a replica set. ``mod_wsgi_test.py``
 detects if the deployment is a replica set and connects to the whole set.
 
 Setup
@@ -89,7 +89,7 @@ The ``test_client.py`` script merely makes HTTP requests to Apache. Its
 exit code is non-zero if any of its requests fails, for example with an
 HTTP 500.
 
-The core of the test is in the WSGI script, ``mod_wsgi_test.wsgi``.
+The core of the test is in the WSGI script, ``mod_wsgi_test.py``.
 This script inserts some documents into MongoDB at startup, then queries
 documents for each HTTP request.
 
