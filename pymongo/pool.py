@@ -25,7 +25,12 @@ import time
 import weakref
 from typing import Any, Dict, NoReturn, Optional
 
-import grpc
+try:
+    import grpc
+
+    _HAVE_GRPC = True
+except ImportError:
+    _HAVE_GRPC = False
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS

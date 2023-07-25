@@ -38,7 +38,7 @@ from pymongo.errors import (
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.monitor import SrvMonitor
-from pymongo.pool import ConnectionProtocol, PoolOptions
+from pymongo.pool import PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
