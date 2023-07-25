@@ -38,7 +38,7 @@ from pymongo.errors import (
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.monitor import SrvMonitor
-from pymongo.pool import PoolOptions
+from pymongo.pool import ConnectionProtocol, PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -778,6 +778,7 @@ class Topology:
             driver=options.driver,
             pause_enabled=False,
             server_api=options.server_api,
+            protocol=options.protocol,
         )
 
         return self._settings.pool_class(address, monitor_pool_options, handshake=False)

@@ -1345,6 +1345,7 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
 
+        print("PROTOCOL: " + str(self.opts.protocol))
         if self.opts.protocol == ConnectionProtocol.GRPC:
             self.channel = self._create_grpc_channel()
         else:
@@ -1507,9 +1508,13 @@ class Pool:
             listeners.publish_connection_created(self.address, conn_id)
 
         try:
-            stream = self.channel.stream_stream(
-                "/mongodb.CommandService/UnauthenticatedCommandStream"
-            )
+            if self.opts.protocol == ConnectionProtocol.GRPC:
+                stream = self.channel.stream_stream(
+                    "/mongodb.CommandService/UnauthenticatedCommandStream"
+                )
+            else:
+                print("NO GRPC ENABLED!")
+                raise Exception
         except BaseException as error:
             if self.enabled_for_cmap:
                 listeners.publish_connection_closed(
