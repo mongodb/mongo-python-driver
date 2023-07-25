@@ -7,7 +7,9 @@ relevant events, and forces the connection pool to get populated.
 import json
 import os
 
+from bson import has_c as has_bson_c
 from pymongo import MongoClient
+from pymongo import has_c as has_pymongo_c
 from pymongo.monitoring import (
     CommandListener,
     ConnectionPoolListener,
@@ -19,6 +21,10 @@ heartbeat_count = 0
 total_heartbeat_duration = 0
 total_commands = 0
 total_command_duration = 0
+
+# Ensure we are using C extensions
+assert has_bson_c()
+assert has_pymongo_c()
 
 
 class CommandHandler(CommandListener):

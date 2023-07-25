@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone -b DRIVERS-2384 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -3310,7 +3310,7 @@ buildvariants:
 
 - name: rhel8-test-lambda
   display_name: AWS Lambda handler tests
-  run_on: rhel87-large
+  run_on: rhel87-small
   tasks:
     - name: test_aws_lambda_task_group
 
