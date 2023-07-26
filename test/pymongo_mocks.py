@@ -85,7 +85,7 @@ class MockMonitor(Monitor):
     def _check_once(self):
         client = self.client
         address = self._server_description.address
-        response, rtt = client.mock_hello("%s:%d" % address)
+        response, rtt = client.mock_hello("%s:%d" % address)  # type: ignore[str-format]
         return ServerDescription(address, Hello(response), rtt)
 
 

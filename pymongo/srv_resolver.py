@@ -56,7 +56,7 @@ _INVALID_HOST_MSG = (
 class _SrvResolver:
     def __init__(
         self,
-        fqdn: str,
+        fqdn: Optional[str],
         connect_timeout: Optional[float],
         srv_service_name: str,
         srv_max_hosts: int = 0,
@@ -67,13 +67,13 @@ class _SrvResolver:
         self.__srv_max_hosts = srv_max_hosts or 0
         # Validate the fully qualified domain name.
         try:
-            ipaddress.ip_address(fqdn)
+            ipaddress.ip_address(fqdn)  # type: ignore[arg-type]
             raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
         except ValueError:
             pass
 
         try:
-            self.__plist = self.__fqdn.split(".")[1:]
+            self.__plist = self.__fqdn.split(".")[1:]  # type: ignore[union-attr]
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
         self.__slen = len(self.__plist)
@@ -95,7 +95,7 @@ class _SrvResolver:
     def _resolve_uri(self, encapsulate_errors: bool) -> resolver.Answer:
         try:
             results = _resolve(
-                "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout
+                "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout  # type: ignore[operator]
             )
         except Exception as exc:
             if not encapsulate_errors:
