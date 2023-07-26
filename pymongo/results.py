@@ -26,7 +26,7 @@ class _WriteResult:
     def __init__(self, acknowledged: bool) -> None:
         self.__acknowledged = acknowledged
 
-    def _raise_if_unacknowledged(self, property_name):
+    def _raise_if_unacknowledged(self, property_name: str) -> None:
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
             raise InvalidOperation(
