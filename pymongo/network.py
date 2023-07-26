@@ -278,32 +278,35 @@ def receive_message_grpc(
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # Ignore the response's request id.
-    data = connection.response.next()
-    length, _, response_to, op_code = _UNPACK_HEADER(data[:16])
-    # No request_id for exhaust cursor "getMore".
-    if request_id is not None:
-        if request_id != response_to:
-            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
-        raise ProtocolError(
-            f"Message length ({length!r}) not longer than standard message header size (16)"
-        )
-    if length > max_message_size:
-        raise ProtocolError(
-            "Message length ({!r}) is larger than server max "
-            "message size ({!r})".format(length, max_message_size)
-        )
-    if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(data[:9])
-        data = decompress(data[25:], compressor_id)
-    else:
-        data = data[16:]
+    if connection.response is not None:
+        data = connection.response.__next__()
+        length, _, response_to, op_code = _UNPACK_HEADER(data[:16])
+        # No request_id for exhaust cursor "getMore".
+        if request_id is not None:
+            if request_id != response_to:
+                raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
+        if length <= 16:
+            raise ProtocolError(
+                f"Message length ({length!r}) not longer than standard message header size (16)"
+            )
+        if length > max_message_size:
+            raise ProtocolError(
+                "Message length ({!r}) is larger than server max "
+                "message size ({!r})".format(length, max_message_size)
+            )
+        if op_code == 2012:
+            op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(data[:9])
+            data = decompress(data[25:], compressor_id)
+        else:
+            data = data[16:]
 
-    try:
-        unpack_reply = _UNPACK_REPLY[op_code]
-    except KeyError:
-        raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
-    return unpack_reply(data)
+        try:
+            unpack_reply = _UNPACK_REPLY[op_code]
+        except KeyError:
+            raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
+        return unpack_reply(data)
+    else:
+        raise ProtocolError(f"Received empty response for request id {request_id}")
 
 
 _POLL_TIMEOUT = 0.5

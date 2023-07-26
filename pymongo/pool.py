@@ -663,7 +663,7 @@ class Connection:
         self.supports_sessions = False
         self.hello_ok = None
         self.is_mongos = False
-        self.op_msg_enabled = True
+        self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.compression_settings = pool.opts._compression_settings
@@ -703,6 +703,8 @@ class Connection:
             return
         self.last_timeout = timeout
         self.current_timeout = timeout
+        if self.protocol == ConnectionProtocol.TCP_SOCKET:  # TODO: Implement timeouts for gRPC mode
+            self.connector.settimeout(timeout)
 
     def apply_timeout(self, client, cmd):
         # CSOT: use remaining timeout when set.
@@ -965,7 +967,7 @@ class Connection:
         If any exception is raised, the connector is closed.
         """
         try:
-            if self.opts.protocol == ConnectionProtocol.GRPC:
+            if self.protocol == ConnectionProtocol.GRPC:
                 return receive_message_grpc(self, request_id, self.max_message_size)
             else:
                 return receive_message_tcp(self, request_id, self.max_message_size)
@@ -1357,7 +1359,6 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
 
-        print("PROTOCOL: " + str(self.opts.protocol))
         if self.opts.protocol == ConnectionProtocol.GRPC:
             self.channel = self._create_grpc_channel()
         else:
