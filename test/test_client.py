@@ -96,7 +96,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool import _METADATA, PoolOptions, SocketInfo
+from pymongo.pool import _METADATA, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -541,10 +541,10 @@ class TestClient(IntegrationTest):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as sock_info:
+            with server._pool.get_socket() as connection:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
-            self.assertTrue(sock_info in server._pool.sockets)
+            self.assertTrue(connection in server._pool.sockets)
             client.close()
 
     def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
@@ -552,12 +552,12 @@ class TestClient(IntegrationTest):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as sock_info:
+            with server._pool.get_socket() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket, two
             # sockets could be created and checked into the pool.
             self.assertGreaterEqual(len(server._pool.sockets), 1)
-            wait_until(lambda: sock_info not in server._pool.sockets, "remove stale socket")
+            wait_until(lambda: connection not in server._pool.sockets, "remove stale socket")
             wait_until(lambda: 1 <= len(server._pool.sockets), "replace stale socket")
             client.close()
 
@@ -566,12 +566,12 @@ class TestClient(IntegrationTest):
             # Assert reaper respects maxPoolSize when adding new sockets.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as sock_info:
+            with server._pool.get_socket() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two sockets from being created.
             self.assertEqual(1, len(server._pool.sockets))
-            wait_until(lambda: sock_info not in server._pool.sockets, "remove stale socket")
+            wait_until(lambda: connection not in server._pool.sockets, "remove stale socket")
             wait_until(lambda: 1 == len(server._pool.sockets), "replace stale socket")
             client.close()
 
@@ -605,39 +605,39 @@ class TestClient(IntegrationTest):
             wait_until(lambda: 10 == len(server._pool.sockets), "pool initialized with 10 sockets")
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool.get_socket() as sock_info:
-                sock_info.close_socket(None)
+            with server._pool.get_socket() as connection:
+                connection.close_socket(None)
             wait_until(
                 lambda: 10 == len(server._pool.sockets),
                 "a closed socket gets replaced from the pool",
             )
-            self.assertFalse(sock_info in server._pool.sockets)
+            self.assertFalse(connection in server._pool.sockets)
 
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as sock_info:
+            with server._pool.get_socket() as connection:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
             with server._pool.get_socket() as new_sock_info:
-                self.assertNotEqual(sock_info, new_sock_info)
+                self.assertNotEqual(connection, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
-            self.assertFalse(sock_info in server._pool.sockets)
+            self.assertFalse(connection in server._pool.sockets)
             self.assertTrue(new_sock_info in server._pool.sockets)
 
             # Test that sockets are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as sock_info:
+            with server._pool.get_socket() as connection:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             time.sleep(1)
             with server._pool.get_socket() as new_sock_info:
-                self.assertEqual(sock_info, new_sock_info)
+                self.assertEqual(connection, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
 
     def test_constants(self):
@@ -1130,8 +1130,8 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool.get_socket() as sock_info:
-            keepalive = sock_info.sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        with pool.get_socket() as connection:
+            keepalive = connection.connector.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
     @no_type_check
@@ -1326,13 +1326,13 @@ class TestClient(IntegrationTest):
         connected(client)
 
         # Cause a network error.
-        sock_info = one(pool.sockets)
-        sock_info.sock.close()
+        connection = one(pool.sockets)
+        connection.connector.close()
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             next(cursor)
 
-        self.assertTrue(sock_info.closed)
+        self.assertTrue(connection.closed)
 
         # The semaphore was decremented despite the error.
         self.assertEqual(0, pool.requests)
@@ -1350,7 +1350,7 @@ class TestClient(IntegrationTest):
         socket_info = one(pool.sockets)
         socket_info.sock.close()
 
-        # SocketInfo.authenticate logs, but gets a socket.error. Should be
+        # Connection.authenticate logs, but gets a socket.error. Should be
         # reraised as AutoReconnect.
         self.assertRaises(AutoReconnect, c.test.collection.find_one)
 
@@ -1847,7 +1847,7 @@ class TestExhaustCursor(IntegrationTest):
 
         collection = client.pymongo_test.test
         pool = get_pool(client)
-        sock_info = one(pool.sockets)
+        connection = one(pool.sockets)
 
         # This will cause OperationFailure in all mongo versions since
         # the value for $orderby must be a document.
@@ -1856,10 +1856,10 @@ class TestExhaustCursor(IntegrationTest):
         )
 
         self.assertRaises(OperationFailure, cursor.next)
-        self.assertFalse(sock_info.closed)
+        self.assertFalse(connection.closed)
 
         # The socket was checked in and the semaphore was decremented.
-        self.assertIn(sock_info, pool.sockets)
+        self.assertIn(connection, pool.sockets)
         self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_server_error(self):
@@ -1874,7 +1874,7 @@ class TestExhaustCursor(IntegrationTest):
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
-        sock_info = one(pool.sockets)
+        connection = one(pool.sockets)
 
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
@@ -1884,21 +1884,21 @@ class TestExhaustCursor(IntegrationTest):
         # Cause a server error on getmore.
         def receive_message(request_id):
             # Discard the actual server response.
-            SocketInfo.receive_message(sock_info, request_id)
+            Connection.receive_message(connection, request_id)
 
             # responseFlags bit 1 is QueryFailure.
             msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
             msg += encode({"$err": "mock err", "code": 0})
             return message._OpReply.unpack(msg)
 
-        sock_info.receive_message = receive_message
+        connection.receive_message = receive_message
         self.assertRaises(OperationFailure, list, cursor)
         # Unpatch the instance.
-        del sock_info.receive_message
+        del connection.receive_message
 
         # The socket is returned to the pool and it still works.
         self.assertEqual(200, collection.count_documents({}))
-        self.assertIn(sock_info, pool.sockets)
+        self.assertIn(connection, pool.sockets)
 
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
@@ -1909,15 +1909,15 @@ class TestExhaustCursor(IntegrationTest):
         pool._check_interval_seconds = None  # Never check.
 
         # Cause a network error.
-        sock_info = one(pool.sockets)
-        sock_info.sock.close()
+        connection = one(pool.sockets)
+        connection.connector.close()
 
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         self.assertRaises(ConnectionFailure, cursor.next)
-        self.assertTrue(sock_info.closed)
+        self.assertTrue(connection.closed)
 
         # The socket was closed and the semaphore was decremented.
-        self.assertNotIn(sock_info, pool.sockets)
+        self.assertNotIn(connection, pool.sockets)
         self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_network_error(self):
@@ -1936,15 +1936,15 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a network error.
-        sock_info = cursor._Cursor__sock_mgr.sock
-        sock_info.sock.close()
+        connection = cursor._Cursor__sock_mgr.sock
+        connection.connector.close()
 
         # A getmore fails.
         self.assertRaises(ConnectionFailure, list, cursor)
-        self.assertTrue(sock_info.closed)
+        self.assertTrue(connection.closed)
 
         # The socket was closed and the semaphore was decremented.
-        self.assertNotIn(sock_info, pool.sockets)
+        self.assertNotIn(connection, pool.sockets)
         self.assertEqual(0, pool.requests)
 
     def test_gevent_task(self):

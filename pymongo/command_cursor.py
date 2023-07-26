@@ -38,7 +38,7 @@ from pymongo.typings import _Address, _DocumentType
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
 
 
 class CommandCursor(Generic[_DocumentType]):
@@ -157,13 +157,13 @@ class CommandCursor(Generic[_DocumentType]):
         """
         return self.__postbatchresumetoken
 
-    def _maybe_pin_connection(self, sock_info: SocketInfo) -> None:
+    def _maybe_pin_connection(self, connection: Connection) -> None:
         client = self.__collection.database.client
         if not client._should_pin_cursor(self.__session):
             return
         if not self.__sock_mgr:
-            sock_info.pin_cursor()
-            sock_mgr = _SocketManager(sock_info, False)
+            connection.pin_cursor()
+            sock_mgr = _SocketManager(connection, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self.__id == 0:

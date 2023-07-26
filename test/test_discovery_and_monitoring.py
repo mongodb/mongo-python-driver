@@ -94,7 +94,7 @@ def got_app_error(topology, app_error):
     when = app_error["when"]
     max_wire_version = app_error["maxWireVersion"]
     # XXX: We could get better test coverage by mocking the errors on the
-    # Pool/SocketInfo.
+    # Pool/Connection.
     try:
         if error_type == "command":
             _check_command_response(app_error["response"], max_wire_version)
@@ -279,7 +279,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
         def mock_command(*args, **kwargs):
             # Synchronize all threads to ensure they use the same generation.
             barrier.wait()
-            raise AutoReconnect("mock SocketInfo.command error")
+            raise AutoReconnect("mock Connection.command error")
 
         for sock in pool.sockets:
             sock.command = mock_command

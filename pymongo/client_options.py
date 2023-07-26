@@ -24,7 +24,7 @@ from pymongo.common import validate_boolean
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListeners
-from pymongo.pool import PoolOptions
+from pymongo.pool import ConnectionProtocol, PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
     _ServerMode,
@@ -162,6 +162,13 @@ def _parse_pool_options(
     ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options)
     load_balanced = options.get("loadbalanced")
     max_connecting = options.get("maxconnecting", common.MAX_CONNECTING)
+
+    grpc_enabled = options.get("grpc", False)
+    if grpc_enabled:
+        protocol = ConnectionProtocol.GRPC
+    else:
+        protocol = ConnectionProtocol.TCP_SOCKET
+
     return PoolOptions(
         max_pool_size,
         min_pool_size,
@@ -179,6 +186,7 @@ def _parse_pool_options(
         server_api=server_api,
         load_balanced=load_balanced,
         credentials=credentials,
+        protocol=protocol,
     )
 
 

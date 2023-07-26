@@ -41,6 +41,7 @@ classifiers = [
 ]
 dependencies = [
     "dnspython>=1.16.0,<3.0.0",
+    "grpcio>=1.56.0"
 ]
 
 [project.optional-dependencies]
