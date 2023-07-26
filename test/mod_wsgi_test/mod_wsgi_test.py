@@ -86,7 +86,7 @@ def application(environ, start_response):
     decoded = bson.decode(bson.encode(doc, codec_options=OPTS), codec_options=OPTS)
     for key, value in doc.items():
         # Native regex objects are decoded as bson Regex.
-        if key == "regex_native":
+        if isinstance(value, re.Pattern):
             value = Regex.from_native(value)
         assert decoded[key] == value, f"failed on doc[{key!r}]: {decoded[key]!r} != {value!r}"
         assert isinstance(
