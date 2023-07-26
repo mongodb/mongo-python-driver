@@ -38,6 +38,10 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from pymongo.mongo_client import MongoClient
 
+# Ensure the C extensions are installed.
+assert bson.has_c()
+assert pymongo.has_c()
+
 OPTS: "CodecOptions[dict]" = CodecOptions(
     uuid_representation=STANDARD, datetime_conversion=DatetimeConversion.DATETIME_AUTO
 )
