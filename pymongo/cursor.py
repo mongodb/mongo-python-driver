@@ -139,11 +139,11 @@ class CursorType:
     """
 
 
-class _SocketManager:
-    """Used with exhaust cursors to ensure the socket is returned."""
+class _ConnectionManager:
+    """Used with exhaust cursors to ensure the connection is returned."""
 
-    def __init__(self, sock: Connection, more_to_come: bool):
-        self.sock: Optional[Connection] = sock
+    def __init__(self, connection: Connection, more_to_come: bool):
+        self.connection: Optional[Connection] = connection
         self.more_to_come = more_to_come
         self.lock = _create_lock()
 
@@ -151,10 +151,10 @@ class _SocketManager:
         self.more_to_come = more_to_come
 
     def close(self) -> None:
-        """Return this instance's socket to the connection pool."""
-        if self.sock:
-            self.sock.unpin()
-            self.sock = None
+        """Return this instance's connection to the connection pool."""
+        if self.connection:
+            self.connection.unpin()
+            self.connection = None
 
 
 _Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
@@ -206,7 +206,7 @@ class Cursor(Generic[_DocumentType]):
         self.__collection: Collection[_DocumentType] = collection
         self.__id: Any = None
         self.__exhaust = False
-        self.__sock_mgr: Any = None
+        self.__conn_mgr: Any = None
         self.__killed = False
         self.__session: Optional[ClientSession]
 
@@ -428,13 +428,13 @@ class Cursor(Generic[_DocumentType]):
             synchronous,
             cursor_id,
             address,
-            self.__sock_mgr,
+            self.__conn_mgr,
             self.__session,
             self.__explicit_session,
         )
         if not self.__explicit_session:
             self.__session = None
-        self.__sock_mgr = None
+        self.__conn_mgr = None
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
@@ -1084,8 +1084,8 @@ class Cursor(Generic[_DocumentType]):
 
         self.__address = response.address
         if isinstance(response, PinnedResponse):
-            if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.connection, response.more_to_come)
+            if not self.__conn_mgr:
+                self.__conn_mgr = _ConnectionManager(response.connection, response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1192,7 +1192,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__session,
                 self.__collection.database.client,
                 self.__max_await_time_ms,
-                self.__sock_mgr,
+                self.__conn_mgr,
                 self.__exhaust,
                 self.__comment,
             )

@@ -245,7 +245,7 @@ class Monitor(MonitorBase):
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
-        with self._pool.get_socket() as connection:
+        with self._pool.get_conn() as connection:
             self._cancel_context = connection.cancel_context
             response, round_trip_time = self._check_with_socket(connection)
             if not response.awaitable:
@@ -393,7 +393,7 @@ class _RttMonitor(MonitorBase):
 
     def _ping(self):
         """Run a "hello" command and return the RTT."""
-        with self._pool.get_socket() as connection:
+        with self._pool.get_conn() as connection:
             if self._executor._stopped:
                 raise Exception("_RttMonitor closed")
             start = time.monotonic()

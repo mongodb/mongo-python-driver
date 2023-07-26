@@ -274,14 +274,14 @@ class TestIgnoreStaleErrors(IntegrationTest):
         client.admin.command("ping")
         pool = get_pool(client)
         starting_generation = pool.gen.get_overall()
-        wait_until(lambda: len(pool.sockets) == N_THREADS, "created sockets")
+        wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
 
         def mock_command(*args, **kwargs):
             # Synchronize all threads to ensure they use the same generation.
             barrier.wait()
             raise AutoReconnect("mock Connection.command error")
 
-        for sock in pool.sockets:
+        for sock in pool.conns:
             sock.command = mock_command
 
         def insert_command(i):

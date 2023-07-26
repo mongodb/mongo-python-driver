@@ -193,7 +193,7 @@ class SSLContext:
         # OCSP
         # XXX: Find a better place to do this someday, since this is client
         # side configuration and wrap_socket tries to support both client and
-        # server side sockets.
+        # server side conns.
         self._callback_data.check_ocsp_endpoint = True
         self._ctx.set_ocsp_client_callback(callback=_ocsp_callback, data=self._callback_data)
 
@@ -347,7 +347,7 @@ class SSLContext:
         server_hostname=None,
         session=None,
     ):
-        """Wrap an existing Python socket sock and return a TLS socket
+        """Wrap an existing Python socket connector and return a TLS socket
         object.
         """
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)

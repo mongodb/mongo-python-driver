@@ -264,7 +264,7 @@ class _Query:
     )
 
     # For compatibility with the _GetMore class.
-    sock_mgr = None
+    conn_mgr = None
     cursor_id = None
 
     def __init__(
@@ -433,7 +433,7 @@ class _GetMore:
         "read_preference",
         "session",
         "client",
-        "sock_mgr",
+        "conn_mgr",
         "_as_command",
         "exhaust",
         "comment",
@@ -452,7 +452,7 @@ class _GetMore:
         session,
         client,
         max_await_time_ms,
-        sock_mgr,
+        conn_mgr,
         exhaust,
         comment,
     ):
@@ -465,7 +465,7 @@ class _GetMore:
         self.session = session
         self.client = client
         self.max_await_time_ms = max_await_time_ms
-        self.sock_mgr = sock_mgr
+        self.conn_mgr = conn_mgr
         self._as_command = None
         self.exhaust = exhaust
         self.comment = comment
@@ -522,7 +522,7 @@ class _GetMore:
 
         if use_cmd:
             spec = self.as_command(connection, apply_timeout=True)[0]
-            if self.sock_mgr:
+            if self.conn_mgr:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
                 flags = 0

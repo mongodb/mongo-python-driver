@@ -160,7 +160,7 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.cursor import _SocketManager
+from pymongo.cursor import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -400,7 +400,7 @@ class _Transaction:
         self.state = _TxnState.NONE
         self.sharded = False
         self.pinned_address: Optional[Tuple[str, Optional[int]]] = None
-        self.sock_mgr: Optional[_SocketManager] = None
+        self.conn_mgr: Optional[_ConnectionManager] = None
         self.recovery_token = None
         self.attempt = 0
         self.client = client
@@ -413,8 +413,8 @@ class _Transaction:
 
     @property
     def pinned_conn(self) -> Optional[Connection]:
-        if self.active() and self.sock_mgr:
-            return self.sock_mgr.sock
+        if self.active() and self.conn_mgr:
+            return self.conn_mgr.connection
         return None
 
     def pin(self, server: Server, connection: Connection) -> None:
@@ -422,13 +422,13 @@ class _Transaction:
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
             connection.pin_txn()
-            self.sock_mgr = _SocketManager(connection, False)
+            self.conn_mgr = _ConnectionManager(connection, False)
 
     def unpin(self) -> None:
         self.pinned_address = None
-        if self.sock_mgr:
-            self.sock_mgr.close()
-        self.sock_mgr = None
+        if self.conn_mgr:
+            self.conn_mgr.close()
+        self.conn_mgr = None
 
     def reset(self) -> None:
         self.unpin()
@@ -438,11 +438,11 @@ class _Transaction:
         self.attempt = 0
 
     def __del__(self) -> None:
-        if self.sock_mgr:
+        if self.conn_mgr:
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon.
-            self.client._close_cursor_soon(0, None, self.sock_mgr)
-            self.sock_mgr = None
+            self.client._close_cursor_soon(0, None, self.conn_mgr)
+            self.conn_mgr = None
 
 
 def _reraise_with_unknown_commit(exc: Any) -> NoReturn:

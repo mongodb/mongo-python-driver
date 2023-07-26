@@ -47,7 +47,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         )
 
         # Ensure connections to all servers in replica set. This is to test
-        # that the is_writable flag is properly updated for sockets that
+        # that the is_writable flag is properly updated for conns that
         # survive a replica set election.
         ensure_all_connected(cls.client)
         cls.listener.reset()

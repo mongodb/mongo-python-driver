@@ -29,7 +29,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
+from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
@@ -58,7 +58,7 @@ class CommandCursor(Generic[_DocumentType]):
         comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
-        self.__sock_mgr: Any = None
+        self.__conn_mgr: Any = None
         self.__collection: Collection[_DocumentType] = collection
         self.__id = cursor_info["id"]
         self.__data = deque(cursor_info["firstBatch"])
@@ -103,13 +103,13 @@ class CommandCursor(Generic[_DocumentType]):
             synchronous,
             cursor_id,
             address,
-            self.__sock_mgr,
+            self.__conn_mgr,
             self.__session,
             self.__explicit_session,
         )
         if not self.__explicit_session:
             self.__session = None
-        self.__sock_mgr = None
+        self.__conn_mgr = None
 
     def __end_session(self, synchronous: bool) -> None:
         if self.__session and not self.__explicit_session:
@@ -161,15 +161,15 @@ class CommandCursor(Generic[_DocumentType]):
         client = self.__collection.database.client
         if not client._should_pin_cursor(self.__session):
             return
-        if not self.__sock_mgr:
+        if not self.__conn_mgr:
             connection.pin_cursor()
-            sock_mgr = _SocketManager(connection, False)
+            conn_mgr = _ConnectionManager(connection, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self.__id == 0:
-                sock_mgr.close()
+                conn_mgr.close()
             else:
-                self.__sock_mgr = sock_mgr
+                self.__conn_mgr = conn_mgr
 
     def __send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
@@ -196,8 +196,8 @@ class CommandCursor(Generic[_DocumentType]):
             raise
 
         if isinstance(response, PinnedResponse):
-            if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.connection, response.more_to_come)
+            if not self.__conn_mgr:
+                self.__conn_mgr = _ConnectionManager(response.connection, response.more_to_come)
         if response.from_command:
             cursor = response.docs[0]["cursor"]
             documents = cursor["nextBatch"]
@@ -245,7 +245,7 @@ class CommandCursor(Generic[_DocumentType]):
                     self.__session,
                     self.__collection.database.client,
                     self.__max_await_time_ms,
-                    self.__sock_mgr,
+                    self.__conn_mgr,
                     False,
                     self.__comment,
                 )

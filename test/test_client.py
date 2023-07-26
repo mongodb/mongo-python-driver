@@ -538,13 +538,13 @@ class TestClient(IntegrationTest):
 
     def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
-            # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
+            # Assert reaper doesn't remove conns when maxIdleTimeMS not set
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection:
+            with server._pool.get_conn() as connection:
                 pass
-            self.assertEqual(1, len(server._pool.sockets))
-            self.assertTrue(connection in server._pool.sockets)
+            self.assertEqual(1, len(server._pool.conns))
+            self.assertTrue(connection in server._pool.conns)
             client.close()
 
     def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
@@ -552,27 +552,27 @@ class TestClient(IntegrationTest):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection:
+            with server._pool.get_conn() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket, two
-            # sockets could be created and checked into the pool.
-            self.assertGreaterEqual(len(server._pool.sockets), 1)
-            wait_until(lambda: connection not in server._pool.sockets, "remove stale socket")
-            wait_until(lambda: 1 <= len(server._pool.sockets), "replace stale socket")
+            # conns could be created and checked into the pool.
+            self.assertGreaterEqual(len(server._pool.conns), 1)
+            wait_until(lambda: connection not in server._pool.conns, "remove stale socket")
+            wait_until(lambda: 1 <= len(server._pool.conns), "replace stale socket")
             client.close()
 
     def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
-            # Assert reaper respects maxPoolSize when adding new sockets.
+            # Assert reaper respects maxPoolSize when adding new conns.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection:
+            with server._pool.get_conn() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket,
-            # maxPoolSize=1 should prevent two sockets from being created.
-            self.assertEqual(1, len(server._pool.sockets))
-            wait_until(lambda: connection not in server._pool.sockets, "remove stale socket")
-            wait_until(lambda: 1 == len(server._pool.sockets), "replace stale socket")
+            # maxPoolSize=1 should prevent two conns from being created.
+            self.assertEqual(1, len(server._pool.conns))
+            wait_until(lambda: connection not in server._pool.conns, "remove stale socket")
+            wait_until(lambda: 1 == len(server._pool.conns), "replace stale socket")
             client.close()
 
     def test_max_idle_time_reaper_removes_stale(self):
@@ -580,15 +580,15 @@ class TestClient(IntegrationTest):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection_one:
+            with server._pool.get_conn() as connection_one:
                 pass
-            # Assert that the pool does not close sockets prematurely.
+            # Assert that the pool does not close conns prematurely.
             time.sleep(0.300)
-            with server._pool.get_socket() as connection_two:
+            with server._pool.get_conn() as connection_two:
                 pass
             self.assertIs(connection_one, connection_two)
             wait_until(
-                lambda: 0 == len(server._pool.sockets),
+                lambda: 0 == len(server._pool.conns),
                 "stale socket reaped and new one NOT added to the pool",
             )
             client.close()
@@ -597,48 +597,48 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            self.assertEqual(0, len(server._pool.sockets))
+            self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
             server = client._get_topology().select_server(readable_server_selector)
-            wait_until(lambda: 10 == len(server._pool.sockets), "pool initialized with 10 sockets")
+            wait_until(lambda: 10 == len(server._pool.conns), "pool initialized with 10 conns")
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool.get_socket() as connection:
-                connection.close_socket(None)
+            with server._pool.get_conn() as connection:
+                connection.close_conn(None)
             wait_until(
-                lambda: 10 == len(server._pool.sockets),
+                lambda: 10 == len(server._pool.conns),
                 "a closed socket gets replaced from the pool",
             )
-            self.assertFalse(connection in server._pool.sockets)
+            self.assertFalse(connection in server._pool.conns)
 
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection:
+            with server._pool.get_conn() as connection:
                 pass
-            self.assertEqual(1, len(server._pool.sockets))
+            self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
-            with server._pool.get_socket() as new_connection:
+            with server._pool.get_conn() as new_connection:
                 self.assertNotEqual(connection, new_connection)
-            self.assertEqual(1, len(server._pool.sockets))
-            self.assertFalse(connection in server._pool.sockets)
-            self.assertTrue(new_connection in server._pool.sockets)
+            self.assertEqual(1, len(server._pool.conns))
+            self.assertFalse(connection in server._pool.conns)
+            self.assertTrue(new_connection in server._pool.conns)
 
-            # Test that sockets are reused if maxIdleTimeMS is not set.
+            # Test that conns are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_socket() as connection:
+            with server._pool.get_conn() as connection:
                 pass
-            self.assertEqual(1, len(server._pool.sockets))
+            self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)
-            with server._pool.get_socket() as new_connection:
+            with server._pool.get_conn() as new_connection:
                 self.assertEqual(connection, new_connection)
-            self.assertEqual(1, len(server._pool.sockets))
+            self.assertEqual(1, len(server._pool.conns))
 
     def test_constants(self):
         """This test uses MongoClient explicitly to make sure that host and
@@ -933,11 +933,11 @@ class TestClient(IntegrationTest):
         topology = client._topology
         client.close()
         for server in topology._servers.values():
-            self.assertFalse(server._pool.sockets)
+            self.assertFalse(server._pool.conns)
             self.assertTrue(server._monitor._executor._stopped)
             self.assertTrue(server._monitor._rtt_monitor._executor._stopped)
-            self.assertFalse(server._monitor._pool.sockets)
-            self.assertFalse(server._monitor._rtt_monitor._pool.sockets)
+            self.assertFalse(server._monitor._pool.conns)
+            self.assertFalse(server._monitor._rtt_monitor._pool.conns)
 
     def test_bad_uri(self):
         with self.assertRaises(InvalidURI):
@@ -1130,8 +1130,8 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool.get_socket() as connection:
-            keepalive = connection.sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        with pool.get_conn() as connection:
+            keepalive = connection.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
     @no_type_check
@@ -1184,7 +1184,7 @@ class TestClient(IntegrationTest):
 
         # The socket used for the previous commands has been returned to the
         # pool
-        self.assertEqual(1, len(get_pool(client).sockets))
+        self.assertEqual(1, len(get_pool(client).conns))
 
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
@@ -1223,7 +1223,7 @@ class TestClient(IntegrationTest):
             # main thread while find() is in-progress: On Windows, SIGALRM is
             # unavailable so we use a second thread. In our Evergreen setup on
             # Linux, the thread technique causes an error in the test at
-            # sock.recv(): TypeError: 'int' object is not callable
+            # connector.recv(): TypeError: 'int' object is not callable
             # We don't know what causes this, so we hack around it.
 
             if sys.platform == "win32":
@@ -1271,15 +1271,15 @@ class TestClient(IntegrationTest):
         self.addCleanup(client.close)
         client.pymongo_test.test.find_one()
         pool = get_pool(client)
-        socket_count = len(pool.sockets)
+        socket_count = len(pool.conns)
         self.assertGreaterEqual(socket_count, 1)
-        old_connection = next(iter(pool.sockets))
+        old_connection = next(iter(pool.conns))
         client.pymongo_test.test.drop()
         client.pymongo_test.test.insert_one({"_id": "foo"})
         self.assertRaises(OperationFailure, client.pymongo_test.test.insert_one, {"_id": "foo"})
 
-        self.assertEqual(socket_count, len(pool.sockets))
-        new_connection = next(iter(pool.sockets))
+        self.assertEqual(socket_count, len(pool.conns))
+        new_connection = next(iter(pool.conns))
         self.assertEqual(old_connection, new_connection)
 
     def test_lazy_connect_w0(self):
@@ -1326,8 +1326,8 @@ class TestClient(IntegrationTest):
         connected(client)
 
         # Cause a network error.
-        connection = one(pool.sockets)
-        connection.sock.close()
+        connection = one(pool.conns)
+        connection.conn.close()
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             next(cursor)
@@ -1347,8 +1347,8 @@ class TestClient(IntegrationTest):
 
         # Cause a network error on the actual socket.
         pool = get_pool(c)
-        socket_info = one(pool.sockets)
-        socket_info.sock.close()
+        socket_info = one(pool.conns)
+        socket_info.conn.close()
 
         # Connection.authenticate logs, but gets a socket.error. Should be
         # reraised as AutoReconnect.
@@ -1586,7 +1586,7 @@ class TestClient(IntegrationTest):
         self.addCleanup(delattr, pool, "connect")
 
         # Wait for the background thread to start creating connections
-        wait_until(lambda: len(pool.sockets) > 1, "start creating connections")
+        wait_until(lambda: len(pool.conns) > 1, "start creating connections")
 
         # Assert that application operations do not block.
         for _ in range(10):
@@ -1847,7 +1847,7 @@ class TestExhaustCursor(IntegrationTest):
 
         collection = client.pymongo_test.test
         pool = get_pool(client)
-        connection = one(pool.sockets)
+        connection = one(pool.conns)
 
         # This will cause OperationFailure in all mongo versions since
         # the value for $orderby must be a document.
@@ -1859,7 +1859,7 @@ class TestExhaustCursor(IntegrationTest):
         self.assertFalse(connection.closed)
 
         # The socket was checked in and the semaphore was decremented.
-        self.assertIn(connection, pool.sockets)
+        self.assertIn(connection, pool.conns)
         self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_server_error(self):
@@ -1874,7 +1874,7 @@ class TestExhaustCursor(IntegrationTest):
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
-        connection = one(pool.sockets)
+        connection = one(pool.conns)
 
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
@@ -1898,7 +1898,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket is returned to the pool and it still works.
         self.assertEqual(200, collection.count_documents({}))
-        self.assertIn(connection, pool.sockets)
+        self.assertIn(connection, pool.conns)
 
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
@@ -1909,15 +1909,15 @@ class TestExhaustCursor(IntegrationTest):
         pool._check_interval_seconds = None  # Never check.
 
         # Cause a network error.
-        connection = one(pool.sockets)
-        connection.sock.close()
+        connection = one(pool.conns)
+        connection.conn.close()
 
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         self.assertRaises(ConnectionFailure, cursor.next)
         self.assertTrue(connection.closed)
 
         # The socket was closed and the semaphore was decremented.
-        self.assertNotIn(connection, pool.sockets)
+        self.assertNotIn(connection, pool.conns)
         self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_network_error(self):
@@ -1936,15 +1936,15 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a network error.
-        connection = cursor._Cursor__sock_mgr.sock
-        connection.sock.close()
+        connection = cursor._Cursor__conn_mgr.connection
+        connection.conn.close()
 
         # A getmore fails.
         self.assertRaises(ConnectionFailure, list, cursor)
         self.assertTrue(connection.closed)
 
         # The socket was closed and the semaphore was decremented.
-        self.assertNotIn(connection, pool.sockets)
+        self.assertNotIn(connection, pool.conns)
         self.assertEqual(0, pool.requests)
 
     def test_gevent_task(self):
@@ -2243,10 +2243,10 @@ class TestClientPool(MockClientTest):
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 2)
         # Assert that we do not create connections to arbiters.
         arbiter = c._topology.get_server_by_address(("c", 3))
-        self.assertFalse(arbiter.pool.sockets)
+        self.assertFalse(arbiter.pool.conns)
         # Assert that we do not create connections to unknown servers.
         arbiter = c._topology.get_server_by_address(("d", 4))
-        self.assertFalse(arbiter.pool.sockets)
+        self.assertFalse(arbiter.pool.conns)
         # Arbiter pool is not marked ready.
         self.assertEqual(listener.event_count(monitoring.PoolReadyEvent), 2)
 
@@ -2271,7 +2271,7 @@ class TestClientPool(MockClientTest):
         listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(("c", 3))
-        self.assertEqual(len(arbiter.pool.sockets), 1)
+        self.assertEqual(len(arbiter.pool.conns), 1)
         # Arbiter pool is marked ready.
         self.assertEqual(listener.event_count(monitoring.PoolReadyEvent), 1)
 

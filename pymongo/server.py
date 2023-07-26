@@ -130,7 +130,7 @@ class Server:
             start = datetime.now()
 
         use_cmd = operation.use_command(connection)
-        more_to_come = operation.sock_mgr and operation.sock_mgr.more_to_come
+        more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
         if more_to_come:
             request_id = 0
         else:
@@ -227,8 +227,8 @@ class Server:
             else:
                 # In OP_REPLY, the server keeps sending until cursor_id is 0.
                 more_to_come = bool(operation.exhaust and reply.cursor_id)
-            if operation.sock_mgr:
-                operation.sock_mgr.update_exhaust(more_to_come)
+            if operation.conn_mgr:
+                operation.conn_mgr.update_exhaust(more_to_come)
             response = PinnedResponse(
                 data=reply,
                 address=self._description.address,
@@ -251,10 +251,10 @@ class Server:
 
         return response
 
-    def get_socket(
+    def get_conn(
         self, handler: Optional[_MongoClientErrorHandler] = None
     ) -> ContextManager[Connection]:
-        return self.pool.get_socket(handler)
+        return self.pool.get_conn(handler)
 
     @property
     def description(self) -> ServerDescription:

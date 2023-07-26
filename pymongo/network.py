@@ -88,7 +88,7 @@ def command(
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
-      - `sock`: a raw socket instance
+      - `connector`: a raw socket instance
       - `dbname`: name of the database on which to run the command
       - `spec`: a command document as an ordered dict type, eg SON.
       - `is_mongos`: are we connected to a mongos?
@@ -98,7 +98,7 @@ def command(
       - `client`: optional MongoClient instance for updating $clusterTime.
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
-      - `address`: the (host, port) of `sock`
+      - `address`: the (host, port) of `connector`
       - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
       - `max_bson_size`: The maximum encoded bson size for this server
       - `read_concern`: The read concern for this command.
@@ -172,7 +172,7 @@ def command(
         start = datetime.datetime.now()
 
     try:
-        connection.sock.sendall(msg)
+        connection.conn.sendall(msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
@@ -236,7 +236,7 @@ def receive_message(
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = connection.sock.gettimeout()
+        timeout = connection.conn.gettimeout()
         if timeout:
             deadline = time.monotonic() + timeout
         else:
@@ -281,7 +281,7 @@ def wait_for_read(connection: Connection, deadline: Optional[float]) -> None:
     context = connection.cancel_context
     # Only Monitor connections can be cancelled.
     if context:
-        sock = connection.sock
+        sock = connection.conn
         timed_out = False
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
@@ -309,7 +309,7 @@ def wait_for_read(connection: Connection, deadline: Optional[float]) -> None:
                 raise socket.timeout("timed out")
 
 
-# Errors raised by sockets (and TLS sockets) when in non-blocking mode.
+# Errors raised by conns (and TLS conns) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
@@ -326,8 +326,8 @@ def _receive_data_on_socket(
             # final non-blocking recv. This helps avoid spurious timeouts when
             # the response is actually already buffered on the client.
             if _csot.get_timeout() and deadline is not None:
-                connection.set_socket_timeout(max(deadline - time.monotonic(), 0))
-            chunk_length = connection.sock.recv_into(mv[bytes_read:])
+                connection.set_conn_timeout(max(deadline - time.monotonic(), 0))
+            chunk_length = connection.conn.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
             raise socket.timeout("timed out")
         except OSError as exc:  # noqa: B014

@@ -175,7 +175,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 quote_plus(user), quote_plus(password), host)
             client = MongoClient(uri)
 
-        Unix domain sockets are also supported. The socket path must be percent
+        Unix domain conns are also supported. The socket path must be percent
         encoded in the URI::
 
             uri = "mongodb://%s:%s@%s" % (
@@ -184,7 +184,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         But not when passed as a simple hostname::
 
-            client = MongoClient('/tmp/mongodb-27017.sock')
+            client = MongoClient('/tmp/mongodb-27017.conn')
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -308,7 +308,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             seconds).
           - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
             a thread will wait for a socket from the pool if the pool has no
-            free sockets. Defaults to ``None`` (no timeout).
+            free conns. Defaults to ``None`` (no timeout).
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
@@ -1183,7 +1183,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         End all server sessions created by this client by sending one or more
         endSessions commands.
 
-        Close all sockets in the connection pools and stop the monitor threads.
+        Close all conns in the connection pools and stop the monitor threads.
 
         .. versionchanged:: 4.0
            Once closed, the client cannot be used again and any attempt will
@@ -1224,7 +1224,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
-            with server.get_socket(handler=err_handler) as connection:
+            with server.get_conn(handler=err_handler) as connection:
                 # Pin this session to the selected server or connection.
                 if in_txn and server.description.server_type in (
                     SERVER_TYPE.Mongos,
@@ -1319,16 +1319,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        if operation.sock_mgr:
+        if operation.conn_mgr:
             server = self._select_server(
                 operation.read_preference, operation.session, address=address
             )
 
-            with operation.sock_mgr.lock:
+            with operation.conn_mgr.lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
-                    err_handler.contribute_socket(operation.sock_mgr.sock)
+                    err_handler.contribute_socket(operation.conn_mgr.connection)
                     return server.run_operation(
-                        operation.sock_mgr.sock, operation, True, self._event_listeners, unpack_res
+                        operation.conn_mgr.connection,
+                        operation,
+                        True,
+                        self._event_listeners,
+                        unpack_res,
                     )
 
         def _cmd(session, server, connection, read_preference):
@@ -1569,7 +1573,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return database.Database(self, name)
 
     def _cleanup_cursor(
-        self, locks_allowed, cursor_id, address, sock_mgr, session, explicit_session
+        self, locks_allowed, cursor_id, address, conn_mgr, session, explicit_session
     ):
         """Cleanup a cursor from cursor.close() or __del__.
 
@@ -1581,33 +1585,33 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `locks_allowed`: True if we are allowed to acquire locks.
           - `cursor_id`: The cursor id which may be 0.
           - `address`: The _CursorAddress.
-          - `sock_mgr`: The _SocketManager for the pinned connection or None.
+          - `conn_mgr`: The _ConnectionManager for the pinned connection or None.
           - `session`: The cursor's session.
           - `explicit_session`: True if the session was passed explicitly.
         """
         if locks_allowed:
             if cursor_id:
-                if sock_mgr and sock_mgr.more_to_come:
+                if conn_mgr and conn_mgr.more_to_come:
                     # If this is an exhaust cursor and we haven't completely
                     # exhausted the result set we *must* close the socket
                     # to stop the server from sending more data.
-                    sock_mgr.sock.close_socket(ConnectionClosedReason.ERROR)
+                    conn_mgr.connection.close_conn(ConnectionClosedReason.ERROR)
                 else:
-                    self._close_cursor_now(cursor_id, address, session=session, sock_mgr=sock_mgr)
-            if sock_mgr:
-                sock_mgr.close()
+                    self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
+            if conn_mgr:
+                conn_mgr.close()
         else:
             # The cursor will be closed later in a different session.
-            if cursor_id or sock_mgr:
-                self._close_cursor_soon(cursor_id, address, sock_mgr)
+            if cursor_id or conn_mgr:
+                self._close_cursor_soon(cursor_id, address, conn_mgr)
         if session and not explicit_session:
             session._end_session(lock=locks_allowed)
 
-    def _close_cursor_soon(self, cursor_id, address, sock_mgr=None):
+    def _close_cursor_soon(self, cursor_id, address, conn_mgr=None):
         """Request that a cursor and/or connection be cleaned up soon."""
-        self.__kill_cursors_queue.append((address, cursor_id, sock_mgr))
+        self.__kill_cursors_queue.append((address, cursor_id, conn_mgr))
 
-    def _close_cursor_now(self, cursor_id, address=None, session=None, sock_mgr=None):
+    def _close_cursor_now(self, cursor_id, address=None, session=None, conn_mgr=None):
         """Send a kill cursors message with the given id.
 
         The cursor is closed synchronously on the current thread.
@@ -1616,10 +1620,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("cursor_id must be an instance of int")
 
         try:
-            if sock_mgr:
-                with sock_mgr.lock:
+            if conn_mgr:
+                with conn_mgr.lock:
                     # Cursor is pinned to LB outside of a transaction.
-                    self._kill_cursor_impl([cursor_id], address, session, sock_mgr.sock)
+                    self._kill_cursor_impl([cursor_id], address, session, conn_mgr.connection)
             else:
                 self._kill_cursors([cursor_id], address, self._get_topology(), session)
         except PyMongoError:
@@ -1653,18 +1657,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Other threads or the GC may append to the queue concurrently.
         while True:
             try:
-                address, cursor_id, sock_mgr = self.__kill_cursors_queue.pop()
+                address, cursor_id, conn_mgr = self.__kill_cursors_queue.pop()
             except IndexError:
                 break
 
-            if sock_mgr:
-                pinned_cursors.append((address, cursor_id, sock_mgr))
+            if conn_mgr:
+                pinned_cursors.append((address, cursor_id, conn_mgr))
             else:
                 address_to_cursor_ids[address].append(cursor_id)
 
-        for address, cursor_id, sock_mgr in pinned_cursors:
+        for address, cursor_id, conn_mgr in pinned_cursors:
             try:
-                self._cleanup_cursor(True, cursor_id, address, sock_mgr, None, False)
+                self._cleanup_cursor(True, cursor_id, address, conn_mgr, None, False)
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it

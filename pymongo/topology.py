@@ -479,7 +479,7 @@ class Topology:
         return self._description.readable_servers
 
     def update_pool(self):
-        # Remove any stale sockets and add new sockets if pool is too small.
+        # Remove any stale conns and add new conns if pool is too small.
         servers = []
         with self._lock:
             # Only update pools for data-bearing servers.
