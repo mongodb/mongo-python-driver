@@ -32,6 +32,10 @@ Resources:
           Properties:
             Path: /mongodb
             Method: get
+    # Use a custom build method to make sure *.so files are copied.
+    # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/building-custom-runtimes.html
+    Metadata:
+        BuildMethod: makefile
 
 Outputs:
   MongoDBApi:
