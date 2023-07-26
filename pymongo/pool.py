@@ -26,7 +26,7 @@ import weakref
 from typing import Any, Dict, Iterator, NoReturn, Optional
 
 try:
-    import grpc
+    import grpc  # type: ignore
 
     _HAVE_GRPC = True
 except ImportError:
