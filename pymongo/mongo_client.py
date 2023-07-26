@@ -1408,9 +1408,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
-        retryable = cast(
-            bool,
-            (retryable and self.options.retry_writes and session and not session.in_transaction),
+        retryable = bool(
+            retryable and self.options.retry_writes and session and not session.in_transaction
         )
         return self._retry_internal(retryable, func, session, bulk)
 
