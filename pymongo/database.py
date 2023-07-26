@@ -889,7 +889,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._socket_for_reads(read_preference, session) as (
+        with self.__client._conn_for_reads(read_preference, session) as (
             connection,
             read_preference,
         ):
@@ -973,7 +973,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self.__client._socket_for_reads(read_preference, tmp_session) as (
+            with self.__client._conn_for_reads(read_preference, tmp_session) as (
                 connection,
                 read_preference,
             ):
@@ -1154,7 +1154,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._socket_for_writes(session) as connection:
+        with self.__client._conn_for_writes(session) as connection:
             return self._command(
                 connection,
                 command,

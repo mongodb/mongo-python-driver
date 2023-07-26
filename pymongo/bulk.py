@@ -573,7 +573,7 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._socket_for_writes(session) as connection:
+            with client._conn_for_writes(session) as connection:
                 self.execute_no_results(connection, generator, write_concern)
                 return None
         else:

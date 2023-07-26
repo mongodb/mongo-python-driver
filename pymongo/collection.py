@@ -262,13 +262,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 self.__create(name, kwargs, collation, session)
 
-    def _socket_for_reads(
+    def _conn_for_reads(
         self, session: ClientSession
     ) -> ContextManager[Tuple[Connection, Union[PrimaryPreferred, Primary]]]:
-        return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
+        return self.__database.client._conn_for_reads(self._read_preference_for(session), session)
 
-    def _socket_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
-        return self.__database.client._socket_for_writes(session)
+    def _conn_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
+        return self.__database.client._conn_for_writes(session)
 
     def _command(
         self,
@@ -348,7 +348,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             if qev2_required and connection.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -1995,7 +1995,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             supports_quorum = connection.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
@@ -2238,7 +2238,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             self._command(
                 connection,
                 cmd,
@@ -2481,7 +2481,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
         cmd.update(kwargs)
 
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             resp = self._command(
                 connection,
                 cmd,
@@ -2516,7 +2516,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             self._command(
                 connection,
                 cmd,
@@ -2553,7 +2553,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             self._command(
                 connection,
                 cmd,
@@ -2982,7 +2982,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             with self.__database.client._tmp_session(session) as s:
                 return connection.command(
                     "admin",

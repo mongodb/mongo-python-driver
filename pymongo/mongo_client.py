@@ -1162,7 +1162,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             # Use Connection.command directly to avoid implicitly creating
             # another session.
-            with self._socket_for_reads(ReadPreference.PRIMARY_PREFERRED, None) as (
+            with self._conn_for_reads(ReadPreference.PRIMARY_PREFERRED, None) as (
                 connection,
                 read_pref,
             ):
@@ -1216,7 +1216,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server, session):
+    def _get_conn(self, server, session):
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1273,14 +1273,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
-    def _socket_for_writes(self, session):
+    def _conn_for_writes(self, session):
         server = self._select_server(writable_server_selector, session)
-        return self._get_socket(server, session)
+        return self._get_conn(server, session)
 
     @contextlib.contextmanager
-    def _socket_from_server(self, read_preference, server, session):
+    def _conn_from_server(self, read_preference, server, session):
         assert read_preference is not None, "read_preference must not be None"
-        # Get a socket for a server matching the read preference, and yield
+        # Get a connection for a server matching the read preference, and yield
         # connection with the effective read preference. The Server Selection
         # Spec says not to send any $readPreference to standalones and to
         # always send primaryPreferred when directly connected to a repl set
@@ -1289,7 +1289,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
-        with self._get_socket(server, session) as connection:
+        with self._get_conn(server, session) as connection:
             if single:
                 if connection.is_repl and not (session and session.in_transaction):
                     # Use primary preferred to ensure any repl set member
@@ -1300,11 +1300,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     read_preference = ReadPreference.PRIMARY
             yield connection, read_preference
 
-    def _socket_for_reads(self, read_preference, session):
+    def _conn_for_reads(self, read_preference, session):
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
         server = self._select_server(read_preference, session)
-        return self._socket_from_server(read_preference, server, session)
+        return self._conn_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session):
         return self.__options.load_balanced and not (session and session.in_transaction)
@@ -1392,7 +1392,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 supports_session = (
                     session is not None and server.description.retryable_writes_supported
                 )
-                with self._get_socket(server, session) as connection:
+                with self._get_conn(server, session) as connection:
                     max_wire_version = connection.max_wire_version
                     if retryable and not supports_session:
                         if is_retrying():
@@ -1459,7 +1459,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     raise last_error
             try:
                 server = self._select_server(read_pref, session, address=address)
-                with self._socket_from_server(read_pref, server, session) as (
+                with self._conn_from_server(read_pref, server, session) as (
                     connection,
                     read_pref,
                 ):
@@ -1640,7 +1640,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Application called close_cursor() with no address.
             server = topology.select_server(writable_server_selector)
 
-        with self._get_socket(server, session) as connection:
+        with self._get_conn(server, session) as connection:
             self._kill_cursor_impl(cursor_ids, address, session, connection)
 
     def _kill_cursor_impl(self, cursor_ids, address, session, connection):
@@ -1932,7 +1932,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        with self._socket_for_writes(session) as connection:
+        with self._conn_for_writes(session) as connection:
             self[name]._command(
                 connection,
                 {"dropDatabase": 1, "comment": comment},
