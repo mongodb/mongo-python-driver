@@ -15,6 +15,7 @@
 """Communicate with one MongoDB server in a topology."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -31,6 +32,7 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
+from pymongo.logger import StructuredMessage
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -126,8 +128,7 @@ class Server:
         """
         duration = None
         publish = listeners.enabled_for_commands
-        if publish:
-            start = datetime.now()
+        start = datetime.now()
 
         use_cmd = operation.use_command(sock_info)
         more_to_come = operation.sock_mgr and operation.sock_mgr.more_to_come
@@ -137,12 +138,29 @@ class Server:
             message = operation.get_message(read_preference, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
+        cmd, dbn = operation.as_command(sock_info)
+        command_logger = logging.getLogger("pymongo.command")
+        # TODO: add serverConnection
+        command_logger.debug(
+            StructuredMessage(
+                message="Command started",
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=dbn,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=sock_info.id,
+                serverHost=sock_info.address[0],
+                serverPort=sock_info.address[1],
+                serviceId=sock_info.service_id,
+            )
+        )
+
         if publish:
-            cmd, dbn = operation.as_command(sock_info)
             listeners.publish_command_start(
                 cmd, dbn, request_id, sock_info.address, service_id=sock_info.service_id
             )
-            start = datetime.now()
+        start = datetime.now()
 
         try:
             if more_to_come:
@@ -170,12 +188,27 @@ class Server:
                 operation.client._process_response(first, operation.session)
                 _check_command_response(first, sock_info.max_wire_version)
         except Exception as exc:
+            duration = datetime.now() - start
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                failure = exc.details
+            else:
+                failure = _convert_exception(exc)
+            command_logger.debug(
+                StructuredMessage(
+                    message="Command failed",
+                    durationMS=duration,
+                    reply=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=dbn,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=sock_info.id,
+                    serverHost=sock_info.address[0],
+                    serverPort=sock_info.address[1],
+                    serviceId=sock_info.service_id,
+                )
+            )
             if publish:
-                duration = datetime.now() - start
-                if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
-                else:
-                    failure = _convert_exception(exc)
                 listeners.publish_command_failure(
                     duration,
                     failure,
@@ -185,21 +218,35 @@ class Server:
                     service_id=sock_info.service_id,
                 )
             raise
-
+        duration = datetime.now() - start
+        if use_cmd:
+            res = docs[0]
+        elif operation.name == "explain":
+            res = docs[0] if docs else {}
+        else:
+            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
+            if operation.name == "find":
+                res["cursor"]["firstBatch"] = docs
+            else:
+                res["cursor"]["nextBatch"] = docs
+        command_logger.debug(
+            StructuredMessage(
+                message="Command succeeded",
+                durationMS=duration,
+                reply=res,
+                commandName=next(iter(cmd)),
+                databaseName=dbn,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=sock_info.id,
+                serverHost=sock_info.address[0],
+                serverPort=sock_info.address[1],
+                serviceId=sock_info.service_id,
+            )
+        )
         if publish:
-            duration = datetime.now() - start
             # Must publish in find / getMore / explain command response
             # format.
-            if use_cmd:
-                res = docs[0]
-            elif operation.name == "explain":
-                res = docs[0] if docs else {}
-            else:
-                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
-                if operation.name == "find":
-                    res["cursor"]["firstBatch"] = docs
-                else:
-                    res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
                 duration,
                 res,

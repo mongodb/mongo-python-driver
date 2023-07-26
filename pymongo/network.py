@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import errno
+import logging
 import socket
 import struct
 import time
@@ -41,6 +42,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
+from pymongo.logger import StructuredMessage
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -130,8 +132,8 @@ def command(
         spec["collation"] = collation
 
     publish = listeners is not None and listeners.enabled_for_commands
+    start = datetime.datetime.now()
     if publish:
-        start = datetime.datetime.now()
         speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
@@ -162,14 +164,31 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-
+    encoding_duration = datetime.datetime.now() - start
+    command_logger = logging.getLogger("pymongo.command")
+    # TODO: add serverConnectionId
+    if name == "insert":
+        assert True
+    command_logger.debug(
+        StructuredMessage(
+            message="Command started",
+            command=spec,
+            commandName=next(iter(spec)),
+            databaseName=dbname,
+            requestID=request_id,
+            operationID=request_id,
+            driverConnectionId=sock_info.id,
+            serverHost=sock_info.address[0],
+            serverPort=sock_info.address[1],
+            serviceId=sock_info.service_id,
+        )
+    )
     if publish:
-        encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
         listeners.publish_command_start(
             orig, dbname, request_id, address, service_id=sock_info.service_id
         )
-        start = datetime.datetime.now()
+    start = datetime.datetime.now()
 
     try:
         sock_info.sock.sendall(msg)
@@ -195,19 +214,49 @@ def command(
                     parse_write_concern_error=parse_write_concern_error,
                 )
     except Exception as exc:
+        duration = (datetime.datetime.now() - start) + encoding_duration
+        if isinstance(exc, (NotPrimaryError, OperationFailure)):
+            failure = exc.details
+        else:
+            failure = message._convert_exception(exc)
+        command_logger.debug(
+            StructuredMessage(
+                message="Command failed",
+                durationMS=duration,
+                reply=failure,
+                commandName=next(iter(spec)),
+                databaseName=dbname,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=sock_info.id,
+                serverHost=sock_info.address[0],
+                serverPort=sock_info.address[1],
+                serviceId=sock_info.service_id,
+            )
+        )
         if publish:
-            duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
-            else:
-                failure = message._convert_exception(exc)
             assert listeners is not None
             listeners.publish_command_failure(
                 duration, failure, name, request_id, address, service_id=sock_info.service_id
             )
         raise
+    duration = (datetime.datetime.now() - start) + encoding_duration
+    command_logger.debug(
+        StructuredMessage(
+            message="Command succeeded",
+            durationMS=duration,
+            reply=response_doc,
+            commandName=next(iter(spec)),
+            databaseName=dbname,
+            requestID=request_id,
+            operationID=request_id,
+            driverConnectionId=sock_info.id,
+            serverHost=sock_info.address[0],
+            serverPort=sock_info.address[1],
+            serviceId=sock_info.service_id,
+        )
+    )
     if publish:
-        duration = (datetime.datetime.now() - start) + encoding_duration
         assert listeners is not None
         listeners.publish_command_success(
             duration,

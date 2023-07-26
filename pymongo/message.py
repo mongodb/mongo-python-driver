@@ -21,6 +21,7 @@ MongoDB.
 """
 
 import datetime
+import logging
 import random
 import struct
 from io import BytesIO as _BytesIO
@@ -55,6 +56,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
+from pymongo.logger import StructuredMessage
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -821,7 +823,7 @@ class _BulkWriteContext:
         self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-        self.start_time = datetime.datetime.now() if self.publish else None
+        self.start_time = datetime.datetime.now()
         self.session = session
         self.compress = True if sock_info.compression_context else False
         self.op_type = op_type
@@ -877,31 +879,75 @@ class _BulkWriteContext:
 
     def unack_write(self, cmd, request_id, msg, max_doc_size, docs):
         """A proxy for SocketInfo.unack_write that handles event publishing."""
+        command_logger = logging.getLogger("pymongo.command")
+        # TODO: add serverConnectionId
+        command_logger.debug(
+            StructuredMessage(
+                message="Command started",
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=self.sock_info.id,
+                serverHost=self.sock_info.address[0],
+                serverPort=self.sock_info.address[1],
+                serviceId=self.sock_info.service_id,
+            )
+        )
+        duration = datetime.datetime.now() - self.start_time
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
+        start = datetime.datetime.now()
         try:
             result = self.sock_info.unack_write(msg, max_doc_size)
+            duration = (datetime.datetime.now() - start) + duration
+            if result is not None:
+                reply = _convert_write_result(self.name, cmd, result)
+            else:
+                # Comply with APM spec.
+                reply = {"ok": 1}
+            command_logger.debug(
+                StructuredMessage(
+                    message="Command succeeded",
+                    durationMS=duration,
+                    reply=reply,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=self.sock_info.id,
+                    serverHost=self.sock_info.address[0],
+                    serverPort=self.sock_info.address[1],
+                    serviceId=self.sock_info.service_id,
+                )
+            )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if result is not None:
-                    reply = _convert_write_result(self.name, cmd, result)
-                else:
-                    # Comply with APM spec.
-                    reply = {"ok": 1}
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = (datetime.datetime.now() - start) + duration
+            if isinstance(exc, OperationFailure):
+                failure = _convert_write_result(self.name, cmd, exc.details)
+            elif isinstance(exc, NotPrimaryError):
+                failure = exc.details
+            else:
+                failure = _convert_exception(exc)
+            command_logger.debug(
+                StructuredMessage(
+                    message="Command failed",
+                    durationMS=duration,
+                    reply=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=self.sock_info.id,
+                    serverHost=self.sock_info.address[0],
+                    serverPort=self.sock_info.address[1],
+                    serviceId=self.sock_info.service_id,
+                )
+            )
             if self.publish:
-                assert self.start_time is not None
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, OperationFailure):
-                    failure = _convert_write_result(self.name, cmd, exc.details)
-                elif isinstance(exc, NotPrimaryError):
-                    failure = exc.details
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:
@@ -911,23 +957,69 @@ class _BulkWriteContext:
     @_handle_reauth
     def write_command(self, cmd, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing."""
+        command_logger = logging.getLogger("pymongo.command")
+        # TODO: add serverConnectionId
+        duration = datetime.datetime.now() - self.start_time
+        cmd[self.field] = docs
+        command_logger.debug(
+            StructuredMessage(
+                message="Command started",
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=self.sock_info.id,
+                serverHost=self.sock_info.address[0],
+                serverPort=self.sock_info.address[1],
+                serviceId=self.sock_info.service_id,
+            )
+        )
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
+        start = datetime.datetime.now()
         try:
             reply = self.sock_info.write_command(request_id, msg, self.codec)
+            duration = (datetime.datetime.now() - start) + duration
+            command_logger.debug(
+                StructuredMessage(
+                    message="Command succeeded",
+                    durationMS=duration,
+                    reply=reply,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=self.sock_info.id,
+                    serverHost=self.sock_info.address[0],
+                    serverPort=self.sock_info.address[1],
+                    serviceId=self.sock_info.service_id,
+                )
+            )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = (datetime.datetime.now() - start) + duration
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                failure = exc.details
+            else:
+                failure = _convert_exception(exc)
+            command_logger.debug(
+                StructuredMessage(
+                    message="Command failed",
+                    durationMS=duration,
+                    reply=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=self.sock_info.id,
+                    serverHost=self.sock_info.address[0],
+                    serverPort=self.sock_info.address[1],
+                    serviceId=self.sock_info.service_id,
+                )
+            )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:
@@ -936,7 +1028,6 @@ class _BulkWriteContext:
 
     def _start(self, cmd, request_id, docs):
         """Publish a CommandStartedEvent."""
-        cmd[self.field] = docs
         self.listeners.publish_command_start(
             cmd,
             self.db_name,
