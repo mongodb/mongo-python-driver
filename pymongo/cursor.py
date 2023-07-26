@@ -64,7 +64,7 @@ if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
     from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
 
 
@@ -142,8 +142,8 @@ class CursorType:
 class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned."""
 
-    def __init__(self, sock: SocketInfo, more_to_come: bool):
-        self.sock: Optional[SocketInfo] = sock
+    def __init__(self, sock: Connection, more_to_come: bool):
+        self.sock: Optional[Connection] = sock
         self.more_to_come = more_to_come
         self.lock = _create_lock()
 

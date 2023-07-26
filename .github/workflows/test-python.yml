@@ -36,7 +36,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install tox
-          pip install cython==0.29.36
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
         with:

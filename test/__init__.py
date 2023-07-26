@@ -81,8 +81,8 @@ if hasattr(gc, "set_debug"):
 
 # The host and port of a single mongod or mongos, or the seed host
 # for a replica set.
-host = os.environ.get("DB_IP", "host9.local.10gen.cc")
-port = int(os.environ.get("DB_PORT", 9901))
+host = os.environ.get("DB_IP", "localhost")
+port = int(os.environ.get("DB_PORT", 27017))
 
 db_user = os.environ.get("DB_USER", "user")
 db_pwd = os.environ.get("DB_PASSWORD", "password")

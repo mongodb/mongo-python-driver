@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.mongo_client import MongoClient
     from pymongo.monitoring import _EventListeners
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address
@@ -62,7 +62,7 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 def command(
-    sock_info: SocketInfo,
+    connection: Connection,
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
@@ -125,7 +125,7 @@ def command(
         if read_concern.level:
             spec["readConcern"] = read_concern.document
         if session:
-            session._update_read_concern(spec, sock_info)
+            session._update_read_concern(spec, connection)
     if collation is not None:
         spec["collation"] = collation
 
@@ -142,7 +142,7 @@ def command(
 
     # Support CSOT
     if client:
-        sock_info.apply_timeout(client, spec)
+        connection.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
     if use_op_msg:
@@ -167,29 +167,19 @@ def command(
         encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
         listeners.publish_command_start(
-            orig, dbname, request_id, address, service_id=sock_info.service_id
+            orig, dbname, request_id, address, service_id=connection.service_id
         )
         start = datetime.datetime.now()
 
     try:
-        sock_info.response = sock_info.connector.__call__(
-            iter([msg]),
-            metadata=[
-                ("security-uuid", "uuid"),
-                ("username", "user"),
-                ("servername", "host.local.10gen.cc"),
-                ("mongodb-wireversion", "18"),
-                ("x-forwarded-for", "127.0.0.1:9901"),
-            ],
-        )
-        # sock_info.connector.sendall(msg)
+        connection.send_message(msg, max_bson_size)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc = {"ok": 1}
         else:
-            reply = receive_message(sock_info, request_id)
-            sock_info.more_to_come = reply.more_to_come
+            reply = connection.receive_message(request_id)
+            connection.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
             )
@@ -200,7 +190,7 @@ def command(
             if check:
                 helpers._check_command_response(
                     response_doc,
-                    sock_info.max_wire_version,
+                    connection.max_wire_version,
                     allowable_errors,
                     parse_write_concern_error=parse_write_concern_error,
                 )
@@ -213,7 +203,7 @@ def command(
                 failure = message._convert_exception(exc)
             assert listeners is not None
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=sock_info.service_id
+                duration, failure, name, request_id, address, service_id=connection.service_id
             )
         raise
     if publish:
@@ -225,7 +215,7 @@ def command(
             name,
             request_id,
             address,
-            service_id=sock_info.service_id,
+            service_id=connection.service_id,
             speculative_hello=speculative_hello,
         )
 
@@ -240,20 +230,20 @@ _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
 def receive_message_tcp(
-    sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    connection: Connection, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = sock_info.connector.gettimeout()
+        timeout = connection.connector.gettimeout()
         if timeout:
             deadline = time.monotonic() + timeout
         else:
             deadline = None
     # Ignore the response's request id.
     length, _, response_to, op_code = _UNPACK_HEADER(
-        _receive_data_on_socket(sock_info, 16, deadline)
+        _receive_data_on_socket(connection, 16, deadline)
     )
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
@@ -270,11 +260,11 @@ def receive_message_tcp(
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            _receive_data_on_socket(sock_info, 9, deadline)
+            _receive_data_on_socket(connection, 9, deadline)
         )
-        data = decompress(_receive_data_on_socket(sock_info, length - 25, deadline), compressor_id)
+        data = decompress(_receive_data_on_socket(connection, length - 25, deadline), compressor_id)
     else:
-        data = _receive_data_on_socket(sock_info, length - 16, deadline)
+        data = _receive_data_on_socket(connection, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -283,12 +273,12 @@ def receive_message_tcp(
     return unpack_reply(data)
 
 
-def receive_message(
-    sock_info: SocketInfo, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+def receive_message_grpc(
+    connection: Connection, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # Ignore the response's request id.
-    data = sock_info.response.next()
+    data = connection.response.next()
     length, _, response_to, op_code = _UNPACK_HEADER(data[:16])
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
@@ -319,12 +309,12 @@ def receive_message(
 _POLL_TIMEOUT = 0.5
 
 
-def wait_for_read(sock_info: SocketInfo, deadline: Optional[float]) -> None:
+def wait_for_read(connection: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
-    context = sock_info.cancel_context
+    context = connection.cancel_context
     # Only Monitor connections can be cancelled.
     if context:
-        sock = sock_info.connector
+        sock = connection.connector
         timed_out = False
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
@@ -343,7 +333,7 @@ def wait_for_read(sock_info: SocketInfo, deadline: Optional[float]) -> None:
                     timeout = max(min(remaining, _POLL_TIMEOUT), 0)
                 else:
                     timeout = _POLL_TIMEOUT
-                readable = sock_info.socket_checker.select(sock, read=True, timeout=timeout)
+                readable = connection.socket_checker.select(sock, read=True, timeout=timeout)
             if context.cancelled:
                 raise _OperationCancelled("hello cancelled")
             if readable:
@@ -357,20 +347,20 @@ BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 def _receive_data_on_socket(
-    sock_info: SocketInfo, length: int, deadline: Optional[float]
+    connection: Connection, length: int, deadline: Optional[float]
 ) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0
     while bytes_read < length:
         try:
-            wait_for_read(sock_info, deadline)
+            wait_for_read(connection, deadline)
             # CSOT: Update timeout. When the timeout has expired perform one
             # final non-blocking recv. This helps avoid spurious timeouts when
             # the response is actually already buffered on the client.
             if _csot.get_timeout() and deadline is not None:
-                sock_info.set_socket_timeout(max(deadline - time.monotonic(), 0))
-            chunk_length = sock_info.connector.recv_into(mv[bytes_read:])
+                connection.set_connector_timeout(max(deadline - time.monotonic(), 0))
+            chunk_length = connection.connector.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
             raise socket.timeout("timed out")
         except OSError as exc:  # noqa: B014
