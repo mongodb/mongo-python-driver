@@ -32,7 +32,6 @@ from typing import (
     Type,
     Union,
     cast,
-    overload,
 )
 
 from bson.binary import (

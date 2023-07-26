@@ -22,7 +22,6 @@ from typing import (
     Callable,
     Container,
     ContextManager,
-    Dict,
     Generic,
     Iterable,
     Iterator,
@@ -37,7 +36,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    overload,
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
