@@ -32,13 +32,13 @@ cd ..
 $APACHE -k start -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}
 trap '$APACHE -k stop -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}' EXIT HUP
 
-wget -t 1 -T 10 -O - "http://localhost:8080${PROJECT_DIRECTORY}" || (cat error_log && exit 1)
-wget -t 1 -T 10 -O - "http://localhost:8080/mod_wsgi_test${PROJECT_DIRECTORY}" || (cat error_log && exit 1)
+wget -t 1 -T 10 -O - "http://localhost:8080/interpreter1${PROJECT_DIRECTORY}" || (cat error_log && exit 1)
+wget -t 1 -T 10 -O - "http://localhost:8080/interpreter2${PROJECT_DIRECTORY}" || (cat error_log && exit 1)
 
 ${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 -t 100 parallel \
-    http://localhost:8080${PROJECT_DIRECTORY} http://localhost:8080/mod_wsgi_test${PROJECT_DIRECTORY} || \
+    http://localhost:8080/interpreter1${PROJECT_DIRECTORY} http://localhost:8080/interpreter2${PROJECT_DIRECTORY} || \
     (tail -n 100 error_log && exit 1)
 
 ${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 serial \
-    http://localhost:8080${PROJECT_DIRECTORY} http://localhost:8080/mod_wsgi_test${PROJECT_DIRECTORY} || \
+    http://localhost:8080/interpreter1${PROJECT_DIRECTORY} http://localhost:8080/interpreter2${PROJECT_DIRECTORY} || \
     (tail -n 100 error_log && exit 1)

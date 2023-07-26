@@ -74,7 +74,7 @@ Run the test
 Run the included ``test_client.py`` script::
 
     python test/mod_wsgi_test/test_client.py -n 2500 -t 100 parallel \
-         http://localhost/${WORKSPACE} http://localhost/mod_wsgi_test/${WORKSPACE}
+         http://localhost/interpreter1${WORKSPACE} http://localhost/interpreter2${WORKSPACE}
 
 ...where the "n" argument is the total number of requests to make to Apache,
 and "t" specifies the number of threads. ``WORKSPACE`` is the location of
@@ -84,7 +84,7 @@ to a different sub interpreter.
 Run this script again with different arguments to make serial requests::
 
     python test/mod_wsgi_test/test_client.py -n 25000 serial \
-        http://localhost/${WORKSPACE} http://localhost/mod_wsgi_test/${WORKSPACE}
+        http://localhost/interpreter1${WORKSPACE} http://localhost/interpreter2${WORKSPACE}
 
 The ``test_client.py`` script merely makes HTTP requests to Apache. Its
 exit code is non-zero if any of its requests fails, for example with an
