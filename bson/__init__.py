@@ -1330,6 +1330,20 @@ def is_valid(bson: bytes) -> bool:
         return False
 
 
+var = 0
+
+
+def inc_and_get_var() -> int:
+    """Test sub interpreter"""
+    global var
+    var += 1
+    return var
+
+
+if _USE_C:
+    c_inc_and_get_var = _cbson.c_inc_and_get_var
+
+
 class BSON(bytes):
     """BSON (Binary JSON) data.
 

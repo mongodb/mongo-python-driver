@@ -98,7 +98,9 @@ def application(environ, start_response):
         f" pymongo {pymongo.version},"
         f' mod_wsgi.process_group = {environ["mod_wsgi.process_group"]!r}'
         f' mod_wsgi.application_group = {environ["mod_wsgi.application_group"]!r}'
-        f' wsgi.multithread = {environ["wsgi.multithread"]!r}'
+        f' wsgi.multithread = {environ["wsgi.multithread"]!r}\n'
+        f" inc_and_get_var = {bson.inc_and_get_var()}\n"
+        f" c_inc_and_get_var = {bson.c_inc_and_get_var()}\n"
         "\n"
     )
     response_headers = [("Content-Length", str(len(output)))]

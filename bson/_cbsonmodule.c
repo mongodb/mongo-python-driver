@@ -3103,6 +3103,15 @@ done:
     return result;
 }
 
+/* A global variable. */
+static long var = 0;
+
+static PyObject* c_inc_and_get_var(PyObject* self, PyObject* args)
+{
+    var++;
+    return PyLong_FromLong(var);
+}
+
 
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
@@ -3115,6 +3124,7 @@ static PyMethodDef _CBSONMethods[] = {
      "Decode a single key, value pair."},
     {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
     {"_test_long_long_to_str", _test_long_long_to_str, METH_VARARGS, "Test conversion of extreme and common Py_ssize_t values to str."},
+    {"c_inc_and_get_var", c_inc_and_get_var, METH_VARARGS, "Test sub interpreter."},
     {NULL, NULL, 0, NULL}
 };
 
