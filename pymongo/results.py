@@ -100,12 +100,12 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result",)
 
-    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
+    def __init__(self, raw_result: Optional[Mapping[str, Any]], acknowledged: bool):
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Mapping[str, Any]:
+    def raw_result(self) -> Optional[Mapping[str, Any]]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -115,12 +115,14 @@ class UpdateResult(_WriteResult):
         self._raise_if_unacknowledged("matched_count")
         if self.upserted_id is not None:
             return 0
+        assert self.__raw_result is not None
         return self.__raw_result.get("n", 0)
 
     @property
     def modified_count(self) -> int:
         """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
+        assert self.__raw_result is not None
         return cast(int, self.__raw_result.get("nModified"))
 
     @property
@@ -129,6 +131,7 @@ class UpdateResult(_WriteResult):
         ``None``.
         """
         self._raise_if_unacknowledged("upserted_id")
+        assert self.__raw_result is not None
         return self.__raw_result.get("upserted")
 
 

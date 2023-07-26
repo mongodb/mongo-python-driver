@@ -1033,9 +1033,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         read_preference: _ServerMode,
         **kwargs: Any,
-    ) -> CommandCursor:
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
-        coll = self.get_collection("$cmd", read_preference=read_preference)
+        coll = cast(
+            Collection[MutableMapping[str, Any]],
+            self.get_collection("$cmd", read_preference=read_preference),
+        )
         cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
         with self.__client._tmp_session(session, close=False) as tmp_session:
@@ -1059,7 +1062,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -1092,7 +1095,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             sock_info: SocketInfo,
             read_preference: _ServerMode,
-        ) -> CommandCursor[_DocumentType]:
+        ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(
                 sock_info, session, read_preference=read_preference, **kwargs
             )

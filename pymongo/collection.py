@@ -22,6 +22,7 @@ from typing import (
     Callable,
     Container,
     ContextManager,
+    Dict,
     Generic,
     Iterable,
     Iterator,
@@ -36,6 +37,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -427,6 +429,24 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :class:`Collection` is a part of.
         """
         return self.__database
+
+    # @overload
+    # def with_options(
+    #     self,
+    #     codec_options: None = None,
+    #     read_preference: Optional[_ServerMode] = None,
+    #     write_concern: Optional[WriteConcern] = None,
+    #     read_concern: Optional[ReadConcern] = None,
+    # ) -> Collection[Dict[str, Any]]: ...
+
+    # @overload
+    # def with_options(
+    #     self,
+    #     codec_options: bson.CodecOptions[_DocumentType],
+    #     read_preference: Optional[_ServerMode] = None,
+    #     write_concern: Optional[WriteConcern] = None,
+    #     read_concern: Optional[ReadConcern] = None,
+    # ) -> Collection[_DocumentType]: ...
 
     def with_options(
         self,
@@ -856,7 +876,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
         def _update(
@@ -881,11 +901,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 comment=comment,
             )
 
-        return cast(
-            Mapping[str, Any],
-            self.__database.client._retryable_write(
-                (write_concern or self.write_concern).acknowledged and not multi, _update, session
-            ),
+        return self.__database.client._retryable_write(
+            (write_concern or self.write_concern).acknowledged and not multi, _update, session
         )
 
     def replace_one(
@@ -2248,7 +2265,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -2274,8 +2291,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         codec_options: CodecOptions = CodecOptions(SON)
-        coll = self.with_options(
-            codec_options=codec_options, read_preference=ReadPreference.PRIMARY
+        coll = cast(
+            Collection[MutableMapping[str, Any]],
+            self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         explicit_session = session is not None
@@ -2285,7 +2303,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             sock_info: SocketInfo,
             read_preference: _ServerMode,
-        ) -> CommandCursor[_DocumentType]:
+        ) -> CommandCursor[MutableMapping[str, Any]]:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
@@ -2349,10 +2367,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = cast(
-            CommandCursor[MutableMapping[str, Any]],
-            self.list_indexes(session=session, comment=comment),
-        )
+        cursor = self.list_indexes(session=session, comment=comment)
         info = {}
         for index in cursor:
             index["key"] = list(index["key"].items())
