@@ -85,13 +85,14 @@ def application(environ, start_response):
     # Test encoding and decoding works (for sub interpreter support).
     decoded = bson.decode(bson.encode(doc, codec_options=OPTS), codec_options=OPTS)
     for key, value in doc.items():
+        # Native regex objects are decoded as bson Regex.
         if key == "regex_native":
             value = Regex.from_native(value)
         assert decoded[key] == value, f"failed on doc[{key!r}]: {decoded[key]!r} != {value!r}"
         assert isinstance(
             decoded[key], type(value)
         ), f"failed on doc[{key}]: {decoded[key]!r} is not an instance of {type(value)}"
-    assert decoded == doc, f"{decoded} != {doc}"
+
     output = (
         f" python {sys.version}, mod_wsgi {mod_wsgi_version},"
         f" pymongo {pymongo.version},"
