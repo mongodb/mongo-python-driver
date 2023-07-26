@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.command_cursor import CommandCursor
     from pymongo.database import Database
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
     from pymongo.server import Server
     from pymongo.typings import _Pipeline
@@ -52,7 +52,7 @@ class _AggregationCommand:
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         user_fields: Optional[MutableMapping[str, Any]] = None,
-        result_processor: Optional[Callable[[Mapping[str, Any], SocketInfo], None]] = None,
+        result_processor: Optional[Callable[[Mapping[str, Any], Connection], None]] = None,
         comment: Any = None,
     ) -> None:
         if "explain" in options:
@@ -134,7 +134,7 @@ class _AggregationCommand:
         self,
         session: ClientSession,
         server: Server,
-        sock_info: SocketInfo,
+        connection: Connection,
         read_preference: _ServerMode,
     ) -> CommandCursor:
         # Serialize command.
@@ -146,7 +146,7 @@ class _AggregationCommand:
         # - server version is >= 4.2 or
         # - server version is >= 3.2 and pipeline doesn't use $out
         if ("readConcern" not in cmd) and (
-            not self._performs_write or (sock_info.max_wire_version >= 8)
+            not self._performs_write or (connection.max_wire_version >= 8)
         ):
             read_concern = self._target.read_concern
         else:
@@ -161,7 +161,7 @@ class _AggregationCommand:
             write_concern = None
 
         # Run command.
-        result = sock_info.command(
+        result = connection.command(
             self._database.name,
             cmd,
             read_preference,
@@ -176,7 +176,7 @@ class _AggregationCommand:
         )
 
         if self._result_processor:
-            self._result_processor(result, sock_info)
+            self._result_processor(result, connection)
 
         # Extract cursor from result or mock/fake one if necessary.
         if "cursor" in result:
@@ -193,14 +193,14 @@ class _AggregationCommand:
         cmd_cursor = self._cursor_class(
             self._cursor_collection(cursor),
             cursor,
-            sock_info.address,
+            connection.address,
             batch_size=self._batch_size or 0,
             max_await_time_ms=self._max_await_time_ms,
             session=session,
             explicit_session=self._explicit_session,
             comment=self._options.get("comment"),
         )
-        cmd_cursor._maybe_pin_connection(sock_info)
+        cmd_cursor._maybe_pin_connection(connection)
         return cmd_cursor
 
 

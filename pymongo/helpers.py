@@ -307,7 +307,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def _handle_reauth(func: F) -> F:
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
-        from pymongo.pool import SocketInfo
+        from pymongo.pool import Connection
 
         try:
             return func(*args, **kwargs)
@@ -315,19 +315,19 @@ def _handle_reauth(func: F) -> F:
             if no_reauth:
                 raise
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                # Look for an argument that either is a SocketInfo
-                # or has a socket_info attribute, so we can trigger
+                # Look for an argument that either is a Connection
+                # or has a connection attribute, so we can trigger
                 # a reauth.
-                sock_info = None
+                connection = None
                 for arg in args:
-                    if isinstance(arg, SocketInfo):
-                        sock_info = arg
+                    if isinstance(arg, Connection):
+                        connection = arg
                         break
-                    if hasattr(arg, "sock_info"):
-                        sock_info = arg.sock_info
+                    if hasattr(arg, "connection"):
+                        connection = arg.connection
                         break
-                if sock_info:
-                    sock_info.authenticate(reauthenticate=True)
+                if connection:
+                    connection.authenticate(reauthenticate=True)
                 else:
                     raise
                 return func(*args, **kwargs)

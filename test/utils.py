@@ -279,7 +279,7 @@ class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
         self.add_event(event)
 
 
-class MockSocketInfo:
+class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
@@ -305,7 +305,7 @@ class MockPool:
         return self.gen.stale(gen, service_id)
 
     def get_socket(self, handler=None):
-        return MockSocketInfo()
+        return MockConnection()
 
     def return_socket(self, *args, **kwargs):
         pass

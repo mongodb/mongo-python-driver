@@ -227,14 +227,14 @@ def _gen_find_command(
     return cmd
 
 
-def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms, comment, sock_info):
+def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms, comment, connection):
     """Generate a getMore command document."""
     cmd = SON([("getMore", cursor_id), ("collection", coll)])
     if batch_size:
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
         cmd["maxTimeMS"] = max_await_time_ms
-    if comment is not None and sock_info.max_wire_version >= 9:
+    if comment is not None and connection.max_wire_version >= 9:
         cmd["comment"] = comment
     return cmd
 
@@ -311,24 +311,24 @@ class _Query:
     def namespace(self):
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, sock_info):
+    def use_command(self, connection):
         use_find_cmd = False
         if not self.exhaust:
             use_find_cmd = True
-        elif sock_info.max_wire_version >= 8:
+        elif connection.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_find_cmd = True
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
                 "read concern level of %s is not valid "
                 "with a max wire version of %d."
-                % (self.read_concern.level, sock_info.max_wire_version)
+                % (self.read_concern.level, connection.max_wire_version)
             )
 
-        sock_info.validate_session(self.client, self.session)
+        connection.validate_session(self.client, self.session)
         return use_find_cmd
 
-    def as_command(self, sock_info, apply_timeout=False):
+    def as_command(self, connection, apply_timeout=False):
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
         # Generate it once, for speed and to avoid repeating side-effects.
@@ -353,24 +353,24 @@ class _Query:
             self.name = "explain"
             cmd = SON([("explain", cmd)])
         session = self.session
-        sock_info.add_server_api(cmd)
+        connection.add_server_api(cmd)
         if session:
-            session._apply_to(cmd, False, self.read_preference, sock_info)
+            session._apply_to(cmd, False, self.read_preference, connection)
             # Explain does not support readConcern.
             if not explain and not session.in_transaction:
-                session._update_read_concern(cmd, sock_info)
-        sock_info.send_cluster_time(cmd, session, self.client)
+                session._update_read_concern(cmd, connection)
+        connection.send_cluster_time(cmd, session, self.client)
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
             cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
-            sock_info.apply_timeout(client, cmd)
+            connection.apply_timeout(client, cmd)
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(self, read_preference, sock_info, use_cmd=False):
+    def get_message(self, read_preference, connection, use_cmd=False):
         """Get a query message, possibly setting the secondaryOk bit."""
         # Use the read_preference decided by _socket_from_server.
         self.read_preference = read_preference
@@ -384,14 +384,14 @@ class _Query:
         spec = self.spec
 
         if use_cmd:
-            spec = self.as_command(sock_info, apply_timeout=True)[0]
+            spec = self.as_command(connection, apply_timeout=True)[0]
             request_id, msg, size, _ = _op_msg(
                 0,
                 spec,
                 self.db,
                 read_preference,
                 self.codec_options,
-                ctx=sock_info.compression_context,
+                ctx=connection.compression_context,
             )
             return request_id, msg, size
 
@@ -405,7 +405,7 @@ class _Query:
             else:
                 ntoreturn = self.limit
 
-        if sock_info.is_mongos:
+        if connection.is_mongos:
             spec = _maybe_add_read_preference(spec, read_preference)
 
         return _query(
@@ -416,7 +416,7 @@ class _Query:
             spec,
             None if use_cmd else self.fields,
             self.codec_options,
-            ctx=sock_info.compression_context,
+            ctx=connection.compression_context,
         )
 
 
@@ -476,18 +476,18 @@ class _GetMore:
     def namespace(self):
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, sock_info):
+    def use_command(self, connection):
         use_cmd = False
         if not self.exhaust:
             use_cmd = True
-        elif sock_info.max_wire_version >= 8:
+        elif connection.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_cmd = True
 
-        sock_info.validate_session(self.client, self.session)
+        connection.validate_session(self.client, self.session)
         return use_cmd
 
-    def as_command(self, sock_info, apply_timeout=False):
+    def as_command(self, connection, apply_timeout=False):
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
         if self._as_command is not None:
@@ -499,35 +499,35 @@ class _GetMore:
             self.ntoreturn,
             self.max_await_time_ms,
             self.comment,
-            sock_info,
+            connection,
         )
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference, sock_info)
-        sock_info.add_server_api(cmd)
-        sock_info.send_cluster_time(cmd, self.session, self.client)
+            self.session._apply_to(cmd, False, self.read_preference, connection)
+        connection.add_server_api(cmd)
+        connection.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
             cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
-            sock_info.apply_timeout(client, cmd=None)
+            connection.apply_timeout(client, cmd=None)
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(self, dummy0, sock_info, use_cmd=False):
+    def get_message(self, dummy0, connection, use_cmd=False):
         """Get a getmore message."""
         ns = self.namespace()
-        ctx = sock_info.compression_context
+        ctx = connection.compression_context
 
         if use_cmd:
-            spec = self.as_command(sock_info, apply_timeout=True)[0]
+            spec = self.as_command(connection, apply_timeout=True)[0]
             if self.sock_mgr:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
                 flags = 0
             request_id, msg, size, _ = _op_msg(
-                flags, spec, self.db, None, self.codec_options, ctx=sock_info.compression_context
+                flags, spec, self.db, None, self.codec_options, ctx=connection.compression_context
             )
             return request_id, msg, size
 
@@ -535,10 +535,10 @@ class _GetMore:
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, sock_info):
+    def use_command(self, connection):
         # Compatibility checks.
-        super().use_command(sock_info)
-        if sock_info.max_wire_version >= 8:
+        super().use_command(connection)
+        if connection.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
         elif not self.exhaust:
@@ -547,10 +547,10 @@ class _RawBatchQuery(_Query):
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, sock_info):
+    def use_command(self, connection):
         # Compatibility checks.
-        super().use_command(sock_info)
-        if sock_info.max_wire_version >= 8:
+        super().use_command(connection)
+        if connection.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
         elif not self.exhaust:
@@ -794,11 +794,11 @@ def _get_more(collection_name, num_to_return, cursor_id, ctx=None):
 
 
 class _BulkWriteContext:
-    """A wrapper around SocketInfo for use with write splitting functions."""
+    """A wrapper around Connection for use with write splitting functions."""
 
     __slots__ = (
         "db_name",
-        "sock_info",
+        "connection",
         "op_id",
         "name",
         "field",
@@ -812,10 +812,10 @@ class _BulkWriteContext:
     )
 
     def __init__(
-        self, database_name, cmd_name, sock_info, operation_id, listeners, session, op_type, codec
+        self, database_name, cmd_name, connection, operation_id, listeners, session, op_type, codec
     ):
         self.db_name = database_name
-        self.sock_info = sock_info
+        self.connection = connection
         self.op_id = operation_id
         self.listeners = listeners
         self.publish = listeners.enabled_for_commands
@@ -823,7 +823,7 @@ class _BulkWriteContext:
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
         self.session = session
-        self.compress = True if sock_info.compression_context else False
+        self.compress = True if connection.compression_context else False
         self.op_type = op_type
         self.codec = codec
 
@@ -855,20 +855,20 @@ class _BulkWriteContext:
     @property
     def max_bson_size(self):
         """A proxy for SockInfo.max_bson_size."""
-        return self.sock_info.max_bson_size
+        return self.connection.max_bson_size
 
     @property
     def max_message_size(self):
         """A proxy for SockInfo.max_message_size."""
         if self.compress:
             # Subtract 16 bytes for the message header.
-            return self.sock_info.max_message_size - 16
-        return self.sock_info.max_message_size
+            return self.connection.max_message_size - 16
+        return self.connection.max_message_size
 
     @property
     def max_write_batch_size(self):
         """A proxy for SockInfo.max_write_batch_size."""
-        return self.sock_info.max_write_batch_size
+        return self.connection.max_write_batch_size
 
     @property
     def max_split_size(self):
@@ -876,14 +876,14 @@ class _BulkWriteContext:
         return self.max_bson_size
 
     def unack_write(self, cmd, request_id, msg, max_doc_size, docs):
-        """A proxy for SocketInfo.unack_write that handles event publishing."""
+        """A proxy for Connection.unack_write that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
-            result = self.sock_info.unack_write(msg, max_doc_size)
+            result = self.connection.unack_write(msg, max_doc_size)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if result is not None:
@@ -910,14 +910,14 @@ class _BulkWriteContext:
 
     @_handle_reauth
     def write_command(self, cmd, request_id, msg, docs):
-        """A proxy for SocketInfo.write_command that handles event publishing."""
+        """A proxy for Connection.write_command that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
-            reply = self.sock_info.write_command(request_id, msg, self.codec)
+            reply = self.connection.write_command(request_id, msg, self.codec)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
@@ -941,9 +941,9 @@ class _BulkWriteContext:
             cmd,
             self.db_name,
             request_id,
-            self.sock_info.address,
+            self.connection.address,
             self.op_id,
-            self.sock_info.service_id,
+            self.connection.service_id,
         )
         return cmd
 
@@ -954,9 +954,9 @@ class _BulkWriteContext:
             reply,
             self.name,
             request_id,
-            self.sock_info.address,
+            self.connection.address,
             self.op_id,
-            self.sock_info.service_id,
+            self.connection.service_id,
         )
 
     def _fail(self, request_id, failure, duration):
@@ -966,9 +966,9 @@ class _BulkWriteContext:
             failure,
             self.name,
             request_id,
-            self.sock_info.address,
+            self.connection.address,
             self.op_id,
-            self.sock_info.service_id,
+            self.connection.service_id,
         )
 
 
@@ -997,14 +997,14 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
     def execute(self, cmd, docs, client):
         batched_cmd, to_send = self._batch_command(cmd, docs)
-        result = self.sock_info.command(
+        result = self.connection.command(
             self.db_name, batched_cmd, codec_options=self.codec, session=self.session, client=client
         )
         return result, to_send
 
     def execute_unack(self, cmd, docs, client):
         batched_cmd, to_send = self._batch_command(cmd, docs)
-        self.sock_info.command(
+        self.connection.command(
             self.db_name,
             batched_cmd,
             write_concern=WriteConcern(w=0),
@@ -1124,7 +1124,7 @@ def _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx):
     """
     data, to_send = _encode_batched_op_msg(operation, command, docs, ack, opts, ctx)
 
-    request_id, msg = _compress(2013, data, ctx.sock_info.compression_context)
+    request_id, msg = _compress(2013, data, ctx.connection.compression_context)
     return request_id, msg, to_send
 
 
@@ -1162,7 +1162,7 @@ def _do_batched_op_msg(namespace, operation, command, docs, opts, ctx):
         ack = bool(command["writeConcern"].get("w", 1))
     else:
         ack = True
-    if ctx.sock_info.compression_context:
+    if ctx.connection.compression_context:
         return _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx)
     return _batched_op_msg(operation, command, docs, ack, opts, ctx)
 

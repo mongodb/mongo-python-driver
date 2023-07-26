@@ -614,7 +614,7 @@ class _CancellationContext:
         return self._cancelled
 
 
-class SocketInfo:
+class Connection:
     """Store a socket with some metadata.
 
     :Parameters:
@@ -1082,7 +1082,7 @@ class SocketInfo:
         return hash(self.sock)
 
     def __repr__(self):
-        return "SocketInfo({}){} at {}".format(
+        return "Connection({}){} at {}".format(
             repr(self.sock),
             self.closed and " CLOSED" or "",
             id(self),
@@ -1256,7 +1256,7 @@ class Pool:
         :Parameters:
           - `address`: a (hostname, port) tuple
           - `options`: a PoolOptions instance
-          - `handshake`: whether to call hello for each new SocketInfo
+          - `handshake`: whether to call hello for each new Connection
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -1348,11 +1348,11 @@ class Pool:
             else:
                 discard: collections.deque = collections.deque()
                 keep: collections.deque = collections.deque()
-                for sock_info in self.sockets:
-                    if sock_info.service_id == service_id:
-                        discard.append(sock_info)
+                for connection in self.sockets:
+                    if connection.service_id == service_id:
+                        discard.append(connection)
                     else:
-                        keep.append(sock_info)
+                        keep.append(connection)
                 sockets = discard
                 self.sockets = keep
 
@@ -1367,15 +1367,15 @@ class Pool:
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
         if close:
-            for sock_info in sockets:
-                sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
+            for connection in sockets:
+                connection.close_socket(ConnectionClosedReason.POOL_CLOSED)
             if self.enabled_for_cmap:
                 listeners.publish_pool_closed(self.address)
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
                 listeners.publish_pool_cleared(self.address, service_id=service_id)
-            for sock_info in sockets:
-                sock_info.close_socket(ConnectionClosedReason.STALE)
+            for connection in sockets:
+                connection.close_socket(ConnectionClosedReason.STALE)
 
     def update_is_writable(self, is_writable):
         """Updates the is_writable attribute on all sockets currently in the
@@ -1415,8 +1415,8 @@ class Pool:
                     self.sockets
                     and self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
                 ):
-                    sock_info = self.sockets.pop()
-                    sock_info.close_socket(ConnectionClosedReason.IDLE)
+                    connection = self.sockets.pop()
+                    connection.close_socket(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
@@ -1435,14 +1435,14 @@ class Pool:
                         return
                     self._pending += 1
                     incremented = True
-                sock_info = self.connect()
+                connection = self.connect()
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.gen.get_overall() != reference_generation:
-                        sock_info.close_socket(ConnectionClosedReason.STALE)
+                        connection.close_socket(ConnectionClosedReason.STALE)
                         return
-                    self.sockets.appendleft(sock_info)
+                    self.sockets.appendleft(connection)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1455,7 +1455,7 @@ class Pool:
                     self.size_cond.notify()
 
     def connect(self, handler=None):
-        """Connect to Mongo and return a new SocketInfo.
+        """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
 
@@ -1483,33 +1483,33 @@ class Pool:
 
             raise
 
-        sock_info = SocketInfo(sock, self, self.address, conn_id)
+        connection = Connection(sock, self, self.address, conn_id)
         try:
             if self.handshake:
-                sock_info.hello()
-                self.is_writable = sock_info.is_writable
+                connection.hello()
+                self.is_writable = connection.is_writable
             if handler:
-                handler.contribute_socket(sock_info, completed_handshake=False)
+                handler.contribute_socket(connection, completed_handshake=False)
 
-            sock_info.authenticate()
+            connection.authenticate()
         except BaseException:
-            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            connection.close_socket(ConnectionClosedReason.ERROR)
             raise
 
-        return sock_info
+        return connection
 
     @contextlib.contextmanager
     def get_socket(self, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
 
-        Returns a :class:`SocketInfo` object wrapping a connected
+        Returns a :class:`Connection` object wrapping a connected
         :class:`socket.socket`.
 
         This method should always be used in a with-statement::
 
-            with pool.get_socket() as socket_info:
-                socket_info.send_message(msg)
-                data = socket_info.receive_message(op_code, request_id)
+            with pool.get_socket() as connection:
+                connection.send_message(msg)
+                data = connection.receive_message(op_code, request_id)
 
         Can raise ConnectionFailure or OperationFailure.
 
@@ -1520,36 +1520,36 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
-        sock_info = self._get_socket(handler=handler)
+        connection = self._get_socket(handler=handler)
 
         if self.enabled_for_cmap:
-            listeners.publish_connection_checked_out(self.address, sock_info.id)
+            listeners.publish_connection_checked_out(self.address, connection.id)
         try:
-            yield sock_info
+            yield connection
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
             # connection and it is responsible for checking the connection
             # back into the pool.
-            pinned = sock_info.pinned_txn or sock_info.pinned_cursor
+            pinned = connection.pinned_txn or connection.pinned_cursor
             if handler:
                 # Perform SDAM error handling rules while the connection is
                 # still checked out.
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
-            if not pinned and sock_info.active:
-                self.return_socket(sock_info)
+            if not pinned and connection.active:
+                self.return_socket(connection)
             raise
-        if sock_info.pinned_txn:
+        if connection.pinned_txn:
             with self.lock:
-                self.__pinned_sockets.add(sock_info)
+                self.__pinned_sockets.add(connection)
                 self.ntxns += 1
-        elif sock_info.pinned_cursor:
+        elif connection.pinned_cursor:
             with self.lock:
-                self.__pinned_sockets.add(sock_info)
+                self.__pinned_sockets.add(connection)
                 self.ncursors += 1
-        elif sock_info.active:
-            self.return_socket(sock_info)
+        elif connection.active:
+            self.return_socket(connection)
 
     def _raise_if_not_ready(self, emit_event):
         if self.state != PoolState.READY:
@@ -1560,7 +1560,7 @@ class Pool:
             _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
     def _get_socket(self, handler=None):
-        """Get or create a SocketInfo. Can raise ConnectionFailure."""
+        """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
@@ -1600,7 +1600,7 @@ class Pool:
             self.requests += 1
 
         # We've now acquired the semaphore and must release it on error.
-        sock_info = None
+        connection = None
         incremented = False
         emitted_event = False
         try:
@@ -1608,7 +1608,7 @@ class Pool:
                 self.active_sockets += 1
                 incremented = True
 
-            while sock_info is None:
+            while connection is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
@@ -1624,24 +1624,24 @@ class Pool:
                         self._raise_if_not_ready(emit_event=False)
 
                     try:
-                        sock_info = self.sockets.popleft()
+                        connection = self.sockets.popleft()
                     except IndexError:
                         self._pending += 1
-                if sock_info:  # We got a socket from the pool
-                    if self._perished(sock_info):
-                        sock_info = None
+                if connection:  # We got a socket from the pool
+                    if self._perished(connection):
+                        connection = None
                         continue
                 else:  # We need to create a new connection
                     try:
-                        sock_info = self.connect(handler=handler)
+                        connection = self.connect(handler=handler)
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
         except BaseException:
-            if sock_info:
+            if connection:
                 # We checked out a socket but authentication failed.
-                sock_info.close_socket(ConnectionClosedReason.ERROR)
+                connection.close_socket(ConnectionClosedReason.ERROR)
             with self.size_cond:
                 self.requests -= 1
                 if incremented:
@@ -1654,45 +1654,45 @@ class Pool:
                 )
             raise
 
-        sock_info.active = True
-        return sock_info
+        connection.active = True
+        return connection
 
-    def return_socket(self, sock_info):
+    def return_socket(self, connection):
         """Return the socket to the pool, or if it's closed discard it.
 
         :Parameters:
-          - `sock_info`: The socket to check into the pool.
+          - `connection`: The socket to check into the pool.
         """
-        txn = sock_info.pinned_txn
-        cursor = sock_info.pinned_cursor
-        sock_info.active = False
-        sock_info.pinned_txn = False
-        sock_info.pinned_cursor = False
-        self.__pinned_sockets.discard(sock_info)
+        txn = connection.pinned_txn
+        cursor = connection.pinned_cursor
+        connection.active = False
+        connection.pinned_txn = False
+        connection.pinned_cursor = False
+        self.__pinned_sockets.discard(connection)
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
-            listeners.publish_connection_checked_in(self.address, sock_info.id)
+            listeners.publish_connection_checked_in(self.address, connection.id)
         if self.pid != os.getpid():
             self.reset_without_pause()
         else:
             if self.closed:
-                sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
-            elif sock_info.closed:
+                connection.close_socket(ConnectionClosedReason.POOL_CLOSED)
+            elif connection.closed:
                 # CMAP requires the closed event be emitted after the check in.
                 if self.enabled_for_cmap:
                     listeners.publish_connection_closed(
-                        self.address, sock_info.id, ConnectionClosedReason.ERROR
+                        self.address, connection.id, ConnectionClosedReason.ERROR
                     )
             else:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
-                    if self.stale_generation(sock_info.generation, sock_info.service_id):
-                        sock_info.close_socket(ConnectionClosedReason.STALE)
+                    if self.stale_generation(connection.generation, connection.service_id):
+                        connection.close_socket(ConnectionClosedReason.STALE)
                     else:
-                        sock_info.update_last_checkin_time()
-                        sock_info.update_is_writable(self.is_writable)
-                        self.sockets.appendleft(sock_info)
+                        connection.update_last_checkin_time()
+                        connection.update_is_writable(self.is_writable)
+                        self.sockets.appendleft(connection)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
 
@@ -1706,7 +1706,7 @@ class Pool:
             self.operation_count -= 1
             self.size_cond.notify()
 
-    def _perished(self, sock_info):
+    def _perished(self, connection):
         """Return True and close the connection if it is "perished".
 
         This side-effecty function checks if this socket has been idle for
@@ -1720,24 +1720,24 @@ class Pool:
         pool, to keep performance reasonable - we can't avoid AutoReconnects
         completely anyway.
         """
-        idle_time_seconds = sock_info.idle_time_seconds()
+        idle_time_seconds = connection.idle_time_seconds()
         # If socket is idle, open a new one.
         if (
             self.opts.max_idle_time_seconds is not None
             and idle_time_seconds > self.opts.max_idle_time_seconds
         ):
-            sock_info.close_socket(ConnectionClosedReason.IDLE)
+            connection.close_socket(ConnectionClosedReason.IDLE)
             return True
 
         if self._check_interval_seconds is not None and (
             0 == self._check_interval_seconds or idle_time_seconds > self._check_interval_seconds
         ):
-            if sock_info.socket_closed():
-                sock_info.close_socket(ConnectionClosedReason.ERROR)
+            if connection.socket_closed():
+                connection.close_socket(ConnectionClosedReason.ERROR)
                 return True
 
-        if self.stale_generation(sock_info.generation, sock_info.service_id):
-            sock_info.close_socket(ConnectionClosedReason.STALE)
+        if self.stale_generation(connection.generation, connection.service_id):
+            connection.close_socket(ConnectionClosedReason.STALE)
             return True
 
         return False
@@ -1772,5 +1772,5 @@ class Pool:
         # Avoid ResourceWarnings in Python 3
         # Close all sockets without calling reset() or close() because it is
         # not safe to acquire a lock in __del__.
-        for sock_info in self.sockets:
-            sock_info.close_socket(None)
+        for connection in self.sockets:
+            connection.close_socket(None)

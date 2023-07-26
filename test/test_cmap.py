@@ -123,19 +123,19 @@ class TestCMAP(IntegrationTest):
     def check_out(self, op):
         """Run the 'checkOut' operation."""
         label = op["label"]
-        with self.pool.get_socket() as sock_info:
+        with self.pool.get_socket() as connection:
             # Call 'pin_cursor' so we can hold the socket.
-            sock_info.pin_cursor()
+            connection.pin_cursor()
             if label:
-                self.labels[label] = sock_info
+                self.labels[label] = connection
             else:
-                self.addCleanup(sock_info.close_socket, None)
+                self.addCleanup(connection.close_socket, None)
 
     def check_in(self, op):
         """Run the 'checkIn' operation."""
         label = op["connection"]
-        sock_info = self.labels[label]
-        self.pool.return_socket(sock_info)
+        connection = self.labels[label]
+        self.pool.return_socket(connection)
 
     def ready(self, op):
         """Run the 'ready' operation."""

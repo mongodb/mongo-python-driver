@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.typings import _Address
 
 
@@ -85,13 +85,13 @@ class Response:
 
 
 class PinnedResponse(Response):
-    __slots__ = ("_socket_info", "_more_to_come")
+    __slots__ = ("_connection", "_more_to_come")
 
     def __init__(
         self,
         data: Union[_OpMsg, _OpReply],
         address: _Address,
-        socket_info: SocketInfo,
+        connection: Connection,
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
@@ -103,7 +103,7 @@ class PinnedResponse(Response):
         :Parameters:
           - `data`:  A network response message.
           - `address`: (host, port) of the source server.
-          - `socket_info`: The SocketInfo used for the initial query.
+          - `connection`: The Connection used for the initial query.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.
@@ -112,18 +112,18 @@ class PinnedResponse(Response):
             exhausted.
         """
         super().__init__(data, address, request_id, duration, from_command, docs)
-        self._socket_info = socket_info
+        self._connection = connection
         self._more_to_come = more_to_come
 
     @property
-    def socket_info(self) -> SocketInfo:
-        """The SocketInfo used for the initial query.
+    def connection(self) -> Connection:
+        """The Connection used for the initial query.
 
         The server will send batches on this socket, without waiting for
         getMores from the client, until the result set is exhausted or there
         is an error.
         """
-        return self._socket_info
+        return self._connection
 
     @property
     def more_to_come(self) -> bool:

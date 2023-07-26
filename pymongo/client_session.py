@@ -178,7 +178,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.server import Server
 
 
@@ -412,17 +412,17 @@ class _Transaction:
         return self.state == _TxnState.STARTING
 
     @property
-    def pinned_conn(self) -> Optional[SocketInfo]:
+    def pinned_conn(self) -> Optional[Connection]:
         if self.active() and self.sock_mgr:
             return self.sock_mgr.sock
         return None
 
-    def pin(self, server: Server, sock_info: SocketInfo) -> None:
+    def pin(self, server: Server, connection: Connection) -> None:
         self.sharded = True
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
-            sock_info.pin_txn()
-            self.sock_mgr = _SocketManager(sock_info, False)
+            connection.pin_txn()
+            self.sock_mgr = _SocketManager(connection, False)
 
     def unpin(self) -> None:
         self.pinned_address = None
@@ -839,12 +839,12 @@ class ClientSession:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(session: ClientSession, sock_info: SocketInfo, retryable: bool) -> Dict[str, Any]:
-            return self._finish_transaction(sock_info, command_name)
+        def func(session: ClientSession, connection: Connection, retryable: bool) -> Dict[str, Any]:
+            return self._finish_transaction(connection, command_name)
 
         return self._client._retry_internal(True, func, self, None)
 
-    def _finish_transaction(self, sock_info: SocketInfo, command_name: str) -> Dict[str, Any]:
+    def _finish_transaction(self, connection: Connection, command_name: str) -> Dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
@@ -868,7 +868,7 @@ class ClientSession:
             cmd["recoveryToken"] = self._transaction.recovery_token
 
         return self._client.admin._command(
-            sock_info, cmd, session=self, write_concern=wc, parse_write_concern_error=True
+            connection, cmd, session=self, write_concern=wc, parse_write_concern_error=True
         )
 
     def _advance_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
@@ -954,13 +954,13 @@ class ClientSession:
         return None
 
     @property
-    def _pinned_connection(self) -> Optional[SocketInfo]:
+    def _pinned_connection(self) -> Optional[Connection]:
         """The connection this transaction was started on."""
         return self._transaction.pinned_conn
 
-    def _pin(self, server: Server, sock_info: SocketInfo) -> None:
+    def _pin(self, server: Server, connection: Connection) -> None:
         """Pin this session to the given Server or to the given connection."""
-        self._transaction.pin(server, sock_info)
+        self._transaction.pin(server, connection)
 
     def _unpin(self) -> None:
         """Unpin this session from any pinned Server."""
@@ -985,12 +985,12 @@ class ClientSession:
         command: MutableMapping[str, Any],
         is_retryable: bool,
         read_preference: ReadPreference,
-        sock_info: SocketInfo,
+        connection: Connection,
     ) -> None:
         self._check_ended()
         self._materialize()
         if self.options.snapshot:
-            self._update_read_concern(command, sock_info)
+            self._update_read_concern(command, connection)
 
         self._server_session.last_use = time.monotonic()
         command["lsid"] = self._server_session.session_id
@@ -1016,7 +1016,7 @@ class ClientSession:
                     rc = self._transaction.opts.read_concern.document
                     if rc:
                         command["readConcern"] = rc
-                self._update_read_concern(command, sock_info)
+                self._update_read_concern(command, connection)
 
             command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
@@ -1025,11 +1025,11 @@ class ClientSession:
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def _update_read_concern(self, cmd: MutableMapping[str, Any], sock_info: SocketInfo) -> None:
+    def _update_read_concern(self, cmd: MutableMapping[str, Any], connection: Connection) -> None:
         if self.options.causal_consistency and self.operation_time is not None:
             cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
-            if sock_info.max_wire_version < 13:
+            if connection.max_wire_version < 13:
                 raise ConfigurationError("Snapshot reads require MongoDB 5.0 or later")
             rc = cmd.setdefault("readConcern", {})
             rc["level"] = "snapshot"
