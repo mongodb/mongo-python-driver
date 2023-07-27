@@ -580,13 +580,13 @@ class TestClient(IntegrationTest):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.checkout() as connection_one:
+            with server._pool.checkout() as conn_one:
                 pass
             # Assert that the pool does not close connections prematurely.
             time.sleep(0.300)
-            with server._pool.checkout() as connection_two:
+            with server._pool.checkout() as conn_two:
                 pass
-            self.assertIs(connection_one, connection_two)
+            self.assertIs(conn_one, conn_two)
             wait_until(
                 lambda: 0 == len(server._pool.conns),
                 "stale socket reaped and new one NOT added to the pool",
@@ -602,7 +602,9 @@ class TestClient(IntegrationTest):
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
             server = client._get_topology().select_server(readable_server_selector)
-            wait_until(lambda: 10 == len(server._pool.conns), "pool initialized with 10 conns")
+            wait_until(
+                lambda: 10 == len(server._pool.conns), "pool initialized with 10 connections"
+            )
 
             # Assert that if a socket is closed, a new one takes its place
             with server._pool.checkout() as conn:
@@ -623,11 +625,11 @@ class TestClient(IntegrationTest):
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
-            with server._pool.checkout() as new_connection:
-                self.assertNotEqual(conn, new_connection)
+            with server._pool.checkout() as new_con:
+                self.assertNotEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
             self.assertFalse(conn in server._pool.conns)
-            self.assertTrue(new_connection in server._pool.conns)
+            self.assertTrue(new_con in server._pool.conns)
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
@@ -636,8 +638,8 @@ class TestClient(IntegrationTest):
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)
-            with server._pool.checkout() as new_connection:
-                self.assertEqual(conn, new_connection)
+            with server._pool.checkout() as new_con:
+                self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
 
     def test_constants(self):
@@ -1273,14 +1275,14 @@ class TestClient(IntegrationTest):
         pool = get_pool(client)
         socket_count = len(pool.conns)
         self.assertGreaterEqual(socket_count, 1)
-        old_connection = next(iter(pool.conns))
+        old_conn = next(iter(pool.conns))
         client.pymongo_test.test.drop()
         client.pymongo_test.test.insert_one({"_id": "foo"})
         self.assertRaises(OperationFailure, client.pymongo_test.test.insert_one, {"_id": "foo"})
 
         self.assertEqual(socket_count, len(pool.conns))
-        new_connection = next(iter(pool.conns))
-        self.assertEqual(old_connection, new_connection)
+        new_con = next(iter(pool.conns))
+        self.assertEqual(old_conn, new_con)
 
     def test_lazy_connect_w0(self):
         # Ensure that connect-on-demand works when the first operation is

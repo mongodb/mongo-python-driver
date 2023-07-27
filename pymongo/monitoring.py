@@ -331,7 +331,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_closed(self, event: "ConnectionClosedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionClosedEvent`.
 
-        Emitted when a Connection Pool closes a connection.
+        Emitted when a connection Pool closes a connection.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionClosedEvent`.
