@@ -14,6 +14,8 @@
 
 """Support for SSL in PyMongo."""
 
+from typing import Optional
+
 from pymongo.errors import ConfigurationError
 
 HAVE_SSL = True
@@ -41,14 +43,14 @@ if HAVE_SSL:
     BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
 
     def get_ssl_context(
-        certfile,
-        passphrase,
-        ca_certs,
-        crlfile,
-        allow_invalid_certificates,
-        allow_invalid_hostnames,
-        disable_ocsp_endpoint_check,
-    ):
+        certfile: Optional[str],
+        passphrase: Optional[str],
+        ca_certs: Optional[str],
+        crlfile: Optional[str],
+        allow_invalid_certificates: bool,
+        allow_invalid_hostnames: bool,
+        disable_ocsp_endpoint_check: bool,
+    ) -> _ssl.SSLContext:
         """Create and return an SSLContext object."""
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
