@@ -347,7 +347,9 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
+            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -1676,6 +1678,28 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
+
+    - name: "mod-wsgi-embedded-mode-standalone"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
+
+    - name: "mod-wsgi-embedded-mode-replica-set"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
 
     - name: "no-server"
       tags: ["no-server"]
@@ -3088,6 +3112,8 @@ buildvariants:
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
+     - name: "mod-wsgi-embedded-mode-standalone"
+     - name: "mod-wsgi-embedded-mode-replica-set"
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
