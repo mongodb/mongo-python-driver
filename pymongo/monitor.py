@@ -163,7 +163,7 @@ class Monitor(MonitorBase):
         self._reset_connection()
 
     def _reset_connection(self):
-        # Clear our pooled connection.
+        # Clear our pooled conn.
         self._pool.reset()
 
     def _run(self):
@@ -245,9 +245,9 @@ class Monitor(MonitorBase):
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
-        with self._pool.get_conn() as connection:
-            self._cancel_context = connection.cancel_context
-            response, round_trip_time = self._check_with_socket(connection)
+        with self._pool.checkout() as conn:
+            self._cancel_context = conn.cancel_context
+            response, round_trip_time = self._check_with_socket(conn)
             if not response.awaitable:
                 self._rtt_monitor.add_sample(round_trip_time)
 
@@ -393,11 +393,11 @@ class _RttMonitor(MonitorBase):
 
     def _ping(self):
         """Run a "hello" command and return the RTT."""
-        with self._pool.get_conn() as connection:
+        with self._pool.checkout() as conn:
             if self._executor._stopped:
                 raise Exception("_RttMonitor closed")
             start = time.monotonic()
-            connection.hello()
+            conn.hello()
             return time.monotonic() - start
 
 

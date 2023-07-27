@@ -134,7 +134,7 @@ class _AggregationCommand:
         self,
         session: ClientSession,
         server: Server,
-        connection: Connection,
+        conn: Connection,
         read_preference: _ServerMode,
     ) -> CommandCursor:
         # Serialize command.
@@ -146,7 +146,7 @@ class _AggregationCommand:
         # - server version is >= 4.2 or
         # - server version is >= 3.2 and pipeline doesn't use $out
         if ("readConcern" not in cmd) and (
-            not self._performs_write or (connection.max_wire_version >= 8)
+            not self._performs_write or (conn.max_wire_version >= 8)
         ):
             read_concern = self._target.read_concern
         else:
@@ -161,7 +161,7 @@ class _AggregationCommand:
             write_concern = None
 
         # Run command.
-        result = connection.command(
+        result = conn.command(
             self._database.name,
             cmd,
             read_preference,
@@ -176,7 +176,7 @@ class _AggregationCommand:
         )
 
         if self._result_processor:
-            self._result_processor(result, connection)
+            self._result_processor(result, conn)
 
         # Extract cursor from result or mock/fake one if necessary.
         if "cursor" in result:
@@ -193,14 +193,14 @@ class _AggregationCommand:
         cmd_cursor = self._cursor_class(
             self._cursor_collection(cursor),
             cursor,
-            connection.address,
+            conn.address,
             batch_size=self._batch_size or 0,
             max_await_time_ms=self._max_await_time_ms,
             session=session,
             explicit_session=self._explicit_session,
             comment=self._options.get("comment"),
         )
-        cmd_cursor._maybe_pin_connection(connection)
+        cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
 

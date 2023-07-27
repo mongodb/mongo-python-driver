@@ -116,11 +116,11 @@ class SocketGetter(MongoThread):
         self.state = "get_socket"
 
         # Call 'pin_cursor' so we can hold the socket.
-        with self.pool.get_conn() as sock:
+        with self.pool.checkout() as sock:
             sock.pin_cursor()
             self.sock = sock
 
-        self.state = "connector"
+        self.state = "connection"
 
     def __del__(self):
         if self.sock:
@@ -188,10 +188,10 @@ class TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
-        with cx_pool.get_conn() as connection:
+        with cx_pool.checkout() as connection:
             pass
 
-        with cx_pool.get_conn() as new_connection:
+        with cx_pool.checkout() as new_connection:
             self.assertEqual(connection, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
@@ -200,11 +200,11 @@ class TestPooling(_TestPoolingBase):
         # get_socket() returns socket after a non-network error.
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         with self.assertRaises(ZeroDivisionError):
-            with cx_pool.get_conn() as connection:
+            with cx_pool.checkout() as connection:
                 1 / 0
 
         # Socket was returned, not closed.
-        with cx_pool.get_conn() as new_connection:
+        with cx_pool.checkout() as new_connection:
             self.assertEqual(connection, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
@@ -213,7 +213,7 @@ class TestPooling(_TestPoolingBase):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()
 
-        with cx_pool.get_conn() as connection:
+        with cx_pool.checkout() as connection:
             # Use Connection's API to close the socket.
             connection.close_conn(None)
 
@@ -225,20 +225,20 @@ class TestPooling(_TestPoolingBase):
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
 
-        with cx_pool.get_conn() as connection:
+        with cx_pool.checkout() as connection:
             # Simulate a closed socket without telling the Connection it's
             # closed.
             connection.conn.close()
             self.assertTrue(connection.conn_closed())
 
-        with cx_pool.get_conn() as new_connection:
+        with cx_pool.checkout() as new_connection:
             self.assertEqual(0, len(cx_pool.conns))
             self.assertNotEqual(connection, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
 
         # Semaphore was released.
-        with cx_pool.get_conn():
+        with cx_pool.checkout():
             pass
 
     def test_socket_closed(self):
@@ -282,7 +282,7 @@ class TestPooling(_TestPoolingBase):
 
     def test_return_socket_after_reset(self):
         pool = self.create_pool()
-        with pool.get_conn() as sock:
+        with pool.checkout() as sock:
             self.assertEqual(pool.active_sockets, 1)
             self.assertEqual(pool.operation_count, 1)
             pool.reset()
@@ -299,7 +299,7 @@ class TestPooling(_TestPoolingBase):
         cx_pool._check_interval_seconds = 0  # Always check.
         self.addCleanup(cx_pool.close)
 
-        with cx_pool.get_conn() as connection:
+        with cx_pool.checkout() as connection:
             # Simulate a closed socket without telling the Connection it's
             # closed.
             connection.conn.close()
@@ -307,12 +307,12 @@ class TestPooling(_TestPoolingBase):
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
         with self.assertRaises(AutoReconnect):
-            with cx_pool.get_conn():
+            with cx_pool.checkout():
                 pass
 
         # Back to normal, semaphore was correctly released.
         cx_pool.address = address
-        with cx_pool.get_conn():
+        with cx_pool.checkout():
             pass
 
     def test_wait_queue_timeout(self):
@@ -320,10 +320,10 @@ class TestPooling(_TestPoolingBase):
         pool = self.create_pool(max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         self.addCleanup(pool.close)
 
-        with pool.get_conn():
+        with pool.checkout():
             start = time.time()
             with self.assertRaises(ConnectionFailure):
-                with pool.get_conn():
+                with pool.checkout():
                     pass
 
         duration = time.time() - start
@@ -338,7 +338,7 @@ class TestPooling(_TestPoolingBase):
         self.addCleanup(pool.close)
 
         # Reach max_size.
-        with pool.get_conn() as s1:
+        with pool.checkout() as s1:
             t = SocketGetter(self.c, pool)
             t.start()
             while t.state != "get_socket":
@@ -347,10 +347,10 @@ class TestPooling(_TestPoolingBase):
             time.sleep(1)
             self.assertEqual(t.state, "get_socket")
 
-        while t.state != "connector":
+        while t.state != "connection":
             time.sleep(0.1)
 
-        self.assertEqual(t.state, "connector")
+        self.assertEqual(t.state, "connection")
         self.assertEqual(t.sock, s1)
 
     def test_checkout_more_than_max_pool_size(self):
@@ -359,7 +359,7 @@ class TestPooling(_TestPoolingBase):
         socks = []
         for _ in range(2):
             # Call 'pin_cursor' so we can hold the socket.
-            with pool.get_conn() as sock:
+            with pool.checkout() as sock:
                 sock.pin_cursor()
                 socks.append(sock)
 
@@ -502,7 +502,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         # socket from pool" instead of AutoReconnect.
         for _i in range(2):
             with self.assertRaises(AutoReconnect) as context:
-                with test_pool.get_conn():
+                with test_pool.checkout():
                     pass
 
             # Testing for AutoReconnect instead of ConnectionFailure, above,

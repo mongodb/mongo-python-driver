@@ -341,7 +341,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_check_out_started(self, event: "ConnectionCheckOutStartedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
 
-        Emitted when the driver starts attempting to check out a connection.
+        Emitted when the driver starts attempting to check out a Connection.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionCheckOutStartedEvent`.
@@ -351,7 +351,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_check_out_failed(self, event: "ConnectionCheckOutFailedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
 
-        Emitted when the driver's attempt to check out a connection fails.
+        Emitted when the driver's attempt to check out a Connection fails.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionCheckOutFailedEvent`.
@@ -914,7 +914,7 @@ class ConnectionCheckOutFailedReason:
 
     CONN_ERROR = "connectionError"
     """The connection check out attempt experienced an error while setting up
-    a new connection.
+    a new conn.
     """
 
 
@@ -948,7 +948,7 @@ class _ConnectionIdEvent(_ConnectionEvent):
 
     @property
     def connection_id(self) -> int:
-        """The ID of the Connection."""
+        """The ID of the conn."""
         return self.__connection_id
 
     def __repr__(self):
@@ -1023,7 +1023,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
-    """Published when the driver starts attempting to check out a connection.
+    """Published when the driver starts attempting to check out a conn.
 
     :Parameters:
      - `address`: The address (host, port) pair of the server this
@@ -1066,7 +1066,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
 
 
 class ConnectionCheckedOutEvent(_ConnectionIdEvent):
-    """Published when the driver successfully checks out a Connection.
+    """Published when the driver successfully checks out a conn.
 
     :Parameters:
      - `address`: The address (host, port) pair of the server this
@@ -1549,7 +1549,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
+         - `connection_id`: The address (host, port) pair of the conn.
         """
         event = ServerHeartbeatStartedEvent(connection_id)
         for subscriber in self.__server_heartbeat_listeners:
@@ -1563,7 +1563,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
+         - `connection_id`: The address (host, port) pair of the conn.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
@@ -1581,7 +1581,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
+         - `connection_id`: The address (host, port) pair of the conn.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.

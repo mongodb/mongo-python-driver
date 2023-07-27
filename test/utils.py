@@ -304,10 +304,10 @@ class MockPool:
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
-    def get_conn(self, handler=None):
+    def checkout(self, handler=None):
         return MockConnection()
 
-    def return_conn(self, *args, **kwargs):
+    def checkin(self, *args, **kwargs):
         pass
 
     def _reset(self, service_id=None):

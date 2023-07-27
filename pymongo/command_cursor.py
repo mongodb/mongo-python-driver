@@ -157,13 +157,13 @@ class CommandCursor(Generic[_DocumentType]):
         """
         return self.__postbatchresumetoken
 
-    def _maybe_pin_connection(self, connection: Connection) -> None:
+    def _maybe_pin_connection(self, conn: Connection) -> None:
         client = self.__collection.database.client
         if not client._should_pin_cursor(self.__session):
             return
         if not self.__conn_mgr:
-            connection.pin_cursor()
-            conn_mgr = _ConnectionManager(connection, False)
+            conn.pin_cursor()
+            conn_mgr = _ConnectionManager(conn, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self.__id == 0:
@@ -197,7 +197,7 @@ class CommandCursor(Generic[_DocumentType]):
 
         if isinstance(response, PinnedResponse):
             if not self.__conn_mgr:
-                self.__conn_mgr = _ConnectionManager(response.connection, response.more_to_come)
+                self.__conn_mgr = _ConnectionManager(response.conn, response.more_to_come)
         if response.from_command:
             cursor = response.docs[0]["cursor"]
             documents = cursor["nextBatch"]

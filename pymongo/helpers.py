@@ -318,16 +318,16 @@ def _handle_reauth(func: F) -> F:
                 # Look for an argument that either is a Connection
                 # or has a connection attribute, so we can trigger
                 # a reauth.
-                connection = None
+                conn = None
                 for arg in args:
                     if isinstance(arg, Connection):
-                        connection = arg
+                        conn = arg
                         break
                     if hasattr(arg, "connection"):
-                        connection = arg.connection
+                        conn = arg.conn
                         break
-                if connection:
-                    connection.authenticate(reauthenticate=True)
+                if conn:
+                    conn.authenticate(reauthenticate=True)
                 else:
                     raise
                 return func(*args, **kwargs)

@@ -38,7 +38,7 @@ class MockPool(Pool):
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
     @contextlib.contextmanager
-    def get_conn(self, handler=None):
+    def checkout(self, handler=None):
         client = self.client
         host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:
@@ -48,7 +48,7 @@ class MockPool(Pool):
             client.mock_standalones + client.mock_members + client.mock_mongoses
         ), ("bad host: %s" % host_and_port)
 
-        with Pool.get_conn(self, handler) as connection:
+        with Pool.checkout(self, handler) as connection:
             connection.mock_host = self.mock_host
             connection.mock_port = self.mock_port
             yield connection

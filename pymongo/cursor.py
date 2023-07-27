@@ -142,8 +142,8 @@ class CursorType:
 class _ConnectionManager:
     """Used with exhaust cursors to ensure the connection is returned."""
 
-    def __init__(self, connection: Connection, more_to_come: bool):
-        self.connection: Optional[Connection] = connection
+    def __init__(self, conn: Connection, more_to_come: bool):
+        self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
         self.lock = _create_lock()
 
@@ -152,9 +152,9 @@ class _ConnectionManager:
 
     def close(self) -> None:
         """Return this instance's connection to the connection pool."""
-        if self.connection:
-            self.connection.unpin()
-            self.connection = None
+        if self.conn:
+            self.conn.unpin()
+            self.conn = None
 
 
 _Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
@@ -1085,7 +1085,7 @@ class Cursor(Generic[_DocumentType]):
         self.__address = response.address
         if isinstance(response, PinnedResponse):
             if not self.__conn_mgr:
-                self.__conn_mgr = _ConnectionManager(response.connection, response.more_to_come)
+                self.__conn_mgr = _ConnectionManager(response.conn, response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs

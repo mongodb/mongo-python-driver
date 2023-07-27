@@ -414,15 +414,15 @@ class _Transaction:
     @property
     def pinned_conn(self) -> Optional[Connection]:
         if self.active() and self.conn_mgr:
-            return self.conn_mgr.connection
+            return self.conn_mgr.conn
         return None
 
-    def pin(self, server: Server, connection: Connection) -> None:
+    def pin(self, server: Server, conn: Connection) -> None:
         self.sharded = True
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
-            connection.pin_txn()
-            self.conn_mgr = _ConnectionManager(connection, False)
+            conn.pin_txn()
+            self.conn_mgr = _ConnectionManager(conn, False)
 
     def unpin(self) -> None:
         self.pinned_address = None
@@ -839,12 +839,12 @@ class ClientSession:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(session: ClientSession, connection: Connection, retryable: bool) -> Dict[str, Any]:
-            return self._finish_transaction(connection, command_name)
+        def func(session: ClientSession, conn: Connection, retryable: bool) -> Dict[str, Any]:
+            return self._finish_transaction(conn, command_name)
 
         return self._client._retry_internal(True, func, self, None)
 
-    def _finish_transaction(self, connection: Connection, command_name: str) -> Dict[str, Any]:
+    def _finish_transaction(self, conn: Connection, command_name: str) -> Dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
@@ -868,7 +868,7 @@ class ClientSession:
             cmd["recoveryToken"] = self._transaction.recovery_token
 
         return self._client.admin._command(
-            connection, cmd, session=self, write_concern=wc, parse_write_concern_error=True
+            conn, cmd, session=self, write_concern=wc, parse_write_concern_error=True
         )
 
     def _advance_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
@@ -958,9 +958,9 @@ class ClientSession:
         """The connection this transaction was started on."""
         return self._transaction.pinned_conn
 
-    def _pin(self, server: Server, connection: Connection) -> None:
-        """Pin this session to the given Server or to the given connection."""
-        self._transaction.pin(server, connection)
+    def _pin(self, server: Server, conn: Connection) -> None:
+        """Pin this session to the given Server or to the given conn."""
+        self._transaction.pin(server, conn)
 
     def _unpin(self) -> None:
         """Unpin this session from any pinned Server."""
@@ -985,12 +985,12 @@ class ClientSession:
         command: MutableMapping[str, Any],
         is_retryable: bool,
         read_preference: ReadPreference,
-        connection: Connection,
+        conn: Connection,
     ) -> None:
         self._check_ended()
         self._materialize()
         if self.options.snapshot:
-            self._update_read_concern(command, connection)
+            self._update_read_concern(command, conn)
 
         self._server_session.last_use = time.monotonic()
         command["lsid"] = self._server_session.session_id
@@ -1016,7 +1016,7 @@ class ClientSession:
                     rc = self._transaction.opts.read_concern.document
                     if rc:
                         command["readConcern"] = rc
-                self._update_read_concern(command, connection)
+                self._update_read_concern(command, conn)
 
             command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
@@ -1025,11 +1025,11 @@ class ClientSession:
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def _update_read_concern(self, cmd: MutableMapping[str, Any], connection: Connection) -> None:
+    def _update_read_concern(self, cmd: MutableMapping[str, Any], conn: Connection) -> None:
         if self.options.causal_consistency and self.operation_time is not None:
             cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
-            if connection.max_wire_version < 13:
+            if conn.max_wire_version < 13:
                 raise ConfigurationError("Snapshot reads require MongoDB 5.0 or later")
             rc = cmd.setdefault("readConcern", {})
             rc["level"] = "snapshot"

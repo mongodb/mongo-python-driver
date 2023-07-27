@@ -700,7 +700,7 @@ class Topology:
             server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
             # reading or writing`_, clients MUST cancel the hello check on
-            # that server and close the current monitoring connection."
+            # that server and close the current monitoring conn."
             server._monitor.cancel_check()
 
     def handle_error(self, address, err_ctx):

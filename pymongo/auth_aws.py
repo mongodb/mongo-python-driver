@@ -67,7 +67,7 @@ class _AwsSaslContext(AwsSaslContext):  # type: ignore
         return bson.decode(data)
 
 
-def _authenticate_aws(credentials: MongoCredential, connection: Connection) -> None:
+def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
     if not _HAVE_MONGODB_AWS:
         raise ConfigurationError(
@@ -75,7 +75,7 @@ def _authenticate_aws(credentials: MongoCredential, connection: Connection) -> N
             "install with: python -m pip install 'pymongo[aws]'"
         )
 
-    if connection.max_wire_version < 9:
+    if conn.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
     try:
@@ -90,7 +90,7 @@ def _authenticate_aws(credentials: MongoCredential, connection: Connection) -> N
         client_first = SON(
             [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
         )
-        server_first = connection.command("$external", client_first)
+        server_first = conn.command("$external", client_first)
         res = server_first
         # Limit how many times we loop to catch protocol / library issues
         for _ in range(10):
@@ -102,7 +102,7 @@ def _authenticate_aws(credentials: MongoCredential, connection: Connection) -> N
                     ("payload", client_payload),
                 ]
             )
-            res = connection.command("$external", cmd)
+            res = conn.command("$external", cmd)
             if res["done"]:
                 # SASL complete.
                 break

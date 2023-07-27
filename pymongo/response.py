@@ -85,13 +85,13 @@ class Response:
 
 
 class PinnedResponse(Response):
-    __slots__ = ("_connection", "_more_to_come")
+    __slots__ = ("_conn", "_more_to_come")
 
     def __init__(
         self,
         data: Union[_OpMsg, _OpReply],
         address: _Address,
-        connection: Connection,
+        conn: Connection,
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
@@ -112,18 +112,18 @@ class PinnedResponse(Response):
             exhausted.
         """
         super().__init__(data, address, request_id, duration, from_command, docs)
-        self._connection = connection
+        self._conn = conn
         self._more_to_come = more_to_come
 
     @property
-    def connection(self) -> Connection:
+    def conn(self) -> Connection:
         """The Connection used for the initial query.
 
         The server will send batches on this socket, without waiting for
         getMores from the client, until the result set is exhausted or there
         is an error.
         """
-        return self._connection
+        return self._conn
 
     @property
     def more_to_come(self) -> bool:

@@ -689,7 +689,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @overload
     def _command(
         self,
-        connection: Connection,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -706,7 +706,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @overload
     def _command(
         self,
-        connection: Connection,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -722,7 +722,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _command(
         self,
-        connection: Connection,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -742,7 +742,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         command.update(kwargs)
         with self.__client._tmp_session(session) as s:
-            return connection.command(
+            return conn.command(
                 self.__name,
                 command,
                 read_preference,
@@ -974,11 +974,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
             with self.__client._conn_for_reads(read_preference, tmp_session) as (
-                connection,
+                conn,
                 read_preference,
             ):
                 response = self._command(
-                    connection,
+                    conn,
                     command,
                     value,
                     True,
@@ -993,13 +993,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     cmd_cursor = CommandCursor(
                         coll,
                         response["cursor"],
-                        connection.address,
+                        conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
                         explicit_session=session is not None,
                         comment=comment,
                     )
-                    cmd_cursor._maybe_pin_connection(connection)
+                    cmd_cursor._maybe_pin_connection(conn)
                     return cmd_cursor
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
@@ -1015,11 +1015,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         def _cmd(
             session: Optional[ClientSession],
             server: Server,
-            connection: Connection,
+            conn: Connection,
             read_preference: _ServerMode,
         ) -> Dict[str, Any]:
             return self._command(
-                connection,
+                conn,
                 command,
                 read_preference=read_preference,
                 session=session,
@@ -1029,7 +1029,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _list_collections(
         self,
-        connection: Connection,
+        conn: Connection,
         session: Optional[ClientSession],
         read_preference: _ServerMode,
         **kwargs: Any,
@@ -1039,18 +1039,18 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
         with self.__client._tmp_session(session, close=False) as tmp_session:
-            cursor = self._command(
-                connection, cmd, read_preference=read_preference, session=tmp_session
-            )["cursor"]
+            cursor = self._command(conn, cmd, read_preference=read_preference, session=tmp_session)[
+                "cursor"
+            ]
             cmd_cursor = CommandCursor(
                 coll,
                 cursor,
-                connection.address,
+                conn.address,
                 session=tmp_session,
                 explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
-        cmd_cursor._maybe_pin_connection(connection)
+        cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
     def list_collections(
@@ -1090,12 +1090,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         def _cmd(
             session: Optional[ClientSession],
             server: Server,
-            connection: Connection,
+            conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[_DocumentType]:
-            return self._list_collections(
-                connection, session, read_preference=read_preference, **kwargs
-            )
+            return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self.__client._retryable_read(_cmd, read_pref, session)
 

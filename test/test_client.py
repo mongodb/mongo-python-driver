@@ -541,7 +541,7 @@ class TestClient(IntegrationTest):
             # Assert reaper doesn't remove conns when maxIdleTimeMS not set
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             self.assertTrue(connection in server._pool.conns)
@@ -552,7 +552,7 @@ class TestClient(IntegrationTest):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket, two
             # conns could be created and checked into the pool.
@@ -566,7 +566,7 @@ class TestClient(IntegrationTest):
             # Assert reaper respects maxPoolSize when adding new conns.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 pass
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two conns from being created.
@@ -580,11 +580,11 @@ class TestClient(IntegrationTest):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection_one:
+            with server._pool.checkout() as connection_one:
                 pass
             # Assert that the pool does not close conns prematurely.
             time.sleep(0.300)
-            with server._pool.get_conn() as connection_two:
+            with server._pool.checkout() as connection_two:
                 pass
             self.assertIs(connection_one, connection_two)
             wait_until(
@@ -605,7 +605,7 @@ class TestClient(IntegrationTest):
             wait_until(lambda: 10 == len(server._pool.conns), "pool initialized with 10 conns")
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 connection.close_conn(None)
             wait_until(
                 lambda: 10 == len(server._pool.conns),
@@ -618,12 +618,12 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
-            with server._pool.get_conn() as new_connection:
+            with server._pool.checkout() as new_connection:
                 self.assertNotEqual(connection, new_connection)
             self.assertEqual(1, len(server._pool.conns))
             self.assertFalse(connection in server._pool.conns)
@@ -632,11 +632,11 @@ class TestClient(IntegrationTest):
             # Test that conns are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
             server = client._get_topology().select_server(readable_server_selector)
-            with server._pool.get_conn() as connection:
+            with server._pool.checkout() as connection:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)
-            with server._pool.get_conn() as new_connection:
+            with server._pool.checkout() as new_connection:
                 self.assertEqual(connection, new_connection)
             self.assertEqual(1, len(server._pool.conns))
 
@@ -1130,7 +1130,7 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool.get_conn() as connection:
+        with pool.checkout() as connection:
             keepalive = connection.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
@@ -1223,7 +1223,7 @@ class TestClient(IntegrationTest):
             # main thread while find() is in-progress: On Windows, SIGALRM is
             # unavailable so we use a second thread. In our Evergreen setup on
             # Linux, the thread technique causes an error in the test at
-            # connector.recv(): TypeError: 'int' object is not callable
+            # connection.recv(): TypeError: 'int' object is not callable
             # We don't know what causes this, so we hack around it.
 
             if sys.platform == "win32":
@@ -1936,7 +1936,7 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a network error.
-        connection = cursor._Cursor__conn_mgr.connection
+        connection = cursor._Cursor__conn_mgr.conn
         connection.conn.close()
 
         # A getmore fails.
