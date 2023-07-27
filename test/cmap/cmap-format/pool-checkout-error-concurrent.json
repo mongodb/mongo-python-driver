@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "style": "integration",
+  "description": "must properly handle multiple concurrent network errors on check out",
+  "runOn": [
+    {
+      "minServerVersion": "4.9.0"
+    }
+  ],
+  "failPoint": {
+    "configureFailPoint": "failCommand",
+    "mode": {
+      "times": 50
+    },
+    "data": {
+      "failCommands": [
+        "isMaster",
+        "hello"
+      ],
+      "closeConnection": true,
+      "appName": "poolCheckOutErrorTest"
+    }
+  },
+  "poolOptions": {
+    "appName": "poolCheckOutErrorTest"
+  },
+  "operations": [
+    {
+      "name": "ready"
+    },
+    {
+      "name": "start",
+      "target": "thread1"
+    },
+    {
+      "name": "start",
+      "target": "thread2"
+    },
+    {
+      "name": "start",
+      "target": "thread3"
+    },
+    {
+      "name": "checkOut",
+      "thread": "thread1"
+    },
+    {
+      "name": "checkOut",
+      "thread": "thread2"
+    },
+    {
+      "name": "checkOut",
+      "thread": "thread3"
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionCheckOutFailed",
+      "count": 3
+    },
+    {
+      "name": "ready"
+    }
+  ],
+  "events": [
+    {
+      "type": "ConnectionPoolReady"
+    },
+    {
+      "type": "ConnectionPoolCleared"
+    },
+    {
+      "type": "ConnectionPoolReady"
+    }
+  ],
+  "ignore": [
+    "ConnectionCheckOutStarted",
+    "ConnectionCheckOutFailed",
+    "ConnectionPoolCreated",
+    "ConnectionCreated",
+    "ConnectionClosed"
+  ]
+}

@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
+from test.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
     SpecTestCreator,
@@ -84,7 +85,7 @@ OBJECT_TYPES = {
 
 class TestCMAP(IntegrationTest):
     # Location of JSON test specifications.
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap")
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap", "cmap-format")
 
     # Test operations:
 
@@ -198,9 +199,10 @@ class TestCMAP(IntegrationTest):
             self.fail(f"missing events: {events[len(actual_events) :]!r}")
 
     def check_error(self, actual, expected):
-        message = expected.pop("message")
+        message = expected.pop("message", "")
         self.check_object(actual, expected)
-        self.assertIn(message, str(actual))
+        if message:
+            self.assertIn(message, str(actual))
 
     def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
@@ -405,9 +407,11 @@ class TestCMAP(IntegrationTest):
         self.assertIsInstance(listener.events[2], ConnectionCheckOutStartedEvent)
         self.assertIsInstance(listener.events[3], ConnectionCreatedEvent)
         # Error happens here.
-        self.assertIsInstance(listener.events[4], ConnectionClosedEvent)
-        self.assertIsInstance(listener.events[5], ConnectionCheckOutFailedEvent)
-        self.assertEqual(listener.events[5].reason, ConnectionCheckOutFailedReason.CONN_ERROR)
+        self.assertIsInstance(listener.events[4], PoolClearedEvent)
+        self.assertIsInstance(listener.events[5], ConnectionClosedEvent)
+        self.assertEqual(listener.events[5].reason, ConnectionClosedReason.ERROR)
+        self.assertIsInstance(listener.events[6], ConnectionCheckOutFailedEvent)
+        self.assertEqual(listener.events[6].reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
     #
     # Extra non-spec tests
@@ -467,6 +471,11 @@ class CMAPSpecTestCreator(SpecTestCreator):
 
 test_creator = CMAPSpecTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
 test_creator.create_tests()
+
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap", "unified")
+
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 if __name__ == "__main__":

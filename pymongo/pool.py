@@ -1473,6 +1473,8 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
         except BaseException as error:
+            if handler:
+                handler.handle(type(error), error)
             if self.enabled_for_cmap:
                 listeners.publish_connection_closed(
                     self.address, conn_id, ConnectionClosedReason.ERROR
@@ -1492,7 +1494,9 @@ class Pool:
                 handler.contribute_socket(sock_info, completed_handshake=False)
 
             sock_info.authenticate()
-        except BaseException:
+        except BaseException as error:
+            if handler:
+                handler.handle(type(error), error)
             sock_info.close_socket(ConnectionClosedReason.ERROR)
             raise
 
