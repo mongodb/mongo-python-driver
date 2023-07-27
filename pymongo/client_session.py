@@ -959,7 +959,7 @@ class ClientSession:
         return self._transaction.pinned_conn
 
     def _pin(self, server: Server, conn: Connection) -> None:
-        """Pin this session to the given Server or to the given conn."""
+        """Pin this session to the given Server or to the given connection."""
         self._transaction.pin(server, conn)
 
     def _unpin(self) -> None:

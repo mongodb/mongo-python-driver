@@ -81,7 +81,7 @@ def _is_ip_address(address):
         return False
 
 
-# According to the docs for conn.send it can raise
+# According to the docs for socket.send it can raise
 # WantX509LookupError and should be retried.
 BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
 
@@ -193,7 +193,7 @@ class SSLContext:
         # OCSP
         # XXX: Find a better place to do this someday, since this is client
         # side configuration and wrap_socket tries to support both client and
-        # server side conns.
+        # server side sockets.
         self._callback_data.check_ocsp_endpoint = True
         self._ctx.set_ocsp_client_callback(callback=_ocsp_callback, data=self._callback_data)
 

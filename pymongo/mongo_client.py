@@ -175,7 +175,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 quote_plus(user), quote_plus(password), host)
             client = MongoClient(uri)
 
-        Unix domain conns are also supported. The socket path must be percent
+        Unix domain sockets are also supported. The socket path must be percent
         encoded in the URI::
 
             uri = "mongodb://%s:%s@%s" % (
@@ -184,7 +184,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         But not when passed as a simple hostname::
 
-            client = MongoClient('/tmp/mongodb-27017.conn')
+            client = MongoClient('/tmp/mongodb-27017.connection')
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -308,18 +308,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             seconds).
           - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
             a thread will wait for a socket from the pool if the pool has no
-            free conns. Defaults to ``None`` (no timeout).
+            free sockets. Defaults to ``None`` (no timeout).
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
           - `appname`: (string or None) The name of the application that
             created this MongoClient instance. The server will log this value
-            upon establishing each conn. It is also recorded in the slow
+            upon establishing each connection. It is also recorded in the slow
             query log and profile collections.
           - `driver`: (pair or None) A driver implemented on top of PyMongo can
             pass a :class:`~pymongo.driver_info.DriverInfo` to add its name,
             version, and platform to the message printed in the server log when
-            establishing a conn.
+            establishing a connection.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
           - `retryWrites`: (boolean) Whether supported write operations
@@ -513,7 +513,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             vulnerable to on-path attackers.
           - `tlsCAFile`: A file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
-            certificates passed from the other end of the conn.
+            certificates passed from the other end of the connection.
             Implies ``tls=True``. Defaults to ``None``.
           - `tlsCertificateKeyFile`: A file containing the client certificate
             and private key. Implies ``tls=True``. Defaults to ``None``.
@@ -1160,7 +1160,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _end_sessions(self, session_ids):
         """Send endSessions command(s) with the given session ids."""
         try:
-            # Use conn.command directly to avoid implicitly creating
+            # Use Connection.command directly to avoid implicitly creating
             # another session.
             with self._conn_for_reads(ReadPreference.PRIMARY_PREFERRED, None) as (
                 conn,
@@ -1183,7 +1183,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         End all server sessions created by this client by sending one or more
         endSessions commands.
 
-        Close all conns in the connection pools and stop the monitor threads.
+        Close all sockets in the connection pools and stop the monitor threads.
 
         .. versionchanged:: 4.0
            Once closed, the client cannot be used again and any attempt will

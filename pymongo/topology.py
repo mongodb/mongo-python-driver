@@ -479,7 +479,7 @@ class Topology:
         return self._description.readable_servers
 
     def update_pool(self):
-        # Remove any stale conns and add new conns if pool is too small.
+        # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
             # Only update pools for data-bearing servers.
@@ -700,7 +700,7 @@ class Topology:
             server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
             # reading or writing`_, clients MUST cancel the hello check on
-            # that server and close the current monitoring conn."
+            # that server and close the current monitoring connection."
             server._monitor.cancel_check()
 
     def handle_error(self, address, err_ctx):

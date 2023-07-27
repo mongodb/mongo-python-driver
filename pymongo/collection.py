@@ -1644,11 +1644,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           - A :class:`~pymongo.cursor.Cursor` instance created with the
             :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
-            exclusive :class:`~socket.socket` conn to MongoDB. If the
+            exclusive :class:`~socket.socket` connection to MongoDB. If the
             :class:`~pymongo.cursor.Cursor` is discarded without being
             completely iterated the underlying :class:`~socket.socket`
-            conn will be closed and discarded without being returned to
-            the conn pool.
+            connection will be closed and discarded without being returned to
+            the connection pool.
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.

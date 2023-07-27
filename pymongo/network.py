@@ -277,7 +277,7 @@ _POLL_TIMEOUT = 0.5
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     context = conn.cancel_context
-    # Only Monitor conns can be cancelled.
+    # Only Monitor connections can be cancelled.
     if context:
         sock = conn.conn
         timed_out = False
@@ -307,7 +307,7 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
                 raise socket.timeout("timed out")
 
 
-# Errors raised by conns (and TLS conns) when in non-blocking mode.
+# Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
@@ -331,7 +331,7 @@ def _receive_data_on_socket(conn: Connection, length: int, deadline: Optional[fl
                 continue
             raise
         if chunk_length == 0:
-            raise OSError("conn closed")
+            raise OSError("connection closed")
 
         bytes_read += chunk_length
 

@@ -371,7 +371,7 @@ def _cond_wait(condition, deadline):
 
 
 class PoolOptions:
-    """Read only conn pool options for a MongoClient.
+    """Read only connection pool options for a MongoClient.
 
     Should not be instantiated directly by application developers. Access
     a client's pool options via
@@ -521,7 +521,7 @@ class PoolOptions:
 
     @property
     def max_connecting(self):
-        """The maximum number of concurrent conn creation attempts per
+        """The maximum number of concurrent connection creation attempts per
         pool. Defaults to 2.
         """
         return self.__max_connecting
@@ -532,7 +532,7 @@ class PoolOptions:
 
     @property
     def max_idle_time_seconds(self):
-        """The maximum number of seconds that a conn can remain
+        """The maximum number of seconds that a connection can remain
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
         """
@@ -540,7 +540,7 @@ class PoolOptions:
 
     @property
     def connect_timeout(self):
-        """How long a conn can take to be opened before timing out."""
+        """How long a connection can take to be opened before timing out."""
         return self.__connect_timeout
 
     @property
@@ -551,7 +551,7 @@ class PoolOptions:
     @property
     def wait_queue_timeout(self):
         """How long a thread will wait for a socket from the pool if the pool
-        has no free conns.
+        has no free sockets.
         """
         return self.__wait_queue_timeout
 
@@ -615,10 +615,10 @@ class _CancellationContext:
 
 
 class Connection:
-    """Store a conn with some metadata.
+    """Store a connection with some metadata.
 
     :Parameters:
-      - `conn`: a raw conn object
+      - `conn`: a raw connection object
       - `pool`: a Pool instance
       - `address`: the server's (host, port)
       - `id`: the id of this socket in it's pool
@@ -653,13 +653,13 @@ class Connection:
         self.auth_ctx = None
 
         # The pool's generation changes with each reset() so we can close
-        # conns created before the last reset.
+        # sockets created before the last reset.
         self.pool_gen = pool.gen
         self.generation = self.pool_gen.get_overall()
         self.ready = False
         self.cancel_context = None
         if not pool.handshake:
-            # This is a Monitor conn.
+            # This is a Monitor connection.
             self.cancel_context = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come = False
@@ -674,7 +674,7 @@ class Connection:
         self.connect_rtt = 0.0
 
     def set_conn_timeout(self, timeout):
-        """Cache last timeout to avoid duplicate calls to conn.settimeout."""
+        """Cache last timeout to avoid duplicate calls to connection.settimeout."""
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
@@ -976,7 +976,7 @@ class Connection:
         Can raise ConnectionFailure or OperationFailure.
         """
         # CMAP spec says to publish the ready event only after authenticating
-        # the conn.
+        # the connection.
         if reauthenticate:
             if self.performed_handshake:
                 # Existing auth_ctx is stale, remove it.
@@ -1000,7 +1000,7 @@ class Connection:
                 raise InvalidOperation("Can only use session with the MongoClient that started it")
 
     def close_conn(self, reason):
-        """Close this conn with a reason."""
+        """Close this connection with a reason."""
         if self.closed:
             return
         self._close_conn()
@@ -1008,7 +1008,7 @@ class Connection:
             self.listeners.publish_connection_closed(self.address, self.id, reason)
 
     def _close_conn(self):
-        """Close this conn."""
+        """Close this connection."""
         if self.closed:
             return
         self.closed = True
@@ -1060,7 +1060,7 @@ class Connection:
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
         #
-        # The conn closed event will be emitted later in checkin.
+        # The connection closed event will be emitted later in checkin.
         if self.ready:
             reason = None
         else:
@@ -1103,7 +1103,7 @@ def _create_connection(address, options):
         if not hasattr(socket, "AF_UNIX"):
             raise ConnectionFailure("UNIX-conns are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
-        # SOCK_CLOEXEC not supported for Unix conns.
+        # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.connect(host)
@@ -1206,7 +1206,7 @@ def _configured_socket(address, options):
 
 
 class _PoolClosedError(PyMongoError):
-    """Internal error raised when a thread tries to get a conn from a
+    """Internal error raised when a thread tries to get a connection from a
     closed pool.
     """
 
@@ -1266,17 +1266,17 @@ class Pool:
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
-        # and returned to pool from the left side. Stale conns removed
+        # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.lock = _create_lock()
         self.active_sockets = 0
-        # Monotonically increasing conn ID required for CMAP Events.
+        # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
-        # Track whether the conns in this pool are writeable or not.
+        # Track whether the sockets in this pool are writeable or not.
         self.is_writable = None
 
-        # Keep track of resets, so we notice conns created before the most
+        # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
         # self.generation = 0
         self.gen = _PoolGeneration()
@@ -1312,7 +1312,7 @@ class Pool:
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count = 0
         # Retain references to pinned connections to prevent the CPython GC
-        # from thinking that a cursor's pinned conn can be GC'd when the
+        # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
         self.__pinned_sockets = set()
         self.ncursors = 0
@@ -1363,8 +1363,8 @@ class Pool:
             self.size_cond.notify_all()
 
         listeners = self.opts._event_listeners
-        # CMAP spec says that close() MUST close conns before publishing the
-        # PoolClosedEvent but that reset() SHOULD close conns *after*
+        # CMAP spec says that close() MUST close sockets before publishing the
+        # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
         if close:
             for conn in sockets:
@@ -1378,7 +1378,7 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.STALE)
 
     def update_is_writable(self, is_writable):
-        """Updates the is_writable attribute on all conns currently in the
+        """Updates the is_writable attribute on all sockets currently in the
         Pool.
         """
         self.is_writable = is_writable
@@ -1399,7 +1399,7 @@ class Pool:
         return self.gen.stale(gen, service_id)
 
     def remove_stale_sockets(self, reference_generation):
-        """Removes stale conns then adds new ones if pool is too small and
+        """Removes stale sockets then adds new ones if pool is too small and
         has not been reset. The `reference_generation` argument specifies the
         `generation` at the point in time this operation was requested on the
         pool.
@@ -1420,7 +1420,7 @@ class Pool:
 
         while True:
             with self.size_cond:
-                # There are enough conns in the pool.
+                # There are enough sockets in the pool.
                 if len(self.conns) + self.active_sockets >= self.opts.min_pool_size:
                     return
                 if self.requests >= self.opts.min_pool_size:
@@ -1437,7 +1437,7 @@ class Pool:
                     incremented = True
                 conn = self.connect()
                 with self.lock:
-                    # Close conn and return if the pool was reset during
+                    # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.gen.get_overall() != reference_generation:
                         conn.close_conn(ConnectionClosedReason.STALE)
@@ -1455,7 +1455,7 @@ class Pool:
                     self.size_cond.notify()
 
     def connect(self, handler=None):
-        """Connect to Mongo and return a new conn.
+        """Connect to Mongo and return a new connection.
 
         Can raise ConnectionFailure.
 
@@ -1507,9 +1507,9 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_conn() as conn:
-                conn.send_message(msg)
-                data = conn.receive_message(op_code, request_id)
+            with pool.get_conn() as connection:
+                connection.send_message(msg)
+                data = connection.receive_message(op_code, request_id)
 
         Can raise ConnectionFailure or OperationFailure.
 
@@ -1527,13 +1527,13 @@ class Pool:
         try:
             yield conn
         except BaseException:
-            # Exception in caller. Ensure the conn gets returned.
+            # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
-            # conn and it is responsible for checking the conn
+            # connection and it is responsible for checking the connection
             # back into the pool.
             pinned = conn.pinned_txn or conn.pinned_cursor
             if handler:
-                # Perform SDAM error handling rules while the conn is
+                # Perform SDAM error handling rules while the connection is
                 # still checked out.
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
@@ -1557,7 +1557,7 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR
                 )
-            _raise_connection_failure(self.address, AutoReconnect("conn pool paused"))
+            _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
     def _get_conn(self, handler=None):
         """Get or create a connection. Can raise ConnectionFailure."""
@@ -1631,7 +1631,7 @@ class Pool:
                     if self._perished(conn):
                         conn = None
                         continue
-                else:  # We need to create a new conn
+                else:  # We need to create a new connection
                     try:
                         conn = self.connect(handler=handler)
                     finally:
@@ -1658,10 +1658,10 @@ class Pool:
         return conn
 
     def checkin(self, conn):
-        """Return the conn to the pool, or if it's closed discard it.
+        """Return the connection to the pool, or if it's closed discard it.
 
         :Parameters:
-          - `conn`: The conn to check into the pool.
+          - `conn`: The connection to check into the pool.
         """
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
@@ -1693,7 +1693,7 @@ class Pool:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(self.is_writable)
                         self.conns.appendleft(conn)
-                        # Notify any threads waiting to create a conn.
+                        # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
 
         with self.size_cond:
@@ -1707,13 +1707,13 @@ class Pool:
             self.size_cond.notify()
 
     def _perished(self, conn):
-        """Return True and close the conn if it is "perished".
+        """Return True and close the connection if it is "perished".
 
         This side-effecty function checks if this socket has been idle for
         for longer than the max idle time, or if the socket has been closed by
         some external network error, or if the socket's generation is outdated.
 
-        Checking conns lets us avoid seeing *some*
+        Checking sockets lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
@@ -1752,7 +1752,7 @@ class Pool:
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
-                "Timeout waiting for conn from the conn pool. "
+                "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: {}, connections in use by cursors: {}, "
                 "connections in use by transactions: {}, connections in use "
                 "by other operations: {}, timeout: {}".format(
@@ -1770,7 +1770,7 @@ class Pool:
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3
-        # Close all conns without calling reset() or close() because it is
+        # Close all sockets without calling reset() or close() because it is
         # not safe to acquire a lock in __del__.
         for conn in self.conns:
             conn.close_conn(None)

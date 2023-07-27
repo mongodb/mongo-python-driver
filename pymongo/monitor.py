@@ -163,7 +163,7 @@ class Monitor(MonitorBase):
         self._reset_connection()
 
     def _reset_connection(self):
-        # Clear our pooled conn.
+        # Clear our pooled connection.
         self._pool.reset()
 
     def _run(self):

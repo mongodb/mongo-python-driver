@@ -135,15 +135,15 @@ Connection monitoring and pooling events are also available. For example::
             logging.info("[pool {0.address}] pool closed".format(event))
 
         def connection_created(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection created".format(event))
 
         def connection_ready(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection setup succeeded".format(event))
 
         def connection_closed(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection closed, reason: "
                          "{0.reason}".format(event))
 
@@ -156,11 +156,11 @@ Connection monitoring and pooling events are also available. For example::
                          "failed, reason: {0.reason}".format(event))
 
         def connection_checked_out(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection checked out of pool".format(event))
 
         def connection_checked_in(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection checked into pool".format(event))
 
 
@@ -914,7 +914,7 @@ class ConnectionCheckOutFailedReason:
 
     CONN_ERROR = "connectionError"
     """The connection check out attempt experienced an error while setting up
-    a new conn.
+    a new connection.
     """
 
 
@@ -948,7 +948,7 @@ class _ConnectionIdEvent(_ConnectionEvent):
 
     @property
     def connection_id(self) -> int:
-        """The ID of the conn."""
+        """The ID of the connection."""
         return self.__connection_id
 
     def __repr__(self):
@@ -1023,7 +1023,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
-    """Published when the driver starts attempting to check out a conn.
+    """Published when the driver starts attempting to check out a connection.
 
     :Parameters:
      - `address`: The address (host, port) pair of the server this
@@ -1066,7 +1066,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
 
 
 class ConnectionCheckedOutEvent(_ConnectionIdEvent):
-    """Published when the driver successfully checks out a conn.
+    """Published when the driver successfully checks out a connection.
 
     :Parameters:
      - `address`: The address (host, port) pair of the server this
@@ -1549,7 +1549,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the conn.
+         - `connection_id`: The address (host, port) pair of the connection.
         """
         event = ServerHeartbeatStartedEvent(connection_id)
         for subscriber in self.__server_heartbeat_listeners:
@@ -1563,7 +1563,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the conn.
+         - `connection_id`: The address (host, port) pair of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
@@ -1581,7 +1581,7 @@ class _EventListeners:
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host, port) pair of the conn.
+         - `connection_id`: The address (host, port) pair of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.

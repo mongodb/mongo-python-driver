@@ -27,7 +27,7 @@ OP_NO_RENEGOTIATION = getattr(_ssl, "OP_NO_RENEGOTIATION", 0)
 HAS_SNI = getattr(_ssl, "HAS_SNI", False)
 IS_PYOPENSSL = False
 
-# Errors raised by SSL conns when in non-blocking mode.
+# Errors raised by SSL sockets when in non-blocking mode.
 BLOCKING_IO_ERRORS = (_ssl.SSLWantReadError, _ssl.SSLWantWriteError)
 
 # Base Exception class
