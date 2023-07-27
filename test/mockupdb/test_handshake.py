@@ -106,7 +106,7 @@ class TestHandshake(unittest.TestCase):
 
         self.addCleanup(client.close)
 
-        # New monitoring conns send data during handshake.
+        # New monitoring connections send data during handshake.
         heartbeat = primary.receives("ismaster")
         _check_handshake_data(heartbeat)
         heartbeat.ok(primary_response)
@@ -169,7 +169,7 @@ class TestHandshake(unittest.TestCase):
 
         self.addCleanup(client.close)
 
-        # New monitoring conns send data during handshake.
+        # New monitoring connections send data during handshake.
         heartbeat = server.receives("ismaster")
         heartbeat.ok(primary_response)
 

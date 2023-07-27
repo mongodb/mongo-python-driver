@@ -875,7 +875,7 @@ class _BulkWriteContext:
         return self.max_bson_size
 
     def unack_write(self, cmd, request_id, msg, max_doc_size, docs):
-        """A proxy for connection.unack_write that handles event publishing."""
+        """A proxy for Connection.unack_write that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
@@ -909,7 +909,7 @@ class _BulkWriteContext:
 
     @_handle_reauth
     def write_command(self, cmd, request_id, msg, docs):
-        """A proxy for connection.write_command that handles event publishing."""
+        """A proxy for Connection.write_command that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time

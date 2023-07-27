@@ -188,11 +188,11 @@ class TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
-        with cx_pool.checkout() as connection:
+        with cx_pool.checkout() as conn:
             pass
 
         with cx_pool.checkout() as new_connection:
-            self.assertEqual(connection, new_connection)
+            self.assertEqual(conn, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
 
@@ -200,12 +200,12 @@ class TestPooling(_TestPoolingBase):
         # get_socket() returns socket after a non-network error.
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         with self.assertRaises(ZeroDivisionError):
-            with cx_pool.checkout() as connection:
+            with cx_pool.checkout() as conn:
                 1 / 0
 
         # Socket was returned, not closed.
         with cx_pool.checkout() as new_connection:
-            self.assertEqual(connection, new_connection)
+            self.assertEqual(conn, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
 
@@ -213,9 +213,9 @@ class TestPooling(_TestPoolingBase):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()
 
-        with cx_pool.checkout() as connection:
+        with cx_pool.checkout() as conn:
             # Use Connection's API to close the socket.
-            connection.close_conn(None)
+            conn.close_conn(None)
 
         self.assertEqual(0, len(cx_pool.conns))
 
@@ -225,15 +225,15 @@ class TestPooling(_TestPoolingBase):
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
 
-        with cx_pool.checkout() as connection:
+        with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            connection.conn.close()
-            self.assertTrue(connection.conn_closed())
+            conn.conn.close()
+            self.assertTrue(conn.conn_closed())
 
         with cx_pool.checkout() as new_connection:
             self.assertEqual(0, len(cx_pool.conns))
-            self.assertNotEqual(connection, new_connection)
+            self.assertNotEqual(conn, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
 
@@ -299,10 +299,10 @@ class TestPooling(_TestPoolingBase):
         cx_pool._check_interval_seconds = 0  # Always check.
         self.addCleanup(cx_pool.close)
 
-        with cx_pool.checkout() as connection:
+        with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            connection.conn.close()
+            conn.conn.close()
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
@@ -424,7 +424,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         collection.insert_one({})
 
         # nthreads had better be much larger than max_pool_size to ensure that
-        # max_pool_size conns are actually required at some point in this
+        # max_pool_size connections are actually required at some point in this
         # test's execution.
         cx_pool = get_pool(c)
         nthreads = 10

@@ -48,10 +48,10 @@ class MockPool(Pool):
             client.mock_standalones + client.mock_members + client.mock_mongoses
         ), ("bad host: %s" % host_and_port)
 
-        with Pool.checkout(self, handler) as connection:
-            connection.mock_host = self.mock_host
-            connection.mock_port = self.mock_port
-            yield connection
+        with Pool.checkout(self, handler) as conn:
+            conn.mock_host = self.mock_host
+            conn.mock_port = self.mock_port
+            yield conn
 
 
 class DummyMonitor:

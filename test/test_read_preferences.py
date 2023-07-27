@@ -286,16 +286,16 @@ class ReadPrefTester(MongoClient):
     @contextlib.contextmanager
     def _conn_for_reads(self, read_preference, session):
         context = super()._conn_for_reads(read_preference, session)
-        with context as (connection, read_preference):
-            self.record_a_read(connection.address)
-            yield connection, read_preference
+        with context as (conn, read_preference):
+            self.record_a_read(conn.address)
+            yield conn, read_preference
 
     @contextlib.contextmanager
     def _conn_from_server(self, read_preference, server, session):
         context = super()._conn_from_server(read_preference, server, session)
-        with context as (connection, read_preference):
-            self.record_a_read(connection.address)
-            yield connection, read_preference
+        with context as (conn, read_preference):
+            self.record_a_read(conn.address)
+            yield conn, read_preference
 
     def record_a_read(self, address):
         server = self._get_topology().select_server_by_address(address, 0)

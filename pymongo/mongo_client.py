@@ -184,7 +184,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         But not when passed as a simple hostname::
 
-            client = MongoClient('/tmp/mongodb-27017.connection')
+            client = MongoClient('/tmp/mongodb-27017.sock')
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -1281,7 +1281,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _conn_from_server(self, read_preference, server, session):
         assert read_preference is not None, "read_preference must not be None"
         # Get a connection for a server matching the read preference, and yield
-        # connection with the effective read preference. The Server Selection
+        # conn with the effective read preference. The Server Selection
         # Spec says not to send any $readPreference to standalones and to
         # always send primaryPreferred when directly connected to a repl set
         # member.
@@ -1335,10 +1335,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         unpack_res,
                     )
 
-        def _cmd(session, server, connection, read_preference):
+        def _cmd(session, server, conn, read_preference):
             operation.reset()  # Reset op in case of retry.
             return server.run_operation(
-                connection, operation, read_preference, self._event_listeners, unpack_res
+                conn, operation, read_preference, self._event_listeners, unpack_res
             )
 
         return self._retryable_read(
@@ -1460,7 +1460,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             try:
                 server = self._select_server(read_pref, session, address=address)
                 with self._conn_from_server(read_pref, server, session) as (
-                    connection,
+                    conn,
                     read_pref,
                 ):
                     if retrying and not retryable:
@@ -1468,7 +1468,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         # not support retryable reads, raise the last error.
                         assert last_error is not None
                         raise last_error
-                    return func(session, server, connection, read_pref)
+                    return func(session, server, conn, read_pref)
             except ServerSelectionTimeoutError:
                 if retrying:
                     # The application may think the write was never attempted
@@ -1640,8 +1640,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Application called close_cursor() with no address.
             server = topology.select_server(writable_server_selector)
 
-        with self._checkout(server, session) as connection:
-            self._kill_cursor_impl(cursor_ids, address, session, connection)
+        with self._checkout(server, session) as conn:
+            self._kill_cursor_impl(cursor_ids, address, session, conn)
 
     def _kill_cursor_impl(self, cursor_ids, address, session, conn):
         namespace = address.namespace
@@ -1932,9 +1932,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        with self._conn_for_writes(session) as connection:
+        with self._conn_for_writes(session) as conn:
             self[name]._command(
-                connection,
+                conn,
                 {"dropDatabase": 1, "comment": comment},
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=self._write_concern_for(session),

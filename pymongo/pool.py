@@ -674,7 +674,7 @@ class Connection:
         self.connect_rtt = 0.0
 
     def set_conn_timeout(self, timeout):
-        """Cache last timeout to avoid duplicate calls to connection.settimeout."""
+        """Cache last timeout to avoid duplicate calls to conn.settimeout."""
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
@@ -1101,7 +1101,7 @@ def _create_connection(address, options):
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
-            raise ConnectionFailure("UNIX-conns are not supported on this system")
+            raise ConnectionFailure("UNIX-sockets are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
@@ -1455,7 +1455,7 @@ class Pool:
                     self.size_cond.notify()
 
     def connect(self, handler=None):
-        """Connect to Mongo and return a new connection.
+        """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
 
@@ -1560,7 +1560,7 @@ class Pool:
             _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
     def _get_conn(self, handler=None):
-        """Get or create a connection. Can raise ConnectionFailure."""
+        """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise

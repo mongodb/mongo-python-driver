@@ -206,7 +206,7 @@ class Cursor(Generic[_DocumentType]):
         self.__collection: Collection[_DocumentType] = collection
         self.__id: Any = None
         self.__exhaust = False
-        self.__conn_mgr: Any = None
+        self.__sock_mgr: Any = None
         self.__killed = False
         self.__session: Optional[ClientSession]
 
@@ -428,13 +428,13 @@ class Cursor(Generic[_DocumentType]):
             synchronous,
             cursor_id,
             address,
-            self.__conn_mgr,
+            self.__sock_mgr,
             self.__session,
             self.__explicit_session,
         )
         if not self.__explicit_session:
             self.__session = None
-        self.__conn_mgr = None
+        self.__sock_mgr = None
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
@@ -1084,8 +1084,8 @@ class Cursor(Generic[_DocumentType]):
 
         self.__address = response.address
         if isinstance(response, PinnedResponse):
-            if not self.__conn_mgr:
-                self.__conn_mgr = _ConnectionManager(response.conn, response.more_to_come)
+            if not self.__sock_mgr:
+                self.__sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1192,7 +1192,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__session,
                 self.__collection.database.client,
                 self.__max_await_time_ms,
-                self.__conn_mgr,
+                self.__sock_mgr,
                 self.__exhaust,
                 self.__comment,
             )

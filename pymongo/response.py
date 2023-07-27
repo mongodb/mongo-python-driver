@@ -103,7 +103,7 @@ class PinnedResponse(Response):
         :Parameters:
           - `data`:  A network response message.
           - `address`: (host, port) of the source server.
-          - `connection`: The Connection used for the initial query.
+          - `conn`: The Connection used for the initial query.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.

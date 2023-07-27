@@ -118,7 +118,7 @@ class Server:
         Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
-          - `connection`: A Connection instance.
+          - `conn`: A Connection instance.
           - `operation`: A _Query or _GetMore object.
           - `read_preference`: The read preference to use.
           - `listeners`: Instance of _EventListeners or None.

@@ -327,7 +327,7 @@ class _Bulk:
         run = self.current_run
 
         # Connection.command validates the session, but we use
-        # message.write_command
+        # Connection.write_command
         conn.validate_session(client, session)
         last_run = False
 

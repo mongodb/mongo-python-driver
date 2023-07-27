@@ -347,7 +347,7 @@ class SSLContext:
         server_hostname=None,
         session=None,
     ):
-        """Wrap an existing Python socket Connection and return a TLS socket
+        """Wrap an existing Python socket connection and return a TLS socket
         object.
         """
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
