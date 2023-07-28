@@ -252,7 +252,9 @@ class _OIDCAuthenticator:
         self.idp_resp = None
         self.token_exp_utc = None
 
-    def run_command(self, conn: Connection, cmd: Mapping[str, Any]) -> Optional[Mapping[str, Any]]:
+    def run_command(
+        self, conn: Connection, cmd: MutableMapping[str, Any]
+    ) -> Optional[Mapping[str, Any]]:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure as exc:
@@ -286,6 +288,7 @@ class _OIDCAuthenticator:
             assert cmd is not None
             resp = self.run_command(conn, cmd)
 
+        assert resp is not None
         if resp["done"]:
             conn.oidc_token_gen_id = self.token_gen_id
             return None
@@ -307,6 +310,7 @@ class _OIDCAuthenticator:
             ]
         )
         resp = self.run_command(conn, cmd)
+        assert resp is not None
         if not resp["done"]:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")

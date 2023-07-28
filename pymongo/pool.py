@@ -667,7 +667,9 @@ class Connection:
       - `id`: the id of this socket in it's pool
     """
 
-    def __init__(self, conn, pool, address, id):
+    def __init__(
+        self, conn: Union[socket.socket, _sslConn], pool: Pool, address: Tuple[str, int], id: int
+    ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
         self.address = address
@@ -715,7 +717,7 @@ class Connection:
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
 
-    def set_conn_timeout(self, timeout):
+    def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
         if timeout == self.last_timeout:
             return
@@ -1054,7 +1056,7 @@ class Connection:
             if session._client is not client:
                 raise InvalidOperation("Can only use session with the MongoClient that started it")
 
-    def close_conn(self, reason):
+    def close_conn(self, reason: Optional[str]) -> None:
         """Close this connection with a reason."""
         if self.closed:
             return
@@ -1063,7 +1065,7 @@ class Connection:
             assert self.listeners is not None
             self.listeners.publish_connection_closed(self.address, self.id, reason)
 
-    def _close_conn(self):
+    def _close_conn(self) -> None:
         """Close this connection."""
         if self.closed:
             return
@@ -1077,7 +1079,7 @@ class Connection:
         except Exception:
             pass
 
-    def conn_closed(self):
+    def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
         return self.socket_checker.socket_closed(self.conn)
 
@@ -1133,16 +1135,13 @@ class Connection:
         else:
             raise
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
 
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.conn)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Connection({}){} at {}".format(
             repr(self.conn),
             self.closed and " CLOSED" or "",
@@ -1377,7 +1376,7 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: Set[SocketInfo] = set()
+        self.__pinned_sockets: Set[Connection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
@@ -1522,7 +1521,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self, handler=None):
+    def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
@@ -1569,7 +1568,7 @@ class Pool:
         return conn
 
     @contextlib.contextmanager
-    def checkout(self, handler=None):
+    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected
@@ -1594,6 +1593,7 @@ class Pool:
         conn = self._get_conn(handler=handler)
 
         if self.enabled_for_cmap:
+            assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
             yield conn
@@ -1631,7 +1631,7 @@ class Pool:
                 )
             _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
-    def _get_conn(self, handler=None):
+    def _get_conn(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -1731,7 +1731,7 @@ class Pool:
         conn.active = True
         return conn
 
-    def checkin(self, conn):
+    def checkin(self, conn: Connection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
 
         :Parameters:
@@ -1745,6 +1745,7 @@ class Pool:
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
+            assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
         if self.pid != os.getpid():
             self.reset_without_pause()
@@ -1762,6 +1763,7 @@ class Pool:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
+                    assert conn.service_id is not None
                     if self.stale_generation(conn.generation, conn.service_id):
                         conn.close_conn(ConnectionClosedReason.STALE)
                     else:
@@ -1781,7 +1783,7 @@ class Pool:
             self.operation_count -= 1
             self.size_cond.notify()
 
-    def _perished(self, conn):
+    def _perished(self, conn: Connection) -> bool:
         """Return True and close the connection if it is "perished".
 
         This side-effecty function checks if this socket has been idle for
@@ -1811,6 +1813,7 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.ERROR)
                 return True
 
+        assert conn.service_id is not None
         if self.stale_generation(conn.generation, conn.service_id):
             conn.close_conn(ConnectionClosedReason.STALE)
             return True

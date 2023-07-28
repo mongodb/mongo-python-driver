@@ -272,7 +272,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _command(
         self,
         conn: Connection,
-        command: Mapping[str, Any],
+        command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = None,
         check: bool = True,

@@ -229,7 +229,7 @@ _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
 def receive_message(
-    conn: Connection, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
