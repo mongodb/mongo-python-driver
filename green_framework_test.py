@@ -17,6 +17,8 @@
 import getopt
 import sys
 
+import pytest
+
 
 def run_gevent():
     """Prepare to run tests with Gevent. Can raise ImportError."""
@@ -58,8 +60,7 @@ def run(framework_name, *args):
     FRAMEWORKS[framework_name]()
 
     # Run the tests.
-    sys.argv[:] = ["setup.py", "test"] + list(args)
-    import setup  # noqa
+    sys.exit(pytest.main(list(args)))
 
 
 def main():
@@ -100,7 +101,7 @@ python %s --help-frameworks.""" % (
 
     run(
         args[0], *args[1:]  # Framework name.
-    )  # Command line args to setup.py, like what test to run.
+    )  # Command line args to pytest, like what test to run.
 
 
 if __name__ == "__main__":

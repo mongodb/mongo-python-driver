@@ -1,13 +1,14 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
 
+# Note: It is assumed that you have already set up a virtual environment before running this file.
+
 # Supported/used environment variables:
 #  SET_XTRACE_ON      Set to non-empty to write all commands first to stderr.
 #  AUTH               Set to enable authentication. Defaults to "noauth"
 #  SSL                Set to enable SSL. Defaults to "nossl"
-#  PYTHON_BINARY      The Python version to use. Defaults to whatever is available
 #  GREEN_FRAMEWORK    The green framework to test with, if any.
-#  C_EXTENSIONS       Pass --no_ext to setup.py, or not.
+#  NO_EXT             If non-empty, c extensions are disabled
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
@@ -21,9 +22,8 @@ fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
-C_EXTENSIONS=${C_EXTENSIONS:-}
+NO_EXT=${NO_EXT:-}
 COVERAGE=${COVERAGE:-}
 COMPRESSORS=${COMPRESSORS:-}
 MONGODB_VERSION=${MONGODB_VERSION:-}
@@ -32,7 +32,10 @@ TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
-TEST_ARGS=""
+TEST_ARGS="$1"
+PYTHON=$(which python)
+
+python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 if [ -n "$COMPRESSORS" ]; then
     export COMPRESSORS=$COMPRESSORS
@@ -65,47 +68,19 @@ if [ "$SSL" != "nossl" ]; then
     fi
 fi
 
-# For createvirtualenv.
-. .evergreen/utils.sh
-
-if [ -z "$PYTHON_BINARY" ]; then
-    # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
-    # system python3 doesn't exist or exists but is older than 3.7.
-    if is_python_37 "$(command -v python3)"; then
-        PYTHON=$(command -v python3)
-    elif is_python_37 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
-        PYTHON=$(command -v /opt/mongodbtoolchain/v3/bin/python3)
-    else
-        echo "Cannot test without python3.7+ installed!"
-    fi
-elif [ "$COMPRESSORS" = "snappy" ]; then
-    createvirtualenv $PYTHON_BINARY snappytest
-    trap "deactivate; rm -rf snappytest" EXIT HUP
-    python -m pip install python-snappy
+if [ "$COMPRESSORS" = "snappy" ]; then
+    pip install '.[snappy]'
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    createvirtualenv $PYTHON_BINARY zstdtest
-    trap "deactivate; rm -rf zstdtest" EXIT HUP
-    python -m pip install zstandard
-    PYTHON=python
-else
-    PYTHON="$PYTHON_BINARY"
+    pip install zstandard
 fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    createvirtualenv $PYTHON pyopenssltest
-    trap "deactivate; rm -rf pyopenssltest" EXIT HUP
-    PYTHON=python
-
-    python -m pip install --prefer-binary pyopenssl requests service_identity
+    python -m pip install '.[ocsp]'
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
-
-    createvirtualenv $PYTHON venv-encryption
-    trap "deactivate; rm -rf venv-encryption" EXIT HUP
-    PYTHON=python
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
@@ -142,6 +117,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    pip install '.[encryption]'
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
@@ -150,11 +126,8 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
-    # Need aws dependency for On-Demand KMS Credentials.
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
-        python -m pip install '.[aws,ocsp]'
-    else
-        python -m pip install '.[aws]'
+        python -m pip install '.[ocsp]'
     fi
 
     # Get access to the AWS temporary credentials:
@@ -169,7 +142,9 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         export PATH=$CRYPT_SHARED_DIR:$PATH
     fi
     # Only run the encryption tests.
-    TEST_ARGS="-s test.test_encryption"
+    if [ -z "$TEST_ARGS" ]; then
+        TEST_ARGS="test.test_encryption"
+    fi
 fi
 
 if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
@@ -183,27 +158,17 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
       exit 1
     fi
 
-    TEST_ARGS="-s test.test_on_demand_csfle"
-fi
-
-if [ -n "$DATA_LAKE" ]; then
-    TEST_ARGS="-s test.test_data_lake"
-fi
-
-# Don't download unittest-xml-reporting from pypi, which often fails.
-if $PYTHON -c "import xmlrunner"; then
-    # The xunit output dir must be a Python style absolute path.
-    XUNIT_DIR="$(pwd)/xunit-results"
-    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        XUNIT_DIR=$(cygpath -m $XUNIT_DIR)
+    if [ -z "$TEST_ARGS" ]; then
+        TEST_ARGS="test.test_on_demand_csfle"
     fi
-    OUTPUT="--xunit-output=${XUNIT_DIR}"
-else
-    OUTPUT=""
+fi
+
+if [ -n "$DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
+    TEST_ARGS="test.test_data_lake"
 fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"
-$PYTHON -c 'import sys; print(sys.version)'
+python -c 'import sys; print(sys.version)'
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
@@ -211,32 +176,20 @@ $PYTHON -c 'import sys; print(sys.version)'
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
-COVERAGE_ARGS=""
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    if $PYTHON -m coverage --version; then
-        echo "INFO: coverage is installed, running tests with coverage..."
-        COVERAGE_ARGS="-m coverage run --branch"
-    else
-        echo "INFO: coverage is not installed, running tests without coverage..."
-    fi
+    python -m pip install pytest-cov
+    TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
 fi
 
-$PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-        # Fail if the C extensions fail to build.
-
-        # This always sets 0 for exit status, even if the build fails, due
-        # to our hack to install PyMongo without C extensions when build
-        # deps aren't available.
-        $PYTHON setup.py build_ext -i
+    if [ -z "$NO_EXT" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+        python setup.py build_ext -i
         # This will set a non-zero exit status if either import fails,
         # causing this script to exit.
-        $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
+        python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
 
-    $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+    python -m pytest $TEST_ARGS
 else
-    # --no_ext has to come before "test" so there is no way to toggle extensions here.
-    $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
+    python green_framework_test.py $GREEN_FRAMEWORK
 fi
