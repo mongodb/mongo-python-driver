@@ -17,9 +17,7 @@ from __future__ import annotations
 
 import datetime
 import errno
-import socket
 import struct
-import time
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -41,6 +39,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
+from pymongo.io import socket, time
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception

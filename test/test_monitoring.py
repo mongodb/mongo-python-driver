@@ -15,8 +15,9 @@
 import copy
 import datetime
 import sys
-import time
 from typing import Any
+
+from pymongo.io import time
 
 sys.path[0:0] = [""]
 

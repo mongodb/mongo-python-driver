@@ -15,7 +15,6 @@
 """Class to monitor a MongoDB server on a background thread."""
 
 import atexit
-import time
 import weakref
 from typing import Any, Mapping, cast
 
@@ -23,6 +22,7 @@ from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
+from pymongo.io import time
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage

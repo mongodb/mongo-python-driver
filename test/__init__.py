@@ -19,14 +19,13 @@ import gc
 import multiprocessing
 import os
 import signal
-import socket
 import subprocess
 import sys
-import threading
-import time
 import traceback
 import unittest
 import warnings
+
+from pymongo.io import socket, threading, time
 
 try:
     from xmlrunner import XMLTestRunner
@@ -62,7 +61,7 @@ from pymongo.ssl_support import HAVE_SSL, _ssl
 from pymongo.uri_parser import parse_uri
 
 if HAVE_SSL:
-    import ssl
+    from pymongo.io import ssl
 
 try:
     # Enable the fault handler to dump the traceback of each running thread

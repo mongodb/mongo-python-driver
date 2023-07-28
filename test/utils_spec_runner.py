@@ -15,7 +15,6 @@
 """Utilities for testing driver specs."""
 
 import functools
-import threading
 from collections import abc
 from test import IntegrationTest, client_context, client_knobs
 from test.utils import (
@@ -41,6 +40,7 @@ from pymongo import client_session
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
+from pymongo.io import threading
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult

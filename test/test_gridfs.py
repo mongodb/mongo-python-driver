@@ -17,9 +17,9 @@
 
 import datetime
 import sys
-import threading
-import time
 from io import BytesIO
+
+from pymongo.io import threading, time
 
 sys.path[0:0] = [""]
 

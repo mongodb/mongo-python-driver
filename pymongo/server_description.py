@@ -14,13 +14,13 @@
 
 """Represent one server the driver is connected to."""
 
-import time
 import warnings
 from typing import Any, Dict, Mapping, Optional, Set, Tuple
 
 from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId
 from pymongo.hello import Hello
+from pymongo.io import time
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _Address
 

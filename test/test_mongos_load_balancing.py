@@ -15,7 +15,8 @@
 """Test MongoClient's mongos load balancing using a mock."""
 
 import sys
-import threading
+
+from pymongo.io import threading
 
 sys.path[0:0] = [""]
 

@@ -15,11 +15,11 @@
 """Internal helpers for CSOT."""
 
 import functools
-import time
 from collections import deque
 from contextvars import ContextVar, Token
 from typing import Any, Callable, Deque, MutableMapping, Optional, Tuple, TypeVar, cast
 
+from pymongo.io import time
 from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)

@@ -16,10 +16,7 @@
 context.
 """
 
-import socket as _socket
-import ssl as _stdlibssl
 import sys as _sys
-import time as _time
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 
@@ -33,6 +30,9 @@ from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError
+from pymongo.io import socket as _socket
+from pymongo.io import ssl as _stdlibssl
+from pymongo.io import time as _time
 from pymongo.ocsp_cache import _OCSPCache
 from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
 from pymongo.socket_checker import SocketChecker as _SocketChecker

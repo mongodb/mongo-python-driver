@@ -15,7 +15,6 @@
 """Test the topology module's Server Selection Spec implementation."""
 
 import os
-import threading
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
@@ -27,6 +26,7 @@ from test.utils import (
 from test.utils_selection_tests import create_topology
 
 from pymongo.common import clean_node
+from pymongo.io import threading
 from pymongo.read_preferences import ReadPreference
 
 # Location of JSON test specifications.

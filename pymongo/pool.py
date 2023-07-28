@@ -17,11 +17,7 @@ import contextlib
 import copy
 import os
 import platform
-import socket
-import ssl
 import sys
-import threading
-import time
 import weakref
 from typing import Any, Dict, NoReturn, Optional
 
@@ -58,6 +54,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
+from pymongo.io import socket, ssl, threading, time
 from pymongo.lock import _create_lock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message

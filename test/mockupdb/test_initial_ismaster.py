@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import unittest
 
 from mockupdb import MockupDB, wait_until
 
 from pymongo import MongoClient
+from pymongo.io import time
 
 
 class TestInitialIsMaster(unittest.TestCase):

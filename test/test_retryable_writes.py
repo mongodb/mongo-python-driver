@@ -18,7 +18,8 @@ import copy
 import os
 import pprint
 import sys
-import threading
+
+from pymongo.io import threading
 
 sys.path[0:0] = [""]
 

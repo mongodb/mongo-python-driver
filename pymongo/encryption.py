@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import contextlib
 import enum
-import socket
 import weakref
 from copy import deepcopy
 from typing import (
@@ -32,6 +31,8 @@ from typing import (
     Sequence,
     Tuple,
 )
+
+from pymongo.io import socket
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter

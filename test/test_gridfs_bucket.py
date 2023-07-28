@@ -16,8 +16,6 @@
 """Tests for the gridfs package."""
 import datetime
 import itertools
-import threading
-import time
 from io import BytesIO
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
@@ -33,6 +31,7 @@ from pymongo.errors import (
     NotPrimaryError,
     ServerSelectionTimeoutError,
 )
+from pymongo.io import threading, time
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 

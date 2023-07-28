@@ -15,9 +15,10 @@
 """Tests for SSL support."""
 
 import os
-import socket
 import sys
 from typing import Any
+
+from pymongo.io import socket
 
 sys.path[0:0] = [""]
 
@@ -55,7 +56,7 @@ except ImportError:
 
 
 if HAVE_SSL:
-    import ssl
+    from pymongo.io import ssl
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certificates")
 CLIENT_PEM = os.path.join(CERT_PATH, "client.pem")

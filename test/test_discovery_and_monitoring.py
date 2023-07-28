@@ -16,7 +16,8 @@
 
 import os
 import sys
-import threading
+
+from pymongo.io import threading
 
 sys.path[0:0] = [""]
 

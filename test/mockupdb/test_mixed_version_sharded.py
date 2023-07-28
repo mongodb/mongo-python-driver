@@ -14,7 +14,6 @@
 
 """Test PyMongo with a mixed-version cluster."""
 
-import time
 import unittest
 from queue import Queue
 
@@ -22,6 +21,7 @@ from mockupdb import MockupDB, go
 from operations import upgrades  # type: ignore[import]
 
 from pymongo import MongoClient
+from pymongo.io import time
 
 
 class TestMixedVersionSharded(unittest.TestCase):

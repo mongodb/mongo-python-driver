@@ -18,9 +18,10 @@ import multiprocessing as mp
 import os
 import sys
 import tempfile
-import time
 import warnings
 from typing import Any, List
+
+from pymongo.io import time
 
 try:
     import simplejson as json

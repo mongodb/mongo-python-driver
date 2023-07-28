@@ -136,7 +136,6 @@ Classes
 from __future__ import annotations
 
 import collections
-import time
 import uuid
 from collections.abc import Mapping as _Mapping
 from typing import (
@@ -170,6 +169,7 @@ from pymongo.errors import (
     WTimeoutError,
 )
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
+from pymongo.io import time
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE

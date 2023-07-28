@@ -18,9 +18,7 @@ import base64
 import copy
 import os
 import re
-import socket
 import socketserver
-import ssl
 import sys
 import textwrap
 import traceback
@@ -29,6 +27,7 @@ from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
+from pymongo.io import socket, ssl
 
 sys.path[0:0] = [""]
 

@@ -16,8 +16,9 @@
 
 import os
 import sys
-import threading
 from urllib.parse import quote_plus
+
+from pymongo.io import threading
 
 sys.path[0:0] = [""]
 

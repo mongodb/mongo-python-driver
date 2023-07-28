@@ -16,7 +16,8 @@
 
 import os
 import sys
-import time
+
+from pymongo.io import time
 
 sys.path[0:0] = [""]
 

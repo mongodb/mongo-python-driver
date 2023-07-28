@@ -16,11 +16,11 @@
 
 import os
 import sys
-import threading
-import time
 import unittest
 from contextlib import contextmanager
 from typing import Dict
+
+from pymongo.io import threading, time
 
 sys.path[0:0] = [""]
 

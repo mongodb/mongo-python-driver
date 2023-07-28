@@ -19,8 +19,8 @@ import itertools
 import random
 import re
 import sys
-import threading
-import time
+
+from pymongo.io import threading, time
 
 sys.path[0:0] = [""]
 

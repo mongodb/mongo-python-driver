@@ -17,7 +17,6 @@
 import os
 import queue
 import random
-import time
 import warnings
 import weakref
 from typing import Any
@@ -36,6 +35,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
+from pymongo.io import time
 from pymongo.lock import _create_lock
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions

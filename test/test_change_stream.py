@@ -18,11 +18,11 @@ import os
 import random
 import string
 import sys
-import threading
-import time
 import uuid
 from itertools import product
 from typing import no_type_check
+
+from pymongo.io import threading, time
 
 sys.path[0:0] = [""]
 

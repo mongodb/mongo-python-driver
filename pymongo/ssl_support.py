@@ -34,8 +34,9 @@ if HAVE_SSL:
     # CPython ssl module constants to configure certificate verification
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
-    import ssl as _stdlibssl  # noqa
     from ssl import CERT_NONE, CERT_REQUIRED
+
+    from pymongo.io import ssl as _stdlibssl  # noqa
 
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = True

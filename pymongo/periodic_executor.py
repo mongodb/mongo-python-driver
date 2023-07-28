@@ -16,11 +16,10 @@
 
 from __future__ import annotations
 
-import threading
-import time
 import weakref
 from typing import Any, Callable, Optional
 
+from pymongo.io import threading, time
 from pymongo.lock import _create_lock
 
 

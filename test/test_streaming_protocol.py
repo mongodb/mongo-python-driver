@@ -15,7 +15,8 @@
 """Test the database module."""
 
 import sys
-import time
+
+from pymongo.io import time
 
 sys.path[0:0] = [""]
 

@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import os
-import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Tuple
@@ -26,6 +25,7 @@ from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
+from pymongo.io import threading
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential

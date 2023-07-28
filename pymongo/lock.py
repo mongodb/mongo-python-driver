@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import os
-import threading
 import weakref
+
+from pymongo.io import threading
 
 _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 

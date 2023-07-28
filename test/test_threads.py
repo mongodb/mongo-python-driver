@@ -14,9 +14,10 @@
 
 """Test that pymongo is thread safe."""
 
-import threading
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall
+
+from pymongo.io import threading
 
 
 @client_context.require_connection

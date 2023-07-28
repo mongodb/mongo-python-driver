@@ -21,8 +21,6 @@ import os
 import re
 import shutil
 import sys
-import threading
-import time
 import unittest
 import warnings
 from collections import abc, defaultdict
@@ -38,6 +36,7 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
+from pymongo.io import threading, time
 from pymongo.lock import _create_lock
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
@@ -933,9 +932,9 @@ def lazy_client_trial(reset, target, test, get_client):
 def gevent_monkey_patched():
     """Check if gevent's monkey patching is active."""
     try:
-        import socket
-
         import gevent.socket
+
+        from pymongo.io import socket
 
         return socket.socket is gevent.socket.socket
     except ImportError:
@@ -944,7 +943,7 @@ def gevent_monkey_patched():
 
 def eventlet_monkey_patched():
     """Check if eventlet's monkey patching is active."""
-    import threading
+    from pymongo.io import threading
 
     return threading.current_thread.__module__ == "eventlet.green.threading"
 

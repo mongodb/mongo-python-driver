@@ -16,8 +16,9 @@
 
 import os
 import sys
-import time
 import warnings
+
+from pymongo.io import time
 
 sys.path[0:0] = [""]
 

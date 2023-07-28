@@ -16,10 +16,10 @@
 
 import copy
 import sys
-import time
 from io import BytesIO
 from typing import Any, Callable, List, Set, Tuple
 
+from pymongo.io import time
 from pymongo.mongo_client import MongoClient
 
 sys.path[0:0] = [""]

@@ -24,7 +24,6 @@ import functools
 import os
 import re
 import sys
-import time
 import traceback
 import types
 from collections import abc
@@ -81,6 +80,7 @@ from pymongo.errors import (
     NotPrimaryError,
     PyMongoError,
 )
+from pymongo.io import time
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
     CommandFailedEvent,

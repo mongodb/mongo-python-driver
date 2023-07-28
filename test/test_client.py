@@ -21,14 +21,13 @@ import datetime
 import gc
 import os
 import signal
-import socket
 import struct
 import subprocess
 import sys
-import threading
-import time
 from typing import Iterable, Type, no_type_check
 from unittest.mock import patch
+
+from pymongo.io import socket, threading, time
 
 sys.path[0:0] = [""]
 

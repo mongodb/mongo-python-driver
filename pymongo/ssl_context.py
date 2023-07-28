@@ -14,7 +14,7 @@
 
 """A fake SSLContext implementation."""
 
-import ssl as _ssl
+from pymongo.io import ssl as _ssl
 
 # PROTOCOL_TLS_CLIENT is Python 3.6+
 PROTOCOL_SSLv23 = getattr(_ssl, "PROTOCOL_TLS_CLIENT", _ssl.PROTOCOL_SSLv23)

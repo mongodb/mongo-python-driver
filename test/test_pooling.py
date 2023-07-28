@@ -16,15 +16,13 @@
 
 import gc
 import random
-import socket
 import sys
-import threading
-import time
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import MongoClient, message
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
+from pymongo.io import socket, threading, time
 
 sys.path[0:0] = [""]
 

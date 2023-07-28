@@ -17,10 +17,10 @@
 import _thread as thread
 import random
 import sys
-import threading
-import time
 from optparse import OptionParser
 from urllib.request import urlopen
+
+from pymongo.io import threading, time
 
 
 def parse_args():
