@@ -4,23 +4,23 @@ set -o errexit  # Exit the script with error if any of the commands fail
 # Note: It is assumed that you have already set up a virtual environment before running this file.
 
 # Supported/used environment variables:
-#  SET_XTRACE_ON      Set to non-empty to write all commands first to stderr.
-#  AUTH               Set to enable authentication. Defaults to "noauth"
-#  SSL                Set to enable SSL. Defaults to "nossl"
-#  GREEN_FRAMEWORK    The green framework to test with, if any.
-#  C_EXTENSIONS       If non-empty, c extensions are enabled.
-#  COVERAGE           If non-empty, run the test suite with coverage.
-#  COMPRESSORS        If non-empty, install appropriate compressor.
-#  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
-#  DATA_LAKE          If non-empty, run data lake tests.
-#  TEST_ENCRYPTION    If non-empty, run encryption tests.
-#  TEST_CRYPT_SHARED  If non-empty, install crypt_shared lib.
-#  TEST_SERVERLESS    If non-empy, test on serverless.
-#  TEST_LOADBALANCER  If non-empy, test load balancing.
+#  SET_XTRACE_ON        Set to non-empty to write all commands first to stderr.
+#  AUTH                 Set to enable authentication. Defaults to "noauth"
+#  SSL                  Set to enable SSL. Defaults to "nossl"
+#  GREEN_FRAMEWORK      The green framework to test with, if any.
+#  C_EXTENSIONS         If non-empty, c extensions are enabled.
+#  COVERAGE             If non-empty, run the test suite with coverage.
+#  COMPRESSORS          If non-empty, install appropriate compressor.
+#  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
+#  TEST_DATA_LAKE       If non-empty, run data lake tests.
+#  TEST_ENCRYPTION      If non-empty, run encryption tests.
+#  TEST_CRYPT_SHARED    If non-empty, install crypt_shared lib.
+#  TEST_SERVERLESS      If non-empy, test on serverless.
+#  TEST_LOADBALANCER    If non-empy, test load balancing.
 #  TEST_FLE_AZURE_AUTO  If non-empy, test auto FLE on Azure
 #  TEST_FLE_GCP_AUTO    If non-empy, test auto FLE on GCP
+#  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
-#  TEST_PYOPENSSL     If non-empy, test with PyOpenSSL
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -30,28 +30,10 @@ fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
-NO_EXT=${NO_EXT:-}
-COVERAGE=${COVERAGE:-}
-COMPRESSORS=${COMPRESSORS:-}
-MONGODB_VERSION=${MONGODB_VERSION:-}
-MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
-TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
-CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH:-}
-LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
-DATA_LAKE=${DATA_LAKE:-}
 TEST_ARGS="$1"
 PYTHON=$(which python)
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
-
-if [ -n "$COMPRESSORS" ]; then
-    export COMPRESSORS=$COMPRESSORS
-fi
-
-if [ -n "$MONGODB_API_VERSION" ]; then
-    export MONGODB_API_VERSION=$MONGODB_API_VERSION
-fi
 
 if [ "$AUTH" != "noauth" ]; then
     if [ ! -z "$DATA_LAKE" ]; then
@@ -171,7 +153,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
     fi
 fi
 
-if [ -n "$DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
+if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test.test_data_lake"
 fi
 
