@@ -22,11 +22,12 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 
-if [ -n "${SET_XTRACE_ON}" ]; then
-    set -o xtrace
-else
-    set +x
-fi
+set -o xtrace  # TODO REMOVE
+# if [ -n "${SET_XTRACE_ON}" ]; then
+#     set -o xtrace
+# else
+#     set +x
+# fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
@@ -133,7 +134,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     fi
     # Only run the encryption tests.
     if [ -z "$TEST_ARGS" ]; then
-        TEST_ARGS="test.test_encryption"
+        TEST_ARGS="test/test_encryption.py"
     fi
 fi
 
@@ -149,12 +150,12 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
     fi
 
     if [ -z "$TEST_ARGS" ]; then
-        TEST_ARGS="test.test_on_demand_csfle"
+        TEST_ARGS="test/test_on_demand_csfle.py"
     fi
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
-    TEST_ARGS="test.test_data_lake"
+    TEST_ARGS="test/test_data_lake.py"
 fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"
