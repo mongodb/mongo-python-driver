@@ -15,7 +15,7 @@ Test Matrix
 
 PyMongo should be tested with several versions of mod_wsgi and a selection
 of Python versions. Each combination of mod_wsgi and Python version should
-be tested with a standalone and a replica set. ``mod_wsgi_test.wsgi``
+be tested with a standalone and a replica set. ``mod_wsgi_test.py``
 detects if the deployment is a replica set and connects to the whole set.
 
 Setup
@@ -74,27 +74,32 @@ Run the test
 Run the included ``test_client.py`` script::
 
     python test/mod_wsgi_test/test_client.py -n 2500 -t 100 parallel \
-         http://localhost/${WORKSPACE}
+         http://localhost/interpreter1${WORKSPACE} http://localhost/interpreter2${WORKSPACE}
 
 ...where the "n" argument is the total number of requests to make to Apache,
 and "t" specifies the number of threads. ``WORKSPACE`` is the location of
-the PyMongo checkout.
+the PyMongo checkout. Note that multiple URLs are passed, each one corresponds
+to a different sub interpreter.
 
 Run this script again with different arguments to make serial requests::
 
     python test/mod_wsgi_test/test_client.py -n 25000 serial \
-        http://localhost/${WORKSPACE}
+        http://localhost/interpreter1${WORKSPACE} http://localhost/interpreter2${WORKSPACE}
 
 The ``test_client.py`` script merely makes HTTP requests to Apache. Its
 exit code is non-zero if any of its requests fails, for example with an
 HTTP 500.
 
-The core of the test is in the WSGI script, ``mod_wsgi_test.wsgi``.
+The core of the test is in the WSGI script, ``mod_wsgi_test.py``.
 This script inserts some documents into MongoDB at startup, then queries
 documents for each HTTP request.
 
 If PyMongo is leaking connections and "n" is much greater than the ulimit,
 the test will fail when PyMongo exhausts its file descriptors.
+
+The script also encodes and decodes all BSON types to ensure that
+multiple sub interpreters in the same process are supported. This tests
+the workaround added in `PYTHON-569 <https://jira.mongodb.org/browse/PYTHON-569>`_.
 
 Automation
 ----------
@@ -102,3 +107,4 @@ Automation
 At MongoDB, Inc. we use a continuous integration job that tests each
 combination in the matrix. The job starts up Apache, starts a single server
 or replica set, and runs ``test_client.py`` with the proper arguments.
+See `run-mod-wsgi-tests.sh <https://github.com/mongodb/mongo-python-driver/blob/master/.evergreen/run-mod-wsgi-tests.sh>`_
