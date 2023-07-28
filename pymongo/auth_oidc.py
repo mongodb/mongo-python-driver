@@ -285,7 +285,8 @@ class _OIDCAuthenticator:
             resp = ctx.speculative_authenticate
         else:
             cmd = self.auth_start_cmd()
-            resp = self.run_command(conn, cmd)  # type: ignore[arg-type]
+            assert cmd is not None
+            resp = self.run_command(conn, cmd)
 
         assert resp is not None
         if resp["done"]:

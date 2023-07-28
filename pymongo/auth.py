@@ -239,7 +239,9 @@ def _authenticate_scram(credentials: MongoCredential, conn: Connection, mechanis
 
     ctx = conn.auth_ctx
     if ctx and ctx.speculate_succeeded():
-        nonce, first_bare = ctx.scram_data  # type: ignore[attr-defined]
+        assert isinstance(ctx, _ScramContext)
+        assert ctx.scram_data is not None
+        nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
     else:
         nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)

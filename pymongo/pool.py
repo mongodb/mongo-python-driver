@@ -1762,7 +1762,8 @@ class Pool:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
-                    if self.stale_generation(conn.generation, conn.service_id):  # type: ignore[arg-type]
+                    assert conn.service_id is not None
+                    if self.stale_generation(conn.generation, conn.service_id):
                         conn.close_conn(ConnectionClosedReason.STALE)
                     else:
                         conn.update_last_checkin_time()
@@ -1811,7 +1812,8 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.ERROR)
                 return True
 
-        if self.stale_generation(conn.generation, conn.service_id):  # type: ignore[arg-type]
+        assert conn.service_id is not None
+        if self.stale_generation(conn.generation, conn.service_id):
             conn.close_conn(ConnectionClosedReason.STALE)
             return True
 
