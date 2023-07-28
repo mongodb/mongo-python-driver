@@ -380,7 +380,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
           fi
     # Run in the background so the mock servers don't block the EVG task.
     - command: shell.exec
@@ -389,15 +389,14 @@ functions:
         script: |
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
-            PYTHON=${python3_binary}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             # The -u options forces the stdout and stderr streams to be unbuffered.
             # TMPDIR is required to avoid "AF_UNIX path too long" errors.
-            TMPDIR="$(dirname $DRIVERS_TOOLS)" $PYTHON -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
-            $PYTHON -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-            $PYTHON -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-            $PYTHON -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
+            TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
+            python 3-u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
+            python 3-u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+            python 3-u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
           fi
     # Wait up to 10 seconds for the KMIP server to start.
     - command: shell.exec
@@ -406,10 +405,10 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             for i in $(seq 1 1 10); do
                sleep 1
-               if ${python3_binary} -u kms_kmip_client.py; then
+               if python -u kms_kmip_client.py; then
                   echo 'KMS KMIP server started!'
                   exit 0
                fi
@@ -2236,7 +2235,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/run-tests.sh" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -2255,7 +2254,7 @@ tasks:
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test
 
     - name: testazurekms-task
       commands:
@@ -2289,7 +2288,7 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/run-tests.sh" \
+            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2313,7 +2312,7 @@ tasks:
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-            ./.evergreen/run-tests.sh
+            ./.evergreen/tox.sh -m test
 
 axes:
   # Choice of distro
