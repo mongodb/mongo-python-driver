@@ -23,7 +23,7 @@ from pymongo.auth import MongoCredential, _build_credentials_tuple
 from pymongo.common import validate_boolean
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _EventListeners
+from pymongo.monitoring import _EventListener, _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
@@ -38,7 +38,6 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.encryption import AutoEncryptionOpts
-    from pymongo.monitoring import _EventListener
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
 
