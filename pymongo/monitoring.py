@@ -199,7 +199,6 @@ if TYPE_CHECKING:
 
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
-    from pymongo.typings import _Address
 
 
 _Listeners = namedtuple(
