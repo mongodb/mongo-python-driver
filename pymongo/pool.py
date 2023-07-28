@@ -925,7 +925,7 @@ class Connection:
             session._apply_to(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
-        unacknowledged = write_concern.acknowledged if write_concern else False
+        unacknowledged = bool(write_concern and not write_concern.acknowledged)
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
@@ -1250,14 +1250,13 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
             # failures alike. Permanent handshake failures, like protocol
             # mismatch, will be turned into ServerSelectionTimeoutErrors later.
             _raise_connection_failure(address, exc, "SSL handshake failed: ")
-        assert isinstance(sock, _sslConn)
         if (
             ssl_context.verify_mode
             and not ssl_context.check_hostname
             and not options.tls_allow_invalid_hostnames
         ):
             try:
-                ssl.match_hostname(sock.getpeercert(), hostname=host)
+                ssl.match_hostname(sock.getpeercert(), hostname=host)  # type: ignore[attr-defined]
             except _CertificateError:
                 sock.close()
                 raise
@@ -1763,8 +1762,7 @@ class Pool:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
-                    assert conn.service_id is not None
-                    if self.stale_generation(conn.generation, conn.service_id):
+                    if self.stale_generation(conn.generation, conn.service_id):  # type: ignore[arg-type]
                         conn.close_conn(ConnectionClosedReason.STALE)
                     else:
                         conn.update_last_checkin_time()
@@ -1813,8 +1811,7 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.ERROR)
                 return True
 
-        assert conn.service_id is not None
-        if self.stale_generation(conn.generation, conn.service_id):
+        if self.stale_generation(conn.generation, conn.service_id):  # type: ignore[arg-type]
             conn.close_conn(ConnectionClosedReason.STALE)
             return True
 
