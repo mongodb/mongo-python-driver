@@ -169,20 +169,23 @@ def command(
     # TODO: add serverConnectionId
     if name == "insert":
         assert True
-    command_logger.debug(
-        StructuredMessage(
-            message="Command started",
-            command=spec,
-            commandName=next(iter(spec)),
-            databaseName=dbname,
-            requestID=request_id,
-            operationID=request_id,
-            driverConnectionId=sock_info.id,
-            serverHost=sock_info.address[0],
-            serverPort=sock_info.address[1],
-            serviceId=sock_info.service_id,
+    if client is not None:
+        command_logger.debug(
+            StructuredMessage(
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
+                message="Command started",
+                command=spec,
+                commandName=next(iter(spec)),
+                databaseName=dbname,
+                requestID=request_id,
+                operationID=request_id,
+                driverConnectionId=sock_info.id,
+                serverHost=sock_info.address[0],
+                serverPort=sock_info.address[1],
+                serviceId=sock_info.service_id,
+            )
         )
-    )
     if publish:
         assert listeners is not None
         listeners.publish_command_start(
@@ -219,11 +222,39 @@ def command(
             failure = exc.details
         else:
             failure = message._convert_exception(exc)
+        if client is not None:
+            command_logger.debug(
+                StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
+                    message="Command failed",
+                    durationMS=duration,
+                    reply=failure,
+                    commandName=next(iter(spec)),
+                    databaseName=dbname,
+                    requestID=request_id,
+                    operationID=request_id,
+                    driverConnectionId=sock_info.id,
+                    serverHost=sock_info.address[0],
+                    serverPort=sock_info.address[1],
+                    serviceId=sock_info.service_id,
+                )
+            )
+        if publish:
+            assert listeners is not None
+            listeners.publish_command_failure(
+                duration, failure, name, request_id, address, service_id=sock_info.service_id
+            )
+        raise
+    duration = (datetime.datetime.now() - start) + encoding_duration
+    if client is not None:
         command_logger.debug(
             StructuredMessage(
-                message="Command failed",
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
+                message="Command succeeded",
                 durationMS=duration,
-                reply=failure,
+                reply=response_doc,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
                 requestID=request_id,
@@ -234,28 +265,6 @@ def command(
                 serviceId=sock_info.service_id,
             )
         )
-        if publish:
-            assert listeners is not None
-            listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=sock_info.service_id
-            )
-        raise
-    duration = (datetime.datetime.now() - start) + encoding_duration
-    command_logger.debug(
-        StructuredMessage(
-            message="Command succeeded",
-            durationMS=duration,
-            reply=response_doc,
-            commandName=next(iter(spec)),
-            databaseName=dbname,
-            requestID=request_id,
-            operationID=request_id,
-            driverConnectionId=sock_info.id,
-            serverHost=sock_info.address[0],
-            serverPort=sock_info.address[1],
-            serviceId=sock_info.service_id,
-        )
-    )
     if publish:
         assert listeners is not None
         listeners.publish_command_success(

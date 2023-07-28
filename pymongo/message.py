@@ -840,7 +840,7 @@ class _BulkWriteContext:
 
     def execute(self, cmd, docs, client):
         request_id, msg, to_send = self._batch_command(cmd, docs)
-        result = self.write_command(cmd, request_id, msg, to_send)
+        result = self.write_command(cmd, request_id, msg, to_send, client)
         client._process_response(result, self.session)
         return result, to_send
 
@@ -851,7 +851,7 @@ class _BulkWriteContext:
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.unack_write(cmd, request_id, msg, 0, to_send)
+        self.unack_write(cmd, request_id, msg, 0, to_send, client)
         return to_send
 
     @property
@@ -877,12 +877,15 @@ class _BulkWriteContext:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
 
-    def unack_write(self, cmd, request_id, msg, max_doc_size, docs):
+    def unack_write(self, cmd, request_id, msg, max_doc_size, docs, client):
         """A proxy for SocketInfo.unack_write that handles event publishing."""
         command_logger = logging.getLogger("pymongo.command")
+        duration = datetime.datetime.now() - self.start_time
         # TODO: add serverConnectionId
         command_logger.debug(
             StructuredMessage(
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
@@ -895,7 +898,6 @@ class _BulkWriteContext:
                 serviceId=self.sock_info.service_id,
             )
         )
-        duration = datetime.datetime.now() - self.start_time
         if self.publish:
             cmd = self._start(cmd, request_id, docs)
         start = datetime.datetime.now()
@@ -909,6 +911,8 @@ class _BulkWriteContext:
                 reply = {"ok": 1}
             command_logger.debug(
                 StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
                     message="Command succeeded",
                     durationMS=duration,
                     reply=reply,
@@ -934,6 +938,8 @@ class _BulkWriteContext:
                 failure = _convert_exception(exc)
             command_logger.debug(
                 StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
                     message="Command failed",
                     durationMS=duration,
                     reply=failure,
@@ -955,7 +961,7 @@ class _BulkWriteContext:
         return result
 
     @_handle_reauth
-    def write_command(self, cmd, request_id, msg, docs):
+    def write_command(self, cmd, request_id, msg, docs, client):
         """A proxy for SocketInfo.write_command that handles event publishing."""
         command_logger = logging.getLogger("pymongo.command")
         # TODO: add serverConnectionId
@@ -963,6 +969,8 @@ class _BulkWriteContext:
         cmd[self.field] = docs
         command_logger.debug(
             StructuredMessage(
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
@@ -983,6 +991,8 @@ class _BulkWriteContext:
             duration = (datetime.datetime.now() - start) + duration
             command_logger.debug(
                 StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
                     message="Command succeeded",
                     durationMS=duration,
                     reply=reply,
@@ -1006,6 +1016,8 @@ class _BulkWriteContext:
                 failure = _convert_exception(exc)
             command_logger.debug(
                 StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
                     message="Command failed",
                     durationMS=duration,
                     reply=failure,

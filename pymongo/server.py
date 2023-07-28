@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
-    from pymongo.mongo_client import _MongoClientErrorHandler
+    from pymongo.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.monitor import Monitor
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Pool, SocketInfo
@@ -143,6 +143,8 @@ class Server:
         # TODO: add serverConnection
         command_logger.debug(
             StructuredMessage(
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
@@ -195,6 +197,8 @@ class Server:
                 failure = _convert_exception(exc)
             command_logger.debug(
                 StructuredMessage(
+                    clientID=client._topology_settings._topology_id,
+                    # clientID="test",
                     message="Command failed",
                     durationMS=duration,
                     reply=failure,
@@ -231,6 +235,8 @@ class Server:
                 res["cursor"]["nextBatch"] = docs
         command_logger.debug(
             StructuredMessage(
+                clientID=client._topology_settings._topology_id,
+                # clientID="test",
                 message="Command succeeded",
                 durationMS=duration,
                 reply=res,

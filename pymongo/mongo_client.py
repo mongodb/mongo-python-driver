@@ -1328,13 +1328,23 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.sock_mgr.sock)
                     return server.run_operation(
-                        operation.sock_mgr.sock, operation, True, self._event_listeners, unpack_res
+                        operation.sock_mgr.sock,
+                        operation,
+                        True,
+                        self._event_listeners,
+                        unpack_res,
+                        operation.client,
                     )
 
         def _cmd(session, server, sock_info, read_preference):
             operation.reset()  # Reset op in case of retry.
             return server.run_operation(
-                sock_info, operation, read_preference, self._event_listeners, unpack_res
+                sock_info,
+                operation,
+                read_preference,
+                self._event_listeners,
+                unpack_res,
+                session.client,
             )
 
         return self._retryable_read(
