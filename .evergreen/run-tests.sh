@@ -182,6 +182,5 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
 
     python -m pytest $TEST_ARGS
 else
-    python -m pip install $GREEN_FRAMEWORK
     python green_framework_test.py $GREEN_FRAMEWORK
 fi

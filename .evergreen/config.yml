@@ -78,14 +78,6 @@ functions:
               # Installation of cryptography requires a rust compiler on some machines
               export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
               export PROJECT="${project}"
-
-              export PYTHON_BINARY=${PYTHON_BINARY}
-              if [ -z "$PYTHON_BINARY" ]; then
-                export PYTHON_BINARY=${python3_binary}
-              fi
-              if [ -z "$PYTHON_BINARY" ]; then
-                export PYTHON_BINARY=python
-              fi
            EOT
            # See what we've done
            cat expansion.yml
@@ -355,7 +347,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
             MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
@@ -367,6 +359,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
+          export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
@@ -377,7 +370,7 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
-           bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.
@@ -394,18 +387,16 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
             . ./activate_venv.sh
-            PYTHON=${python3_binary}
             # The -u options forces the stdout and stderr streams to be unbuffered.
             # TMPDIR is required to avoid "AF_UNIX path too long" errors.
-            TMPDIR="$(dirname $DRIVERS_TOOLS)" $PYTHON_BINARY -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
-            $PYTHON_BINARY -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-            $PYTHON_BINARY -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-            $PYTHON_BINARY -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
+            TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
+            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
+            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
           fi
     # Wait up to 10 seconds for the KMIP server to start.
     - command: shell.exec
@@ -417,7 +408,7 @@ functions:
             . ./activate_venv.sh
             for i in $(seq 1 1 10); do
                sleep 1
-               if $PYTHON_BINARY -u kms_kmip_client.py; then
+               if python -u kms_kmip_client.py; then
                   echo 'KMS KMIP server started!'
                   exit 0
                fi
@@ -498,6 +489,11 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          if [ -z "$PYTHON_BINARY" ]; then
+            export PYTHON_BINARY=${python3_binary}
+          fi
+
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
@@ -532,11 +528,10 @@ functions:
         script: |
           # Disable xtrace (just in case it was accidentally set).
           set +x
-          ${PREPARE_SHELL}
           . ./prepare_enterprise_auth.sh
           rm -f ./prepare_enterprise_auth.sh
 
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
 
   "run atlas tests":
     - command: shell.exec
@@ -567,7 +562,6 @@ functions:
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
 
-          ${PREPARE_SHELL}
           . ./prepare_atlas_connectivity.sh
           rm -f ./prepare_atlas_connectivity.sh
 
@@ -629,7 +623,6 @@ functions:
         working_dir: "src"
         silent: true
         script: |
-          ${PREPARE_SHELL}
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
             alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
             USER=$(urlencode ${iam_auth_ecs_account})
@@ -642,7 +635,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -680,7 +673,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -711,7 +704,7 @@ functions:
           # Write an empty prepare_mongodb_aws so no auth environment variables
           # are set.
           rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" || true
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws web identity credentials":
     - command: shell.exec
@@ -750,7 +743,7 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
     - command: shell.exec
       type: test
       params:
@@ -773,7 +766,7 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "bootstrap oidc":
     - command: ec2.assume_role
@@ -835,7 +828,7 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -855,7 +848,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
@@ -877,7 +870,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -966,6 +959,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
