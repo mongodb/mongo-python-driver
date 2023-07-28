@@ -34,9 +34,9 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lak
 
 class TestDataLakeMustConnect(IntegrationTest):
     def test_connected_to_data_lake(self):
-        data_lake = os.environ.get("DATA_LAKE")
+        data_lake = os.environ.get("TEST_DATA_LAKE")
         if not data_lake:
-            self.skipTest("DATA_LAKE is not set")
+            self.skipTest("TEST_DATA_LAKE is not set")
 
         self.assertTrue(
             client_context.is_data_lake,

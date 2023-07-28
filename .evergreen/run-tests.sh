@@ -37,7 +37,7 @@ PYTHON=$(which python)
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 if [ "$AUTH" != "noauth" ]; then
-    if [ ! -z "$DATA_LAKE" ]; then
+    if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
     elif [ ! -z "$TEST_SERVERLESS" ]; then
@@ -155,7 +155,6 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
-    export DATA_LAKE="true"
     TEST_ARGS="test/test_data_lake.py"
 fi
 
