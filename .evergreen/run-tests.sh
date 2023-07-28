@@ -155,6 +155,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
+    export DATA_LAKE="true"
     TEST_ARGS="test/test_data_lake.py"
 fi
 
