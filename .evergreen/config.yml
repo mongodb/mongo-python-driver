@@ -502,7 +502,7 @@ functions:
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -2238,7 +2238,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -2257,7 +2257,7 @@ tasks:
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test-eg
 
     - name: testazurekms-task
       commands:
@@ -2291,7 +2291,7 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test" \
+            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2315,7 +2315,7 @@ tasks:
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-            ./.evergreen/tox.sh -m test
+            ./.evergreen/tox.sh -m test-eg
 
 axes:
   # Choice of distro

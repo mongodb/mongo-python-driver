@@ -22,12 +22,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 
-set -o xtrace  # TODO REMOVE
-# if [ -n "${SET_XTRACE_ON}" ]; then
-#     set -o xtrace
-# else
-#     set +x
-# fi
+if [ -n "${SET_XTRACE_ON}" ]; then
+    set -o xtrace
+else
+    set +x
+fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
