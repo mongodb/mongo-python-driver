@@ -10,9 +10,17 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  GREEN_FRAMEWORK    The green framework to test with, if any.
 #  C_EXTENSIONS       If non-empty, c extensions are enabled.
 #  COVERAGE           If non-empty, run the test suite with coverage.
-#  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
+#  COMPRESSORS        If non-empty, install appropriate compressor.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
+#  DATA_LAKE          If non-empty, run data lake tests.
+#  TEST_ENCRYPTION    If non-empty, run encryption tests.
 #  TEST_CRYPT_SHARED  If non-empty, install crypt_shared lib.
+#  TEST_SERVERLESS    If non-empy, test on serverless.
+#  TEST_LOADBALANCER  If non-empy, test load balancing.
+#  TEST_FLE_AZURE_AUTO  If non-empy, test auto FLE on Azure
+#  TEST_FLE_GCP_AUTO    If non-empy, test auto FLE on GCP
+#  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
+#  TEST_PYOPENSSL     If non-empy, test with PyOpenSSL
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
