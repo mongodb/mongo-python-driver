@@ -8,7 +8,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  AUTH               Set to enable authentication. Defaults to "noauth"
 #  SSL                Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK    The green framework to test with, if any.
-#  NO_EXT             If non-empty, c extensions are disabled
+#  C_EXTENSIONS       If non-empty, c extensions are enabled.
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
@@ -182,7 +182,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$NO_EXT" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         python setup.py build_ext -i
         # This will set a non-zero exit status if either import fails,
         # causing this script to exit.

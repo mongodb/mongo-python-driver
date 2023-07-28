@@ -5,6 +5,18 @@ PYTHON_BINARY="$1"
 
 . .evergreen/utils.sh
 
+if [ -z "$PYTHON_BINARY" ]; then
+    # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
+    # system python3 doesn't exist or exists but is older than 3.7.
+    if is_python_37 "$(command -v python3)"; then
+        PYTHON=$(command -v python3)
+    elif is_python_37 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+        PYTHON=$(command -v /opt/mongodbtoolchain/v3/bin/python3)
+    else
+        echo "Cannot test without python3.7+ installed!"
+    fi
+fi
+
 if $PYTHON_BINARY -m tox --version; then
     run_tox() {
       $PYTHON_BINARY -m tox "$@"
