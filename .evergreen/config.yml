@@ -359,7 +359,8 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-mockupdb
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -498,7 +499,7 @@ functions:
             SSL=${SSL} \
             DATA_LAKE=${DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test
 
   "run enterprise auth tests":
     - command: shell.exec
