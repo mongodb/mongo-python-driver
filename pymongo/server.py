@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Pool, SocketInfo
     from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -173,7 +174,7 @@ class Server:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
+                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(
@@ -191,9 +192,9 @@ class Server:
             # Must publish in find / getMore / explain command response
             # format.
             if use_cmd:
-                res = docs[0]
+                res: _DocumentOut = docs[0]  # type: ignore[assignment]
             elif operation.name == "explain":
-                res = docs[0] if docs else {}
+                res = docs[0] if docs else {}  # type: ignore[assignment]
             else:
                 res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":

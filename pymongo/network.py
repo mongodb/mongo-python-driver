@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address
+    from pymongo.typings import _Address, _DocumentOut
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -166,6 +166,7 @@ def command(
     if publish:
         encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_start(
             orig, dbname, request_id, address, service_id=sock_info.service_id
         )
@@ -198,10 +199,11 @@ def command(
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
+                failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = message._convert_exception(exc)
             assert listeners is not None
+            assert address is not None
             listeners.publish_command_failure(
                 duration, failure, name, request_id, address, service_id=sock_info.service_id
             )
@@ -209,6 +211,7 @@ def command(
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_success(
             duration,
             response_doc,

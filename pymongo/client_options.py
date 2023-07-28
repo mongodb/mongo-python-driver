@@ -15,7 +15,7 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -38,6 +38,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.encryption import AutoEncryptionOpts
+    from pymongo.monitoring import _EventListener
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
 
@@ -152,7 +153,7 @@ def _parse_pool_options(
     connect_timeout = options.get("connecttimeoutms", common.CONNECT_TIMEOUT)
     socket_timeout = options.get("sockettimeoutms")
     wait_queue_timeout = options.get("waitqueuetimeoutms", common.WAIT_QUEUE_TIMEOUT)
-    event_listeners = options.get("event_listeners")
+    event_listeners = cast(Sequence[_EventListener], options.get("event_listeners"))
     appname = options.get("appname")
     driver = options.get("driver")
     server_api = options.get("server_api")
