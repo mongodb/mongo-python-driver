@@ -1242,52 +1242,54 @@ task_groups:
             export GCPKMS_ZONE=${GCPKMS_ZONE}
             export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
             $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+      - func: "upload test results"
     tasks:
       - testgcpkms-task
 
   - name: testazurekms_task_group
     setup_group:
-    - func: fetch source
-    - func: prepare resources
-    - func: fix absolute paths
-    - func: make files executable
-    - command: shell.exec
-      params:
-        silent: true
-        shell: bash
-        script: |-
-          set -o errexit
-          ${PREPARE_SHELL}
-          echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-          echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-          # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-          chmod 600 /tmp/testazurekms_privatekey
-          export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-          export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-          export AZUREKMS_SECRET="${testazurekms_secret}"
-          export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-          export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-          export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-          export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-          export AZUREKMS_SCOPE="${testazurekms_scope}"
-          export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          silent: true
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
+            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
+            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
+            chmod 600 /tmp/testazurekms_privatekey
+            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
+            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
+            export AZUREKMS_SECRET="${testazurekms_secret}"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
+            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
+            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
+            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
+            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
     teardown_group:
-    # Load expansions again. The setup task may have failed before running `expansions.update`.
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
-    - command: shell.exec
-      params:
-        shell: bash
-        script: |-
-          ${PREPARE_SHELL}
-          export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-          export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      # Load expansions again. The setup task may have failed before running `expansions.update`.
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      - func: "upload test results"
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
