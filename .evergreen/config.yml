@@ -488,6 +488,9 @@ functions:
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
+          if [ -n "${PYTHON_BINARY" ]; then
+            PYTHON_BINARY=${python3_binary}
+          fi
 
           MONGODB_VERSION=${VERSION} \
             PYTHON_BINARY=${PYTHON_BINARY} \
