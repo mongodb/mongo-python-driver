@@ -1138,6 +1138,9 @@ class Connection:
     def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
 
+    def __ne__(self, other: Any) -> bool:
+        return not self == other
+
     def __hash__(self) -> int:
         return hash(self.conn)
 
