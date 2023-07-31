@@ -19,6 +19,7 @@ import os
 import platform
 import sys
 import weakref
+from errno import EINPROGRESS
 from typing import Any, Dict, NoReturn, Optional
 
 import bson

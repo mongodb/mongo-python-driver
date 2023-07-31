@@ -15,9 +15,10 @@
 """Select / poll helper"""
 
 import errno
-import select
 import sys
 from typing import Any, Optional
+
+from pymongo.io import select
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
