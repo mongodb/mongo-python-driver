@@ -347,7 +347,9 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
+            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -563,7 +565,7 @@ functions:
           set -o xtrace
           # This is required for pypy3.7 UTF encoding
           export LC_ALL=en_US.UTF-8
-          ${PYTHON_BINARY} -m tox -e test-atlas
+          ${PYTHON_BINARY} -m tox -m test-atlas
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -1677,6 +1679,28 @@ tasks:
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
 
+    - name: "mod-wsgi-embedded-mode-standalone"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
+
+    - name: "mod-wsgi-embedded-mode-replica-set"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
+
     - name: "no-server"
       tags: ["no-server"]
       commands:
@@ -2505,6 +2529,10 @@ axes:
         display_name: "Python 3.11"
         variables:
           PYTHON_BINARY: "/opt/python/3.11/bin/python3"
+      - id: "3.12"
+        display_name: "Python 3.12"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.12/bin/python3"
       - id: "pypy3.7"
         display_name: "PyPy 3.7"
         variables:
@@ -2545,6 +2573,10 @@ axes:
         display_name: "Python 3.11"
         variables:
           PYTHON_BINARY: "C:/python/Python311/python.exe"
+      - id: "3.12"
+        display_name: "Python 3.12"
+        variables:
+          PYTHON_BINARY: "C:/python/Python312/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2569,6 +2601,10 @@ axes:
         display_name: "32-bit Python 3.11"
         variables:
           PYTHON_BINARY: "C:/python/32/Python311/python.exe"
+      - id: "3.12"
+        display_name: "32-bit Python 3.12"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python312/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -3076,6 +3112,8 @@ buildvariants:
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
+     - name: "mod-wsgi-embedded-mode-standalone"
+     - name: "mod-wsgi-embedded-mode-replica-set"
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:

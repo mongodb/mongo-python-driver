@@ -14,16 +14,24 @@
 
 """Run a target function on a background thread."""
 
+from __future__ import annotations
+
 import threading
 import time
 import weakref
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from pymongo.lock import _create_lock
 
 
 class PeriodicExecutor:
-    def __init__(self, interval, min_interval, target, name=None):
+    def __init__(
+        self,
+        interval: float,
+        min_interval: float,
+        target: Callable[[], bool],
+        name: Optional[str] = None,
+    ):
         """ "Run a target function periodically on a background thread.
 
         If the target's return value is false, the executor stops.
@@ -50,7 +58,7 @@ class PeriodicExecutor:
         self._thread_will_exit = False
         self._lock = _create_lock()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
     def open(self) -> None:
@@ -112,14 +120,14 @@ class PeriodicExecutor:
     def skip_sleep(self) -> None:
         self._skip_sleep = True
 
-    def __should_stop(self):
+    def __should_stop(self) -> bool:
         with self._lock:
             if self._stopped:
                 self._thread_will_exit = True
                 return True
             return False
 
-    def _run(self):
+    def _run(self) -> None:
         while not self.__should_stop():
             try:
                 if not self._target():
@@ -153,16 +161,16 @@ class PeriodicExecutor:
 _EXECUTORS = set()
 
 
-def _register_executor(executor):
+def _register_executor(executor: PeriodicExecutor) -> None:
     ref = weakref.ref(executor, _on_executor_deleted)
     _EXECUTORS.add(ref)
 
 
-def _on_executor_deleted(ref):
+def _on_executor_deleted(ref: weakref.ReferenceType[PeriodicExecutor]) -> None:
     _EXECUTORS.remove(ref)
 
 
-def _shutdown_executors():
+def _shutdown_executors() -> None:
     if _EXECUTORS is None:
         return
 

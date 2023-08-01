@@ -135,15 +135,15 @@ Connection monitoring and pooling events are also available. For example::
             logging.info("[pool {0.address}] pool closed".format(event))
 
         def connection_created(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection created".format(event))
 
         def connection_ready(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection setup succeeded".format(event))
 
         def connection_closed(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection closed, reason: "
                          "{0.reason}".format(event))
 
@@ -156,11 +156,11 @@ Connection monitoring and pooling events are also available. For example::
                          "failed, reason: {0.reason}".format(event))
 
         def connection_checked_out(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection checked out of pool".format(event))
 
         def connection_checked_in(self, event):
-            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+            logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection checked into pool".format(event))
 
 
@@ -270,7 +270,7 @@ class ConnectionPoolListener(_EventListener):
     def pool_created(self, event: "PoolCreatedEvent") -> None:
         """Abstract method to handle a :class:`PoolCreatedEvent`.
 
-        Emitted when a Connection Pool is created.
+        Emitted when a connection Pool is created.
 
         :Parameters:
           - `event`: An instance of :class:`PoolCreatedEvent`.
@@ -280,7 +280,7 @@ class ConnectionPoolListener(_EventListener):
     def pool_ready(self, event: "PoolReadyEvent") -> None:
         """Abstract method to handle a :class:`PoolReadyEvent`.
 
-        Emitted when a Connection Pool is marked ready.
+        Emitted when a connection Pool is marked ready.
 
         :Parameters:
           - `event`: An instance of :class:`PoolReadyEvent`.
@@ -292,7 +292,7 @@ class ConnectionPoolListener(_EventListener):
     def pool_cleared(self, event: "PoolClearedEvent") -> None:
         """Abstract method to handle a `PoolClearedEvent`.
 
-        Emitted when a Connection Pool is cleared.
+        Emitted when a connection Pool is cleared.
 
         :Parameters:
           - `event`: An instance of :class:`PoolClearedEvent`.
@@ -302,7 +302,7 @@ class ConnectionPoolListener(_EventListener):
     def pool_closed(self, event: "PoolClosedEvent") -> None:
         """Abstract method to handle a `PoolClosedEvent`.
 
-        Emitted when a Connection Pool is closed.
+        Emitted when a connection Pool is closed.
 
         :Parameters:
           - `event`: An instance of :class:`PoolClosedEvent`.
@@ -312,7 +312,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_created(self, event: "ConnectionCreatedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCreatedEvent`.
 
-        Emitted when a Connection Pool creates a Connection object.
+        Emitted when a connection Pool creates a Connection object.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionCreatedEvent`.
@@ -322,7 +322,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_ready(self, event: "ConnectionReadyEvent") -> None:
         """Abstract method to handle a :class:`ConnectionReadyEvent`.
 
-        Emitted when a Connection has finished its setup, and is now ready to
+        Emitted when a connection has finished its setup, and is now ready to
         use.
 
         :Parameters:
@@ -333,7 +333,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_closed(self, event: "ConnectionClosedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionClosedEvent`.
 
-        Emitted when a Connection Pool closes a Connection.
+        Emitted when a connection Pool closes a connection.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionClosedEvent`.
@@ -363,7 +363,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_checked_out(self, event: "ConnectionCheckedOutEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
 
-        Emitted when the driver successfully checks out a Connection.
+        Emitted when the driver successfully checks out a connection.
 
         :Parameters:
           - `event`: An instance of :class:`ConnectionCheckedOutEvent`.
@@ -373,7 +373,7 @@ class ConnectionPoolListener(_EventListener):
     def connection_checked_in(self, event: "ConnectionCheckedInEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
 
-        Emitted when the driver checks in a Connection back to the Connection
+        Emitted when the driver checks in a connection back to the connection
         Pool.
 
         :Parameters:
@@ -950,7 +950,7 @@ class _ConnectionIdEvent(_ConnectionEvent):
 
     @property
     def connection_id(self) -> int:
-        """The ID of the Connection."""
+        """The ID of the connection."""
         return self.__connection_id
 
     def __repr__(self):
@@ -1068,7 +1068,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
 
 
 class ConnectionCheckedOutEvent(_ConnectionIdEvent):
-    """Published when the driver successfully checks out a Connection.
+    """Published when the driver successfully checks out a connection.
 
     :Parameters:
      - `address`: The address (host, port) pair of the server this

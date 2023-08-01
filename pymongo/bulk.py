@@ -65,9 +65,8 @@ from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
-    from pymongo.operations import _IndexKeyHint
-    from pymongo.pool import SocketInfo
-    from pymongo.typings import _DocumentOut, _DocumentType
+    from pymongo.pool import Connection
+    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1
@@ -205,7 +204,7 @@ class _Bulk:
         else:
             return _BulkWriteContext
 
-    def add_insert(self, document: MutableMapping[str, Any]) -> None:
+    def add_insert(self, document: _DocumentOut) -> None:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
@@ -216,15 +215,12 @@ class _Bulk:
     def add_update(
         self,
         selector: Mapping[str, Any],
-        update: Union[
-            Mapping[str, Any],
-            List[Mapping[str, Any]],
-        ],
+        update: Union[Mapping[str, Any], _Pipeline],
         multi: bool = False,
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -251,7 +247,7 @@ class _Bulk:
         replacement: Mapping[str, Any],
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -269,7 +265,7 @@ class _Bulk:
         selector: Mapping[str, Any],
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = SON([("q", selector), ("limit", limit)])
@@ -315,7 +311,7 @@ class _Bulk:
         generator: Iterator[Any],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
-        sock_info: SocketInfo,
+        conn: Connection,
         op_id: int,
         retryable: bool,
         full_result: MutableMapping[str, Any],
@@ -330,9 +326,9 @@ class _Bulk:
             self.next_run = None
         run = self.current_run
 
-        # sock_info.command validates the session, but we use
-        # sock_info.write_command.
-        sock_info.validate_session(client, session)
+        # Connection.command validates the session, but we use
+        # Connection.write_command
+        conn.validate_session(client, session)
         last_run = False
 
         while run:
@@ -345,7 +341,7 @@ class _Bulk:
             bwc = self.bulk_ctx_class(
                 db_name,
                 cmd_name,
-                sock_info,
+                conn,
                 op_id,
                 listeners,
                 session,
@@ -373,11 +369,11 @@ class _Bulk:
                     if retryable and not self.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, sock_info)
-                sock_info.send_cluster_time(cmd, session, client)
-                sock_info.add_server_api(cmd)
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                conn.send_cluster_time(cmd, session, client)
+                conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
-                sock_info.apply_timeout(client, cmd)
+                conn.apply_timeout(client, cmd)
                 ops = islice(run.ops, run.idx_offset, None)
 
                 # Run as many ops as possible in one command.
@@ -434,13 +430,13 @@ class _Bulk:
         op_id = _randint()
 
         def retryable_bulk(
-            session: Optional[ClientSession], sock_info: SocketInfo, retryable: bool
+            session: Optional[ClientSession], conn: Connection, retryable: bool
         ) -> None:
             self._execute_command(
                 generator,
                 write_concern,
                 session,
-                sock_info,
+                conn,
                 op_id,
                 retryable,
                 full_result,
@@ -454,7 +450,7 @@ class _Bulk:
             _raise_bulk_write_error(full_result)
         return full_result
 
-    def execute_op_msg_no_results(self, sock_info: SocketInfo, generator: Iterator[Any]) -> None:
+    def execute_op_msg_no_results(self, conn: Connection, generator: Iterator[Any]) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
         client = self.collection.database.client
@@ -470,7 +466,7 @@ class _Bulk:
             bwc = self.bulk_ctx_class(
                 db_name,
                 cmd_name,
-                sock_info,
+                conn,
                 op_id,
                 listeners,
                 None,
@@ -486,7 +482,7 @@ class _Bulk:
                         ("writeConcern", {"w": 0}),
                     ]
                 )
-                sock_info.add_server_api(cmd)
+                conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
                 to_send = bwc.execute_unack(cmd, ops, client)
@@ -495,7 +491,7 @@ class _Bulk:
 
     def execute_command_no_results(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         generator: Iterator[Any],
         write_concern: WriteConcern,
     ) -> None:
@@ -520,7 +516,7 @@ class _Bulk:
                 generator,
                 initial_write_concern,
                 None,
-                sock_info,
+                conn,
                 op_id,
                 False,
                 full_result,
@@ -531,7 +527,7 @@ class _Bulk:
 
     def execute_no_results(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         generator: Iterator[Any],
         write_concern: WriteConcern,
     ) -> None:
@@ -542,11 +538,11 @@ class _Bulk:
             raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
         # Guard against unsupported unacknowledged writes.
         unack = write_concern and not write_concern.acknowledged
-        if unack and self.uses_hint_delete and sock_info.max_wire_version < 9:
+        if unack and self.uses_hint_delete and conn.max_wire_version < 9:
             raise ConfigurationError(
                 "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
             )
-        if unack and self.uses_hint_update and sock_info.max_wire_version < 8:
+        if unack and self.uses_hint_update and conn.max_wire_version < 8:
             raise ConfigurationError(
                 "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
             )
@@ -557,8 +553,8 @@ class _Bulk:
             )
 
         if self.ordered:
-            return self.execute_command_no_results(sock_info, generator, write_concern)
-        return self.execute_op_msg_no_results(sock_info, generator)
+            return self.execute_command_no_results(conn, generator, write_concern)
+        return self.execute_op_msg_no_results(conn, generator)
 
     def execute(self, write_concern: WriteConcern, session: Optional[ClientSession]) -> Any:
         """Execute operations."""
@@ -577,8 +573,8 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._socket_for_writes(session) as sock_info:
-                self.execute_no_results(sock_info, generator, write_concern)
+            with client._conn_for_writes(session) as connection:
+                self.execute_no_results(connection, generator, write_concern)
                 return None
         else:
             return self.execute_command(generator, write_concern, session)

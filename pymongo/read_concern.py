@@ -67,7 +67,7 @@ class ReadConcern:
             return self.document == other.document
         return NotImplemented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.level:
             return "ReadConcern(%s)" % self.level
         return "ReadConcern()"

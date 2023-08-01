@@ -14,8 +14,10 @@
 
 """Utilities for choosing which member of a replica set to read from."""
 
+from __future__ import annotations
+
 from collections import abc
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -23,6 +25,10 @@ from pymongo.server_selectors import (
     member_with_tags_server_selector,
     secondary_with_tags_server_selector,
 )
+
+if TYPE_CHECKING:
+    from pymongo.server_selectors import Selection
+    from pymongo.topology_description import TopologyDescription
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1
@@ -39,8 +45,11 @@ _MONGOS_MODES = (
     "nearest",
 )
 
+_Hedge = Mapping[str, Any]
+_TagSets = Sequence[Mapping[str, Any]]
 
-def _validate_tag_sets(tag_sets):
+
+def _validate_tag_sets(tag_sets: Optional[_TagSets]) -> Optional[_TagSets]:
     """Validate tag sets for a MongoClient."""
     if tag_sets is None:
         return tag_sets
@@ -63,12 +72,12 @@ def _validate_tag_sets(tag_sets):
     return list(tag_sets)
 
 
-def _invalid_max_staleness_msg(max_staleness):
+def _invalid_max_staleness_msg(max_staleness: Any) -> str:
     return "maxStalenessSeconds must be a positive integer, not %s" % max_staleness
 
 
 # Some duplication with common.py to avoid import cycle.
-def _validate_max_staleness(max_staleness):
+def _validate_max_staleness(max_staleness: Any) -> int:
     """Validate max_staleness."""
     if max_staleness == -1:
         return -1
@@ -82,7 +91,7 @@ def _validate_max_staleness(max_staleness):
     return max_staleness
 
 
-def _validate_hedge(hedge):
+def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
     """Validate hedge."""
     if hedge is None:
         return None
@@ -91,10 +100,6 @@ def _validate_hedge(hedge):
         raise TypeError(f"hedge must be a dictionary, not {hedge!r}")
 
     return hedge
-
-
-_Hedge = Mapping[str, Any]
-_TagSets = Sequence[Mapping[str, Any]]
 
 
 class _ServerMode:
@@ -209,7 +214,7 @@ class _ServerMode:
         """
         return 0 if self.__max_staleness == -1 else 5
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}(tag_sets={!r}, max_staleness={!r}, hedge={!r})".format(
             self.name,
             self.__tag_sets,
@@ -230,7 +235,7 @@ class _ServerMode:
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         """Return value of object for pickling.
 
         Needed explicitly because __slots__() defined.
@@ -242,13 +247,16 @@ class _ServerMode:
             "hedge": self.__hedge,
         }
 
-    def __setstate__(self, value):
+    def __setstate__(self, value: Mapping[str, Any]) -> None:
         """Restore from pickling."""
         self.__mode = value["mode"]
         self.__mongos_mode = _MONGOS_MODES[self.__mode]
         self.__tag_sets = _validate_tag_sets(value["tag_sets"])
         self.__max_staleness = _validate_max_staleness(value["max_staleness"])
         self.__hedge = _validate_hedge(value["hedge"])
+
+    def __call__(self, selection: Selection) -> Selection:
+        return selection
 
 
 class Primary(_ServerMode):
@@ -266,11 +274,11 @@ class Primary(_ServerMode):
     def __init__(self) -> None:
         super().__init__(_PRIMARY)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to a Selection."""
         return selection.primary_selection
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Primary()"
 
     def __eq__(self, other: Any) -> bool:
@@ -317,7 +325,7 @@ class PrimaryPreferred(_ServerMode):
     ) -> None:
         super().__init__(_PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         if selection.primary:
             return selection.primary_selection
@@ -360,7 +368,7 @@ class Secondary(_ServerMode):
     ) -> None:
         super().__init__(_SECONDARY, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         return secondary_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -404,7 +412,7 @@ class SecondaryPreferred(_ServerMode):
     ) -> None:
         super().__init__(_SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         secondaries = secondary_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -449,7 +457,7 @@ class Nearest(_ServerMode):
     ) -> None:
         super().__init__(_NEAREST, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any) -> Any:
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to Selection."""
         return member_with_tags_server_selector(
             self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
@@ -469,11 +477,11 @@ class _AggWritePref:
 
     __slots__ = ("pref", "effective_pref")
 
-    def __init__(self, pref):
+    def __init__(self, pref: _ServerMode):
         self.pref = pref
-        self.effective_pref = ReadPreference.PRIMARY
+        self.effective_pref: _ServerMode = ReadPreference.PRIMARY
 
-    def selection_hook(self, topology_description):
+    def selection_hook(self, topology_description: TopologyDescription) -> None:
         common_wv = topology_description.common_wire_version
         if (
             topology_description.has_readable_server(ReadPreference.PRIMARY_PREFERRED)
@@ -484,16 +492,16 @@ class _AggWritePref:
         else:
             self.effective_pref = self.pref
 
-    def __call__(self, selection):
+    def __call__(self, selection: Selection) -> Selection:
         """Apply this read preference to a Selection."""
         return self.effective_pref(selection)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"_AggWritePref(pref={self.pref!r})"
 
     # Proxy other calls to the effective_pref so that _AggWritePref can be
     # used in place of an actual read preference.
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.effective_pref, name)
 
 

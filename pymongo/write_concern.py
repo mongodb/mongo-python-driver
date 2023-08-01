@@ -118,7 +118,7 @@ class WriteConcern:
         """
         return self.__acknowledged
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "WriteConcern({})".format(
             ", ".join("{}={}".format(*kvt) for kvt in self.__document.items())
         )

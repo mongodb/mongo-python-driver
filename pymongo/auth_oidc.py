@@ -29,7 +29,7 @@ from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
 
 
 @dataclass
@@ -242,25 +242,23 @@ class _OIDCAuthenticator:
         self.idp_resp = None
         self.token_exp_utc = None
 
-    def run_command(
-        self, sock_info: SocketInfo, cmd: Mapping[str, Any]
-    ) -> Optional[Mapping[str, Any]]:
+    def run_command(self, conn: Connection, cmd: Mapping[str, Any]) -> Optional[Mapping[str, Any]]:
         try:
-            return sock_info.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
+            return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure as exc:
             self.clear()
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
                 if "jwt" in bson.decode(cmd["payload"]):
                     if self.idp_info_gen_id > self.reauth_gen_id:
                         raise
-                    return self.authenticate(sock_info, reauthenticate=True)
+                    return self.authenticate(conn, reauthenticate=True)
             raise
 
     def authenticate(
-        self, sock_info: SocketInfo, reauthenticate: bool = False
+        self, conn: Connection, reauthenticate: bool = False
     ) -> Optional[Mapping[str, Any]]:
         if reauthenticate:
-            prev_id = getattr(sock_info, "oidc_token_gen_id", None)
+            prev_id = getattr(conn, "oidc_token_gen_id", None)
             # Check if we've already changed tokens.
             if prev_id == self.token_gen_id:
                 self.reauth_gen_id = self.idp_info_gen_id
@@ -268,7 +266,7 @@ class _OIDCAuthenticator:
                 if not self.properties.refresh_token_callback:
                     self.clear()
 
-        ctx = sock_info.auth_ctx
+        ctx = conn.auth_ctx
         cmd = None
 
         if ctx and ctx.speculate_succeeded():
@@ -276,10 +274,10 @@ class _OIDCAuthenticator:
         else:
             cmd = self.auth_start_cmd()
             assert cmd is not None
-            resp = self.run_command(sock_info, cmd)
+            resp = self.run_command(conn, cmd)
 
         if resp["done"]:
-            sock_info.oidc_token_gen_id = self.token_gen_id
+            conn.oidc_token_gen_id = self.token_gen_id
             return None
 
         server_resp: Dict = bson.decode(resp["payload"])
@@ -289,7 +287,7 @@ class _OIDCAuthenticator:
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
-        sock_info.oidc_token_gen_id = self.token_gen_id
+        conn.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
         cmd = SON(
             [
@@ -298,7 +296,7 @@ class _OIDCAuthenticator:
                 ("payload", bin_payload),
             ]
         )
-        resp = self.run_command(sock_info, cmd)
+        resp = self.run_command(conn, cmd)
         if not resp["done"]:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")
@@ -306,8 +304,8 @@ class _OIDCAuthenticator:
 
 
 def _authenticate_oidc(
-    credentials: MongoCredential, sock_info: SocketInfo, reauthenticate: bool
+    credentials: MongoCredential, conn: Connection, reauthenticate: bool
 ) -> Optional[Mapping[str, Any]]:
     """Authenticate using MONGODB-OIDC."""
-    authenticator = _get_authenticator(credentials, sock_info.address)
-    return authenticator.authenticate(sock_info, reauthenticate=reauthenticate)
+    authenticator = _get_authenticator(credentials, conn.address)
+    return authenticator.authenticate(conn, reauthenticate=reauthenticate)
