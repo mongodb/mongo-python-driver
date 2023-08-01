@@ -152,7 +152,7 @@ def _parse_pool_options(
     connect_timeout = options.get("connecttimeoutms", common.CONNECT_TIMEOUT)
     socket_timeout = options.get("sockettimeoutms")
     wait_queue_timeout = options.get("waitqueuetimeoutms", common.WAIT_QUEUE_TIMEOUT)
-    event_listeners = cast(Sequence[_EventListener], options.get("event_listeners"))
+    event_listeners = cast(Optional[Sequence[_EventListener]], options.get("event_listeners"))
     appname = options.get("appname")
     driver = options.get("driver")
     server_api = options.get("server_api")

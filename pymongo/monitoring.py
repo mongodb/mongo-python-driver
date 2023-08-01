@@ -1389,7 +1389,7 @@ class _EventListeners:
       - `listeners`: A list of event listeners.
     """
 
-    def __init__(self, listeners: Sequence[_EventListener]):
+    def __init__(self, listeners: Optional[Sequence[_EventListener]]):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         self.__server_listeners = _LISTENERS.server_listeners[:]
         lst = _LISTENERS.server_heartbeat_listeners
