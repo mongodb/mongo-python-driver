@@ -72,7 +72,6 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
-    pip install '.[encryption]'
 
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
@@ -116,6 +115,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    pip install '.[encryption]'
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
