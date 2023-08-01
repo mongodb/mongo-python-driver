@@ -245,31 +245,6 @@ if TYPE_CHECKING:
         type_registry: TypeRegistry
         datetime_conversion: Optional[int]
 
-        # @overload
-        # def __new__(
-        #     cls: Type["CodecOptions"],
-        #     document_class: None = ...,
-        #     tz_aware: bool = ...,
-        #     uuid_representation: Optional[int] = ...,
-        #     unicode_decode_error_handler: Optional[str] = ...,
-        #     tzinfo: Optional[datetime.tzinfo] = ...,
-        #     type_registry: Optional[TypeRegistry] = ...,
-        #     datetime_conversion: Optional[int] = ...,
-        # ) -> "CodecOptions[Dict[str, Any]]":
-        #     ...
-        # @overload
-        # def __new__(
-        #     cls: Type["CodecOptions"],
-        #     document_class: Type[_DocumentType],
-        #     tz_aware: bool = ...,
-        #     uuid_representation: Optional[int] = ...,
-        #     unicode_decode_error_handler: Optional[str] = ...,
-        #     tzinfo: Optional[datetime.tzinfo] = ...,
-        #     type_registry: Optional[TypeRegistry] = ...,
-        #     datetime_conversion: Optional[int] = ...,
-        # ) -> "CodecOptions[_DocumentType]":
-        #     ...
-
         def __new__(
             cls: Type["CodecOptions"],
             document_class: Optional[Type[_DocumentType]] = ...,
