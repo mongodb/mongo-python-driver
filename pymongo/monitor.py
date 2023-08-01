@@ -313,7 +313,8 @@ class SrvMonitor(MonitorBase):
         )
         self._settings = topology_settings
         self._seedlist = self._settings._seeds
-        self._fqdn = self._settings.fqdn
+        assert isinstance(self._settings.fqdn, str)
+        self._fqdn: str = self._settings.fqdn
 
     def _run(self) -> None:
         seedlist = self._get_seedlist()
