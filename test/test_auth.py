@@ -60,7 +60,7 @@ class AutoAuthenticateThread(threading.Thread):
     """Used in testing threaded authentication.
 
     This does collection.find_one() with a 1-second delay to ensure it must
-    check out and authenticate multiple sockets from the pool concurrently.
+    check out and authenticate multiple connections from the pool concurrently.
 
     :Parameters:
       `collection`: An auth-protected collection containing one document.
@@ -217,7 +217,7 @@ class TestGSSAPI(unittest.TestCase):
 
         # Need one document in the collection. AutoAuthenticateThread does
         # collection.find_one with a 1-second delay, forcing it to check out
-        # multiple sockets from the pool concurrently, proving that
+        # multiple connections from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
         collection = db.test
         if not collection.count_documents({}):

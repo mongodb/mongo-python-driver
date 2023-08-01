@@ -81,7 +81,7 @@ def _is_ip_address(address):
         return False
 
 
-# According to the docs for Connection.send it can raise
+# According to the docs for socket.send it can raise
 # WantX509LookupError and should be retried.
 BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
 
@@ -347,7 +347,7 @@ class SSLContext:
         server_hostname=None,
         session=None,
     ):
-        """Wrap an existing Python socket sock and return a TLS socket
+        """Wrap an existing Python socket connection and return a TLS socket
         object.
         """
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)

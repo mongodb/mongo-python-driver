@@ -48,7 +48,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.server import Server
 
 
@@ -689,7 +689,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @overload
     def _command(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -706,7 +706,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @overload
     def _command(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -722,7 +722,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _command(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -742,7 +742,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         command.update(kwargs)
         with self.__client._tmp_session(session) as s:
-            return sock_info.command(
+            return conn.command(
                 self.__name,
                 command,
                 read_preference,
@@ -889,12 +889,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._socket_for_reads(read_preference, session) as (
-            sock_info,
+        with self.__client._conn_for_reads(read_preference, session) as (
+            connection,
             read_preference,
         ):
             return self._command(
-                sock_info,
+                connection,
                 command,
                 value,
                 check,
@@ -973,12 +973,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self.__client._socket_for_reads(read_preference, tmp_session) as (
-                sock_info,
+            with self.__client._conn_for_reads(read_preference, tmp_session) as (
+                conn,
                 read_preference,
             ):
                 response = self._command(
-                    sock_info,
+                    conn,
                     command,
                     value,
                     True,
@@ -993,13 +993,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     cmd_cursor = CommandCursor(
                         coll,
                         response["cursor"],
-                        sock_info.address,
+                        conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
                         explicit_session=session is not None,
                         comment=comment,
                     )
-                    cmd_cursor._maybe_pin_connection(sock_info)
+                    cmd_cursor._maybe_pin_connection(conn)
                     return cmd_cursor
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
@@ -1015,11 +1015,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         def _cmd(
             session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: _ServerMode,
         ) -> Dict[str, Any]:
             return self._command(
-                sock_info,
+                conn,
                 command,
                 read_preference=read_preference,
                 session=session,
@@ -1029,7 +1029,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _list_collections(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         session: Optional[ClientSession],
         read_preference: _ServerMode,
         **kwargs: Any,
@@ -1042,18 +1042,18 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
         with self.__client._tmp_session(session, close=False) as tmp_session:
-            cursor = self._command(
-                sock_info, cmd, read_preference=read_preference, session=tmp_session
-            )["cursor"]
+            cursor = self._command(conn, cmd, read_preference=read_preference, session=tmp_session)[
+                "cursor"
+            ]
             cmd_cursor = CommandCursor(
                 coll,
                 cursor,
-                sock_info.address,
+                conn.address,
                 session=tmp_session,
                 explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
-        cmd_cursor._maybe_pin_connection(sock_info)
+        cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
     def list_collections(
@@ -1093,12 +1093,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         def _cmd(
             session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
-            return self._list_collections(
-                sock_info, session, read_preference=read_preference, **kwargs
-            )
+            return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self.__client._retryable_read(_cmd, read_pref, session)
 
@@ -1157,9 +1155,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._socket_for_writes(session) as sock_info:
+        with self.__client._conn_for_writes(session) as connection:
             return self._command(
-                sock_info,
+                connection,
                 command,
                 allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),

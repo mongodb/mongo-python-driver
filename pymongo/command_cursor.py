@@ -29,7 +29,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
+from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
@@ -38,7 +38,7 @@ from pymongo.typings import _Address, _DocumentType
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
 
 
 class CommandCursor(Generic[_DocumentType]):
@@ -157,19 +157,19 @@ class CommandCursor(Generic[_DocumentType]):
         """
         return self.__postbatchresumetoken
 
-    def _maybe_pin_connection(self, sock_info: SocketInfo) -> None:
+    def _maybe_pin_connection(self, conn: Connection) -> None:
         client = self.__collection.database.client
         if not client._should_pin_cursor(self.__session):
             return
         if not self.__sock_mgr:
-            sock_info.pin_cursor()
-            sock_mgr = _SocketManager(sock_info, False)
+            conn.pin_cursor()
+            conn_mgr = _ConnectionManager(conn, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self.__id == 0:
-                sock_mgr.close()
+                conn_mgr.close()
             else:
-                self.__sock_mgr = sock_mgr
+                self.__sock_mgr = conn_mgr
 
     def __send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
@@ -197,7 +197,7 @@ class CommandCursor(Generic[_DocumentType]):
 
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.socket_info, response.more_to_come)
+                self.__sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
         if response.from_command:
             cursor = response.docs[0]["cursor"]
             documents = cursor["nextBatch"]
