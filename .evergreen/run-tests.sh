@@ -75,6 +75,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
+    pip install certifi
     CERT_PATH=$(python -m certifi)
     export SSL_CERT_FILE=${CERT_PATH}
     export REQUESTS_CA_BUNDLE=${CERT_PATH}
