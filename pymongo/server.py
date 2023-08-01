@@ -174,7 +174,7 @@ class Server:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details
+                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(

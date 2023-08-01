@@ -160,9 +160,9 @@ class NotPrimaryError(AutoReconnect):
     .. versionadded:: 3.12
     """
 
-    details: _DocumentOut
-
-    def __init__(self, message: str = "", errors: Optional[_DocumentOut] = None) -> None:
+    def __init__(
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], List]] = None
+    ) -> None:
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
 
@@ -198,7 +198,7 @@ class OperationFailure(PyMongoError):
         self,
         error: str,
         code: Optional[int] = None,
-        details: Optional[_DocumentOut] = None,
+        details: Optional[Mapping[str, Any]] = None,
         max_wire_version: Optional[int] = None,
     ) -> None:
         error_labels = None
@@ -206,7 +206,7 @@ class OperationFailure(PyMongoError):
             error_labels = details.get("errorLabels")
         super().__init__(_format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
-        self.__details = details or {}
+        self.__details = details
         self.__max_wire_version = max_wire_version
 
     @property
@@ -219,7 +219,7 @@ class OperationFailure(PyMongoError):
         return self.__code
 
     @property
-    def details(self) -> _DocumentOut:
+    def details(self) -> Optional[Mapping[str, Any]]:
         """The complete error document returned by the server.
 
         Depending on the error that occurred, the error document

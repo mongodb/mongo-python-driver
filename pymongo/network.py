@@ -203,7 +203,7 @@ def command(
             assert listeners is not None
             assert address is not None
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=conn.service_id
+                duration, failure, name, request_id, address, service_id=conn.service_id  # type: ignore[arg-type]
             )
         raise
     if publish:

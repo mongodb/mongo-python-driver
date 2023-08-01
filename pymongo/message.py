@@ -1032,9 +1032,9 @@ class _BulkWriteContext:
                 assert self.start_time is not None
                 duration = (datetime.datetime.now() - start) + duration
                 if isinstance(exc, OperationFailure):
-                    failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)
+                    failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
                 elif isinstance(exc, NotPrimaryError):
-                    failure = exc.details
+                    failure = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
@@ -1066,7 +1066,7 @@ class _BulkWriteContext:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details
+                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
@@ -1628,9 +1628,9 @@ class _OpMsg:
         return self.payload_document
 
     @property
-    def more_to_come(self) -> int:
+    def more_to_come(self) -> bool:
         """Is the moreToCome bit set on this response?"""
-        return self.flags & self.MORE_TO_COME
+        return bool(self.flags & self.MORE_TO_COME)
 
     @classmethod
     def unpack(cls, msg: bytes) -> _OpMsg:

@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 import weakref
-from typing import Any, Dict, NoReturn, Optional, Union
+from typing import Any, Dict, NoReturn, Optional
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
@@ -662,7 +662,7 @@ class Connection:
             # This is a Monitor connection.
             self.cancel_context = _CancellationContext()
         self.opts = pool.opts
-        self.more_to_come: Union[int, bool] = False
+        self.more_to_come = False
         # For load balancer support.
         self.service_id = None
         # When executing a transaction in load balancing mode, this flag is

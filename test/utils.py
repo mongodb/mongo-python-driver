@@ -720,6 +720,7 @@ def server_started_with_auth(client):
     try:
         command_line = get_command_line(client)
     except OperationFailure as e:
+        assert e.details is not None
         msg = e.details.get("errmsg", "")
         if e.code == 13 or "unauthorized" in msg or "login" in msg:
             # Unauthorized.
