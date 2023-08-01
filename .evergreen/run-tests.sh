@@ -73,6 +73,13 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
+    # Work around for root certifi not being installed.
+    # TODO: Remove after PYTHON-3827
+    CERT_PATH=$(python -m certifi)
+    export SSL_CERT_FILE=${CERT_PATH}
+    export REQUESTS_CA_BUNDLE=${CERT_PATH}
+    export AWS_CA_BUNDLE=${CERT_PATH}
+
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
         powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
@@ -120,13 +127,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
         python -m pip install '.[ocsp]'
     fi
-
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3827
-    CERT_PATH=$(python -m certifi)
-    export SSL_CERT_FILE=${CERT_PATH}
-    export REQUESTS_CA_BUNDLE=${CERT_PATH}
-    export AWS_CA_BUNDLE=${CERT_PATH}
 
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
