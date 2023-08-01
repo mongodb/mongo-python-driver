@@ -1281,7 +1281,7 @@ class _PoolGeneration:
         # Overall pool generation.
         self._generation = 0
 
-    def get(self, service_id: ObjectId) -> int:
+    def get(self, service_id: Optional[ObjectId]) -> int:
         """Get the generation for the given service_id."""
         if service_id is None:
             return self._generation
@@ -1300,7 +1300,7 @@ class _PoolGeneration:
         else:
             self._generations[service_id] += 1
 
-    def stale(self, gen: int, service_id: ObjectId) -> bool:
+    def stale(self, gen: int, service_id: Optional[ObjectId]) -> bool:
         """Return if the given generation for a given service_id is stale."""
         return gen != self.get(service_id)
 
@@ -1464,7 +1464,7 @@ class Pool:
     def close(self) -> None:
         self._reset(close=True)
 
-    def stale_generation(self, gen: int, service_id: ObjectId) -> bool:
+    def stale_generation(self, gen: int, service_id: Optional[ObjectId]) -> bool:
         return self.gen.stale(gen, service_id)
 
     def remove_stale_sockets(self, reference_generation: int) -> None:
@@ -1765,7 +1765,6 @@ class Pool:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
-                    assert conn.service_id is not None
                     if self.stale_generation(conn.generation, conn.service_id):
                         conn.close_conn(ConnectionClosedReason.STALE)
                     else:
@@ -1815,7 +1814,6 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.ERROR)
                 return True
 
-        assert conn.service_id is not None
         if self.stale_generation(conn.generation, conn.service_id):
             conn.close_conn(ConnectionClosedReason.STALE)
             return True
