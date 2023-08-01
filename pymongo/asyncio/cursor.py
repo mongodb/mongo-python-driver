@@ -1,3 +1,6 @@
+from greenletio import async_
+
+
 class AsyncCursor:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -5,8 +8,10 @@ class AsyncCursor:
     def __aiter__(self):
         return self
 
-    async def __anext__(self):
+    def __next__(self):
         try:
             return self.cursor.__next__()
         except StopIteration:
             raise StopAsyncIteration
+
+    __anext__ = async_(__next__)
