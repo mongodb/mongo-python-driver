@@ -26,6 +26,14 @@ in this release.
 
 .. _PyMongo 4.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=35492
 
+.. _PYTHON-3729: https://jira.mongodb.org/browse/PYTHON-3729
+.. _PYTHON-3797: https://jira.mongodb.org/browse/PYTHON-3797
+.. _PYTHON-3816: https://jira.mongodb.org/browse/PYTHON-3816
+.. _PYTHON-3817: https://jira.mongodb.org/browse/PYTHON-3817
+.. _PYTHON-3820: https://jira.mongodb.org/browse/PYTHON-3820
+.. _PYTHON-3824: https://jira.mongodb.org/browse/PYTHON-3824
+.. _PYTHON-3846: https://jira.mongodb.org/browse/PYTHON-3846
+
 Changes in Version 4.4.1
 ------------------------
 
