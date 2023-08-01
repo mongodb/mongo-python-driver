@@ -73,6 +73,11 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
+    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
+    fi
+
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
     pip install certifi
@@ -80,11 +85,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     export SSL_CERT_FILE=${CERT_PATH}
     export REQUESTS_CA_BUNDLE=${CERT_PATH}
     export AWS_CA_BUNDLE=${CERT_PATH}
-
-    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
-        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
-    fi
 
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
         echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
