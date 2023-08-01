@@ -32,9 +32,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
-    from OpenSSL.SSL import Connection
-
-    from pymongo.pool import Pool
+    from pymongo.pool import Connection, Pool
     from pymongo.settings import TopologySettings
     from pymongo.topology import Topology
 
