@@ -30,7 +30,7 @@ createvirtualenv () {
     fi
 
     python -m pip install --upgrade pip
-    python -m pip install --upgrade setuptools wheel tox
+    python -m pip install --upgrade setuptools wheel tox certifi
     # lxml only has wheels for macos 10.15+
     python -m pip install unittest-xml-reporting || true
 }
