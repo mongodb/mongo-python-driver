@@ -150,7 +150,6 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
-    Tuple,
     Type,
     TypeVar,
 )
@@ -180,6 +179,7 @@ if TYPE_CHECKING:
 
     from pymongo.pool import Connection
     from pymongo.server import Server
+    from pymongo.typings import _Address
 
 
 class SessionOptions:
@@ -399,7 +399,7 @@ class _Transaction:
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
-        self.pinned_address: Optional[Tuple[str, Optional[int]]] = None
+        self.pinned_address: Optional[_Address] = None
         self.conn_mgr: Optional[_ConnectionManager] = None
         self.recovery_token = None
         self.attempt = 0
@@ -839,7 +839,9 @@ class ClientSession:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(session: ClientSession, conn: Connection, retryable: bool) -> Dict[str, Any]:
+        def func(
+            session: Optional[ClientSession], conn: Connection, retryable: bool
+        ) -> Dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
         return self._client._retry_internal(True, func, self, None)
@@ -947,7 +949,7 @@ class ClientSession:
         return self._transaction.starting()
 
     @property
-    def _pinned_address(self) -> Optional[Tuple[str, Optional[int]]]:
+    def _pinned_address(self) -> Optional[_Address]:
         """The mongos address this transaction was created on."""
         if self._transaction.active():
             return self._transaction.pinned_address
@@ -1043,7 +1045,7 @@ class ClientSession:
 class _EmptyServerSession:
     __slots__ = "dirty", "started_retryable_write"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.dirty = False
         self.started_retryable_write = False
 
