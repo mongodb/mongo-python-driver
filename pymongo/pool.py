@@ -447,7 +447,7 @@ class PoolOptions:
 
     def __init__(
         self,
-        max_pool_size: float = MAX_POOL_SIZE,
+        max_pool_size: int = MAX_POOL_SIZE,
         min_pool_size: int = MIN_POOL_SIZE,
         max_idle_time_seconds: Optional[int] = MAX_IDLE_TIME_SEC,
         connect_timeout: Optional[float] = None,
