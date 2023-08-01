@@ -22,11 +22,12 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 
-if [ -n "${SET_XTRACE_ON}" ]; then
-    set -o xtrace
-else
-    set +x
-fi
+set -o xtrace
+# if [ -n "${SET_XTRACE_ON}" ]; then
+#     set -o xtrace
+# else
+#     set +x
+# fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
@@ -111,7 +112,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
     pip install certifi
-    CERT_PATH=$(python -m certifi)
+    CERT_PATH=$(python -c "import certifi; print(certifi.where())")
     export SSL_CERT_FILE=${CERT_PATH}
     export REQUESTS_CA_BUNDLE=${CERT_PATH}
     export AWS_CA_BUNDLE=${CERT_PATH}
