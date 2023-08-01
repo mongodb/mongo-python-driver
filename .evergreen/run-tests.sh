@@ -77,14 +77,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
     fi
 
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3827
-    pip install certifi
-    CERT_PATH=$(python -m certifi)
-    export SSL_CERT_FILE=${CERT_PATH}
-    export REQUESTS_CA_BUNDLE=${CERT_PATH}
-    export AWS_CA_BUNDLE=${CERT_PATH}
-
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
         echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
         exit 1
@@ -115,7 +107,17 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    pip install '.[encryption]'
+
+    # Work around for root certifi not being installed.
+    # TODO: Remove after PYTHON-3827
+    pip install certifi
+    CERT_PATH=$(python -m certifi)
+    export SSL_CERT_FILE=${CERT_PATH}
+    export REQUESTS_CA_BUNDLE=${CERT_PATH}
+    export AWS_CA_BUNDLE=${CERT_PATH}
+
+    # support pypy37 which requires cryptography < 40
+    pip install '.[encryption]' || (pip install cryptography<40 && pip install '.[encryption]')
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
