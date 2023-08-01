@@ -767,10 +767,6 @@ class ClientContext:
             lambda: not self.load_balancer, "Must not be connected to a load balancer", func=func
         )
 
-    def require_serverless(self, func):
-        """Run a test only if the client is connected to serverless."""
-        return self._require(lambda: self.serverless, "Must be connected to serverless", func=func)
-
     def require_no_serverless(self, func):
         """Run a test only if the client is not connected to serverless."""
         return self._require(

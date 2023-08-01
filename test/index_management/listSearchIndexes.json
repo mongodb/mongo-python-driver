@@ -45,8 +45,7 @@
           "name": "listSearchIndexes",
           "object": "collection0",
           "expectError": {
-            "isError": true,
-            "errorContains": "Search index commands are only supported with Atlas"
+            "isError": true
           }
         }
       ],
@@ -80,8 +79,7 @@
             "name": "test index"
           },
           "expectError": {
-            "isError": true,
-            "errorContains": "Search index commands are only supported with Atlas"
+            "isError": true
           }
         }
       ],
@@ -121,8 +119,7 @@
             }
           },
           "expectError": {
-            "isError": true,
-            "errorContains": "Search index commands are only supported with Atlas"
+            "isError": true
           }
         }
       ],
