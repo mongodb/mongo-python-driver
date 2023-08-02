@@ -22,12 +22,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 
-set -o xtrace
-# if [ -n "${SET_XTRACE_ON}" ]; then
-#     set -o xtrace
-# else
-#     set +x
-# fi
+if [ -n "${SET_XTRACE_ON}" ]; then
+    set -o xtrace
+else
+    set +x
+fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
@@ -83,7 +82,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         export AWS_CA_BUNDLE=${CERT_PATH}
     fi
 
-    # support pypy37 which requires cryptography < 40
+    # support pypy37 which requires cryptography < 35
     pip install '.[encryption]' || (pip install "cryptography<35"; pip install '.[encryption]')
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
@@ -130,7 +129,8 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
-        python -m pip install '.[ocsp]'
+        # support pypy37 which requires cryptography < 35
+        pip install '.[ocsp]' || (pip install "cryptography<35"; pip install '.[ocsp]')
     fi
 
     # Get access to the AWS temporary credentials:
