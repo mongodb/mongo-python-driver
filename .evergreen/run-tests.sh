@@ -73,6 +73,19 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
+    # Work around for root certifi not being installed.
+    # TODO: Remove after PYTHON-3827
+    if [ "$(uname -s)" = "Darwin" ]; then
+        pip install certifi
+        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
+        export SSL_CERT_FILE=${CERT_PATH}
+        export REQUESTS_CA_BUNDLE=${CERT_PATH}
+        export AWS_CA_BUNDLE=${CERT_PATH}
+    fi
+
+    # support pypy37 which requires cryptography < 40
+    pip install '.[encryption]' || (pip install "cryptography<35"; pip install '.[encryption]')
+
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
         powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
@@ -108,19 +121,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3827
-    pip install certifi
-    if [ "$(uname -s)" = "Darwin" ]; then
-        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-        export SSL_CERT_FILE=${CERT_PATH}
-        export REQUESTS_CA_BUNDLE=${CERT_PATH}
-        export AWS_CA_BUNDLE=${CERT_PATH}
-    fi
-
-    # support pypy37 which requires cryptography < 40
-    pip install '.[encryption]' || (pip install "cryptography<35"; pip install '.[encryption]')
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
