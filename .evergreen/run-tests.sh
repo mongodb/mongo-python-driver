@@ -190,6 +190,10 @@ if [ -n "$DATA_LAKE" ]; then
     TEST_ARGS="-s test.test_data_lake"
 fi
 
+if [ -n "TEST_INDEX_MANAGEMENT" ]; then
+    TEST_ARGS="-s test.test_index_management"
+fi
+
 # Don't download unittest-xml-reporting from pypi, which often fails.
 if $PYTHON -c "import xmlrunner"; then
     # The xunit output dir must be a Python style absolute path.
