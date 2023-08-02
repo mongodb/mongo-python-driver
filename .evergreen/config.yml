@@ -487,7 +487,7 @@ functions:
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
-          if [ -n "${TEST_INDEX_MANAGEMENT" ]; then
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export DB_USER=${DRIVERS_ATLAS_LAMBDA_USER}
             export DB_PASSWORD=${DRIVERS_ATLAS_LAMBDA_PASSWORD}
           fi
