@@ -120,7 +120,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     fi
 
     # support pypy37 which requires cryptography < 40
-    pip install '.[encryption]' || (pip install "cryptography<40"; pip install '.[encryption]')
+    pip install '.[encryption]' || (pip install "cryptography<35"; pip install '.[encryption]')
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
