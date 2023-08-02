@@ -112,10 +112,12 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
     pip install certifi
-    CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-    export SSL_CERT_FILE=${CERT_PATH}
-    export REQUESTS_CA_BUNDLE=${CERT_PATH}
-    export AWS_CA_BUNDLE=${CERT_PATH}
+    if [ "$(uname -s)" = "Darwin" ]; then
+        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
+        export SSL_CERT_FILE=${CERT_PATH}
+        export REQUESTS_CA_BUNDLE=${CERT_PATH}
+        export AWS_CA_BUNDLE=${CERT_PATH}
+    fi
 
     # support pypy37 which requires cryptography < 40
     pip install '.[encryption]' || (pip install "cryptography<40"; pip install '.[encryption]')
