@@ -42,8 +42,10 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import _MongoClientErrorHandler
     from pymongo.monitor import Monitor
     from pymongo.monitoring import _EventListeners
-    from pymongo.pool import Pool, SocketInfo
+    from pymongo.pool import Connection, Pool
+    from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -105,9 +107,9 @@ class Server:
     @_handle_reauth
     def run_operation(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         operation: Union[_Query, _GetMore],
-        read_preference: bool,
+        read_preference: _ServerMode,
         listeners: _EventListeners,
         unpack_res: Callable[..., List[Mapping[str, Any]]],
     ) -> Response:
@@ -118,7 +120,7 @@ class Server:
         Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
-          - `sock_info`: A SocketInfo instance.
+          - `conn`: A Connection instance.
           - `operation`: A _Query or _GetMore object.
           - `read_preference`: The read preference to use.
           - `listeners`: Instance of _EventListeners or None.
@@ -129,27 +131,27 @@ class Server:
         if publish:
             start = datetime.now()
 
-        use_cmd = operation.use_command(sock_info)
-        more_to_come = operation.sock_mgr and operation.sock_mgr.more_to_come
+        use_cmd = operation.use_command(conn)
+        more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
         if more_to_come:
             request_id = 0
         else:
-            message = operation.get_message(read_preference, sock_info, use_cmd)
+            message = operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
         if publish:
-            cmd, dbn = operation.as_command(sock_info)
+            cmd, dbn = operation.as_command(conn)
             listeners.publish_command_start(
-                cmd, dbn, request_id, sock_info.address, service_id=sock_info.service_id
+                cmd, dbn, request_id, conn.address, service_id=conn.service_id
             )
             start = datetime.now()
 
         try:
             if more_to_come:
-                reply = sock_info.receive_message(None)
+                reply = conn.receive_message(None)
             else:
-                sock_info.send_message(data, max_doc_size)
-                reply = sock_info.receive_message(request_id)
+                conn.send_message(data, max_doc_size)
+                reply = conn.receive_message(request_id)
 
             # Unpack and check for command errors.
             if use_cmd:
@@ -168,12 +170,12 @@ class Server:
             if use_cmd:
                 first = docs[0]
                 operation.client._process_response(first, operation.session)
-                _check_command_response(first, sock_info.max_wire_version)
+                _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
+                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(
@@ -181,8 +183,8 @@ class Server:
                     failure,
                     operation.name,
                     request_id,
-                    sock_info.address,
-                    service_id=sock_info.service_id,
+                    conn.address,
+                    service_id=conn.service_id,
                 )
             raise
 
@@ -191,9 +193,9 @@ class Server:
             # Must publish in find / getMore / explain command response
             # format.
             if use_cmd:
-                res = docs[0]
+                res: _DocumentOut = docs[0]  # type: ignore[assignment]
             elif operation.name == "explain":
-                res = docs[0] if docs else {}
+                res = docs[0] if docs else {}  # type: ignore[assignment]
             else:
                 res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":
@@ -205,8 +207,8 @@ class Server:
                 res,
                 operation.name,
                 request_id,
-                sock_info.address,
-                service_id=sock_info.service_id,
+                conn.address,
+                service_id=conn.service_id,
             )
 
         # Decrypt response.
@@ -219,7 +221,7 @@ class Server:
         response: Response
 
         if client._should_pin_cursor(operation.session) or operation.exhaust:
-            sock_info.pin_cursor()
+            conn.pin_cursor()
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the
                 # more_to_come flag is set.
@@ -227,12 +229,12 @@ class Server:
             else:
                 # In OP_REPLY, the server keeps sending until cursor_id is 0.
                 more_to_come = bool(operation.exhaust and reply.cursor_id)
-            if operation.sock_mgr:
-                operation.sock_mgr.update_exhaust(more_to_come)
+            if operation.conn_mgr:
+                operation.conn_mgr.update_exhaust(more_to_come)
             response = PinnedResponse(
                 data=reply,
                 address=self._description.address,
-                socket_info=sock_info,
+                conn=conn,
                 duration=duration,
                 request_id=request_id,
                 from_command=use_cmd,
@@ -251,10 +253,10 @@ class Server:
 
         return response
 
-    def get_socket(
+    def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> ContextManager[SocketInfo]:
-        return self.pool.get_socket(handler)
+    ) -> ContextManager[Connection]:
+        return self.pool.checkout(handler)
 
     @property
     def description(self) -> ServerDescription:
