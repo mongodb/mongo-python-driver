@@ -67,7 +67,8 @@ fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    python -m pip install '.[ocsp]'
+    # support pypy37 which requires cryptography < 35
+    pip install '.[ocsp]' || (pip install "cryptography<35"; pip install '.[ocsp]')
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
