@@ -1295,6 +1295,9 @@ task_groups:
   - name: test_atlas_task_group_search_indexes
     setup_group:
       - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
       - command: subprocess.exec
         params:
           working_dir: src

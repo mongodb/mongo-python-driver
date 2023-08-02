@@ -190,7 +190,7 @@ if [ -n "$DATA_LAKE" ]; then
     TEST_ARGS="-s test.test_data_lake"
 fi
 
-if [ -n "TEST_INDEX_MANAGEMENT" ]; then
+if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
     TEST_ARGS="-s test.test_index_management"
 fi
 
