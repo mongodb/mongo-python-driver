@@ -3144,7 +3144,7 @@ buildvariants:
   matrix_spec:
     platform: rhel8
     python-version: "3.8"
-  display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
+  display_name: "Search Index Helpers ${platform}"
   tasks:
      - name: "test_atlas_task_group_search_indexes"
 
