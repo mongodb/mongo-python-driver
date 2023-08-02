@@ -3140,6 +3140,14 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
+- matrix_name: "test-search-index-helpers"
+  matrix_spec:
+    platform: rhel8
+    python-version: "3.8"
+  display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
+  tasks:
+     - name: "test_atlas_task_group_search_indexes"
+
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-20.04

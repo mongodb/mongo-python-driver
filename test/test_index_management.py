@@ -32,6 +32,8 @@ from pymongo.operations import SearchIndexModel
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "index_management")
 
+_NAME = "test-search-index"
+
 
 class TestCreateSearchIndex(IntegrationTest):
     def test_inputs(self):
@@ -64,8 +66,21 @@ class TestSearchIndexProse(IntegrationTest):
         password = os.environ.get("DB_PASSWORD")
         super().setUpClass()
         cls.client = MongoClient(url, username=username, password=password)
-        cls.client.drop_database("test_search_index_prose")
+        cls.client.drop_database(_NAME)
         cls.db = cls.client.test_search_index_prose
+
+    def wait_for_ready(self, coll, name=_NAME, predicate=None):
+        """Wait for a search index to be ready."""
+        indices: list[Mapping[str, Any]] = []
+        if predicate is None:
+            predicate = lambda index: index.get("queryable") is True
+
+        while True:
+            indices = list(coll.list_search_indexes(name))
+            if len(indices) and predicate(indices[0]):
+                return indices[0]
+                break
+            time.sleep(5)
 
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
@@ -74,24 +89,18 @@ class TestSearchIndexProse(IntegrationTest):
         coll0 = self.db[f"col{uuid.uuid4()}"]
 
         # Create a new search index on ``coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
-        model = {"name": "test-search-index", "definition": {"mappings": {"dynamic": False}}}
+        model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         coll0.insert_one({})
         resp = coll0.create_search_index(model)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
-        self.assertEqual(resp, "test-search-index")
+        self.assertEqual(resp, _NAME)
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied and store the value in a variable ``index``:
         # An index with the ``name`` of ``test-search-index`` is present and the index has a field ``queryable`` with a value of ``true``.
-        indices: list[Mapping[str, Any]] = []
-        while True:
-            indices = list(coll0.list_search_indexes("test-search-index"))
-            if len(indices) and indices[0].get("queryable") is True:
-                break
-            time.sleep(5)
+        index = self.wait_for_ready(coll0)
 
         # . Assert that ``index`` has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': false } }``
-        index = indices[0]
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
@@ -106,7 +115,7 @@ class TestSearchIndexProse(IntegrationTest):
         name1 = "test-search-index-1"
         name2 = "test-search-index-2"
         definition = {"mappings": {"dynamic": False}}
-        index_definitions = [
+        index_definitions: list[dict[str, Any]] = [
             {"name": name1, "definition": definition},
             {"name": name2, "definition": definition},
         ]
@@ -123,17 +132,8 @@ class TestSearchIndexProse(IntegrationTest):
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied.
         # An index with the ``name`` of ``test-search-index-1`` is present and index has a field ``queryable`` with the value of ``true``. Store result in ``index1``.
         # An index with the ``name`` of ``test-search-index-2`` is present and index has a field ``queryable`` with the value of ``true``. Store result in ``index2``.
-        index1 = None
-        index2 = None
-        while True:
-            for index in coll0.list_search_indexes():
-                if index["name"] == name1 and index.get("queryable") is True:
-                    index1 = index
-                if index["name"] == name2 and index.get("queryable") is True:
-                    index2 = index
-            if index1 is not None and index2 is not None:
-                break
-            time.sleep(5)
+        index1 = self.wait_for_ready(coll0, name1)
+        index2 = self.wait_for_ready(coll0, name2)
 
         # Assert that ``index1`` and ``index2`` have the property ``latestDefinition`` whose value is ``{ "mappings" : { "dynamic" : false } }``
         for index in [index1, index2]:
@@ -148,7 +148,7 @@ class TestSearchIndexProse(IntegrationTest):
         coll0.insert_one({})
 
         # Create a new search index on ``coll0``.
-        model = {"name": "test-search-index", "definition": {"mappings": {"dynamic": False}}}
+        model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = coll0.create_search_index(model)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
@@ -156,14 +156,10 @@ class TestSearchIndexProse(IntegrationTest):
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
         #   An index with the ``name`` of ``test-search-index`` is present and index has a field ``queryable`` with the value of ``true``.
-        while True:
-            indices = list(coll0.list_search_indexes("test-search-index"))
-            if len(indices) and indices[0].get("queryable") is True:
-                break
-            time.sleep(5)
+        self.wait_for_ready(coll0)
 
         # Run a ``dropSearchIndex`` on ``coll0``, using ``test-search-index`` for the name.
-        coll0.drop_search_index("test-search-index")
+        coll0.drop_search_index(_NAME)
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until ``listSearchIndexes`` returns an empty array.
         t0 = time.time()
@@ -182,43 +178,29 @@ class TestSearchIndexProse(IntegrationTest):
         coll0.insert_one({})
 
         # Create a new search index on ``coll0``.
-        name = "test-search-index"
-        model = {"name": name, "definition": {"mappings": {"dynamic": False}}}
+        model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = coll0.create_search_index(model)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
-        self.assertEqual(resp, name)
+        self.assertEqual(resp, _NAME)
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
         #  An index with the ``name`` of ``test-search-index`` is present and index has a field ``queryable`` with the value of ``true``.
-        while True:
-            indices = list(coll0.list_search_indexes(name))
-            if len(indices) and indices[0].get("queryable") is True:
-                break
-            time.sleep(5)
+        self.wait_for_ready(coll0)
 
         # Run a ``updateSearchIndex`` on ``coll0``.
         # Assert that the command does not error and the server responds with a success.
-        model2 = {"name": name, "definition": {"mappings": {"dynamic": True}}}
-        coll0.update_search_index(name, model2["definition"])
+        model2: dict[str, Any] = {"name": _NAME, "definition": {"mappings": {"dynamic": True}}}
+        coll0.update_search_index(_NAME, model2["definition"])
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
         #   An index with the ``name`` of ``test-search-index`` is present.  This index is referred to as ``index``.
         # The index has a field ``queryable`` with a value of ``true`` and has a field ``status`` with the value of ``READY``.
-        while True:
-            found = False
-            for index in coll0.list_search_indexes():
-                if index["name"] != name:
-                    continue
-                if index.get("queryable") is True and index.get("status") == "READY":
-                    found = True
-                    break
-            if found:
-                break
-            time.sleep(5)
+        predicate = lambda index: index.get("queryable") is True and index.get("status") == "READY"
+        self.wait_for_ready(coll0, predicate=predicate)
 
         # Assert that an index is present with the name ``test-search-index`` and the definition has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': true } }``.
-        index = list(coll0.list_search_indexes(name))[0]
+        index = list(coll0.list_search_indexes(_NAME))[0]
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model2["definition"])
 
