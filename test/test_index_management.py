@@ -18,15 +18,13 @@ from __future__ import annotations
 import os
 import sys
 import time
-import unittest
 import uuid
 from typing import Any, Mapping
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, unittest
 from test.unified_format import generate_test_classes
-from test.utils import rs_or_single_client
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
