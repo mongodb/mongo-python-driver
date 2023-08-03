@@ -677,7 +677,7 @@ class Connection:
         self.closed = False
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
-        self.is_writable: Optional[bool] = False
+        self.is_writable: bool = False
         self.max_wire_version = MAX_WIRE_VERSION
         self.max_bson_size = MAX_BSON_SIZE
         self.max_message_size = MAX_MESSAGE_SIZE
@@ -1101,7 +1101,7 @@ class Connection:
     def update_last_checkin_time(self) -> None:
         self.last_checkin_time = time.monotonic()
 
-    def update_is_writable(self, is_writable: Optional[bool]) -> None:
+    def update_is_writable(self, is_writable: bool) -> None:
         self.is_writable = is_writable
 
     def idle_time_seconds(self) -> float:
@@ -1769,7 +1769,7 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                     else:
                         conn.update_last_checkin_time()
-                        conn.update_is_writable(self.is_writable)
+                        conn.update_is_writable(bool(self.is_writable))
                         self.conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
