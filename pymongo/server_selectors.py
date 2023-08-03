@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
+TagSet = Mapping[str, Any]
+TagSets = Sequence[TagSet]
 
 
 class Selection:
@@ -124,7 +126,7 @@ def writable_preferred_server_selector(selection: Selection) -> Selection:
     return writable_server_selector(selection) or secondary_server_selector(selection)
 
 
-def apply_single_tag_set(tag_set: Mapping[str, Any], selection: Selection) -> Selection:
+def apply_single_tag_set(tag_set: TagSet, selection: Selection) -> Selection:
     """All servers matching one tag set.
 
     A tag set is a dict. A server matches if its tags are a superset:
@@ -145,7 +147,7 @@ def apply_single_tag_set(tag_set: Mapping[str, Any], selection: Selection) -> Se
     )
 
 
-def apply_tag_sets(tag_sets: Sequence[Mapping[str, Any]], selection: Selection) -> Selection:
+def apply_tag_sets(tag_sets: TagSets, selection: Selection) -> Selection:
     """All servers match a list of tag sets.
 
     tag_sets is a list of dicts. The empty tag set {} matches any server,
@@ -162,15 +164,11 @@ def apply_tag_sets(tag_sets: Sequence[Mapping[str, Any]], selection: Selection) 
     return selection.with_server_descriptions([])
 
 
-def secondary_with_tags_server_selector(
-    tag_sets: Sequence[Mapping[str, Any]], selection: Selection
-) -> Selection:
+def secondary_with_tags_server_selector(tag_sets: TagSets, selection: Selection) -> Selection:
     """All near-enough secondaries matching the tag sets."""
     return apply_tag_sets(tag_sets, secondary_server_selector(selection))
 
 
-def member_with_tags_server_selector(
-    tag_sets: Sequence[Mapping[str, Any]], selection: Selection
-) -> Selection:
+def member_with_tags_server_selector(tag_sets: TagSets, selection: Selection) -> Selection:
     """All near-enough members matching the tag sets."""
     return apply_tag_sets(tag_sets, readable_server_selector(selection))
