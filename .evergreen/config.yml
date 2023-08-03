@@ -2366,6 +2366,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
+      - id: ubuntu-22.04
+        display_name: "Ubuntu 20204"
+        run_on: ubuntu2204-small
+        batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
