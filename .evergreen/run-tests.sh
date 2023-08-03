@@ -34,6 +34,10 @@ SSL=${SSL:-nossl}
 TEST_ARGS="$1"
 PYTHON=$(which python)
 
+
+echo "cryptography<35" > "constraints.txt"
+export PIP_CONSTRAINT="constraints.txt"
+
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 if [ "$AUTH" != "noauth" ]; then
@@ -68,7 +72,6 @@ fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    pip install "cryptography<35"
     pip install '.[ocsp]'
 fi
 
@@ -84,7 +87,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         export AWS_CA_BUNDLE=${CERT_PATH}
     fi
 
-    pip install "cryptography<35"
     pip install '.[encryption]'
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
