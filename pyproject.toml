@@ -68,6 +68,8 @@ ocsp = [
     "pyopenssl>=17.2.0",
     "requests<3.0.0",
     "cryptography>=2.5",
+     # cryptography 40 dropped support for PyPy <7.3.10.
+    "cryptography<40;platform_python_implementation=='PyPy' and implementation_version<'7.3.10'",
     "service_identity>=18.1.0",
 ]
 snappy = [
