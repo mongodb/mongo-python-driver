@@ -53,6 +53,7 @@ from pymongo.hello import HelloCompat
 if TYPE_CHECKING:
     from pymongo.cursor import _Hint
     from pymongo.operations import _IndexList
+    from pymongo.typings import _DocumentOut
 
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES: frozenset = frozenset(
@@ -156,7 +157,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
 
 def _check_command_response(
-    response: Mapping[str, Any],
+    response: _DocumentOut,
     max_wire_version: Optional[int],
     allowable_errors: Optional[Container[Union[int, str]]] = None,
     parse_write_concern_error: bool = False,

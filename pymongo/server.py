@@ -22,7 +22,6 @@ from typing import (
     Callable,
     ContextManager,
     List,
-    Mapping,
     Optional,
     Tuple,
     Union,
@@ -111,7 +110,7 @@ class Server:
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
         listeners: _EventListeners,
-        unpack_res: Callable[..., List[Mapping[str, Any]]],
+        unpack_res: Callable[..., List[_DocumentOut]],
     ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -193,9 +192,9 @@ class Server:
             # Must publish in find / getMore / explain command response
             # format.
             if use_cmd:
-                res: _DocumentOut = docs[0]  # type: ignore[assignment]
+                res: _DocumentOut = docs[0]
             elif operation.name == "explain":
-                res = docs[0] if docs else {}  # type: ignore[assignment]
+                res = docs[0] if docs else {}
             else:
                 res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":
