@@ -206,6 +206,7 @@ class CommandCursor(Generic[_DocumentType]):
             self.__id = cursor["id"]
         else:
             documents = response.docs
+            assert isinstance(response.data, _OpReply)
             self.__id = response.data.cursor_id
 
         if self.__id == 0:

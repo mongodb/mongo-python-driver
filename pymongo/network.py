@@ -165,6 +165,7 @@ def command(
     if publish:
         encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_start(
             orig, dbname, request_id, address, service_id=conn.service_id
         )
@@ -197,18 +198,19 @@ def command(
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
+                failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = message._convert_exception(exc)
             assert listeners is not None
             assert address is not None
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=conn.service_id  # type: ignore[arg-type]
+                duration, failure, name, request_id, address, service_id=conn.service_id
             )
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_success(
             duration,
             response_doc,

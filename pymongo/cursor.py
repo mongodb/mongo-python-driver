@@ -50,12 +50,14 @@ from pymongo.lock import _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
+    _OpMsg,
+    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
-from pymongo.typings import _CollationIn, _DocumentType
+from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
@@ -63,10 +65,8 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _DocumentOut
 
 
 # These errors mean that the server has already killed the cursor so there is
@@ -1110,6 +1110,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__data = deque(docs)
                 self.__retrieved += len(docs)
         else:
+            assert isinstance(response.data, _OpReply)
             self.__id = response.data.cursor_id
             self.__data = deque(docs)
             self.__retrieved += response.data.number_returned

@@ -192,7 +192,7 @@ class Server:
             # Must publish in find / getMore / explain command response
             # format.
             if use_cmd:
-                res = docs[0]
+                res: _DocumentOut = docs[0]
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:

@@ -74,12 +74,7 @@ from pymongo.operations import (
     _IndexKeyHint,
     _IndexList,
 )
-from pymongo.read_preferences import (
-    Primary,
-    PrimaryPreferred,
-    ReadPreference,
-    _ServerMode,
-)
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
     DeleteResult,
@@ -264,7 +259,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _conn_for_reads(
         self, session: ClientSession
-    ) -> ContextManager[Tuple[Connection, Union[PrimaryPreferred, Primary]]]:
+    ) -> ContextManager[Tuple[Connection, _ServerMode]]:
         return self.__database.client._conn_for_reads(self._read_preference_for(session), session)
 
     def _conn_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
@@ -433,6 +428,24 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         return self.__database
 
+    # @overload
+    # def with_options(
+    #     self,
+    #     codec_options: None = None,
+    #     read_preference: Optional[_ServerMode] = None,
+    #     write_concern: Optional[WriteConcern] = None,
+    #     read_concern: Optional[ReadConcern] = None,
+    # ) -> Collection[Dict[str, Any]]: ...
+
+    # @overload
+    # def with_options(
+    #     self,
+    #     codec_options: bson.CodecOptions[_DocumentType],
+    #     read_preference: Optional[_ServerMode] = None,
+    #     write_concern: Optional[WriteConcern] = None,
+    #     read_concern: Optional[ReadConcern] = None,
+    # ) -> Collection[_DocumentType]: ...
+
     def with_options(
         self,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
@@ -597,7 +610,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         def _insert_command(
-            session: ClientSession, conn: Connection, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> None:
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
@@ -861,7 +874,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
         def _update(
@@ -1737,7 +1750,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _count_cmd(
         self,
-        session: ClientSession,
+        session: Optional[ClientSession],
         conn: Connection,
         read_preference: Optional[_ServerMode],
         cmd: Mapping[str, Any],
@@ -1766,7 +1779,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode],
         cmd: Mapping[str, Any],
         collation: Optional[_CollationIn],
-        session: ClientSession,
+        session: Optional[ClientSession],
     ) -> Optional[Mapping[str, Any]]:
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
@@ -1819,7 +1832,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
@@ -1908,7 +1921,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
@@ -1922,7 +1935,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _retryable_non_cursor_read(
         self,
-        func: Callable[[ClientSession, Server, Connection, Optional[_ServerMode]], T],
+        func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
         session: Optional[ClientSession],
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
@@ -2276,18 +2289,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         codec_options: CodecOptions = CodecOptions(SON)
-        coll = self.with_options(
-            codec_options=codec_options, read_preference=ReadPreference.PRIMARY
+        coll = cast(
+            Collection[MutableMapping[str, Any]],
+            self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         explicit_session = session is not None
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: _ServerMode,
-        ) -> CommandCursor[_DocumentType]:
+        ) -> CommandCursor[MutableMapping[str, Any]]:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
@@ -2404,7 +2418,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self.__database.client._retryable_read(
             cmd.get_cursor,
-            cmd.get_read_preference(session),
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
         )
@@ -2618,7 +2632,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Union[CommandCursor[_DocumentType], RawBatchCursor[_DocumentType]]:
+    ) -> CommandCursor[_DocumentType]:
         if comment is not None:
             kwargs["comment"] = comment
         cmd = aggregation_command(
@@ -2633,7 +2647,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self.__database.client._retryable_read(
             cmd.get_cursor,
-            cmd.get_read_preference(session),
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
         )
@@ -2724,18 +2738,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
         with self.__database.client._tmp_session(session, close=False) as s:
-            return cast(
-                CommandCursor[_DocumentType],
-                self._aggregate(
-                    _CollectionAggregationCommand,
-                    pipeline,
-                    CommandCursor,
-                    session=s,
-                    explicit_session=session is not None,
-                    let=let,
-                    comment=comment,
-                    **kwargs,
-                ),
+            return self._aggregate(
+                _CollectionAggregationCommand,
+                pipeline,
+                CommandCursor,
+                session=s,
+                explicit_session=session is not None,
+                let=let,
+                comment=comment,
+                **kwargs,
             )
 
     def aggregate_raw_batches(
@@ -3047,7 +3058,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
@@ -3112,7 +3123,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         def _find_and_modify(
-            session: ClientSession, conn: Connection, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Any:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
