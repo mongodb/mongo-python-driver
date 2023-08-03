@@ -6,6 +6,22 @@ with patch_blocking():
     import time
     from threading import Thread
 
+
+"""
+Idea for monkey patching:
+
+import gevent
+gevent.monkey_patch()
+
+import pymongo.asyncio
+pymongo.asyncio.monkey_patch()
+
+_was_patched = False
+
+# Raise an error when you instantiate one of our classes and _was_patched
+# is false
+"""
+
 from bson import SON
 from pymongo import MongoClient
 from pymongo.asyncio.collection import Collection as AsyncCollection
@@ -55,13 +71,6 @@ def test_database():
     sync_thread = Thread(target=main)
     async_thread = Thread(target=async_main_entry)
 
-    """
-    Notes: if we use synchronous function calls, it still blocks as if they were both on the main thread if they use any primitives from the stdlib.
-    We probably need to somehow opt-in to using asyncio rather than basing
-    it on if greenletio is installed.
-    We could offer the equivalent of eventlet.monkey_patch and require that
-    for the use of pymongo.asyncio
-    """
     client = MongoClient("mongodb://127.0.0.1:27017/", directConnection=True)
     client.drop_database("test")
     client.close()
