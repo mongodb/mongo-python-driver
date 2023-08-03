@@ -199,7 +199,6 @@ class Server:
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
-                # assert isinstance(reply, _OpReply)
                 res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs
