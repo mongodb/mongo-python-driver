@@ -15,7 +15,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-OIDC authentication tests"
 # ensure no secrets are printed in log files
-set +x
+#set +x
 
 # load the script
 shopt -s expand_aliases # needed for `urlencode` alias
@@ -49,11 +49,11 @@ fi
 set -x
 
 # Workaround macOS python 3.9 incompatibility with system virtualenv.
-if [ "$(uname -s)" = "Darwin" ]; then
-    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
-else
+#if [ "$(uname -s)" = "Darwin" ]; then
+#    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
+#else
     VIRTUALENV=$(command -v virtualenv)
-fi
+#fi
 
 authtest () {
     if [ "Windows_NT" = "$OS" ]; then
@@ -71,7 +71,7 @@ authtest () {
     fi
     python -m pip install -U pip setuptools
     python -m pip install '.[aws]'
-    python test/auth_aws/test_auth_oidc.py -v
+    pytest -v test/auth_aws/test_auth_oidc.py
     deactivate
     rm -rf venvoidc
 }

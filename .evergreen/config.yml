@@ -792,6 +792,29 @@ functions:
           python oidc_write_orchestration.py
           python oidc_get_tokens.py
 
+  "bootstrap aws-secrets":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
+    - command: shell.exec
+      type: test
+      params:
+        shell: bash
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support aws secrets, skipping..."
+             exit 0
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          python setup_secrets.py
+
+    - command: expansions.update
+      params:
+        file: secrets-expansion.yml
+
+
   "run oidc auth test with aws credentials":
     - command: shell.exec
       type: test
