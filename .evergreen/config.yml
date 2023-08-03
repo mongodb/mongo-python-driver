@@ -2120,6 +2120,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "rapid"
+            SKIP_LEGACY_SHELL: "1"
         # - func: "add aws auth variables to file"
         # - func: "run aws auth test with regular aws credentials"
         # - func: "run aws auth test with assume role credentials"
