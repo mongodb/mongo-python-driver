@@ -8,10 +8,10 @@ class AsyncCursor:
     def __aiter__(self):
         return self
 
-    def __next__(self):
+    def __next(self):
         try:
             return self.cursor.__next__()
         except StopIteration:
             raise StopAsyncIteration
 
-    __anext__ = async_(__next__)
+    __anext__ = async_(__next)
