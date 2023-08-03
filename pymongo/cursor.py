@@ -50,12 +50,14 @@ from pymongo.lock import _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
+    _OpMsg,
+    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
-from pymongo.typings import _CollationIn, _DocumentType
+from pymongo.typings import _Address, _CollationIn, _DocumentType
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
@@ -63,7 +65,6 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
 
@@ -298,7 +299,7 @@ class Cursor(Generic[_DocumentType]):
         self.__empty = False
 
         self.__data: deque = deque()
-        self.__address = None
+        self.__address: Optional[_Address] = None
         self.__retrieved = 0
 
         self.__codec_options = collection.codec_options
@@ -1108,6 +1109,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__data = deque(docs)
                 self.__retrieved += len(docs)
         else:
+            assert isinstance(response.data, _OpReply)
             self.__id = response.data.cursor_id
             self.__data = deque(docs)
             self.__retrieved += response.data.number_returned

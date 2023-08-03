@@ -15,7 +15,7 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Tuple, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -23,7 +23,7 @@ from pymongo.auth import MongoCredential, _build_credentials_tuple
 from pymongo.common import validate_boolean
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _EventListeners
+from pymongo.monitoring import _EventListener, _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
@@ -152,7 +152,7 @@ def _parse_pool_options(
     connect_timeout = options.get("connecttimeoutms", common.CONNECT_TIMEOUT)
     socket_timeout = options.get("sockettimeoutms")
     wait_queue_timeout = options.get("waitqueuetimeoutms", common.WAIT_QUEUE_TIMEOUT)
-    event_listeners = options.get("event_listeners")
+    event_listeners = cast(Optional[Sequence[_EventListener]], options.get("event_listeners"))
     appname = options.get("appname")
     driver = options.get("driver")
     server_api = options.get("server_api")
@@ -309,7 +309,7 @@ class ClientOptions:
         return self.__load_balanced
 
     @property
-    def event_listeners(self) -> _EventListeners:
+    def event_listeners(self) -> List[_EventListeners]:
         """The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.

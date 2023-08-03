@@ -1085,7 +1085,7 @@ class Connection:
 
     def send_cluster_time(
         self,
-        command: Mapping[str, Any],
+        command: MutableMapping[str, Any],
         session: Optional[ClientSession],
         client: Optional[MongoClient],
     ) -> None:

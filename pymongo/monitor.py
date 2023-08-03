@@ -237,7 +237,7 @@ class Monitor(MonitorBase):
             address = sd.address
             duration = time.monotonic() - start
             if self._publish:
-                awaited = sd.is_server_type_known and sd.topology_version
+                awaited = bool(sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
             self._reset_connection()
