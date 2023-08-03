@@ -986,7 +986,7 @@ class ClientSession:
         self,
         command: MutableMapping[str, Any],
         is_retryable: bool,
-        read_preference: Optional[_ServerMode],
+        read_preference: _ServerMode,
         conn: Connection,
     ) -> None:
         self._check_ended()

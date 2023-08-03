@@ -873,7 +873,7 @@ class Connection:
         self,
         dbname: str,
         spec: MutableMapping[str, Any],
-        read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
