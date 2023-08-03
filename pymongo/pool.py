@@ -683,7 +683,7 @@ class Connection:
         self.max_message_size = MAX_MESSAGE_SIZE
         self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
         self.supports_sessions = False
-        self.hello_ok: Optional[bool] = None
+        self.hello_ok: bool = False
         self.is_mongos = False
         self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
@@ -1314,7 +1314,7 @@ class PoolState:
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, address: Tuple[str, int], options: PoolOptions, handshake: bool = True):
+    def __init__(self, address: _Address, options: PoolOptions, handshake: bool = True):
         """
         :Parameters:
           - `address`: a (hostname, port) tuple
@@ -1554,7 +1554,7 @@ class Pool:
 
             raise
 
-        conn = Connection(sock, self, self.address, conn_id)
+        conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         try:
             if self.handshake:
                 conn.hello()
