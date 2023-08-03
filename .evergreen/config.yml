@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone -b DRIVERS-2585 https://github.com/NoahStapp/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -537,37 +537,15 @@ functions:
     - command: shell.exec
       type: test
       params:
-        silent: true
         working_dir: "src"
         script: |
-          cat <<EOT > prepare_atlas_connectivity.sh
-          export ATLAS_FREE='${atlas_free}'
-          export ATLAS_REPL='${atlas_repl}'
-          export ATLAS_SHRD='${atlas_shrd}'
-          export ATLAS_TLS11='${atlas_tls11}'
-          export ATLAS_TLS12='${atlas_tls12}'
-          export ATLAS_SERVERLESS='${atlas_serverless}'
-          export ATLAS_SRV_FREE='${atlas_srv_free}'
-          export ATLAS_SRV_REPL='${atlas_srv_repl}'
-          export ATLAS_SRV_SHRD='${atlas_srv_shrd}'
-          export ATLAS_SRV_TLS11='${atlas_srv_tls11}'
-          export ATLAS_SRV_TLS12='${atlas_srv_tls12}'
-          export ATLAS_SRV_SERVERLESS='${atlas_srv_serverless}'
-          EOT
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
+          ${PREPARE_SHELL}
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
 
-          . ./prepare_atlas_connectivity.sh
-          rm -f ./prepare_atlas_connectivity.sh
-
           set -o errexit
           set -o xtrace
-          ${PYTHON_BINARY} -m tox -m test-atlas
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-atlas
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -799,21 +777,15 @@ functions:
     - command: shell.exec
       type: test
       params:
+        working_dir: "src"
         shell: bash
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support aws secrets, skipping..."
-             exit 0
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          python setup_secrets.py
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m aws-secrets
 
     - command: expansions.update
       params:
         file: secrets-expansion.yml
-
 
   "run oidc auth test with aws credentials":
     - command: shell.exec
@@ -1739,6 +1711,7 @@ tasks:
     - name: "atlas-connect"
       tags: ["atlas-connect"]
       commands:
+        - func: "bootstrap aws-secrets"
         - func: "run atlas tests"
 
     - name: atlas-data-lake-tests
