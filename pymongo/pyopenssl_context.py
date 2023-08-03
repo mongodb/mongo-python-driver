@@ -236,7 +236,9 @@ class SSLContext:
             # and OpenSSL's SSL_CTX_set_verify let's you pass NULL
             # for the callback option. It's weird that PyOpenSSL requires
             # this.
-            # This is optional in pyopenssl >= 20 and can be removed once minimum supported version is bumped
+            # This is optional in pyopenssl >= 20 and can be removed once minimum
+            # supported version is bumped
+            # See: pyopenssl.org/en/latest/changelog.html#id47
             return bool(retcode)
 
         self._ctx.set_verify(_VERIFY_MAP[value], _cb)
