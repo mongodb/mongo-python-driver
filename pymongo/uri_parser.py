@@ -14,10 +14,24 @@
 
 
 """Tools to parse and validate a MongoDB URI."""
+from __future__ import annotations
+
 import re
 import sys
 import warnings
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sized,
+    Tuple,
+    Union,
+    cast,
+)
 from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
@@ -32,6 +46,9 @@ from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.typings import _Address
 
+if TYPE_CHECKING:
+    from pymongo.pyopenssl_context import SSLContext
+
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"
@@ -39,7 +56,7 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
-def _unquoted_percent(s):
+def _unquoted_percent(s: str) -> bool:
     """Check for unescaped percent signs.
 
     :Parameters:
@@ -152,7 +169,7 @@ _IMPLICIT_TLSINSECURE_OPTS = {
 }
 
 
-def _parse_options(opts, delim):
+def _parse_options(opts: str, delim: Optional[str]) -> _CaseInsensitiveDictionary:
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion, and the use of a unicode options string.
@@ -174,7 +191,7 @@ def _parse_options(opts, delim):
     return options
 
 
-def _handle_security_options(options):
+def _handle_security_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
     """Raise appropriate errors when conflicting TLS options are present in
     the options dictionary.
 
@@ -214,7 +231,7 @@ def _handle_security_options(options):
 
     if "ssl" in options and "tls" in options:
 
-        def truth_value(val):
+        def truth_value(val: Any) -> Any:
             if val in ("true", "false"):
                 return val == "true"
             if isinstance(val, bool):
@@ -228,7 +245,7 @@ def _handle_security_options(options):
     return options
 
 
-def _handle_option_deprecations(options):
+def _handle_option_deprecations(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
     """Issue appropriate warnings when deprecated options are present in the
     options dictionary. Removes deprecated option key, value pairs if the
     options dictionary is found to also have the renamed option.
@@ -268,7 +285,7 @@ def _handle_option_deprecations(options):
     return options
 
 
-def _normalize_options(options):
+def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
     """Normalizes option names in the options dictionary by converting them to
     their internally-used names.
 
@@ -346,7 +363,7 @@ def split_options(
         options = _normalize_options(options)
 
     if validate:
-        options = validate_options(options, warn)
+        options = cast(_CaseInsensitiveDictionary, validate_options(options, warn))
         if options.get("authsource") == "":
             raise InvalidURI("the authSource database cannot be an empty string")
 
@@ -387,7 +404,7 @@ _ALLOWED_TXT_OPTS = frozenset(
 )
 
 
-def _check_options(nodes, options):
+def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
     # Ensure directConnection was not True if there are multiple seeds.
     if len(nodes) > 1 and options.get("directconnection"):
         raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")
@@ -577,7 +594,7 @@ def parse_uri(
     }
 
 
-def _parse_kms_tls_options(kms_tls_options):
+def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> Dict[str, SSLContext]:
     """Parse KMS TLS connection options."""
     if not kms_tls_options:
         return {}
