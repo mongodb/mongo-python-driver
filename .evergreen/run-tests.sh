@@ -68,6 +68,7 @@ fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
+    pip install "cryptography<35"
     pip install '.[ocsp]'
 fi
 
@@ -83,6 +84,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         export AWS_CA_BUNDLE=${CERT_PATH}
     fi
 
+    pip install "cryptography<35"
     pip install '.[encryption]'
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
