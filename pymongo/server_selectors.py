@@ -15,7 +15,7 @@
 """Criteria to select some ServerDescriptions from a TopologyDescription."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, TypeVar, cast
 
 from pymongo.server_type import SERVER_TYPE
 
@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
+TagSet = Mapping[str, Any]
+TagSets = Sequence[TagSet]
 
 
 class Selection:
@@ -66,7 +68,9 @@ class Selection:
     def secondary_with_max_last_write_date(self) -> Optional[ServerDescription]:
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
-            return max(secondaries.server_descriptions, key=lambda sd: sd.last_write_date)
+            return max(
+                secondaries.server_descriptions, key=lambda sd: cast(float, sd.last_write_date)
+            )
         return None
 
     @property
@@ -105,24 +109,24 @@ def writable_server_selector(selection: Selection) -> Selection:
     )
 
 
-def secondary_server_selector(selection):
+def secondary_server_selector(selection: Selection) -> Selection:
     return selection.with_server_descriptions(
         [s for s in selection.server_descriptions if s.server_type == SERVER_TYPE.RSSecondary]
     )
 
 
-def arbiter_server_selector(selection):
+def arbiter_server_selector(selection: Selection) -> Selection:
     return selection.with_server_descriptions(
         [s for s in selection.server_descriptions if s.server_type == SERVER_TYPE.RSArbiter]
     )
 
 
-def writable_preferred_server_selector(selection):
+def writable_preferred_server_selector(selection: Selection) -> Selection:
     """Like PrimaryPreferred but doesn't use tags or latency."""
     return writable_server_selector(selection) or secondary_server_selector(selection)
 
 
-def apply_single_tag_set(tag_set, selection):
+def apply_single_tag_set(tag_set: TagSet, selection: Selection) -> Selection:
     """All servers matching one tag set.
 
     A tag set is a dict. A server matches if its tags are a superset:
@@ -131,7 +135,7 @@ def apply_single_tag_set(tag_set, selection):
     The empty tag set {} matches any server.
     """
 
-    def tags_match(server_tags):
+    def tags_match(server_tags: Mapping[str, Any]) -> bool:
         for key, value in tag_set.items():
             if key not in server_tags or server_tags[key] != value:
                 return False
@@ -143,7 +147,7 @@ def apply_single_tag_set(tag_set, selection):
     )
 
 
-def apply_tag_sets(tag_sets, selection):
+def apply_tag_sets(tag_sets: TagSets, selection: Selection) -> Selection:
     """All servers match a list of tag sets.
 
     tag_sets is a list of dicts. The empty tag set {} matches any server,
@@ -160,11 +164,11 @@ def apply_tag_sets(tag_sets, selection):
     return selection.with_server_descriptions([])
 
 
-def secondary_with_tags_server_selector(tag_sets, selection):
+def secondary_with_tags_server_selector(tag_sets: TagSets, selection: Selection) -> Selection:
     """All near-enough secondaries matching the tag sets."""
     return apply_tag_sets(tag_sets, secondary_server_selector(selection))
 
 
-def member_with_tags_server_selector(tag_sets, selection):
+def member_with_tags_server_selector(tag_sets: TagSets, selection: Selection) -> Selection:
     """All near-enough members matching the tag sets."""
     return apply_tag_sets(tag_sets, readable_server_selector(selection))
