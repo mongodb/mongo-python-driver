@@ -42,7 +42,7 @@ def check_ocsp(host, port, capath):
     s = socket.socket()
     s.connect((host, port))
     try:
-        s = ctx.wrap_socket(s, server_hostname=host)
+        s = ctx.wrap_socket(s, server_hostname=host)  # type: ignore[assignment]
     finally:
         s.close()
 
