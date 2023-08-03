@@ -3,9 +3,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 . .evergreen/utils.sh
 
-# This is required for pypy3.7 UTF encoding
-export LC_ALL=en_US.UTF-8
-
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
     # system python3 doesn't exist or exists but is older than 3.7.

@@ -22,21 +22,16 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 
-set -o xtrace
-# if [ -n "${SET_XTRACE_ON}" ]; then
-#     set -o xtrace
-# else
-#     set +x
-# fi
+if [ -n "${SET_XTRACE_ON}" ]; then
+    set -o xtrace
+else
+    set +x
+fi
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="$1"
 PYTHON=$(which python)
-
-
-echo "cryptography<35" > "constraints.txt"
-export PIP_CONSTRAINT="constraints.txt"
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
