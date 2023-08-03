@@ -7,4 +7,4 @@ pushd ./test/lambda
 
 . build.sh
 popd
-. ${DRIVERS_TOOLS}/.evergreen/run-deployed-lambda-aws-tests.sh
+. ${DRIVERS_TOOLS}/.evergreen/aws_lambda/run-deployed-lambda-aws-tests.sh
