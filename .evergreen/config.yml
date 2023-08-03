@@ -545,6 +545,8 @@ functions:
 
           set -o errexit
           set -o xtrace
+          
+          source ./secrets-export.sh
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-atlas
 
   "add aws auth variables to file":
@@ -778,14 +780,27 @@ functions:
       type: test
       params:
         working_dir: "src"
+        silent: true
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
         shell: bash
         script: |
           ${PREPARE_SHELL}
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m aws-secrets
+
+          # This is required for pypy3.7 UTF encoding
+          export LC_ALL=en_US.UTF-8
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m aws-secrets -- drivers/test
 
     - command: expansions.update
       params:
-        file: secrets-expansion.yml
+        file: src/secrets-expansion.yml
 
   "run oidc auth test with aws credentials":
     - command: shell.exec
