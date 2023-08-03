@@ -580,7 +580,7 @@ functions:
               "iam_auth_ecs_secret_access_key" : "${iam_auth_ecs_secret_access_key}",
               "iam_auth_ecs_account_arn": "arn:aws:iam::557821124784:user/authtest_fargate_user",
               "iam_auth_ecs_cluster": "${iam_auth_ecs_cluster}",
-              "iam_auth_ecs_task_definition": "${iam_auth_ecs_task_definition}",
+              "iam_auth_ecs_task_definition": "${iam_auth_ecs_task_definition_2204}",
               "iam_auth_ecs_subnet_a": "${iam_auth_ecs_subnet_a}",
               "iam_auth_ecs_subnet_b": "${iam_auth_ecs_subnet_b}",
               "iam_auth_ecs_security_group": "${iam_auth_ecs_security_group}",
@@ -3237,7 +3237,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-18.04]
+    platform: [ubuntu-22.04]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
