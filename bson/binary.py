@@ -183,6 +183,13 @@ COLUMN_SUBTYPE = 7
 .. versionadded:: 4.0
 """
 
+SENSITIVE_SUBTYPE = 8
+"""BSON binary subtype for sensitive data.
+
+.. versionadded:: 4.5
+"""
+
+
 USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
 """

@@ -33,7 +33,7 @@ from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
-from pymongo.typings import _Address, _DocumentType
+from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
@@ -94,6 +94,7 @@ class CommandCursor(Generic[_DocumentType]):
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
+            assert self.__address is not None
             address = _CursorAddress(self.__address, self.__ns)
         else:
             # Skip killCursors.
@@ -219,7 +220,7 @@ class CommandCursor(Generic[_DocumentType]):
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self) -> int:
@@ -380,7 +381,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             comment,
         )
 
-    def _unpack_response(
+    def _unpack_response(  # type: ignore[override]
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
@@ -393,7 +394,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return raw_response
+        return raw_response  # type: ignore[return-value]
 
     def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
