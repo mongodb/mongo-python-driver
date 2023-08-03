@@ -1021,7 +1021,7 @@ class Connection:
         result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
-        helpers._check_command_response(result, self.max_wire_version)
+        helpers._check_command_response(result, self.max_wire_version)  # type: ignore[arg-type]
         return result
 
     def authenticate(self, reauthenticate: bool = False) -> None:

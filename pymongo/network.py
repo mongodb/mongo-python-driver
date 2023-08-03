@@ -23,7 +23,6 @@ import time
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Mapping,
     MutableMapping,
     Optional,
@@ -54,7 +53,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut
+    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -66,7 +65,7 @@ def command(
     spec: MutableMapping[str, Any],
     is_mongos: bool,
     read_preference: Optional[_ServerMode],
-    codec_options: CodecOptions,
+    codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
     client: Optional[MongoClient],
     check: bool = True,
@@ -83,7 +82,7 @@ def command(
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
-) -> Dict[str, Any]:
+) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -119,6 +118,7 @@ def command(
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
     if is_mongos and not use_op_msg:
+        assert read_preference is not None
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
@@ -176,7 +176,7 @@ def command(
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
-            response_doc = {"ok": 1}
+            response_doc: _DocumentOut = {"ok": 1}
         else:
             reply = receive_message(conn, request_id)
             conn.more_to_come = reply.more_to_come
@@ -225,7 +225,7 @@ def command(
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
 
-    return response_doc
+    return response_doc  # type: ignore[return-value]
 
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack

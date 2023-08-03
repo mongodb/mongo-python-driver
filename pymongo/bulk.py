@@ -153,7 +153,7 @@ def _merge_command(
         full_result["writeConcernErrors"].append(wce)
 
 
-def _raise_bulk_write_error(full_result: Mapping[str, Any]) -> NoReturn:
+def _raise_bulk_write_error(full_result: _DocumentOut) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])
