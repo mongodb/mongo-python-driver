@@ -690,7 +690,7 @@ class Connection:
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.compression_settings = pool.opts._compression_settings
         self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
-        self.socket_checker: SocketChecker = SocketChecker()
+        self.socket_checker = SocketChecker()
         self.oidc_token_gen_id: Optional[int] = None
         # Support for mechanism negotiation on the initial handshake.
         self.negotiated_mechs: Optional[List[str]] = None
