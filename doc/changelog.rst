@@ -18,6 +18,9 @@ PyMongo 4.5 brings a number of improvements including:
 - cryptography 2.5 or later is now required for :ref:`OCSP` support.
 - Improved bson encoding and decoding performance by up to 134%(`PYTHON-3729`_, `PYTHON-3797`_, `PYTHON-3816`_, `PYTHON-3817`_, `PYTHON-3820`_, `PYTHON-3824`_, and `PYTHON-3846`_).
 
+.. warning:: PyMongo no longer supports PyPy3 versions older than 3.8. Users
+  must upgrade to PyPy3.8+.
+
 Issues Resolved
 ...............
 
