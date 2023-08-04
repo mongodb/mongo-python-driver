@@ -1230,7 +1230,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 
     Sets socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
+    sock: Union[socket.socket, _sslConn] = _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is not None:
