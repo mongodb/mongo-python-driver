@@ -48,12 +48,12 @@ fi
 # show test output
 set -x
 
-# Workaround macOS python 3.9 incompatibility with system virtualenv.
-#if [ "$(uname -s)" = "Darwin" ]; then
-#    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
-#else
+ Workaround macOS python 3.9 incompatibility with system virtualenv.
+if [ "$(uname -s)" = "Darwin" ]; then
+    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
+else
     VIRTUALENV=$(command -v virtualenv)
-#fi
+fi
 
 authtest () {
     if [ "Windows_NT" = "$OS" ]; then
@@ -71,7 +71,7 @@ authtest () {
     fi
     python -m pip install -U pip setuptools
     python -m pip install '.[aws]'
-    pytest -v test/auth_aws/test_auth_oidc.py
+    python test/auth_aws/test_auth_oidc.py -v
     deactivate
     rm -rf venvoidc
 }

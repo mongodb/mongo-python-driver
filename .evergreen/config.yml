@@ -776,16 +776,19 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+        add_expansions_to_env: true
+#    - command: shell.exec
+#      type: test
+#      params:
+#        working_dir: "src"
+#        silent: true
+#        script: |
+#          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+#          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_aws_connection.sh"
+#            export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+#            export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+#            export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+#          EOF
     - command: shell.exec
       type: test
       params:
