@@ -860,7 +860,7 @@ class Connection:
             self.generation = self.pool_gen.get(self.service_id)
         return hello
 
-    def _next_reply(self) -> Mapping[str, Any]:
+    def _next_reply(self) -> Dict[str, Any]:
         reply = self.receive_message(None)
         self.more_to_come = reply.more_to_come
         unpacked_docs = reply.unpack_response()
