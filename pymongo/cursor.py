@@ -1130,7 +1130,7 @@ class Cursor(Generic[_DocumentType]):
         codec_options: CodecOptions,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _read_preference(self) -> _ServerMode:

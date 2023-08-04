@@ -1007,7 +1007,7 @@ class Connection:
 
     def write_command(
         self, request_id: int, msg: bytes, codec_options: CodecOptions
-    ) -> Mapping[str, Any]:
+    ) -> Dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -1021,7 +1021,7 @@ class Connection:
         result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
-        helpers._check_command_response(result, self.max_wire_version)  # type: ignore[arg-type]
+        helpers._check_command_response(result, self.max_wire_version)
         return result
 
     def authenticate(self, reauthenticate: bool = False) -> None:

@@ -25,6 +25,7 @@ from typing import (
     Mapping,
     NoReturn,
     Optional,
+    Sequence,
     Union,
 )
 
@@ -220,7 +221,7 @@ class CommandCursor(Generic[_DocumentType]):
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self) -> int:
