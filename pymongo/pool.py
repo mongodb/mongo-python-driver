@@ -1230,42 +1230,45 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 
     Sets socket's SSL and timeout options.
     """
-    sock: Union[socket.socket, _sslConn] = _create_connection(address, options)
+    sock = _create_connection(address, options)
     ssl_context = options._ssl_context
 
-    if ssl_context is not None:
-        host = address[0]
-        try:
-            # We have to pass hostname / ip address to wrap_socket
-            # to use SSLContext.check_hostname.
-            if HAS_SNI:
-                sock = ssl_context.wrap_socket(sock, server_hostname=host)
-            else:
-                sock = ssl_context.wrap_socket(sock)
-        except _CertificateError:
-            sock.close()
-            # Raise _CertificateError directly like we do after match_hostname
-            # below.
-            raise
-        except (OSError, SSLError) as exc:  # noqa: B014
-            sock.close()
-            # We raise AutoReconnect for transient and permanent SSL handshake
-            # failures alike. Permanent handshake failures, like protocol
-            # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-            _raise_connection_failure(address, exc, "SSL handshake failed: ")
-        if (
-            ssl_context.verify_mode
-            and not ssl_context.check_hostname
-            and not options.tls_allow_invalid_hostnames
-        ):
-            try:
-                ssl.match_hostname(sock.getpeercert(), hostname=host)  # type: ignore[union-attr]
-            except _CertificateError:
-                sock.close()
-                raise
+    if ssl_context is None:
+        sock.settimeout(options.socket_timeout)
+        return sock
 
-    sock.settimeout(options.socket_timeout)
-    return sock
+    host = address[0]
+    try:
+        # We have to pass hostname / ip address to wrap_socket
+        # to use SSLContext.check_hostname.
+        if HAS_SNI:
+            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
+        else:
+            ssl_sock = ssl_context.wrap_socket(sock)
+    except _CertificateError:
+        sock.close()
+        # Raise _CertificateError directly like we do after match_hostname
+        # below.
+        raise
+    except (OSError, SSLError) as exc:  # noqa: B014
+        sock.close()
+        # We raise AutoReconnect for transient and permanent SSL handshake
+        # failures alike. Permanent handshake failures, like protocol
+        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+        _raise_connection_failure(address, exc, "SSL handshake failed: ")
+    if (
+        ssl_context.verify_mode
+        and not ssl_context.check_hostname
+        and not options.tls_allow_invalid_hostnames
+    ):
+        try:
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)
+        except _CertificateError:
+            ssl_sock.close()
+            raise
+
+    ssl_sock.settimeout(options.socket_timeout)
+    return ssl_sock
 
 
 class _PoolClosedError(PyMongoError):
