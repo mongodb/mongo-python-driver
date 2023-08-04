@@ -1410,6 +1410,67 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         return self._retry_internal(retryable, func, session, bulk)
 
+    def _generate_retriable(
+        self,
+        retryable: bool,
+        func: Callable[[Optional[ClientSession], Connection, bool], T],
+        session: Optional[ClientSession],
+        writeable: bool,
+        address: Optional[_Address],
+        read_pref: Optional[_ServerMode],
+        last_error: Optional[Exception],
+        is_retrying: Callable[[], bool]
+    ) -> T:
+        """Generates a callable with func()'s return value on success
+
+        Identifying func() as not "writeable" will require a read_pref
+        """
+        local_read_pref = read_pref
+
+        def _write_wrap():
+            local_retryable = retryable
+            try:
+                max_wire_version = 0
+                server = self._select_server(writable_server_selector, session)
+                supports_session = (
+                    session is not None and server.description.retryable_writes_supported
+                )
+                with self._checkout(server, session) as conn:
+                    max_wire_version = conn.max_wire_version
+                    if local_retryable and not supports_session:
+                        if is_retrying():
+                            # A retry is not possible because this server does
+                            # not support sessions raise the last error.
+                            assert last_error is not None
+                            raise last_error
+                        local_retryable = False
+                    return func(session, conn, local_retryable)
+            except PyMongoError as exc:
+                if not local_retryable:
+                    raise
+                assert session
+                # Add the RetryableWriteError label, if applicable.
+                _add_retryable_write_error(exc, max_wire_version)
+                raise
+
+        def _read_wrap():
+            if local_read_pref is None:
+                raise PyMongoError("read_pref is required on retriable read connection attempt")
+
+            server = self._select_server(local_read_pref, session, address=address)
+            with self._conn_from_server(local_read_pref, server, session) as (
+                conn,
+                read_pref,
+            ):
+                if is_retrying() and not retryable:
+                    # A retry is not possible because this server does
+                    # not support retryable reads, raise the last error.
+                    assert last_error is not None
+                    raise last_error
+                return func(session, server, conn, read_pref)
+
+        return _write_wrap if writeable else _read_wrap
+
     @_csot.apply
     def _retry_internal(
         self,
@@ -1417,23 +1478,36 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: Callable[[Optional[ClientSession], Connection, bool], T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
+        writeable: bool = True,
+        address: Optional[_Address] = None,
+        read_pref: Optional[_ServerMode] = None
     ) -> T:
         """Internal retryable write helper."""
-        max_wire_version = 0
         last_error: Optional[Exception] = None
         retrying = False
         multiple_retries = _csot.get_timeout() is not None
 
         def is_retrying() -> bool:
             return bulk.retrying if bulk else retrying
-
+        
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
-        if retryable and session and not session.in_transaction:
+        if retryable and session and not session.in_transaction and writeable:
             session._start_retryable_write()
             if bulk:
                 bulk.started_retryable_write = True
+        
+        retriable_callback = self._generate_retriable(
+            retryable,
+            func,
+            session,
+            writeable,
+            address,
+            read_pref,
+            is_retrying,
+            last_error,
+        )
 
         while True:
             if is_retrying():
@@ -1442,20 +1516,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     assert last_error is not None
                     raise last_error
             try:
-                server = self._select_server(writable_server_selector, session)
-                supports_session = (
-                    session is not None and server.description.retryable_writes_supported
-                )
-                with self._checkout(server, session) as conn:
-                    max_wire_version = conn.max_wire_version
-                    if retryable and not supports_session:
-                        if is_retrying():
-                            # A retry is not possible because this server does
-                            # not support sessions raise the last error.
-                            assert last_error is not None
-                            raise last_error
-                        retryable = False
-                    return func(session, conn, retryable)
+                return retriable_callback()
             except ServerSelectionTimeoutError:
                 if is_retrying():
                     # The application may think the write was never attempted
@@ -1467,12 +1528,25 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # be a persistent outage. Attempting to retry in this case will
                 # most likely be a waste of time.
                 raise
+            except ConnectionFailure as exc:
+                # This exception is endemic in read-sponsored issues``
+                if not retryable or (retrying and not multiple_retries):
+                    raise
+                retrying = True
+                last_error = exc
+            except OperationFailure as exc:
+                # This exception is endemic in read-sponsored issues``
+                if not retryable or (retrying and not multiple_retries):
+                    raise
+                if exc.code not in helpers._RETRYABLE_ERROR_CODES:
+                    raise
+                retrying = True
+                last_error = exc
             except PyMongoError as exc:
-                if not retryable:
+                # Only execute additional handling when on a write call with retries
+                if not (retryable and writeable):
                     raise
                 assert session
-                # Add the RetryableWriteError label, if applicable.
-                _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
                 if retryable_error:
                     session._unpin()
@@ -1490,7 +1564,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if last_error is None:
                     last_error = exc
 
-    @_csot.apply
+
     def _retryable_read(
         self,
         func: Callable[[Optional[ClientSession], Server, Connection, _ServerMode], T],
@@ -1506,54 +1580,21 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
+
         retryable = (
             retryable and self.options.retry_reads and not (session and session.in_transaction)
         )
-        last_error: Optional[Exception] = None
-        retrying = False
-        multiple_retries = _csot.get_timeout() is not None
 
-        while True:
-            if retrying:
-                remaining = _csot.remaining()
-                if remaining is not None and remaining <= 0:
-                    assert last_error is not None
-                    raise last_error
-            try:
-                server = self._select_server(read_pref, session, address=address)
-                with self._conn_from_server(read_pref, server, session) as (
-                    conn,
-                    read_pref,
-                ):
-                    if retrying and not retryable:
-                        # A retry is not possible because this server does
-                        # not support retryable reads, raise the last error.
-                        assert last_error is not None
-                        raise last_error
-                    return func(session, server, conn, read_pref)
-            except ServerSelectionTimeoutError:
-                if retrying:
-                    # The application may think the write was never attempted
-                    # if we raise ServerSelectionTimeoutError on the retry
-                    # attempt. Raise the original exception instead.
-                    assert last_error is not None
-                    raise last_error
-                # A ServerSelectionTimeoutError error indicates that there may
-                # be a persistent outage. Attempting to retry in this case will
-                # most likely be a waste of time.
-                raise
-            except ConnectionFailure as exc:
-                if not retryable or (retrying and not multiple_retries):
-                    raise
-                retrying = True
-                last_error = exc
-            except OperationFailure as exc:
-                if not retryable or (retrying and not multiple_retries):
-                    raise
-                if exc.code not in helpers._RETRYABLE_ERROR_CODES:
-                    raise
-                retrying = True
-                last_error = exc
+        return self._retry_internal(
+            self,
+            retryable,
+            func,
+            session,
+            None,
+            writeable=False,
+            address=address,
+            read_pref=read_pref
+        )
 
     def _retryable_write(
         self,
