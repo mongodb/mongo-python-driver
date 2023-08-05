@@ -694,7 +694,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         value: int = 1,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: CodecOptions[Dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
@@ -711,7 +711,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         value: int = 1,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: CodecOptions[_CodecDocumentType] = ...,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
@@ -727,7 +727,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         value: int = 1,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = ReadPreference.PRIMARY,
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: Union[
             CodecOptions[Dict[str, Any]], CodecOptions[_CodecDocumentType]
         ] = DEFAULT_CODEC_OPTIONS,

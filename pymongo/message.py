@@ -1018,7 +1018,7 @@ class _BulkWriteContext:
             cmd = self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
-            result = self.conn.unack_write(msg, max_doc_size)
+            result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if result is not None:
@@ -1050,7 +1050,7 @@ class _BulkWriteContext:
         request_id: int,
         msg: bytes,
         docs: List[Mapping[str, Any]],
-    ) -> Mapping[str, Any]:
+    ) -> Dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
@@ -1127,7 +1127,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
     def __batch_command(
         self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]]
-    ) -> Tuple[Mapping[str, Any], List[Mapping[str, Any]]]:
+    ) -> Tuple[Dict[str, Any], List[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -1517,7 +1517,7 @@ class _OpReply:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> List[Dict[str, Any]]:
         """Unpack a response from the database and decode the BSON document(s).
 
         Check the response for errors and unpack, returning a dictionary
@@ -1541,7 +1541,7 @@ class _OpReply:
             return bson.decode_all(self.documents, codec_options)
         return bson._decode_all_selective(self.documents, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> Mapping[str, Any]:
+    def command_response(self, codec_options: CodecOptions) -> Dict[str, Any]:
         """Unpack a command response."""
         docs = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
@@ -1604,7 +1604,7 @@ class _OpMsg:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> List[Dict[str, Any]]:
         """Unpack a OP_MSG command response.
 
         :Parameters:
@@ -1619,7 +1619,7 @@ class _OpMsg:
         assert not legacy_response
         return bson._decode_all_selective(self.payload_document, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> Mapping[str, Any]:
+    def command_response(self, codec_options: CodecOptions) -> Dict[str, Any]:
         """Unpack a command response."""
         return self.unpack_response(codec_options=codec_options)[0]
 

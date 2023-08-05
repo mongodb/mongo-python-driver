@@ -116,6 +116,7 @@ if TYPE_CHECKING:
     import sys
     from types import TracebackType
 
+    from bson.objectid import ObjectId
     from pymongo.bulk import _Bulk
     from pymongo.client_session import ClientSession, _ServerSession
     from pymongo.cursor import _ConnectionManager
@@ -1898,7 +1899,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         else:
             yield None
 
-    def _send_cluster_time(self, command: MutableMapping[str, Any], session: ClientSession) -> None:
+    def _send_cluster_time(
+        self, command: MutableMapping[str, Any], session: Optional[ClientSession]
+    ) -> None:
         topology_time = self._topology.max_cluster_time()
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
@@ -2255,7 +2258,7 @@ class _MongoClientErrorHandler:
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
         self.completed_handshake = False
-        self.service_id = None
+        self.service_id: Optional[ObjectId] = None
         self.handled = False
 
     def contribute_socket(self, conn: Connection, completed_handshake: bool = True) -> None:
