@@ -56,15 +56,15 @@ class TestCreateSearchIndex(IntegrationTest):
                 coll.create_search_index(model_kwargs)
 
 
-class TestSearchIndexProse(IntegrationTest):
+class TestSearchIndexProse(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         if not os.environ.get("TEST_INDEX_MANAGEMENT"):
             raise unittest.SkipTest("Skipping index management tests")
         url = os.environ.get("MONGODB_URI")
         username = os.environ.get("DB_USER")
         password = os.environ.get("DB_PASSWORD")
-        super().setUpClass()
         cls.client = MongoClient(url, username=username, password=password)
         cls.client.drop_database(_NAME)
         cls.db = cls.client.test_search_index_prose
