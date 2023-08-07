@@ -165,7 +165,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
-    TEST_ARGS="-s test.test_index_management"
+    TEST_ARGS="test/test_index_management.py"
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
