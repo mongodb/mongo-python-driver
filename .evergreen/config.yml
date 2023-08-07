@@ -1717,7 +1717,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "rapid"
+            VERSION: "latest"
             TOPOLOGY: "replica_set"
         - func: "run tests"
           vars:
