@@ -1312,12 +1312,12 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-      - command: subprocess.exec
+      - command: shell.exec
         params:
           working_dir: src
-          binary: bash
-          args:
-            echo "TEST_INDEX_URI: ${MONGODB_URI}" > src/atlas-expansion.yml
+          shell: bash
+          script: |-
+            echo "TEST_INDEX_URI: ${MONGODB_URI}" > atlas-expansion.yml
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
