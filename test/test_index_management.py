@@ -213,12 +213,19 @@ class TestSearchIndexProse(unittest.TestCase):
         coll0.drop_search_index("foo")
 
 
-globals().update(
-    generate_test_classes(
-        _TEST_PATH,
-        module=__name__,
+# TODO: Remove after DRIVERS-2688 is complete.
+# Since these tests expect errors, they would fail if run against an
+# Atlas 7.0+ cluster.
+# We could technically leave this in place since none of our current
+# Atlas-specific tests run the entire set of modules in the test folder, but
+# this guard ensures that the tests only run when we intend them to.
+if os.environ.get("TEST_INDEX_MANAGEMENT"):
+    globals().update(
+        generate_test_classes(
+            _TEST_PATH,
+            module=__name__,
+        )
     )
-)
 
 if __name__ == "__main__":
     unittest.main()
