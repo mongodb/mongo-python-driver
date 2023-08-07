@@ -215,6 +215,7 @@ class ClientOptions:
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
         self.__load_balanced = options.get("loadbalanced")
         self.__timeout = options.get("timeoutms")
+        self.__sdam_mode = options.get("sdammode", common.SDAM_MODE)
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -318,3 +319,11 @@ class ClientOptions:
         """
         assert self.__pool_options._event_listeners is not None
         return self.__pool_options._event_listeners.event_listeners()
+
+    @property
+    def sdam_mode(self) -> str:
+        """The configured SDAM mode.
+
+        .. versionadded: 4.5
+        """
+        return self.__sdam_mode

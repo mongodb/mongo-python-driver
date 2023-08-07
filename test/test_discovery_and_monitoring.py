@@ -34,6 +34,7 @@ from test.utils import (
     single_client,
     wait_until,
 )
+from unittest.mock import patch
 
 from bson import Timestamp, json_util
 from pymongo import common, monitoring
@@ -339,6 +340,43 @@ class TestPoolManagement(IntegrationTest):
             listener.wait_for_event(monitoring.PoolClearedEvent, 1)
             listener.wait_for_event(monitoring.ServerHeartbeatSucceededEvent, 1)
             listener.wait_for_event(monitoring.PoolReadyEvent, 1)
+
+
+class TestSdamMode(IntegrationTest):
+    def test_rtt_connection_is_enabled_stream(self):
+        client = rs_or_single_client(sdamMode="stream")
+        self.addCleanup(client.close)
+        client.admin.command("ping")
+        _, server = next(iter(client._topology._servers.items()))
+        monitor = server._monitor
+        self.assertTrue(monitor._stream)
+        self.assertIsNotNone(monitor._rtt_monitor._executor._thread)
+
+    def test_rtt_connection_is_disabled_poll(self):
+        client = rs_or_single_client(sdamMode="poll")
+        self.addCleanup(client.close)
+        self.assert_rtt_connection_is_disabled(client)
+
+    def test_rtt_connection_is_disabled_auto(self):
+        envs = [
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9"},
+            {"FUNCTIONS_WORKER_RUNTIME": "python"},
+            {"K_SERVICE": "gcpservicename"},
+            {"FUNCTION_NAME": "gcpfunctionname"},
+            {"VERCEL": "1"},
+        ]
+        for env in envs:
+            with patch.dict("os.environ", env):
+                client = rs_or_single_client(sdamMode="auto")
+                self.addCleanup(client.close)
+                self.assert_rtt_connection_is_disabled(client)
+
+    def assert_rtt_connection_is_disabled(self, client):
+        client.admin.command("ping")
+        _, server = next(iter(client._topology._servers.items()))
+        monitor = server._monitor
+        self.assertFalse(monitor._stream)
+        self.assertIsNone(monitor._rtt_monitor._executor._thread)
 
 
 # Generate unified tests.

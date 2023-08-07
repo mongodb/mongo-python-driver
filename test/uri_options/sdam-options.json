@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "description": "sdamMode=auto",
+      "uri": "mongodb://example.com/?sdamMode=auto",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "sdamMode": "auto"
+      }
+    },
+    {
+      "description": "sdamMode=stream",
+      "uri": "mongodb://example.com/?sdamMode=stream",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "sdamMode": "stream"
+      }
+    },
+    {
+      "description": "sdamMode=poll",
+      "uri": "mongodb://example.com/?sdamMode=poll",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "sdamMode": "poll"
+      }
+    },
+    {
+      "description": "invalid sdamMode",
+      "uri": "mongodb://example.com/?sdamMode=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": {}
+    }
+  ]
+}
