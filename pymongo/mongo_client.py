@@ -1419,7 +1419,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address],
         read_pref: Optional[_ServerMode],
         last_error: Optional[Exception],
-        is_retrying: Callable[[], bool]
+        is_retrying: Callable[[], bool],
     ) -> T:
         """Generates a callable with func()'s return value on success
 
@@ -1480,7 +1480,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         bulk: Optional[_Bulk],
         writeable: bool = True,
         address: Optional[_Address] = None,
-        read_pref: Optional[_ServerMode] = None
+        read_pref: Optional[_ServerMode] = None,
     ) -> T:
         """Internal retryable write helper."""
         last_error: Optional[Exception] = None
@@ -1489,7 +1489,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         def is_retrying() -> bool:
             return bulk.retrying if bulk else retrying
-        
+
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
@@ -1497,7 +1497,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             session._start_retryable_write()
             if bulk:
                 bulk.started_retryable_write = True
-        
+
         retriable_callback = self._generate_retriable(
             retryable,
             func,
@@ -1564,7 +1564,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if last_error is None:
                     last_error = exc
 
-
     def _retryable_read(
         self,
         func: Callable[[Optional[ClientSession], Server, Connection, _ServerMode], T],
@@ -1586,13 +1585,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         return self._retry_internal(
-            retryable,
-            func,
-            session,
-            None,
-            writeable=False,
-            address=address,
-            read_pref=read_pref
+            retryable, func, session, None, writeable=False, address=address, read_pref=read_pref
         )
 
     def _retryable_write(
