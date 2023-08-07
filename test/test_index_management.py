@@ -213,13 +213,12 @@ class TestSearchIndexProse(unittest.TestCase):
         coll0.drop_search_index("foo")
 
 
-if os.environ.get("TEST_INDEX_MANAGEMENT"):
-    globals().update(
-        generate_test_classes(
-            _TEST_PATH,
-            module=__name__,
-        )
+globals().update(
+    generate_test_classes(
+        _TEST_PATH,
+        module=__name__,
     )
+)
 
 if __name__ == "__main__":
     unittest.main()

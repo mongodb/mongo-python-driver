@@ -442,7 +442,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
+          # Disable xtrace
+          set +x
           if [ -n "${set_xtrace_on}" ]; then
             export SET_XTRACE_ON="${set_xtrace_on}"
           fi
