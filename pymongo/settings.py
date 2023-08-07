@@ -95,7 +95,7 @@ class TopologySettings:
         return self._pool_options
 
     @property
-    def monitor_class(self) -> Optional[Type[monitor.Monitor]]:
+    def monitor_class(self) -> Type[monitor.Monitor]:
         return self._monitor_class
 
     @property

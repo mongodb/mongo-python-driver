@@ -1095,7 +1095,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._server_property("address")
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self) -> Optional[_Address]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -1108,7 +1108,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_primary()
 
     @property
-    def secondaries(self) -> Set[Tuple[str, int]]:
+    def secondaries(self) -> Set[_Address]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1121,7 +1121,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_secondaries()
 
     @property
-    def arbiters(self) -> Set[Tuple[str, int]]:
+    def arbiters(self) -> Set[_Address]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1728,7 +1728,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = topology.select_server_by_address(tuple(address))
+            server = topology.select_server_by_address(tuple(address))  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
             server = topology.select_server(writable_server_selector)
@@ -1903,7 +1903,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
             if topology_time["clusterTime"] > session_time["clusterTime"]:
-                cluster_time = topology_time
+                cluster_time: Optional[Mapping[str, Any]] = topology_time
             else:
                 cluster_time = session_time
         else:
@@ -2265,9 +2265,7 @@ class _MongoClientErrorHandler:
         self.service_id = conn.service_id
         self.completed_handshake = completed_handshake
 
-    def handle(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
-    ) -> None:
+    def handle(self, exc_type: Optional[Type[Exception]], exc_val: Optional[Exception]) -> None:
         if self.handled or exc_type is None:
             return
         self.handled = True
@@ -2282,7 +2280,7 @@ class _MongoClientErrorHandler:
                     "RetryableWriteError"
                 ):
                     self.session._unpin()
-
+        assert exc_val is not None
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
@@ -2297,8 +2295,8 @@ class _MongoClientErrorHandler:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
+        exc_type: Optional[Type[Exception]],
+        exc_val: Optional[Exception],
         exc_tb: Optional[TracebackType],
     ) -> None:
         return self.handle(exc_type, exc_val)
