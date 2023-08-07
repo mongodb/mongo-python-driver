@@ -534,20 +534,21 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
 
   "run atlas tests":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
+        add_expansions_to_env: true
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-
           set -o errexit
           set -o xtrace
-          
-          source ./secrets-export.sh
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-atlas
+
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-atlas -- "" drivers/test
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -785,7 +786,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
 
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m aws-secrets -- drivers/test
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m aws-secrets -- "" drivers/test
 
     - command: expansions.update
       params:
@@ -1715,7 +1716,6 @@ tasks:
     - name: "atlas-connect"
       tags: ["atlas-connect"]
       commands:
-        - func: "bootstrap aws-secrets"
         - func: "run atlas tests"
 
     - name: atlas-data-lake-tests

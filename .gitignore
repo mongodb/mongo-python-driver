@@ -17,3 +17,5 @@ mongocryptd.pid
 .idea/
 .nova/
 venv/
+secrets-expansion.yml
+secrets-export.sh
