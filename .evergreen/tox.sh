@@ -28,4 +28,4 @@ else # No toolchain present, set up virtualenv before installing tox
     }
 fi
 
-run_tox "${@:2}"
+run_tox "${@:1}"
