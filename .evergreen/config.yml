@@ -489,8 +489,8 @@ functions:
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
-            export DB_USER=${DRIVERS_ATLAS_LAMBDA_USER}
-            export DB_PASSWORD=${DRIVERS_ATLAS_LAMBDA_PASSWORD}
+            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           MONGODB_VERSION=${VERSION} \
