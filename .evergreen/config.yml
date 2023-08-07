@@ -776,7 +776,6 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
-        add_expansions_to_env: true
 #    - command: shell.exec
 #      type: test
 #      params:
@@ -792,6 +791,7 @@ functions:
     - command: shell.exec
       type: test
       params:
+        add_expansions_to_env: true
         working_dir: "src"
         shell: bash
         script: |
