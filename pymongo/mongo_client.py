@@ -1586,7 +1586,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         return self._retry_internal(
-            self,
             retryable,
             func,
             session,
