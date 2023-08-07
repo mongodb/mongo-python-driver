@@ -754,6 +754,7 @@ Bye"""
             # Kill the cursor to simulate the cursor timing out on the server
             # when an application spends a long time between two calls to
             # readchunk().
+            assert client.address is not None
             client._close_cursor_now(
                 outfile._GridOut__chunk_iter._cursor.cursor_id,
                 _CursorAddress(client.address, db.fs.chunks.full_name),

@@ -22,7 +22,6 @@ from typing import (
     Callable,
     ContextManager,
     List,
-    Mapping,
     Optional,
     Tuple,
     Union,
@@ -45,6 +44,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection, Pool
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -109,8 +109,8 @@ class Server:
         conn: Connection,
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
-        listeners: _EventListeners,
-        unpack_res: Callable[..., List[Mapping[str, Any]]],
+        listeners: Optional[_EventListeners],
+        unpack_res: Callable[..., List[_DocumentOut]],
     ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -126,6 +126,7 @@ class Server:
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
         duration = None
+        assert listeners is not None
         publish = listeners.enabled_for_commands
         if publish:
             start = datetime.now()
@@ -140,6 +141,7 @@ class Server:
 
         if publish:
             cmd, dbn = operation.as_command(conn)
+            assert listeners is not None
             listeners.publish_command_start(
                 cmd, dbn, request_id, conn.address, service_id=conn.service_id
             )
@@ -174,9 +176,10 @@ class Server:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure = exc.details
+                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
                 else:
                     failure = _convert_exception(exc)
+                assert listeners is not None
                 listeners.publish_command_failure(
                     duration,
                     failure,
@@ -192,15 +195,16 @@ class Server:
             # Must publish in find / getMore / explain command response
             # format.
             if use_cmd:
-                res = docs[0]
+                res: _DocumentOut = docs[0]
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
-                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
+                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs
                 else:
                     res["cursor"]["nextBatch"] = docs
+            assert listeners is not None
             listeners.publish_command_success(
                 duration,
                 res,

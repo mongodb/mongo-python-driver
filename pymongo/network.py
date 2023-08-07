@@ -23,7 +23,6 @@ import time
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Mapping,
     MutableMapping,
     Optional,
@@ -48,14 +47,13 @@ from pymongo.socket_checker import _errno_from_exception
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo.client_session import ClientSession
-    from pymongo.collation import Collation
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.mongo_client import MongoClient
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address
+    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -66,8 +64,8 @@ def command(
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
-    read_preference: _ServerMode,
-    codec_options: CodecOptions,
+    read_preference: Optional[_ServerMode],
+    codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
     client: Optional[MongoClient],
     check: bool = True,
@@ -77,14 +75,14 @@ def command(
     max_bson_size: Optional[int] = None,
     read_concern: Optional[ReadConcern] = None,
     parse_write_concern_error: bool = False,
-    collation: Optional[Collation] = None,
+    collation: Optional[_CollationIn] = None,
     compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
     use_op_msg: bool = False,
     unacknowledged: bool = False,
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
-) -> Dict[str, Any]:
+) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -120,6 +118,7 @@ def command(
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
     if is_mongos and not use_op_msg:
+        assert read_preference is not None
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
@@ -166,6 +165,7 @@ def command(
     if publish:
         encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_start(
             orig, dbname, request_id, address, service_id=conn.service_id
         )
@@ -176,7 +176,7 @@ def command(
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
-            response_doc = {"ok": 1}
+            response_doc: _DocumentOut = {"ok": 1}
         else:
             reply = receive_message(conn, request_id)
             conn.more_to_come = reply.more_to_come
@@ -198,10 +198,11 @@ def command(
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
+                failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = message._convert_exception(exc)
             assert listeners is not None
+            assert address is not None
             listeners.publish_command_failure(
                 duration, failure, name, request_id, address, service_id=conn.service_id
             )
@@ -209,6 +210,7 @@ def command(
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         assert listeners is not None
+        assert address is not None
         listeners.publish_command_success(
             duration,
             response_doc,
@@ -223,14 +225,14 @@ def command(
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
 
-    return response_doc
+    return response_doc  # type: ignore[return-value]
 
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
 def receive_message(
-    conn: Connection, request_id: int, max_message_size: int = MAX_MESSAGE_SIZE
+    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():

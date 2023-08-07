@@ -15,6 +15,7 @@
    .. autodata:: CSHARP_LEGACY
    .. autodata:: MD5_SUBTYPE
    .. autodata:: COLUMN_SUBTYPE
+   .. autodata:: SENSITIVE_SUBTYPE
    .. autodata:: USER_DEFINED_SUBTYPE
 
    .. autoclass:: UuidRepresentation

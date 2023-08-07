@@ -20,7 +20,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Container,
     ContextManager,
     Generic,
     Iterable,
@@ -268,11 +267,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _command(
         self,
         conn: Connection,
-        command: Mapping[str, Any],
+        command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = None,
         check: bool = True,
-        allowable_errors: Optional[Container[Any]] = None,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         collation: Optional[_CollationIn] = None,
@@ -1753,7 +1752,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: Mapping[str, Any],
+        cmd: SON[str, Any],
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
@@ -1777,7 +1776,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: Mapping[str, Any],
+        cmd: SON[str, Any],
         collation: Optional[_CollationIn],
         session: Optional[ClientSession],
     ) -> Optional[Mapping[str, Any]]:
