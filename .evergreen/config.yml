@@ -359,7 +359,8 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-mockupdb
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -379,7 +380,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
           fi
     # Run in the background so the mock servers don't block the EVG task.
     - command: shell.exec
@@ -389,7 +390,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             # The -u options forces the stdout and stderr streams to be unbuffered.
             # TMPDIR is required to avoid "AF_UNIX path too long" errors.
             TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
@@ -404,7 +405,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             for i in $(seq 1 1 10); do
                sleep 1
                if python -u kms_kmip_client.py; then
@@ -441,8 +442,8 @@ functions:
       params:
         working_dir: "src"
         script: |
+          set -o xtrace
           if [ -n "${set_xtrace_on}" ]; then
-            set -o xtrace
             export SET_XTRACE_ON="${set_xtrace_on}"
           fi
           ${PREPARE_SHELL}
@@ -488,17 +489,20 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
-          MONGODB_VERSION=${VERSION} \
-            PYTHON_BINARY=${PYTHON_BINARY} \
-            GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          if [ -z "$PYTHON_BINARY" ]; then
+            export PYTHON_BINARY=${python3_binary}
+          fi
+
+          GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
             SSL=${SSL} \
-            DATA_LAKE=${DATA_LAKE} \
+            TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -1198,6 +1202,7 @@ task_groups:
               SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
               SERVERLESS_INSTANCE_NAME=${SERVERLESS_INSTANCE_NAME} \
               bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+      - func: "upload test results"
     tasks:
       - ".serverless"
 
@@ -1235,52 +1240,54 @@ task_groups:
             export GCPKMS_ZONE=${GCPKMS_ZONE}
             export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
             $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+      - func: "upload test results"
     tasks:
       - testgcpkms-task
 
   - name: testazurekms_task_group
     setup_group:
-    - func: fetch source
-    - func: prepare resources
-    - func: fix absolute paths
-    - func: make files executable
-    - command: shell.exec
-      params:
-        silent: true
-        shell: bash
-        script: |-
-          set -o errexit
-          ${PREPARE_SHELL}
-          echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-          echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-          # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-          chmod 600 /tmp/testazurekms_privatekey
-          export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-          export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-          export AZUREKMS_SECRET="${testazurekms_secret}"
-          export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-          export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-          export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-          export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-          export AZUREKMS_SCOPE="${testazurekms_scope}"
-          export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          silent: true
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
+            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
+            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
+            chmod 600 /tmp/testazurekms_privatekey
+            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
+            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
+            export AZUREKMS_SECRET="${testazurekms_secret}"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
+            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
+            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
+            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
+            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
     teardown_group:
-    # Load expansions again. The setup task may have failed before running `expansions.update`.
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
-    - command: shell.exec
-      params:
-        shell: bash
-        script: |-
-          ${PREPARE_SHELL}
-          export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-          export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      # Load expansions again. The setup task may have failed before running `expansions.update`.
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      - func: "upload test results"
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -1716,7 +1723,7 @@ tasks:
         - func: "bootstrap data lake"
         - func: "run tests"
           vars:
-            DATA_LAKE: "true"
+            TEST_DATA_LAKE: "true"
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -2229,7 +2236,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/run-tests.sh" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -2248,7 +2255,7 @@ tasks:
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test-eg
 
     - name: testazurekms-task
       commands:
@@ -2282,7 +2289,7 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/run-tests.sh" \
+            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2306,7 +2313,7 @@ tasks:
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-            ./.evergreen/run-tests.sh
+            ./.evergreen/tox.sh -m test-eg
 
 axes:
   # Choice of distro
