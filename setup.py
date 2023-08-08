@@ -175,7 +175,7 @@ ext_modules = [
 ]
 
 
-if "--no_ext" in sys.argv or "NO_EXT" in os.environ:
+if "--no_ext" in sys.argv or os.environ.get("NO_EXT"):
     sys.argv.remove("--no_ext")
     ext_modules = []
 elif sys.platform.startswith("java") or sys.platform == "cli" or "PyPy" in sys.version:

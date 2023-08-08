@@ -15,6 +15,7 @@
 """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
 context.
 """
+from __future__ import annotations
 
 import socket as _socket
 import ssl as _stdlibssl
