@@ -968,7 +968,7 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh test-eg
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec
