@@ -99,7 +99,7 @@ class TopologySettings:
         return self._monitor_class
 
     @property
-    def condition_class(self) -> Optional[Type[threading.Condition]]:
+    def condition_class(self) -> Type[threading.Condition]:
         return self._condition_class
 
     @property

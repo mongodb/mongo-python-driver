@@ -1096,7 +1096,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._server_property("address")
 
     @property
-    def primary(self) -> Optional[_Address]:
+    def primary(self) -> Optional[Tuple[str, int]]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -1106,7 +1106,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
-        return self._topology.get_primary()
+        return self._topology.get_primary()  # type: ignore[return-value]
 
     @property
     def secondaries(self) -> Set[_Address]:
@@ -2271,9 +2271,8 @@ class _MongoClientErrorHandler:
     def handle(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
     ) -> None:
-        if self.handled or exc_type is None:
+        if self.handled or exc_val is None:
             return
-        assert exc_val is not None
         self.handled = True
         if self.session:
             if isinstance(exc_val, ConnectionFailure):

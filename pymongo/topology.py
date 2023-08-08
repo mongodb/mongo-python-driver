@@ -75,6 +75,8 @@ if TYPE_CHECKING:
     from pymongo.settings import TopologySettings
     from pymongo.typings import _Address
 
+ClusterTime = Optional[Mapping[str, Any]]
+
 
 def process_events_queue(queue_ref: weakref.ReferenceType[Optional[queue.Queue]]) -> bool:
     q = queue_ref()
@@ -145,15 +147,15 @@ class Topology:
         self._opened = False
         self._closed = False
         self._lock = _create_lock()
-        assert self._settings.condition_class is not None
         self._condition = self._settings.condition_class(self._lock)
         self._servers: Dict[_Address, Server] = {}
         self._pid: Optional[int] = None
-        self._max_cluster_time: Optional[Mapping[str, Any]] = None
+        self._max_cluster_time: ClusterTime = None
         self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
-            weak: weakref.ReferenceType[Optional[queue.Queue]]
+            assert self._events is not None
+            weak: weakref.ReferenceType[queue.Queue]
 
             def target() -> bool:
                 return process_events_queue(weak)
@@ -475,8 +477,7 @@ class Topology:
             ):
                 return set()
 
-            # mypy doesn't recognize classes that implement a __getitem__ as something that is iterable
-            return {sd.address for sd in selector(self._new_selection())}  # type: ignore[attr-defined]
+            return {sd.address for sd in iter(selector(self._new_selection()))}
 
     def get_secondaries(self) -> Set[_Address]:
         """Return set of secondary addresses."""
