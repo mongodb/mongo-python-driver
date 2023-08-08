@@ -1505,8 +1505,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             writeable,
             address,
             read_pref,
-            is_retrying,
             last_error,
+            is_retrying,
         )
 
         while True:
