@@ -164,6 +164,10 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
     fi
 fi
 
+if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+    TEST_ARGS="test/test_index_management.py"
+fi
+
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test/test_data_lake.py"
 fi
@@ -190,7 +194,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
 
-    python -m pytest $TEST_ARGS
+    python -m pytest -v $TEST_ARGS
 else
     python -m pip install $GREEN_FRAMEWORK
     python green_framework_test.py $GREEN_FRAMEWORK

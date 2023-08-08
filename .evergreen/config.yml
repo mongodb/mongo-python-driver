@@ -442,7 +442,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
+          # Disable xtrace
+          set +x
           if [ -n "${set_xtrace_on}" ]; then
             export SET_XTRACE_ON="${set_xtrace_on}"
           fi
@@ -487,6 +488,12 @@ functions:
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
+          fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export TEST_INDEX_MANAGEMENT=1
+            export MONGODB_URI="${TEST_INDEX_URI}"
+            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           export PYTHON_BINARY=${PYTHON_BINARY}
@@ -1293,6 +1300,46 @@ task_groups:
     tasks:
     - testazurekms-task
 
+  - name: test_atlas_task_group_search_indexes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          env:
+            MONGODB_VERSION: "7.0"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+      - command: shell.exec
+        params:
+          working_dir: src
+          shell: bash
+          script: |-
+            echo "TEST_INDEX_URI: ${MONGODB_URI}" > atlas-expansion.yml
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+    teardown_group:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - test-search-index-helpers
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1665,6 +1712,16 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run enterprise auth tests"
+
+    - name: "test-search-index-helpers"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+          vars:
+            TEST_INDEX_MANAGEMENT: "1"
 
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
@@ -3102,6 +3159,14 @@ buildvariants:
   display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
   tasks:
      - name: "test-enterprise-auth"
+
+- matrix_name: "test-search-index-helpers"
+  matrix_spec:
+    platform: rhel8
+    python-version: "3.8"
+  display_name: "Search Index Helpers ${platform}"
+  tasks:
+     - name: "test_atlas_task_group_search_indexes"
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
