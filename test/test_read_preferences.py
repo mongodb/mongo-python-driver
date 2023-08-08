@@ -265,7 +265,7 @@ class TestReadPreferences(TestReadPreferencesBase):
 
         not_used = data_members.difference(used)
         latencies = ", ".join(
-            "%s: %dms" % (server.description.address, server.description.round_trip_time)  # type: ignore[str-format]
+            "%s: %sms" % (server.description.address, server.description.round_trip_time)
             for server in c._get_topology().select_servers(readable_server_selector)
         )
 
