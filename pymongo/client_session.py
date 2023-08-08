@@ -562,7 +562,7 @@ class ClientSession:
         return self._server_session.session_id
 
     @property
-    def cluster_time(self) -> ClusterTime:
+    def cluster_time(self) -> Optional[ClusterTime]:
         """The cluster time returned by the last operation executed
         in this session.
         """

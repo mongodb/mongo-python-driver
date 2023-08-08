@@ -1907,7 +1907,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
             if topology_time["clusterTime"] > session_time["clusterTime"]:
-                cluster_time: ClusterTime = topology_time
+                cluster_time: Optional[ClusterTime] = topology_time
             else:
                 cluster_time = session_time
         else:

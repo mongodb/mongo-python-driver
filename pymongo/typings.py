@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _Pipeline = Sequence[Mapping[str, Any]]
-ClusterTime = Optional[Mapping[str, Any]]
+ClusterTime = Mapping[str, Any]
 
 _T = TypeVar("_T")
 

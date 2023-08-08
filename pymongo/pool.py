@@ -779,7 +779,7 @@ class Connection:
 
     def _hello(
         self,
-        cluster_time: ClusterTime,
+        cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
     ) -> Hello[Dict[str, Any]]:

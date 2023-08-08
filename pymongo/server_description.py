@@ -176,7 +176,7 @@ class ServerDescription:
         return self._election_id
 
     @property
-    def cluster_time(self) -> ClusterTime:
+    def cluster_time(self) -> Optional[ClusterTime]:
         return self._cluster_time
 
     @property

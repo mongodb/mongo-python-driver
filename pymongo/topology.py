@@ -148,7 +148,7 @@ class Topology:
         self._condition = self._settings.condition_class(self._lock)
         self._servers: Dict[_Address, Server] = {}
         self._pid: Optional[int] = None
-        self._max_cluster_time: ClusterTime = None
+        self._max_cluster_time: Optional[ClusterTime] = None
         self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
@@ -485,7 +485,7 @@ class Topology:
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
-    def max_cluster_time(self) -> ClusterTime:
+    def max_cluster_time(self) -> Optional[ClusterTime]:
         """Return a document, the highest seen $clusterTime."""
         return self._max_cluster_time
 
