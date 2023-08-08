@@ -73,12 +73,10 @@ from pymongo.topology_description import (
 if TYPE_CHECKING:
     from bson import ObjectId
     from pymongo.settings import TopologySettings
-    from pymongo.typings import _Address
-
-ClusterTime = Optional[Mapping[str, Any]]
+    from pymongo.typings import ClusterTime, _Address
 
 
-def process_events_queue(queue_ref: weakref.ReferenceType[Optional[queue.Queue]]) -> bool:
+def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
     q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
@@ -487,7 +485,7 @@ class Topology:
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
-    def max_cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def max_cluster_time(self) -> ClusterTime:
         """Return a document, the highest seen $clusterTime."""
         return self._max_cluster_time
 

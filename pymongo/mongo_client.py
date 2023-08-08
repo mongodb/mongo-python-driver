@@ -98,6 +98,7 @@ from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
+    ClusterTime,
     _Address,
     _CollationIn,
     _DocumentType,
@@ -1906,7 +1907,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
             if topology_time["clusterTime"] > session_time["clusterTime"]:
-                cluster_time: Optional[Mapping[str, Any]] = topology_time
+                cluster_time: ClusterTime = topology_time
             else:
                 cluster_time = session_time
         else:

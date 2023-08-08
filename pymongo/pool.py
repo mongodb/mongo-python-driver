@@ -105,7 +105,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
-    from pymongo.typings import _Address, _CollationIn
+    from pymongo.typings import ClusterTime, _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -779,7 +779,7 @@ class Connection:
 
     def _hello(
         self,
-        cluster_time: Optional[Mapping[str, Any]],
+        cluster_time: ClusterTime,
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
     ) -> Hello[Dict[str, Any]]:
