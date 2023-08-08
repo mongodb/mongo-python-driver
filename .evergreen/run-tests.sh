@@ -213,12 +213,12 @@ if [ -n "$TEST_OCSP" ]; then
     TEST_ARGS="test/ocsp/test_ocsp.py"
 fi
 
-if [ -n "$AWS_TEST" ]; then
+if [ -n "$AWS_AUTH_TEST" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_aws/test_auth_aws.py"
 fi
 
-if [ -n "$OIDC_TEST" ]; then
+if [ -n "$OIDC_AUTH_TEST" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_aws/test_auth_oidc.py"
 fi
