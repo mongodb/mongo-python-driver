@@ -21,8 +21,8 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_FLE_GCP_AUTO    If non-empy, test auto FLE on GCP
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENTERPRISE_AUTH If non-empty, test with Enterprise Auth
-#  TEST_AWS             If non-empty, test AWS Auth Mechanism
-#  TEST_OIDC            If non-empty, test OIDC Auth Mechanism
+#  TEST_AUTH_AWS        If non-empty, test AWS Auth Mechanism
+#  TEST_AUTH_OIDC       If non-empty, test OIDC Auth Mechanism
 #  TEST_PERF            If non-empty, run performance tests
 #  TEST_OCSP            If non-empty, run OCSP tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
