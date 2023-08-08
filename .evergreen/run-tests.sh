@@ -79,7 +79,7 @@ fi
 if [ -n "$TEST_LOADBALANCER" ]; then
     export LOAD_BALANCER=1
     export SINGLE_MONGOS_LB_URI=${SINGLE_MONGOS_LB_URI:-"mongodb://127.0.0.1:8000/?loadBalanced=true"}
-    export MULTI_MONGOS_LB_URI==${SINGLE_MONGOS_LB_URI:-"mongodb://127.0.0.1:8001/?loadBalanced=true"}
+    export MULTI_MONGOS_LB_URI==${MULTI_MONGOS_LB_URI:-"mongodb://127.0.0.1:8001/?loadBalanced=true"}
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27017,localhost:27018/"}
     export TEST_ARGS="test/test_load_balancer.py"
 fi
