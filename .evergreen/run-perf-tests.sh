@@ -13,21 +13,8 @@ cd ..
 export TEST_PATH="${PROJECT_DIRECTORY}/driver-performance-test-data"
 export OUTPUT_FILE="${PROJECT_DIRECTORY}/results.json"
 
-MTCBIN=/opt/mongodbtoolchain/v3/bin
-VIRTUALENV="$MTCBIN/virtualenv -p $MTCBIN/python3"
+export PYTHON_BINARY=/opt/mongodbtoolchain/v3/bin/python3
+export C_EXTENSIONS=1
+export PERF_TEST=1
 
-$VIRTUALENV pyperftest
-. pyperftest/bin/activate
-python -m pip install simplejson
-
-python setup.py build_ext -i
-start_time=$(date +%s)
-python test/performance/perf_test.py --locals
-end_time=$(date +%s)
-elapsed_secs=$((end_time-start_time))
-
-cat results.json
-
-echo "{\"failures\": 0, \"results\": [{\"status\": \"pass\", \"exit_code\": 0, \"test_file\": \"BenchMarkTests\", \"start\": $start_time, \"end\": $end_time, \"elapsed\": $elapsed_secs}]}" > report.json
-
-cat report.json
+bash ./.evergreen/tox.sh test-eg
