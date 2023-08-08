@@ -2268,9 +2268,12 @@ class _MongoClientErrorHandler:
         self.service_id = conn.service_id
         self.completed_handshake = completed_handshake
 
-    def handle(self, exc_type: Optional[Type[Exception]], exc_val: Optional[Exception]) -> None:
+    def handle(
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
+    ) -> None:
         if self.handled or exc_type is None:
             return
+        assert exc_val is not None
         self.handled = True
         if self.session:
             if isinstance(exc_val, ConnectionFailure):
@@ -2283,7 +2286,6 @@ class _MongoClientErrorHandler:
                     "RetryableWriteError"
                 ):
                     self.session._unpin()
-        assert exc_val is not None
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,

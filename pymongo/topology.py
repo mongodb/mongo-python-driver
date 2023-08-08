@@ -99,9 +99,8 @@ class Topology:
     def __init__(self, topology_settings: TopologySettings):
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options._event_listeners
-        pub = self._listeners is not None
-        self._publish_server = pub and self._listeners.enabled_for_server
-        self._publish_tp = pub and self._listeners.enabled_for_topology
+        self._publish_server = self._listeners is not None and self._listeners.enabled_for_server
+        self._publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
 
         # Create events queue if there are publishers.
         self._events = None
@@ -911,7 +910,7 @@ class _ErrorContext:
 
     def __init__(
         self,
-        error: Exception,
+        error: BaseException,
         max_wire_version: int,
         sock_generation: int,
         completed_handshake: bool,
