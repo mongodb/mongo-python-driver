@@ -48,7 +48,7 @@ fi
 # show test output
 set -x
 
- Workaround macOS python 3.9 incompatibility with system virtualenv.
+# Workaround macOS python 3.9 incompatibility with system virtualenv.
 if [ "$(uname -s)" = "Darwin" ]; then
     VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
 else
