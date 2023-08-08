@@ -548,7 +548,7 @@ functions:
           set -o errexit
           set -o xtrace
 
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-atlas -- -r us-west-2 drivers/test
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-atlas -- drivers/atlas_connect
 
   "add aws auth variables to file":
     - command: shell.exec
