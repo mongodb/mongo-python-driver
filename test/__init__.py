@@ -286,6 +286,8 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        if AUTH_MECH:
+            self.default_client_options["authMechanism"] = AUTH_MECH
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -311,8 +313,6 @@ class ClientContext:
         opts = client_context.default_client_options.copy()
         opts.pop("server_api", None)  # Cannot be set from the URI
         opts_parts = []
-        if AUTH_MECH:
-            opts_parts.append(("authMechanism", AUTH_MECH))
         for opt, val in opts.items():
             strval = str(val)
             if isinstance(val, bool):
