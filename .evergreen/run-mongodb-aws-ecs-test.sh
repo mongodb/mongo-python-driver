@@ -27,4 +27,4 @@ apt install python3.7 python3-pip -y
 export PYTHON_BINARY="python3.7"
 export AWS_AUTH_TEST=1
 export SET_XTRACE_ON=1
-bash ./.evergeen/tox.sh -m test-eg
+bash ./src/.evergeen/tox.sh -m test-eg
