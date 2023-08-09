@@ -25,7 +25,8 @@ apt-get update
 apt-get install python3.7 python3-pip build-essential python3.7-dev -y
 
 export PYTHON_BINARY="python3.7"
-export AWS_AUTH_TEST=1
+export TEST_AUTH_AWS=1
+export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
 python3.7 -m pip install --user tox
