@@ -2205,25 +2205,6 @@ class _MongoClientErrorHandler:
         return self.handle(exc_type, exc_val)
 
 
-def _after_fork_child() -> None:
-    """Releases the locks in child process and resets the
-    topologies in all MongoClients.
-    """
-    # Reinitialize locks
-    _release_locks()
-
-    # Perform cleanup in clients (i.e. get rid of topology)
-    for _, client in MongoClient._clients.items():
-        client._after_fork()
-
-
-if _HAS_REGISTER_AT_FORK:
-    # This will run in the same thread as the fork was called.
-    # If we fork in a critical region on the same thread, it should break.
-    # This is fine since we would never call fork directly from a critical region.
-    os.register_at_fork(after_in_child=_after_fork_child)
-
-
 class _ClientConnectionRetryable:
     """Responsible for executing retryable connections on read or write operations"""
 
@@ -2240,7 +2221,7 @@ class _ClientConnectionRetryable:
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
-        self._mongo_client = mongo_client
+        self._client = mongo_client
         self._retry_operation = (
             mongo_client.options.retry_writes if is_write else mongo_client.options.retry_reads
         )
@@ -2252,7 +2233,9 @@ class _ClientConnectionRetryable:
         self._is_write = is_write
         self._retryable = retryable and self._in_transaction()
         self._read_pref = read_pref
+        self._server_selector = writable_server_selector if is_write else read_pref
         self._address = address
+        self._server: Server = None
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2269,6 +2252,9 @@ class _ClientConnectionRetryable:
         while True:
             self._check_last_error(check_csot=True)
             try:
+                self._server = self._client._select_server(
+                    self._server_selector, self._session, address=self._address
+                )
                 return self._write() if self._is_write else self._read()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
@@ -2340,11 +2326,15 @@ class _ClientConnectionRetryable:
         """
         try:
             max_wire_version = 0
-            server = self._mongo_client._select_server(writable_server_selector, self._session)
             supports_session = (
-                self._session is not None and server.description.retryable_writes_supported
+                self._session is not None and self._server.description.retryable_writes_supported
             )
-            with self._mongo_client._checkout(server, self._session) as conn:
+            with self._client._conn_from_server(
+                # Selected an arbitrary read preference; this will not get used
+                ReadPreference.PRIMARY,
+                self._server,
+                self._session,
+            ) as (conn, _):
                 max_wire_version = conn.max_wire_version
                 if self._retryable and not supports_session:
                     # A retry is not possible because this server does
@@ -2365,12 +2355,28 @@ class _ClientConnectionRetryable:
 
         :return: output for func()'s call
         """
-        server = self._mongo_client._select_server(
-            self._read_pref, self._session, address=self._address
-        )
-        with self._mongo_client._conn_from_server(self._read_pref, server, self._session) as (
+        with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
             read_pref,
         ):
             self._check_last_error()
-            return self._func(self._session, server, conn, read_pref)
+            return self._func(self._session, self._server, conn, read_pref)
+
+
+def _after_fork_child() -> None:
+    """Releases the locks in child process and resets the
+    topologies in all MongoClients.
+    """
+    # Reinitialize locks
+    _release_locks()
+
+    # Perform cleanup in clients (i.e. get rid of topology)
+    for _, client in MongoClient._clients.items():
+        client._after_fork()
+
+
+if _HAS_REGISTER_AT_FORK:
+    # This will run in the same thread as the fork was called.
+    # If we fork in a critical region on the same thread, it should break.
+    # This is fine since we would never call fork directly from a critical region.
+    os.register_at_fork(after_in_child=_after_fork_child)
