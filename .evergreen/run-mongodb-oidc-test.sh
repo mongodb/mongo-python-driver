@@ -50,6 +50,6 @@ if [ -z "$PYTHON_BINARY" ]; then
     exit 1
 fi
 
-export OIDC_AUTH_TEST=1
+export TEST_AUTH_OIDC=1
 export SET_XTRACE_ON=1
 bash ./.evergreen/tox.sh -m test-eg

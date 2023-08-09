@@ -103,6 +103,9 @@ TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
+TEST_AUTH_AWS = os.environ.get("TEST_AUTH_AWS")
+TEST_AUTH_OIDC = os.environ.get("TEST_AUTH_OIDC")
+
 if TEST_LOADBALANCER:
     res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res["nodelist"][0]
@@ -284,6 +287,7 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self.no_admin = TEST_AUTH_AWS or TEST_AUTH_OIDC
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -390,7 +394,7 @@ class ClientContext:
                 else:
                     self.auth_enabled = self._server_started_with_auth()
 
-            if self.auth_enabled:
+            if self.auth_enabled and not self.no_admin:
                 if not self.serverless:
                     # See if db_user already exists.
                     if not self._check_user_provided():
@@ -408,7 +412,7 @@ class ClientContext:
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command("getCmdLineOpts")
 
-            if self.serverless:
+            if self.serverless or self.no_admin:
                 self.server_status = {}
             else:
                 self.server_status = self.client.admin.command("serverStatus")
@@ -449,7 +453,7 @@ class ClientContext:
             self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
-            if self.serverless:
+            if self.serverless or self.no_admin:
                 self.server_parameters = {
                     "requireApiVersion": False,
                     "enableTestCommands": True,
@@ -475,7 +479,7 @@ class ClientContext:
             if self.is_mongos:
                 address = self.client.address
                 self.mongoses.append(address)
-                if not self.serverless:
+                if not self.serverless and not self.no_admin:
                     # Check for another mongos on the next port.
                     assert address is not None
                     next_address = address[0], address[1] + 1

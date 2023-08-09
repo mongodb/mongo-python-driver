@@ -78,9 +78,9 @@ fi
 
 if [ -n "$TEST_LOADBALANCER" ]; then
     export LOAD_BALANCER=1
-    export SINGLE_MONGOS_LB_URI=${SINGLE_MONGOS_LB_URI:-"mongodb://127.0.0.1:8000/?loadBalanced=true"}
-    export MULTI_MONGOS_LB_URI==${MULTI_MONGOS_LB_URI:-"mongodb://127.0.0.1:8001/?loadBalanced=true"}
-    export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27017,localhost:27018/"}
+    export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI:-mongodb://127.0.0.1:8000/?loadBalanced=true}"
+    export MULTI_MONGOS_LB_URI=="${MULTI_MONGOS_LB_URI:-mongodb://127.0.0.1:8001/?loadBalanced=true}"
+    export MONGODB_URI="${MONGODB_URI:-mongodb://localhost:27017,localhost:27018/}"
     export TEST_ARGS="test/test_load_balancer.py"
 fi
 
@@ -213,12 +213,12 @@ if [ -n "$TEST_OCSP" ]; then
     TEST_ARGS="test/ocsp/test_ocsp.py"
 fi
 
-if [ -n "$AWS_AUTH_TEST" ]; then
+if [ -n "$TEST_AUTH_AWS" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_aws/test_auth_aws.py"
 fi
 
-if [ -n "$OIDC_AUTH_TEST" ]; then
+if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_aws/test_auth_oidc.py"
 fi
