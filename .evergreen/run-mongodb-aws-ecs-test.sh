@@ -22,10 +22,11 @@ set -o xtrace
 
 # Install python3.7 with pip.
 apt-get update
-apt install python3.7 python3-pip python3-virtualenv -y
+apt install python3.7 python3-pip -y
 
 export PYTHON_BINARY="python3.7"
 export AWS_AUTH_TEST=1
 export SET_XTRACE_ON=1
 cd src
+python3.7 -m pip install --user tox
 bash .evergreen/tox.sh -m test-eg
