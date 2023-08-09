@@ -45,41 +45,13 @@ if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
     fi
 fi
 
-# show test output
-set -x
-
-# Workaround macOS python 3.9 incompatibility with system virtualenv.
-if [ "$(uname -s)" = "Darwin" ]; then
-    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
-else
-    VIRTUALENV=$(command -v virtualenv)
-fi
-
-authtest () {
-    if [ "Windows_NT" = "$OS" ]; then
-      PYTHON=$(cygpath -m $PYTHON)
-    fi
-
-    echo "Running MONGODB-OIDC authentication tests with $PYTHON"
-    $PYTHON --version
-
-    $VIRTUALENV -p $PYTHON --never-download venvoidc
-    if [ "Windows_NT" = "$OS" ]; then
-      . venvoidc/Scripts/activate
-    else
-      . venvoidc/bin/activate
-    fi
-    python -m pip install -U pip setuptools
-    python -m pip install '.[aws]'
-    python test/auth_aws/test_auth_oidc.py -v
-    deactivate
-    rm -rf venvoidc
-}
-
-PYTHON=${PYTHON_BINARY:-}
-if [ -z "$PYTHON" ]; then
+if [ -z "$PYTHON_BINARY" ]; then
     echo "Cannot test without specifying PYTHON_BINARY"
     exit 1
 fi
 
-authtest
+export TEST_AUTH_OIDC=1
+export AUTH_MECH="SCRAM-SHA-256"
+export AUTH="auth"
+export SET_XTRACE_ON=1
+bash ./.evergreen/tox.sh -m test-eg

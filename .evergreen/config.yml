@@ -370,7 +370,7 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.
@@ -477,7 +477,6 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
-            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -537,8 +536,11 @@ functions:
           set +x
           . ./prepare_enterprise_auth.sh
           rm -f ./prepare_enterprise_auth.sh
-
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ENTERPRISE_AUTH=1 \
+            AUTH=auth \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
     - command: shell.exec
@@ -964,10 +966,11 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec

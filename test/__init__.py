@@ -103,6 +103,8 @@ TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
+AUTH_MECH = os.environ.get("AUTH_MECH")
+
 if TEST_LOADBALANCER:
     res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res["nodelist"][0]
@@ -284,6 +286,8 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        if AUTH_MECH:
+            self.default_client_options["authMechanism"] = AUTH_MECH
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
