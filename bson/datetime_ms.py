@@ -20,6 +20,7 @@
 import calendar
 import datetime
 import functools
+import sys
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
@@ -27,6 +28,7 @@ from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
+DATETIME_ERROR_SUGGESTION = "(Use CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO'))"
 
 
 class DatetimeMS:
@@ -127,24 +129,33 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
         or opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP
         or opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO
     ):
-        tz = opts.tzinfo or datetime.timezone.utc
-        if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
-            millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
-        elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
-            if not (_min_datetime_ms(tz) <= millis <= _max_datetime_ms(tz)):
-                return DatetimeMS(millis)
+        try:
+            tz = opts.tzinfo or datetime.timezone.utc
+            if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
+                millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
+            elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
+                if not (_min_datetime_ms(tz) <= millis <= _max_datetime_ms(tz)):
+                    return DatetimeMS(millis)
 
-        diff = ((millis % 1000) + 1000) % 1000
-        seconds = (millis - diff) // 1000
-        micros = diff * 1000
+            diff = ((millis % 1000) + 1000) % 1000
+            seconds = (millis - diff) // 1000
+            micros = diff * 1000
 
-        if opts.tz_aware:
-            dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
-            if opts.tzinfo:
-                dt = dt.astimezone(tz)
-            return dt
-        else:
-            return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+            if opts.tz_aware:
+                dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
+                if opts.tzinfo:
+                    dt = dt.astimezone(tz)
+                return dt
+            else:
+                return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+        except Exception:
+            _, exc_value, _ = sys.exc_info()
+            exc_value.args = (
+                f"{exc_value.args[0]} {DATETIME_ERROR_SUGGESTION}",
+                *exc_value.args[1:],
+            )
+            raise
+
     elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
         return DatetimeMS(millis)
     else:
