@@ -2377,10 +2377,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: archlinux-test
-        display_name: "Archlinux"
-        run_on: archlinux-test
-        batchtime: 10080  # 7 days
       - id: macos-1014
         display_name: "macOS 10.14"
         run_on: macos-1014
@@ -2817,19 +2813,6 @@ axes:
         batchtime: 10080  # 7 days
 
 buildvariants:
-- matrix_name: "tests-archlinux"
-  matrix_spec:
-    platform:
-      # Archlinux supports MongoDB without SSL.
-      # MongoDB 4.2 drops support for archlinux (generic linux builds).
-      - archlinux-test
-    auth: "*"
-    ssl: "nossl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - ".4.0"
-    - ".3.6"
-
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
