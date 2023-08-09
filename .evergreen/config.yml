@@ -536,10 +536,11 @@ functions:
           set +x
           . ./prepare_enterprise_auth.sh
           rm -f ./prepare_enterprise_auth.sh
-          export PYTHON_BINARY=${PYTHON_BINARY}
-          export TEST_ENTERPRISE_AUTH=1
-          export AUTH=auth
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ENTERPRISE_AUTH=1 \
+            AUTH=auth \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
     - command: shell.exec

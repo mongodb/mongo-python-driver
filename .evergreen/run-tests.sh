@@ -60,7 +60,7 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
         export GSSAPI_CANONICALIZE="true"
     else
         # BUILD-3830
-        touch ${PROJECT_DIRECTORY}/.evergreen/krb5.conf.empty
+        touch krb5.conf.empty
         export KRB5_CONFIG=${PROJECT_DIRECTORY}/.evergreen/krb5.conf.empty
 
         echo "Writing keytab"
