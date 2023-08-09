@@ -13,66 +13,6 @@ from setuptools.command.build_ext import build_ext
 from setuptools.extension import Extension
 
 
-class test(Command):
-    description = "run the tests"
-
-    user_options = [
-        ("test-module=", "m", "Discover tests in specified module"),
-        ("test-suite=", "s", "Test suite to run (e.g. 'some_module.test_suite')"),
-        ("failfast", "f", "Stop running tests on first failure or error"),
-        ("xunit-output=", "x", "Generate a results directory with XUnit XML format"),
-    ]
-
-    def initialize_options(self):
-        self.test_module = None
-        self.test_suite = None
-        self.failfast = False
-        self.xunit_output = None
-
-    def finalize_options(self):
-        if self.test_suite is None and self.test_module is None:
-            self.test_module = "test"
-        elif self.test_module is not None and self.test_suite is not None:
-            raise Exception("You may specify a module or suite, but not both")
-
-    def run(self):
-        # Installing required packages, running egg_info and build_ext are
-        # part of normal operation for setuptools.command.test.test
-        if self.distribution.install_requires:
-            self.distribution.fetch_build_eggs(self.distribution.install_requires)
-        if self.distribution.tests_require:
-            self.distribution.fetch_build_eggs(self.distribution.tests_require)
-        if self.xunit_output:
-            self.distribution.fetch_build_eggs(["unittest-xml-reporting"])
-        self.run_command("egg_info")
-        build_ext_cmd = self.reinitialize_command("build_ext")
-        build_ext_cmd.inplace = 1
-        self.run_command("build_ext")
-
-        # Construct a TextTestRunner directly from the unittest imported from
-        # test, which creates a TestResult that supports the 'addSkip' method.
-        # setuptools will by default create a TextTestRunner that uses the old
-        # TestResult class.
-        from test import PymongoTestRunner, test_cases, unittest
-
-        if self.test_suite is None:
-            all_tests = unittest.defaultTestLoader.discover(self.test_module)
-            suite = unittest.TestSuite()
-            suite.addTests(sorted(test_cases(all_tests), key=lambda x: x.__module__))
-        else:
-            suite = unittest.defaultTestLoader.loadTestsFromName(self.test_suite)
-        if self.xunit_output:
-            from test import PymongoXMLTestRunner
-
-            runner = PymongoXMLTestRunner(
-                verbosity=2, failfast=self.failfast, output=self.xunit_output
-            )
-        else:
-            runner = PymongoTestRunner(verbosity=2, failfast=self.failfast)
-        result = runner.run(suite)
-        sys.exit(not result.wasSuccessful())
-
-
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
 
@@ -189,6 +129,4 @@ by this python implementation.\n
     )
     ext_modules = []
 
-setup(
-    cmdclass={"build_ext": custom_build_ext, "test": test}, ext_modules=ext_modules
-)  # type:ignore
+setup(cmdclass={"build_ext": custom_build_ext}, ext_modules=ext_modules)  # type:ignore
