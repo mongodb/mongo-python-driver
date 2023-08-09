@@ -2329,12 +2329,7 @@ class _ClientConnectionRetryable:
             supports_session = (
                 self._session is not None and self._server.description.retryable_writes_supported
             )
-            with self._client._conn_from_server(
-                # Selected an arbitrary read preference; this will not get used
-                ReadPreference.PRIMARY,
-                self._server,
-                self._session,
-            ) as (conn, _):
+            with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
                 if self._retryable and not supports_session:
                     # A retry is not possible because this server does
