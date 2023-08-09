@@ -27,4 +27,5 @@ apt install python3.7 python3-pip -y
 export PYTHON_BINARY="python3.7"
 export AWS_AUTH_TEST=1
 export SET_XTRACE_ON=1
-bash ./src/.evergreen/tox.sh -m test-eg
+cd src
+bash .evergreen/tox.sh -m test-eg
