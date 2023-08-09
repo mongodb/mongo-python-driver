@@ -45,5 +45,6 @@ if [ -z "$PYTHON_BINARY" ]; then
 fi
 
 export TEST_AUTH_AWS=1
+export AUTH="auth"
 export SET_XTRACE_ON=1
 bash ./.evergreen/tox.sh -m test-eg
