@@ -1228,7 +1228,7 @@ def teardown():
         raise AssertionError("\n".join(garbage))
     c = client_context.client
     if c:
-        if not client_context.is_data_lake and not client_context:
+        if not client_context.is_data_lake:
             c.drop_database("pymongo-pooling-tests")
             c.drop_database("pymongo_test")
             c.drop_database("pymongo_test1")
