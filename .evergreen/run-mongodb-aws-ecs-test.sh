@@ -22,7 +22,7 @@ set -o xtrace
 
 # Install python3.7 with pip.
 apt-get update
-apt-get install python3.7 python3.7-pip build-essential python3.7-dev -y
+apt-get install python3.7 python3-pip build-essential python3.7-dev -y
 
 export PYTHON_BINARY="python3.7"
 export AWS_AUTH_TEST=1
