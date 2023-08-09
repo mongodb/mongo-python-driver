@@ -538,6 +538,7 @@ functions:
           rm -f ./prepare_enterprise_auth.sh
           export PYTHON_BINARY=${PYTHON_BINARY}
           export TEST_ENTERPRISE_AUTH=1
+          export AUTH=auth
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":

@@ -53,9 +53,7 @@ if [ "$AUTH" != "noauth" ]; then
     fi
 fi
 
-if [ -n "$ENTERPRISE_AUTH" ]; then
-    export DB_USER="bob"
-    export DB_PASSWORD="pwd123"
+if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
