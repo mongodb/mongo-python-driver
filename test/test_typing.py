@@ -242,6 +242,11 @@ class TestDecode(unittest.TestCase):
         rt_document3 = decode(bsonbytes2, codec_options=codec_options2)
         assert rt_document3.raw
 
+    def test_bson_decode_no_codec_option(self) -> None:
+        doc = decode_all(encode({"a": 1}))
+        assert doc
+        doc[0]["a"] = 2
+
     def test_bson_decode_all(self) -> None:
         doc = {"_id": 1}
         bsonbytes = encode(doc)
@@ -266,6 +271,15 @@ class TestDecode(unittest.TestCase):
         rt_documents3 = decode_all(bsonbytes3, codec_options3)
         assert rt_documents3[0].raw
 
+    def test_bson_decode_all_no_codec_option(self) -> None:
+        docs = decode_all(b"")
+        docs.append({"new": 1})
+
+        docs = decode_all(encode({"a": 1}))
+        assert docs
+        docs[0]["a"] = 2
+        docs.append({"new": 1})
+
     def test_bson_decode_iter(self) -> None:
         doc = {"_id": 1}
         bsonbytes = encode(doc)
@@ -289,6 +303,11 @@ class TestDecode(unittest.TestCase):
         bsonbytes3 += encode(doc, codec_options=codec_options3)
         rt_documents3 = decode_iter(bsonbytes3, codec_options3)
         assert next(rt_documents3).raw
+
+    def test_bson_decode_iter_no_codec_option(self) -> None:
+        doc = next(decode_iter(encode({"a": 1})))
+        assert doc
+        doc["a"] = 2
 
     def make_tempfile(self, content: bytes) -> Any:
         fileobj = tempfile.TemporaryFile()
@@ -323,6 +342,12 @@ class TestDecode(unittest.TestCase):
         fileobj3 = self.make_tempfile(bsonbytes3)
         rt_documents3 = decode_file_iter(fileobj3, codec_options3)
         assert next(rt_documents3).raw
+
+    def test_bson_decode_file_iter_none_codec_option(self) -> None:
+        fileobj = self.make_tempfile(encode({"new": 1}))
+        doc = next(decode_file_iter(fileobj))
+        assert doc
+        doc["a"] = 2
 
 
 class TestDocumentType(unittest.TestCase):
