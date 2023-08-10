@@ -7,6 +7,7 @@ from pymongo.errors import OperationFailure
 from pymongo.logger import DEFAULT_DOCUMENT_LENGTH
 
 
+# https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests
 class TestLogger(IntegrationTest):
     def test_default_truncation_limit(self):
         docs = [{"x": "y"} for _ in range(100)]
@@ -22,7 +23,7 @@ class TestLogger(IntegrationTest):
             self.assertLessEqual(len(cmd_succeeded_log["reply"]), DEFAULT_DOCUMENT_LENGTH + 3)
 
         with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-            db.test.find_one({})
+            list(db.test.find({}))
             cmd_succeeded_log = json_util.loads(cm.records[1].message)
             self.assertEqual(len(cmd_succeeded_log["reply"]), DEFAULT_DOCUMENT_LENGTH + 3)
 
