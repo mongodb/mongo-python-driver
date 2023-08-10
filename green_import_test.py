@@ -1,13 +1,15 @@
-from threading import Thread
+import inspect
+import time
 
-from green_test import test_database
+import green_test
 
-# from greenletio import patch_blocking
-#
-# with patch_blocking():
-#     from threading import Thread
 
-sync_thread = Thread(target=test_database)
+def inspect_source(method):
+    try:
+        print(f"Source for {method.__name__}: {inspect.getfile(method)}")
+    except TypeError:
+        print(f"{method.__name__} is builtin")
 
-sync_thread.start()
-sync_thread.join()
+
+inspect_source(time.sleep)
+inspect_source(green_test.time.sleep)

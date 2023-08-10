@@ -96,4 +96,4 @@ async def test_collection():
         print(val)
 
 
-test_database()
+# test_database()
