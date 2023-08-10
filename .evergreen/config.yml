@@ -1379,6 +1379,10 @@ tasks:
       commands:
         - func: "build release"
           vars:
+              VERSION: "3.12"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "build release"
+          vars:
               VERSION: "3.11"
               ENSURE_UNIVERSAL2: "1"
         - func: "build release"
@@ -1390,6 +1394,10 @@ tasks:
               VERSION: "3.9"
               ENSURE_UNIVERSAL2: "1"
         - func: "upload release"
+        - func: "build release"
+          vars:
+              VERSION: "3.8"
+        - func: "upload release"
 
     - name: "release-mac-1014"
       tags: ["release_tag"]
@@ -1398,10 +1406,6 @@ tasks:
         - func: "build release"
           vars:
               VERSION: "3.7"
-        - func: "build release"
-          vars:
-              VERSION: "3.8"
-        - func: "upload release"
 
     - name: "release-windows"
       tags: ["release_tag"]
