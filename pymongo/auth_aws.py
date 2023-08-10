@@ -23,7 +23,7 @@ try:
 except ImportError:
 
     class AwsSaslContext:  # type: ignore
-        def __init__(self, credentials):
+        def __init__(self, credentials: MongoCredential):
             pass
 
     _HAVE_MONGODB_AWS = False
@@ -35,11 +35,11 @@ try:
     set_use_cached_credentials(True)
 except ImportError:
 
-    def set_cached_credentials(creds):
+    def set_cached_credentials(creds: Optional[AwsCredential]) -> None:
         pass
 
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type
 
 import bson
 from bson.binary import Binary
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 class _AwsSaslContext(AwsSaslContext):  # type: ignore
     # Dependency injection:
-    def binary_type(self):
+    def binary_type(self) -> Type[Binary]:
         """Return the bson.binary.Binary type."""
         return Binary
 

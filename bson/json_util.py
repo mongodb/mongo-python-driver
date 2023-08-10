@@ -224,7 +224,7 @@ class JSONOptions(CodecOptions):
     datetime_representation: int
     strict_uuid: bool
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
         :Parameters:

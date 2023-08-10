@@ -890,7 +890,7 @@ class Topology:
             msg = "CLOSED "
         return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
-    def eq_props(self):
+    def eq_props(self) -> Tuple[Tuple[_Address, ...], Optional[str], Optional[str], str]:
         """The properties to use for MongoClient/Topology equality checks."""
         ts = self._settings
         return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn, ts.srv_service_name)

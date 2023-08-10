@@ -1406,7 +1406,7 @@ def has_c() -> bool:
     return _USE_C
 
 
-def _after_fork():
+def _after_fork() -> None:
     """Releases the ObjectID lock child."""
     if ObjectId._inc_lock.locked():
         ObjectId._inc_lock.release()
