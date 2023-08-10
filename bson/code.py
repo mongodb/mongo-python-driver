@@ -86,7 +86,7 @@ class Code(str):
         """Scope dictionary for this instance or ``None``."""
         return self.__scope
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Code({str.__repr__(self)}, {self.__scope!r})"
 
     def __eq__(self, other: Any) -> bool:

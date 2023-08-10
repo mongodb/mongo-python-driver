@@ -173,7 +173,7 @@ class RawBSONDocument(Mapping[str, Any]):
             return self.__raw == other.raw
         return NotImplemented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({!r}, codec_options={!r})".format(
             self.__class__.__name__,
             self.raw,

@@ -365,5 +365,5 @@ class Binary(bytes):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Binary({bytes.__repr__(self)}, {self.__subtype})"

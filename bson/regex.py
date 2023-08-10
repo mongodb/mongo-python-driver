@@ -115,7 +115,7 @@ class Regex(Generic[_T]):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Regex({self.pattern!r}, {self.flags!r})"
 
     def try_compile(self) -> "Pattern[_T]":

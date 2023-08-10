@@ -2481,7 +2481,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        def gen_indexes():
+        def gen_indexes() -> Iterator[Mapping[str, Any]]:
             for index in models:
                 if not isinstance(index, SearchIndexModel):
                     raise TypeError(
