@@ -47,7 +47,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         )
 
         # Ensure connections to all servers in replica set. This is to test
-        # that the is_writable flag is properly updated for sockets that
+        # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
         ensure_all_connected(cls.client)
         cls.listener.reset()
@@ -111,7 +111,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})
-        self.assertEqual(exc.exception.details["code"], error_code)  # type: ignore
+        self.assertEqual(exc.exception.details["code"], error_code)  # type: ignore[call-overload]
         # Retry before CMAPListener assertion if retry_before=True.
         if retry:
             self.coll.insert_one({"test": 1})

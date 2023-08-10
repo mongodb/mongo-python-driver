@@ -279,12 +279,12 @@ class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
         self.add_event(event)
 
 
-class MockSocketInfo:
+class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
 
-    def close_socket(self, reason):
+    def close_conn(self, reason):
         pass
 
     def __enter__(self):
@@ -304,10 +304,10 @@ class MockPool:
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
-    def get_socket(self, handler=None):
-        return MockSocketInfo()
+    def checkout(self, handler=None):
+        return MockConnection()
 
-    def return_socket(self, *args, **kwargs):
+    def checkin(self, *args, **kwargs):
         pass
 
     def _reset(self, service_id=None):
@@ -720,7 +720,8 @@ def server_started_with_auth(client):
     try:
         command_line = get_command_line(client)
     except OperationFailure as e:
-        msg = e.details.get("errmsg", "")  # type: ignore
+        assert e.details is not None
+        msg = e.details.get("errmsg", "")
         if e.code == 13 or "unauthorized" in msg or "login" in msg:
             # Unauthorized.
             return True

@@ -993,8 +993,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "timeoutMode" in op.get("arguments", {}):
                 self.skipTest("PyMongo does not support timeoutMode")
 
-        if spec["description"] != "A failed command":
-            self.skipTest("for now...")
+        # if spec["description"] != "A failed command":
+        #     self.skipTest("for now...")
 
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
@@ -1631,7 +1631,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
-                        "component": log.name.strip("pymongo"),
+                        "component": log.name.strip("pymongo."),
                         "data": data,
                     }
                 )
@@ -1648,23 +1648,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for client in spec:
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
-                # print(client["messages"])
-                # print()
-                # print(cm.output)
                 self.assertEqual(len(client["messages"]), len(actual_logs))
-                # for expect, actual in zip(client["messages"], cm.output[2::]):
-                #     level = actual.split(":")[0]
-                #     component = actual.split(":")[1].split(".")[1]
-                #     data = ":".join(actual.split(":")[2::])
-                #     self.assertEqual(expect["level"], level.lower())
-                #     self.assertEqual(expect["component"], component.lower())
-                # self.assertEqual(expect["data"], data)
-                # self.assertEqual(len(cm.output), len(spec))
-            # for expect, actual in zip(spec, cm.output):
-            #     client_name = expect["client"]
-            #     messages = expect["messages"]
-            #     print(actual)
-            # print(cm.output)
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                    shared = set(expected_msg.keys()) & set(actual_msg.keys())
+                    all = set(expected_msg.keys()) | set(actual_msg.keys())
+                    print(all - shared)
+                    self.maxDiff = None
+                    self.assertEqual(expected_msg, actual_msg)
 
     def verify_outcome(self, spec):
         for collection_data in spec:

@@ -75,6 +75,11 @@ struct module_state {
     PyObject* _dollar_id_str;
     PyObject* _dollar_db_str;
     PyObject* _tzinfo_str;
+    PyObject* _as_doc_str;
+    PyObject* _utcoffset_str;
+    PyObject* _from_uuid_str;
+    PyObject* _as_uuid_str;
+    PyObject* _from_bid_str;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -507,7 +512,12 @@ static int _load_python_objects(PyObject* module) {
         (state->_dollar_ref_str = PyUnicode_FromString("$ref")) &&
         (state->_dollar_id_str = PyUnicode_FromString("$id")) &&
         (state->_dollar_db_str = PyUnicode_FromString("$db")) &&
-        (state->_tzinfo_str = PyUnicode_FromString("tzinfo")))) {
+        (state->_tzinfo_str = PyUnicode_FromString("tzinfo")) &&
+        (state->_as_doc_str = PyUnicode_FromString("as_doc")) &&
+        (state->_utcoffset_str = PyUnicode_FromString("utcoffset")) &&
+        (state->_from_uuid_str = PyUnicode_FromString("from_uuid")) &&
+        (state->_as_uuid_str = PyUnicode_FromString("as_uuid")) &&
+        (state->_from_bid_str = PyUnicode_FromString("from_bid")))) {
             return 1;
     }
 
@@ -1068,7 +1078,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     case 100:
         {
             /* DBRef */
-            PyObject* as_doc = PyObject_CallMethod(value, "as_doc", NULL);
+            PyObject* as_doc = PyObject_CallMethodObjArgs(value, state->_as_doc_str, NULL);
             if (!as_doc) {
                 return 0;
             }
@@ -1224,7 +1234,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         return write_unicode(buffer, value);
     } else if (PyDateTime_Check(value)) {
         long long millis;
-        PyObject* utcoffset = PyObject_CallMethod(value, "utcoffset", NULL);
+        PyObject* utcoffset = PyObject_CallMethodObjArgs(value, state->_utcoffset_str , NULL);
         if (utcoffset == NULL)
             return 0;
         if (utcoffset != Py_None) {
@@ -1270,6 +1280,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
         PyObject* binary_type = NULL;
         PyObject* binary_value = NULL;
+        PyObject *uuid_rep_obj = NULL;
         int result;
 
         Py_DECREF(uuid_type);
@@ -1283,7 +1294,12 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             return 0;
         }
 
-        binary_value = PyObject_CallMethod(binary_type, "from_uuid", "(Oi)", value, options->uuid_rep);
+        if (!(uuid_rep_obj = PyLong_FromLong(options->uuid_rep))) {
+            return 0;
+        }
+        binary_value = PyObject_CallMethodObjArgs(binary_type, state->_from_uuid_str, value, uuid_rep_obj, NULL);
+        Py_DECREF(uuid_rep_obj);
+
         if (binary_value == NULL) {
             Py_DECREF(binary_type);
             return 0;
@@ -1994,7 +2010,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     value = binary_value;
                     Py_INCREF(value);
                 } else {
-                    value = PyObject_CallMethod(binary_value, "as_uuid", "(i)", uuid_rep);
+                    PyObject *uuid_rep_obj = PyLong_FromLong(uuid_rep);
+                    if (!uuid_rep_obj) {
+                        goto uuiderror;
+                    }
+                    value = PyObject_CallMethodObjArgs(binary_value, state->_as_uuid_str, uuid_rep_obj, NULL);
+                    Py_DECREF(uuid_rep_obj);
                 }
 
             uuiderror:
@@ -2479,12 +2500,14 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if ((dec128 = _get_object(state->Decimal128,
                                       "bson.decimal128",
                                       "Decimal128"))) {
-                value = PyObject_CallMethod(dec128,
-                                            "from_bid",
-                                            "y#",
-                                            buffer + *position,
-                                            (Py_ssize_t)16);
+                PyObject *_bytes_obj = PyBytes_FromStringAndSize(buffer + *position, (Py_ssize_t)16);
+                if (!_bytes_obj) {
+                    Py_DECREF(dec128);
+                    goto invalid;
+                }
+                value = PyObject_CallMethodObjArgs(dec128, state->_from_bid_str, _bytes_obj, NULL);
                 Py_DECREF(dec128);
+                Py_DECREF(_bytes_obj);
             }
             *position += 16;
             break;
@@ -3128,6 +3151,11 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->_dollar_id_str);
     Py_VISIT(GETSTATE(m)->_dollar_db_str);
     Py_VISIT(GETSTATE(m)->_tzinfo_str);
+    Py_VISIT(GETSTATE(m)->_as_doc_str);
+    Py_VISIT(GETSTATE(m)->_utcoffset_str);
+    Py_VISIT(GETSTATE(m)->_from_uuid_str);
+    Py_VISIT(GETSTATE(m)->_as_uuid_str);
+    Py_VISIT(GETSTATE(m)->_from_bid_str);
     return 0;
 }
 
@@ -3163,6 +3191,11 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->_dollar_id_str);
     Py_CLEAR(GETSTATE(m)->_dollar_db_str);
     Py_CLEAR(GETSTATE(m)->_tzinfo_str);
+    Py_CLEAR(GETSTATE(m)->_as_doc_str);
+    Py_CLEAR(GETSTATE(m)->_utcoffset_str);
+    Py_CLEAR(GETSTATE(m)->_from_uuid_str);
+    Py_CLEAR(GETSTATE(m)->_as_uuid_str);
+    Py_CLEAR(GETSTATE(m)->_from_bid_str);
     return 0;
 }
 

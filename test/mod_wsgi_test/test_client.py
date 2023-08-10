@@ -15,6 +15,7 @@
 """Test client for mod_wsgi application, see bug PYTHON-353."""
 
 import _thread as thread
+import random
 import sys
 import threading
 import time
@@ -24,7 +25,7 @@ from urllib.request import urlopen
 
 def parse_args():
     parser = OptionParser(
-        """usage: %prog [options] mode url
+        """usage: %prog [options] mode url [<url2>...]
 
   mode:\tparallel or serial"""
     )
@@ -37,7 +38,7 @@ def parse_args():
         type="int",
         dest="nrequests",
         default=50 * 1000,
-        help="Number of times to GET the URL, in total",
+        help="Number of times to GET the URLs, in total",
     )
 
     parser.add_option(
@@ -68,8 +69,9 @@ def parse_args():
     )
 
     try:
-        options, (mode, url) = parser.parse_args()
-    except ValueError:
+        options, args = parser.parse_args()
+        mode, urls = args[0], args[1:]
+    except (ValueError, IndexError):
         parser.print_usage()
         sys.exit(1)
 
@@ -77,10 +79,11 @@ def parse_args():
         parser.print_usage()
         sys.exit(1)
 
-    return options, mode, url
+    return options, mode, urls
 
 
-def get(url):
+def get(urls):
+    url = random.choice(urls)
     urlopen(url).read().strip()
 
 
@@ -89,17 +92,17 @@ class URLGetterThread(threading.Thread):
     counter_lock = threading.Lock()
     counter = 0
 
-    def __init__(self, options, url, nrequests_per_thread):
+    def __init__(self, options, urls, nrequests_per_thread):
         super().__init__()
         self.options = options
-        self.url = url
+        self.urls = urls
         self.nrequests_per_thread = nrequests_per_thread
         self.errors = 0
 
     def run(self):
         for _i in range(self.nrequests_per_thread):
             try:
-                get(url)
+                get(urls)
             except Exception as e:
                 print(e)
 
@@ -119,7 +122,7 @@ class URLGetterThread(threading.Thread):
                 print(counter)
 
 
-def main(options, mode, url):
+def main(options, mode, urls):
     start_time = time.time()
     errors = 0
     if mode == "parallel":
@@ -129,14 +132,14 @@ def main(options, mode, url):
             print(
                 "Getting {} {} times total in {} threads, "
                 "{} times per thread".format(
-                    url,
+                    urls,
                     nrequests_per_thread * options.nthreads,
                     options.nthreads,
                     nrequests_per_thread,
                 )
             )
         threads = [
-            URLGetterThread(options, url, nrequests_per_thread) for _ in range(options.nthreads)
+            URLGetterThread(options, urls, nrequests_per_thread) for _ in range(options.nthreads)
         ]
 
         for t in threads:
@@ -152,11 +155,11 @@ def main(options, mode, url):
     else:
         assert mode == "serial"
         if options.verbose:
-            print(f"Getting {url} {options.nrequests} times in one thread")
+            print(f"Getting {urls} {options.nrequests} times in one thread")
 
         for i in range(1, options.nrequests + 1):
             try:
-                get(url)
+                get(urls)
             except Exception as e:
                 print(e)
                 if not options.continue_:
@@ -179,5 +182,5 @@ def main(options, mode, url):
 
 
 if __name__ == "__main__":
-    options, mode, url = parse_args()
-    main(options, mode, url)
+    options, mode, urls = parse_args()
+    main(options, mode, urls)

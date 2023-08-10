@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Database",
     "Typing :: Typed",
 ]
@@ -49,6 +50,7 @@ aws = [
 encryption = [
     "pymongo[aws]",
     "pymongocrypt>=1.6.0,<2.0.0",
+    "certifi;os.name=='nt' or sys_platform=='darwin'",
 ]
 gssapi = [
     "pykerberos;os.name!='nt'",

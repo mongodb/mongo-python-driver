@@ -13,9 +13,24 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
-from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from bson.errors import InvalidDocument
+
+if TYPE_CHECKING:
+    from pymongo.typings import _DocumentOut
 
 try:
     # CPython 3.7+
@@ -286,9 +301,9 @@ class BulkWriteError(OperationFailure):
     .. versionadded:: 2.7
     """
 
-    details: Mapping[str, Any]
+    details: _DocumentOut
 
-    def __init__(self, results: Mapping[str, Any]) -> None:
+    def __init__(self, results: _DocumentOut) -> None:
         super().__init__("batch op errors occurred", 65, results)
 
     def __reduce__(self) -> Tuple[Any, Any]:
