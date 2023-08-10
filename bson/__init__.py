@@ -1143,6 +1143,11 @@ def decode_all(
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
        `codec_options`.
     """
+    # opts = codec_options or DEFAULT_CODEC_OPTIONS
+    # if not isinstance(opts, CodecOptions):
+    #     raise _CODEC_OPTIONS_TYPE_ERROR
+
+    # return _decode_all(data, opts)
     if codec_options is None:
         return _decode_all(data, DEFAULT_CODEC_OPTIONS)
 
