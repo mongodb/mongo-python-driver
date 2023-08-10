@@ -29,14 +29,6 @@ import unittest
 import warnings
 
 try:
-    from xmlrunner import XMLTestRunner
-
-    HAVE_XML = True
-# ValueError is raised when version 3+ is installed on Jython 2.7.
-except (ImportError, ValueError):
-    HAVE_XML = False
-
-try:
     import ipaddress  # noqa
 
     HAVE_IPADDRESS = True
@@ -1238,24 +1230,6 @@ def teardown():
         c.close()
 
     print_running_clients()
-
-
-class PymongoTestRunner(unittest.TextTestRunner):
-    def run(self, test):
-        setup()
-        result = super().run(test)
-        teardown()
-        return result
-
-
-if HAVE_XML:
-
-    class PymongoXMLTestRunner(XMLTestRunner):  # type: ignore[misc]
-        def run(self, test):
-            setup()
-            result = super().run(test)
-            teardown()
-            return result
 
 
 def test_cases(suite):
