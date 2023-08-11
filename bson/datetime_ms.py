@@ -111,12 +111,12 @@ class DatetimeMS:
 # Timezones are hashed by their offset, which is a timedelta
 # and therefore there are more than 24 possible timezones.
 @functools.lru_cache(maxsize=None)
-def _min_datetime_ms(tz=datetime.timezone.utc):
+def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return _datetime_to_millis(datetime.datetime.min.replace(tzinfo=tz))
 
 
 @functools.lru_cache(maxsize=None)
-def _max_datetime_ms(tz=datetime.timezone.utc):
+def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
 
 

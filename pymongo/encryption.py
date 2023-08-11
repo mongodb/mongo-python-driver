@@ -80,8 +80,6 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
-    from pymongo.response import Response
-
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
@@ -409,7 +407,7 @@ class _Encrypter:
             encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
             return encrypt_cmd
 
-    def decrypt(self, response: Response) -> Optional[bytes]:
+    def decrypt(self, response: bytes) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
         :Parameters:

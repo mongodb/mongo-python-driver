@@ -347,7 +347,9 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
+            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -357,7 +359,8 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh ${PYTHON_BINARY} -m test-mockupdb
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -367,7 +370,7 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.
@@ -377,7 +380,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
           fi
     # Run in the background so the mock servers don't block the EVG task.
     - command: shell.exec
@@ -387,7 +390,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             # The -u options forces the stdout and stderr streams to be unbuffered.
             # TMPDIR is required to avoid "AF_UNIX path too long" errors.
             TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
@@ -402,7 +405,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate_venv.sh
+            . ./activate-kmstlsvenv.sh
             for i in $(seq 1 1 10); do
                sleep 1
                if python -u kms_kmip_client.py; then
@@ -439,8 +442,9 @@ functions:
       params:
         working_dir: "src"
         script: |
+          # Disable xtrace
+          set +x
           if [ -n "${set_xtrace_on}" ]; then
-            set -o xtrace
             export SET_XTRACE_ON="${set_xtrace_on}"
           fi
           ${PREPARE_SHELL}
@@ -473,7 +477,6 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
-            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -485,18 +488,27 @@ functions:
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export TEST_INDEX_MANAGEMENT=1
+            export MONGODB_URI="${TEST_INDEX_URI}"
+            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
+          fi
 
-          MONGODB_VERSION=${VERSION} \
-            PYTHON_BINARY=${PYTHON_BINARY} \
-            GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+          export PYTHON_BINARY=${PYTHON_BINARY}
+          if [ -z "$PYTHON_BINARY" ]; then
+            export PYTHON_BINARY=${python3_binary}
+          fi
+
+          GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
             SSL=${SSL} \
-            DATA_LAKE=${DATA_LAKE} \
+            TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -524,8 +536,11 @@ functions:
           set +x
           . ./prepare_enterprise_auth.sh
           rm -f ./prepare_enterprise_auth.sh
-
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ENTERPRISE_AUTH=1 \
+            AUTH=auth \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
     - command: shell.exec
@@ -561,9 +576,7 @@ functions:
 
           set -o errexit
           set -o xtrace
-          # This is required for pypy3.7 UTF encoding
-          export LC_ALL=en_US.UTF-8
-          ${PYTHON_BINARY} -m tox -e test-atlas
+          ${PYTHON_BINARY} -m tox -m test-atlas
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -953,10 +966,11 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec
@@ -1198,6 +1212,7 @@ task_groups:
               SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
               SERVERLESS_INSTANCE_NAME=${SERVERLESS_INSTANCE_NAME} \
               bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+      - func: "upload test results"
     tasks:
       - ".serverless"
 
@@ -1235,52 +1250,54 @@ task_groups:
             export GCPKMS_ZONE=${GCPKMS_ZONE}
             export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
             $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+      - func: "upload test results"
     tasks:
       - testgcpkms-task
 
   - name: testazurekms_task_group
     setup_group:
-    - func: fetch source
-    - func: prepare resources
-    - func: fix absolute paths
-    - func: make files executable
-    - command: shell.exec
-      params:
-        silent: true
-        shell: bash
-        script: |-
-          set -o errexit
-          ${PREPARE_SHELL}
-          echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-          echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-          # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-          chmod 600 /tmp/testazurekms_privatekey
-          export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-          export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-          export AZUREKMS_SECRET="${testazurekms_secret}"
-          export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-          export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-          export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-          export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-          export AZUREKMS_SCOPE="${testazurekms_scope}"
-          export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          silent: true
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
+            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
+            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
+            chmod 600 /tmp/testazurekms_privatekey
+            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
+            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
+            export AZUREKMS_SECRET="${testazurekms_secret}"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
+            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
+            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
+            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
+            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
     teardown_group:
-    # Load expansions again. The setup task may have failed before running `expansions.update`.
-    - command: expansions.update
-      params:
-        file: testazurekms-expansions.yml
-    - command: shell.exec
-      params:
-        shell: bash
-        script: |-
-          ${PREPARE_SHELL}
-          export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-          export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
-          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      # Load expansions again. The setup task may have failed before running `expansions.update`.
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+      - func: "upload test results"
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -1312,6 +1329,46 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - test-aws-lambda-deployed
+
+  - name: test_atlas_task_group_search_indexes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          env:
+            MONGODB_VERSION: "7.0"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+      - command: shell.exec
+        params:
+          working_dir: src
+          shell: bash
+          script: |-
+            echo "TEST_INDEX_URI: ${MONGODB_URI}" > atlas-expansion.yml
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+    teardown_group:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - test-search-index-helpers
 
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
@@ -1686,6 +1743,16 @@ tasks:
             TOPOLOGY: "server"
         - func: "run enterprise auth tests"
 
+    - name: "test-search-index-helpers"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+          vars:
+            TEST_INDEX_MANAGEMENT: "1"
+
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
       commands:
@@ -1704,6 +1771,28 @@ tasks:
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
 
+    - name: "mod-wsgi-embedded-mode-standalone"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
+
+    - name: "mod-wsgi-embedded-mode-replica-set"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run mod_wsgi tests"
+          vars:
+            MOD_WSGI_EMBEDDED: "1"
+
     - name: "no-server"
       tags: ["no-server"]
       commands:
@@ -1721,7 +1810,7 @@ tasks:
         - func: "bootstrap data lake"
         - func: "run tests"
           vars:
-            DATA_LAKE: "true"
+            TEST_DATA_LAKE: "true"
 
     - name: "test-aws-lambda-deployed"
       commands:
@@ -2251,7 +2340,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/run-tests.sh" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -2270,7 +2359,7 @@ tasks:
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test-eg
 
     - name: testazurekms-task
       commands:
@@ -2304,7 +2393,7 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/run-tests.sh" \
+            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2328,17 +2417,13 @@ tasks:
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-            ./.evergreen/run-tests.sh
+            ./.evergreen/tox.sh -m test-eg
 
 axes:
   # Choice of distro
   - id: platform
     display_name: OS
     values:
-      - id: archlinux-test
-        display_name: "Archlinux"
-        run_on: archlinux-test
-        batchtime: 10080  # 7 days
       - id: macos-1014
         display_name: "macOS 10.14"
         run_on: macos-1014
@@ -2549,14 +2634,18 @@ axes:
         display_name: "Python 3.11"
         variables:
           PYTHON_BINARY: "/opt/python/3.11/bin/python3"
-      - id: "pypy3.7"
-        display_name: "PyPy 3.7"
+      - id: "3.12"
+        display_name: "Python 3.12"
         variables:
-           PYTHON_BINARY: "/opt/python/pypy3.7/bin/pypy3"
+          PYTHON_BINARY: "/opt/python/3.12/bin/python3"
       - id: "pypy3.8"
         display_name: "PyPy 3.8"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.8/bin/pypy3"
+      - id: "pypy3.10"
+        display_name: "PyPy 3.10"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
 
   - id: python-version-mac
     display_name: "Python"
@@ -2589,6 +2678,10 @@ axes:
         display_name: "Python 3.11"
         variables:
           PYTHON_BINARY: "C:/python/Python311/python.exe"
+      - id: "3.12"
+        display_name: "Python 3.12"
+        variables:
+          PYTHON_BINARY: "C:/python/Python312/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2613,6 +2706,10 @@ axes:
         display_name: "32-bit Python 3.11"
         variables:
           PYTHON_BINARY: "C:/python/32/Python311/python.exe"
+      - id: "3.12"
+        display_name: "32-bit Python 3.12"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python312/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2763,19 +2860,6 @@ axes:
         batchtime: 10080  # 7 days
 
 buildvariants:
-- matrix_name: "tests-archlinux"
-  matrix_spec:
-    platform:
-      # Archlinux supports MongoDB without SSL.
-      # MongoDB 4.2 drops support for archlinux (generic linux builds).
-      - archlinux-test
-    auth: "*"
-    ssl: "nossl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - ".4.0"
-    - ".3.6"
-
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -2889,7 +2973,7 @@ buildvariants:
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.8", "3.9", "3.10", "pypy3.7", "pypy3.8"]
+    python-version: ["3.8", "3.9", "3.10", "pypy3.8", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2950,7 +3034,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: rhel8
-     python-version: ["pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.8", "pypy3.10"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -2966,7 +3050,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: rhel8
-     python-version: ["pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.8", "pypy3.10"]
      c-extensions: "with-c-extensions"
      compression: "*"
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
@@ -2995,7 +3079,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel8
-     python-version: ["pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.8", "pypy3.10"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -3021,7 +3105,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
+    python-version: ["3.7", "3.8", "3.9", "pypy3.8", "pypy3.10"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -3106,6 +3190,14 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
+- matrix_name: "test-search-index-helpers"
+  matrix_spec:
+    platform: rhel8
+    python-version: "3.8"
+  display_name: "Search Index Helpers ${platform}"
+  tasks:
+     - name: "test_atlas_task_group_search_indexes"
+
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-20.04
@@ -3120,6 +3212,8 @@ buildvariants:
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
+     - name: "mod-wsgi-embedded-mode-standalone"
+     - name: "mod-wsgi-embedded-mode-replica-set"
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
@@ -3199,7 +3293,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: rhel8
-    python-version: ["3.7", "3.10", "pypy3.7", "pypy3.8"]
+    python-version: ["3.7", "3.10", "pypy3.8", "pypy3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "latest"]
     auth: "noauth"
     ssl: "ssl"

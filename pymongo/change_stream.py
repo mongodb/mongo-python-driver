@@ -78,7 +78,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.database import Database
     from pymongo.mongo_client import MongoClient
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
 
 
 def _resumable(exc: PyMongoError) -> bool:
@@ -213,7 +213,7 @@ class ChangeStream(Generic[_DocumentType]):
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result: Mapping[str, Any], sock_info: SocketInfo) -> None:
+    def _process_result(self, result: Mapping[str, Any], conn: Connection) -> None:
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.
@@ -228,7 +228,7 @@ class ChangeStream(Generic[_DocumentType]):
                 self._start_at_operation_time is None
                 and self._uses_resume_after is False
                 and self._uses_start_after is False
-                and sock_info.max_wire_version >= 7
+                and conn.max_wire_version >= 7
             ):
                 self._start_at_operation_time = result.get("operationTime")
                 # PYTHON-2181: informative error on missing operationTime.
@@ -257,7 +257,7 @@ class ChangeStream(Generic[_DocumentType]):
             cmd.get_cursor, self._target._read_preference_for(session), session
         )
 
-    def _create_cursor(self):
+    def _create_cursor(self) -> CommandCursor:
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 

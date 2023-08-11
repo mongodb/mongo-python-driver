@@ -265,7 +265,7 @@ class TestReadPreferences(TestReadPreferencesBase):
 
         not_used = data_members.difference(used)
         latencies = ", ".join(
-            "%s: %dms" % (server.description.address, server.description.round_trip_time)
+            "%s: %sms" % (server.description.address, server.description.round_trip_time)
             for server in c._get_topology().select_servers(readable_server_selector)
         )
 
@@ -284,18 +284,18 @@ class ReadPrefTester(MongoClient):
         super().__init__(*args, **client_options)
 
     @contextlib.contextmanager
-    def _socket_for_reads(self, read_preference, session):
-        context = super()._socket_for_reads(read_preference, session)
-        with context as (sock_info, read_preference):
-            self.record_a_read(sock_info.address)
-            yield sock_info, read_preference
+    def _conn_for_reads(self, read_preference, session):
+        context = super()._conn_for_reads(read_preference, session)
+        with context as (conn, read_preference):
+            self.record_a_read(conn.address)
+            yield conn, read_preference
 
     @contextlib.contextmanager
-    def _socket_from_server(self, read_preference, server, session):
-        context = super()._socket_from_server(read_preference, server, session)
-        with context as (sock_info, read_preference):
-            self.record_a_read(sock_info.address)
-            yield sock_info, read_preference
+    def _conn_from_server(self, read_preference, server, session):
+        context = super()._conn_from_server(read_preference, server, session)
+        with context as (conn, read_preference):
+            self.record_a_read(conn.address)
+            yield conn, read_preference
 
     def record_a_read(self, address):
         server = self._get_topology().select_server_by_address(address, 0)

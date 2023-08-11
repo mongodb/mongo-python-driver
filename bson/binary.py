@@ -183,6 +183,13 @@ COLUMN_SUBTYPE = 7
 .. versionadded:: 4.0
 """
 
+SENSITIVE_SUBTYPE = 8
+"""BSON binary subtype for sensitive data.
+
+.. versionadded:: 4.5
+"""
+
+
 USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
 """
@@ -197,12 +204,11 @@ class Binary(bytes):
     what should be considered a string when we encode to BSON.
 
     Raises TypeError if `data` is not an instance of :class:`bytes`
-    (:class:`str` in python 2) or `subtype` is not an instance of
-    :class:`int`. Raises ValueError if `subtype` is not in [0, 256).
+    or `subtype` is not an instance of :class:`int`.
+    Raises ValueError if `subtype` is not in [0, 256).
 
     .. note::
-      In python 3 instances of Binary with subtype 0 will be decoded
-      directly to :class:`bytes`.
+      Instances of Binary with subtype 0 will be decoded directly to :class:`bytes`.
 
     :Parameters:
       - `data`: the binary data to represent. Can be any bytes-like type
@@ -359,5 +365,5 @@ class Binary(bytes):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Binary({bytes.__repr__(self)}, {self.__subtype})"

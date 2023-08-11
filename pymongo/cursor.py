@@ -50,12 +50,14 @@ from pymongo.lock import _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
+    _OpMsg,
+    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
-from pymongo.typings import _CollationIn, _DocumentType
+from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
@@ -63,8 +65,7 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
-    from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
 
 
@@ -139,11 +140,11 @@ class CursorType:
     """
 
 
-class _SocketManager:
-    """Used with exhaust cursors to ensure the socket is returned."""
+class _ConnectionManager:
+    """Used with exhaust cursors to ensure the connection is returned."""
 
-    def __init__(self, sock: SocketInfo, more_to_come: bool):
-        self.sock: Optional[SocketInfo] = sock
+    def __init__(self, conn: Connection, more_to_come: bool):
+        self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
         self.lock = _create_lock()
 
@@ -151,10 +152,10 @@ class _SocketManager:
         self.more_to_come = more_to_come
 
     def close(self) -> None:
-        """Return this instance's socket to the connection pool."""
-        if self.sock:
-            self.sock.unpin()
-            self.sock = None
+        """Return this instance's connection to the connection pool."""
+        if self.conn:
+            self.conn.unpin()
+            self.conn = None
 
 
 _Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
@@ -298,7 +299,7 @@ class Cursor(Generic[_DocumentType]):
         self.__empty = False
 
         self.__data: deque = deque()
-        self.__address = None
+        self.__address: Optional[_Address] = None
         self.__retrieved = 0
 
         self.__codec_options = collection.codec_options
@@ -419,6 +420,7 @@ class Cursor(Generic[_DocumentType]):
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
+            assert self.__address is not None
             address = _CursorAddress(self.__address, f"{self.__dbname}.{self.__collname}")
         else:
             # Skip killCursors.
@@ -887,7 +889,7 @@ class Cursor(Generic[_DocumentType]):
         in the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         The :meth:`distinct` method obeys the
         :attr:`~pymongo.collection.Collection.read_preference` of the
@@ -984,21 +986,19 @@ class Cursor(Generic[_DocumentType]):
     def where(self, code: Union[str, Code]) -> "Cursor[_DocumentType]":
         """Adds a `$where`_ clause to this query.
 
-        The `code` argument must be an instance of :class:`basestring`
-        (:class:`str` in python 3) or :class:`~bson.code.Code`
-        containing a JavaScript expression. This expression will be
-        evaluated for each document scanned. Only those documents
-        for which the expression evaluates to *true* will be returned
-        as results. The keyword *this* refers to the object currently
-        being scanned. For example::
+        The `code` argument must be an instance of :class:`str` or
+        :class:`~bson.code.Code` containing a JavaScript expression.
+        This expression will be evaluated for each document scanned.
+        Only those documents for which the expression evaluates to
+        *true* will be returned as results. The keyword *this* refers
+        to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
             for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidOperation` if this
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`Cursor` has any effect.
 
@@ -1087,7 +1087,7 @@ class Cursor(Generic[_DocumentType]):
         self.__address = response.address
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.socket_info, response.more_to_come)
+                self.__sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1110,6 +1110,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__data = deque(docs)
                 self.__retrieved += len(docs)
         else:
+            assert isinstance(response.data, _OpReply)
             self.__id = response.data.cursor_id
             self.__data = deque(docs)
             self.__retrieved += response.data.number_returned
@@ -1129,7 +1130,7 @@ class Cursor(Generic[_DocumentType]):
         codec_options: CodecOptions,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _read_preference(self) -> _ServerMode:
@@ -1355,13 +1356,13 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[_DocumentOut]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return raw_response
+        return cast(List["_DocumentOut"], raw_response)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

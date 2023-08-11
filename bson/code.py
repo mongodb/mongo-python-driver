@@ -22,8 +22,8 @@ class Code(str):
     """BSON's JavaScript code type.
 
     Raises :class:`TypeError` if `code` is not an instance of
-    :class:`basestring` (:class:`str` in python 3) or `scope`
-    is not ``None`` or an instance of :class:`dict`.
+    :class:`str` or `scope` is not ``None`` or an instance
+    of :class:`dict`.
 
     Scope variables can be set by passing a dictionary as the `scope`
     argument or by using keyword arguments. If a variable is set as a
@@ -86,7 +86,7 @@ class Code(str):
         """Scope dictionary for this instance or ``None``."""
         return self.__scope
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Code({str.__repr__(self)}, {self.__scope!r})"
 
     def __eq__(self, other: Any) -> bool:

@@ -19,7 +19,7 @@ that might not be of interest or that has already been addressed.
 Supported Interpreters
 ----------------------
 
-PyMongo supports CPython 3.7+ and PyPy3.7+. Language
+PyMongo supports CPython 3.7+ and PyPy3.8+. Language
 features not supported by all interpreters can not be used.
 
 Style Guide
@@ -34,7 +34,7 @@ General Guidelines
 - Avoid backward breaking changes if at all possible.
 - Write inline documentation for new classes and methods.
 - Write tests and make sure they pass (make sure you have a mongod
-  running on the default port, then execute ``python setup.py test``
+  running on the default port, then execute ``tox -m test``
   from the cmd line to run the test suite).
 - Add yourself to doc/contributors.rst :)
 
@@ -73,11 +73,13 @@ button.
 Running Tests Locally
 ---------------------
 - Ensure you have started the appropriate Mongo Server(s).
-- Run ``python setup.py test`` to run all of the tests.
-- Run ``python setup.py test -s test.<mod_name>.<class_name>.<test_name>`` to
+- Run ``pip install tox`` to use ``tox`` for testing or run ``pip install -e ".[test]"`` to run ``pytest`` directly.
+- Run ``tox -m test`` or ``pytest`` to run all of the tests.
+- Append ``test/<mod_name>.py::<class_name>::<test_name>`` to
   run specific tests.  You can omit the ``<test_name>`` to test a full class
   and the ``<class_name>`` to test a full module.  For example:
-  ``python setup.py test -s test.test_change_stream.TestUnifiedChangeStreamsErrors.test_change_stream_errors_on_ElectionInProgress``.
+  ``tox -m test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress``.
+- Use the ``-k`` argument to select tests by pattern.
 
 Running Load Balancer Tests Locally
 -----------------------------------
@@ -85,7 +87,7 @@ Running Load Balancer Tests Locally
 - Clone ``drivers-evergreen-tools``: ``git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git``.
 - Start the servers using ``LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh``.
 - Start the load balancer using: ``MONGODB_URI='mongodb://localhost:27017,localhost:27018/' $PWD/drivers-evergreen-tools/.evergreen/run-load-balancer.sh start``.
-- Run the tests from the ``pymongo`` checkout directory using: ``LOADBALANCER=1 TEST_LOADBALANCER=1 SINGLE_MONGOS_LB_URI='mongodb://127.0.0.1:8000/?loadBalanced=true' MULTI_MONGOS_LB_URI='mongodb://127.0.0.1:8001/?loadBalanced=true' MONGODB_URI='mongodb://localhost:27017,localhost:27018/' python setup.py test -s test.test_load_balancer``.
+- Run the tests from the ``pymongo`` checkout directory using: ``TEST_LOADBALANCER=1 tox -m test-eg``.
 
 Re-sync Spec Tests
 ------------------

@@ -22,7 +22,7 @@ from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId
 from pymongo.hello import Hello
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import _Address
+from pymongo.typings import ClusterTime, _Address
 
 
 class ServerDescription:
@@ -176,7 +176,7 @@ class ServerDescription:
         return self._election_id
 
     @property
-    def cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def cluster_time(self) -> Optional[ClusterTime]:
         return self._cluster_time
 
     @property
@@ -284,7 +284,7 @@ class ServerDescription:
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         errmsg = ""
         if self.error:
             errmsg = f", error={self.error!r}"

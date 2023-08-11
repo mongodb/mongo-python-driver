@@ -20,7 +20,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Container,
     ContextManager,
     Generic,
     Iterable,
@@ -74,12 +73,7 @@ from pymongo.operations import (
     _IndexKeyHint,
     _IndexList,
 )
-from pymongo.read_preferences import (
-    Primary,
-    PrimaryPreferred,
-    ReadPreference,
-    _ServerMode,
-)
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
     DeleteResult,
@@ -126,7 +120,7 @@ if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
     from pymongo.collation import Collation
     from pymongo.database import Database
-    from pymongo.pool import SocketInfo
+    from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
 
@@ -149,9 +143,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        collection name. Any additional keyword arguments will be used
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
+        not a valid collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
         :meth:`~pymongo.database.Database.create_collection` for valid
         options.
@@ -263,22 +256,22 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 self.__create(name, kwargs, collation, session)
 
-    def _socket_for_reads(
+    def _conn_for_reads(
         self, session: ClientSession
-    ) -> ContextManager[Tuple[SocketInfo, Union[PrimaryPreferred, Primary]]]:
-        return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
+    ) -> ContextManager[Tuple[Connection, _ServerMode]]:
+        return self.__database.client._conn_for_reads(self._read_preference_for(session), session)
 
-    def _socket_for_writes(self, session: Optional[ClientSession]) -> ContextManager[SocketInfo]:
-        return self.__database.client._socket_for_writes(session)
+    def _conn_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
+        return self.__database.client._conn_for_writes(session)
 
     def _command(
         self,
-        sock_info: SocketInfo,
-        command: Mapping[str, Any],
+        conn: Connection,
+        command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = None,
         check: bool = True,
-        allowable_errors: Optional[Container[Any]] = None,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         collation: Optional[_CollationIn] = None,
@@ -289,7 +282,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Internal command helper.
 
         :Parameters:
-          - `sock_info` - A SocketInfo instance.
+          - `conn` - A Connection instance.
           - `command` - The command itself, as a :class:`~bson.son.SON` instance.
           - `read_preference` (optional) - The read preference to use.
           - `codec_options` (optional) - An instance of
@@ -314,7 +307,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           The result document.
         """
         with self.__database.client._tmp_session(session) as s:
-            return sock_info.command(
+            return conn.command(
                 self.__database.name,
                 command,
                 read_preference or self._read_preference_for(session),
@@ -349,16 +342,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._socket_for_writes(session) as sock_info:
-            if qev2_required and sock_info.max_wire_version < 21:
+        with self._conn_for_writes(session) as conn:
+            if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
                     "Upgrade server to use Queryable Encryption. "
-                    f"Got maxWireVersion {sock_info.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
                 )
 
             self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=self._write_concern_for(session),
@@ -598,12 +591,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         def _insert_command(
-            session: ClientSession, sock_info: SocketInfo, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> None:
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
 
-            result = sock_info.command(
+            result = conn.command(
                 self.__database.name,
                 command,
                 write_concern=write_concern,
@@ -766,7 +759,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _update(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         criteria: Mapping[str, Any],
         document: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
@@ -802,7 +795,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 update_doc["arrayFilters"] = array_filters
         if hint is not None:
-            if not acknowledged and sock_info.max_wire_version < 8:
+            if not acknowledged and conn.max_wire_version < 8:
                 raise ConfigurationError(
                     "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
                 )
@@ -822,7 +815,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         # The command result has to be published for APM unmodified
         # so we make a shallow copy here before adding updatedExisting.
-        result = sock_info.command(
+        result = conn.command(
             self.__database.name,
             command,
             write_concern=write_concern,
@@ -862,14 +855,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
         def _update(
-            session: Optional[ClientSession], sock_info: SocketInfo, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Optional[Mapping[str, Any]]:
             return self._update(
-                sock_info,
+                conn,
                 criteria,
                 document,
                 upsert=upsert,
@@ -1256,7 +1249,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _delete(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         criteria: Mapping[str, Any],
         multi: bool,
         write_concern: Optional[WriteConcern] = None,
@@ -1281,7 +1274,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 delete_doc["collation"] = collation
         if hint is not None:
-            if not acknowledged and sock_info.max_wire_version < 9:
+            if not acknowledged and conn.max_wire_version < 9:
                 raise ConfigurationError(
                     "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
                 )
@@ -1298,7 +1291,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         # Delete command.
-        result = sock_info.command(
+        result = conn.command(
             self.__database.name,
             command,
             write_concern=write_concern,
@@ -1326,10 +1319,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Internal delete helper."""
 
         def _delete(
-            session: Optional[ClientSession], sock_info: SocketInfo, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Mapping[str, Any]:
             return self._delete(
-                sock_info,
+                conn,
                 criteria,
                 multi,
                 write_concern=write_concern,
@@ -1738,17 +1731,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _count_cmd(
         self,
-        session: ClientSession,
-        sock_info: SocketInfo,
+        session: Optional[ClientSession],
+        conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: Mapping[str, Any],
+        cmd: SON[str, Any],
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
         res = self._command(
-            sock_info,
+            conn,
             cmd,
             read_preference=read_preference,
             allowable_errors=["ns missing"],
@@ -1763,15 +1756,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _aggregate_one_result(
         self,
-        sock_info: SocketInfo,
+        conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: Mapping[str, Any],
+        cmd: SON[str, Any],
         collation: Optional[_CollationIn],
-        session: ClientSession,
+        session: Optional[ClientSession],
     ) -> Optional[Mapping[str, Any]]:
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
-            sock_info,
+            conn,
             cmd,
             read_preference,
             allowable_errors=[26],  # Ignore NamespaceNotFound.
@@ -1820,14 +1813,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
             cmd: SON[str, Any] = SON([("count", self.__name)])
             cmd.update(kwargs)
-            return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
+            return self._count_cmd(session, conn, read_preference, cmd, collation=None)
 
         return self._retryable_non_cursor_read(_cmd, None)
 
@@ -1909,12 +1902,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
-            result = self._aggregate_one_result(sock_info, read_preference, cmd, collation, session)
+            result = self._aggregate_one_result(conn, read_preference, cmd, collation, session)
             if not result:
                 return 0
             return result["n"]
@@ -1923,7 +1916,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _retryable_non_cursor_read(
         self,
-        func: Callable[[ClientSession, Server, SocketInfo, Optional[_ServerMode]], T],
+        func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
         session: Optional[ClientSession],
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
@@ -1994,8 +1987,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        with self._socket_for_writes(session) as sock_info:
-            supports_quorum = sock_info.max_wire_version >= 9
+        with self._conn_for_writes(session) as conn:
+            supports_quorum = conn.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
                 for index in indexes:
@@ -2016,7 +2009,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 )
 
             self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
@@ -2037,9 +2030,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
         be assumed.
-        The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        The key(s) must be an instance of :class:`str`and the direction(s) must
+        be one of (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
         :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
@@ -2238,9 +2230,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
+        with self._conn_for_writes(session) as conn:
             self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
@@ -2278,26 +2270,27 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         codec_options: CodecOptions = CodecOptions(SON)
-        coll = self.with_options(
-            codec_options=codec_options, read_preference=ReadPreference.PRIMARY
+        coll = cast(
+            Collection[MutableMapping[str, Any]],
+            self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         explicit_session = session is not None
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: _ServerMode,
-        ) -> CommandCursor[_DocumentType]:
+        ) -> CommandCursor[MutableMapping[str, Any]]:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
 
             try:
-                cursor = self._command(
-                    sock_info, cmd, read_preference, codec_options, session=session
-                )["cursor"]
+                cursor = self._command(conn, cmd, read_preference, codec_options, session=session)[
+                    "cursor"
+                ]
             except OperationFailure as exc:
                 # Ignore NamespaceNotFound errors to match the behavior
                 # of reading from *.system.indexes.
@@ -2307,12 +2300,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd_cursor = CommandCursor(
                 coll,
                 cursor,
-                sock_info.address,
+                conn.address,
                 session=session,
                 explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
-            cmd_cursor._maybe_pin_connection(sock_info)
+            cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
         with self.__database.client._tmp_session(session, False) as s:
@@ -2406,7 +2399,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self.__database.client._retryable_read(
             cmd.get_cursor,
-            cmd.get_read_preference(session),
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
         )
@@ -2470,7 +2463,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        def gen_indexes():
+        def gen_indexes() -> Iterator[Mapping[str, Any]]:
             for index in models:
                 if not isinstance(index, SearchIndexModel):
                     raise TypeError(
@@ -2481,9 +2474,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
         cmd.update(kwargs)
 
-        with self._socket_for_writes(session) as sock_info:
+        with self._conn_for_writes(session) as conn:
             resp = self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
@@ -2516,9 +2509,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
+        with self._conn_for_writes(session) as conn:
             self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
@@ -2553,9 +2546,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
+        with self._conn_for_writes(session) as conn:
             self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
@@ -2620,7 +2613,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Union[CommandCursor[_DocumentType], RawBatchCursor[_DocumentType]]:
+    ) -> CommandCursor[_DocumentType]:
         if comment is not None:
             kwargs["comment"] = comment
         cmd = aggregation_command(
@@ -2635,7 +2628,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return self.__database.client._retryable_read(
             cmd.get_cursor,
-            cmd.get_read_preference(session),
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
         )
@@ -2726,18 +2719,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
         with self.__database.client._tmp_session(session, close=False) as s:
-            return cast(
-                CommandCursor[_DocumentType],
-                self._aggregate(
-                    _CollectionAggregationCommand,
-                    pipeline,
-                    CommandCursor,
-                    session=s,
-                    explicit_session=session is not None,
-                    let=let,
-                    comment=comment,
-                    **kwargs,
-                ),
+            return self._aggregate(
+                _CollectionAggregationCommand,
+                pipeline,
+                CommandCursor,
+                session=s,
+                explicit_session=session is not None,
+                let=let,
+                comment=comment,
+                **kwargs,
             )
 
     def aggregate_raw_batches(
@@ -2940,8 +2930,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`
-        (:class:`str` in python 3). Raises :class:`~pymongo.errors.InvalidName`
+        `new_name` is not an instance of :class:`str`.
+        Raises :class:`~pymongo.errors.InvalidName`
         if `new_name` is not a valid collection name.
 
         :Parameters:
@@ -2982,9 +2972,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        with self._socket_for_writes(session) as sock_info:
+        with self._conn_for_writes(session) as conn:
             with self.__database.client._tmp_session(session) as s:
-                return sock_info.command(
+                return conn.command(
                     "admin",
                     cmd,
                     write_concern=write_concern,
@@ -3005,7 +2995,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         All optional distinct parameters should be passed as keyword arguments
         to this method. Valid options include:
@@ -3049,13 +3039,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
 
         def _cmd(
-            session: ClientSession,
+            session: Optional[ClientSession],
             server: Server,
-            sock_info: SocketInfo,
+            conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> List:
             return self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=read_preference,
                 read_concern=self.read_concern,
@@ -3114,7 +3104,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         def _find_and_modify(
-            session: ClientSession, sock_info: SocketInfo, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Any:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
@@ -3124,17 +3114,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     )
                 cmd["arrayFilters"] = list(array_filters)
             if hint is not None:
-                if sock_info.max_wire_version < 8:
+                if conn.max_wire_version < 8:
                     raise ConfigurationError(
                         "Must be connected to MongoDB 4.2+ to use hint on find and modify commands."
                     )
-                elif not acknowledged and sock_info.max_wire_version < 9:
+                elif not acknowledged and conn.max_wire_version < 9:
                     raise ConfigurationError(
                         "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
                     )
                 cmd["hint"] = hint
             out = self._command(
-                sock_info,
+                conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=write_concern,

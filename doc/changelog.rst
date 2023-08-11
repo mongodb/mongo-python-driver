@@ -3,6 +3,9 @@ Changelog
 
 Changes in Version 4.5
 ----------------------
+
+PyMongo 4.5 brings a number of improvements including:
+
 - Added new helper methods for Atlas Search Index (requires MongoDB Server 7.0+):
   :meth:`~pymongo.collection.Collection.list_search_indexes`,
   :meth:`~pymongo.collection.Collection.create_search_index`,
@@ -10,10 +13,54 @@ Changes in Version 4.5
   :meth:`~pymongo.collection.Collection.drop_search_index`,
   :meth:`~pymongo.collection.Collection.update_search_index`
 - Added :meth:`~pymongo.database.Database.cursor_command`
-  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support executing an arbitrary command that returns a cursor.
+  and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support
+  executing an arbitrary command that returns a cursor.
+- cryptography 2.5 or later is now required for :ref:`OCSP` support.
+- Improved bson encoding and decoding performance by up to 134%(`PYTHON-3729`_, `PYTHON-3797`_, `PYTHON-3816`_, `PYTHON-3817`_, `PYTHON-3820`_, `PYTHON-3824`_, and `PYTHON-3846`_).
+
+.. warning:: PyMongo no longer supports PyPy3 versions older than 3.8. Users
+  must upgrade to PyPy3.8+.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=35492
+
+.. _PYTHON-3729: https://jira.mongodb.org/browse/PYTHON-3729
+.. _PYTHON-3797: https://jira.mongodb.org/browse/PYTHON-3797
+.. _PYTHON-3816: https://jira.mongodb.org/browse/PYTHON-3816
+.. _PYTHON-3817: https://jira.mongodb.org/browse/PYTHON-3817
+.. _PYTHON-3820: https://jira.mongodb.org/browse/PYTHON-3820
+.. _PYTHON-3824: https://jira.mongodb.org/browse/PYTHON-3824
+.. _PYTHON-3846: https://jira.mongodb.org/browse/PYTHON-3846
+
+Changes in Version 4.4.1
+------------------------
+
+Version 4.4.1 fixes the following bugs:
+
+- Fixed a bug where pymongo would raise a ``ConfigurationError: Invalid SRV host``
+  error when connecting to a "mongodb+srv://" URI that included capital letters
+  in the SRV hosts returned from DNS. (`PYTHON-3800`_).
+- Fixed a minor reference counting bug in the C extension (`PYTHON-3798`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.4.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3798: https://jira.mongodb.org/browse/PYTHON-3798
+.. _PYTHON-3800: https://jira.mongodb.org/browse/PYTHON-3800
+.. _PyMongo 4.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36329
 
 Changes in Version 4.4
 -----------------------
+
+PyMongo 4.4 brings a number of improvements including:
 
 - Added support for MongoDB 7.0.
 - Added support for Python 3.11.

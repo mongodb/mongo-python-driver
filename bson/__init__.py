@@ -124,7 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
+    from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -663,9 +663,8 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
 
 def _make_name(string: str) -> bytes:
     """Make a 'C' string suitable for a BSON key."""
-    # Keys can only be text in python 3.
     if "\x00" in string:
-        raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
+        raise InvalidDocument("BSON keys must not contain a NUL character")
     return _utf_8_encode(string)[0] + b"\x00"
 
 
@@ -814,7 +813,7 @@ def _encode_timestamp(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> byte
 
 
 def _encode_long(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
-    """Encode a python long (python 2.x)"""
+    """Encode a bson.int64.Int64."""
     try:
         return b"\x12" + name + _PACK_LONG(value)
     except struct.error:
@@ -995,7 +994,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of Code
 
 
 def encode(
-    document: "_DocumentIn",
+    document: Mapping[str, Any],
     check_keys: bool = False,
     codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
 ) -> bytes:
@@ -1004,8 +1003,7 @@ def encode(
     A document can be any mapping type (like :class:`dict`).
 
     Raises :class:`TypeError` if `document` is not a mapping type,
-    or contains keys that are not instances of
-    :class:`basestring` (:class:`str` in python 3). Raises
+    or contains keys that are not instances of :class:`str`. Raises
     :class:`~bson.errors.InvalidDocument` if `document` cannot be
     converted to :class:`BSON`.
 
@@ -1108,9 +1106,21 @@ if _USE_C:
     _decode_all = _cbson._decode_all  # noqa: F811
 
 
+@overload
+def decode_all(data: "_ReadableBuffer", codec_options: None = None) -> "List[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_all(
+    data: "_ReadableBuffer", codec_options: "CodecOptions[_DocumentType]"
+) -> "List[_DocumentType]":
+    ...
+
+
 def decode_all(
     data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "List[_DocumentType]":
+) -> "Union[List[Dict[str, Any]], List[_DocumentType]]":
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1133,11 +1143,13 @@ def decode_all(
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
        `codec_options`.
     """
-    opts = codec_options or DEFAULT_CODEC_OPTIONS
-    if not isinstance(opts, CodecOptions):
+    if codec_options is None:
+        return _decode_all(data, DEFAULT_CODEC_OPTIONS)
+
+    if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return _decode_all(data, opts)  # type:ignore[arg-type]
+    return _decode_all(data, codec_options)
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
@@ -1244,9 +1256,21 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
     ]
 
 
+@overload
+def decode_iter(data: bytes, codec_options: None = None) -> "Iterator[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_iter(
+    data: bytes, codec_options: "CodecOptions[_DocumentType]"
+) -> "Iterator[_DocumentType]":
+    ...
+
+
 def decode_iter(
     data: bytes, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "Iterator[_DocumentType]":
+) -> "Union[Iterator[Dict[str, Any]], Iterator[_DocumentType]]":
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1280,9 +1304,23 @@ def decode_iter(
         yield _bson_to_dict(elements, opts)
 
 
+@overload
+def decode_file_iter(
+    file_obj: Union[BinaryIO, IO], codec_options: None = None
+) -> "Iterator[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_file_iter(
+    file_obj: Union[BinaryIO, IO], codec_options: "CodecOptions[_DocumentType]"
+) -> "Iterator[_DocumentType]":
+    ...
+
+
 def decode_file_iter(
     file_obj: Union[BinaryIO, IO], codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "Iterator[_DocumentType]":
+) -> "Union[Iterator[Dict[str, Any]], Iterator[_DocumentType]]":
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1316,7 +1354,7 @@ def is_valid(bson: bytes) -> bool:
     """Check that the given string represents valid :class:`BSON` data.
 
     Raises :class:`TypeError` if `bson` is not an instance of
-    :class:`str` (:class:`bytes` in python 3). Returns ``True``
+    :class:`bytes`. Returns ``True``
     if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
     :Parameters:
@@ -1343,7 +1381,7 @@ class BSON(bytes):
     @classmethod
     def encode(
         cls: Type["BSON"],
-        document: "_DocumentIn",
+        document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
     ) -> "BSON":
@@ -1353,9 +1391,8 @@ class BSON(bytes):
 
         Raises :class:`TypeError` if `document` is not a mapping type,
         or contains keys that are not instances of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~bson.errors.InvalidDocument` if `document` cannot be
-        converted to :class:`BSON`.
+        :class:`str'. Raises :class:`~bson.errors.InvalidDocument`
+        if `document` cannot be converted to :class:`BSON`.
 
         :Parameters:
           - `document`: mapping type representing a document
@@ -1409,7 +1446,7 @@ def has_c() -> bool:
     return _USE_C
 
 
-def _after_fork():
+def _after_fork() -> None:
     """Releases the ObjectID lock child."""
     if ObjectId._inc_lock.locked():
         ObjectId._inc_lock.release()
