@@ -172,7 +172,6 @@ def command(
         command_logger.debug(
             StructuredMessage(
                 clientID=client._topology_settings._topology_id,
-                # clientID="test",
                 message="Command started",
                 command=spec,
                 commandName=next(iter(spec)),
@@ -226,7 +225,6 @@ def command(
             command_logger.debug(
                 StructuredMessage(
                     clientID=client._topology_settings._topology_id,
-                    # clientID="test",
                     message="Command failed",
                     durationMS=duration,
                     reply=failure,
@@ -252,7 +250,6 @@ def command(
         command_logger.debug(
             StructuredMessage(
                 clientID=client._topology_settings._topology_id,
-                # clientID="test",
                 message="Command succeeded",
                 durationMS=duration,
                 reply=response_doc,

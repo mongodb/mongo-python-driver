@@ -147,7 +147,6 @@ class Server:
         command_logger.debug(
             StructuredMessage(
                 clientID=client._topology_settings._topology_id,
-                # clientID="test",
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
@@ -203,7 +202,6 @@ class Server:
             command_logger.debug(
                 StructuredMessage(
                     clientID=client._topology_settings._topology_id,
-                    # clientID="test",
                     message="Command failed",
                     durationMS=duration,
                     reply=failure,
@@ -244,7 +242,6 @@ class Server:
         command_logger.debug(
             StructuredMessage(
                 clientID=client._topology_settings._topology_id,
-                # clientID="test",
                 message="Command succeeded",
                 durationMS=duration,
                 reply=res,
