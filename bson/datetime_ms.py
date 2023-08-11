@@ -20,7 +20,6 @@
 import calendar
 import datetime
 import functools
-import sys
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
