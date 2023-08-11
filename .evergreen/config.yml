@@ -1303,6 +1303,33 @@ task_groups:
     tasks:
     - testazurekms-task
 
+  - name: test_aws_lambda_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+    teardown_group:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - test-aws-lambda-deployed
+
   - name: test_atlas_task_group_search_indexes
     setup_group:
       - func: fetch source
@@ -1784,6 +1811,23 @@ tasks:
         - func: "run tests"
           vars:
             TEST_DATA_LAKE: "true"
+
+    - name: "test-aws-lambda-deployed"
+      commands:
+        - func: "install dependencies"
+        - command: ec2.assume_role
+          params:
+            role_arn: ${LAMBDA_AWS_ROLE_ARN}
+            duration_seconds: 3600
+        - command: subprocess.exec
+          params:
+            working_dir: src
+            binary: bash
+            add_expansions_to_env: true
+            args:
+              - .evergreen/run-deployed-lambda-aws-tests.sh
+            env:
+              TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -3357,6 +3401,12 @@ buildvariants:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testazurekms-fail-task
+
+- name: rhel8-test-lambda
+  display_name: AWS Lambda handler tests
+  run_on: rhel87-small
+  tasks:
+    - name: test_aws_lambda_task_group
 
 - name: Release
   display_name: Release
