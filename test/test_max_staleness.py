@@ -123,6 +123,9 @@ class TestMaxStaleness(unittest.TestCase):
         time.sleep(1)
         server = client._topology.select_server(writable_server_selector)
         second = server.description.last_write_date
+        assert first is not None
+
+        assert second is not None
         self.assertGreater(second, first)
         self.assertLess(second, first + 10)
 

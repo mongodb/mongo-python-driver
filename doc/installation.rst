@@ -184,7 +184,7 @@ warning will be printed.
 
 If you wish to install PyMongo without the C extensions, even if the
 extensions build properly, it can be done using a command line option to
-*setup.py*::
+*pip install*::
 
   $ NO_EXT=1 python -m pip install .
 
