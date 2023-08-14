@@ -349,7 +349,8 @@ class ClientContext:
         if not AUTH_MECH:
             self.client = self._connect(host, port)
         else:
-            self.client = None
+            self.auth_enabled = True
+            self.client = self._connect(host, port, username=db_user, password=db_pwd)
 
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
