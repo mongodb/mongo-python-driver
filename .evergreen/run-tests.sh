@@ -21,6 +21,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_FLE_GCP_AUTO    If non-empy, test auto FLE on GCP
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
+#  TEST_ATLAS   If non-empty, test Atlas connections
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -168,6 +169,11 @@ if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test/test_data_lake.py"
 fi
 
+if [ -n "$TEST_ATLAS" ]; then
+    TEST_ARGS="test/atlas/test_connection.py"
+fi
+
+
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 python -c 'import sys; print(sys.version)'
 
@@ -190,7 +196,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
 
-    python -m pytest $TEST_ARGS
+    python -m pytest -v $TEST_ARGS
 else
     python -m pip install $GREEN_FRAMEWORK
     python green_framework_test.py $GREEN_FRAMEWORK
