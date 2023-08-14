@@ -279,6 +279,7 @@ class ClientContext:
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
         if AUTH_MECH:
+            self.auth_enabled = True
             self.default_client_options["authMechanism"] = AUTH_MECH
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
