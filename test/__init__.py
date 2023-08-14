@@ -95,7 +95,6 @@ TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
-AUTH_MECH = os.environ.get("AUTH_MECH")
 
 if TEST_LOADBALANCER:
     res = parse_uri(SINGLE_MONGOS_LB_URI or "")
@@ -278,8 +277,6 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
-        if AUTH_MECH:
-            self.default_client_options["authMechanism"] = AUTH_MECH
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -346,12 +343,7 @@ class ClientContext:
             client.close()
 
     def _init_client(self):
-        if not AUTH_MECH:
-            self.client = self._connect(host, port)
-        else:
-            self.auth_enabled = True
-            self.client = self._connect(host, port, username=db_user, password=db_pwd)
-
+        self.client = self._connect(host, port)
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
