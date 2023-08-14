@@ -279,8 +279,10 @@ class ClientContext:
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
         if AUTH_MECH:
-            self.auth_enabled = True
             self.default_client_options["authMechanism"] = AUTH_MECH
+            if db_user:
+                self.default_client_options["username"] = db_user
+                self.default_client_options["password"] = db_pwd
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
