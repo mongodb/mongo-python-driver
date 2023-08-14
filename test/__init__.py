@@ -280,9 +280,6 @@ class ClientContext:
         self.serverless = TEST_SERVERLESS
         if AUTH_MECH:
             self.default_client_options["authMechanism"] = AUTH_MECH
-            if db_user:
-                self.default_client_options["username"] = db_user
-                self.default_client_options["password"] = db_pwd
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -349,7 +346,10 @@ class ClientContext:
             client.close()
 
     def _init_client(self):
-        self.client = self._connect(host, port)
+        if not AUTH_MECH:
+            self.client = self._connect(host, port)
+        else:
+            self.client = None
 
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
