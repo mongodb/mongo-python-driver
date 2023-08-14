@@ -427,24 +427,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         return self.__database
 
-    # @overload
-    # def with_options(
-    #     self,
-    #     codec_options: None = None,
-    #     read_preference: Optional[_ServerMode] = None,
-    #     write_concern: Optional[WriteConcern] = None,
-    #     read_concern: Optional[ReadConcern] = None,
-    # ) -> Collection[Dict[str, Any]]: ...
-
-    # @overload
-    # def with_options(
-    #     self,
-    #     codec_options: bson.CodecOptions[_DocumentType],
-    #     read_preference: Optional[_ServerMode] = None,
-    #     write_concern: Optional[WriteConcern] = None,
-    #     read_concern: Optional[ReadConcern] = None,
-    # ) -> Collection[_DocumentType]: ...
-
     def with_options(
         self,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
@@ -2481,7 +2463,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        def gen_indexes():
+        def gen_indexes() -> Iterator[Mapping[str, Any]]:
             for index in models:
                 if not isinstance(index, SearchIndexModel):
                     raise TypeError(

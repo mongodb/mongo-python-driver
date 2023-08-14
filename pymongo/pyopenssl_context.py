@@ -42,7 +42,6 @@ from pymongo.socket_checker import _errno_from_exception
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
-    import socket
     from ssl import VerifyMode
 
     from cryptography.x509 import Certificate
@@ -106,7 +105,7 @@ def _ragged_eof(exc: BaseException) -> bool:
 # https://docs.python.org/3/library/ssl.html#notes-on-non-blocking-sockets
 class _sslConn(_SSL.Connection):
     def __init__(
-        self, ctx: _SSL.Context, sock: Optional[socket.socket], suppress_ragged_eofs: bool
+        self, ctx: _SSL.Context, sock: Optional[_socket.socket], suppress_ragged_eofs: bool
     ):
         self.socket_checker = _SocketChecker()
         self.suppress_ragged_eofs = suppress_ragged_eofs
@@ -370,7 +369,7 @@ class SSLContext:
 
     def wrap_socket(
         self,
-        sock: socket.socket,
+        sock: _socket.socket,
         server_side: bool = False,
         do_handshake_on_connect: bool = True,
         suppress_ragged_eofs: bool = True,

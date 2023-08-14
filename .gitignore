@@ -19,3 +19,10 @@ mongocryptd.pid
 venv/
 secrets-expansion.yml
 secrets-export.sh
+
+# Lambda temp files
+test/lambda/.aws-sam
+test/lambda/env.json
+test/lambda/mongodb/pymongo/*
+test/lambda/mongodb/gridfs/*
+test/lambda/mongodb/bson/*

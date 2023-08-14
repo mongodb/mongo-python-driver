@@ -20,6 +20,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_FLE_AZURE_AUTO  If non-empy, test auto FLE on Azure
 #  TEST_FLE_GCP_AUTO    If non-empy, test auto FLE on GCP
 #  TEST_PYOPENSSL       If non-empy, test with PyOpenSSL
+#  TEST_ENTERPRISE_AUTH If non-empty, test with Enterprise Auth
+#  TEST_AUTH_AWS        If non-empty, test AWS Auth Mechanism
+#  TEST_AUTH_OIDC       If non-empty, test OIDC Auth Mechanism
+#  TEST_PERF            If non-empty, run performance tests
+#  TEST_OCSP            If non-empty, run OCSP tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 #  TEST_ATLAS   If non-empty, test Atlas connections
 
@@ -49,6 +54,34 @@ if [ "$AUTH" != "noauth" ]; then
     fi
 fi
 
+if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
+    if [ "Windows_NT" = "$OS" ]; then
+        echo "Setting GSSAPI_PASS"
+        export GSSAPI_PASS=${SASL_PASS}
+        export GSSAPI_CANONICALIZE="true"
+    else
+        # BUILD-3830
+        touch krb5.conf.empty
+        export KRB5_CONFIG=${PROJECT_DIRECTORY}/.evergreen/krb5.conf.empty
+
+        echo "Writing keytab"
+        echo ${KEYTAB_BASE64} | base64 -d > ${PROJECT_DIRECTORY}/.evergreen/drivers.keytab
+        echo "Running kinit"
+        kinit -k -t ${PROJECT_DIRECTORY}/.evergreen/drivers.keytab -p ${PRINCIPAL}
+    fi
+    echo "Setting GSSAPI variables"
+    export GSSAPI_HOST=${SASL_HOST}
+    export GSSAPI_PORT=${SASL_PORT}
+    export GSSAPI_PRINCIPAL=${PRINCIPAL}
+fi
+
+if [ -n "$TEST_LOADBALANCER" ]; then
+    export LOAD_BALANCER=1
+    export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI:-mongodb://127.0.0.1:8000/?loadBalanced=true}"
+    export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI:-mongodb://127.0.0.1:8001/?loadBalanced=true}"
+    export TEST_ARGS="test/test_load_balancer.py"
+fi
+
 if [ "$SSL" != "nossl" ]; then
     export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
     export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
@@ -60,15 +93,15 @@ if [ "$SSL" != "nossl" ]; then
 fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
-    pip install '.[snappy]'
+    python -m pip install '.[snappy]'
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    pip install zstandard
+    python -m pip install zstandard
 fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    pip install '.[ocsp]'
+    python -m pip install '.[ocsp]'
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
@@ -76,14 +109,14 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     # Work around for root certifi not being installed.
     # TODO: Remove after PYTHON-3827
     if [ "$(uname -s)" = "Darwin" ]; then
-        pip install certifi
+        python -m pip install certifi
         CERT_PATH=$(python -c "import certifi; print(certifi.where())")
         export SSL_CERT_FILE=${CERT_PATH}
         export REQUESTS_CA_BUNDLE=${CERT_PATH}
         export AWS_CA_BUNDLE=${CERT_PATH}
     fi
 
-    pip install '.[encryption]'
+    python -m pip install '.[encryption]'
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
@@ -129,7 +162,7 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
-        pip install '.[ocsp]'
+        python -m pip install '.[ocsp]'
     fi
 
     # Get access to the AWS temporary credentials:
@@ -165,6 +198,10 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
     fi
 fi
 
+if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+    TEST_ARGS="test/test_index_management.py"
+fi
+
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test/test_data_lake.py"
 fi
@@ -173,6 +210,26 @@ if [ -n "$TEST_ATLAS" ]; then
     TEST_ARGS="test/atlas/test_connection.py"
 fi
 
+if [ -n "$TEST_OCSP" ]; then
+    python -m pip install ".[ocsp]"
+    TEST_ARGS="test/ocsp/test_ocsp.py"
+fi
+
+if [ -n "$TEST_AUTH_AWS" ]; then
+    python -m pip install ".[aws]"
+    TEST_ARGS="test/auth_aws/test_auth_aws.py"
+fi
+
+if [ -n "$TEST_AUTH_OIDC" ]; then
+    python -m pip install ".[aws]"
+    TEST_ARGS="test/auth_aws/test_auth_oidc.py"
+fi
+
+if [ -n "$PERF_TEST" ]; then
+    python -m pip install simplejson
+    start_time=$(date +%s)
+    TEST_ARGS="test/performance/perf_test.py"
+fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 python -c 'import sys; print(sys.version)'
@@ -200,4 +257,16 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
 else
     python -m pip install $GREEN_FRAMEWORK
     python green_framework_test.py $GREEN_FRAMEWORK
+fi
+
+# Handle perf test post actions.
+if [ -n "$PERF_TEST" ]; then
+    end_time=$(date +%s)
+    elapsed_secs=$((end_time-start_time))
+
+    cat results.json
+
+    echo "{\"failures\": 0, \"results\": [{\"status\": \"pass\", \"exit_code\": 0, \"test_file\": \"BenchMarkTests\", \"start\": $start_time, \"end\": $end_time, \"elapsed\": $elapsed_secs}]}" > report.json
+
+    cat report.json
 fi

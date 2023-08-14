@@ -1106,9 +1106,21 @@ if _USE_C:
     _decode_all = _cbson._decode_all  # noqa: F811
 
 
+@overload
+def decode_all(data: "_ReadableBuffer", codec_options: None = None) -> "List[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_all(
+    data: "_ReadableBuffer", codec_options: "CodecOptions[_DocumentType]"
+) -> "List[_DocumentType]":
+    ...
+
+
 def decode_all(
     data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "List[_DocumentType]":
+) -> "Union[List[Dict[str, Any]], List[_DocumentType]]":
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1131,11 +1143,13 @@ def decode_all(
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
        `codec_options`.
     """
-    opts = codec_options or DEFAULT_CODEC_OPTIONS
-    if not isinstance(opts, CodecOptions):
+    if codec_options is None:
+        return _decode_all(data, DEFAULT_CODEC_OPTIONS)
+
+    if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return _decode_all(data, opts)  # type:ignore[arg-type]
+    return _decode_all(data, codec_options)
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
@@ -1242,9 +1256,21 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
     ]
 
 
+@overload
+def decode_iter(data: bytes, codec_options: None = None) -> "Iterator[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_iter(
+    data: bytes, codec_options: "CodecOptions[_DocumentType]"
+) -> "Iterator[_DocumentType]":
+    ...
+
+
 def decode_iter(
     data: bytes, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "Iterator[_DocumentType]":
+) -> "Union[Iterator[Dict[str, Any]], Iterator[_DocumentType]]":
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1278,9 +1304,23 @@ def decode_iter(
         yield _bson_to_dict(elements, opts)
 
 
+@overload
+def decode_file_iter(
+    file_obj: Union[BinaryIO, IO], codec_options: None = None
+) -> "Iterator[Dict[str, Any]]":
+    ...
+
+
+@overload
+def decode_file_iter(
+    file_obj: Union[BinaryIO, IO], codec_options: "CodecOptions[_DocumentType]"
+) -> "Iterator[_DocumentType]":
+    ...
+
+
 def decode_file_iter(
     file_obj: Union[BinaryIO, IO], codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> "Iterator[_DocumentType]":
+) -> "Union[Iterator[Dict[str, Any]], Iterator[_DocumentType]]":
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1406,7 +1446,7 @@ def has_c() -> bool:
     return _USE_C
 
 
-def _after_fork():
+def _after_fork() -> None:
     """Releases the ObjectID lock child."""
     if ObjectId._inc_lock.locked():
         ObjectId._inc_lock.release()

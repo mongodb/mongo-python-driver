@@ -179,7 +179,7 @@ class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
     def pool_created(self, event: monitoring.PoolCreatedEvent) -> None:
         logging.info(f"[pool {event.address}] pool created")
 
-    def pool_ready(self, event):
+    def pool_ready(self, event: monitoring.PoolReadyEvent) -> None:
         logging.info(f"[pool {event.address}] pool ready")
 
     def pool_cleared(self, event: monitoring.PoolClearedEvent) -> None:

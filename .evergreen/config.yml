@@ -370,7 +370,7 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.
@@ -442,7 +442,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
+          # Disable xtrace
+          set +x
           if [ -n "${set_xtrace_on}" ]; then
             export SET_XTRACE_ON="${set_xtrace_on}"
           fi
@@ -476,7 +477,6 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
-            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -487,6 +487,12 @@ functions:
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
+          fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export TEST_INDEX_MANAGEMENT=1
+            export MONGODB_URI="${TEST_INDEX_URI}"
+            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           export PYTHON_BINARY=${PYTHON_BINARY}
@@ -530,8 +536,11 @@ functions:
           set +x
           . ./prepare_enterprise_auth.sh
           rm -f ./prepare_enterprise_auth.sh
-
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ENTERPRISE_AUTH=1 \
+            AUTH=auth \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
     - command: ec2.assume_role
@@ -938,10 +947,11 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec
@@ -1274,6 +1284,73 @@ task_groups:
     tasks:
     - testazurekms-task
 
+  - name: test_aws_lambda_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+    teardown_group:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - test-aws-lambda-deployed
+
+  - name: test_atlas_task_group_search_indexes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          env:
+            MONGODB_VERSION: "7.0"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+      - command: shell.exec
+        params:
+          working_dir: src
+          shell: bash
+          script: |-
+            echo "TEST_INDEX_URI: ${MONGODB_URI}" > atlas-expansion.yml
+      - command: expansions.update
+        params:
+          file: src/atlas-expansion.yml
+    teardown_group:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_expansions_to_env: true
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - test-search-index-helpers
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1310,6 +1387,10 @@ tasks:
       commands:
         - func: "build release"
           vars:
+              VERSION: "3.12"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "build release"
+          vars:
               VERSION: "3.11"
               ENSURE_UNIVERSAL2: "1"
         - func: "build release"
@@ -1321,6 +1402,10 @@ tasks:
               VERSION: "3.9"
               ENSURE_UNIVERSAL2: "1"
         - func: "upload release"
+        - func: "build release"
+          vars:
+              VERSION: "3.8"
+        - func: "upload release"
 
     - name: "release-mac-1014"
       tags: ["release_tag"]
@@ -1329,10 +1414,6 @@ tasks:
         - func: "build release"
           vars:
               VERSION: "3.7"
-        - func: "build release"
-          vars:
-              VERSION: "3.8"
-        - func: "upload release"
 
     - name: "release-windows"
       tags: ["release_tag"]
@@ -1647,6 +1728,16 @@ tasks:
             TOPOLOGY: "server"
         - func: "run enterprise auth tests"
 
+    - name: "test-search-index-helpers"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+          vars:
+            TEST_INDEX_MANAGEMENT: "1"
+
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
       commands:
@@ -1705,6 +1796,23 @@ tasks:
         - func: "run tests"
           vars:
             TEST_DATA_LAKE: "true"
+
+    - name: "test-aws-lambda-deployed"
+      commands:
+        - func: "install dependencies"
+        - command: ec2.assume_role
+          params:
+            role_arn: ${LAMBDA_AWS_ROLE_ARN}
+            duration_seconds: 3600
+        - command: subprocess.exec
+          params:
+            working_dir: src
+            binary: bash
+            add_expansions_to_env: true
+            args:
+              - .evergreen/run-deployed-lambda-aws-tests.sh
+            env:
+              TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -2301,10 +2409,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: archlinux-test
-        display_name: "Archlinux"
-        run_on: archlinux-test
-        batchtime: 10080  # 7 days
       - id: macos-1014
         display_name: "macOS 10.14"
         run_on: macos-1014
@@ -2741,19 +2845,6 @@ axes:
         batchtime: 10080  # 7 days
 
 buildvariants:
-- matrix_name: "tests-archlinux"
-  matrix_spec:
-    platform:
-      # Archlinux supports MongoDB without SSL.
-      # MongoDB 4.2 drops support for archlinux (generic linux builds).
-      - archlinux-test
-    auth: "*"
-    ssl: "nossl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - ".4.0"
-    - ".3.6"
-
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3084,6 +3175,14 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
+- matrix_name: "test-search-index-helpers"
+  matrix_spec:
+    platform: rhel8
+    python-version: "3.8"
+  display_name: "Search Index Helpers ${platform}"
+  tasks:
+     - name: "test_atlas_task_group_search_indexes"
+
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-20.04
@@ -3287,6 +3386,12 @@ buildvariants:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testazurekms-fail-task
+
+- name: rhel8-test-lambda
+  display_name: AWS Lambda handler tests
+  run_on: rhel87-small
+  tasks:
+    - name: test_aws_lambda_task_group
 
 - name: Release
   display_name: Release
