@@ -17,3 +17,10 @@ mongocryptd.pid
 .idea/
 .nova/
 venv/
+
+# Lambda temp files
+test/lambda/.aws-sam
+test/lambda/env.json
+test/lambda/mongodb/pymongo/*
+test/lambda/mongodb/gridfs/*
+test/lambda/mongodb/bson/*
