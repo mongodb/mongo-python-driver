@@ -71,7 +71,7 @@ class SON(Dict[_Key, _Value]):
         instance.__keys = []
         return instance
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = []
         for key in self.__keys:
             result.append(f"({key!r}, {self[key]!r})")

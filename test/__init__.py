@@ -29,14 +29,6 @@ import unittest
 import warnings
 
 try:
-    from xmlrunner import XMLTestRunner
-
-    HAVE_XML = True
-# ValueError is raised when version 3+ is installed on Jython 2.7.
-except (ImportError, ValueError):
-    HAVE_XML = False
-
-try:
     import ipaddress  # noqa
 
     HAVE_IPADDRESS = True
@@ -103,6 +95,7 @@ TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
+
 if TEST_LOADBALANCER:
     res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res["nodelist"][0]
@@ -351,7 +344,6 @@ class ClientContext:
 
     def _init_client(self):
         self.client = self._connect(host, port)
-
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
@@ -1234,24 +1226,6 @@ def teardown():
         c.close()
 
     print_running_clients()
-
-
-class PymongoTestRunner(unittest.TextTestRunner):
-    def run(self, test):
-        setup()
-        result = super().run(test)
-        teardown()
-        return result
-
-
-if HAVE_XML:
-
-    class PymongoXMLTestRunner(XMLTestRunner):  # type: ignore[misc]
-        def run(self, test):
-            setup()
-            result = super().run(test)
-            teardown()
-            return result
 
 
 def test_cases(suite):

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Iterable, List, Union
+from typing import Any, Iterable, List, Optional, Union
 
 try:
     import snappy
@@ -96,7 +96,7 @@ class CompressionSettings:
         self.zlib_compression_level = zlib_compression_level
 
     def get_compression_context(
-        self, compressors: List[str]
+        self, compressors: Optional[List[str]]
     ) -> Union[SnappyContext, ZlibContext, ZstdContext, None]:
         if compressors:
             chosen = compressors[0]

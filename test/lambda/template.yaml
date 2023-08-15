@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Python driver lambda function test
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 128
+
+Parameters:
+  MongoDbUri:
+    Type: String
+    Description: The MongoDB connection string.
+
+Resources:
+  MongoDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: mongodb/
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Events:
+        MongoDB:
+          Type: Api
+          Properties:
+            Path: /mongodb
+            Method: get
+    # Use a custom build method to make sure *.so files are copied.
+    # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/building-custom-runtimes.html
+    Metadata:
+        BuildMethod: makefile
+
+Outputs:
+  MongoDBApi:
+    Description: "API Gateway endpoint URL for Prod stage for Python driver lambda function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+  MongoDBFunction:
+    Description: "Python driver lambda Function ARN"
+    Value: !GetAtt MongoDBFunction.Arn
+  MongoDBFunctionIamRole:
+    Description: "Implicit IAM Role created for Python driver lambda function"
+    Value: !GetAtt MongoDBFunctionRole.Arn

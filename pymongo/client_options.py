@@ -15,7 +15,7 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Tuple, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -309,11 +309,12 @@ class ClientOptions:
         return self.__load_balanced
 
     @property
-    def event_listeners(self) -> _EventListeners:
+    def event_listeners(self) -> List[_EventListeners]:
         """The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.
 
         .. versionadded:: 4.0
         """
+        assert self.__pool_options._event_listeners is not None
         return self.__pool_options._event_listeners.event_listeners()

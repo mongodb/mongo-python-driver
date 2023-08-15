@@ -98,6 +98,7 @@ from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
+    ClusterTime,
     _Address,
     _CollationIn,
     _DocumentType,
@@ -116,6 +117,7 @@ if TYPE_CHECKING:
     import sys
     from types import TracebackType
 
+    from bson.objectid import ObjectId
     from pymongo.bulk import _Bulk
     from pymongo.client_session import ClientSession, _ServerSession
     from pymongo.cursor import _ConnectionManager
@@ -1105,10 +1107,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
-        return self._topology.get_primary()
+        return self._topology.get_primary()  # type: ignore[return-value]
 
     @property
-    def secondaries(self) -> Set[Tuple[str, int]]:
+    def secondaries(self) -> Set[_Address]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1121,7 +1123,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_secondaries()
 
     @property
-    def arbiters(self) -> Set[Tuple[str, int]]:
+    def arbiters(self) -> Set[_Address]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1728,7 +1730,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = topology.select_server_by_address(tuple(address))
+            server = topology.select_server_by_address(tuple(address))  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
             server = topology.select_server(writable_server_selector)
@@ -1898,12 +1900,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         else:
             yield None
 
-    def _send_cluster_time(self, command: MutableMapping[str, Any], session: ClientSession) -> None:
+    def _send_cluster_time(
+        self, command: MutableMapping[str, Any], session: Optional[ClientSession]
+    ) -> None:
         topology_time = self._topology.max_cluster_time()
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
             if topology_time["clusterTime"] > session_time["clusterTime"]:
-                cluster_time = topology_time
+                cluster_time: Optional[ClusterTime] = topology_time
             else:
                 cluster_time = session_time
         else:
@@ -2255,7 +2259,7 @@ class _MongoClientErrorHandler:
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
         self.completed_handshake = False
-        self.service_id = None
+        self.service_id: Optional[ObjectId] = None
         self.handled = False
 
     def contribute_socket(self, conn: Connection, completed_handshake: bool = True) -> None:
@@ -2268,7 +2272,7 @@ class _MongoClientErrorHandler:
     def handle(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
     ) -> None:
-        if self.handled or exc_type is None:
+        if self.handled or exc_val is None:
             return
         self.handled = True
         if self.session:
@@ -2282,7 +2286,6 @@ class _MongoClientErrorHandler:
                     "RetryableWriteError"
                 ):
                     self.session._unpin()
-
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
@@ -2297,8 +2300,8 @@ class _MongoClientErrorHandler:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
+        exc_type: Optional[Type[Exception]],
+        exc_val: Optional[Exception],
         exc_tb: Optional[TracebackType],
     ) -> None:
         return self.handle(exc_type, exc_val)

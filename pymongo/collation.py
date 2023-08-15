@@ -199,7 +199,7 @@ class Collation:
         """
         return self.__document.copy()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         document = self.document
         return "Collation({})".format(", ".join(f"{key}={document[key]!r}" for key in document))
 

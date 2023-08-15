@@ -22,7 +22,7 @@ from typing import Any, Generic, List, Mapping, Optional, Set, Tuple
 from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import _DocumentType
+from pymongo.typings import ClusterTime, _DocumentType
 
 
 class HelloCompat:
@@ -155,7 +155,7 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("electionId")
 
     @property
-    def cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def cluster_time(self) -> Optional[ClusterTime]:
         return self._doc.get("$clusterTime")
 
     @property
