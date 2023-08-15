@@ -106,6 +106,8 @@ struct module_state {
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
 
+
+
 /* Converts integer to its string representation in decimal notation. */
 extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
     // Buffer should fit 64-bit signed integer
@@ -281,13 +283,40 @@ static PyObject* datetime_from_millis(long long millis) {
     struct TM timeinfo;
     cbson_gmtime64_r(&seconds, &timeinfo);
 
-    return PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
+    PyObject* datetime_hold = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
                                       timeinfo.tm_mon + 1,
                                       timeinfo.tm_mday,
                                       timeinfo.tm_hour,
                                       timeinfo.tm_min,
                                       timeinfo.tm_sec,
                                       microseconds);
+    if(!datetime_hold) {
+        PyObject *etype, *evalue, *etrace;
+
+        /*
+        * Calling _error clears the error state, so fetch it first.
+        */
+        PyErr_Fetch(&etype, &evalue, &etrace);
+
+        /* Only add addition error message on ValueError exceptions. */
+        if (PyErr_GivenExceptionMatches(etype, PyExc_ValueError)) {
+            if (evalue) {
+                PyObject* err_msg = PyObject_Repr(evalue);
+                if(err_msg) {
+                    PyObject* appendage = PyUnicode_FromString(" (Use CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO'))");
+                    PyObject* msg = PyUnicode_Concat(err_msg, appendage);
+                    Py_DECREF(evalue);
+                    Py_DECREF(appendage);
+                    evalue = msg;
+                }
+                Py_DECREF(err_msg);
+            }
+            PyErr_NormalizeException(&etype, &evalue, &etrace);
+        }
+        /* Steals references to args. */
+        PyErr_Restore(etype, evalue, etrace);
+    }
+    return datetime_hold;
 }
 
 static long long millis_from_datetime(PyObject* datetime) {
