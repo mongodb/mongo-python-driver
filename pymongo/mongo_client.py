@@ -1413,7 +1413,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: Callable[[Optional[ClientSession], Connection, bool], T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
-        is_write: bool = True,
+        is_read: bool = False,
         address: Optional[_Address] = None,
         read_pref: Optional[_ServerMode] = None,
         retryable: Optional[bool] = None,
@@ -1423,7 +1423,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             mongo_client=self,
             func=func,
             bulk=bulk,
-            is_write=is_write,
+            is_read=is_read,
             session=session,
             read_pref=read_pref,
             address=address,
@@ -1445,12 +1445,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
-
         return self._retry_internal(
             func,
             session,
             None,
-            is_write=False,
+            is_read=True,
             address=address,
             read_pref=read_pref,
             retryable=retryable,
@@ -2213,7 +2212,7 @@ class _ClientConnectionRetryable:
         mongo_client: MongoClient,
         func: Callable[[Optional[ClientSession], Connection, bool], T],
         bulk: Optional[_Bulk],
-        is_write: bool = True,
+        is_read: bool = False,
         session: Optional[ClientSession] = None,
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
@@ -2221,19 +2220,19 @@ class _ClientConnectionRetryable:
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
+        self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
         self._retry_operation = (
-            mongo_client.options.retry_writes if is_write else mongo_client.options.retry_reads
+            mongo_client.options.retry_reads if is_read else mongo_client.options.retry_writes
         )
 
         self._func = func
         self._bulk = bulk
-        self._multiple_retries = _csot.get_timeout() is not None
         self._session = session
-        self._is_write = is_write
-        self._retryable = retryable and self._in_transaction()
+        self._is_read = is_read
+        self._retryable = retryable and self._retry_operation and not self._in_transaction()
         self._read_pref = read_pref
-        self._server_selector = writable_server_selector if is_write else read_pref
+        self._server_selector = read_pref if is_read else writable_server_selector
         self._address = address
         self._server: Server = None
 
@@ -2244,7 +2243,10 @@ class _ClientConnectionRetryable:
         :return: Result of the func() call
         :rtype: T
         """
-        if self._in_transaction() and self._is_write:
+        # Increment the transaction id up front to ensure any retry attempt
+        # will use the proper txnNumber, even if server or socket selection
+        # fails before the command can be sent.
+        if not self._in_transaction() and self._retryable and not self._is_read:
             self._session._start_retryable_write()
             if self._bulk:
                 self._bulk.started_retryable_write = True
@@ -2255,7 +2257,7 @@ class _ClientConnectionRetryable:
                 self._server = self._client._select_server(
                     self._server_selector, self._session, address=self._address
                 )
-                return self._write() if self._is_write else self._read()
+                return self._read() if self._is_read else self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
@@ -2265,19 +2267,22 @@ class _ClientConnectionRetryable:
                 # be a persistent outage. Attempting to retry in this case will
                 # most likely be a waste of time.
                 raise
-            except ConnectionFailure as exc:
-                if self._is_not_retry_eligible():
-                    raise
-                self._retrying = True
-                self._last_error = exc
-            except OperationFailure as exc:
-                if self._is_not_retry_eligible() or exc.code not in helpers._RETRYABLE_ERROR_CODES:
-                    raise
-                self._retrying = True
-                self._last_error = exc
             except PyMongoError as exc:
-                # Only execute additional handling when on a write call with retries
-                if not self._retryable or not self._is_write:
+                # Execute specialized catch on read
+                if self._is_read:
+                    if isinstance(exc, (ConnectionFailure, OperationFailure)):
+                        exc_code = getattr(exc, "code", None)
+                        if self._is_not_retry_eligible() or (
+                            exc_code and exc_code not in helpers._RETRYABLE_ERROR_CODES
+                        ):
+                            raise
+                        self._retrying = True
+                        self._last_error = exc
+                    else:
+                        raise
+
+                # Assumed write operation henceforth
+                if not self._retryable:
                     raise
                 assert self._session
                 if exc.has_error_label("RetryableWriteError"):
@@ -2306,7 +2311,7 @@ class _ClientConnectionRetryable:
 
     def _in_transaction(self):
         """Checks if the ongoing session is in a transaction"""
-        return self._session and not self._session.in_transaction and self._retry_operation
+        return self._session and self._session.in_transaction
 
     def _check_last_error(self, check_csot: bool = False):
         """Checks if the ongoing client exchange experienced a exception during retry
@@ -2354,7 +2359,8 @@ class _ClientConnectionRetryable:
             conn,
             read_pref,
         ):
-            self._check_last_error()
+            if self._retrying and not self._retryable:
+                self._check_last_error()
             return self._func(self._session, self._server, conn, read_pref)
 
 
