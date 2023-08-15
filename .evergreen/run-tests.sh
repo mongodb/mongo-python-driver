@@ -234,6 +234,11 @@ fi
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 python -c 'import sys; print(sys.version)'
 
+# Try to source exported AWS Secrets
+if [ -f ./secrets-export.sh ]; then
+  source ./secrets-export.sh
+fi
+
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
 
