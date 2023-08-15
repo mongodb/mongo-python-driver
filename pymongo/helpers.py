@@ -308,6 +308,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def _handle_reauth(func: F) -> F:
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
+        from pymongo.message import _BulkWriteContext
         from pymongo.pool import Connection
 
         try:
@@ -324,7 +325,7 @@ def _handle_reauth(func: F) -> F:
                     if isinstance(arg, Connection):
                         conn = arg
                         break
-                    if hasattr(arg, "connection"):
+                    if isinstance(arg, _BulkWriteContext):
                         conn = arg.conn
                         break
                 if conn:
