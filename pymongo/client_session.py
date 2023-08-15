@@ -844,7 +844,7 @@ class ClientSession:
         ) -> Dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(True, func, self, None)
+        return self._client._retry_internal(func, self, None, retryable=True)
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> Dict[str, Any]:
         self._transaction.attempt += 1
