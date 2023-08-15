@@ -543,40 +543,22 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
-        silent: true
-        working_dir: "src"
-        script: |
-          cat <<EOT > prepare_atlas_connectivity.sh
-          export ATLAS_FREE='${atlas_free}'
-          export ATLAS_REPL='${atlas_repl}'
-          export ATLAS_SHRD='${atlas_shrd}'
-          export ATLAS_TLS11='${atlas_tls11}'
-          export ATLAS_TLS12='${atlas_tls12}'
-          export ATLAS_SERVERLESS='${atlas_serverless}'
-          export ATLAS_SRV_FREE='${atlas_srv_free}'
-          export ATLAS_SRV_REPL='${atlas_srv_repl}'
-          export ATLAS_SRV_SHRD='${atlas_srv_shrd}'
-          export ATLAS_SRV_TLS11='${atlas_srv_tls11}'
-          export ATLAS_SRV_TLS12='${atlas_srv_tls12}'
-          export ATLAS_SRV_SERVERLESS='${atlas_srv_serverless}'
-          EOT
-    - command: shell.exec
-      type: test
-      params:
+        add_expansions_to_env: true
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-
-          . ./prepare_atlas_connectivity.sh
-          rm -f ./prepare_atlas_connectivity.sh
-
           set -o errexit
           set -o xtrace
-          ${PYTHON_BINARY} -m tox -m test-atlas
+
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
+          TEST_ATLAS=1 bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "add aws auth variables to file":
     - command: shell.exec

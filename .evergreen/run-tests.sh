@@ -26,6 +26,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_PERF            If non-empty, run performance tests
 #  TEST_OCSP            If non-empty, run OCSP tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
+#  TEST_ATLAS   If non-empty, test Atlas connections
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -205,6 +206,10 @@ if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test/test_data_lake.py"
 fi
 
+if [ -n "$TEST_ATLAS" ]; then
+    TEST_ARGS="test/atlas/test_connection.py"
+fi
+
 if [ -n "$TEST_OCSP" ]; then
     python -m pip install ".[ocsp]"
     TEST_ARGS="test/ocsp/test_ocsp.py"
@@ -228,6 +233,11 @@ fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 python -c 'import sys; print(sys.version)'
+
+# Try to source exported AWS Secrets
+if [ -f ./secrets-export.sh ]; then
+  source ./secrets-export.sh
+fi
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
