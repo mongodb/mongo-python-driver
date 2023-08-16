@@ -512,6 +512,7 @@ functions:
     - command: shell.exec
       type: test
       params:
+        add_expansions_to_env: true
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
