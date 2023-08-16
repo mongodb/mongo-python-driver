@@ -518,9 +518,6 @@ functions:
           set +x
           set -o errexit
           set -o xtrace
-                    export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
 
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
@@ -530,7 +527,6 @@ functions:
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             TEST_ENTERPRISE_AUTH=1 \
             AUTH=auth \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg

@@ -41,6 +41,11 @@ PYTHON=$(which python)
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
+# Try to source exported AWS Secrets
+if [ -f ./secrets-export.sh ]; then
+  source ./secrets-export.sh
+fi
+
 if [ "$AUTH" != "noauth" ]; then
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
@@ -235,10 +240,6 @@ fi
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 python -c 'import sys; print(sys.version)'
 
-# Try to source exported AWS Secrets, fixing Windows line endings
-if [ -f ./secrets-export.sh ]; then
-  source ./secrets-export.sh
-fi
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
