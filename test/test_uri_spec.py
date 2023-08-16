@@ -73,8 +73,10 @@ class TestAllScenarios(unittest.TestCase):
         clear_warning_registry()
 
 
-def get_error_message_template(expected, artefact):
-    return "{} {} for test '{}'".format("Expected" if expected else "Unexpected", artefact, "%s")
+def get_error_message_template(expected, artifact, actual):
+    return "{} {} for test '{}', got: {}".format(
+        "Expected" if expected else "Unexpected", artifact, "%s", actual
+    )
 
 
 def run_scenario_in_dir(target_workdir):
