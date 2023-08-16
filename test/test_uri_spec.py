@@ -74,9 +74,7 @@ class TestAllScenarios(unittest.TestCase):
 
 
 def get_error_message_template(expected, artifact):
-    return "{} {} for test '{}', got: {}".format(
-        "Expected" if expected else "Unexpected", artifact, "%s"
-    )
+    return "{} {} for test '{}'".format("Expected" if expected else "Unexpected", artifact, "%s")
 
 
 def run_scenario_in_dir(target_workdir):
