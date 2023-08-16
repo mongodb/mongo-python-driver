@@ -525,7 +525,7 @@ functions:
             DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             TEST_ENTERPRISE_AUTH=1 \
             AUTH=auth \
-            bash -c ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
     - command: ec2.assume_role
