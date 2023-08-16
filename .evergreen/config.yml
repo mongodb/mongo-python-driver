@@ -477,6 +477,7 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
+            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -487,12 +488,6 @@ functions:
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
-          fi
-          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
-            export TEST_INDEX_MANAGEMENT=1
-            export MONGODB_URI="${TEST_INDEX_URI}"
-            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
-            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           export PYTHON_BINARY=${PYTHON_BINARY}
@@ -511,31 +506,21 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
-        silent: true
+        add_expansions_to_env: true
         working_dir: "src"
         script: |
-          cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST='${sasl_host}'
-          export SASL_PORT='${sasl_port}'
-          export SASL_USER='${sasl_user}'
-          export SASL_PASS='${sasl_pass}'
-          export SASL_DB='${sasl_db}'
-          export PRINCIPAL='${principal}'
-          export GSSAPI_DB='${gssapi_db}'
-          export KEYTAB_BASE64='${keytab_base64}'
-          EOT
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          # Disable xtrace (just in case it was accidentally set).
+          # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          . ./prepare_enterprise_auth.sh
-          rm -f ./prepare_enterprise_auth.sh
+          set -o errexit
+          set -o xtrace
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \

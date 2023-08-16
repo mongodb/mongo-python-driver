@@ -1758,6 +1758,9 @@ class TestClient(IntegrationTest):
             metadata = copy.deepcopy(_METADATA)
             if expected_env is not None:
                 metadata["env"] = expected_env
+
+                if "AWS_REGION" not in env_vars:
+                    os.environ["AWS_REGION"] = ""
             with rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
                 client.admin.command("ping")
                 options = client._MongoClient__options
