@@ -522,6 +522,7 @@ functions:
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             TEST_ENTERPRISE_AUTH=1 \
             AUTH=auth \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
