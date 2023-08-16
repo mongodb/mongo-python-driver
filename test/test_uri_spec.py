@@ -109,7 +109,7 @@ def create_test(test, test_workdir):
                 valid = False
             else:
                 warning = len(ctx) > 0
-                if warning and not expected_warning:
+                if warning != expected_warning:
                     print("**DEBUG**", ctx)
 
         expected_valid = test.get("valid", True)
