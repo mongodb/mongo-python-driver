@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone -b PYTHON-3920 https://github.com/NoahStapp/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -555,44 +555,28 @@ functions:
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-          set -o xtrace
 
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
           TEST_ATLAS=1 bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
-  "add aws auth variables to file":
+  "get aws auth secrets":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
+        add_expansions_to_env: true
         working_dir: "src"
-        silent: true
         script: |
-          cat <<EOF > ${DRIVERS_TOOLS}/.evergreen/auth_aws/aws_e2e_setup.json
-          {
-              "iam_auth_ecs_account" : "${iam_auth_ecs_account}",
-              "iam_auth_ecs_secret_access_key" : "${iam_auth_ecs_secret_access_key}",
-              "iam_auth_ecs_account_arn": "arn:aws:iam::557821124784:user/authtest_fargate_user",
-              "iam_auth_ecs_cluster": "${iam_auth_ecs_cluster}",
-              "iam_auth_ecs_task_definition": "${iam_auth_ecs_task_definition}",
-              "iam_auth_ecs_subnet_a": "${iam_auth_ecs_subnet_a}",
-              "iam_auth_ecs_subnet_b": "${iam_auth_ecs_subnet_b}",
-              "iam_auth_ecs_security_group": "${iam_auth_ecs_security_group}",
+          set +x
 
-              "iam_auth_assume_aws_account" : "${iam_auth_assume_aws_account}",
-              "iam_auth_assume_aws_secret_access_key" : "${iam_auth_assume_aws_secret_access_key}",
-              "iam_auth_assume_role_name" : "${iam_auth_assume_role_name}",
-
-              "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
-              "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
-              "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
-
-              "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
-              "iam_web_identity_issuer": "${iam_web_identity_issuer}",
-              "iam_web_identity_rsa_key": "${iam_web_identity_rsa_key}",
-              "iam_web_identity_jwks_uri": "${iam_web_identity_jwks_uri}",
-              "iam_web_identity_token_file": "${iam_web_identity_token_file}"
-          }
-          EOF
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_ROLE_ARN="${AWS_ROLE_ARN}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/aws_auth
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
@@ -605,7 +589,16 @@ functions:
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
+          cd -
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           python aws_tester.py regular
+
     - command: shell.exec
       type: test
       params:
@@ -637,6 +630,14 @@ functions:
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
+          cd -
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           python aws_tester.py assume-role
     - command: shell.exec
       type: test
@@ -679,6 +680,14 @@ functions:
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
+          cd -
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           python aws_tester.py ec2
     - command: shell.exec
       type: test
@@ -710,6 +719,14 @@ functions:
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
+          cd -
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           python aws_tester.py web-identity
     - command: shell.exec
       type: test
@@ -876,6 +893,15 @@ functions:
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
+          cd -
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+
           export MONGODB_BINARIES="${MONGODB_BINARIES}";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
           python aws_tester.py ecs
@@ -2147,11 +2173,11 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "4.4"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
+#        - func: "run aws auth test with aws credentials as environment variables"
+#        - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
@@ -2164,7 +2190,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "5.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2181,7 +2207,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "6.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2198,7 +2224,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "7.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2215,7 +2241,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "rapid"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2232,7 +2258,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "latest"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
