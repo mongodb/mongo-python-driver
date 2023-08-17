@@ -1407,7 +1407,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
-        return self._retry_internal(func=func, session=session, bulk=bulk, retryable=retryable)
+        return self._retry_internal(
+            func=func,
+            session=session,
+            bulk=bulk,
+            retryable=retryable,
+        )
 
     @_csot.apply
     def _retry_internal(
@@ -2233,7 +2238,7 @@ class _ClientConnectionRetryable:
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
-        self._retryable = retryable and self._retry_operation and self._not_in_transaction()
+        self._retryable = retryable and self._retry_operation and self._is_retryable_session_state()
         self._read_pref = read_pref
         self._server_selector = read_pref if is_read else writable_server_selector
         self._address = address
@@ -2249,7 +2254,7 @@ class _ClientConnectionRetryable:
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
-        if self._not_in_transaction() and self._retryable and not self._is_read:
+        if self._is_retryable_session_state() and self._retryable and not self._is_read:
             self._session._start_retryable_write()
             if self._bulk:
                 self._bulk.started_retryable_write = True
@@ -2313,8 +2318,15 @@ class _ClientConnectionRetryable:
         """Checks if the exchange is currently undergoing a retry"""
         return self._bulk.retrying if self._bulk else self._retrying
 
-    def _not_in_transaction(self):
-        """Checks if the ongoing session is in a transaction"""
+    def _is_retryable_session_state(self) -> bool:
+        """Checks if provided session is eligible for retry
+
+        reads: Make sure there is no ongoing transaction (if provided a session)
+        writes: Make sure there is a session without an active transaction
+        """
+        if self._is_read:
+            return not (self._session and self._session.in_transaction)
+            # return not getattr(self._session, "in_transaction", False)
         return self._session and not self._session.in_transaction
 
     def _check_last_error(self, check_csot: bool = False):
