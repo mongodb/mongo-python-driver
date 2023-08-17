@@ -1151,7 +1151,7 @@ global_knobs = client_knobs(events_queue_frequency=0.05)
 def setup():
     client_context.init()
     warnings.resetwarnings()
-    warnings.simplefilter("always")
+    warnings.simplefilter("ignore", ResourceWarning)
     global_knobs.enable()
 
 
