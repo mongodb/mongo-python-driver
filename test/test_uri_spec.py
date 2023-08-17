@@ -110,7 +110,7 @@ def create_test(test, test_workdir):
             else:
                 warning = len(ctx) > 0
                 if warning != expected_warning:
-                    print("**DEBUG**", ctx)
+                    print("**DEBUG**", [str(i) for i in ctx])
 
         expected_valid = test.get("valid", True)
         self.assertEqual(
