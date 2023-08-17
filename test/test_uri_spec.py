@@ -100,6 +100,7 @@ def create_test(test, test_workdir):
         valid = True
         warning = False
         expected_warning = test.get("warning", False)
+        expected_valid = test.get("valid", True)
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
@@ -109,10 +110,9 @@ def create_test(test, test_workdir):
                 valid = False
             else:
                 warning = len(ctx) > 0
-                if warning != expected_warning:
-                    print("**DEBUG**", [str(i) for i in ctx])
+                if expected_valid and warning and not expected_warning:
+                    raise ValueError("Got unexpected warning(s): ", [str(i) for i in ctx])
 
-        expected_valid = test.get("valid", True)
         self.assertEqual(
             valid,
             expected_valid,
@@ -120,7 +120,6 @@ def create_test(test, test_workdir):
         )
 
         if expected_valid:
-
             self.assertEqual(
                 warning,
                 expected_warning,
