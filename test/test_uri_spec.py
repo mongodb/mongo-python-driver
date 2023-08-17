@@ -103,7 +103,7 @@ def create_test(test, test_workdir):
         expected_valid = test.get("valid", True)
 
         with warnings.catch_warnings(record=True) as ctx:
-            warnings.simplefilter("always")
+            warnings.simplefilter("ignore", category=ResourceWarning)
             try:
                 options = parse_uri(test["uri"], warn=True)
             except Exception:
