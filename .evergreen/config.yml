@@ -517,13 +517,6 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: [
-          AWS_ACCESS_KEY_ID
-          AWS_SECRET_ACCESS_KEY
-          AWS_ROLE_ARN
-          AWS_SESSION_TOKEN
-          DRIVERS_TOOLS
-        ]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
@@ -549,13 +542,6 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: [
-          AWS_ACCESS_KEY_ID
-          AWS_SECRET_ACCESS_KEY
-          AWS_ROLE_ARN
-          AWS_SESSION_TOKEN
-          DRIVERS_TOOLS
-        ]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
