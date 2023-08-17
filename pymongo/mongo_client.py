@@ -2284,25 +2284,26 @@ class _ClientConnectionRetryable:
                     else:
                         raise
 
-                # Assumed write operation henceforth
-                if not self._retryable:
-                    raise
-                assert self._session
-                if exc.has_error_label("RetryableWriteError"):
-                    self._session._unpin()
-                elif self._is_retrying() and not self._multiple_retries:
-                    if exc.has_error_label("NoWritesPerformed") and self._last_error:
-                        raise self._last_error from exc
-                    else:
+                # Specialized catch on write operation
+                if not self._is_read:
+                    if not self._retryable:
                         raise
-                if self._bulk:
-                    self._bulk.retrying = True
-                else:
-                    self._retrying = True
-                if not exc.has_error_label("NoWritesPerformed"):
-                    self._last_error = exc
-                if self._last_error is None:
-                    self._last_error = exc
+                    assert self._session
+                    if exc.has_error_label("RetryableWriteError"):
+                        self._session._unpin()
+                    elif self._is_retrying() and not self._multiple_retries:
+                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                            raise self._last_error from exc
+                        else:
+                            raise
+                    if self._bulk:
+                        self._bulk.retrying = True
+                    else:
+                        self._retrying = True
+                    if not exc.has_error_label("NoWritesPerformed"):
+                        self._last_error = exc
+                    if self._last_error is None:
+                        self._last_error = exc
 
     def _is_not_retry_eligible(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
