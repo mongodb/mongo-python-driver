@@ -101,7 +101,7 @@ class DBRef:
         doc.update(self.__kwargs)
         return doc
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         extra = "".join([f", {k}={v!r}" for k, v in self.__kwargs.items()])
         if self.database is None:
             return f"DBRef({self.collection!r}, {self.id!r}{extra})"

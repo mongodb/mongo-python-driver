@@ -50,6 +50,7 @@ aws = [
 encryption = [
     "pymongo[aws]",
     "pymongocrypt>=1.6.0,<2.0.0",
+    "certifi;os.name=='nt' or sys_platform=='darwin'",
 ]
 gssapi = [
     "pykerberos;os.name!='nt'",

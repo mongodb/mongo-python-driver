@@ -172,7 +172,7 @@ class TypeRegistry:
                 )
                 raise TypeError(err_msg)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}(type_codecs={!r}, fallback_encoder={!r})".format(
             self.__class__.__name__,
             self.__type_codecs,
@@ -465,7 +465,7 @@ else:
                 "datetime_conversion": self.datetime_conversion,
             }
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"{self.__class__.__name__}({self._arguments_repr()})"
 
         def with_options(self, **kwargs: Any) -> "CodecOptions":

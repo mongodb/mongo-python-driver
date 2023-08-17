@@ -179,7 +179,7 @@ if TYPE_CHECKING:
 
     from pymongo.pool import Connection
     from pymongo.server import Server
-    from pymongo.typings import _Address
+    from pymongo.typings import ClusterTime, _Address
 
 
 class SessionOptions:
@@ -562,7 +562,7 @@ class ClientSession:
         return self._server_session.session_id
 
     @property
-    def cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def cluster_time(self) -> Optional[ClusterTime]:
         """The cluster time returned by the last operation executed
         in this session.
         """

@@ -14,6 +14,8 @@
 
 """Internal helpers for CSOT."""
 
+from __future__ import annotations
+
 import functools
 import time
 from collections import deque
@@ -72,7 +74,7 @@ class _TimeoutContext:
         self._timeout = timeout
         self._tokens: Optional[Tuple[Token, Token, Token]] = None
 
-    def __enter__(self):
+    def __enter__(self) -> _TimeoutContext:
         timeout_token = TIMEOUT.set(self._timeout)
         prev_deadline = DEADLINE.get()
         next_deadline = time.monotonic() + self._timeout if self._timeout else float("inf")
@@ -81,7 +83,7 @@ class _TimeoutContext:
         self._tokens = (timeout_token, deadline_token, rtt_token)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self._tokens:
             timeout_token, deadline_token, rtt_token = self._tokens
             TIMEOUT.reset(timeout_token)
@@ -97,7 +99,7 @@ def apply(func: F) -> F:
     """Apply the client's timeoutMS to this operation."""
 
     @functools.wraps(func)
-    def csot_wrapper(self, *args, **kwargs):
+    def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> F:
         if get_timeout() is None:
             timeout = self._timeout
             if timeout is not None:

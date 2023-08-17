@@ -111,7 +111,7 @@ class Timestamp:
             return (self.time, self.inc) >= (other.time, other.inc)
         return NotImplemented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Timestamp({self.__time}, {self.__inc})"
 
     def as_datetime(self) -> datetime.datetime:

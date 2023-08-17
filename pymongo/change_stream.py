@@ -257,7 +257,7 @@ class ChangeStream(Generic[_DocumentType]):
             cmd.get_cursor, self._target._read_preference_for(session), session
         )
 
-    def _create_cursor(self):
+    def _create_cursor(self) -> CommandCursor:
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 
