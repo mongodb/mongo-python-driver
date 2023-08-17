@@ -477,7 +477,6 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
-            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -488,6 +487,12 @@ functions:
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
+          fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export TEST_INDEX_MANAGEMENT=1
+            export MONGODB_URI="${TEST_INDEX_URI}"
+            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           export PYTHON_BINARY=${PYTHON_BINARY}
@@ -512,15 +517,24 @@ functions:
     - command: shell.exec
       type: test
       params:
-        add_expansions_to_env: true
+        include_expansions_in_env: [
+          AWS_ACCESS_KEY_ID
+          AWS_SECRET_ACCESS_KEY
+          AWS_ROLE_ARN
+          AWS_SESSION_TOKEN
+          DRIVERS_TOOLS
+        ]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          set -o errexit
-          set -o xtrace
 
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_ROLE_ARN="${AWS_ROLE_ARN}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
