@@ -525,7 +525,6 @@ functions:
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
             AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_ROLE_ARN="${AWS_ROLE_ARN}" \
             AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
 
@@ -550,7 +549,6 @@ functions:
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
             AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_ROLE_ARN="${AWS_ROLE_ARN}" \
             AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
 
