@@ -16,7 +16,7 @@ Install it with git:
 
     pip install git+https://github.com/benjamintenny/mongo-python-driver-proxy
 
-You can also download the project source and then install it:
+You can also download the project source and then install it with pip:
 
     pip install .
 
