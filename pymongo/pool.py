@@ -123,6 +123,8 @@ except ImportError:
     def _set_non_inheritable_non_atomic(fd: int) -> None:
         """Dummy function for platforms that don't provide fcntl."""
 
+from python_socks.sync import Proxy
+from python_socks._helpers import parse_proxy_url
 
 _MAX_TCP_KEEPIDLE = 120
 _MAX_TCP_KEEPINTVL = 10
@@ -1151,7 +1153,6 @@ class Connection:
             id(self),
         )
 
-
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
@@ -1207,7 +1208,18 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
-            sock.connect(sa)
+            # get proxy from environment
+            mongo_proxy = os.getenv("MONGO_PROXY")
+            if mongo_proxy:
+                # Parse proxy's type, host, port etc.
+                _, proxy_host, proxy_port, _, _ = parse_proxy_url(mongo_proxy)
+                # Connect to proxy server
+                sock.connect((proxy_host, proxy_port))
+                # Connect to destination server through proxy
+                proxy = Proxy.from_url(mongo_proxy)
+                proxy.connect(dest_host=sa[0], dest_port=sa[1], _socket=sock)
+            else:
+                sock.connect(sa)
             return sock
         except OSError as e:
             err = e
