@@ -41,6 +41,7 @@ classifiers = [
 ]
 dependencies = [
     "dnspython>=1.16.0,<3.0.0",
+    "python-socks==2.3.0",
 ]
 
 [project.optional-dependencies]
