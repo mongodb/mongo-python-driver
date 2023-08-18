@@ -50,7 +50,7 @@ from bson import (
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
-from bson.datetime_ms import DATETIME_ERROR_SUGGESTION
+from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON, InvalidDocument
 from bson.int64 import Int64
@@ -1311,9 +1311,7 @@ class TestDatetimeConversion(unittest.TestCase):
 
         # Test InvalidBSON Errors on conversion include DATETIME_ERROR_SUGGESTION
         small_ms = -2 << 51
-        with self.assertRaises(
-            InvalidBSON, msg=f"'year -140744 is out of range' {DATETIME_ERROR_SUGGESTION}"
-        ):
+        with self.assertRaisesRegex(InvalidBSON, re.compile(re.escape(_DATETIME_ERROR_SUGGESTION))):
             decode(encode({"a": DatetimeMS(small_ms)}))
 
 

@@ -28,7 +28,11 @@ from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
-DATETIME_ERROR_SUGGESTION = "(Use CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO'))"
+_DATETIME_ERROR_SUGGESTION = (
+    "(Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO)"
+    " or MongoClient(datetime_conversion='DATETIME_AUTO'))."
+    " See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes"
+)
 
 
 class DatetimeMS:
@@ -149,7 +153,7 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
             else:
                 return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
         except ArithmeticError as err:
-            raise InvalidBSON(f"{err.args[0]} {DATETIME_ERROR_SUGGESTION}") from err
+            raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
 
     elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
         return DatetimeMS(millis)

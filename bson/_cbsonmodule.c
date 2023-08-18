@@ -106,8 +106,6 @@ struct module_state {
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
 
-
-
 /* Converts integer to its string representation in decimal notation. */
 extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
     // Buffer should fit 64-bit signed integer
@@ -277,20 +275,21 @@ static PyObject* datetime_from_millis(long long millis) {
      * micros = diff * 1000                       111000
      * Resulting in datetime(1, 1, 1, 1, 1, 1, 111000) -- the expected result
      */
+    PyObject* datetime;
     int diff = (int)(((millis % 1000) + 1000) % 1000);
     int microseconds = diff * 1000;
     Time64_T seconds = (millis - diff) / 1000;
     struct TM timeinfo;
     cbson_gmtime64_r(&seconds, &timeinfo);
 
-    PyObject* datetime_hold = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
+    datetime = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
                                       timeinfo.tm_mon + 1,
                                       timeinfo.tm_mday,
                                       timeinfo.tm_hour,
                                       timeinfo.tm_min,
                                       timeinfo.tm_sec,
                                       microseconds);
-    if(!datetime_hold) {
+    if(!datetime) {
         PyObject *etype, *evalue, *etrace;
 
         /*
@@ -301,13 +300,17 @@ static PyObject* datetime_from_millis(long long millis) {
         /* Only add addition error message on ValueError exceptions. */
         if (PyErr_GivenExceptionMatches(etype, PyExc_ValueError)) {
             if (evalue) {
-                PyObject* err_msg = PyObject_Repr(evalue);
-                if(err_msg) {
-                    PyObject* appendage = PyUnicode_FromString(" (Use CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO'))");
-                    PyObject* msg = PyUnicode_Concat(err_msg, appendage);
-                    Py_DECREF(evalue);
+                PyObject* err_msg = PyObject_Str(evalue);
+                if (err_msg) {
+                    PyObject* appendage = PyUnicode_FromString(" (Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO')). See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes");
+                    if (appendage) {
+                        PyObject* msg = PyUnicode_Concat(err_msg, appendage);
+                        if (msg) {
+                            Py_DECREF(evalue);
+                            evalue = msg;
+                        }
+                    }
                     Py_DECREF(appendage);
-                    evalue = msg;
                 }
                 Py_DECREF(err_msg);
             }
@@ -316,7 +319,7 @@ static PyObject* datetime_from_millis(long long millis) {
         /* Steals references to args. */
         PyErr_Restore(etype, evalue, etrace);
     }
-    return datetime_hold;
+    return datetime;
 }
 
 static long long millis_from_datetime(PyObject* datetime) {
