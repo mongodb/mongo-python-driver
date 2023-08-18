@@ -1309,7 +1309,7 @@ class TestDatetimeConversion(unittest.TestCase):
         with self.assertRaises(TypeError):
             encode({"x": float_ms})
 
-        # Test InvalidBSON Errors on conversion include DATETIME_ERROR_SUGGESTION
+        # Test InvalidBSON Errors on conversion include _DATETIME_ERROR_SUGGESTION
         small_ms = -2 << 51
         with self.assertRaisesRegex(InvalidBSON, re.compile(re.escape(_DATETIME_ERROR_SUGGESTION))):
             decode(encode({"a": DatetimeMS(small_ms)}))
