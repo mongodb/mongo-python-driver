@@ -511,31 +511,23 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
-    - command: shell.exec
-      type: test
+    - command: ec2.assume_role
       params:
-        silent: true
-        working_dir: "src"
-        script: |
-          cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST='${sasl_host}'
-          export SASL_PORT='${sasl_port}'
-          export SASL_USER='${sasl_user}'
-          export SASL_PASS='${sasl_pass}'
-          export SASL_DB='${sasl_db}'
-          export PRINCIPAL='${principal}'
-          export GSSAPI_DB='${gssapi_db}'
-          export KEYTAB_BASE64='${keytab_base64}'
-          EOT
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         script: |
-          # Disable xtrace (just in case it was accidentally set).
+          # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          . ./prepare_enterprise_auth.sh
-          rm -f ./prepare_enterprise_auth.sh
+
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
@@ -549,16 +541,21 @@ functions:
     - command: shell.exec
       type: test
       params:
-        add_expansions_to_env: true
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          set -o errexit
-          set -o xtrace
 
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
-          TEST_ATLAS=1 bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
+
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ATLAS=1 \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "add aws auth variables to file":
     - command: shell.exec
