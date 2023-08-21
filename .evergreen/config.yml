@@ -569,7 +569,9 @@ functions:
         add_expansions_to_env: true
         working_dir: "src"
         script: |
+          # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
+          set -o errexit
 
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
@@ -732,12 +734,26 @@ functions:
       type: test
       params:
         working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+             exit 0
+          fi
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
+            AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
+            ASSERT_NO_URI_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
         silent: true
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
-            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
           EOF
     - command: shell.exec
       type: test
@@ -749,30 +765,13 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
-            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
-            export AWS_ROLE_SESSION_NAME="test"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            ASSERT_NO_URI_CREDS=true \
+            AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
+            AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
+            AWS_ROLE_SESSION_NAME="test" \
+          .evergreen/run-mongodb-aws-test.sh
 
   "bootstrap oidc":
     - command: ec2.assume_role
