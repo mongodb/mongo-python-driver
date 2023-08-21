@@ -15,7 +15,7 @@ PyMongo 4.5 brings a number of improvements including:
 - Added :meth:`~pymongo.database.Database.cursor_command`
   and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support
   executing an arbitrary command that returns a cursor.
-- cryptography 2.5 or later is now required for :ref:`OCSP` support.
+- ``cryptography`` 2.5 or later is now required for :ref:`OCSP` support.
 - Improved bson encoding and decoding performance by up to 134%(`PYTHON-3729`_, `PYTHON-3797`_, `PYTHON-3816`_, `PYTHON-3817`_, `PYTHON-3820`_, `PYTHON-3824`_, and `PYTHON-3846`_).
 
 .. warning:: PyMongo no longer supports PyPy3 versions older than 3.8. Users
