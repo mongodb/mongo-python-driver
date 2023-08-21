@@ -1455,6 +1455,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
+        retryable = bool(
+            retryable and self.options.retry_reads and not (session and session.in_transaction)
+        )
         return self._retry_internal(
             func,
             session,
@@ -1472,6 +1475,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
     ) -> T:
         """Internal retryable write helper."""
+        retryable = bool(
+            retryable and self.options.retry_writes and session and not session.in_transaction
+        )
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
 
@@ -2227,23 +2233,18 @@ class _ClientConnectionRetryable(Generic[T]):
         session: Optional[ClientSession] = None,
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
-        retryable: Optional[bool] = None,
+        retryable: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
-        self._retry_operation = (
-            mongo_client.options.retry_reads if is_read else mongo_client.options.retry_writes
-        )
 
         self._func = func
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
-        self._retryable: bool = bool(
-            retryable and self._retry_operation and self._is_retryable_session_state()
-        )
+        self._retryable = retryable
         self._read_pref = read_pref
         self._server_selector: Callable[[Selection], Selection] = (
             read_pref if is_read else writable_server_selector  # type: ignore
