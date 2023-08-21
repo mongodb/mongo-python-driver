@@ -137,6 +137,9 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+_WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
+_ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
+
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
@@ -1396,7 +1399,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _retry_with_session(
         self,
         retryable: bool,
-        func: Callable[[Optional[ClientSession], Connection, bool], T],
+        func: _WriteCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
     ) -> T:
@@ -1417,7 +1420,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def _retry_internal(
         self,
-        func: Callable[[Optional[ClientSession], Connection, bool], T],
+        func: _WriteCall[T] | _ReadCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
         is_read: bool = False,
@@ -1439,7 +1442,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _retryable_read(
         self,
-        func: Callable[[Optional[ClientSession], Server, Connection, _ServerMode], T],
+        func: _ReadCall[T],
         read_pref: _ServerMode,
         session: Optional[ClientSession],
         address: Optional[_Address] = None,
@@ -1465,7 +1468,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _retryable_write(
         self,
         retryable: bool,
-        func: Callable[[Optional[ClientSession], Connection, bool], T],
+        func: _WriteCall[T],
         session: Optional[ClientSession],
     ) -> T:
         """Internal retryable write helper."""
@@ -2212,13 +2215,13 @@ class _MongoClientErrorHandler:
         return self.handle(exc_type, exc_val)
 
 
-class _ClientConnectionRetryable:
+class _ClientConnectionRetryable(Generic[T]):
     """Responsible for executing retryable connections on read or write operations"""
 
     def __init__(
         self,
         mongo_client: MongoClient,
-        func: Callable[[Optional[ClientSession], Connection, bool], T],
+        func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[_Bulk],
         is_read: bool = False,
         session: Optional[ClientSession] = None,
@@ -2238,11 +2241,15 @@ class _ClientConnectionRetryable:
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
-        self._retryable = retryable and self._retry_operation and self._is_retryable_session_state()
+        self._retryable: bool = bool(
+            retryable and self._retry_operation and self._is_retryable_session_state()
+        )
         self._read_pref = read_pref
-        self._server_selector = read_pref if is_read else writable_server_selector
+        self._server_selector: Callable[[Selection], Selection] = (
+            read_pref if is_read else writable_server_selector  # type: ignore
+        )
         self._address = address
-        self._server: Server = None
+        self._server: Server = None  # type: ignore
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2255,7 +2262,7 @@ class _ClientConnectionRetryable:
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
         if self._is_retryable_session_state() and self._retryable and not self._is_read:
-            self._session._start_retryable_write()
+            self._session._start_retryable_write()  # type: ignore
             if self._bulk:
                 self._bulk.started_retryable_write = True
 
@@ -2279,6 +2286,7 @@ class _ClientConnectionRetryable:
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
+                        # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
                         if self._is_not_retry_eligible() or (
                             exc_code and exc_code not in helpers._RETRYABLE_ERROR_CODES
@@ -2293,10 +2301,11 @@ class _ClientConnectionRetryable:
                 if not self._is_read:
                     if not self._retryable:
                         raise
-                    assert self._session
-                    if exc.has_error_label("RetryableWriteError"):
+                    retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
+                    if retryable_write_error_exc:
+                        assert self._session
                         self._session._unpin()
-                    elif self._is_retrying() and not self._multiple_retries:
+                    if not retryable_write_error_exc or self._is_not_retry_eligible():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
@@ -2312,7 +2321,7 @@ class _ClientConnectionRetryable:
 
     def _is_not_retry_eligible(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
-        return not self._retryable or (self._retrying and not self._multiple_retries)
+        return not self._retryable or (self._is_retrying() and not self._multiple_retries)
 
     def _is_retrying(self) -> bool:
         """Checks if the exchange is currently undergoing a retry"""
@@ -2327,12 +2336,13 @@ class _ClientConnectionRetryable:
         if self._is_read:
             return not (self._session and self._session.in_transaction)
             # return not getattr(self._session, "in_transaction", False)
-        return self._session and not self._session.in_transaction
+        return bool(self._session and not self._session.in_transaction)
 
-    def _check_last_error(self, check_csot: bool = False):
-        """Checks if the ongoing client exchange experienced a exception during retry
+    def _check_last_error(self, check_csot: bool = False) -> None:
+        """Checks if the ongoing client exchange experienced a exception previously.
+        If so, raise last error
 
-        :param check_csot: Check csot timeout, defaults to False
+        :param check_csot: Checks CSOT to ensure we are retrying with time remaining defaults to False
         """
         if self._is_retrying():
             remaining = _csot.remaining()
@@ -2357,11 +2367,10 @@ class _ClientConnectionRetryable:
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
-                return self._func(self._session, conn, self._retryable)
+                return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
                 raise
-            assert self._session
             # Add the RetryableWriteError label, if applicable.
             _add_retryable_write_error(exc, max_wire_version)
             raise
@@ -2371,13 +2380,14 @@ class _ClientConnectionRetryable:
 
         :return: output for func()'s call
         """
+        assert self._read_pref is not None, "Read Preference required on read calls"
         with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
             read_pref,
         ):
             if self._retrying and not self._retryable:
                 self._check_last_error()
-            return self._func(self._session, self._server, conn, read_pref)
+            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 def _after_fork_child() -> None:
