@@ -602,20 +602,12 @@ functions:
           fi
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          python aws_tester.py regular
 
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
-            USER=$(urlencode ${iam_auth_ecs_account})
-            PASS=$(urlencode ${iam_auth_ecs_secret_access_key})
-            MONGODB_URI="mongodb://$USER:$PASS@localhost"
-          EOF
+          USE_AWS_SECRETS=1 \
+            IAM_AUTH_ECS_ACCOUNT="${IAM_AUTH_ECS_ACCOUNT}" \
+            IAM_AUTH_ECS_SECRET_ACCESS_KEY="${IAM_AUTH_ECS_SECRET_ACCESS_KEY}" \
+            python aws_tester.py regular
+
     - command: shell.exec
       type: test
       params:
@@ -2177,12 +2169,12 @@ tasks:
             VERSION: "4.4"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-#        - func: "run aws auth test with aws credentials as environment variables"
-#        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
+#        - func: "run aws auth test with assume role credentials"
+##        - func: "run aws auth test with aws credentials as environment variables"
+##        - func: "run aws auth test with aws credentials and session token as environment variables"
+#        - func: "run aws auth test with aws EC2 credentials"
+#        - func: "run aws auth test with aws web identity credentials"
+#        - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
       commands:

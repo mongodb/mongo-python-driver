@@ -19,7 +19,7 @@ set +x
 
 # load the script
 shopt -s expand_aliases # needed for `urlencode` alias
-[ -s "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+[ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI="${MONGODB_URI}/aws?authMechanism=MONGODB-AWS"
