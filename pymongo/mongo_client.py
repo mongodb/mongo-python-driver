@@ -2269,9 +2269,6 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                self._server = self._client._select_server(
-                    self._server_selector, self._session, address=self._address
-                )
                 return self._read() if self._is_read else self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
@@ -2350,6 +2347,16 @@ class _ClientConnectionRetryable(Generic[T]):
                 assert self._last_error is not None
                 raise self._last_error
 
+    def _get_server(self) -> Server:
+        """Retrieves a server object based on provided object context
+
+        :return: Abstraction to connect to server
+        :rtype: Server
+        """
+        return self._client._select_server(
+            self._server_selector, self._session, address=self._address
+        )
+
     def _write(self) -> T:
         """Wrapper method for write-type retryable client executions
 
@@ -2357,6 +2364,7 @@ class _ClientConnectionRetryable(Generic[T]):
         """
         try:
             max_wire_version = 0
+            self._server = self._get_server()
             supports_session = (
                 self._session is not None and self._server.description.retryable_writes_supported
             )
@@ -2380,6 +2388,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
         :return: output for func()'s call
         """
+        self._server = self._get_server()
         assert self._read_pref is not None, "Read Preference required on read calls"
         with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
