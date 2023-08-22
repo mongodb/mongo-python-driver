@@ -118,7 +118,9 @@ print("Connected")
 def create_response():
     return dict(
         averageCommandDuration=total_command_duration / total_commands,
-        averageHeartbeatDuration=total_heartbeat_duration / heartbeat_count,
+        averageHeartbeatDuration=total_heartbeat_duration / heartbeat_count
+        if heartbeat_count
+        else 0,
         openConnections=open_connections,
         heartbeatCount=heartbeat_count,
     )
