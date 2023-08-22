@@ -343,14 +343,22 @@ class TestPoolManagement(IntegrationTest):
 
 
 class TestSdamMode(IntegrationTest):
+    @client_context.require_no_serverless
+    @client_context.require_no_load_balancer
+    def setUp(self):
+        super().setUp()
+
     def test_rtt_connection_is_enabled_stream(self):
         client = rs_or_single_client(sdamMode="stream")
         self.addCleanup(client.close)
         client.admin.command("ping")
-        _, server = next(iter(client._topology._servers.items()))
-        monitor = server._monitor
-        self.assertTrue(monitor._stream)
-        self.assertIsNotNone(monitor._rtt_monitor._executor._thread)
+        for _, server in client._topology._servers.items():
+            monitor = server._monitor
+            self.assertTrue(monitor._stream)
+            if client_context.version >= (4, 4):
+                self.assertIsNotNone(monitor._rtt_monitor._executor._thread)
+            else:
+                self.assertIsNone(monitor._rtt_monitor._executor._thread)
 
     def test_rtt_connection_is_disabled_poll(self):
         client = rs_or_single_client(sdamMode="poll")
@@ -373,10 +381,10 @@ class TestSdamMode(IntegrationTest):
 
     def assert_rtt_connection_is_disabled(self, client):
         client.admin.command("ping")
-        _, server = next(iter(client._topology._servers.items()))
-        monitor = server._monitor
-        self.assertFalse(monitor._stream)
-        self.assertIsNone(monitor._rtt_monitor._executor._thread)
+        for _, server in client._topology._servers.items():
+            monitor = server._monitor
+            self.assertFalse(monitor._stream)
+            self.assertIsNone(monitor._rtt_monitor._executor._thread)
 
 
 # Generate unified tests.
