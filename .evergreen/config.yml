@@ -599,9 +599,12 @@ functions:
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
+            python -c "import os;print('ENV VARS SOURCED');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
           fi
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+
+          python -c "import os;print('ENV VARS BEFORE CALL');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
 
           USE_AWS_SECRETS=1 \
             IAM_AUTH_ECS_ACCOUNT="${IAM_AUTH_ECS_ACCOUNT}" \
