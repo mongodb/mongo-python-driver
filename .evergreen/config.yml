@@ -594,7 +594,6 @@ functions:
 
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
-            cat ./secrets-export.sh
             source ./secrets-export.sh
           fi
 
@@ -606,9 +605,7 @@ functions:
 
           cd -
 
-          IAM_AUTH_ECS_ACCOUNT="${IAM_AUTH_ECS_ACCOUNT}" \
-            IAM_AUTH_ECS_SECRET_ACCESS_KEY="${IAM_AUTH_ECS_SECRET_ACCESS_KEY}" \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with assume role credentials":
