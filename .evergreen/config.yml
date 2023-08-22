@@ -592,10 +592,6 @@ functions:
           set -x
           set -o errexit
 
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-
-          cd -
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
@@ -603,6 +599,7 @@ functions:
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
 
+          . ./activate-authawsvenv.sh
           USE_AWS_SECRETS=1 \
             python aws_tester.py regular
 
