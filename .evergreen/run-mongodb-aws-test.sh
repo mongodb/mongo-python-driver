@@ -15,7 +15,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-AWS authentication tests"
 # ensure no secrets are printed in log files
-set +x
+set -x
 
 # load the script
 shopt -s expand_aliases # needed for `urlencode` alias
