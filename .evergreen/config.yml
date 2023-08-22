@@ -615,44 +615,26 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set -x
+          set -o errexit
 
-          cd -
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
           fi
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          python aws_tester.py assume-role
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
-            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
-            USER=$(jsonkey AccessKeyId)
-            USER=$(urlencode $USER)
-            PASS=$(jsonkey SecretAccessKey)
-            PASS=$(urlencode $PASS)
-            SESSION_TOKEN=$(jsonkey SessionToken)
-            SESSION_TOKEN=$(urlencode $SESSION_TOKEN)
-            MONGODB_URI="mongodb://$USER:$PASS@localhost"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+
+          . ./activate-authawsvenv.sh
+          USE_AWS_SECRETS=1 \
+            python aws_tester.py assume-role
+
+          cd -
+
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            ASSUME_ROLE_CREDENTIALS=1 \
+            PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -2161,7 +2143,7 @@ tasks:
             VERSION: "4.4"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
-#        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with assume role credentials"
 ##        - func: "run aws auth test with aws credentials as environment variables"
 ##        - func: "run aws auth test with aws credentials and session token as environment variables"
 #        - func: "run aws auth test with aws EC2 credentials"
