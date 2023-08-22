@@ -606,14 +606,7 @@ functions:
           USE_AWS_SECRETS=1 \
             python aws_tester.py regular
 
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set -x
-          set -o errexit
+          cd -
 
           IAM_AUTH_ECS_ACCOUNT="${IAM_AUTH_ECS_ACCOUNT}" \
             IAM_AUTH_ECS_SECRET_ACCESS_KEY="${IAM_AUTH_ECS_SECRET_ACCESS_KEY}" \
