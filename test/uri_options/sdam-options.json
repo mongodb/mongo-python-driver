@@ -1,41 +1,41 @@
 {
   "tests": [
     {
-      "description": "sdamMode=auto",
-      "uri": "mongodb://example.com/?sdamMode=auto",
+      "description": "serverMonitoringMode=auto",
+      "uri": "mongodb://example.com/?serverMonitoringMode=auto",
       "valid": true,
       "warning": false,
       "hosts": null,
       "auth": null,
       "options": {
-        "sdamMode": "auto"
+        "serverMonitoringMode": "auto"
       }
     },
     {
-      "description": "sdamMode=stream",
-      "uri": "mongodb://example.com/?sdamMode=stream",
+      "description": "serverMonitoringMode=stream",
+      "uri": "mongodb://example.com/?serverMonitoringMode=stream",
       "valid": true,
       "warning": false,
       "hosts": null,
       "auth": null,
       "options": {
-        "sdamMode": "stream"
+        "serverMonitoringMode": "stream"
       }
     },
     {
-      "description": "sdamMode=poll",
-      "uri": "mongodb://example.com/?sdamMode=poll",
+      "description": "serverMonitoringMode=poll",
+      "uri": "mongodb://example.com/?serverMonitoringMode=poll",
       "valid": true,
       "warning": false,
       "hosts": null,
       "auth": null,
       "options": {
-        "sdamMode": "poll"
+        "serverMonitoringMode": "poll"
       }
     },
     {
-      "description": "invalid sdamMode",
-      "uri": "mongodb://example.com/?sdamMode=invalid",
+      "description": "invalid serverMonitoringMode",
+      "uri": "mongodb://example.com/?serverMonitoringMode=invalid",
       "valid": true,
       "warning": true,
       "hosts": null,

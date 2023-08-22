@@ -139,9 +139,9 @@ class Monitor(MonitorBase):
             topology_settings,
             topology._create_pool_for_monitor(server_description.address),
         )
-        if topology_settings.sdam_mode == "stream":
+        if topology_settings.server_monitoring_mode == "stream":
             self._stream = True
-        elif topology_settings.sdam_mode == "poll":
+        elif topology_settings.server_monitoring_mode == "poll":
             self._stream = False
         else:
             self._stream = not _is_faas()

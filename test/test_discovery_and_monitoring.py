@@ -349,7 +349,7 @@ class TestSdamMode(IntegrationTest):
         super().setUp()
 
     def test_rtt_connection_is_enabled_stream(self):
-        client = rs_or_single_client(sdamMode="stream")
+        client = rs_or_single_client(serverMonitoringMode="stream")
         self.addCleanup(client.close)
         client.admin.command("ping")
         for _, server in client._topology._servers.items():
@@ -361,7 +361,7 @@ class TestSdamMode(IntegrationTest):
                 self.assertIsNone(monitor._rtt_monitor._executor._thread)
 
     def test_rtt_connection_is_disabled_poll(self):
-        client = rs_or_single_client(sdamMode="poll")
+        client = rs_or_single_client(serverMonitoringMode="poll")
         self.addCleanup(client.close)
         self.assert_rtt_connection_is_disabled(client)
 
@@ -375,7 +375,7 @@ class TestSdamMode(IntegrationTest):
         ]
         for env in envs:
             with patch.dict("os.environ", env):
-                client = rs_or_single_client(sdamMode="auto")
+                client = rs_or_single_client(serverMonitoringMode="auto")
                 self.addCleanup(client.close)
                 self.assert_rtt_connection_is_disabled(client)
 

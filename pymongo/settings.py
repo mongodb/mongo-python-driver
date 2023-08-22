@@ -45,7 +45,7 @@ class TopologySettings:
         load_balanced: Optional[bool] = None,
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
-        sdam_mode: str = common.SDAM_MODE,
+        server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
     ):
         """Represent MongoClient's configuration.
 
@@ -72,7 +72,7 @@ class TopologySettings:
         self._load_balanced = load_balanced
         self._srv_service_name = srv_service_name
         self._srv_max_hosts = srv_max_hosts or 0
-        self._sdam_mode = sdam_mode
+        self._server_monitoring_mode = server_monitoring_mode
 
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
@@ -148,9 +148,9 @@ class TopologySettings:
         return self._srv_max_hosts
 
     @property
-    def sdam_mode(self) -> str:
-        """The sdamMode."""
-        return self._sdam_mode
+    def server_monitoring_mode(self) -> str:
+        """The serverMonitoringMode."""
+        return self._server_monitoring_mode
 
     def get_topology_type(self) -> int:
         if self.load_balanced:

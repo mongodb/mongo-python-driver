@@ -1,9 +1,9 @@
 {
-  "description": "sdamMode",
+  "description": "serverMonitoringMode",
   "schemaVersion": "1.3",
   "tests": [
     {
-      "description": "connect with sdamMode=auto",
+      "description": "connect with serverMonitoringMode=auto",
       "operations": [
         {
           "name": "createEntities",
@@ -14,7 +14,7 @@
                 "client": {
                   "id": "client0",
                   "uriOptions": {
-                    "sdamMode": "auto"
+                    "serverMonitoringMode": "auto"
                   }
                 }
               },
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "description": "connect with sdamMode=stream",
+      "description": "connect with serverMonitoringMode=stream",
       "operations": [
         {
           "name": "createEntities",
@@ -55,7 +55,7 @@
                 "client": {
                   "id": "client1",
                   "uriOptions": {
-                    "sdamMode": "stream"
+                    "serverMonitoringMode": "stream"
                   }
                 }
               },
@@ -85,7 +85,7 @@
       ]
     },
     {
-      "description": "connect with sdamMode=poll",
+      "description": "connect with serverMonitoringMode=poll",
       "operations": [
         {
           "name": "createEntities",
@@ -96,7 +96,7 @@
                 "client": {
                   "id": "client2",
                   "uriOptions": {
-                    "sdamMode": "poll"
+                    "serverMonitoringMode": "poll"
                   }
                 }
               },

@@ -215,7 +215,9 @@ class ClientOptions:
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
         self.__load_balanced = options.get("loadbalanced")
         self.__timeout = options.get("timeoutms")
-        self.__sdam_mode = options.get("sdammode", common.SDAM_MODE)
+        self.__server_monitoring_mode = options.get(
+            "servermonitoringmode", common.SERVER_MONITORING_MODE
+        )
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -285,7 +287,7 @@ class ClientOptions:
     def timeout(self) -> Optional[float]:
         """The configured timeoutMS converted to seconds, or None.
 
-        .. versionadded: 4.2
+        .. versionadded:: 4.2
         """
         return self.__timeout
 
@@ -321,9 +323,9 @@ class ClientOptions:
         return self.__pool_options._event_listeners.event_listeners()
 
     @property
-    def sdam_mode(self) -> str:
-        """The configured SDAM mode.
+    def server_monitoring_mode(self) -> str:
+        """The configured serverMonitoringMode option.
 
-        .. versionadded: 4.5
+        .. versionadded:: 4.5
         """
-        return self.__sdam_mode
+        return self.__server_monitoring_mode

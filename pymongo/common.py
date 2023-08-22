@@ -139,8 +139,8 @@ _MAX_END_SESSIONS = 10000
 # Default value for srvServiceName
 SRV_SERVICE_NAME = "mongodb"
 
-# Default value for sdamMode
-SDAM_MODE = "auto"  # poll/stream/auto
+# Default value for serverMonitoringMode
+SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 
 
 def partition_node(node: str) -> Tuple[str, int]:
@@ -672,14 +672,13 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
     raise TypeError(f"{option} must be a str or int representing DatetimeConversion")
 
 
-def validate_sdam_mode(option: Any, value: Any) -> str:
-    """Validate the sdamMode option."""
-    val = validate_string(option, value)
-    if val not in {"auto", "stream", "poll"}:
+def validate_server_monitoring_mode(option: str, value: str) -> str:
+    """Validate the serverMonitoringMode option."""
+    if value not in {"auto", "stream", "poll"}:
         raise ValueError(
             f'{option}={value!r} is invalid. Must be one of "auto", "stream", or "poll"'
         )
-    return val
+    return value
 
 
 # Dictionary where keys are the names of public URI options, and values
@@ -730,7 +729,7 @@ URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
     "timeoutms": validate_timeoutms,
-    "sdammode": validate_sdam_mode,
+    "servermonitoringmode": validate_server_monitoring_mode,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
