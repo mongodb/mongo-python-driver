@@ -1410,6 +1410,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
         """
+        # Ensure that the options supports retry_writes and there is a valid session not in
+        # transaction, otherwise, we will not support retry behavior for this txn.
+        retryable = bool(
+            retryable and self.options.retry_writes and session and not session.in_transaction
+        )
         return self._retry_internal(
             func=func,
             session=session,
@@ -1426,9 +1431,27 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_read: bool = False,
         address: Optional[_Address] = None,
         read_pref: Optional[_ServerMode] = None,
-        retryable: Optional[bool] = None,
+        retryable: bool = False,
     ) -> T:
-        """Internal retryable helper for reads and writes."""
+        """Internal retryable helper for all client transactions.
+
+        :param func: Callback function we want to retry
+        :type func: _WriteCall[T] | _ReadCall[T]
+        :param session: Client Session on which the transaction should occur
+        :type session: Optional[ClientSession]
+        :param bulk: Abstraction to handle bulk write operations
+        :type bulk: Optional[_Bulk]
+        :param is_read: If this is an exclusive read transaction, defaults to False
+        :type is_read: bool, optional
+        :param address: Server Address, defaults to None
+        :type address: Optional[_Address], optional
+        :param read_pref: Topology of read operation, defaults to None
+        :type read_pref: Optional[_ServerMode], optional
+        :param retryable: If the operation should be retried once, defaults to None
+        :type retryable: Optional[bool], optional
+        :return: Output of the calling func()
+        :rtype: T
+        """
         return _ClientConnectionRetryable(
             mongo_client=self,
             func=func,
@@ -1454,7 +1477,24 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         command once.
 
         Re-raises any exception thrown by func().
+
+        :param func: Read call we want to execute
+        :type func: _ReadCall[T]
+        :param read_pref: Desired topology of read operation
+        :type read_pref: _ServerMode
+        :param session: Client session we should use to execute operation
+        :type session: Optional[ClientSession]
+        :param address: Optional address when sending a message, defaults to None
+        :type address: Optional[_Address], optional
+        :param retryable: if we should attempt retries
+            (may not always be supported even if supplied), defaults to False
+        :type retryable: bool, optional
+        :return: _description_
+        :rtype: T
         """
+
+        # Ensure that the client supports retrying on reads and there is no session in
+        # transaction, otherwise, we will not support retry behavior for this call.
         retryable = bool(
             retryable and self.options.retry_reads and not (session and session.in_transaction)
         )
@@ -1473,13 +1513,23 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool,
         func: _WriteCall[T],
         session: Optional[ClientSession],
+        bulk: Optional[_Bulk] = None,
     ) -> T:
-        """Internal retryable write helper."""
-        retryable = bool(
-            retryable and self.options.retry_writes and session and not session.in_transaction
-        )
+        """Internal retyrable write helper.
+
+        :param retryable: if we should attempt retries (may not always be supported)
+        :type retryable: bool
+        :param func: write call we want to execute during a session
+        :type func: _WriteCall[T]
+        :param session: Client session we will use to execute write operation
+        :type session: Optional[ClientSession]
+        :param bulk: bulk abstraction to execute operations in bulk, defaults to None
+        :type bulk: Optional[_Bulk], optional
+        :return: Returns expected output of write function
+        :rtype: T
+        """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(retryable, func, s, None)
+            return self._retry_with_session(retryable, func, s, bulk)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
@@ -2333,7 +2383,6 @@ class _ClientConnectionRetryable(Generic[T]):
         """
         if self._is_read:
             return not (self._session and self._session.in_transaction)
-            # return not getattr(self._session, "in_transaction", False)
         return bool(self._session and not self._session.in_transaction)
 
     def _check_last_error(self, check_csot: bool = False) -> None:
