@@ -691,6 +691,8 @@ functions:
             source ./secrets-export.sh
           fi
 
+          python -c "import os;print('AFTER SOURCING');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
+
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
 
           . ./activate-authawsvenv.sh
@@ -700,9 +702,11 @@ functions:
 
           cd -
 
+          python -c "import os;print('BEFORE CALLING');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
+
           PYTHON_BINARY=${PYTHON_BINARY} \
-            AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
-            AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
+            AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME \
+            AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE \
             ASSERT_NO_URI_CREDS=true \
             .evergreen/run-mongodb-aws-test.sh
 
