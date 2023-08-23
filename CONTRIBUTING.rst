@@ -67,28 +67,30 @@ up.
 - If making a versioning change, please let that be known
 
 
-Pull Request Template Breakdown
--------------------------------
+**Pull Request Template Breakdown**
 
-**Github PR Title** - The PR Title format should always be::
+- **Github PR Title**
+    - The PR Title format should always be ``[JIRA-ID] : Jira Title or Blurb Summary``
 
-[JIRA-ID] : Jira Title or Blurb Summary
+- **JIRA LINK**
+    - Convenient link to the associated JIRA ticket
 
-**JIRA LINK** - Convenient link to the associated JIRA ticket
+- **Summary**
+    - Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
 
-**Summary** - Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
+- **Changes in this PR**
+    - The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear)
 
-**Changes in this PR** - The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear)
+- **Test Plan**
+    - Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind
 
-**Test Plan** - Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind
+- **Screenshots**
+    - Any images that provide more context to the PR. Usually, these just coincide with the test plan.
 
-**Screenshots** - Any images that provide more context to the PR. Usually, these just coincide with the test plan.
-
-**Callouts or follow-up items**
-
-- This is a good place for identifying “to-dos” that you’ve placed in the code.
-- Potential bugs that you are unsure how to test in the code.
-- Opinions you want to receive about your code.
+- **Callouts or follow-up items**
+    - This is a good place for identifying “to-dos” that you’ve placed in the code.
+    - Potential bugs that you are unsure how to test in the code.
+    - Opinions you want to receive about your code.
 
 
 Running Linters
