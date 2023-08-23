@@ -588,7 +588,7 @@ functions:
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
-          set -x
+          set +x
           set -o errexit
 
           # Try to source exported AWS Secrets
@@ -616,7 +616,7 @@ functions:
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
-          set -x
+          set +x
           set -o errexit
 
           # Try to source exported AWS Secrets
@@ -650,7 +650,7 @@ functions:
           fi
 
           # Disable xtrace for security reasons (just in case it was accidentally set).
-          set -x
+          set +x
           set -o errexit
 
           # Try to source exported AWS Secrets
@@ -681,65 +681,42 @@ functions:
         working_dir: "src"
         shell: "bash"
         script: |
-          ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
 
-          cd -
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
           fi
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          python aws_tester.py web-identity
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
+
+          . ./activate-authawsvenv.sh
+
+          USE_AWS_SECRETS=1 \
+            python aws_tester.py web-identity
+
+          cd -
 
           PYTHON_BINARY=${PYTHON_BINARY} \
             AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
             AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
             ASSERT_NO_URI_CREDS=true \
             .evergreen/run-mongodb-aws-test.sh
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
+
           if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
+          else
+            PYTHON_BINARY=${PYTHON_BINARY} \
+              ASSERT_NO_URI_CREDS=true \
+              SKIP_PREPARE_AWS_ENV=true \
+              AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
+              AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
+              AWS_ROLE_SESSION_NAME="test" \
+            .evergreen/run-mongodb-aws-test.sh
           fi
-
-          PYTHON_BINARY=${PYTHON_BINARY} \
-            ASSERT_NO_URI_CREDS=true \
-            AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}" \
-            AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}" \
-            AWS_ROLE_SESSION_NAME="test" \
-          .evergreen/run-mongodb-aws-test.sh
 
   "bootstrap oidc":
     - command: ec2.assume_role
@@ -2147,7 +2124,7 @@ tasks:
 ##        - func: "run aws auth test with aws credentials as environment variables"
 ##        - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
-#        - func: "run aws auth test with aws web identity credentials"
+        - func: "run aws auth test with aws web identity credentials"
 #        - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"

@@ -16,11 +16,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 echo "Running MONGODB-AWS authentication tests"
 $PYTHON_BINARY -c "import os;print('ENV VARS HERE');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
 # ensure no secrets are printed in log files
-set -x
+set +x
 
-# load the script
-shopt -s expand_aliases # needed for `urlencode` alias
-[ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
+if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
+  [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
+fi
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI="${MONGODB_URI}/aws?authMechanism=MONGODB-AWS"
