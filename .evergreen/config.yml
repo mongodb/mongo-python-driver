@@ -628,7 +628,11 @@ functions:
 
           cd -
 
-          PYTHON_BINARY=${PYTHON_BINARY} ASSUME_ROLE_CREDENTIALS=true .evergreen/run-mongodb-aws-test.sh
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            ASSUME_ROLE_CREDENTIALS=true \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            .evergreen/run-mongodb-aws-test.sh
+
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -694,12 +698,16 @@ functions:
           export AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME
           export AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE
 
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            ASSERT_NO_URI_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh
 
           if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
           else
-            PYTHON_BINARY=${PYTHON_BINARY} \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+              PYTHON_BINARY=${PYTHON_BINARY} \
               ASSERT_NO_URI_CREDS=true \
               SKIP_PREPARE_AWS_ENV=true \
               AWS_ROLE_SESSION_NAME="test" \
