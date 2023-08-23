@@ -70,34 +70,19 @@ up.
 Pull Request Template Breakdown
 -------------------------------
 
-**Github PR Title**
-
-The PR Title format should always be::
+**Github PR Title** - The PR Title format should always be::
 
 [JIRA-ID] : Jira Title or Blurb Summary
 
+**JIRA LINK** - Convenient link to the associated JIRA ticket
 
-Prefix the PRs with the JIRA Task ID; make sure every pull request is associated with a task so it can be tracked.
+**Summary** - Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
 
-**JIRA LINK**
+**Changes in this PR** - The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear)
 
-Convenient link to the associated JIRA ticket
+**Test Plan** - Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind
 
-**Summary**
-
-Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
-
-**Changes in this PR**
-
-The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear)
-
-**Test Plan**
-
-Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind
-
-**Screenshots**
-
-Any images that provide more context to the PR. Usually, these just coincide with the test plan.
+**Screenshots** - Any images that provide more context to the PR. Usually, these just coincide with the test plan.
 
 **Callouts or follow-up items**
 
