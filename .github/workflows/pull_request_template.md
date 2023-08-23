@@ -1,4 +1,4 @@
-# [JIRA Ticket]
+# [JIRA Ticket ID](Link to Ticket)
 <!-- Please provide explicit URL link to the corresponding JIRA ticket -->
 
 # Summary
