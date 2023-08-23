@@ -283,12 +283,12 @@ static PyObject* datetime_from_millis(long long millis) {
     cbson_gmtime64_r(&seconds, &timeinfo);
 
     datetime = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
-                                      timeinfo.tm_mon + 1,
-                                      timeinfo.tm_mday,
-                                      timeinfo.tm_hour,
-                                      timeinfo.tm_min,
-                                      timeinfo.tm_sec,
-                                      microseconds);
+                                          timeinfo.tm_mon + 1,
+                                          timeinfo.tm_mday,
+                                          timeinfo.tm_hour,
+                                          timeinfo.tm_min,
+                                          timeinfo.tm_sec,
+                                          microseconds);
     if(!datetime) {
         PyObject *etype, *evalue, *etrace;
 
@@ -310,9 +310,9 @@ static PyObject* datetime_from_millis(long long millis) {
                             evalue = msg;
                         }
                     }
-                    Py_DECREF(appendage);
+                    Py_XDECREF(appendage);
                 }
-                Py_DECREF(err_msg);
+                Py_XDECREF(err_msg);
             }
             PyErr_NormalizeException(&etype, &evalue, &etrace);
         }
