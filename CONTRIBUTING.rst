@@ -41,7 +41,7 @@ General Guidelines
 Authoring a Pull Request
 ------------------------
 
-Our Pull Request Policy is based on: https://google.github.io/eng-practices/review
+**Our Pull Request Policy is based on this** `Code Review Developer Guide <https://google.github.io/eng-practices/review>`_
 
 The expectation for any code author is to provide all the context needed in the space of a
 pull request for any engineer to feel equipped to review the code. Depending on the type of
@@ -50,20 +50,20 @@ code—think complex functions or new abstractions. Whilst it may seem like more
 adjust your pull request, the reality is your likelihood for getting review sooner shoots
 up.
 
-Self Review Guidelines to follow:
+**Self Review Guidelines to follow**
 
 - If the PR is too large, split it if possible.
     - Use 400 LoC (excluding test data and config changes) as a rule-of-thumb
     - Moving and changing code should be in separate PRs or commits. Rationale: it is easier for reviewers to see what functionality has changed.
 - Prefer explaining with code comments instead of PR comments.
 
-Provide background:
+**Provide background**
 
 - The PR description and linked tickets should answer the "what" and "why" of the change. The code change explains the "how".
 
-Follow the Template:
+**Follow the Template**
 
-- Please do not deviate from the template we make; it’s there for a lot of reasons. If it is a one line fix, we still need to have context on what and why it is needed.
+- Please do not deviate from the template we make; it is there for a lot of reasons. If it is a one line fix, we still need to have context on what and why it is needed.
 - If making a versioning change, please let that be known
 
 
