@@ -14,7 +14,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  PYTHON_BINARY  The Python version to use.
 
 echo "Running MONGODB-AWS authentication tests"
-$PYTHON_BINARY -c "import os;print('ENV VARS HERE');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
 # ensure no secrets are printed in log files
 set +x
 

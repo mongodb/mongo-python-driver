@@ -702,8 +702,11 @@ functions:
 
           cd -
 
-          AWS_ROLE_ARN="${IAM_AUTH_ASSUME_WEB_ROLE_NAME}"
-          AWS_WEB_IDENTITY_TOKEN_FILE="${IAM_WEB_IDENTITY_TOKEN_FILE}"
+          export AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME
+          export AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE
+
+          echo $AWS_ROLE_ARN
+          echo $AWS_WEB_IDENTITY_TOKEN_FILE
 
           ASSERT_NO_URI_CREDS=true \
           .evergreen/run-mongodb-aws-test.sh
