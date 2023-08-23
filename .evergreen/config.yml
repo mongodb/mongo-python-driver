@@ -584,7 +584,6 @@ functions:
     - command: shell.exec
       type: test
       params:
-        add_expansions_to_env: true
         shell: "bash"
         working_dir: "src"
         script: |
@@ -882,6 +881,7 @@ functions:
           set -o xtrace
           ${PREPARE_SHELL}
           rm -rf $DRIVERS_TOOLS || true
+          rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
     - command: shell.exec
