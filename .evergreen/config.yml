@@ -573,12 +573,7 @@ functions:
           set +x
           set -o errexit
 
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_ROLE_ARN="${AWS_ROLE_ARN}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/aws_auth
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/aws_auth
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
@@ -600,13 +595,11 @@ functions:
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=1 \
-            python aws_tester.py regular
+          USE_AWS_SECRETS=true python aws_tester.py regular
 
           cd -
 
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -633,9 +626,7 @@ functions:
 
           cd -
 
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            ASSUME_ROLE_CREDENTIALS=1 \
-            PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          ASSUME_ROLE_CREDENTIALS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -691,34 +682,26 @@ functions:
             source ./secrets-export.sh
           fi
 
-          python -c "import os;print('AFTER SOURCING');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
-
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=1 \
-            python aws_tester.py web-identity
+          USE_AWS_SECRETS=true python aws_tester.py web-identity
 
           cd -
 
           export AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME
           export AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE
 
-          echo $AWS_ROLE_ARN
-          echo $AWS_WEB_IDENTITY_TOKEN_FILE
-
-          ASSERT_NO_URI_CREDS=true \
-          .evergreen/run-mongodb-aws-test.sh
+          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
           if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
           else
-            PYTHON_BINARY=${PYTHON_BINARY} \
-              ASSERT_NO_URI_CREDS=true \
+            ASSERT_NO_URI_CREDS=true \
               SKIP_PREPARE_AWS_ENV=true \
               AWS_ROLE_SESSION_NAME="test" \
-            .evergreen/run-mongodb-aws-test.sh
+              .evergreen/run-mongodb-aws-test.sh
           fi
 
   "bootstrap oidc":
