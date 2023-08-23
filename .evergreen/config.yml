@@ -781,20 +781,21 @@ functions:
       type: test
       params:
         working_dir: "src"
-        silent: true
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ACCESS_KEY_ID=${iam_auth_ecs_account}
-            export AWS_SECRET_ACCESS_KEY=${iam_auth_ecs_secret_access_key}
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          export AWS_ACCESS_KEY_ID=$IAM_AUTH_ECS_ACCOUNT
+          export AWS_SECRET_ACCESS_KEY=$IAM_AUTH_ECS_SECRET_ACCESS_KEY
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            ASSERT_NO_URI_CREDS=true \
+            SKIP_PREPARE_AWS_ENV=true \
+            .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
@@ -2117,7 +2118,7 @@ tasks:
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
-##        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials as environment variables"
 ##        - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
