@@ -267,12 +267,18 @@ class TopologyDescription:
     def _apply_local_threshold(self, selection: Optional[Selection]) -> List[ServerDescription]:
         if not selection:
             return []
+    
+        server_descriptions = selection.server_descriptions
+        server_descriptions = [s for s in server_descriptions if s.round_trip_time != None]
+        if not server_descriptions:
+            return []
+        
         # Round trip time in seconds.
         fastest = min(cast(float, s.round_trip_time) for s in selection.server_descriptions)
         threshold = self._topology_settings.local_threshold_ms / 1000.0
         return [
             s
-            for s in selection.server_descriptions
+            for s in server_descriptions
             if (cast(float, s.round_trip_time) - fastest) <= threshold
         ]
 
