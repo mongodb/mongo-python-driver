@@ -599,7 +599,9 @@ functions:
 
           cd -
 
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -626,7 +628,7 @@ functions:
 
           cd -
 
-          ASSUME_ROLE_CREDENTIALS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSUME_ROLE_CREDENTIALS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -661,8 +663,7 @@ functions:
           # Write an empty prepare_aws_env so no auth environment variables are set.
           rm "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" || true
 
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PYTHON_BINARY=${PYTHON_BINARY} \
+          PYTHON_BINARY=${PYTHON_BINARY} \
             ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws web identity credentials":
@@ -693,12 +694,13 @@ functions:
           export AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME
           export AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE
 
-          ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
           if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
           else
-            ASSERT_NO_URI_CREDS=true \
+            PYTHON_BINARY=${PYTHON_BINARY} \
+              ASSERT_NO_URI_CREDS=true \
               SKIP_PREPARE_AWS_ENV=true \
               AWS_ROLE_SESSION_NAME="test" \
               .evergreen/run-mongodb-aws-test.sh
