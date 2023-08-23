@@ -23,10 +23,16 @@ import functools
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
+from bson.errors import InvalidBSON
 from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
+_DATETIME_ERROR_SUGGESTION = (
+    "(Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO)"
+    " or MongoClient(datetime_conversion='DATETIME_AUTO'))."
+    " See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes"
+)
 
 
 class DatetimeMS:
@@ -138,13 +144,17 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
         seconds = (millis - diff) // 1000
         micros = diff * 1000
 
-        if opts.tz_aware:
-            dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
-            if opts.tzinfo:
-                dt = dt.astimezone(tz)
-            return dt
-        else:
-            return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+        try:
+            if opts.tz_aware:
+                dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
+                if opts.tzinfo:
+                    dt = dt.astimezone(tz)
+                return dt
+            else:
+                return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+        except ArithmeticError as err:
+            raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
+
     elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
         return DatetimeMS(millis)
     else:
