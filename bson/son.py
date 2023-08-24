@@ -194,7 +194,7 @@ class SON(Dict[_Key, _Value]):
             else:
                 return value
 
-        return cast(dict[_Key, _Value], transform_value(dict(self)))
+        return cast("dict[_Key, _Value]", transform_value(dict(self)))
 
     def __deepcopy__(self, memo: dict[int, SON[_Key, _Value]]) -> SON[_Key, _Value]:
         out: SON[_Key, _Value] = SON()
