@@ -25,6 +25,7 @@ import re
 from collections.abc import Mapping as _Mapping
 from typing import (
     Any,
+    Dict,
     Iterable,
     Iterator,
     Mapping,
@@ -45,7 +46,7 @@ _Value = TypeVar("_Value")
 _T = TypeVar("_T")
 
 
-class SON(dict[_Key, _Value]):
+class SON(Dict[_Key, _Value]):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a
@@ -65,7 +66,7 @@ class SON(dict[_Key, _Value]):
         self.update(data)
         self.update(kwargs)
 
-    def __new__(cls: Type["SON[_Key, _Value]"], *args: Any, **kwargs: Any) -> "SON[_Key, _Value]":
+    def __new__(cls: Type[SON[_Key, _Value]], *args: Any, **kwargs: Any) -> SON[_Key, _Value]:
         instance = super().__new__(cls, *args, **kwargs)  # type: ignore[type-var]
         instance.__keys = []
         return instance
@@ -85,7 +86,7 @@ class SON(dict[_Key, _Value]):
         self.__keys.remove(key)
         dict.__delitem__(self, key)
 
-    def copy(self) -> "SON[_Key, _Value]":
+    def copy(self) -> SON[_Key, _Value]:
         other: SON[_Key, _Value] = SON()
         other.update(self)
         return other

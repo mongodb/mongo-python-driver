@@ -52,16 +52,13 @@ overhead of decoding or encoding BSON.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ItemsView, Iterator, Mapping, Optional
+from typing import Any, ItemsView, Iterator, Mapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
 from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
 from bson.codec_options import CodecOptions
 from bson.son import SON
-
-if TYPE_CHECKING:
-    from bson.typings import _DocumentType
 
 
 def _inflate_bson(

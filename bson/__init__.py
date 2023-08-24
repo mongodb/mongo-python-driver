@@ -1043,7 +1043,7 @@ def decode(data: _ReadableBuffer, codec_options: None = None) -> dict[str, Any]:
 
 
 @overload
-def decode(data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]) -> "_DocumentType":
+def decode(data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]) -> _DocumentType:
     ...
 
 
@@ -1394,7 +1394,7 @@ class BSON(bytes):
 
     @classmethod
     def encode(
-        cls: Type["BSON"],
+        cls: Type[BSON],
         document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions[dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
