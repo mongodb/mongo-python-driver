@@ -608,7 +608,7 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
         if _raw_document_class(opts.document_class):
             return opts.document_class(data, opts)  # type:ignore[call-arg]
         _, end = _get_object_size(data, 0, len(data))
-        return cast(_DocumentType, _elements_to_dict(data, view, 4, end, opts))
+        return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
         raise
     except Exception:
