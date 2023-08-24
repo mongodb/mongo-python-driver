@@ -108,6 +108,7 @@ import math
 import re
 import uuid
 from typing import (
+    TYPE_CHECKING,
     Any,
     Mapping,
     MutableMapping,
@@ -229,7 +230,13 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions[MutableMapping[str, Any]]):
+if TYPE_CHECKING:
+    _BASE_CLASS = CodecOptions[MutableMapping[str, Any]]
+else:
+    _BASE_CLASS = CodecOptions
+
+
+class JSONOptions(_BASE_CLASS):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
