@@ -1406,7 +1406,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Execute an operation with at most one consecutive retries
 
         Returns func()'s return value on success. On error retries the same
-        command once.
+        command.
 
         Re-raises any exception thrown by func().
         """
@@ -1466,10 +1466,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         retryable: bool = True,
     ) -> T:
-        """Execute an operation with at most one consecutive retries
+        """Execute an operation with consecutive retries if possible
 
         Returns func()'s return value on success. On error retries the same
-        command once.
+        command.
 
         Re-raises any exception thrown by func().
 
@@ -1503,10 +1503,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         bulk: Optional[_Bulk] = None,
     ) -> T:
-        """Execute an operation with at most one consecutive retries on write
+        """Execute an operation with consecutive retries if possible
 
         Returns func()'s return value on success. On error retries the same
-        command once.
+        command.
 
         Re-raises any exception thrown by func().
 
@@ -2302,7 +2302,7 @@ class _ClientConnectionRetryable(Generic[T]):
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
-        if self._is_retryable_session_state() and self._retryable and not self._is_read:
+        if self._is_session_state_retryable() and self._retryable and not self._is_read:
             self._session._start_retryable_write()  # type: ignore
             if self._bulk:
                 self._bulk.started_retryable_write = True
@@ -2326,7 +2326,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        if self._is_not_retry_eligible() or (
+                        if self._is_not_eligible_for_retry() or (
                             exc_code and exc_code not in helpers._RETRYABLE_ERROR_CODES
                         ):
                             raise
@@ -2343,7 +2343,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     if retryable_write_error_exc:
                         assert self._session
                         self._session._unpin()
-                    if not retryable_write_error_exc or self._is_not_retry_eligible():
+                    if not retryable_write_error_exc or self._is_not_eligible_for_retry():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
@@ -2357,7 +2357,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     if self._last_error is None:
                         self._last_error = exc
 
-    def _is_not_retry_eligible(self) -> bool:
+    def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
         return not self._retryable or (self._is_retrying() and not self._multiple_retries)
 
@@ -2365,7 +2365,7 @@ class _ClientConnectionRetryable(Generic[T]):
         """Checks if the exchange is currently undergoing a retry"""
         return self._bulk.retrying if self._bulk else self._retrying
 
-    def _is_retryable_session_state(self) -> bool:
+    def _is_session_state_retryable(self) -> bool:
         """Checks if provided session is eligible for retry
 
         reads: Make sure there is no ongoing transaction (if provided a session)
