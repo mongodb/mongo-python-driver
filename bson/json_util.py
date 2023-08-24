@@ -107,7 +107,7 @@ import json
 import math
 import re
 import uuid
-from typing import Any, Mapping, Optional, Sequence, Tuple, Type, Union, cast
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
@@ -219,7 +219,7 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions):
+class JSONOptions(CodecOptions["dict[str, Any]"]):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
@@ -304,7 +304,7 @@ class JSONOptions(CodecOptions):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))  # type:ignore[arg-type]
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
