@@ -225,7 +225,7 @@ def command(
     if client and client._encrypter and reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         response_doc = cast(
-            _DocumentOut, _decode_all_selective(decrypted, codec_options, user_fields)[0]
+            "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
         )
 
     return response_doc  # type: ignore[return-value]

@@ -526,7 +526,8 @@ if _USE_C:
         raw_array: bool = False,
     ) -> Tuple[str, Any, int]:
         return cast(
-            Tuple[str, Any, int], _cbson._element_to_dict(data, position, obj_end, opts, raw_array)
+            "Tuple[str, Any, int]",
+            _cbson._element_to_dict(data, position, obj_end, opts, raw_array),
         )
 
 else:
