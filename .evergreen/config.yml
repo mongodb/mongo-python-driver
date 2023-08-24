@@ -2698,10 +2698,6 @@ axes:
   - id: mod-wsgi-version
     display_name: "mod_wsgi version"
     values:
-      - id: "3"
-        display_name: "mod_wsgi 3.5"
-        variables:
-          MOD_WSGI_VERSION: "3"
       - id: "4"
         display_name: "mod_wsgi 4.x"
         variables:
