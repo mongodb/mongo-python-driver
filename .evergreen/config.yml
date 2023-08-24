@@ -2454,9 +2454,9 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu-20.04
-        display_name: "Ubuntu 20.04"
-        run_on: ubuntu2004-small
+      - id: ubuntu-22.04
+        display_name: "Ubuntu 22.04"
+        run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
@@ -3183,14 +3183,9 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: ubuntu-20.04
-    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+    platform: ubuntu-22.04
+    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
     mod-wsgi-version: "*"
-  exclude_spec:
-   # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: ubuntu-20.04
-     python-version: ["3.8", "3.9", "3.10", "3.11"]
-     mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
      - name: "mod-wsgi-standalone"
