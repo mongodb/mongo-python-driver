@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for working with MongoDB ObjectIds."""
+from __future__ import annotations
 
 import binascii
 import calendar

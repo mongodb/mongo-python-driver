@@ -18,16 +18,15 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary.
 """
+from __future__ import annotations
 
 import copy
 import re
 from collections.abc import Mapping as _Mapping
 from typing import (
     Any,
-    Dict,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Pattern,
@@ -46,7 +45,7 @@ _Value = TypeVar("_Value")
 _T = TypeVar("_T")
 
 
-class SON(Dict[_Key, _Value]):
+class SON(dict[_Key, _Value]):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a
@@ -54,7 +53,7 @@ class SON(Dict[_Key, _Value]):
     similar to collections.OrderedDict.
     """
 
-    __keys: List[Any]
+    __keys: list[Any]
 
     def __init__(
         self,
@@ -108,7 +107,7 @@ class SON(Dict[_Key, _Value]):
         for _, v in self.items():
             yield v
 
-    def values(self) -> List[_Value]:  # type: ignore[override]
+    def values(self) -> list[_Value]:  # type: ignore[override]
         return [v for _, v in self.items()]
 
     def clear(self) -> None:
@@ -170,7 +169,7 @@ class SON(Dict[_Key, _Value]):
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
-        return self.to_dict() == other
+        return self.to_dict() == other  # type:ignore[no-any-return]
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -178,7 +177,7 @@ class SON(Dict[_Key, _Value]):
     def __len__(self) -> int:
         return len(self.__keys)
 
-    def to_dict(self) -> Dict[_Key, _Value]:
+    def to_dict(self) -> dict[_Key, _Value]:
         """Convert a SON document to a normal Python dictionary instance.
 
         This is trickier than just *dict(...)* because it needs to be
@@ -193,9 +192,9 @@ class SON(Dict[_Key, _Value]):
             else:
                 return value
 
-        return transform_value(dict(self))
+        return transform_value(dict(self))  # type:ignore[no-any-return]
 
-    def __deepcopy__(self, memo: Dict[int, "SON[_Key, _Value]"]) -> "SON[_Key, _Value]":
+    def __deepcopy__(self, memo: dict[int, SON[_Key, _Value]]) -> SON[_Key, _Value]:
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:

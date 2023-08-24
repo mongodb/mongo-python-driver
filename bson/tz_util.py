@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Timezone related utilities for BSON."""
+from __future__ import annotations
 
 from datetime import datetime, timedelta, tzinfo
 from typing import Optional, Tuple, Union
