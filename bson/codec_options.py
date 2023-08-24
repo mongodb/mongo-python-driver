@@ -233,6 +233,44 @@ class _BaseCodecOptions(NamedTuple):
     type_registry: TypeRegistry
     datetime_conversion: Optional[DatetimeConversion]
 
+    def _arguments_repr(self) -> str:
+        """Representation of the arguments used to create this object."""
+        document_class_repr = "dict" if self.document_class is dict else repr(self.document_class)
+
+        uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(
+            self.uuid_representation, self.uuid_representation
+        )
+
+        return (
+            "document_class={}, tz_aware={!r}, uuid_representation={}, "
+            "unicode_decode_error_handler={!r}, tzinfo={!r}, "
+            "type_registry={!r}, datetime_conversion={!s}".format(
+                document_class_repr,
+                self.tz_aware,
+                uuid_rep_repr,
+                self.unicode_decode_error_handler,
+                self.tzinfo,
+                self.type_registry,
+                self.datetime_conversion,
+            )
+        )
+
+    def _options_dict(self) -> dict[str, Any]:
+        """Dictionary of the arguments used to create this object."""
+        # TODO: PYTHON-2442 use _asdict() instead
+        return {
+            "document_class": self.document_class,
+            "tz_aware": self.tz_aware,
+            "uuid_representation": self.uuid_representation,
+            "unicode_decode_error_handler": self.unicode_decode_error_handler,
+            "tzinfo": self.tzinfo,
+            "type_registry": self.type_registry,
+            "datetime_conversion": self.datetime_conversion,
+        }
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._arguments_repr()})"
+
 
 if TYPE_CHECKING:
 
@@ -259,12 +297,6 @@ if TYPE_CHECKING:
 
         # CodecOptions API
         def with_options(self, **kwargs: Any) -> CodecOptions[Any]:
-            ...
-
-        def _arguments_repr(self) -> str:
-            ...
-
-        def _options_dict(self) -> dict[Any, Any]:
             ...
 
         # NamedTuple API
@@ -427,46 +459,6 @@ else:
                     datetime_conversion,
                 ),
             )
-
-        def _arguments_repr(self) -> str:
-            """Representation of the arguments used to create this object."""
-            document_class_repr = (
-                "dict" if self.document_class is dict else repr(self.document_class)
-            )
-
-            uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(
-                self.uuid_representation, self.uuid_representation
-            )
-
-            return (
-                "document_class={}, tz_aware={!r}, uuid_representation={}, "
-                "unicode_decode_error_handler={!r}, tzinfo={!r}, "
-                "type_registry={!r}, datetime_conversion={!s}".format(
-                    document_class_repr,
-                    self.tz_aware,
-                    uuid_rep_repr,
-                    self.unicode_decode_error_handler,
-                    self.tzinfo,
-                    self.type_registry,
-                    self.datetime_conversion,
-                )
-            )
-
-        def _options_dict(self) -> dict[str, Any]:
-            """Dictionary of the arguments used to create this object."""
-            # TODO: PYTHON-2442 use _asdict() instead
-            return {
-                "document_class": self.document_class,
-                "tz_aware": self.tz_aware,
-                "uuid_representation": self.uuid_representation,
-                "unicode_decode_error_handler": self.unicode_decode_error_handler,
-                "tzinfo": self.tzinfo,
-                "type_registry": self.type_registry,
-                "datetime_conversion": self.datetime_conversion,
-            }
-
-        def __repr__(self) -> str:
-            return f"{self.__class__.__name__}({self._arguments_repr()})"
 
         def with_options(self, **kwargs: Any) -> CodecOptions:
             """Make a copy of this CodecOptions, overriding some options::

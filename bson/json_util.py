@@ -107,11 +107,21 @@ import json
 import math
 import re
 import uuid
-from typing import Any, Mapping, Optional, Sequence, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions, DatetimeConversion
+from bson.codec_options import CodecOptions, DatetimeConversion, _BaseCodecOptions
 from bson.datetime_ms import (
     EPOCH_AWARE,
     DatetimeMS,
@@ -219,11 +229,12 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions):  # type:ignore[type-arg]
+class JSONOptions(_BaseCodecOptions):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
     strict_uuid: bool
+    document_class: Type[MutableMapping[str, Any]]
 
     def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
@@ -502,7 +513,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
 def object_pairs_hook(
     pairs: Sequence[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS
 ) -> Any:
-    return object_hook(json_options.document_class(pairs), json_options)
+    return object_hook(json_options.document_class(pairs), json_options)  # type:ignore[call-arg]
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
@@ -686,7 +697,7 @@ def _parse_canonical_datetime(
             if json_options.datetime_conversion == DatetimeConversion.DATETIME_MS:
                 return DatetimeMS(aware_tzinfo_none)
             return aware_tzinfo_none
-    return _millis_to_datetime(int(dtm), json_options)
+    return _millis_to_datetime(int(dtm), cast("CodecOptions[Any]", json_options))
 
 
 def _parse_canonical_oid(doc: Any) -> ObjectId:
