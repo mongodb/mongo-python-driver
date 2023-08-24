@@ -1177,9 +1177,9 @@ def _decode_selective(
             if fields[key] == 1:
                 doc[key] = _bson_to_dict(rawdoc.raw, codec_options)[key]  # type:ignore[index]
             else:
-                doc[key] = _decode_selective(
+                doc[key] = _decode_selective(  # type:ignore[index]
                     value, fields[key], codec_options
-                )  # type:ignore[index]
+                )
         else:
             doc[key] = value  # type:ignore[index]
     return doc
@@ -1421,9 +1421,9 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(
+    def decode(  # type:ignore[override]
         self, codec_options: CodecOptions[dict[str, Any]] = DEFAULT_CODEC_OPTIONS
-    ) -> dict[str, Any]:  # type:ignore[override]
+    ) -> dict[str, Any]:
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python
