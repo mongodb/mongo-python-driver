@@ -1079,7 +1079,7 @@ def decode(
     if not isinstance(opts, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return cast(Union[dict[str, Any], _DocumentType], _bson_to_dict(data, opts))
+    return cast("Union[dict[str, Any], _DocumentType]", _bson_to_dict(data, opts))
 
 
 def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> list[_DocumentType]:
