@@ -121,7 +121,7 @@ from typing import (
 
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions, DatetimeConversion, _BaseCodecOptions
+from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import (
     EPOCH_AWARE,
     DatetimeMS,
@@ -229,7 +229,7 @@ class JSONMode:
     """
 
 
-class JSONOptions(_BaseCodecOptions):
+class JSONOptions(CodecOptions[MutableMapping[str, Any]]):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
@@ -315,7 +315,7 @@ class JSONOptions(_BaseCodecOptions):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))  # type:ignore[arg-type]
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
