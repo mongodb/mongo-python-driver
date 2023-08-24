@@ -219,7 +219,7 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions[Dict[str, Any]]):
+class JSONOptions(CodecOptions):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
