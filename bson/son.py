@@ -35,6 +35,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 
 # This sort of sucks, but seems to be as good as it gets...
@@ -170,7 +171,7 @@ class SON(Dict[_Key, _Value]):
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
-        return self.to_dict() == other  # type:ignore[no-any-return]
+        return cast(bool, self.to_dict() == other)
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -193,7 +194,7 @@ class SON(Dict[_Key, _Value]):
             else:
                 return value
 
-        return transform_value(dict(self))  # type:ignore[no-any-return]
+        return cast(dict[_Key, _Value], transform_value(dict(self)))
 
     def __deepcopy__(self, memo: dict[int, SON[_Key, _Value]]) -> SON[_Key, _Value]:
         out: SON[_Key, _Value] = SON()

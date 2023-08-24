@@ -52,7 +52,7 @@ overhead of decoding or encoding BSON.
 """
 from __future__ import annotations
 
-from typing import Any, ItemsView, Iterator, Mapping, Optional
+from typing import Any, ItemsView, Iterator, Mapping, MutableMapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
@@ -63,7 +63,7 @@ from bson.son import SON
 
 def _inflate_bson(
     bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument], raw_array: bool = False
-) -> RawBSONDocument:
+) -> MutableMapping[str, Any]:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:
@@ -162,7 +162,7 @@ class RawBSONDocument(Mapping[str, Any]):
     @staticmethod
     def _inflate_bson(
         bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
-    ) -> RawBSONDocument:
+    ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options)
 
     def __getitem__(self, item: str) -> Any:
@@ -193,7 +193,7 @@ class _RawArrayBSONDocument(RawBSONDocument):
     @staticmethod
     def _inflate_bson(
         bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
-    ) -> RawBSONDocument:
+    ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options, raw_array=True)
 
 

@@ -107,7 +107,7 @@ import json
 import math
 import re
 import uuid
-from typing import Any, Mapping, Optional, Sequence, Tuple, Type, Union, cast
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
@@ -219,7 +219,7 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions[dict[str, Any]]):
+class JSONOptions(CodecOptions[Dict[str, Any]]):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
