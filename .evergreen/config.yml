@@ -75,9 +75,8 @@ functions:
               export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-              # Installation of cryptography requires a rust compiler on some machines
-              export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
               export PROJECT="${project}"
+              export PIP_QUIET=1
            EOT
            # See what we've done
            cat expansion.yml
@@ -295,7 +294,6 @@ functions:
           ${PREPARE_SHELL}
           set -o xtrace
 
-          PIP_QUIET=1 \
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
