@@ -39,7 +39,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set +x
+           set +x
            # Get the current unique version of this checkout
            if [ "${is_patch}" = "true" ]; then
               CURRENT_VERSION=$(git describe)-patch-${version_id}
@@ -80,7 +80,6 @@ functions:
               export PROJECT="${project}"
               export PIP_QUIET=1
            EOT
-           echo "Wrote expansion file"
 
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
