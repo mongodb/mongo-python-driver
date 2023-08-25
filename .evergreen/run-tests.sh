@@ -266,7 +266,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    python -m pytest -v $TEST_ARGS
+    python -m pytest -v --maxfail=3 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK
 fi
