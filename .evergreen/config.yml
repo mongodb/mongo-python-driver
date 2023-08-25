@@ -91,8 +91,8 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           rm -rf $DRIVERS_TOOLS
           if [ "${project}" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
@@ -131,8 +131,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # Coverage combine merges (and removes) all the coverage files and
           # generates a new .coverage file in the current directory.
           ls -la coverage/
@@ -164,8 +164,8 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           mkdir out_dir
           find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
           tar zcvf mongodb-logs.tar.gz -C out_dir/ .
@@ -291,7 +291,10 @@ functions:
             export SKIP_CRYPT_SHARED=1
           fi
 
+          set +x
           ${PREPARE_SHELL}
+          set -o xtrace
+
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
@@ -317,8 +320,8 @@ functions:
       type: setup
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
           VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
@@ -327,16 +330,16 @@ functions:
       params:
         background: true
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
 
   "stop mongo-orchestration":
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
@@ -345,8 +348,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
             MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
@@ -357,8 +360,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
@@ -368,8 +371,8 @@ functions:
        params:
          working_dir: "src"
          script: |
-           set -o xtrace
            ${PREPARE_SHELL}
+           set -o xtrace
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
@@ -890,7 +893,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
             perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
@@ -900,7 +903,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
@@ -913,7 +916,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
@@ -923,7 +926,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
@@ -932,8 +935,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
           [ -f "$file" ] && bash $file || echo "$file not available, skipping"
@@ -1045,7 +1048,10 @@ functions:
       params:
         script: |
           # Remove all Docker images
-          docker rmi -f $(docker images -a -q) &> /dev/null || true
+          DOCKER=$(command -v docker) || true
+          if [ -n "$DOCKER" ]; then
+            docker rmi -f $(docker images -a -q) &> /dev/null || true
+          fi
 
   "teardown_aws":
     - command: shell.exec
@@ -1065,8 +1071,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
 
   "upload release":
@@ -1101,8 +1107,8 @@ functions:
       params:
         shell: "bash"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # Combine releases into one directory.
           ls -la release/
           mkdir releases
@@ -1438,8 +1444,8 @@ tasks:
           params:
             working_dir: "src"
             script: |
-              set -o xtrace
               ${PREPARE_SHELL}
+              set -o xtrace
               .evergreen/build-manylinux.sh BUILD_WITH_TAG
         - func: "upload release"
 

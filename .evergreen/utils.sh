@@ -29,6 +29,7 @@ createvirtualenv () {
         . $VENVPATH/bin/activate
     fi
 
+    PIP_QUIET=1
     python -m pip install --upgrade pip
     python -m pip install --upgrade setuptools wheel tox
 }
