@@ -80,6 +80,7 @@ functions:
               export PROJECT="${project}"
               export PIP_QUIET=1
            EOT
+           echo "Wrote expansion file"
 
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
