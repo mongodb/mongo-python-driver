@@ -39,6 +39,7 @@ functions:
       params:
         working_dir: "src"
         script: |
+          set +x
            # Get the current unique version of this checkout
            if [ "${is_patch}" = "true" ]; then
               CURRENT_VERSION=$(git describe)-patch-${version_id}
@@ -79,8 +80,6 @@ functions:
               export PROJECT="${project}"
               export PIP_QUIET=1
            EOT
-           # See what we've done
-           cat expansion.yml
 
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
@@ -956,7 +955,7 @@ functions:
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
+          PIP_QUIET=1 ${python3_binary} -m venv ./venv
           ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
@@ -973,7 +972,7 @@ functions:
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
+          PIP_QUIET=1 ${python3_binary} -m venv ./venv
           ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
@@ -992,7 +991,7 @@ functions:
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
+          PIP_QUIET=1 ${python3_binary} -m venv ./venv
           ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
@@ -1009,7 +1008,7 @@ functions:
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
+          PIP_QUIET=1 ${python3_binary} -m venv ./venv
           ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
