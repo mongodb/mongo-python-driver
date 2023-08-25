@@ -1,10 +1,10 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
+set -o xtrace
 
 # Note: It is assumed that you have already set up a virtual environment before running this file.
 
 # Supported/used environment variables:
-#  SET_XTRACE_ON        Set to non-empty to write all commands first to stderr.
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
 #  SSL                  Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
@@ -28,12 +28,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 #  TEST_ATLAS   If non-empty, test Atlas connections
 
-if [ -n "${SET_XTRACE_ON}" ]; then
-    set -o xtrace
-else
-    set +x
-fi
-
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="$1"
@@ -48,6 +42,7 @@ if [ -f ./secrets-export.sh ]; then
 fi
 
 if [ "$AUTH" != "noauth" ]; then
+    set +x
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
@@ -58,6 +53,7 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
     fi
+    set -x
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
@@ -268,7 +264,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
     python -m pytest -v --maxfail=3 $TEST_ARGS
 else
-    python green_framework_test.py $GREEN_FRAMEWORK
+    python green_framework_test.py $GREEN_FRAMEWORK -v --maxfail=3 $TEST_ARGS
 fi
 
 # Handle perf test post actions.
