@@ -295,6 +295,7 @@ functions:
           ${PREPARE_SHELL}
           set -o xtrace
 
+          PIP_QUIET=1 \
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
