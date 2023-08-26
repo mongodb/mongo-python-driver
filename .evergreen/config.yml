@@ -881,7 +881,6 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
           rm -rf $DRIVERS_TOOLS || true
 
