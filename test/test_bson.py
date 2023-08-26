@@ -50,6 +50,7 @@ from bson import (
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
+from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON, InvalidDocument
 from bson.int64 import Int64
@@ -121,7 +122,6 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidBSON, decode, data)
 
     def check_encode_then_decode(self, doc_class=dict, decoder=decode, encoder=encode):
-
         # Work around http://bugs.jython.org/issue1728
         if sys.platform.startswith("java"):
             doc_class = SON
@@ -1308,6 +1308,11 @@ class TestDatetimeConversion(unittest.TestCase):
         float_ms = DatetimeMSOverride(2)
         with self.assertRaises(TypeError):
             encode({"x": float_ms})
+
+        # Test InvalidBSON errors on conversion include _DATETIME_ERROR_SUGGESTION
+        small_ms = -2 << 51
+        with self.assertRaisesRegex(InvalidBSON, re.compile(re.escape(_DATETIME_ERROR_SUGGESTION))):
+            decode(encode({"a": DatetimeMS(small_ms)}))
 
 
 class TestLongLongToString(unittest.TestCase):
