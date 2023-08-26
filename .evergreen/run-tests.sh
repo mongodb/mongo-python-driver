@@ -32,7 +32,7 @@ AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="$1"
 PYTHON=$(which python)
-PIP_QUIET=1  # Quiet by default
+export PIP_QUIET=1  # Quiet by default
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
