@@ -781,7 +781,9 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: bash
         script: |
+          set -x
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
@@ -790,9 +792,9 @@ functions:
           export AWS_ACCESS_KEY_ID=$IAM_AUTH_ECS_ACCOUNT
           export AWS_SECRET_ACCESS_KEY=$IAM_AUTH_ECS_SECRET_ACCESS_KEY
 
-          PYTHON_BINARY=${PYTHON_BINARY} \
+          PYTHON_BINARY="${PYTHON_BINARY}" \
             DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             ASSERT_NO_URI_CREDS=true \
             SKIP_PREPARE_AWS_ENV=true \
             .evergreen/run-mongodb-aws-test.sh

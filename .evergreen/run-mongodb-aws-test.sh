@@ -15,7 +15,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-AWS authentication tests"
 # ensure no secrets are printed in log files
-set +x
+set -x
 
 if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
   [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
@@ -43,6 +43,8 @@ if [ -z "$PYTHON_BINARY" ]; then
     echo "Cannot test without specifying PYTHON_BINARY"
     exit 1
 fi
+
+python -c "import os;print('ENV HERE');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
 
 export TEST_AUTH_AWS=1
 export AUTH="auth"
