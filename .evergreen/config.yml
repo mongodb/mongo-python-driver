@@ -832,26 +832,27 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
           if [ "${skip_ECS_auth_test}" = "true" ]; then
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
 
-          cd -
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
           fi
 
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate-authawsvenv.sh
 
           export MONGODB_BINARIES="${MONGODB_BINARIES}";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
-          python aws_tester.py ecs
+
+          USE_AWS_SECRETS=true python aws_tester.py ecs
           cd -
 
   "cleanup":
@@ -2128,7 +2129,7 @@ tasks:
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
-#        - func: "run aws ECS auth test"
+        - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
       commands:
