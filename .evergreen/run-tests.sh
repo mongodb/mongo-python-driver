@@ -53,6 +53,9 @@ if [ "$AUTH" != "noauth" ]; then
     elif [ ! -z "$TEST_SERVERLESS" ]; then
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+        export DB_USER=$OIDC_ALTAS_USER
+        export DB_PASSWORD=$OIDC_ATLAS_PASSWORD
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
@@ -227,7 +230,7 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_aws/test_auth_oidc.py"
+    TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
 
 if [ -n "$PERF_TEST" ]; then
