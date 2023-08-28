@@ -783,7 +783,10 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          set -x
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
           # Try to source exported AWS Secrets
           if [ -f ./secrets-export.sh ]; then
             source ./secrets-export.sh
@@ -804,22 +807,22 @@ functions:
       type: test
       params:
         working_dir: "src"
-        silent: true
+        shell: bash
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
-            export AWS_ACCESS_KEY_ID=$(jsonkey AccessKeyId)
-            export AWS_SECRET_ACCESS_KEY=$(jsonkey SecretAccessKey)
-            export AWS_SESSION_TOKEN=$(jsonkey SessionToken)
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
+          PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            ASSERT_NO_URI_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -2121,7 +2124,7 @@ tasks:
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
-##        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
 #        - func: "run aws ECS auth test"

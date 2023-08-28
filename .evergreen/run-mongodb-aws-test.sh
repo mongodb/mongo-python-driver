@@ -44,8 +44,6 @@ if [ -z "$PYTHON_BINARY" ]; then
     exit 1
 fi
 
-python -c "import os;print('ENV HERE');print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
-
 export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
