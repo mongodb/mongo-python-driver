@@ -45,7 +45,7 @@ class TestAuthOIDC(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
-        cls.uri_multiple = os.environ["MONGODB_URI_MULTIPLE"]
+        cls.uri_multiple = os.environ["MONGODB_URI_MULTI"]
         cls.uri_admin = os.environ["MONGODB_URI"]
         cls.token_dir = os.environ["OIDC_TOKEN_DIR"]
 
