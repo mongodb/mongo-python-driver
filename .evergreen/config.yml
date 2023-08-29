@@ -595,7 +595,7 @@ functions:
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=true python aws_tester.py regular
+          python aws_tester.py regular
 
           cd -
 
@@ -623,8 +623,7 @@ functions:
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=1 \
-            python aws_tester.py assume-role
+          python aws_tester.py assume-role
 
           cd -
 
@@ -659,8 +658,7 @@ functions:
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=1 \
-            python aws_tester.py ec2
+          python aws_tester.py ec2
 
           cd -
 
@@ -691,7 +689,7 @@ functions:
 
           . ./activate-authawsvenv.sh
 
-          USE_AWS_SECRETS=true python aws_tester.py web-identity
+          python aws_tester.py web-identity
 
           cd -
 
@@ -852,7 +850,7 @@ functions:
           export MONGODB_BINARIES="${MONGODB_BINARIES}";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
 
-          USE_AWS_SECRETS=true python aws_tester.py ecs
+          python aws_tester.py ecs
           cd -
 
   "cleanup":
