@@ -1,10 +1,10 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
+set -o xtrace
 
 # Note: It is assumed that you have already set up a virtual environment before running this file.
 
 # Supported/used environment variables:
-#  SET_XTRACE_ON        Set to non-empty to write all commands first to stderr.
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
 #  SSL                  Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
@@ -28,16 +28,11 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 #  TEST_ATLAS   If non-empty, test Atlas connections
 
-if [ -n "${SET_XTRACE_ON}" ]; then
-    set -o xtrace
-else
-    set +x
-fi
-
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="$1"
 PYTHON=$(which python)
+export PIP_QUIET=1  # Quiet by default
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
@@ -47,6 +42,7 @@ if [ -f ./secrets-export.sh ]; then
 fi
 
 if [ "$AUTH" != "noauth" ]; then
+    set +x
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
@@ -57,6 +53,7 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
     fi
+    set -x
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
@@ -251,6 +248,13 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
 fi
 
+if [ -n "$GREEN_FRAMEWORK" ]; then
+     python -m pip install $GREEN_FRAMEWORK
+fi
+
+# Show the installed packages
+PIP_QUIET=0 python -m pip list
+
 if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         python setup.py build_ext -i
@@ -258,11 +262,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-
     python -m pytest -v $TEST_ARGS
 else
-    python -m pip install $GREEN_FRAMEWORK
-    python green_framework_test.py $GREEN_FRAMEWORK
+    python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
 
 # Handle perf test post actions.
