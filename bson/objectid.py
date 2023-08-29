@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for working with MongoDB ObjectIds."""
+from __future__ import annotations
 
 import binascii
 import calendar
@@ -243,7 +244,7 @@ class ObjectId:
     def __str__(self) -> str:
         return binascii.hexlify(self.__id).decode()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"ObjectId('{str(self)}')"
 
     def __eq__(self, other: Any) -> bool:

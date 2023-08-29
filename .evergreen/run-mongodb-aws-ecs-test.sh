@@ -22,16 +22,12 @@ set -o xtrace
 
 # Install python3.7 with pip.
 apt-get update
-apt install python3.7 python3-pip -y
+apt-get install python3.7 python3-pip build-essential python3.7-dev -y
 
-authtest () {
-    echo "Running MONGODB-AWS ECS authentication tests with $PYTHON"
-    $PYTHON --version
-    $PYTHON -m pip install --upgrade wheel setuptools pip
-    cd src
-    $PYTHON -m pip install '.[aws]'
-    $PYTHON test/auth_aws/test_auth_aws.py -v
-    cd -
-}
-
-PYTHON="python3.7" authtest
+export PYTHON_BINARY="python3.7"
+export TEST_AUTH_AWS=1
+export AUTH="auth"
+export SET_XTRACE_ON=1
+cd src
+python3.7 -m pip install -q --user tox
+bash .evergreen/tox.sh -m test-eg

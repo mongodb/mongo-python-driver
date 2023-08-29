@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Tuple, Type, Union
 from uuid import UUID
@@ -225,10 +226,10 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: Type["Binary"],
-        data: Union[memoryview, bytes, "_mmap", "_array"],
+        cls: Type[Binary],
+        data: Union[memoryview, bytes, _mmap, _array[Any]],
         subtype: int = BINARY_SUBTYPE,
-    ) -> "Binary":
+    ) -> Binary:
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
@@ -240,7 +241,7 @@ class Binary(bytes):
 
     @classmethod
     def from_uuid(
-        cls: Type["Binary"], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
+        cls: Type[Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
     ) -> "Binary":
         """Create a BSON Binary object from a Python UUID.
 
@@ -365,5 +366,5 @@ class Binary(bytes):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Binary({bytes.__repr__(self)}, {self.__subtype})"

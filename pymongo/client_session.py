@@ -179,7 +179,7 @@ if TYPE_CHECKING:
 
     from pymongo.pool import Connection
     from pymongo.server import Server
-    from pymongo.typings import _Address
+    from pymongo.typings import ClusterTime, _Address
 
 
 class SessionOptions:
@@ -562,7 +562,7 @@ class ClientSession:
         return self._server_session.session_id
 
     @property
-    def cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def cluster_time(self) -> Optional[ClusterTime]:
         """The cluster time returned by the last operation executed
         in this session.
         """
@@ -844,7 +844,7 @@ class ClientSession:
         ) -> Dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(True, func, self, None)
+        return self._client._retry_internal(func, self, None, retryable=True)
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> Dict[str, Any]:
         self._transaction.attempt += 1
@@ -986,7 +986,7 @@ class ClientSession:
         self,
         command: MutableMapping[str, Any],
         is_retryable: bool,
-        read_preference: ReadPreference,
+        read_preference: _ServerMode,
         conn: Connection,
     ) -> None:
         self._check_ended()

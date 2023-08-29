@@ -18,6 +18,7 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary.
 """
+from __future__ import annotations
 
 import copy
 import re
@@ -27,7 +28,6 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Pattern,
@@ -35,6 +35,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 
 # This sort of sucks, but seems to be as good as it gets...
@@ -54,7 +55,7 @@ class SON(Dict[_Key, _Value]):
     similar to collections.OrderedDict.
     """
 
-    __keys: List[Any]
+    __keys: list[Any]
 
     def __init__(
         self,
@@ -66,12 +67,12 @@ class SON(Dict[_Key, _Value]):
         self.update(data)
         self.update(kwargs)
 
-    def __new__(cls: Type["SON[_Key, _Value]"], *args: Any, **kwargs: Any) -> "SON[_Key, _Value]":
+    def __new__(cls: Type[SON[_Key, _Value]], *args: Any, **kwargs: Any) -> SON[_Key, _Value]:
         instance = super().__new__(cls, *args, **kwargs)  # type: ignore[type-var]
         instance.__keys = []
         return instance
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = []
         for key in self.__keys:
             result.append(f"({key!r}, {self[key]!r})")
@@ -86,7 +87,7 @@ class SON(Dict[_Key, _Value]):
         self.__keys.remove(key)
         dict.__delitem__(self, key)
 
-    def copy(self) -> "SON[_Key, _Value]":
+    def copy(self) -> SON[_Key, _Value]:
         other: SON[_Key, _Value] = SON()
         other.update(self)
         return other
@@ -108,7 +109,7 @@ class SON(Dict[_Key, _Value]):
         for _, v in self.items():
             yield v
 
-    def values(self) -> List[_Value]:  # type: ignore[override]
+    def values(self) -> list[_Value]:  # type: ignore[override]
         return [v for _, v in self.items()]
 
     def clear(self) -> None:
@@ -170,7 +171,7 @@ class SON(Dict[_Key, _Value]):
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
-        return self.to_dict() == other
+        return cast(bool, self.to_dict() == other)
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -178,7 +179,7 @@ class SON(Dict[_Key, _Value]):
     def __len__(self) -> int:
         return len(self.__keys)
 
-    def to_dict(self) -> Dict[_Key, _Value]:
+    def to_dict(self) -> dict[_Key, _Value]:
         """Convert a SON document to a normal Python dictionary instance.
 
         This is trickier than just *dict(...)* because it needs to be
@@ -193,9 +194,9 @@ class SON(Dict[_Key, _Value]):
             else:
                 return value
 
-        return transform_value(dict(self))
+        return cast("dict[_Key, _Value]", transform_value(dict(self)))
 
-    def __deepcopy__(self, memo: Dict[int, "SON[_Key, _Value]"]) -> "SON[_Key, _Value]":
+    def __deepcopy__(self, memo: dict[int, SON[_Key, _Value]]) -> SON[_Key, _Value]:
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:

@@ -50,8 +50,9 @@ For use cases like moving documents across different databases or writing binary
 blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
 """
+from __future__ import annotations
 
-from typing import Any, Dict, ItemsView, Iterator, Mapping, Optional
+from typing import Any, ItemsView, Iterator, Mapping, MutableMapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
@@ -61,8 +62,8 @@ from bson.son import SON
 
 
 def _inflate_bson(
-    bson_bytes: bytes, codec_options: CodecOptions, raw_array: bool = False
-) -> Dict[Any, Any]:
+    bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument], raw_array: bool = False
+) -> MutableMapping[str, Any]:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:
@@ -87,8 +88,11 @@ class RawBSONDocument(Mapping[str, Any]):
 
     __slots__ = ("__raw", "__inflated_doc", "__codec_options")
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
+    __codec_options: CodecOptions[RawBSONDocument]
 
-    def __init__(self, bson_bytes: bytes, codec_options: Optional[CodecOptions] = None) -> None:
+    def __init__(
+        self, bson_bytes: bytes, codec_options: Optional[CodecOptions[RawBSONDocument]] = None
+    ) -> None:
         """Create a new :class:`RawBSONDocument`
 
         :class:`RawBSONDocument` is a representation of a BSON document that
@@ -156,7 +160,9 @@ class RawBSONDocument(Mapping[str, Any]):
         return self.__inflated_doc
 
     @staticmethod
-    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
+    def _inflate_bson(
+        bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
+    ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options)
 
     def __getitem__(self, item: str) -> Any:
@@ -173,7 +179,7 @@ class RawBSONDocument(Mapping[str, Any]):
             return self.__raw == other.raw
         return NotImplemented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({!r}, codec_options={!r})".format(
             self.__class__.__name__,
             self.raw,
@@ -185,12 +191,18 @@ class _RawArrayBSONDocument(RawBSONDocument):
     """A RawBSONDocument that only expands sub-documents and arrays when accessed."""
 
     @staticmethod
-    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
+    def _inflate_bson(
+        bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
+    ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options, raw_array=True)
 
 
-DEFAULT_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=RawBSONDocument)
-_RAW_ARRAY_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=_RawArrayBSONDocument)
+DEFAULT_RAW_BSON_OPTIONS: CodecOptions[RawBSONDocument] = DEFAULT.with_options(
+    document_class=RawBSONDocument
+)
+_RAW_ARRAY_BSON_OPTIONS: CodecOptions[_RawArrayBSONDocument] = DEFAULT.with_options(
+    document_class=_RawArrayBSONDocument
+)
 """The default :class:`~bson.codec_options.CodecOptions` for
 :class:`RawBSONDocument`.
 """

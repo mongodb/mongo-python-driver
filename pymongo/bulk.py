@@ -153,7 +153,7 @@ def _merge_command(
         full_result["writeConcernErrors"].append(wce)
 
 
-def _raise_bulk_write_error(full_result: Mapping[str, Any]) -> NoReturn:
+def _raise_bulk_write_error(full_result: _DocumentOut) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])
@@ -443,8 +443,7 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        with client._tmp_session(session) as s:
-            client._retry_with_session(self.is_retryable, retryable_bulk, s, self)
+        client._retryable_write(self.is_retryable, retryable_bulk, session, bulk=self)
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)

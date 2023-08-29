@@ -99,6 +99,7 @@ but it will be faster as there is less recursion.
    `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` works best
    with PyMongo when using :class:`~bson.raw_bson.RawBSONDocument`.
 """
+from __future__ import annotations
 
 import base64
 import datetime
@@ -106,7 +107,18 @@ import json
 import math
 import re
 import uuid
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
@@ -218,13 +230,20 @@ class JSONMode:
     """
 
 
-class JSONOptions(CodecOptions):
+if TYPE_CHECKING:
+    _BASE_CLASS = CodecOptions[MutableMapping[str, Any]]
+else:
+    _BASE_CLASS = CodecOptions
+
+
+class JSONOptions(_BASE_CLASS):
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
     strict_uuid: bool
+    document_class: Type[MutableMapping[str, Any]]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
         :Parameters:
@@ -282,14 +301,14 @@ class JSONOptions(CodecOptions):
         super().__init__()
 
     def __new__(
-        cls: Type["JSONOptions"],
+        cls: Type[JSONOptions],
         strict_number_long: Optional[bool] = None,
         datetime_representation: Optional[int] = None,
         strict_uuid: Optional[bool] = None,
         json_mode: int = JSONMode.RELAXED,
         *args: Any,
         **kwargs: Any,
-    ) -> "JSONOptions":
+    ) -> JSONOptions:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -303,7 +322,7 @@ class JSONOptions(CodecOptions):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))  # type:ignore[arg-type]
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
@@ -361,7 +380,7 @@ class JSONOptions(CodecOptions):
             )
         )
 
-    def _options_dict(self) -> Dict[Any, Any]:
+    def _options_dict(self) -> dict[Any, Any]:
         # TODO: PYTHON-2442 use _asdict() instead
         options_dict = super()._options_dict()
         options_dict.update(
@@ -374,7 +393,7 @@ class JSONOptions(CodecOptions):
         )
         return options_dict
 
-    def with_options(self, **kwargs: Any) -> "JSONOptions":
+    def with_options(self, **kwargs: Any) -> JSONOptions:
         """
         Make a copy of this JSONOptions, overriding some options::
 
@@ -501,7 +520,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
 def object_pairs_hook(
     pairs: Sequence[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS
 ) -> Any:
-    return object_hook(json_options.document_class(pairs), json_options)
+    return object_hook(json_options.document_class(pairs), json_options)  # type:ignore[call-arg]
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
@@ -685,7 +704,7 @@ def _parse_canonical_datetime(
             if json_options.datetime_conversion == DatetimeConversion.DATETIME_MS:
                 return DatetimeMS(aware_tzinfo_none)
             return aware_tzinfo_none
-    return _millis_to_datetime(int(dtm), json_options)
+    return _millis_to_datetime(int(dtm), cast("CodecOptions[Any]", json_options))
 
 
 def _parse_canonical_oid(doc: Any) -> ObjectId:
@@ -711,7 +730,7 @@ def _parse_canonical_code(doc: Any) -> Code:
     return Code(doc["$code"], scope=doc.get("$scope"))
 
 
-def _parse_canonical_regex(doc: Any) -> Regex:
+def _parse_canonical_regex(doc: Any) -> Regex[str]:
     """Decode a JSON regex to bson.regex.Regex."""
     regex = doc["$regularExpression"]
     if len(doc) != 1:

@@ -25,7 +25,7 @@ FORMAT = "%(asctime)s %(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 
-def check_ocsp(host, port, capath):
+def check_ocsp(host: str, port: int, capath: str) -> None:
     ctx = get_ssl_context(
         None,  # certfile
         None,  # passphrase
@@ -42,12 +42,12 @@ def check_ocsp(host, port, capath):
     s = socket.socket()
     s.connect((host, port))
     try:
-        s = ctx.wrap_socket(s, server_hostname=host)
+        s = ctx.wrap_socket(s, server_hostname=host)  # type: ignore[assignment]
     finally:
         s.close()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Debug OCSP")
     parser.add_argument("--host", type=str, required=True, help="Host to connect to")
     parser.add_argument("-p", "--port", type=int, default=443, help="Port to connect to")

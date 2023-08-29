@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from pymongo.lock import _create_lock
 
@@ -35,8 +35,8 @@ class _OCSPCache:
         ["hash_algorithm", "issuer_name_hash", "issuer_key_hash", "serial_number"],
     )
 
-    def __init__(self):
-        self._data = {}
+    def __init__(self) -> None:
+        self._data: Dict[Any, OCSPResponse] = {}
         # Hold this lock when accessing _data.
         self._lock = _create_lock()
 
@@ -77,7 +77,10 @@ class _OCSPCache:
             # Cache new response OR update cached response if new response
             # has longer validity.
             cached_value = self._data.get(cache_key, None)
-            if cached_value is None or cached_value.next_update < value.next_update:
+            if cached_value is None or (
+                cached_value.next_update is not None
+                and cached_value.next_update < value.next_update
+            ):
                 self._data[cache_key] = value
 
     def __getitem__(self, item: OCSPRequest) -> OCSPResponse:
@@ -92,6 +95,8 @@ class _OCSPCache:
             value = self._data[cache_key]
 
             # Return cached response if it is still valid.
+            assert value.this_update is not None
+            assert value.next_update is not None
             if (
                 value.this_update
                 <= _datetime.now(tz=timezone.utc).replace(tzinfo=None)

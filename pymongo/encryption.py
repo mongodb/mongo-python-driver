@@ -23,7 +23,6 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
     Iterator,
     Mapping,
@@ -79,8 +78,6 @@ from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
-
-    from pymongo.response import Response
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
@@ -390,7 +387,7 @@ class _Encrypter:
 
     def encrypt(
         self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions
-    ) -> Dict[Any, Any]:
+    ) -> MutableMapping[Any, Any]:
         """Encrypt a MongoDB command.
 
         :Parameters:
@@ -409,7 +406,7 @@ class _Encrypter:
             encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
             return encrypt_cmd
 
-    def decrypt(self, response: Response) -> Optional[bytes]:
+    def decrypt(self, response: bytes) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
         :Parameters:

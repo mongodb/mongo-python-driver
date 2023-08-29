@@ -16,6 +16,7 @@
 
 .. versionadded:: 4.3
 """
+from __future__ import annotations
 
 import calendar
 import datetime
@@ -23,10 +24,16 @@ import functools
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
+from bson.errors import InvalidBSON
 from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
+_DATETIME_ERROR_SUGGESTION = (
+    "(Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO)"
+    " or MongoClient(datetime_conversion='DATETIME_AUTO'))."
+    " See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes"
+)
 
 
 class DatetimeMS:
@@ -92,7 +99,9 @@ class DatetimeMS:
 
     _type_marker = 9
 
-    def as_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
+    def as_datetime(
+        self, codec_options: CodecOptions[Any] = DEFAULT_CODEC_OPTIONS
+    ) -> datetime.datetime:
         """Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
 
         :Parameters:
@@ -111,16 +120,18 @@ class DatetimeMS:
 # Timezones are hashed by their offset, which is a timedelta
 # and therefore there are more than 24 possible timezones.
 @functools.lru_cache(maxsize=None)
-def _min_datetime_ms(tz=datetime.timezone.utc):
+def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return _datetime_to_millis(datetime.datetime.min.replace(tzinfo=tz))
 
 
 @functools.lru_cache(maxsize=None)
-def _max_datetime_ms(tz=datetime.timezone.utc):
+def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
 
 
-def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datetime, DatetimeMS]:
+def _millis_to_datetime(
+    millis: int, opts: CodecOptions[Any]
+) -> Union[datetime.datetime, DatetimeMS]:
     """Convert milliseconds since epoch UTC to datetime."""
     if (
         opts.datetime_conversion == DatetimeConversion.DATETIME
@@ -138,13 +149,17 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
         seconds = (millis - diff) // 1000
         micros = diff * 1000
 
-        if opts.tz_aware:
-            dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
-            if opts.tzinfo:
-                dt = dt.astimezone(tz)
-            return dt
-        else:
-            return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+        try:
+            if opts.tz_aware:
+                dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
+                if opts.tzinfo:
+                    dt = dt.astimezone(tz)
+                return dt
+            else:
+                return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+        except ArithmeticError as err:
+            raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
+
     elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
         return DatetimeMS(millis)
     else:
