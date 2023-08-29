@@ -16,6 +16,7 @@
 
 .. versionadded:: 4.3
 """
+from __future__ import annotations
 
 import calendar
 import datetime
@@ -98,7 +99,9 @@ class DatetimeMS:
 
     _type_marker = 9
 
-    def as_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
+    def as_datetime(
+        self, codec_options: CodecOptions[Any] = DEFAULT_CODEC_OPTIONS
+    ) -> datetime.datetime:
         """Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
 
         :Parameters:
@@ -126,7 +129,9 @@ def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
 
 
-def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datetime, DatetimeMS]:
+def _millis_to_datetime(
+    millis: int, opts: CodecOptions[Any]
+) -> Union[datetime.datetime, DatetimeMS]:
     """Convert milliseconds since epoch UTC to datetime."""
     if (
         opts.datetime_conversion == DatetimeConversion.DATETIME
