@@ -257,6 +257,7 @@ functions:
     - command: shell.exec
       params:
         script: |
+          ${PREPARE_SHELL}
           set -o xtrace
 
           # Enable core dumps if enabled on the machine
@@ -289,10 +290,6 @@ functions:
           if [ -n "${skip_crypt_shared}" ]; then
             export SKIP_CRYPT_SHARED=1
           fi
-
-          set +x
-          ${PREPARE_SHELL}
-          set -o xtrace
 
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
