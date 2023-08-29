@@ -20,7 +20,7 @@ import random
 from typing import Any, List, Optional, Tuple, Union
 
 try:
-    from dns import resolver
+    import pymongo.io.dns as resolver
 
     _HAVE_DNSPYTHON = True
 except ImportError:
