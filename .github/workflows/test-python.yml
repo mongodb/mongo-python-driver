@@ -163,6 +163,8 @@ jobs:
             tar --strip-components=1 -zxvf *.tar.gz -C ./test
             cd test
             ls
+            python setup.py --name
+            python setup.py --version
             #python -m pip install ".[test]"
         # - name: Run Test
         #   shell: bash
