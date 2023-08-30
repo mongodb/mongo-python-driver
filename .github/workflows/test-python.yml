@@ -154,21 +154,22 @@ jobs:
       steps:
         - name: Download sdist
           uses: actions/download-artifact@v3
+        - uses: actions/setup-python@v2
+          with:
+            cache: 'pip'
+            cache-dependency-path: 'pyproject.toml'
         - name: Install From SDist
           shell: bash
           run: |
             set -ex
             cd sdist
             mkdir test
-            tar --strip-components=1 -zxvf *.tar.gz -C ./test
+            tar --strip-components=1 -zxf *.tar.gz -C ./test
             cd test
-            ls
-            python setup.py --name
-            python setup.py --version
-            #python -m pip install ".[test]"
-        # - name: Run Test
-        #   shell: bash
-        #   run: |
-        #     set -ex
-        #     cd sdist/test
-        #     pytest -v
+            pip install -e ".[test]"
+        - name: Run Test
+          shell: bash
+          run: |
+            set -ex
+            cd sdist/test
+            pytest -v
