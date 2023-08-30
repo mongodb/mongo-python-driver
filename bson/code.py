@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for representing JavaScript code in BSON."""
+from __future__ import annotations
 
 from collections.abc import Mapping as _Mapping
 from typing import Any, Mapping, Optional, Type, Union
@@ -50,11 +51,11 @@ class Code(str):
     __scope: Union[Mapping[str, Any], None]
 
     def __new__(
-        cls: Type["Code"],
-        code: Union[str, "Code"],
+        cls: Type[Code],
+        code: Union[str, Code],
         scope: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> "Code":
+    ) -> Code:
         if not isinstance(code, str):
             raise TypeError("code must be an instance of str")
 

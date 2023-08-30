@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install tox
+          pip install -q tox
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
         with:
@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install tox
+          pip install -q tox
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
         with:
@@ -83,7 +83,7 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install tox
+          pip install -q tox
       - name: Run mypy
         run: |
           tox -m typecheck-mypy
@@ -105,7 +105,7 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install tox
+          pip install -q tox
       - name: Check links
         run: |
           tox -m linkcheck
