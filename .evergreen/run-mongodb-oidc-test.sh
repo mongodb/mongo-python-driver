@@ -18,7 +18,7 @@ fi
 source ./secrets-export.sh
 
 # If the file did not have our creds, get them from the vault.
-if [ -z "OIDC_ATLAS_URI_SINGLE" ]; then
+if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
     bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
     source ./secrets-export.sh
 fi
