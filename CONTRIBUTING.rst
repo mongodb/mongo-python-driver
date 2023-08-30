@@ -53,8 +53,11 @@ up.
 **Self Review Guidelines to follow**
 
 - If the PR is too large, split it if possible.
-    - Use 400 LoC (excluding test data and config changes) as a rule-of-thumb
-    - Moving and changing code should be in separate PRs or commits. Rationale: it is easier for reviewers to see what functionality has changed.
+    - Use 250 LoC (excluding test data and config changes) as a rule-of-thumb
+    - Moving and changing code should be in separate PRs or commits.
+        - Moving: Taking large code blobs and transplanting them to another file. There's generally no (or very little) actual code changed other than a cut and paste. It can even be extended to large deletions
+        - Changing: Adding code changes (be that refactors or functionality additions/subtractions)
+        - These two, when mixed, can muddy understanding and sometimes make it harder for reviewers to keep track of things.
 - Prefer explaining with code comments instead of PR comments.
 
 **Provide background**
@@ -64,7 +67,9 @@ up.
 **Follow the Template**
 
 - Please do not deviate from the template we make; it is there for a lot of reasons. If it is a one line fix, we still need to have context on what and why it is needed.
-- If making a versioning change, please let that be known
+- If making a versioning change, please let that be known. See examples below:
+    - ``versionadded:: 3.11``
+    - ``versionchanged:: 3.5``
 
 
 **Pull Request Template Breakdown**

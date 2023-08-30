@@ -10,10 +10,10 @@
 # Test Plan
 <!-- Talk through any unit tests added, and if this is a bug fix, please add repro steps in the event the fix needs to be verified. -->
 
-# Screenshots
+# Screenshots (Optional)
 <!-- Add a before and after picture to indicate changes. -->
 
-# Callouts or Follow-up items
+# Callouts or Follow-up items (Optional)
 <!-- Any additional info not already specified in the PR including but not limited to
 
 1. Potential stakeholders
