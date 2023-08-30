@@ -14,12 +14,31 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  PYTHON_BINARY  The Python version to use.
 
 echo "Running MONGODB-AWS authentication tests"
+
 # ensure no secrets are printed in log files
-set -x
+set +x
+
+# Try to source exported AWS Secrets
+if [ -f ./secrets-export.sh ]; then
+  source ./secrets-export.sh
+fi
+
+if [ -n "$1" ]; then
+  cd "${DRIVERS_TOOLS}"/.evergreen/auth_aws
+  . ./activate-authawsvenv.sh
+  python aws_tester.py "$1"
+  cd -
+fi
 
 if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
   [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
 fi
+
+if [ -n "$USE_ENV_VAR_CREDS" ]; then
+  export AWS_ACCESS_KEY_ID=$IAM_AUTH_ECS_ACCOUNT
+  export AWS_SECRET_ACCESS_KEY=$IAM_AUTH_ECS_SECRET_ACCESS_KEY
+fi
+
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI="${MONGODB_URI}/aws?authMechanism=MONGODB-AWS"
@@ -36,13 +55,13 @@ if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
     fi
 fi
 
-# show test output
-set -x
-
 if [ -z "$PYTHON_BINARY" ]; then
     echo "Cannot test without specifying PYTHON_BINARY"
     exit 1
 fi
+
+# show test output
+set -x
 
 export TEST_AUTH_AWS=1
 export AUTH="auth"

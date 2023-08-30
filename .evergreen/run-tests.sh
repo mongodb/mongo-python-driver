@@ -67,7 +67,6 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
         echo "Writing keytab"
         echo ${KEYTAB_BASE64} | base64 -d > ${PROJECT_DIRECTORY}/.evergreen/drivers.keytab
         echo "Running kinit"
-        python -c "import os;print(sorted([(k, v[:2]) for k, v in os.environ.items()]))"
         kinit -k -t ${PROJECT_DIRECTORY}/.evergreen/drivers.keytab -p ${PRINCIPAL}
     fi
     echo "Setting GSSAPI variables"

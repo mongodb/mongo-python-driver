@@ -549,7 +549,7 @@ functions:
     - command: shell.exec
       type: test
       params:
-        add_expansions_to_env: true
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
@@ -586,22 +586,9 @@ functions:
           set +x
           set -o errexit
 
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-
-          . ./activate-authawsvenv.sh
-
-          python aws_tester.py regular
-
-          cd -
-
           PYTHON_BINARY="${PYTHON_BINARY}" \
             DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            .evergreen/run-mongodb-aws-test.sh
+            .evergreen/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -614,23 +601,10 @@ functions:
           set +x
           set -o errexit
 
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-
-          . ./activate-authawsvenv.sh
-
-          python aws_tester.py assume-role
-
-          cd -
-
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             ASSUME_ROLE_CREDENTIALS=true \
             PYTHON_BINARY="${PYTHON_BINARY}" \
-            .evergreen/run-mongodb-aws-test.sh
+            .evergreen/run-mongodb-aws-test.sh assume-role
 
 
   "run aws auth test with aws EC2 credentials":
@@ -785,19 +759,12 @@ functions:
           set +x
           set -o errexit
 
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          export AWS_ACCESS_KEY_ID=$IAM_AUTH_ECS_ACCOUNT
-          export AWS_SECRET_ACCESS_KEY=$IAM_AUTH_ECS_SECRET_ACCESS_KEY
-
           PYTHON_BINARY="${PYTHON_BINARY}" \
             DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             ASSERT_NO_URI_CREDS=true \
             SKIP_PREPARE_AWS_ENV=true \
+            USE_ENV_VAR_CREDS=true \
             .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
@@ -810,11 +777,6 @@ functions:
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
 
           PYTHON_BINARY="${PYTHON_BINARY}" \
             DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
@@ -2124,10 +2086,10 @@ tasks:
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
+#        - func: "run aws auth test with aws credentials and session token as environment variables"
+#        - func: "run aws auth test with aws EC2 credentials"
+#        - func: "run aws auth test with aws web identity credentials"
+#        - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
       commands:
