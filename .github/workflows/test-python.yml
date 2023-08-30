@@ -4,10 +4,18 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -eux {0}
+
 jobs:
 
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v3
@@ -118,3 +126,41 @@ jobs:
       - name: Build docs
         run: |
           tox -m doc
+
+  make_sdist:
+    runs-on: ubuntu-latest
+    name: "Make an sdist"
+    steps:
+      - name: Build SDist
+        shell: bash
+        run: |
+          pip install build
+          python -m build --sdist
+      - uses: actions/upload-artifact@v3
+        with:
+          name: "sdist"
+          path: dist/*.tar.gz
+
+  test_sdist:
+      runs-on: ubuntu-latest
+      needs: [make_sdist]
+      name: Install from SDist and Test
+      timeout-minutes: 20
+      steps:
+        - name: Download sdist
+          uses: actions/download-artifact@v3
+        - name: Install From SDist
+          shell: bash
+          run: |
+            set -ex
+            cd sdist
+            mkdir test
+            tar --strip-components=1 -zxvf *.tar.gz -C ./test
+            cd test
+            python -m pip install ".[test]"
+        - name: Run Test
+          shell: bash
+          run: |
+            set -ex
+            cd sdist/test
+            pytest -v
