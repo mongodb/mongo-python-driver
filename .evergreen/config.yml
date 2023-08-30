@@ -751,6 +751,9 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run oidc auth test with aws credentials":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
