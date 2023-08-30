@@ -2188,16 +2188,7 @@ tasks:
 
     - name: "oidc-auth-test-latest"
       commands:
-        - func: "bootstrap oidc"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "replica_set"
-            VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
-          vars:
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
       commands:
