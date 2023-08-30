@@ -131,6 +131,11 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
       - name: Build SDist
         shell: bash
         run: |
