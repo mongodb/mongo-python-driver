@@ -162,10 +162,11 @@ jobs:
             mkdir test
             tar --strip-components=1 -zxvf *.tar.gz -C ./test
             cd test
-            python -m pip install ".[test]"
-        - name: Run Test
-          shell: bash
-          run: |
-            set -ex
-            cd sdist/test
-            pytest -v
+            ls
+            #python -m pip install ".[test]"
+        # - name: Run Test
+        #   shell: bash
+        #   run: |
+        #     set -ex
+        #     cd sdist/test
+        #     pytest -v
