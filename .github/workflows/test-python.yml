@@ -164,6 +164,8 @@ jobs:
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
+        - name: Start MongoDB
+          uses: supercharge/mongodb-github-action@1.7.0
         - name: Run Test
           shell: bash
           run: |
