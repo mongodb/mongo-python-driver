@@ -53,7 +53,7 @@ up.
 **Self Review Guidelines to follow**
 
 - If the PR is too large, split it if possible.
-    - Use 250 LoC (excluding test data and config changes) as a rule-of-thumb
+    - Use 250 LoC (excluding test data and config changes) as a rule-of-thumb.
     - Moving and changing code should be in separate PRs or commits.
         - Moving: Taking large code blobs and transplanting them to another file. There's generally no (or very little) actual code changed other than a cut and paste. It can even be extended to large deletions
         - Changing: Adding code changes (be that refactors or functionality additions/subtractions)
