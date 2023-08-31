@@ -93,7 +93,7 @@ up.
     - Any images that provide more context to the PR. Usually, these just coincide with the test plan.
 
 - **Callouts or follow-up items**
-    - This is a good place for identifying “to-dos” that you’ve placed in the code.
+    - This is a good place for identifying “to-dos” that you’ve placed in the code (Must have an accompanying JIRA Ticket).
     - Potential bugs that you are unsure how to test in the code.
     - Opinions you want to receive about your code.
 
