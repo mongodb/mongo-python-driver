@@ -561,7 +561,7 @@ def _is_speculative_authenticate(command_name: str, doc: Mapping[str, Any]) -> b
 class _CommandEvent:
     """Base class for command events."""
 
-    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id", "__service_id")
+    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id", "__service_id", "__db")
 
     def __init__(
         self,
@@ -570,12 +570,14 @@ class _CommandEvent:
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
+        database_name: Optional[str] = None,
     ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
         self.__op_id = operation_id
         self.__service_id = service_id
+        self.__db = database_name
 
     @property
     def command_name(self) -> str:
@@ -605,6 +607,14 @@ class _CommandEvent:
         """An id for this series of events or None."""
         return self.__op_id
 
+    @property
+    def database_name(self) -> Optional[str]:
+        """The database_name this command was sent to, or ``None``.
+
+        .. versionadded:: 4.6
+        """
+        return self.__db
+
 
 class CommandStartedEvent(_CommandEvent):
     """Event published when a command starts.
@@ -619,7 +629,7 @@ class CommandStartedEvent(_CommandEvent):
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
 
-    __slots__ = ("__cmd", "__db")
+    __slots__ = "__cmd"
 
     def __init__(
         self,
@@ -635,14 +645,18 @@ class CommandStartedEvent(_CommandEvent):
         # Command name must be first key.
         command_name = next(iter(command))
         super().__init__(
-            command_name, request_id, connection_id, operation_id, service_id=service_id
+            command_name,
+            request_id,
+            connection_id,
+            operation_id,
+            service_id=service_id,
+            database_name=database_name,
         )
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
             self.__cmd: _DocumentOut = {}
         else:
             self.__cmd = command
-        self.__db = database_name
 
     @property
     def command(self) -> _DocumentOut:
@@ -652,7 +666,8 @@ class CommandStartedEvent(_CommandEvent):
     @property
     def database_name(self) -> str:
         """The name of the database this command was run against."""
-        return self.__db
+        assert super().database_name
+        return super().database_name
 
     def __repr__(self) -> str:
         return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
@@ -677,6 +692,7 @@ class CommandSucceededEvent(_CommandEvent):
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
+      - `database_name`: The database this command was sent to, or ``None``.
     """
 
     __slots__ = ("__duration_micros", "__reply")
@@ -690,9 +706,15 @@ class CommandSucceededEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
+        database_name: Optional[str] = None,
     ) -> None:
         super().__init__(
-            command_name, request_id, connection_id, operation_id, service_id=service_id
+            command_name,
+            request_id,
+            connection_id,
+            operation_id,
+            service_id=service_id,
+            database_name=database_name,
         )
         self.__duration_micros = _to_micros(duration)
         cmd_name = command_name.lower()
@@ -713,10 +735,11 @@ class CommandSucceededEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}>"
+            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}>"
         ).format(
             self.__class__.__name__,
             self.connection_id,
+            self.database_name,
             self.command_name,
             self.operation_id,
             self.duration_micros,
@@ -736,6 +759,7 @@ class CommandFailedEvent(_CommandEvent):
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
+      - `database_name`: The database this command was sent to, or ``None``.
     """
 
     __slots__ = ("__duration_micros", "__failure")
@@ -749,9 +773,15 @@ class CommandFailedEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
+        database_name: Optional[str] = None,
     ) -> None:
         super().__init__(
-            command_name, request_id, connection_id, operation_id, service_id=service_id
+            command_name,
+            request_id,
+            connection_id,
+            operation_id,
+            service_id=service_id,
+            database_name=database_name,
         )
         self.__duration_micros = _to_micros(duration)
         self.__failure = failure
@@ -768,11 +798,12 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, "
+            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, "
             "failure: {!r}, service_id: {}>"
         ).format(
             self.__class__.__name__,
             self.connection_id,
+            self.database_name,
             self.command_name,
             self.operation_id,
             self.duration_micros,
@@ -1491,6 +1522,7 @@ class _EventListeners:
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         speculative_hello: bool = False,
+        database_name: Optional[str] = None,
     ) -> None:
         """Publish a CommandSucceededEvent to all command listeners.
 
@@ -1504,6 +1536,7 @@ class _EventListeners:
           - `op_id`: The (optional) operation id for this operation.
           - `service_id`: The service_id this command was sent to, or ``None``.
           - `speculative_hello`: Was the command sent with speculative auth?
+          - `database_name`: The database this command was sent to, or ``None``.
         """
         if op_id is None:
             op_id = request_id
@@ -1512,7 +1545,14 @@ class _EventListeners:
             # speculativeAuthenticate.
             reply = {}
         event = CommandSucceededEvent(
-            duration, reply, command_name, request_id, connection_id, op_id, service_id
+            duration,
+            reply,
+            command_name,
+            request_id,
+            connection_id,
+            op_id,
+            service_id,
+            database_name=database_name,
         )
         for subscriber in self.__command_listeners:
             try:
@@ -1529,6 +1569,7 @@ class _EventListeners:
         connection_id: _Address,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
+        database_name: Optional[str] = None,
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 
@@ -1542,11 +1583,19 @@ class _EventListeners:
             command was sent to.
           - `op_id`: The (optional) operation id for this operation.
           - `service_id`: The service_id this command was sent to, or ``None``.
+          - `database_name`: The database this command was sent to, or ``None``.
         """
         if op_id is None:
             op_id = request_id
         event = CommandFailedEvent(
-            duration, failure, command_name, request_id, connection_id, op_id, service_id=service_id
+            duration,
+            failure,
+            command_name,
+            request_id,
+            connection_id,
+            op_id,
+            service_id=service_id,
+            database_name=database_name,
         )
         for subscriber in self.__command_listeners:
             try:

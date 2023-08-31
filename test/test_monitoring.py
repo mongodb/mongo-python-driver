@@ -1087,7 +1087,12 @@ class TestCommandMonitoring(IntegrationTest):
         listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
-            delta, {"nonce": "e474f4561c5eb40b", "ok": 1.0}, "getnonce", 12345, self.client.address  # type: ignore[arg-type]
+            delta,
+            {"nonce": "e474f4561c5eb40b", "ok": 1.0},
+            "getnonce",
+            12345,
+            self.client.address,
+            database_name="pymongo_test",  # type: ignore[arg-type]
         )
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
@@ -1148,9 +1153,9 @@ class TestGlobalListener(IntegrationTest):
 
 class TestEventClasses(unittest.TestCase):
     def test_command_event_repr(self):
-        request_id, connection_id, operation_id = 1, ("localhost", 27017), 2
+        request_id, connection_id, operation_id, db_name = 1, ("localhost", 27017), 2, "test"
         event = monitoring.CommandStartedEvent(
-            {"ping": 1}, "admin", request_id, connection_id, operation_id
+            {"ping": 1}, "admin", request_id, connection_id, operation_id, database_name=db_name
         )
         self.assertEqual(
             repr(event),
@@ -1159,7 +1164,7 @@ class TestEventClasses(unittest.TestCase):
         )
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
-            delta, {"ok": 1}, "ping", request_id, connection_id, operation_id
+            delta, {"ok": 1}, "ping", request_id, connection_id, operation_id, database_name=db_name
         )
         self.assertEqual(
             repr(event),
@@ -1168,7 +1173,7 @@ class TestEventClasses(unittest.TestCase):
             "service_id: None>",
         )
         event = monitoring.CommandFailedEvent(
-            delta, {"ok": 0}, "ping", request_id, connection_id, operation_id
+            delta, {"ok": 0}, "ping", request_id, connection_id, operation_id, database_name=db_name
         )
         self.assertEqual(
             repr(event),
