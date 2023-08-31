@@ -46,7 +46,7 @@ Authoring a Pull Request
 The expectation for any code author is to provide all the context needed in the space of a
 pull request for any engineer to feel equipped to review the code. Depending on the type of
 change, do your best to highlight important new functions or objects you’ve introduced in the
-code—think complex functions or new abstractions. Whilst it may seem like more work for you to
+code; think complex functions or new abstractions. Whilst it may seem like more work for you to
 adjust your pull request, the reality is your likelihood for getting review sooner shoots
 up.
 
@@ -55,8 +55,8 @@ up.
 - If the PR is too large, split it if possible.
     - Use 250 LoC (excluding test data and config changes) as a rule-of-thumb.
     - Moving and changing code should be in separate PRs or commits.
-        - Moving: Taking large code blobs and transplanting them to another file. There's generally no (or very little) actual code changed other than a cut and paste. It can even be extended to large deletions
-        - Changing: Adding code changes (be that refactors or functionality additions/subtractions)
+        - Moving: Taking large code blobs and transplanting them to another file. There's generally no (or very little) actual code changed other than a cut and paste. It can even be extended to large deletions.
+        - Changing: Adding code changes (be that refactors or functionality additions/subtractions).
         - These two, when mixed, can muddy understanding and sometimes make it harder for reviewers to keep track of things.
 - Prefer explaining with code comments instead of PR comments.
 
@@ -84,10 +84,10 @@ up.
     - Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
 
 - **Changes in this PR**
-    - The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear)
+    - The explicit code changes that this PR is introducing. This should be more specific than just the task name. (Unless the task name is very clear).
 
 - **Test Plan**
-    - Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind
+    - Everything needs a test description. Describe what you did to validate your changes actually worked; if you did nothing, then document you did not test it. Aim to make these steps reproducible by other engineers, specifically with your primary reviewer in mind.
 
 - **Screenshots**
     - Any images that provide more context to the PR. Usually, these just coincide with the test plan.
