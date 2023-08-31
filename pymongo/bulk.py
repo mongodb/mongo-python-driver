@@ -443,8 +443,7 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        with client._tmp_session(session) as s:
-            client._retry_with_session(self.is_retryable, retryable_bulk, s, self)
+        client._retryable_write(self.is_retryable, retryable_bulk, session, bulk=self)
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for representing MongoDB regular expressions."""
+from __future__ import annotations
 
 import re
 from typing import Any, Generic, Pattern, Type, TypeVar, Union
@@ -53,7 +54,7 @@ class Regex(Generic[_T]):
     _type_marker = 11
 
     @classmethod
-    def from_native(cls: Type["Regex"], regex: "Pattern[_T]") -> "Regex[_T]":
+    def from_native(cls: Type[Regex[Any]], regex: Pattern[_T]) -> Regex[_T]:
         """Convert a Python regular expression into a ``Regex`` instance.
 
         Note that in Python 3, a regular expression compiled from a
@@ -118,7 +119,7 @@ class Regex(Generic[_T]):
     def __repr__(self) -> str:
         return f"Regex({self.pattern!r}, {self.flags!r})"
 
-    def try_compile(self) -> "Pattern[_T]":
+    def try_compile(self) -> Pattern[_T]:
         """Compile this :class:`Regex` as a Python regular expression.
 
         .. warning::

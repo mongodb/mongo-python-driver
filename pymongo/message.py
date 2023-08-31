@@ -1127,7 +1127,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
     def __batch_command(
         self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]]
-    ) -> Tuple[Dict[str, Any], List[Mapping[str, Any]]]:
+    ) -> Tuple[MutableMapping[str, Any], List[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -1137,8 +1137,8 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
         # Chop off the OP_QUERY header to get a properly batched write command.
         cmd_start = msg.index(b"\x00", 4) + 9
-        cmd = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
-        return cmd, to_send
+        outgoing = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
+        return outgoing, to_send
 
     def execute(
         self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]], client: MongoClient

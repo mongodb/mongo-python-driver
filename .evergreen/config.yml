@@ -39,6 +39,7 @@ functions:
       params:
         working_dir: "src"
         script: |
+           set +x
            # Get the current unique version of this checkout
            if [ "${is_patch}" = "true" ]; then
               CURRENT_VERSION=$(git describe)-patch-${version_id}
@@ -75,12 +76,10 @@ functions:
               export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-              # Installation of cryptography requires a rust compiler on some machines
-              export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
+              export PATH="$MONGODB_BINARIES:$PATH"
               export PROJECT="${project}"
+              export PIP_QUIET=1
            EOT
-           # See what we've done
-           cat expansion.yml
 
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
@@ -91,8 +90,8 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           rm -rf $DRIVERS_TOOLS
           if [ "${project}" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
@@ -131,8 +130,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # Coverage combine merges (and removes) all the coverage files and
           # generates a new .coverage file in the current directory.
           ls -la coverage/
@@ -164,8 +163,8 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           mkdir out_dir
           find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
           tar zcvf mongodb-logs.tar.gz -C out_dir/ .
@@ -258,6 +257,7 @@ functions:
     - command: shell.exec
       params:
         script: |
+          ${PREPARE_SHELL}
           set -o xtrace
 
           # Enable core dumps if enabled on the machine
@@ -291,7 +291,6 @@ functions:
             export SKIP_CRYPT_SHARED=1
           fi
 
-          ${PREPARE_SHELL}
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
@@ -317,8 +316,8 @@ functions:
       type: setup
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
           VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
@@ -327,16 +326,16 @@ functions:
       params:
         background: true
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
 
   "stop mongo-orchestration":
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
@@ -345,8 +344,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
             MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
@@ -357,8 +356,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
@@ -368,8 +367,8 @@ functions:
        params:
          working_dir: "src"
          script: |
-           set -o xtrace
            ${PREPARE_SHELL}
+           set -o xtrace
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
@@ -444,9 +443,6 @@ functions:
         script: |
           # Disable xtrace
           set +x
-          if [ -n "${set_xtrace_on}" ]; then
-            export SET_XTRACE_ON="${set_xtrace_on}"
-          fi
           ${PREPARE_SHELL}
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=1
@@ -511,31 +507,23 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
-    - command: shell.exec
-      type: test
+    - command: ec2.assume_role
       params:
-        silent: true
-        working_dir: "src"
-        script: |
-          cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST='${sasl_host}'
-          export SASL_PORT='${sasl_port}'
-          export SASL_USER='${sasl_user}'
-          export SASL_PASS='${sasl_pass}'
-          export SASL_DB='${sasl_db}'
-          export PRINCIPAL='${principal}'
-          export GSSAPI_DB='${gssapi_db}'
-          export KEYTAB_BASE64='${keytab_base64}'
-          EOT
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         script: |
-          # Disable xtrace (just in case it was accidentally set).
+          # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          . ./prepare_enterprise_auth.sh
-          rm -f ./prepare_enterprise_auth.sh
+
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
@@ -556,8 +544,16 @@ functions:
           set +x
           set -o errexit
 
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
-          TEST_ATLAS=1 bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
+
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            TEST_ATLAS=1 \
+            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "get aws auth secrets":
     - command: ec2.assume_role
@@ -792,7 +788,6 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
@@ -801,7 +796,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
             perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
@@ -811,7 +806,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
@@ -824,7 +819,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
@@ -834,7 +829,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          set -o xtrace
+          set +x
           ${PREPARE_SHELL}
           echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
@@ -843,8 +838,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
           [ -f "$file" ] && bash $file || echo "$file not available, skipping"
@@ -865,16 +860,12 @@ functions:
   run-valid-ocsp-server:
     - command: shell.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
-          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
-    - command: shell.exec
-      params:
         background: true
         script: |
+          ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          . ./activate-ocspvenv.sh
+          python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
           --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
           --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
@@ -882,16 +873,12 @@ functions:
   run-revoked-ocsp-server:
     - command: shell.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
-          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
-    - command: shell.exec
-      params:
         background: true
         script: |
+          ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          . ./activate-ocspvenv.sh
+          python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
           --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
           --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
@@ -901,16 +888,12 @@ functions:
   run-valid-delegate-ocsp-server:
     - command: shell.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
-          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
-    - command: shell.exec
-      params:
         background: true
         script: |
+          ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          . ./activate-ocspvenv.sh
+          python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
           --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
           --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
@@ -918,16 +901,12 @@ functions:
   run-revoked-delegate-ocsp-server:
     - command: shell.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ${python3_binary} -m venv ./venv
-          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
-    - command: shell.exec
-      params:
         background: true
         script: |
+          ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          . ./activate-ocspvenv.sh
+          python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
           --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
           --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
@@ -956,7 +935,10 @@ functions:
       params:
         script: |
           # Remove all Docker images
-          docker rmi -f $(docker images -a -q) &> /dev/null || true
+          DOCKER=$(command -v docker) || true
+          if [ -n "$DOCKER" ]; then
+            docker rmi -f $(docker images -a -q) &> /dev/null || true
+          fi
 
   "teardown_aws":
     - command: shell.exec
@@ -976,8 +958,8 @@ functions:
       params:
         working_dir: "src"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
 
   "upload release":
@@ -1012,8 +994,8 @@ functions:
       params:
         shell: "bash"
         script: |
-          set -o xtrace
           ${PREPARE_SHELL}
+          set -o xtrace
           # Combine releases into one directory.
           ls -la release/
           mkdir releases
@@ -1349,8 +1331,8 @@ tasks:
           params:
             working_dir: "src"
             script: |
-              set -o xtrace
               ${PREPARE_SHELL}
+              set -o xtrace
               .evergreen/build-manylinux.sh BUILD_WITH_TAG
         - func: "upload release"
 
@@ -2365,9 +2347,9 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu-20.04
-        display_name: "Ubuntu 20.04"
-        run_on: ubuntu2004-small
+      - id: ubuntu-22.04
+        display_name: "Ubuntu 22.04"
+        run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
@@ -2609,10 +2591,6 @@ axes:
   - id: mod-wsgi-version
     display_name: "mod_wsgi version"
     values:
-      - id: "3"
-        display_name: "mod_wsgi 3.5"
-        variables:
-          MOD_WSGI_VERSION: "3"
       - id: "4"
         display_name: "mod_wsgi 4.x"
         variables:
@@ -3094,14 +3072,9 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: ubuntu-20.04
-    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+    platform: ubuntu-22.04
+    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
     mod-wsgi-version: "*"
-  exclude_spec:
-   # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: ubuntu-20.04
-     python-version: ["3.8", "3.9", "3.10", "3.11"]
-     mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
      - name: "mod-wsgi-standalone"
@@ -3131,8 +3104,6 @@ buildvariants:
     - rhel84-small
   tasks:
     - name: "no-server"
-  expansions:
-    set_xtrace_on: on
 
 - name: "Coverage Report"
   display_name: "Coverage Report"
@@ -3140,8 +3111,6 @@ buildvariants:
     - rhel84-small
   tasks:
      - name: "coverage-report"
-  expansions:
-    set_xtrace_on: on
 
 - matrix_name: "atlas-connect"
   matrix_spec:

@@ -16,6 +16,7 @@
 
 .. versionadded:: 3.4
 """
+from __future__ import annotations
 
 import decimal
 import struct
@@ -270,7 +271,7 @@ class Decimal128:
             return ctx.create_decimal((sign, digits, exponent))
 
     @classmethod
-    def from_bid(cls: Type["Decimal128"], value: bytes) -> "Decimal128":
+    def from_bid(cls: Type[Decimal128], value: bytes) -> Decimal128:
         """Create an instance of :class:`Decimal128` from Binary Integer
         Decimal string.
 

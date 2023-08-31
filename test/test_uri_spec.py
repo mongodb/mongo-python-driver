@@ -73,8 +73,8 @@ class TestAllScenarios(unittest.TestCase):
         clear_warning_registry()
 
 
-def get_error_message_template(expected, artefact):
-    return "{} {} for test '{}'".format("Expected" if expected else "Unexpected", artefact, "%s")
+def get_error_message_template(expected, artifact):
+    return "{} {} for test '{}'".format("Expected" if expected else "Unexpected", artifact, "%s")
 
 
 def run_scenario_in_dir(target_workdir):
@@ -99,17 +99,20 @@ def create_test(test, test_workdir):
             self.skipTest("This test needs dnspython package.")
         valid = True
         warning = False
+        expected_warning = test.get("warning", False)
+        expected_valid = test.get("valid", True)
 
         with warnings.catch_warnings(record=True) as ctx:
-            warnings.simplefilter("always")
+            warnings.simplefilter("ignore", category=ResourceWarning)
             try:
                 options = parse_uri(test["uri"], warn=True)
             except Exception:
                 valid = False
             else:
                 warning = len(ctx) > 0
+                if expected_valid and warning and not expected_warning:
+                    raise ValueError("Got unexpected warning(s): ", [str(i) for i in ctx])
 
-        expected_valid = test.get("valid", True)
         self.assertEqual(
             valid,
             expected_valid,
@@ -117,7 +120,6 @@ def create_test(test, test_workdir):
         )
 
         if expected_valid:
-            expected_warning = test.get("warning", False)
             self.assertEqual(
                 warning,
                 expected_warning,

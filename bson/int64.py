@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """A BSON wrapper for long (int in python3)"""
+from __future__ import annotations
 
 from typing import Any
 

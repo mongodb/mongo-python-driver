@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
+from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any, Mapping, Optional
@@ -123,7 +124,7 @@ class DBRef:
             (self.__collection, self.__id, self.__database, tuple(sorted(self.__kwargs.items())))
         )
 
-    def __deepcopy__(self, memo: Any) -> "DBRef":
+    def __deepcopy__(self, memo: Any) -> DBRef:
         """Support function for `copy.deepcopy()`."""
         return DBRef(
             deepcopy(self.__collection, memo),
