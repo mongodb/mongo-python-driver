@@ -1,5 +1,5 @@
 # [JIRA Ticket ID](Link to Ticket)
-<!-- Please provide explicit URL link to the corresponding JIRA ticket -->
+<!-- Please provide explicit URL link to the corresponding JIRA ticket. -->
 
 # Summary
 <!-- Please provide a high level overview of what changes have been made. -->
@@ -14,7 +14,7 @@
 <!-- Add a before and after picture to indicate changes. -->
 
 # Callouts or Follow-up items (Optional)
-<!-- Any additional info not already specified in the PR including but not limited to
+<!-- Any additional info not already specified in the PR including but not limited to:
 
 1. Potential stakeholders
 2. Slack threads etc.

@@ -75,10 +75,10 @@ up.
 **Pull Request Template Breakdown**
 
 - **Github PR Title**
-    - The PR Title format should always be ``[JIRA-ID] : Jira Title or Blurb Summary``
+    - The PR Title format should always be ``[JIRA-ID] : Jira Title or Blurb Summary``.
 
 - **JIRA LINK**
-    - Convenient link to the associated JIRA ticket
+    - Convenient link to the associated JIRA ticket.
 
 - **Summary**
     - Small blurb on why this is needed. The JIRA task should have the more in-depth description, but this should still, at a high level, give anyone looking an understanding of why the PR has been checked in.
