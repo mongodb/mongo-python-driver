@@ -167,7 +167,7 @@ def command(
         assert listeners is not None
         assert address is not None
         listeners.publish_command_start(
-            orig, dbname, request_id, address, service_id=conn.service_id, database_name=dbname
+            orig, dbname, request_id, address, service_id=conn.service_id
         )
         start = datetime.datetime.now()
 

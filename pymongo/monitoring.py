@@ -666,8 +666,9 @@ class CommandStartedEvent(_CommandEvent):
     @property
     def database_name(self) -> str:
         """The name of the database this command was run against."""
-        assert super().database_name
-        return super().database_name
+        db = super().database_name
+        assert db is not None
+        return db
 
     def __repr__(self) -> str:
         return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(

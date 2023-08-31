@@ -1091,8 +1091,8 @@ class TestCommandMonitoring(IntegrationTest):
             {"nonce": "e474f4561c5eb40b", "ok": 1.0},
             "getnonce",
             12345,
-            self.client.address,
-            database_name="pymongo_test",  # type: ignore[arg-type]
+            self.client.address,  # type: ignore[arg-type]
+            database_name="pymongo_test",
         )
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
@@ -1155,7 +1155,7 @@ class TestEventClasses(unittest.TestCase):
     def test_command_event_repr(self):
         request_id, connection_id, operation_id, db_name = 1, ("localhost", 27017), 2, "test"
         event = monitoring.CommandStartedEvent(
-            {"ping": 1}, "admin", request_id, connection_id, operation_id, database_name=db_name
+            {"ping": 1}, "admin", request_id, connection_id, operation_id
         )
         self.assertEqual(
             repr(event),
