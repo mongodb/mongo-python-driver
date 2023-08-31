@@ -1153,9 +1153,9 @@ class TestGlobalListener(IntegrationTest):
 
 class TestEventClasses(unittest.TestCase):
     def test_command_event_repr(self):
-        request_id, connection_id, operation_id, db_name = 1, ("localhost", 27017), 2, "test"
+        request_id, connection_id, operation_id, db_name = 1, ("localhost", 27017), 2, "admin"
         event = monitoring.CommandStartedEvent(
-            {"ping": 1}, "admin", request_id, connection_id, operation_id
+            {"ping": 1}, db_name, request_id, connection_id, operation_id
         )
         self.assertEqual(
             repr(event),
@@ -1168,7 +1168,7 @@ class TestEventClasses(unittest.TestCase):
         )
         self.assertEqual(
             repr(event),
-            "<CommandSucceededEvent ('localhost', 27017) "
+            "<CommandSucceededEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "service_id: None>",
         )
@@ -1177,7 +1177,7 @@ class TestEventClasses(unittest.TestCase):
         )
         self.assertEqual(
             repr(event),
-            "<CommandFailedEvent ('localhost', 27017) "
+            "<CommandFailedEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "failure: {'ok': 0}, service_id: None>",
         )
