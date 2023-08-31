@@ -623,24 +623,11 @@ functions:
           set +x
           set -o errexit
 
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-
-          . ./activate-authawsvenv.sh
-
-          python aws_tester.py ec2
-
-          cd -
-
-          # Write an empty prepare_aws_env so no auth environment variables are set.
-          rm "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" || true
-
           PYTHON_BINARY=${PYTHON_BINARY} \
-            ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            ASSERT_NO_URI_CREDS=true \
+            SKIP_PREPARE_AWS_ENV=true \
+            .evergreen/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
     - command: shell.exec
@@ -654,26 +641,11 @@ functions:
              exit 0
           fi
 
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-
-          . ./activate-authawsvenv.sh
-
-          python aws_tester.py web-identity
-
-          cd -
-
-          export AWS_ROLE_ARN=$IAM_AUTH_ASSUME_WEB_ROLE_NAME
-          export AWS_WEB_IDENTITY_TOKEN_FILE=$IAM_WEB_IDENTITY_TOKEN_FILE
-
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             ASSERT_NO_URI_CREDS=true \
-            .evergreen/run-mongodb-aws-test.sh
+            USE_WEB_IDENTITY_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh web-identity
 
           if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
@@ -683,6 +655,7 @@ functions:
               ASSERT_NO_URI_CREDS=true \
               SKIP_PREPARE_AWS_ENV=true \
               AWS_ROLE_SESSION_NAME="test" \
+              USE_WEB_IDENTITY_CREDS=true \
               .evergreen/run-mongodb-aws-test.sh
           fi
 
@@ -2086,10 +2059,10 @@ tasks:
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
-#        - func: "run aws auth test with aws credentials and session token as environment variables"
-#        - func: "run aws auth test with aws EC2 credentials"
-#        - func: "run aws auth test with aws web identity credentials"
-#        - func: "run aws ECS auth test"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
+        - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
       commands:
