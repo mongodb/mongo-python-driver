@@ -1,6 +1,15 @@
 {
-  "description": "deleteOne",
-  "schemaVersion": "1.0",
+  "description": "writeConcernError",
+  "schemaVersion": "1.4",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.1.0",
+      "topologies": [
+        "replicaset"
+      ],
+      "serverless": "forbid"
+    }
+  ],
   "createEntities": [
     {
       "client": {
@@ -35,30 +44,45 @@
         {
           "_id": 1,
           "x": 11
-        },
-        {
-          "_id": 2,
-          "x": 22
-        },
-        {
-          "_id": 3,
-          "x": 33
         }
       ]
     }
   ],
   "tests": [
     {
-      "description": "A successful deleteOne",
+      "description": "A retryable write with write concern errors publishes success event",
       "operations": [
         {
-          "name": "deleteOne",
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "writeConcernError": {
+                  "code": 91,
+                  "errorLabels": [
+                    "RetryableWriteError"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
           "object": "collection",
           "arguments": {
-            "filter": {
-              "_id": {
-                "$gt": 1
-              }
+            "document": {
+              "_id": 2,
+              "x": 22
             }
           }
         }
@@ -70,20 +94,47 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
-                  "deletes": [
+                  "insert": "test",
+                  "documents": [
                     {
-                      "q": {
-                        "_id": {
-                          "$gt": 1
-                        }
-                      },
-                      "limit": 1
+                      "_id": 2,
+                      "x": 22
                     }
                   ],
                   "ordered": true
                 },
-                "commandName": "delete",
+                "commandName": "insert",
+                "databaseName": "command-monitoring-tests"
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "reply": {
+                  "ok": 1,
+                  "n": 1,
+                  "writeConcernError": {
+                    "code": 91,
+                    "errorLabels": [
+                      "RetryableWriteError"
+                    ]
+                  }
+                },
+                "commandName": "insert"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "test",
+                  "documents": [
+                    {
+                      "_id": 2,
+                      "x": 22
+                    }
+                  ],
+                  "ordered": true
+                },
+                "commandName": "insert",
                 "databaseName": "command-monitoring-tests"
               }
             },
@@ -93,65 +144,7 @@
                   "ok": 1,
                   "n": 1
                 },
-                "commandName": "delete"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "A successful deleteOne with write errors",
-      "operations": [
-        {
-          "name": "deleteOne",
-          "object": "collection",
-          "arguments": {
-            "filter": {
-              "_id": {
-                "$unsupported": 1
-              }
-            }
-          },
-          "expectError": {
-            "isClientError": false
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "command": {
-                  "delete": "test",
-                  "deletes": [
-                    {
-                      "q": {
-                        "_id": {
-                          "$unsupported": 1
-                        }
-                      },
-                      "limit": 1
-                    }
-                  ],
-                  "ordered": true
-                },
-                "commandName": "delete",
-                "databaseName": "command-monitoring-tests"
-              }
-            },
-            {
-              "commandSucceededEvent": {
-                "reply": {
-                  "ok": 1,
-                  "n": 0,
-                  "writeErrors": {
-                    "$$type": "array"
-                  }
-                },
-                "commandName": "delete"
+                "commandName": "insert"
               }
             }
           ]

@@ -93,8 +93,7 @@
                   "ok": 1,
                   "n": 2
                 },
-                "commandName": "delete",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "delete"
               }
             }
           ]
@@ -152,8 +151,7 @@
                     "$$type": "array"
                   }
                 },
-                "commandName": "delete",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "delete"
               }
             }
           ]

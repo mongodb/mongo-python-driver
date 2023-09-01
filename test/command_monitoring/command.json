@@ -72,8 +72,7 @@
                 "reply": {
                   "ok": 1
                 },
-                "commandName": "ping",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "ping"
               }
             }
           ]

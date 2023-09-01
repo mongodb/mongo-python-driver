@@ -106,8 +106,7 @@
                   "ok": 1,
                   "n": 1
                 },
-                "commandName": "insert",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "insert"
               }
             },
             {
@@ -144,8 +143,7 @@
                   "ok": 1,
                   "n": 1
                 },
-                "commandName": "update",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "update"
               }
             }
           ]

@@ -82,8 +82,7 @@
                   "ok": 1,
                   "n": 1
                 },
-                "commandName": "insert",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "insert"
               }
             }
           ]
@@ -138,8 +137,7 @@
                     "$$type": "array"
                   }
                 },
-                "commandName": "insert",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "insert"
               }
             }
           ]

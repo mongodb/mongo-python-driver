@@ -108,8 +108,7 @@
                   "ok": 1,
                   "n": 1
                 },
-                "commandName": "update",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "update"
               }
             }
           ]
@@ -177,8 +176,7 @@
                     }
                   ]
                 },
-                "commandName": "update",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "update"
               }
             }
           ]
@@ -251,8 +249,7 @@
                     "$$type": "array"
                   }
                 },
-                "commandName": "update",
-                "databaseName": "command-monitoring-tests"
+                "commandName": "update"
               }
             }
           ]
