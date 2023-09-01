@@ -120,7 +120,9 @@ class TestSrvPolling(unittest.TestCase):
             nodelist = self.get_nodelist(client)
             if set(expected_nodelist) == set(nodelist):
                 return True
-            return False
+            else:
+                print("Expected: ", set(expected_nodelist), "Got: ", set(nodelist))
+                return False
 
         wait_until(predicate, "see expected nodelist", timeout=100 * WAIT_TIME)
 
