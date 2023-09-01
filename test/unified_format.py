@@ -748,8 +748,8 @@ class MatchEvaluatorUtil:
             return None
 
     def assertHasDatabaseName(self, spec, actual):
-        if spec.get("databaseName"):
-            self.test.assertEqual(spec.get("databaseName"), actual.database_name)
+        if "databaseName" in spec:
+            self.test.assertEqual(spec["databaseName"], actual.database_name)
 
     def assertHasServiceId(self, spec, actual):
         if "hasServiceId" in spec:
