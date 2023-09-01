@@ -97,7 +97,8 @@
                     "$$exists": false
                   }
                 },
-                "commandName": "insert"
+                "commandName": "insert",
+                "databaseName": "command-monitoring-tests"
               }
             }
           ]
