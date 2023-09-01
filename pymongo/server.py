@@ -130,7 +130,6 @@ class Server:
         publish = listeners.enabled_for_commands
         if publish:
             start = datetime.now()
-            cmd, dbn = operation.as_command(conn)
 
         use_cmd = operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
@@ -142,6 +141,7 @@ class Server:
 
         if publish:
             assert listeners is not None
+            cmd, dbn = operation.as_command(conn)
             listeners.publish_command_start(
                 cmd, dbn, request_id, conn.address, service_id=conn.service_id
             )
