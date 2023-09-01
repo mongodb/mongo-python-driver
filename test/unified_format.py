@@ -780,12 +780,6 @@ class MatchEvaluatorUtil:
             command = spec.get("command")
             database_name = spec.get("databaseName")
             if command:
-                if actual.command_name == "update":
-                    # TODO: remove this once PYTHON-1744 is done.
-                    # Add upsert and multi fields back into expectations.
-                    for update in command.get("updates", []):
-                        update.setdefault("upsert", False)
-                        update.setdefault("multi", False)
                 self.match_result(command, actual.command)
             if database_name:
                 self.test.assertEqual(database_name, actual.database_name)
