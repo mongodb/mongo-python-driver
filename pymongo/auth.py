@@ -176,7 +176,7 @@ def _build_credentials_tuple(
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )
-        return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
+        return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 
     elif mech == "PLAIN":
         source_database = source or database or "$external"

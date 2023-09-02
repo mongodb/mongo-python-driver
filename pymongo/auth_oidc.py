@@ -57,26 +57,16 @@ CALLBACK_TIMEOUT_SECONDS = 5 * 60
 CACHE_TIMEOUT_MINUTES = 60 * 5
 CALLBACK_VERSION = 0
 
-_CACHE: Dict[str, "_OIDCAuthenticator"] = {}
-
 
 def _get_authenticator(
     credentials: MongoCredential, address: Tuple[str, int]
 ) -> _OIDCAuthenticator:
-    # Clear out old items in the cache.
-    now_utc = datetime.now(timezone.utc)
-    to_remove = []
-    for key, value in _CACHE.items():
-        if value.cache_exp_utc is not None and value.cache_exp_utc < now_utc:
-            to_remove.append(key)
-    for key in to_remove:
-        del _CACHE[key]
+    if credentials.cache.data:
+        return credentials.cache.data
 
     # Extract values.
     principal_name = credentials.username
     properties = credentials.mechanism_properties
-    request_cb = properties.request_token_callback
-    refresh_cb = properties.refresh_token_callback
 
     # Validate that the address is allowed.
     if not properties.provider_name:
@@ -92,11 +82,9 @@ def _get_authenticator(
                 f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
             )
 
-    # Get or create the cache item.
-    cache_key = f"{principal_name}{address[0]}{address[1]}{id(request_cb)}{id(refresh_cb)}"
-    _CACHE.setdefault(cache_key, _OIDCAuthenticator(username=principal_name, properties=properties))
-
-    return _CACHE[cache_key]
+    # Get or create the cache data.
+    credentials.cache.data = _OIDCAuthenticator(username=principal_name, properties=properties)
+    return credentials.cache.data
 
 
 def _get_cache_exp() -> datetime:

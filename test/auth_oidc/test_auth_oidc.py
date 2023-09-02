@@ -29,7 +29,6 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth import _AUTH_MAP, _authenticate_oidc
-from pymongo.auth_oidc import _CACHE as _oidc_cache
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -52,7 +51,6 @@ class TestAuthOIDC(unittest.TestCase):
     def setUp(self):
         self.request_called = 0
         self.refresh_called = 0
-        _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
 
     def create_request_cb(self, username="test_user1", expires_in_seconds=None, sleep=0):
