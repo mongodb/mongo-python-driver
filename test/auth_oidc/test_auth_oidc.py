@@ -51,9 +51,8 @@ class TestAuthOIDC(unittest.TestCase):
 
     def setUp(self):
         self.request_called = 0
-        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
 
-    def create_request_cb(self, username="test_user1", expires_in_seconds=None, sleep=0):
+    def create_request_cb(self, username="test_user1", sleep=0):
 
         token_file = os.path.join(self.token_dir, username)
 
@@ -70,9 +69,6 @@ class TestAuthOIDC(unittest.TestCase):
             resp = {"access_token": token}
 
             time.sleep(sleep)
-
-            if expires_in_seconds is not None:
-                resp["expires_in_seconds"] = expires_in_seconds
             self.request_called += 1
             return resp
 
@@ -146,7 +142,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_valid_request_token_callback(self):
-        request_cb = self.create_request_cb(expires_in_seconds=60)
+        request_cb = self.create_request_cb()
 
         props: Dict = {
             "request_token_callback": request_cb,
@@ -191,32 +187,10 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_speculative_auth_success(self):
-        token_file = os.path.join(self.token_dir, "test_user1")
+        request_token = self.create_request_cb()
 
-        def request_token(a, b):
-            with open(token_file) as fid:
-                token = fid.read()
-            return {"access_token": token, "expires_in_seconds": 1000}
-
-        # Create a client with a request callback that returns a valid token
-        # that will not expire soon.
+        # Create a client with a request callback that returns a valid token.
         props: Dict = {"request_token_callback": request_token}
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
-
-        # Set a fail point for saslStart commands.
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a find operation.
-            client.test.test.find_one()
-
-        # Close the client.
-        client.close()
-
-        # Create a new client.
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Set a fail point for saslStart commands.
@@ -282,6 +256,35 @@ class TestAuthOIDC(unittest.TestCase):
         )
         self.assertEqual(succeeded_events, ["find"])
         self.assertEqual(failed_events, ["find"])
+
+        # Assert that the request callback has been called twice.
+        self.assertEqual(self.request_called, 2)
+        client.close()
+
+    def test_reauthenticate_fails(self):
+
+        # Create request callback that returns valid credentials.
+        request_cb = self.create_request_cb()
+
+        # Create a client with the callback.
+        props: Dict = {"request_token_callback": request_cb}
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Assert that the request callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -483,39 +486,27 @@ class TestAuthOIDC(unittest.TestCase):
             client1.options.pool_options._credentials.cache.data
         )
 
-        queue1 = Queue()
-        queue2 = Queue()
+        client1.test.test.find_one()
+        client2.test.test.find_one()
 
-        def thread_cb1():
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
             client1.test.test.find_one()
-            queue2.get()
-            with self.fail_point(
-                {
-                    "mode": {"times": 1},
-                    "data": {"failCommands": ["find"], "errorCode": 391},
-                }
-            ):
-                client1.test.test.find_one()
-            queue1.put(None)
 
-        def thread_cb2():
+        self.assertEqual(self.request_called, 3)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
             client2.test.test.find_one()
-            queue2.put(None)
-            queue1.get()
-            with self.fail_point(
-                {
-                    "mode": {"times": 1},
-                    "data": {"failCommands": ["find"], "errorCode": 391},
-                }
-            ):
-                client2.test.test.find_one()
 
-        thread1 = threading.Thread(target=thread_cb1)
-        thread1.start()
-        thread2 = threading.Thread(target=thread_cb2)
-        thread2.start()
-        thread1.join()
-        thread2.join()
         self.assertEqual(self.request_called, 3)
         client1.close()
         client2.close()
