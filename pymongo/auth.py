@@ -155,7 +155,6 @@ def _build_credentials_tuple(
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
         request_token_callback = properties.get("request_token_callback")
-        refresh_token_callback = properties.get("refresh_token_callback", None)
         provider_name = properties.get("PROVIDER_NAME", "")
         default_allowed = [
             "*.mongodb.net",
@@ -172,7 +171,6 @@ def _build_credentials_tuple(
             )
         oidc_props = _OIDCProperties(
             request_token_callback=request_token_callback,
-            refresh_token_callback=refresh_token_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )

@@ -476,22 +476,6 @@
       }
     },
     {
-      "description": "should recognise the mechanism with request and refresh callback (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "callback": ["oidcRequest", "oidcRefresh"],
-      "valid": true,
-      "credential": {
-        "username": null,
-        "password": null,
-        "source": "$external",
-        "mechanism": "MONGODB-OIDC",
-        "mechanism_properties": {
-            "REQUEST_TOKEN_CALLBACK": true,
-            "REFRESH_TOKEN_CALLBACK": true
-        }
-      }
-    },
-    {
       "description": "should recognise the mechanism and username with request callback (MONGODB-OIDC)",
       "uri": "mongodb://principalName@localhost/?authMechanism=MONGODB-OIDC",
       "callback": ["oidcRequest"],
@@ -554,15 +538,8 @@
       "credential": null
     },
     {
-      "description": "should throw an exception if neither deviceName nor callbacks specified (MONGODB-OIDC)",
+      "description": "should throw an exception if neither deviceName nor callback specified (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "valid": false,
-      "credential": null
-    },
-    {
-      "description": "should throw an exception when only refresh callback is specified (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "callback": ["oidcRefresh"],
       "valid": false,
       "credential": null
     },

@@ -45,7 +45,6 @@ if TYPE_CHECKING:
 @dataclass
 class _OIDCProperties:
     request_token_callback: Optional[Callable[..., Dict]]
-    refresh_token_callback: Optional[Callable[..., Dict]]
     provider_name: Optional[str]
     allowed_hosts: List[str]
 
@@ -54,7 +53,6 @@ class _OIDCProperties:
 
 TOKEN_BUFFER_MINUTES = 5
 CALLBACK_TIMEOUT_SECONDS = 5 * 60
-CACHE_TIMEOUT_MINUTES = 60 * 5
 CALLBACK_VERSION = 0
 
 
@@ -87,10 +85,6 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-def _get_cache_exp() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
-
-
 @dataclass
 class _OIDCAuthenticator:
     username: str
@@ -100,29 +94,19 @@ class _OIDCAuthenticator:
     reauth_gen_id: int = field(default=0)
     idp_info_gen_id: int = field(default=0)
     token_gen_id: int = field(default=0)
-    token_exp_utc: Optional[datetime] = field(default=None)
-    cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def get_current_token(self, use_callbacks: bool = True) -> Optional[str]:
+    def get_current_token(self, use_callback: bool = True) -> Optional[str]:
         properties = self.properties
 
         request_cb = properties.request_token_callback
-        refresh_cb = properties.refresh_token_callback
-        if not use_callbacks:
+        if not use_callback:
             request_cb = None
-            refresh_cb = None
 
         current_valid_token = False
-        if self.token_exp_utc is not None:
-            now_utc = datetime.now(timezone.utc)
-            exp_utc = self.token_exp_utc
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
-                current_valid_token = True
 
         timeout = CALLBACK_TIMEOUT_SECONDS
-        if not use_callbacks and not current_valid_token:
+        if not use_callback and not current_valid_token:
             return None
 
         if not current_valid_token and request_cb is not None:
@@ -142,14 +126,8 @@ class _OIDCAuthenticator:
                     "refresh_token": refresh_token,
                 }
 
-                if self.idp_resp is None or refresh_cb is None:
+                if self.idp_resp is None:
                     self.idp_resp = request_cb(self.idp_info, context)
-                elif request_cb is not None:
-                    self.idp_resp = refresh_cb(self.idp_info, context)
-                cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                    minutes=CACHE_TIMEOUT_MINUTES
-                )
-                self.cache_exp_utc = cache_exp_utc
                 self.token_gen_id += 1
 
         token_result = self.idp_resp
@@ -167,18 +145,9 @@ class _OIDCAuthenticator:
                 raise ValueError(f'Unexpected field in callback result "{key}"')
 
         token = token_result["access_token"]
-
-        if "expires_in_seconds" in token_result:
-            expires_in = int(token_result["expires_in_seconds"])
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if expires_in >= buffer_seconds:
-                now_utc = datetime.now(timezone.utc)
-                exp_utc = now_utc + timedelta(seconds=expires_in)
-                self.token_exp_utc = exp_utc
-
         return token
 
-    def auth_start_cmd(self, use_callbacks: bool = True) -> Optional[SON[str, Any]]:
+    def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
         properties = self.properties
 
         # Handle aws provider credentials.
@@ -198,14 +167,6 @@ class _OIDCAuthenticator:
 
         principal_name = self.username
 
-        if self.idp_info is not None:
-            self.cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                minutes=CACHE_TIMEOUT_MINUTES
-            )
-
-        if self.idp_info is None:
-            self.cache_exp_utc = _get_cache_exp()
-
         if self.idp_info is None:
             # Send the SASL start with the optional principal name.
             payload = {}
@@ -223,7 +184,7 @@ class _OIDCAuthenticator:
             )
             return cmd
 
-        token = self.get_current_token(use_callbacks)
+        token = self.get_current_token(use_callback)
         if not token:
             return None
         bin_payload = Binary(bson.encode({"jwt": token}))
@@ -238,7 +199,6 @@ class _OIDCAuthenticator:
     def clear(self) -> None:
         self.idp_info = None
         self.idp_resp = None
-        self.token_exp_utc = None
 
     def run_command(
         self, conn: Connection, cmd: MutableMapping[str, Any]
@@ -262,9 +222,7 @@ class _OIDCAuthenticator:
             # Check if we've already changed tokens.
             if prev_id == self.token_gen_id:
                 self.reauth_gen_id = self.idp_info_gen_id
-                self.token_exp_utc = None
-                if not self.properties.refresh_token_callback:
-                    self.clear()
+                self.clear()
 
         ctx = conn.auth_ctx
         cmd = None
