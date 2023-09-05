@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set +x          # Do not print outputs
+set -o xtrace   # Trace outputs.
 set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-OIDC authentication tests"
@@ -29,6 +29,8 @@ pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
 
 . ./activate-authoidcvenv.sh
 python oidc_get_tokens.py
+ls $OIDC_TOKEN_DIR
+exit
 popd
 
 # Set up variables and run the test.
@@ -37,9 +39,11 @@ if [ -n "$LOCAL_OIDC_SERVER" ]; then
     export MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
     export MONGODB_URI_MULTI="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
 else
+    set +x   # turn off xtrace for this portion
     export MONGODB_URI="$OIDC_ATLAS_URI_SINGLE"
     export MONGODB_URI_SINGLE="$OIDC_ATLAS_URI_SINGLE/?authMechanism=MONGODB-OIDC"
     export MONGODB_URI_MULTI="$OIDC_ATLAS_URI_MULTI/?authMechanism=MONGODB-OIDC"
+    set -x
 fi
 
 export TEST_AUTH_OIDC=1
