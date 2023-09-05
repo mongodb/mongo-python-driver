@@ -773,9 +773,6 @@ functions:
         script: |
           ${PREPARE_SHELL}
           ${ENSURE_TOOLCHAIN_PYTHON_BINARY}
-          echo "HI"
-          echo "$PYTHON_BINARY"
-          exit 1
           bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
