@@ -227,6 +227,7 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
+    python -m pip install -U certifi
     TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
 
