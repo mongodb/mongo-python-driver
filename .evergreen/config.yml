@@ -83,9 +83,9 @@ functions:
               # Make sure PYTHON_BINARY is set to a suitable toolchain python.
               if [ -z "$PYTHON_BINARY" ]; then
                   if [ "$(uname -s)" = "Darwin" ]; then
-                      export PYTHON_BINARY=/Library/Frameworks/Python.Framework/Versions/3.9
+                      export PYTHON_BINARY=/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
                   elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-                      export PYTHON_BINARY=/cygdrive/c/python39/python
+                      export PYTHON_BINARY=/cygdrive/c/python/Python39/python
                   else
                       export PYTHON_BINARY=/opt/python/3.9/bin/python3
                   fi
