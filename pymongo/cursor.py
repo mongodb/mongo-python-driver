@@ -21,15 +21,12 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
     Iterable,
-    List,
     Mapping,
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Union,
     cast,
     overload,
@@ -158,7 +155,7 @@ class _ConnectionManager:
             self.conn = None
 
 
-_Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
+_Sort = Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]]
 _Hint = Union[str, _Sort]
 
 
@@ -444,7 +441,7 @@ class Cursor(Generic[_DocumentType]):
 
     def __query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
-        operators: Dict[str, Any] = {}
+        operators: dict[str, Any] = {}
         if self.__ordering:
             operators["$orderby"] = self.__ordering
         if self.__explain:
@@ -884,7 +881,7 @@ class Cursor(Generic[_DocumentType]):
         self.__ordering = helpers._index_document(keys)
         return self
 
-    def distinct(self, key: str) -> List:
+    def distinct(self, key: str) -> list:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -901,7 +898,7 @@ class Cursor(Generic[_DocumentType]):
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
         """
-        options: Dict[str, Any] = {}
+        options: dict[str, Any] = {}
         if self.__spec:
             options["query"] = self.__spec
         if self.__max_time_ms is not None:
@@ -1017,11 +1014,11 @@ class Cursor(Generic[_DocumentType]):
 
         # Avoid overwriting a filter argument that was given by the user
         # when updating the spec.
-        spec: Dict[str, Any]
+        spec: dict[str, Any]
         if self.__has_filter:
             spec = dict(self.__spec)
         else:
-            spec = cast(Dict, self.__spec)
+            spec = cast(dict, self.__spec)
         spec["$where"] = code
         self.__spec = spec
         return self
@@ -1234,7 +1231,7 @@ class Cursor(Generic[_DocumentType]):
         return self.__id
 
     @property
-    def address(self) -> Optional[Tuple[str, Any]]:
+    def address(self) -> Optional[tuple[str, Any]]:
         """The (host, port) of the server used, or None.
 
         .. versionchanged:: 3.0
@@ -1287,25 +1284,25 @@ class Cursor(Generic[_DocumentType]):
         return self._clone(deepcopy=True)
 
     @overload
-    def _deepcopy(self, x: Iterable, memo: Optional[Dict[int, Union[List, Dict]]] = None) -> List:
+    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:
         ...
 
     @overload
     def _deepcopy(
-        self, x: SupportsItems, memo: Optional[Dict[int, Union[List, Dict]]] = None
-    ) -> Dict:
+        self, x: SupportsItems, memo: Optional[dict[int, Union[list, dict]]] = None
+    ) -> dict:
         ...
 
     def _deepcopy(
-        self, x: Union[Iterable, SupportsItems], memo: Optional[Dict[int, Union[List, Dict]]] = None
-    ) -> Union[List, Dict]:
+        self, x: Union[Iterable, SupportsItems], memo: Optional[dict[int, Union[list, dict]]] = None
+    ) -> Union[list, dict]:
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y: Union[List, Dict]
-        iterator: Iterable[Tuple[Any, Any]]
+        y: Union[list, dict]
+        iterator: Iterable[tuple[Any, Any]]
         if not hasattr(x, "items"):
             y, is_list, iterator = [], True, enumerate(x)
         else:
@@ -1356,13 +1353,13 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[_DocumentOut]:
+    ) -> list[_DocumentOut]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List["_DocumentOut"], raw_response)
+        return cast(list["_DocumentOut"], raw_response)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

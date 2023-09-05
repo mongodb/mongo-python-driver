@@ -22,18 +22,7 @@ import random
 import time
 import warnings
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSession, _ServerSessionPool
@@ -146,7 +135,7 @@ class Topology:
         self._closed = False
         self._lock = _create_lock()
         self._condition = self._settings.condition_class(self._lock)
-        self._servers: Dict[_Address, Server] = {}
+        self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
         self._session_pool = _ServerSessionPool()
@@ -222,7 +211,7 @@ class Topology:
         selector: Callable[[Selection], Selection],
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
-    ) -> List[Server]:
+    ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
@@ -255,7 +244,7 @@ class Topology:
         selector: Callable[[Selection], Selection],
         timeout: float,
         address: Optional[_Address],
-    ) -> List[ServerDescription]:
+    ) -> list[ServerDescription]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
@@ -414,7 +403,7 @@ class Topology:
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool)
 
-    def _process_srv_update(self, seedlist: List[Tuple[str, Any]]) -> None:
+    def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
         Hold the lock when calling this.
         """
@@ -434,7 +423,7 @@ class Topology:
                 )
             )
 
-    def on_srv_update(self, seedlist: List[Tuple[str, Any]]) -> None:
+    def on_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new list of nodes obtained from scanning SRV records."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -464,7 +453,7 @@ class Topology:
 
             return writable_server_selector(self._new_selection())[0].address
 
-    def _get_replica_set_members(self, selector: Callable[[Selection], Selection]) -> Set[_Address]:
+    def _get_replica_set_members(self, selector: Callable[[Selection], Selection]) -> set[_Address]:
         """Return set of replica set member addresses."""
         # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:
@@ -477,11 +466,11 @@ class Topology:
 
             return {sd.address for sd in iter(selector(self._new_selection()))}
 
-    def get_secondaries(self) -> Set[_Address]:
+    def get_secondaries(self) -> set[_Address]:
         """Return set of secondary addresses."""
         return self._get_replica_set_members(secondary_server_selector)
 
-    def get_arbiters(self) -> Set[_Address]:
+    def get_arbiters(self) -> set[_Address]:
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
@@ -514,7 +503,7 @@ class Topology:
             self._request_check_all()
             self._condition.wait(wait_time)
 
-    def data_bearing_servers(self) -> List[ServerDescription]:
+    def data_bearing_servers(self) -> list[ServerDescription]:
         """Return a list of all data-bearing servers.
 
         This includes any server that might be selected for an operation.
@@ -573,7 +562,7 @@ class Topology:
     def description(self) -> TopologyDescription:
         return self._description
 
-    def pop_all_sessions(self) -> List[_ServerSession]:
+    def pop_all_sessions(self) -> list[_ServerSession]:
         """Pop all session ids from the pool."""
         with self._lock:
             return self._session_pool.pop_all()
@@ -890,7 +879,7 @@ class Topology:
             msg = "CLOSED "
         return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
-    def eq_props(self) -> Tuple[Tuple[_Address, ...], Optional[str], Optional[str], str]:
+    def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
         """The properties to use for MongoClient/Topology equality checks."""
         ts = self._settings
         return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn, ts.srv_service_name)

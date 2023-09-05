@@ -22,13 +22,10 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
     Mapping,
     MutableMapping,
     Optional,
     Sized,
-    Tuple,
     Union,
     cast,
 )
@@ -73,7 +70,7 @@ def _unquoted_percent(s: str) -> bool:
     return False
 
 
-def parse_userinfo(userinfo: str) -> Tuple[str, str]:
+def parse_userinfo(userinfo: str) -> tuple[str, str]:
     """Validates the format of user information in a MongoDB URI.
     Reserved characters that are gen-delimiters (":", "/", "?", "#", "[",
     "]", "@") as per RFC 3986 must be escaped.
@@ -100,7 +97,7 @@ def parse_userinfo(userinfo: str) -> Tuple[str, str]:
 
 def parse_ipv6_literal_host(
     entity: str, default_port: Optional[int]
-) -> Tuple[str, Optional[Union[str, int]]]:
+) -> tuple[str, Optional[Union[str, int]]]:
     """Validates an IPv6 literal host:port string.
 
     Returns a 2-tuple of IPv6 literal followed by port where
@@ -370,7 +367,7 @@ def split_options(
     return options
 
 
-def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> List[_Address]:
+def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[_Address]:
     """Takes a string of the form host1[:port],host2[:port]... and
     splits it into (host, port) tuples. If [:port] isn't present the
     default_port is used.
@@ -427,7 +424,7 @@ def parse_uri(
     connect_timeout: Optional[float] = None,
     srv_service_name: Optional[str] = None,
     srv_max_hosts: Optional[int] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -594,7 +591,7 @@ def parse_uri(
     }
 
 
-def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> Dict[str, SSLContext]:
+def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict[str, SSLContext]:
     """Parse KMS TLS connection options."""
     if not kms_tls_options:
         return {}

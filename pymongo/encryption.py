@@ -29,7 +29,6 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
 )
 
 try:
@@ -594,7 +593,7 @@ class ClientEncryption(Generic[_DocumentType]):
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
+    ) -> tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
         .. warning::

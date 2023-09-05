@@ -41,18 +41,14 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Dict,
     FrozenSet,
     Generic,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Sequence,
-    Set,
-    Tuple,
     Type,
     TypeVar,
     Union,
@@ -716,7 +712,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                client.__my_database__
         """
         doc_class = document_class or dict
-        self.__init_kwargs: Dict[str, Any] = {
+        self.__init_kwargs: dict[str, Any] = {
             "host": host,
             "port": port,
             "document_class": doc_class,
@@ -824,7 +820,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
-        self.__kill_cursors_queue: List = []
+        self.__kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
         super().__init__(
@@ -1068,7 +1064,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.description
 
     @property
-    def address(self) -> Optional[Tuple[str, int]]:
+    def address(self) -> Optional[tuple[str, int]]:
         """(host, port) of the current standalone, primary, or mongos, or None.
 
         Accessing :attr:`address` raises :exc:`~.errors.InvalidOperation` if
@@ -1100,7 +1096,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._server_property("address")
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self) -> Optional[tuple[str, int]]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -1113,7 +1109,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_primary()  # type: ignore[return-value]
 
     @property
-    def secondaries(self) -> Set[_Address]:
+    def secondaries(self) -> set[_Address]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1126,7 +1122,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_secondaries()
 
     @property
-    def arbiters(self) -> Set[_Address]:
+    def arbiters(self) -> set[_Address]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1156,7 +1152,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def nodes(self) -> FrozenSet[_Address]:
-        """Set of all currently connected servers.
+        """set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`
           can change over time as :class:`MongoClient`'s view of the replica
@@ -1179,7 +1175,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self.__options
 
-    def _end_sessions(self, session_ids: List[_ServerSession]) -> None:
+    def _end_sessions(self, session_ids: list[_ServerSession]) -> None:
         """Send endSessions command(s) with the given session ids."""
         try:
             # Use Connection.command directly to avoid implicitly creating
@@ -1313,7 +1309,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.contextmanager
     def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[ClientSession]
-    ) -> Iterator[Tuple[Connection, _ServerMode]]:
+    ) -> Iterator[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         # Get a connection for a server matching the read preference, and yield
         # conn with the effective read preference. The Server Selection
@@ -1337,7 +1333,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _conn_for_reads(
         self, read_preference: _ServerMode, session: Optional[ClientSession]
-    ) -> ContextManager[Tuple[Connection, _ServerMode]]:
+    ) -> ContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
         server = self._select_server(read_preference, session)
@@ -1872,7 +1868,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if session is not None:
             session._process_response(reply)
 
-    def server_info(self, session: Optional[client_session.ClientSession] = None) -> Dict[str, Any]:
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:
@@ -1894,7 +1890,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[Dict[str, Any]]:
+    ) -> CommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
@@ -1932,7 +1928,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get a list of the names of all databases on the connected server.
 
         :Parameters:

@@ -21,7 +21,6 @@ from typing import (
     Any,
     Generic,
     Iterator,
-    List,
     Mapping,
     NoReturn,
     Optional,
@@ -389,7 +388,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         codec_options: CodecOptions,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Mapping[str, Any]]:
+    ) -> list[Mapping[str, Any]]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array

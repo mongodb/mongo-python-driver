@@ -15,7 +15,7 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -95,7 +95,7 @@ class PinnedResponse(Response):
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: List[_DocumentOut],
+        docs: list[_DocumentOut],
         more_to_come: bool,
     ):
         """Represent a response to an exhaust cursor's initial query.
@@ -107,7 +107,7 @@ class PinnedResponse(Response):
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.
-          - `docs`: List of documents.
+          - `docs`: list of documents.
           - `more_to_come`: Bool indicating whether cursor is ready to be
             exhausted.
         """

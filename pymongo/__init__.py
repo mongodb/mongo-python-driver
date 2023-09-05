@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
+from __future__ import annotations
 
 from typing import ContextManager, Optional
 

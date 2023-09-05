@@ -24,13 +24,11 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union,
@@ -258,7 +256,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _conn_for_reads(
         self, session: ClientSession
-    ) -> ContextManager[Tuple[Connection, _ServerMode]]:
+    ) -> ContextManager[tuple[Connection, _ServerMode]]:
         return self.__database.client._conn_for_reads(self._read_preference_for(session), session)
 
     def _conn_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
@@ -739,9 +737,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             or not documents
         ):
             raise TypeError("documents must be a non-empty list")
-        inserted_ids: List[ObjectId] = []
+        inserted_ids: list[ObjectId] = []
 
-        def gen() -> Iterator[Tuple[int, Mapping[str, Any]]]:
+        def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
             """A generator that validates documents and handles _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
@@ -1930,7 +1928,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1975,7 +1973,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def __create_indexes(
         self, indexes: Sequence[IndexModel], session: Optional[ClientSession], **kwargs: Any
-    ) -> List[str]:
+    ) -> list[str]:
         """Internal createIndexes helper.
 
         :Parameters:
@@ -2438,11 +2436,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def create_search_indexes(
         self,
-        models: List[SearchIndexModel],
+        models: list[SearchIndexModel],
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Create multiple search indexes for the current collection.
 
         :Parameters:
@@ -2990,7 +2988,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> List:
+    ) -> list:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -3043,7 +3041,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
-        ) -> List:
+        ) -> list:
             return self._command(
                 conn,
                 cmd,

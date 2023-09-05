@@ -19,9 +19,10 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 
 .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
 """
+from __future__ import annotations
 
 from collections import abc
-from typing import Any, List, Mapping, Optional, cast
+from typing import Any, Mapping, Optional, cast
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
@@ -170,7 +171,7 @@ class GridFS:
         filename: Optional[str] = None,
         version: Optional[int] = -1,
         session: Optional[ClientSession] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> GridOut:
         """Get a file from GridFS by ``"filename"`` or metadata fields.
 
@@ -275,8 +276,8 @@ class GridFS:
         self.__files.delete_one({"_id": file_id}, session=session)
         self.__chunks.delete_many({"files_id": file_id}, session=session)
 
-    def list(self, session: Optional[ClientSession] = None) -> List[str]:
-        """List the names of all files stored in this instance of
+    def list(self, session: Optional[ClientSession] = None) -> list[str]:
+        """list the names of all files stored in this instance of
         :class:`GridFS`.
 
         :Parameters:
@@ -301,7 +302,7 @@ class GridFS:
         filter: Optional[Any] = None,
         session: Optional[ClientSession] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Optional[GridOut]:
         """Get a single file from gridfs.
 
@@ -400,7 +401,7 @@ class GridFS:
         self,
         document_or_id: Optional[Any] = None,
         session: Optional[ClientSession] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> bool:
         """Check if a file exists in this instance of :class:`GridFS`.
 

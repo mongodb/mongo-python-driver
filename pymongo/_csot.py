@@ -20,7 +20,7 @@ import functools
 import time
 from collections import deque
 from contextvars import ContextVar, Token
-from typing import Any, Callable, Deque, MutableMapping, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
 
 from pymongo.write_concern import WriteConcern
 
@@ -72,7 +72,7 @@ class _TimeoutContext:
 
     def __init__(self, timeout: Optional[float]):
         self._timeout = timeout
-        self._tokens: Optional[Tuple[Token, Token, Token]] = None
+        self._tokens: Optional[tuple[Token, Token, Token]] = None
 
     def __enter__(self) -> _TimeoutContext:
         timeout_token = TIMEOUT.set(self._timeout)

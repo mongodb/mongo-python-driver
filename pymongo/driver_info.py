@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Advanced options for MongoDB drivers implemented on top of PyMongo."""
+from __future__ import annotations
 
 from collections import namedtuple
 from typing import Optional

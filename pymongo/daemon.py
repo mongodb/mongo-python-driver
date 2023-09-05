@@ -18,6 +18,7 @@ PyMongo only attempts to spawn the mongocryptd daemon process when automatic
 client-side field level encryption is enabled. See
 :ref:`automatic-client-side-encryption` for more info.
 """
+from __future__ import annotations
 
 import os
 import subprocess

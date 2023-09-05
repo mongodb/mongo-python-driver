@@ -13,20 +13,10 @@
 # permissions and limitations under the License.
 
 """Represent a deployment of MongoDB servers."""
+from __future__ import annotations
 
 from random import sample
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    cast,
-)
+from typing import Any, Callable, Mapping, MutableMapping, NamedTuple, Optional, cast
 
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
@@ -52,17 +42,17 @@ class _TopologyType(NamedTuple):
 TOPOLOGY_TYPE = _TopologyType(*range(6))
 
 # Topologies compatible with SRV record polling.
-SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
+SRV_POLLING_TOPOLOGIES: tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
-_ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
+_ServerSelector = Callable[[list[ServerDescription]], list[ServerDescription]]
 
 
 class TopologyDescription:
     def __init__(
         self,
         topology_type: int,
-        server_descriptions: Dict[_Address, ServerDescription],
+        server_descriptions: dict[_Address, ServerDescription],
         replica_set_name: Optional[str],
         max_set_version: Optional[int],
         max_election_id: Optional[ObjectId],
@@ -193,8 +183,8 @@ class TopologyDescription:
             self._topology_settings,
         )
 
-    def server_descriptions(self) -> Dict[_Address, ServerDescription]:
-        """Dict of (address,
+    def server_descriptions(self) -> dict[_Address, ServerDescription]:
+        """dict of (address,
         :class:`~pymongo.server_description.ServerDescription`).
         """
         return self._server_descriptions.copy()
@@ -233,8 +223,8 @@ class TopologyDescription:
         return self._ls_timeout_minutes
 
     @property
-    def known_servers(self) -> List[ServerDescription]:
-        """List of Servers of types besides Unknown."""
+    def known_servers(self) -> list[ServerDescription]:
+        """list of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values() if s.is_server_type_known]
 
     @property
@@ -243,8 +233,8 @@ class TopologyDescription:
         return any(s for s in self._server_descriptions.values() if s.is_server_type_known)
 
     @property
-    def readable_servers(self) -> List[ServerDescription]:
-        """List of readable Servers."""
+    def readable_servers(self) -> list[ServerDescription]:
+        """list of readable Servers."""
         return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
@@ -264,7 +254,7 @@ class TopologyDescription:
     def srv_max_hosts(self) -> int:
         return self._topology_settings._srv_max_hosts
 
-    def _apply_local_threshold(self, selection: Optional[Selection]) -> List[ServerDescription]:
+    def _apply_local_threshold(self, selection: Optional[Selection]) -> list[ServerDescription]:
         if not selection:
             return []
         # Round trip time in seconds.
@@ -281,8 +271,8 @@ class TopologyDescription:
         selector: Any,
         address: Optional[_Address] = None,
         custom_selector: Optional[_ServerSelector] = None,
-    ) -> List[ServerDescription]:
-        """List of servers matching the provided selector(s).
+    ) -> list[ServerDescription]:
+        """list of servers matching the provided selector(s).
 
         :Parameters:
           - `selector`: a callable that takes a Selection as input and returns
@@ -486,7 +476,7 @@ def updated_topology_description(
 
 
 def _updated_topology_description_srv_polling(
-    topology_description: TopologyDescription, seedlist: List[Tuple[str, Any]]
+    topology_description: TopologyDescription, seedlist: list[tuple[str, Any]]
 ) -> TopologyDescription:
     """Return an updated copy of a TopologyDescription.
 
@@ -535,7 +525,7 @@ def _update_rs_from_primary(
     server_description: ServerDescription,
     max_set_version: Optional[int],
     max_election_id: Optional[ObjectId],
-) -> Tuple[int, Optional[str], Optional[int], Optional[ObjectId]]:
+) -> tuple[int, Optional[str], Optional[int], Optional[ObjectId]]:
     """Update topology description from a primary's hello response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
@@ -555,8 +545,8 @@ def _update_rs_from_primary(
         return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
 
     if server_description.max_wire_version is None or server_description.max_wire_version < 17:
-        new_election_tuple: Tuple = (server_description.set_version, server_description.election_id)
-        max_election_tuple: Tuple = (max_set_version, max_election_id)
+        new_election_tuple: tuple = (server_description.set_version, server_description.election_id)
+        max_election_tuple: tuple = (max_set_version, max_election_id)
         if None not in new_election_tuple:
             if None not in max_election_tuple and new_election_tuple < max_election_tuple:
                 # Stale primary, set to type Unknown.
@@ -635,7 +625,7 @@ def _update_rs_no_primary_from_member(
     sds: MutableMapping[_Address, ServerDescription],
     replica_set_name: Optional[str],
     server_description: ServerDescription,
-) -> Tuple[int, Optional[str]]:
+) -> tuple[int, Optional[str]]:
     """RS without known primary. Update from a non-primary's response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
