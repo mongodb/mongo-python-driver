@@ -16,11 +16,9 @@
 
 import os
 import sys
-import threading
 import time
 import unittest
 from contextlib import contextmanager
-from queue import Queue
 from typing import Dict
 
 sys.path[0:0] = [""]

@@ -15,10 +15,8 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
-import os
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -35,7 +33,6 @@ import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
@@ -137,7 +134,7 @@ class _OIDCAuthenticator:
 
         return self.access_token
 
-    def validate_request_token_response(self, resp):
+    def validate_request_token_response(self, resp: Mapping[str, Any]) -> None:
         # Validate callback return value.
         if not isinstance(resp, dict):
             raise ValueError("OIDC callback returned invalid result")
@@ -219,6 +216,7 @@ class _OIDCAuthenticator:
         self.idp_info = None
         cmd = self.principal_step_cmd()
         resp = self.run_command(conn, cmd)
+        assert resp is not None
         server_resp: Dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
@@ -262,8 +260,10 @@ class _OIDCAuthenticator:
 
         return self.finish_auth(resp, conn)
 
-    def finish_auth(self, resp: Dict, conn: Connection) -> Optional[Mapping[str, Any]]:
-        conversation_id = resp["conversationId"]
+    def finish_auth(
+        self, orig_resp: Mapping[str, Any], conn: Connection
+    ) -> Optional[Mapping[str, Any]]:
+        conversation_id = orig_resp["conversationId"]
         token = self.get_current_token()
         conn.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
