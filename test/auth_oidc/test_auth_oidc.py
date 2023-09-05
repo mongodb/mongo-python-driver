@@ -66,7 +66,7 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertEqual(timeout_seconds, 60 * 5)
             with open(token_file) as fid:
                 token = fid.read()
-            resp = {"access_token": token}
+            resp = {"access_token": token, "refresh_token": token}
 
             time.sleep(sleep)
             self.request_called += 1
@@ -261,6 +261,64 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.request_called, 2)
         client.close()
 
+    def test_reauthenticate_succeeds_no_refresh(self):
+        cb = self.create_request_cb()
+
+        def request_cb(*args, **kwargs):
+            result = cb(*args, **kwargs)
+            del result["refresh_token"]
+            return result
+
+        # Create a client with the callback.
+        props: Dict = {"request_token_callback": request_cb}
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Assert that the request callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Assert that the request callback has been called twice.
+        self.assertEqual(self.request_called, 2)
+        client.close()
+
+    def test_reauthenticate_succeeds_after_refresh_fails(self):
+
+        # Create request callback that returns valid credentials.
+        request_cb = self.create_request_cb()
+
+        # Create a client with the callback.
+        props: Dict = {"request_token_callback": request_cb}
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Assert that the request callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find", "saslContinue"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Assert that the request callback has been called three times.
+        self.assertEqual(self.request_called, 3)
+
     def test_reauthenticate_fails(self):
 
         # Create request callback that returns valid credentials.
@@ -402,7 +460,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_reauthenticate_succeeds_get_more_exhaust(self):
         # Ensure no mongos
-        props = {"PROVIDER_NAME": "aws"}
+        props = {"request_token_callback": self.create_request_cb()}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         hello = client.admin.command(HelloCompat.LEGACY_CMD)
         if hello.get("msg") != "isdbgrid":

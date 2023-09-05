@@ -17,15 +17,16 @@ if [ ! -f "./secrets-export.sh" ]; then
 fi
 source ./secrets-export.sh
 
-# If the file did not have our creds, get them from the vault.
+# # If the file did not have our creds, get them from the vault.
 if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
     bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
     source ./secrets-export.sh
 fi
 
 # Make the OIDC tokens.
-pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
 export OIDC_TOKEN_DIR=/tmp/tokens
+pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
+
 . ./activate-authoidcvenv.sh
 python oidc_get_tokens.py
 popd
@@ -42,5 +43,6 @@ else
 fi
 
 export TEST_AUTH_OIDC=1
+export COVERAGE=1
 export AUTH="auth"
 bash ./.evergreen/tox.sh -m test-eg
