@@ -761,7 +761,7 @@ functions:
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} bash .evergreen/run-mongodb-oidc-test.sh
+          bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -3224,8 +3224,7 @@ buildvariants:
 - matrix_name: "oidc-auth-test"
   matrix_spec:
     platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
-    python-version: ["3.9"]
-  display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
+  display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
 
