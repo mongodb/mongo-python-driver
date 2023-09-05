@@ -11,13 +11,6 @@ if [ -z "$DRIVERS_TOOLS" ]; then
     exit 1
 fi
 
-# Make sure PYTHON_BINARY is set
-if [ -z "$PYTHON_BINARY" ]; then
-    . ${DRIVERS_TOOLS}/.evergreen/venv-utils.sh
-    . ${DRIVERS_TOOLS}/.evergreen/find-python3.sh
-    PYTHON_BINARY="$(find_python3)"
-fi
-
 # Get the drivers secrets.  Use an existing secrets file first.
 if [ ! -f "./secrets-export.sh" ]; then
     bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc

@@ -79,6 +79,17 @@ functions:
               export PATH="$MONGODB_BINARIES:$PATH"
               export PROJECT="${project}"
               export PIP_QUIET=1
+           ENSURE_TOOLCHAIN_PYTHON_BINARY: |
+              # Make sure PYTHON_BINARY is set to a suitable toolchain python.
+              if [ -z "$PYTHON_BINARY" ]; then
+                  if [ "$(uname -s)" = "Darwin" ]; then
+                      export PYTHON_BINARY=/Library/Frameworks/Python.Framework/Versions/3.9
+                  elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+                      export PYTHON_BINARY=/cygdrive/c/python39/python
+                  else
+                      export PYTHON_BINARY=/opt/python/3.9/bin/python3
+                  fi
+              fi
            EOT
 
     # Load the expansion file to make an evergreen variable with the current unique version
@@ -761,7 +772,8 @@ functions:
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          bash .evergreen/run-mongodb-oidc-test.sh
+          ${ENSURE_TOOLCHAIN_PYTHON_BINARY}
+          PYTHON_BINARY=${PYTHON_BINARY} bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
