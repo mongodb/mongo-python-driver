@@ -52,7 +52,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def create_request_cb(self, username="test_user1", sleep=0):
 
-        token_file = os.path.join(self.token_dir, username)
+        token_file = os.path.join(self.token_dir, username).replace(os.sep, "/")
 
         def request_token(server_info, context):
             # Validate the info.
