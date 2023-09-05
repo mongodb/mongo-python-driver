@@ -25,6 +25,7 @@ fi
 
 # Make the OIDC tokens.
 export OIDC_TOKEN_DIR=/tmp/tokens
+mkdir -p $OIDC_TOKEN_DIR
 pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
 
 . ./activate-authoidcvenv.sh
