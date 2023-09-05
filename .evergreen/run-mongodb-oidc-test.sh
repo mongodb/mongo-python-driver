@@ -27,10 +27,7 @@ fi
 set -x
 export OIDC_TOKEN_DIR=/tmp/tokens
 pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-
-. ./activate-authoidcvenv.sh
-python oidc_get_tokens.py
-ls $OIDC_TOKEN_DIR
+bash oidc_get_tokens.sh
 popd
 
 # Set up variables and run the test.
