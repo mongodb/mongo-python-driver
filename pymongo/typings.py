@@ -15,7 +15,16 @@
 """Type aliases used by PyMongo"""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 
@@ -24,7 +33,7 @@ if TYPE_CHECKING:
 
 
 # Common Shared Types.
-_Address = tuple[str, Optional[int]]
+_Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _Pipeline = Sequence[Mapping[str, Any]]
 ClusterTime = Mapping[str, Any]

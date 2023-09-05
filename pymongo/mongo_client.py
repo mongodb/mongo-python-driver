@@ -1152,7 +1152,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def nodes(self) -> FrozenSet[_Address]:
-        """set of all currently connected servers.
+        """Set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`
           can change over time as :class:`MongoClient`'s view of the replica

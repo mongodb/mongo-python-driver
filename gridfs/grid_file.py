@@ -482,7 +482,7 @@ class GridOut(io.IOBase):
     upload_date: datetime.datetime = _grid_out_property(
         "uploadDate", "Date that this file was first uploaded."
     )
-    aliases: Optional[list[str]] = _grid_out_property("aliases", "list of aliases for this file.")
+    aliases: Optional[list[str]] = _grid_out_property("aliases", "List of aliases for this file.")
     metadata: Optional[Mapping[str, Any]] = _grid_out_property(
         "metadata", "Metadata attached to this file."
     )

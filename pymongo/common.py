@@ -782,7 +782,7 @@ for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
 VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
-# list of timeout-related options.
+# List of timeout-related options.
 TIMEOUT_OPTIONS: list[str] = [
     "connecttimeoutms",
     "heartbeatfrequencyms",
@@ -867,7 +867,7 @@ def _ecoc_coll_name(encrypted_fields: Mapping[str, Any], name: str) -> Any:
     return encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
 
 
-# list of write-concern-related options.
+# List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
 
 

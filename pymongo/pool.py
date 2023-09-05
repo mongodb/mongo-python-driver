@@ -108,7 +108,7 @@ try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
 
     def _set_non_inheritable_non_atomic(fd: int) -> None:
-        """set the close-on-exec flag on the given file descriptor."""
+        """Set the close-on-exec flag on the given file descriptor."""
         flags = fcntl(fd, F_GETFD)
         fcntl(fd, F_SETFD, flags | FD_CLOEXEC)
 

@@ -107,7 +107,7 @@ class PinnedResponse(Response):
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.
-          - `docs`: list of documents.
+          - `docs`: List of documents.
           - `more_to_come`: Bool indicating whether cursor is ready to be
             exhausted.
         """

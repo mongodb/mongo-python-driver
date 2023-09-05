@@ -1440,7 +1440,7 @@ class _EventListeners:
         return self.__enabled_for_cmap
 
     def event_listeners(self) -> list[_EventListeners]:
-        """list of registered event listeners."""
+        """List of registered event listeners."""
         return (
             self.__command_listeners
             + self.__server_heartbeat_listeners

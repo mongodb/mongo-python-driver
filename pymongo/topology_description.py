@@ -16,7 +16,16 @@
 from __future__ import annotations
 
 from random import sample
-from typing import Any, Callable, Mapping, MutableMapping, NamedTuple, Optional, cast
+from typing import (
+    Any,
+    Callable,
+    List,
+    Mapping,
+    MutableMapping,
+    NamedTuple,
+    Optional,
+    cast,
+)
 
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
@@ -45,7 +54,7 @@ TOPOLOGY_TYPE = _TopologyType(*range(6))
 SRV_POLLING_TOPOLOGIES: tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
-_ServerSelector = Callable[[list[ServerDescription]], list[ServerDescription]]
+_ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
 
 
 class TopologyDescription:
@@ -224,7 +233,7 @@ class TopologyDescription:
 
     @property
     def known_servers(self) -> list[ServerDescription]:
-        """list of Servers of types besides Unknown."""
+        """List of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values() if s.is_server_type_known]
 
     @property
@@ -234,7 +243,7 @@ class TopologyDescription:
 
     @property
     def readable_servers(self) -> list[ServerDescription]:
-        """list of readable Servers."""
+        """List of readable Servers."""
         return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
@@ -272,7 +281,7 @@ class TopologyDescription:
         address: Optional[_Address] = None,
         custom_selector: Optional[_ServerSelector] = None,
     ) -> list[ServerDescription]:
-        """list of servers matching the provided selector(s).
+        """List of servers matching the provided selector(s).
 
         :Parameters:
           - `selector`: a callable that takes a Selection as input and returns

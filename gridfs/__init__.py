@@ -277,7 +277,7 @@ class GridFS:
         self.__chunks.delete_many({"files_id": file_id}, session=session)
 
     def list(self, session: Optional[ClientSession] = None) -> list[str]:
-        """list the names of all files stored in this instance of
+        """List the names of all files stored in this instance of
         :class:`GridFS`.
 
         :Parameters:
