@@ -15,7 +15,16 @@
 """Operation class definitions."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Sequence, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
@@ -29,7 +38,7 @@ if TYPE_CHECKING:
     from pymongo.bulk import _Bulk
 
 # Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
-_IndexList = Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]]
+_IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
 _IndexKeyHint = Union[str, _IndexList]
 
 

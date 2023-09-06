@@ -28,6 +28,7 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
+    Tuple,
     Union,
     cast,
     overload,
@@ -156,7 +157,7 @@ class _ConnectionManager:
             self.conn = None
 
 
-_Sort = Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]]
+_Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
 _Hint = Union[str, _Sort]
 
 
