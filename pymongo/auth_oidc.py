@@ -17,17 +17,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
 
 import bson
 from bson.binary import Binary
@@ -41,9 +31,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class _OIDCProperties:
-    request_token_callback: Optional[Callable[..., Dict]]
+    request_token_callback: Optional[Callable[..., dict]]
     provider_name: Optional[str]
-    allowed_hosts: List[str]
+    allowed_hosts: list[str]
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -54,7 +44,7 @@ CALLBACK_VERSION = 1
 
 
 def _get_authenticator(
-    credentials: MongoCredential, address: Tuple[str, int]
+    credentials: MongoCredential, address: tuple[str, int]
 ) -> _OIDCAuthenticator:
     if credentials.cache.data:
         return credentials.cache.data
@@ -88,7 +78,7 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     refresh_token: Optional[str] = field(default=None)
     access_token: Optional[str] = field(default=None)
-    idp_info: Optional[Dict] = field(default=None)
+    idp_info: Optional[dict] = field(default=None)
     token_gen_id: int = field(default=0)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -217,7 +207,7 @@ class _OIDCAuthenticator:
         cmd = self.principal_step_cmd()
         resp = self.run_command(conn, cmd)
         assert resp is not None
-        server_resp: Dict = bson.decode(resp["payload"])
+        server_resp: dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
 
@@ -254,7 +244,7 @@ class _OIDCAuthenticator:
             conn.oidc_token_gen_id = self.token_gen_id
             return None
 
-        server_resp: Dict = bson.decode(resp["payload"])
+        server_resp: dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
 
