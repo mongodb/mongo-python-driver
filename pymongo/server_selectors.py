@@ -15,7 +15,7 @@
 """Criteria to select some ServerDescriptions from a TopologyDescription."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, cast, list
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, cast
 
 from pymongo.server_type import SERVER_TYPE
 
