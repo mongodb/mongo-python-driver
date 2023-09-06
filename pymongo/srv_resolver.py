@@ -49,6 +49,10 @@ _INVALID_HOST_MSG = (
 )
 
 
+def _nodelist_hook(nodes: List[Tuple[str, Any]], ttl: int) -> Tuple[List[Tuple[str, Any]], int]:
+    return nodes, ttl
+
+
 class _SrvResolver:
     def __init__(
         self,
@@ -103,7 +107,7 @@ class _SrvResolver:
 
     def _get_srv_response_and_hosts(
         self, encapsulate_errors: bool
-    ) -> Tuple[resolver.Answer, List[Tuple[str, Any]]]:
+    ) -> Tuple[int, List[Tuple[str, Any]]]:
         results = self._resolve_uri(encapsulate_errors)
 
         # Construct address tuples
@@ -121,14 +125,13 @@ class _SrvResolver:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}")
         if self.__srv_max_hosts:
             nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
-        return results, nodes
+        ttl = results.rrset.ttl if results.rrset else 0
+        return ttl, nodes
 
     def get_hosts(self) -> List[Tuple[str, Any]]:
         _, nodes = self._get_srv_response_and_hosts(True)
         return nodes
 
     def get_hosts_and_min_ttl(self) -> Tuple[List[Tuple[str, Any]], int]:
-        results, nodes = self._get_srv_response_and_hosts(False)
-        rrset = results.rrset
-        ttl = rrset.ttl if rrset else 0
-        return nodes, ttl
+        ttl, nodes = self._get_srv_response_and_hosts(False)
+        return _nodelist_hook(nodes, ttl)

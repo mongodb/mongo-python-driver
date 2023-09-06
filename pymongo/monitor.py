@@ -15,6 +15,7 @@
 """Class to monitor a MongoDB server on a background thread."""
 
 import atexit
+import traceback
 import weakref
 from typing import Any, Mapping, cast
 
@@ -323,13 +324,15 @@ class SrvMonitor(MonitorBase):
             )
             seedlist, ttl = resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
+                print("EMPTY SEEDLIST!")
                 # As per the spec: this should be treated as a failure.
                 raise Exception
-        except Exception:
+        except Exception as e:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
             # - SRV records must be rescanned every heartbeatFrequencyMS
             # - Topology must be left unchanged
+            print("ERROR HERE: ", e, ": ", traceback.format_exc())
             self.request_check()
             return None
         else:
