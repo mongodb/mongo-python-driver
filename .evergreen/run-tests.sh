@@ -259,7 +259,7 @@ fi
 # Show the installed packages
 PIP_QUIET=0 python -m pip list
 
-python -c "import dns.resolver;print(dns.resolver.canonical_name('https://www.google.com'))"
+python -c "import urllib.request;urllib.request.urlopen('https://www.google.com')"
 exit 0
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
