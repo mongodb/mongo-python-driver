@@ -16,7 +16,7 @@ import argparse
 import logging
 import socket
 
-from pymongo.pyopenssl_context import SSLContext
+from pymongo.io.openssl import SSLContext
 from pymongo.ssl_support import get_ssl_context
 
 # Enable logs in this format:

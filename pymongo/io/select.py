@@ -37,4 +37,4 @@ try:
         return readers, writers
 
 except ImportError:
-    import select
+    from select import *
