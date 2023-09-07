@@ -54,10 +54,10 @@ from cryptography.x509.oid import (
     AuthorityInformationAccessOID as _AuthorityInformationAccessOID,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID as _ExtendedKeyUsageOID
-from requests import post as _post
-from requests.exceptions import RequestException as _RequestException
 
 from pymongo import _csot
+from pymongo.io.httpx import RequestError as _RequestException
+from pymongo.io.httpx import post as _post
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric import (
@@ -302,7 +302,7 @@ def _get_ocsp_response(
         try:
             response = _post(
                 uri,
-                data=ocsp_request.public_bytes(_Encoding.DER),
+                content=ocsp_request.public_bytes(_Encoding.DER),
                 headers={"Content-Type": "application/ocsp-request"},
                 timeout=timeout,
             )

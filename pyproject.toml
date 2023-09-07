@@ -65,7 +65,7 @@ gssapi = [
 ocsp = [
     "certifi;os.name=='nt' or sys_platform=='darwin'",
     "pyopenssl>=17.2.0",
-    "requests<3.0.0",
+    "httpx>=0.24.1",
     "cryptography>=2.5",
     "service_identity>=18.1.0",
 ]
@@ -87,7 +87,7 @@ Homepage = "http://github.com/mongodb/mongo-python-driver"
 version = {attr = "pymongo._version.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["bson","gridfs", "pymongo"]
+include = ["bson","gridfs", "pymongo", "pymongo.io"]
 
 [tool.setuptools.package-data]
 bson=["py.typed", "*.pyi"]
