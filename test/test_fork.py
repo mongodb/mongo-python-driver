@@ -22,7 +22,7 @@ from multiprocessing import Pipe
 sys.path[0:0] = [""]
 
 from test import IntegrationTest
-from test.utils import is_greenthread_patched
+from test.utils import is_greenthread_patched, is_using_greenletio
 
 from bson.objectid import ObjectId
 
@@ -34,8 +34,13 @@ from bson.objectid import ObjectId
     is_greenthread_patched(),
     "gevent and eventlet do not support POSIX-style forking.",
 )
+@unittest.skipIf(
+    is_using_greenletio(),
+    "greenletio does not support POSIX-style forking.",
+)
 class TestFork(IntegrationTest):
     def test_lock_client(self):
+        is_using_greenletio()
         # Forks the client with some items locked.
         # Parent => All locks should be as before the fork.
         # Child => All locks should be reset.
@@ -61,32 +66,31 @@ class TestFork(IntegrationTest):
             with self.fork(target):
                 pass
 
-    # def test_topology_reset(self):
-    #     # Tests that topologies are different from each other.
-    #     # Cannot use ID because virtual memory addresses may be the same.
-    #     # Cannot reinstantiate ObjectId in the topology settings.
-    #     # Relies on difference in PID when opened again.
-    #     parent_conn, child_conn = Pipe()
-    #     init_id = self.client._topology._pid
-    #     parent_cursor_exc = self.client._kill_cursors_executor
-    #
-    #     def target():
-    #         self.client.admin.command("ping")
-    #         child_conn.send(self.client._topology._pid)
-    #         child_conn.send(
-    #             (
-    #                 parent_cursor_exc != self.client._kill_cursors_executor,
-    #                 "client._kill_cursors_executor was not reinitialized",
-    #             )
-    #         )
-    #
-    #     with self.fork(target):
-    #         self.assertEqual(self.client._topology._pid, init_id)
-    #         child_id = parent_conn.recv()
-    #         self.assertNotEqual(child_id, init_id)
-    #         passed, msg = parent_conn.recv()
-    #         self.assertTrue(passed, msg)
-    #
+    def test_topology_reset(self):
+        # Tests that topologies are different from each other.
+        # Cannot use ID because virtual memory addresses may be the same.
+        # Cannot reinstantiate ObjectId in the topology settings.
+        # Relies on difference in PID when opened again.
+        parent_conn, child_conn = Pipe()
+        init_id = self.client._topology._pid
+        parent_cursor_exc = self.client._kill_cursors_executor
+
+        def target():
+            self.client.admin.command("ping")
+            child_conn.send(self.client._topology._pid)
+            child_conn.send(
+                (
+                    parent_cursor_exc != self.client._kill_cursors_executor,
+                    "client._kill_cursors_executor was not reinitialized",
+                )
+            )
+
+        with self.fork(target):
+            self.assertEqual(self.client._topology._pid, init_id)
+            child_id = parent_conn.recv()
+            self.assertNotEqual(child_id, init_id)
+            passed, msg = parent_conn.recv()
+            self.assertTrue(passed, msg)
 
 
 if __name__ == "__main__":

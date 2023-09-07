@@ -952,6 +952,15 @@ def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
 
 
+def is_using_greenletio():
+    try:
+        import greenletio
+
+        return True
+    except ImportError:
+        return False
+
+
 def disable_replication(client):
     """Disable replication on all secondaries."""
     for host, port in client.secondaries:
