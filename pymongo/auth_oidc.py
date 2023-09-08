@@ -113,9 +113,6 @@ class _OIDCAuthenticator:
                         "version": CALLBACK_VERSION,
                         "refresh_token": self.refresh_token,
                     }
-
-                    # TODO before merging
-                    # Run the callback in a background thread that can be canceled.
                     resp = cb(self.idp_info, context)
 
                     self.validate_request_token_response(resp)
