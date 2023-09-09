@@ -39,7 +39,7 @@ class AutoEncryptionOpts:
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[MongoClient] = None,
+        key_vault_client: Optional[MongoClient[Mapping[str, Any]]] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",
@@ -50,7 +50,7 @@ class AutoEncryptionOpts:
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
         bypass_query_analysis: bool = False,
-        encrypted_fields_map: Optional[Mapping] = None,
+        encrypted_fields_map: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 

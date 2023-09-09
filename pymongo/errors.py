@@ -100,11 +100,11 @@ class AutoReconnect(ConnectionFailure):
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
 
-    errors: Union[Mapping[str, Any], Sequence]
-    details: Union[Mapping[str, Any], Sequence]
+    errors: Union[Mapping[str, Any], Sequence[Any]]
+    details: Union[Mapping[str, Any], Sequence[Any]]
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence]] = None
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None
     ) -> None:
         error_labels = None
         if errors is not None:
@@ -128,7 +128,9 @@ class NetworkTimeout(AutoReconnect):
         return True
 
 
-def _format_detailed_error(message: str, details: Optional[Union[Mapping[str, Any], list]]) -> str:
+def _format_detailed_error(
+    message: str, details: Optional[Union[Mapping[str, Any], list[Any]]]
+) -> str:
     if details is not None:
         message = f"{message}, full error: {details}"
     return message
@@ -151,7 +153,7 @@ class NotPrimaryError(AutoReconnect):
     """
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], list]] = None
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], list[Any]]] = None
     ) -> None:
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 

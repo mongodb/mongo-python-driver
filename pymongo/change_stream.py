@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union, cast
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -422,17 +422,17 @@ class ChangeStream(Generic[_DocumentType]):
         self._start_at_operation_time = None
 
         if self._decode_custom:
-            return _bson_to_dict(change.raw, self._orig_codec_options)
-        return change
+            return cast(_DocumentType, _bson_to_dict(change.raw, self._orig_codec_options))
+        return cast(_DocumentType, change)
 
-    def __enter__(self) -> "ChangeStream":
+    def __enter__(self) -> ChangeStream[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
-class CollectionChangeStream(ChangeStream, Generic[_DocumentType]):
+class CollectionChangeStream(ChangeStream[_DocumentType]):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
@@ -448,11 +448,11 @@ class CollectionChangeStream(ChangeStream, Generic[_DocumentType]):
         return _CollectionAggregationCommand
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient[_DocumentType]:
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
+class DatabaseChangeStream(ChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use
@@ -468,11 +468,11 @@ class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
         return _DatabaseAggregationCommand
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient[_DocumentType]:
         return self._target.client
 
 
-class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
+class ClusterChangeStream(DatabaseChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use
