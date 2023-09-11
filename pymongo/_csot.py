@@ -69,8 +69,6 @@ class _TimeoutContext(AbstractContextManager):
           client.test.test.insert_one({})
     """
 
-    __slots__ = ("_timeout", "_tokens")
-
     def __init__(self, timeout: Optional[float]):
         self._timeout = timeout
         self._tokens: Optional[tuple[Token[Optional[float]], Token[float], Token[float]]] = None
