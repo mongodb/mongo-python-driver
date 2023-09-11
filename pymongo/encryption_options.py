@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 try:
     import pymongocrypt  # noqa: F401
@@ -45,7 +45,7 @@ class AutoEncryptionOpts:
         mongocryptd_uri: str = "mongodb://localhost:27020",
         mongocryptd_bypass_spawn: bool = False,
         mongocryptd_spawn_path: str = "mongocryptd",
-        mongocryptd_spawn_args: Optional[List[str]] = None,
+        mongocryptd_spawn_args: Optional[list[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
@@ -245,7 +245,7 @@ class RangeOpts:
         self.precision = precision
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         doc = {}
         for k, v in [
             ("sparsity", int64.Int64(self.sparsity)),

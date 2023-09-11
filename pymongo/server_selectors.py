@@ -15,7 +15,7 @@
 """Criteria to select some ServerDescriptions from a TopologyDescription."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, cast
 
 from pymongo.server_type import SERVER_TYPE
 
@@ -51,7 +51,7 @@ class Selection:
     def __init__(
         self,
         topology_description: TopologyDescription,
-        server_descriptions: List[ServerDescription],
+        server_descriptions: list[ServerDescription],
         common_wire_version: Optional[int],
         primary: Optional[ServerDescription],
     ):
@@ -60,7 +60,7 @@ class Selection:
         self.primary = primary
         self.common_wire_version = common_wire_version
 
-    def with_server_descriptions(self, server_descriptions: List[ServerDescription]) -> Selection:
+    def with_server_descriptions(self, server_descriptions: list[ServerDescription]) -> Selection:
         return Selection(
             self.topology_description, server_descriptions, self.common_wire_version, self.primary
         )

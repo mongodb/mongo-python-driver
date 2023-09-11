@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Select / poll helper"""
+from __future__ import annotations
 
 import errno
 import select

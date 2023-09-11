@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Type codes for MongoDB servers."""
+from __future__ import annotations
 
 from typing import NamedTuple
 

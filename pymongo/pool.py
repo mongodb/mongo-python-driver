@@ -28,16 +28,12 @@ import weakref
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Sequence,
-    Set,
-    Tuple,
     Union,
 )
 
@@ -305,8 +301,8 @@ def _getenv_int(key: str) -> Optional[int]:
         return None
 
 
-def _metadata_env() -> Dict[str, Any]:
-    env: Dict[str, Any] = {}
+def _metadata_env() -> dict[str, Any]:
+    env: dict[str, Any] = {}
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
@@ -520,7 +516,7 @@ class PoolOptions:
         return self.__credentials
 
     @property
-    def non_default_options(self) -> Dict[str, Any]:
+    def non_default_options(self) -> dict[str, Any]:
         """The non-default options this pool was created with.
 
         Added for CMAP's :class:`PoolCreatedEvent`.
@@ -668,7 +664,7 @@ class Connection:
     """
 
     def __init__(
-        self, conn: Union[socket.socket, _sslConn], pool: Pool, address: Tuple[str, int], id: int
+        self, conn: Union[socket.socket, _sslConn], pool: Pool, address: tuple[str, int], id: int
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
@@ -693,7 +689,7 @@ class Connection:
         self.socket_checker: SocketChecker = SocketChecker()
         self.oidc_token_gen_id: Optional[int] = None
         # Support for mechanism negotiation on the initial handshake.
-        self.negotiated_mechs: Optional[List[str]] = None
+        self.negotiated_mechs: Optional[list[str]] = None
         self.auth_ctx: Optional[_AuthContext] = None
 
         # The pool's generation changes with each reset() so we can close
@@ -774,7 +770,7 @@ class Connection:
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
 
-    def hello(self) -> Hello[Dict[str, Any]]:
+    def hello(self) -> Hello[dict[str, Any]]:
         return self._hello(None, None, None)
 
     def _hello(
@@ -782,7 +778,7 @@ class Connection:
         cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
-    ) -> Hello[Dict[str, Any]]:
+    ) -> Hello[dict[str, Any]]:
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
@@ -860,7 +856,7 @@ class Connection:
             self.generation = self.pool_gen.get(self.service_id)
         return hello
 
-    def _next_reply(self) -> Dict[str, Any]:
+    def _next_reply(self) -> dict[str, Any]:
         reply = self.receive_message(None)
         self.more_to_come = reply.more_to_come
         unpacked_docs = reply.unpack_response()
@@ -887,7 +883,7 @@ class Connection:
         publish_events: bool = True,
         user_fields: Optional[Mapping[str, Any]] = None,
         exhaust_allowed: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute a command or raise an error.
 
         :Parameters:
@@ -1007,7 +1003,7 @@ class Connection:
 
     def write_command(
         self, request_id: int, msg: bytes, codec_options: CodecOptions
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -1280,7 +1276,7 @@ class _PoolClosedError(PyMongoError):
 class _PoolGeneration:
     def __init__(self) -> None:
         # Maps service_id to generation.
-        self._generations: Dict[ObjectId, int] = collections.defaultdict(int)
+        self._generations: dict[ObjectId, int] = collections.defaultdict(int)
         # Overall pool generation.
         self._generation = 0
 
@@ -1381,7 +1377,7 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: Set[Connection] = set()
+        self.__pinned_sockets: set[Connection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
