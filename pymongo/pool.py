@@ -843,7 +843,7 @@ class Connection:
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
         if auth_ctx:
-            auth_ctx.parse_response(hello)
+            auth_ctx.parse_response(hello)  # type:ignore[arg-type]
             if auth_ctx.speculate_succeeded():
                 self.auth_ctx = auth_ctx
         if self.opts.load_balanced:

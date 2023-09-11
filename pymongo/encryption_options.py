@@ -30,6 +30,7 @@ from pymongo.uri_parser import _parse_kms_tls_options
 
 if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
+    from pymongo.typings import _DocumentTypeArg
 
 
 class AutoEncryptionOpts:
@@ -39,7 +40,7 @@ class AutoEncryptionOpts:
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[MongoClient[Mapping[str, Any]]] = None,
+        key_vault_client: Optional[MongoClient[_DocumentTypeArg]] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",

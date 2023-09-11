@@ -108,9 +108,9 @@ def _wrap_encryption_errors() -> Iterator[None]:
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
-        client: Optional[MongoClient[Mapping[str, Any]]],
-        key_vault_coll: Collection[Mapping[str, Any]],
-        mongocryptd_client: Optional[MongoClient[Mapping[str, Any]]],
+        client: Optional[MongoClient[_DocumentTypeArg]],
+        key_vault_coll: Collection[_DocumentTypeArg],
+        mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
@@ -120,7 +120,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection[Mapping[str, Any]]] = key_vault_coll.with_options(
+        self.key_vault_coll: Optional[Collection[_DocumentTypeArg]] = key_vault_coll.with_options(
             codec_options=_KEY_VAULT_OPTS,
             read_concern=ReadConcern(level="majority"),
             write_concern=WriteConcern(w="majority"),
@@ -327,7 +327,7 @@ class _Encrypter:
     MongoDB commands.
     """
 
-    def __init__(self, client: MongoClient[Mapping[str, Any]], opts: AutoEncryptionOpts):
+    def __init__(self, client: MongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
         """Create a _Encrypter for a client.
 
         :Parameters:
@@ -347,8 +347,8 @@ class _Encrypter:
         self._internal_client = None
 
         def _get_internal_client(
-            encrypter: _Encrypter, mongo_client: MongoClient[Mapping[str, Any]]
-        ) -> MongoClient[Mapping[str, Any]]:
+            encrypter: _Encrypter, mongo_client: MongoClient[_DocumentTypeArg]
+        ) -> MongoClient[_DocumentTypeArg]:
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -376,7 +376,9 @@ class _Encrypter:
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 
-        io_callbacks = _EncryptionIO(metadata_client, key_vault_coll, mongocryptd_client, opts)
+        io_callbacks = _EncryptionIO(
+            metadata_client, key_vault_coll, mongocryptd_client, opts
+        )  # type:ignore[misc]
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
             MongoCryptOptions(
@@ -392,7 +394,7 @@ class _Encrypter:
         self._closed = False
 
     def encrypt(
-        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[Mapping[str, Any]]
+        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
     ) -> MutableMapping[str, Any]:
         """Encrypt a MongoDB command.
 
@@ -489,8 +491,8 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: MongoClient[Mapping[str, Any]],
-        codec_options: CodecOptions[Mapping[str, Any]],
+        key_vault_client: MongoClient[_DocumentTypeArg],
+        codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Explicit client-side field level encryption.
