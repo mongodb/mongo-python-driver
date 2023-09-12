@@ -73,7 +73,6 @@ if TYPE_CHECKING:
 _CURSOR_CLOSED_ERRORS = frozenset(
     [
         43,  # CursorNotFound
-        50,  # MaxTimeMSExpired
         175,  # QueryPlanKilled
         237,  # CursorKilled
         # On a tailable cursor, the following errors mean the capped collection
