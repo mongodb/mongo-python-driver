@@ -20,7 +20,7 @@
               },
               {
                 "database": {
-                  "id": "dbSdamModeAuto",
+                  "id": "dbServerMonitoringModeAuto",
                   "client": "client0",
                   "databaseName": "sdam-tests"
                 }
@@ -30,7 +30,7 @@
         },
         {
           "name": "runCommand",
-          "object": "dbSdamModeAuto",
+          "object": "dbServerMonitoringModeAuto",
           "arguments": {
             "commandName": "ping",
             "command": {
@@ -61,7 +61,7 @@
               },
               {
                 "database": {
-                  "id": "dbSdamModeStream",
+                  "id": "dbServerMonitoringModeStream",
                   "client": "client1",
                   "databaseName": "sdam-tests"
                 }
@@ -71,7 +71,7 @@
         },
         {
           "name": "runCommand",
-          "object": "dbSdamModeStream",
+          "object": "dbServerMonitoringModeStream",
           "arguments": {
             "commandName": "ping",
             "command": {
@@ -102,7 +102,7 @@
               },
               {
                 "database": {
-                  "id": "dbSdamModePoll",
+                  "id": "dbServerMonitoringModePoll",
                   "client": "client2",
                   "databaseName": "sdam-tests"
                 }
@@ -112,7 +112,7 @@
         },
         {
           "name": "runCommand",
-          "object": "dbSdamModePoll",
+          "object": "dbServerMonitoringModePoll",
           "arguments": {
             "commandName": "ping",
             "command": {
