@@ -56,15 +56,6 @@ from pymongo.uri_parser import parse_uri
 if HAVE_SSL:
     import ssl
 
-try:
-    # Enable the fault handler to dump the traceback of each running thread
-    # after a segfault.
-    import faulthandler
-
-    faulthandler.enable()
-except ImportError:
-    pass
-
 # Enable debug output for uncollectable objects. PyPy does not have set_debug.
 if hasattr(gc, "set_debug"):
     gc.set_debug(
