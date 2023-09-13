@@ -70,6 +70,11 @@ if TYPE_CHECKING:
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
+_CURSOR_TIMEOUT_ERRORS = frozenset(
+    [
+        50,  # MaxTimeMSExpired
+    ]
+)
 _CURSOR_CLOSED_ERRORS = frozenset(
     [
         43,  # CursorNotFound
@@ -1062,7 +1067,10 @@ class Cursor(Generic[_DocumentType]):
             if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
-            self.close()
+            elif exc.code in _CURSOR_TIMEOUT_ERRORS:
+                self.__die(False)
+            if exc.code not in _CURSOR_TIMEOUT_ERRORS:
+                self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
