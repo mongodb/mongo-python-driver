@@ -315,6 +315,8 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
         if event_type == "all":
             return list(self.events)
         if event_type == "command":
+            for e in self.events:
+                print(f"{e} is _CommandEvent: {isinstance(e, _CommandEvent)}")
             return [e for e in self.events if isinstance(e, _CommandEvent)]
         if event_type == "cmap":
             return [e for e in self.events if isinstance(e, (_ConnectionEvent, _PoolEvent))]
@@ -708,6 +710,7 @@ class MatchEvaluatorUtil:
     def _match_document(self, expectation, actual, is_root):
         if self._evaluate_if_special_operation(expectation, actual):
             return
+        print(f"EXPECTED: {expectation}, ACTUAL: {actual}")
 
         self.test.assertIsInstance(actual, abc.Mapping)
         for key, value in expectation.items():
@@ -780,6 +783,9 @@ class MatchEvaluatorUtil:
             command = spec.get("command")
             database_name = spec.get("databaseName")
             if command:
+                print(
+                    f"ACTUAL EVENT: {actual}, COMMAND: {actual.command}, DATABASE: {actual.database_name}"
+                )
                 self.match_result(command, actual.command)
             if database_name:
                 self.test.assertEqual(database_name, actual.database_name)
@@ -1594,6 +1600,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             has_server_connection_id = event_spec.get("hasServerConnectionId", False)
             listener = self.entity_map.get_listener_for_client(client_name)
             actual_events = listener.get_events(event_type)
+            print(f"ACTUAL EVENTS: {actual_events}")
             if ignore_extra_events:
                 actual_events = actual_events[: len(events)]
 
