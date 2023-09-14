@@ -53,6 +53,8 @@ from pymongo.common import (
     MIN_POOL_SIZE,
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
+    _get_timeout_details,
+    format_timeout_details,
 )
 from pymongo.errors import (
     AutoReconnect,
@@ -379,7 +381,10 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
 
 
 def _raise_connection_failure(
-    address: Any, error: Exception, msg_prefix: Optional[str] = None
+    address: Any,
+    error: Exception,
+    msg_prefix: Optional[str] = None,
+    details: Optional[dict[str, Any]] = None,
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
@@ -391,13 +396,19 @@ def _raise_connection_failure(
     if msg_prefix:
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg) from error
+        if details:
+            raise NetworkTimeout(msg + format_timeout_details(details)) from error
+        else:
+            raise NetworkTimeout(msg) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
         # 'timed out' appears in all the timeout related SSLErrors raised.
-        raise NetworkTimeout(msg) from error
+        if details:
+            raise NetworkTimeout(msg + format_timeout_details(details)) from error
+        else:
+            raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error
 
@@ -738,8 +749,12 @@ class Connection:
         if max_time_ms < 0:
             # CSOT: raise an error without running the command since we know it will time out.
             errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
+            timeout_details = _get_timeout_details(client)
             raise ExecutionTimeout(
-                errmsg, 50, {"ok": 0, "errmsg": errmsg, "code": 50}, self.max_wire_version
+                errmsg + format_timeout_details(timeout_details),
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
@@ -1549,7 +1564,10 @@ class Pool:
                 )
 
             if isinstance(error, (IOError, OSError, SSLError)):
-                _raise_connection_failure(self.address, error)
+                timeout_details = None
+                if handler:
+                    timeout_details = _get_timeout_details(handler.client)
+                _raise_connection_failure(self.address, error, details=timeout_details)
 
             raise
 

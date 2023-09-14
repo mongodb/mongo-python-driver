@@ -54,8 +54,8 @@ from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
+    from pymongo import MongoClient
     from pymongo.client_session import ClientSession
-
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -793,7 +793,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "waitqueuetimeoutms",
 ]
 
-
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
 
@@ -869,6 +868,37 @@ def _ecoc_coll_name(encrypted_fields: Mapping[str, Any], name: str) -> Any:
 
 # List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
+
+
+def _get_timeout_details(client: MongoClient) -> dict[str, Any]:
+    details = {}
+    timeout = client.options.timeout
+    socket_timeout = client.options.pool_options.socket_timeout
+    connect_timeout = client.options.pool_options.connect_timeout
+    topology = client.topology_description.server_descriptions()
+    if timeout:
+        details["timeout"] = timeout * 1000
+    if socket_timeout:
+        details["socketTimeout"] = socket_timeout * 1000
+    if connect_timeout:
+        details["connectTimeout"] = connect_timeout * 1000
+    if topology:
+        details["topology"] = topology
+    return details
+
+
+def format_timeout_details(details: dict[str, Any]) -> str:
+    result = " (configured timeouts:"
+    if "socketTimeout" in details:
+        result += f" socketTimeout: {details['socketTimeout']}ms,"
+    if "timeout" in details:
+        result += f" timeout: {details['timeout']}ms,"
+    if "connectTimeout" in details:
+        result += f" connectTimeout: {details['connectTimeout']}ms,"
+    result = result[:-1]
+    result += ")"
+    result += f"\nServer topology: {details['topology']}"
+    return result
 
 
 class BaseObject:
