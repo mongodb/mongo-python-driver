@@ -503,6 +503,7 @@ functions:
             AUTH=${AUTH} \
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+            PYMONGO_MUST_CONNECT=${PYMONGO_MUST_CONNECT} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
