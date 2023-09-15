@@ -32,7 +32,7 @@ from test.utils import (
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
 
-class TestDataLakeMustConnect(IntegrationTest):
+class TestDataLakeMustConnect(unittest.TestCase):
     def test_connected_to_data_lake(self):
         data_lake = os.environ.get("TEST_DATA_LAKE")
         if not data_lake:
