@@ -445,7 +445,7 @@ functions:
           set +x
           ${PREPARE_SHELL}
           if [ -n "${MONGODB_STARTED}" ]; then
-            export PYMONGO_MUST_CONNECT=1
+            export PYMONGO_MUST_CONNECT=true
           fi
           if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
             export PYMONGO_DISABLE_TEST_COMMANDS=1
@@ -1687,6 +1687,7 @@ tasks:
         - func: "run tests"
           vars:
             TEST_DATA_LAKE: "true"
+            PYMONGO_MUST_CONNECT: "true"
 
     - name: "test-aws-lambda-deployed"
       commands:
