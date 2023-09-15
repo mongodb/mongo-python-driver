@@ -764,7 +764,7 @@ class ProseSpecTestsMixin:
 
     # Prose test no. 19
     @no_type_check
-    @client_context.require_version_min(6, 0, 9)
+    @client_context.require_version_min(7, 0, -1)
     def test_split_large_change(self):
         self.db.drop_collection("test_split_large_change")
         coll = self.db.create_collection(
