@@ -570,7 +570,7 @@ class _CommandEvent:
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
-        database_name: Optional[str] = None,
+        database_name: str = "",
     ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
@@ -608,8 +608,8 @@ class _CommandEvent:
         return self.__op_id
 
     @property
-    def database_name(self) -> Optional[str]:
-        """The database_name this command was sent to, or ``None``.
+    def database_name(self) -> str:
+        """The database_name this command was sent to, or ``""``.
 
         .. versionadded:: 4.6
         """
@@ -663,13 +663,6 @@ class CommandStartedEvent(_CommandEvent):
         """The command document."""
         return self.__cmd
 
-    @property
-    def database_name(self) -> str:
-        """The name of the database this command was run against."""
-        db = super().database_name
-        assert db is not None
-        return db
-
     def __repr__(self) -> str:
         return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
             self.__class__.__name__,
@@ -693,7 +686,7 @@ class CommandSucceededEvent(_CommandEvent):
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
-      - `database_name`: The database this command was sent to, or ``None``.
+      - `database_name`: The database this command was sent to, or ``""``.
     """
 
     __slots__ = ("__duration_micros", "__reply")
@@ -707,7 +700,7 @@ class CommandSucceededEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
-        database_name: Optional[str] = None,
+        database_name: str = "",
     ) -> None:
         super().__init__(
             command_name,
@@ -760,7 +753,7 @@ class CommandFailedEvent(_CommandEvent):
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
-      - `database_name`: The database this command was sent to, or ``None``.
+      - `database_name`: The database this command was sent to, or ``""``.
     """
 
     __slots__ = ("__duration_micros", "__failure")
@@ -774,7 +767,7 @@ class CommandFailedEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
-        database_name: Optional[str] = None,
+        database_name: str = "",
     ) -> None:
         super().__init__(
             command_name,
@@ -1523,7 +1516,7 @@ class _EventListeners:
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         speculative_hello: bool = False,
-        database_name: Optional[str] = None,
+        database_name: str = "",
     ) -> None:
         """Publish a CommandSucceededEvent to all command listeners.
 
@@ -1537,7 +1530,7 @@ class _EventListeners:
           - `op_id`: The (optional) operation id for this operation.
           - `service_id`: The service_id this command was sent to, or ``None``.
           - `speculative_hello`: Was the command sent with speculative auth?
-          - `database_name`: The database this command was sent to, or ``None``.
+          - `database_name`: The database this command was sent to, or ``""``.
         """
         if op_id is None:
             op_id = request_id
@@ -1570,7 +1563,7 @@ class _EventListeners:
         connection_id: _Address,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
-        database_name: Optional[str] = None,
+        database_name: str = "",
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 
@@ -1584,7 +1577,7 @@ class _EventListeners:
             command was sent to.
           - `op_id`: The (optional) operation id for this operation.
           - `service_id`: The service_id this command was sent to, or ``None``.
-          - `database_name`: The database this command was sent to, or ``None``.
+          - `database_name`: The database this command was sent to, or ``""``.
         """
         if op_id is None:
             op_id = request_id
