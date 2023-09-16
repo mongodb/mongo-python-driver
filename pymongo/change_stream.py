@@ -16,17 +16,7 @@
 from __future__ import annotations
 
 import copy
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generic,
-    List,
-    Mapping,
-    Optional,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -173,9 +163,9 @@ class ChangeStream(Generic[_DocumentType]):
         """
         raise NotImplementedError
 
-    def _change_stream_options(self) -> Dict[str, Any]:
+    def _change_stream_options(self) -> dict[str, Any]:
         """Return the options dict for the $changeStream pipeline stage."""
-        options: Dict[str, Any] = {}
+        options: dict[str, Any] = {}
         if self._full_document is not None:
             options["fullDocument"] = self._full_document
 
@@ -197,7 +187,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         return options
 
-    def _command_options(self) -> Dict[str, Any]:
+    def _command_options(self) -> dict[str, Any]:
         """Return the options dict for the aggregation command."""
         options = {}
         if self._max_await_time_ms is not None:
@@ -206,7 +196,7 @@ class ChangeStream(Generic[_DocumentType]):
             options["batchSize"] = self._batch_size
         return options
 
-    def _aggregation_pipeline(self) -> List[Dict[str, Any]]:
+    def _aggregation_pipeline(self) -> list[dict[str, Any]]:
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
         full_pipeline: list = [{"$changeStream": options}]
@@ -491,7 +481,7 @@ class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     .. versionadded:: 3.7
     """
 
-    def _change_stream_options(self) -> Dict[str, Any]:
+    def _change_stream_options(self) -> dict[str, Any]:
         options = super()._change_stream_options()
         options["allChangesForCluster"] = True
         return options

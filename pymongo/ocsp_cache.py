@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from pymongo.lock import _create_lock
 
@@ -36,7 +36,7 @@ class _OCSPCache:
     )
 
     def __init__(self) -> None:
-        self._data: Dict[Any, OCSPResponse] = {}
+        self._data: dict[Any, OCSPResponse] = {}
         # Hold this lock when accessing _data.
         self._lock = _create_lock()
 

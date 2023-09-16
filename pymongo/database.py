@@ -19,9 +19,7 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -695,12 +693,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: _ServerMode = ReadPreference.PRIMARY,
-        codec_options: CodecOptions[Dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
+        codec_options: CodecOptions[dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         ...
 
     @overload
@@ -729,13 +727,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: Union[
-            CodecOptions[Dict[str, Any]], CodecOptions[_CodecDocumentType]
+            CodecOptions[dict[str, Any]], CodecOptions[_CodecDocumentType]
         ] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> Union[Dict[str, Any], _CodecDocumentType]:
+    ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Internal command helper."""
         if isinstance(command, str):
             command = SON([(command, value)])
@@ -767,7 +765,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         ...
 
     @overload
@@ -797,7 +795,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Union[Dict[str, Any], _CodecDocumentType]:
+    ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -1008,7 +1006,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         command: Union[str, MutableMapping[str, Any]],
         session: Optional[ClientSession] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
@@ -1017,7 +1015,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             conn: Connection,
             read_preference: _ServerMode,
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return self._command(
                 conn,
                 command,
@@ -1106,7 +1104,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get a list of all the collection names in this database.
 
         For example, to list all non-system collections::
@@ -1150,7 +1148,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _drop_helper(
         self, name: str, session: Optional[ClientSession] = None, comment: Optional[Any] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         command = SON([("drop", name)])
         if comment is not None:
             command["comment"] = comment
@@ -1172,7 +1170,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Drop a collection.
 
         :Parameters:
@@ -1252,7 +1250,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         background: Optional[bool] = None,
         comment: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 """Helpers for the 'hello' and legacy hello commands."""
+from __future__ import annotations
 
 import copy
 import datetime
 import itertools
-from typing import Any, Generic, List, Mapping, Optional, Set, Tuple
+from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -95,7 +96,7 @@ class Hello(Generic[_DocumentType]):
         return self._server_type
 
     @property
-    def all_hosts(self) -> Set[Tuple[str, int]]:
+    def all_hosts(self) -> set[tuple[str, int]]:
         """List of hosts, passives, and arbiters known to this server."""
         return set(
             map(
@@ -114,7 +115,7 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("tags", {})
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self) -> Optional[tuple[str, int]]:
         """This server's opinion about who the primary is, or None."""
         if self._doc.get("primary"):
             return common.partition_node(self._doc["primary"])
@@ -171,7 +172,7 @@ class Hello(Generic[_DocumentType]):
         return self._is_readable
 
     @property
-    def me(self) -> Optional[Tuple[str, int]]:
+    def me(self) -> Optional[tuple[str, int]]:
         me = self._doc.get("me")
         if me:
             return common.clean_node(me)
@@ -182,11 +183,11 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("lastWrite", {}).get("lastWriteDate")
 
     @property
-    def compressors(self) -> Optional[List[str]]:
+    def compressors(self) -> Optional[list[str]]:
         return self._doc.get("compression")
 
     @property
-    def sasl_supported_mechs(self) -> List[str]:
+    def sasl_supported_mechs(self) -> list[str]:
         """Supported authentication mechanisms for the current user.
 
         For example::

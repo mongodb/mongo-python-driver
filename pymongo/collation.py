@@ -16,7 +16,9 @@
 
 .. _collations: https://www.mongodb.com/docs/manual/reference/collation/
 """
-from typing import Any, Dict, Mapping, Optional, Union
+from __future__ import annotations
+
+from typing import Any, Mapping, Optional, Union
 
 from pymongo import common
 
@@ -166,7 +168,7 @@ class Collation:
         **kwargs: Any,
     ) -> None:
         locale = common.validate_string("locale", locale)
-        self.__document: Dict[str, Any] = {"locale": locale}
+        self.__document: dict[str, Any] = {"locale": locale}
         if caseLevel is not None:
             self.__document["caseLevel"] = common.validate_boolean("caseLevel", caseLevel)
         if caseFirst is not None:
@@ -190,7 +192,7 @@ class Collation:
         self.__document.update(kwargs)
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         """The document representation of this collation.
 
         .. note::
@@ -214,7 +216,7 @@ class Collation:
 
 def validate_collation_or_none(
     value: Optional[Union[Mapping[str, Any], Collation]]
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     if value is None:
         return None
     if isinstance(value, Collation):

@@ -19,7 +19,7 @@ import logging as _logging
 import re as _re
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Iterable, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
 from cryptography.exceptions import InvalidSignature as _InvalidSignature
 from cryptography.hazmat.backends import default_backend as _default_backend
@@ -101,7 +101,7 @@ _CERT_REGEX = _re.compile(
 )
 
 
-def _load_trusted_ca_certs(cafile: str) -> List[Certificate]:
+def _load_trusted_ca_certs(cafile: str) -> list[Certificate]:
     """Parse the tlsCAFile into a list of certificates."""
     with open(cafile, "rb") as f:
         data = f.read()
@@ -115,7 +115,7 @@ def _load_trusted_ca_certs(cafile: str) -> List[Certificate]:
 
 
 def _get_issuer_cert(
-    cert: Certificate, chain: Iterable[Certificate], trusted_ca_certs: Optional[List[Certificate]]
+    cert: Certificate, chain: Iterable[Certificate], trusted_ca_certs: Optional[list[Certificate]]
 ) -> Optional[Certificate]:
     issuer_name = cert.issuer
     for candidate in chain:
@@ -187,7 +187,7 @@ def _public_key_hash(cert: Certificate) -> bytes:
 
 def _get_certs_by_key_hash(
     certificates: Iterable[Certificate], issuer: Certificate, responder_key_hash: Optional[bytes]
-) -> List[Certificate]:
+) -> list[Certificate]:
     return [
         cert
         for cert in certificates
@@ -197,7 +197,7 @@ def _get_certs_by_key_hash(
 
 def _get_certs_by_name(
     certificates: Iterable[Certificate], issuer: Certificate, responder_name: Optional[Name]
-) -> List[Certificate]:
+) -> list[Certificate]:
     return [
         cert
         for cert in certificates

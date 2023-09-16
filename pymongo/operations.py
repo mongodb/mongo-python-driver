@@ -18,9 +18,7 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
-    List,
     Mapping,
     Optional,
     Sequence,
@@ -293,7 +291,7 @@ class _UpdateOp:
         doc: Union[Mapping[str, Any], _Pipeline],
         upsert: bool,
         collation: Optional[_CollationIn],
-        array_filters: Optional[List[Mapping[str, Any]]],
+        array_filters: Optional[list[Mapping[str, Any]]],
         hint: Optional[_IndexKeyHint],
     ):
         if filter is not None:
@@ -355,7 +353,7 @@ class UpdateOne(_UpdateOp):
         update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Represents an update_one operation.
@@ -413,7 +411,7 @@ class UpdateMany(_UpdateOp):
         update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
     ) -> None:
         """Create an UpdateMany instance.
@@ -537,7 +535,7 @@ class IndexModel:
             self.__document["collation"] = collation
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         """An index document suitable for passing to the createIndexes
         command.
         """

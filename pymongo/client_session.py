@@ -144,8 +144,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Dict,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -832,7 +830,7 @@ class ClientSession:
             self._transaction.state = _TxnState.ABORTED
             self._unpin()
 
-    def _finish_transaction_with_retry(self, command_name: str) -> Dict[str, Any]:
+    def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
 
         :Parameters:
@@ -841,12 +839,12 @@ class ClientSession:
 
         def func(
             session: Optional[ClientSession], conn: Connection, retryable: bool
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
         return self._client._retry_internal(func, self, None, retryable=True)
 
-    def _finish_transaction(self, conn: Connection, command_name: str) -> Dict[str, Any]:
+    def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
@@ -1102,7 +1100,7 @@ class _ServerSessionPool(collections.deque):
         self.generation += 1
         self.clear()
 
-    def pop_all(self) -> List[_ServerSession]:
+    def pop_all(self) -> list[_ServerSession]:
         ids = []
         while self:
             ids.append(self.pop().session_id)

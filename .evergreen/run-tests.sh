@@ -112,7 +112,7 @@ fi
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
     # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3952
+    # TODO: Remove after PYTHON-3952 is deployed.
     if [ "$(uname -s)" = "Darwin" ]; then
         python -m pip install certifi
         CERT_PATH=$(python -c "import certifi; print(certifi.where())")
@@ -229,7 +229,7 @@ if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
 
     # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3952
+    # TODO: Remove after PYTHON-3952 is deployed.
     if [ "$(uname -s)" = "Darwin" ]; then
         python -m pip install certifi
         CERT_PATH=$(python -c "import certifi; print(certifi.where())")
@@ -279,7 +279,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    python -m pytest -v $TEST_ARGS
+    python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi

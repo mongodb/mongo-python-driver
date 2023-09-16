@@ -24,15 +24,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Type,
     Union,
     overload,
@@ -140,7 +137,7 @@ _MAX_END_SESSIONS = 10000
 SRV_SERVICE_NAME = "mongodb"
 
 
-def partition_node(node: str) -> Tuple[str, int]:
+def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
     host = node
     port = 27017
@@ -152,7 +149,7 @@ def partition_node(node: str) -> Tuple[str, int]:
     return host, port
 
 
-def clean_node(node: str) -> Tuple[str, int]:
+def clean_node(node: str) -> tuple[str, int]:
     """Split and normalize a node name from a hello response."""
     host, port = partition_node(node)
 
@@ -394,12 +391,12 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         )
 
 
-def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]:
+def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]:
     """Parse readPreferenceTags if passed as a client kwarg."""
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets: List = []
+    tag_sets: list = []
     for tag_set in value:
         if tag_set == "":
             tag_sets.append({})
@@ -426,9 +423,9 @@ _MECHANISM_PROPS = frozenset(
 )
 
 
-def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
+def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
-    props: Dict[str, Any] = {}
+    props: dict[str, Any] = {}
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError("Auth mechanism properties must be given as a string or a dictionary")
@@ -513,14 +510,14 @@ def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     return value
 
 
-def validate_list(option: str, value: Any) -> List:
+def validate_list(option: str, value: Any) -> list:
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list")
     return value
 
 
-def validate_list_or_none(option: Any, value: Any) -> Optional[List]:
+def validate_list_or_none(option: Any, value: Any) -> Optional[list]:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value
@@ -669,7 +666,7 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
 
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
-URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
+URI_OPTIONS_ALIAS_MAP: dict[str, list[str]] = {
     "tls": ["ssl"],
 }
 
@@ -677,7 +674,7 @@ URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
 # are functions that validate user-input values for that option. If an option
 # alias uses a different validator than its public counterpart, it should be
 # included here as a key, value pair.
-URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
+URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "appname": validate_appname_or_none,
     "authmechanism": validate_auth_mechanism,
     "authmechanismproperties": validate_auth_mechanism_properties,
@@ -719,7 +716,7 @@ URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
 
 # Dictionary where keys are the names of URI options specific to pymongo,
 # and values are functions that validate user-input values for those options.
-NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
+NONSPEC_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "connect": validate_boolean_or_string,
     "driver": validate_driver_or_none,
     "server_api": validate_server_api_or_none,
@@ -737,7 +734,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
 # Dictionary where keys are the names of keyword-only options for the
 # MongoClient constructor, and values are functions that validate user-input
 # values for those options.
-KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
+KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "document_class": validate_document_class,
     "type_registry": validate_type_registry,
     "read_preference": validate_read_preference,
@@ -754,14 +751,14 @@ KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
 # internally-used names of that URI option. Options with only one name
 # variant need not be included here. Options whose public and internal
 # names are the same need not be included here.
-INTERNAL_URI_OPTION_NAME_MAP: Dict[str, str] = {
+INTERNAL_URI_OPTION_NAME_MAP: dict[str, str] = {
     "ssl": "tls",
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
 # their deprecation and any additional information that may be needed to
 # construct the warning message.
-URI_OPTIONS_DEPRECATION_MAP: Dict[str, Tuple[str, str]] = {
+URI_OPTIONS_DEPRECATION_MAP: dict[str, tuple[str, str]] = {
     # format: <deprecated option name>: (<mode>, <message>),
     # Supported <mode> values:
     # - 'renamed': <message> should be the new option name. Note that case is
@@ -780,11 +777,11 @@ for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
             URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
 
 # Map containing all URI option and keyword argument validators.
-VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
+VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
-TIMEOUT_OPTIONS: List[str] = [
+TIMEOUT_OPTIONS: list[str] = [
     "connecttimeoutms",
     "heartbeatfrequencyms",
     "maxidletimems",
@@ -798,7 +795,7 @@ TIMEOUT_OPTIONS: List[str] = [
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
 
-def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
+def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
     """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
@@ -806,7 +803,7 @@ def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
     return option, value
 
 
-def validate(option: str, value: Any) -> Tuple[str, Any]:
+def validate(option: str, value: Any) -> tuple[str, Any]:
     """Generic validation function."""
     lower = option.lower()
     validator = VALIDATORS.get(lower, raise_config_error)
@@ -960,8 +957,8 @@ class BaseObject:
 
 class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
     def __init__(self, *args: Any, **kwargs: Any):
-        self.__casedkeys: Dict[str, Any] = {}
-        self.__data: Dict[str, Any] = {}
+        self.__casedkeys: dict[str, Any] = {}
+        self.__data: dict[str, Any] = {}
         self.update(dict(*args, **kwargs))
 
     def __contains__(self, key: str) -> bool:  # type: ignore[override]
@@ -1008,7 +1005,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
         self.__casedkeys.pop(lc_key, None)
         return self.__data.pop(lc_key, *args, **kwargs)
 
-    def popitem(self) -> Tuple[str, Any]:
+    def popitem(self) -> tuple[str, Any]:
         lc_key, cased_key = self.__casedkeys.popitem()
         value = self.__data.pop(lc_key)
         return cased_key, value
