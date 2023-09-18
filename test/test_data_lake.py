@@ -39,8 +39,10 @@ class TestDataLakeMustConnect(unittest.TestCase):
             self.skipTest("TEST_DATA_LAKE is not set")
 
         self.assertTrue(
-            client_context.is_data_lake,
-            "client context.is_data_lake must be True when DATA_LAKE is set",
+            client_context.is_data_lake and client_context.connected,
+            "client context must be connected to data lake when DATA_LAKE is set. Failed attempts:\n{}".format(
+                client_context.connection_attempt_info()
+            ),
         )
 
 
