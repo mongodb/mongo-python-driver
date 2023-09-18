@@ -888,16 +888,16 @@ def _get_timeout_details(client: MongoClient) -> dict[str, Any]:
 
 
 def format_timeout_details(details: dict[str, Any]) -> str:
-    result = " (configured timeouts:"
-    if "socketTimeout" in details:
-        result += f" socketTimeout: {details['socketTimeout']}ms,"
-    if "timeout" in details:
-        result += f" timeout: {details['timeout']}ms,"
-    if "connectTimeout" in details:
-        result += f" connectTimeout: {details['connectTimeout']}ms,"
-    result = result[:-1]
-    result += ")"
-    result += f"\nServer topology: {details['topology']}"
+    result = ""
+    if details:
+        result += " (configured timeouts:"
+        for timeout in ["socketTimeout", "timeout", "connectTimeout"]:
+            if timeout in details:
+                result += f" {timeout}: {details[timeout]}ms,"
+        result = result[:-1]
+        result += ")"
+        if "topology" in details:
+            result += f"\nServer topology: {details['topology']}"
     return result
 
 
