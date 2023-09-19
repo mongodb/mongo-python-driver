@@ -20,14 +20,14 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
-# Install python3.9 with pip.
+# Install python3.10 with pip.
 apt-get update
-apt-get install python3.9 python3-pip build-essential python3.9-dev -y
+apt-get install python3.10 python3-pip build-essential python3.10-dev -y
 
-export PYTHON_BINARY="python3.9"
+export PYTHON_BINARY="python3.10"
 export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
-python3.9 -m pip install -q --user tox
+python3.10 -m pip install -q --user tox
 bash .evergreen/tox.sh -m test-eg
