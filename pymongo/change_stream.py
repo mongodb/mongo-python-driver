@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
 
 from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
