@@ -46,8 +46,14 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    import bson
+    import bson.codec_options
+    from pymongo.client_session import ClientSession
+    from pymongo.mongo_client import MongoClient
     from pymongo.pool import Connection
+    from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
+    from pymongo.write_concern import WriteConcern
 
 
 def _check_name(name: str) -> None:
@@ -58,15 +64,6 @@ def _check_name(name: str) -> None:
     for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
             raise InvalidName("database names cannot contain the character %r" % invalid_char)
-
-
-if TYPE_CHECKING:
-    import bson
-    import bson.codec_options
-    from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import MongoClient
-    from pymongo.read_concern import ReadConcern
-    from pymongo.write_concern import WriteConcern
 
 
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
@@ -162,7 +159,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> "Database[_DocumentType]":
+    ) -> Database[_DocumentTypeArg]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -195,7 +192,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.8
         """
         return Database(
-            self.client,
+            cast("MongoClient[_DocumentTypeArg]", self.client),
             self.__name,
             codec_options or self.codec_options,
             read_preference or self.read_preference,

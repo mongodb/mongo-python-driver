@@ -120,7 +120,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection[_DocumentTypeArg]] = key_vault_coll.with_options(
+        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = key_vault_coll.with_options(
             codec_options=_KEY_VAULT_OPTS,
             read_concern=ReadConcern(level="majority"),
             write_concern=WriteConcern(w="majority"),
@@ -255,7 +255,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         assert self.key_vault_coll is not None
         with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
             for key in cursor:
-                yield cast(RawBSONDocument, key).raw
+                yield key.raw
 
     def insert_data_key(self, data_key: bytes) -> Binary:
         """Insert a data key into the key vault.
@@ -592,6 +592,7 @@ class ClientEncryption(Generic[_DocumentType]):
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
         # Use the same key vault collection as the callback.
+        assert self._io_callbacks.key_vault_coll is not None
         self._key_vault_coll = self._io_callbacks.key_vault_coll
 
     def create_encrypted_collection(
@@ -941,7 +942,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return cast(RawBSONDocument, self._key_vault_coll.find_one({"_id": id}))
+        return self._key_vault_coll.find_one({"_id": id})
 
     def get_keys(self) -> Cursor[RawBSONDocument]:
         """Get all of the data keys.
@@ -954,7 +955,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return cast(Cursor[RawBSONDocument], self._key_vault_coll.find({}))
+        return self._key_vault_coll.find({})
 
     def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
@@ -1005,7 +1006,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return cast(RawBSONDocument, self._key_vault_coll.find_one({"keyAltNames": key_alt_name}))
+        return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
 
     def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Optional[RawBSONDocument]:
         """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
@@ -1043,8 +1044,7 @@ class ClientEncryption(Generic[_DocumentType]):
             }
         ]
         assert self._key_vault_coll is not None
-        val = self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
-        return cast(RawBSONDocument, val)
+        return self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
 
     def rewrap_many_data_key(
         self,

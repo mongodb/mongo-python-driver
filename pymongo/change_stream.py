@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union, cast
 
-from bson import _bson_to_dict
+from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
@@ -122,7 +122,7 @@ class ChangeStream(Generic[_DocumentType]):
         common.validate_non_negative_integer_or_none("batchSize", batch_size)
 
         self._decode_custom = False
-        self._orig_codec_options = target.codec_options
+        self._orig_codec_options: CodecOptions[_DocumentType] = target.codec_options
         if target.codec_options.type_registry._decoder_map:
             self._decode_custom = True
             # Keep the type registry so that we support encoding custom types
@@ -422,8 +422,8 @@ class ChangeStream(Generic[_DocumentType]):
         self._start_at_operation_time = None
 
         if self._decode_custom:
-            return cast(_DocumentType, _bson_to_dict(change.raw, self._orig_codec_options))
-        return cast(_DocumentType, change)
+            return _bson_to_dict(change.raw, self._orig_codec_options)
+        return change
 
     def __enter__(self) -> ChangeStream[_DocumentType]:
         return self
