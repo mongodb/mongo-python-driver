@@ -431,7 +431,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentTypeArg]:
+    ) -> Collection[_DocumentType]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -462,7 +462,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             is used.
         """
         return Collection(
-            cast("Database[_DocumentTypeArg]", self.__database),
+            self.__database,
             self.__name,
             False,
             codec_options or self.codec_options,

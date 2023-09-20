@@ -159,7 +159,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Database[_DocumentTypeArg]:
+    ) -> Database[_DocumentType]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -192,7 +192,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.8
         """
         return Database(
-            cast("MongoClient[_DocumentTypeArg]", self.client),
+            self.client,
             self.__name,
             codec_options or self.codec_options,
             read_preference or self.read_preference,

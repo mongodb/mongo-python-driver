@@ -120,10 +120,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = key_vault_coll.with_options(
-            codec_options=_KEY_VAULT_OPTS,
-            read_concern=ReadConcern(level="majority"),
-            write_concern=WriteConcern(w="majority"),
+        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = cast(
+            Collection[RawBSONDocument],
+            key_vault_coll.with_options(
+                codec_options=_KEY_VAULT_OPTS,
+                read_concern=ReadConcern(level="majority"),
+                write_concern=WriteConcern(w="majority"),
+            ),
         )
         self.mongocryptd_client = mongocryptd_client
         self.opts = opts
