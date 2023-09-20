@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o xtrace   # Trace outputs.
+set +x          # Disable debug trace
 set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-OIDC authentication tests"

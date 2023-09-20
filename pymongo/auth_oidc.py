@@ -86,10 +86,8 @@ class _OIDCAuthenticator:
         properties = self.properties
 
         # TODO: DRIVERS-2672, handle machine callback here as well.
-        cb = properties.request_token_callback
+        cb = properties.request_token_callback if use_callback else None
         cb_type = "human"
-        if not use_callback:
-            cb = None
 
         prev_token = self.access_token
         if prev_token:
@@ -185,7 +183,7 @@ class _OIDCAuthenticator:
     def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         """Handle a reauthenticate from the server."""
         # First see if we have the a newer token on the authenticator.
-        prev_id = getattr(conn, "oidc_token_gen_id", 0)
+        prev_id = conn.oidc_token_gen_id or 0
         # If we've already changed tokens, make one optimistic attempt.
         if (prev_id < self.token_gen_id) and self.access_token:
             try:

@@ -269,9 +269,6 @@ fi
 # Show the installed packages
 PIP_QUIET=0 python -m pip list
 
-python -c "import urllib.request;urllib.request.urlopen('https://www.google.com')"
-exit 0
-
 if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         python setup.py build_ext -i
