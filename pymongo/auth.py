@@ -159,6 +159,7 @@ def _build_credentials_tuple(
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
+            "*.mongodb-qa.net",
             "*.mongodbgov.net",
             "localhost",
             "127.0.0.1",
