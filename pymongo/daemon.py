@@ -24,14 +24,14 @@ import os
 import subprocess
 import sys
 import warnings
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
 
 
-def _popen_wait(popen: subprocess.Popen, timeout: Optional[float]) -> Optional[int]:
+def _popen_wait(popen: subprocess.Popen[Any], timeout: Optional[float]) -> Optional[int]:
     """Implement wait timeout support for Python 3."""
     try:
         return popen.wait(timeout=timeout)
@@ -40,7 +40,7 @@ def _popen_wait(popen: subprocess.Popen, timeout: Optional[float]) -> Optional[i
         return None
 
 
-def _silence_resource_warning(popen: Optional[subprocess.Popen]) -> None:
+def _silence_resource_warning(popen: Optional[subprocess.Popen[Any]]) -> None:
     """Silence Popen's ResourceWarning.
 
     Note this should only be used if the process was created as a daemon.
@@ -89,7 +89,7 @@ else:
     # to be safe to call from any thread. Using Popen instead of fork also
     # avoids triggering the application's os.register_at_fork() callbacks when
     # we spawn the mongocryptd daemon process.
-    def _spawn(args: Sequence[str]) -> Optional[subprocess.Popen]:
+    def _spawn(args: Sequence[str]) -> Optional[subprocess.Popen[Any]]:
         """Spawn the process and silence stdout/stderr."""
         try:
             with open(os.devnull, "r+b") as devnull:

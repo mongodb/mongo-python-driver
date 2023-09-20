@@ -46,8 +46,14 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    import bson
+    import bson.codec_options
+    from pymongo.client_session import ClientSession
+    from pymongo.mongo_client import MongoClient
     from pymongo.pool import Connection
+    from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
+    from pymongo.write_concern import WriteConcern
 
 
 def _check_name(name: str) -> None:
@@ -58,15 +64,6 @@ def _check_name(name: str) -> None:
     for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
             raise InvalidName("database names cannot contain the character %r" % invalid_char)
-
-
-if TYPE_CHECKING:
-    import bson
-    import bson.codec_options
-    from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import MongoClient
-    from pymongo.read_concern import ReadConcern
-    from pymongo.write_concern import WriteConcern
 
 
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
@@ -162,7 +159,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> "Database[_DocumentType]":
+    ) -> Database[_DocumentType]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -302,7 +299,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Optional[Mapping[str, Any]]:
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
-            return deepcopy(encrypted_fields)
+            return cast(Mapping[str, Any], deepcopy(encrypted_fields))
         if (
             self.client.options.auto_encryption_opts
             and self.client.options.auto_encryption_opts._encrypted_fields_map
@@ -310,15 +307,18 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 f"{self.name}.{coll_name}"
             )
         ):
-            return deepcopy(
-                self.client.options.auto_encryption_opts._encrypted_fields_map[
-                    f"{self.name}.{coll_name}"
-                ]
+            return cast(
+                Mapping[str, Any],
+                deepcopy(
+                    self.client.options.auto_encryption_opts._encrypted_fields_map[
+                        f"{self.name}.{coll_name}"
+                    ]
+                ),
             )
         if ask_db and self.client.options.auto_encryption_opts:
             options = self[coll_name].options()
             if options.get("encryptedFields"):
-                return deepcopy(options["encryptedFields"])
+                return cast(Mapping[str, Any], deepcopy(options["encryptedFields"]))
         return None
 
     @_csot.apply
@@ -914,7 +914,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         max_await_time_ms: Optional[int] = None,
         **kwargs: Any,
-    ) -> CommandCursor:
+    ) -> CommandCursor[_DocumentType]:
         """Issue a MongoDB command and parse the response as a cursor.
 
         If the response from the server does not include a cursor field, an error will be thrown.
@@ -1298,7 +1298,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if background is not None:
             cmd["background"] = background
 
-        result = cast(dict, self.command(cmd, session=session))
+        result = self.command(cmd, session=session)
 
         valid = True
         # Pre 1.9 results
