@@ -121,7 +121,7 @@ class GridIn:
 
     def __init__(
         self,
-        root_collection: Collection[Mapping[str, Any]],
+        root_collection: Collection[Any],
         session: Optional[ClientSession] = None,
         **kwargs: Any,
     ) -> None:
@@ -204,9 +204,7 @@ class GridIn:
         object.__setattr__(self, "_closed", False)
         object.__setattr__(self, "_ensured_index", False)
 
-    def __create_index(
-        self, collection: Collection[Mapping[str, Any]], index_key: Any, unique: bool
-    ) -> None:
+    def __create_index(self, collection: Collection[Any], index_key: Any, unique: bool) -> None:
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
@@ -425,7 +423,7 @@ class GridOut(io.IOBase):
 
     def __init__(
         self,
-        root_collection: Collection[Mapping[str, Any]],
+        root_collection: Collection[Any],
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
@@ -758,7 +756,7 @@ class _GridOutChunkIterator:
     def __init__(
         self,
         grid_out: GridOut,
-        chunks: Collection[Mapping[str, Any]],
+        chunks: Collection[Any],
         session: Optional[ClientSession],
         next_chunk: Any,
     ) -> None:
@@ -771,7 +769,7 @@ class _GridOutChunkIterator:
         self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
         self._cursor = None
 
-    _cursor: Optional[Cursor[Mapping[str, Any]]]
+    _cursor: Optional[Cursor[Any]]
 
     def expected_chunk_length(self, chunk_n: int) -> int:
         if chunk_n < self._num_chunks - 1:

@@ -505,11 +505,11 @@ class GridFSBucket:
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks: Collection[Mapping[str, Any]] = self._collection.chunks.with_options(
+        self._chunks: Collection[Any] = self._collection.chunks.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
-        self._files: Collection[Mapping[str, Any]] = self._collection.files.with_options(
+        self._files: Collection[Any] = self._collection.files.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
