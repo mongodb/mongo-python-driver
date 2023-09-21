@@ -1139,7 +1139,7 @@ class Cursor(Generic[_DocumentType]):
         codec_options: CodecOptions[_DocumentTypeArg],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> list[_DocumentTypeArg]:
+    ) -> Sequence[_DocumentTypeArg]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _read_preference(self) -> _ServerMode:
@@ -1364,14 +1364,36 @@ class RawBatchCursor(Cursor[_DocumentType]):
         """
         super().__init__(collection, *args, **kwargs)
 
-    def _unpack_response(  # type:ignore[override]
+    @overload  # type:ignore[override]
+    def _unpack_response(
+        self,
+        response: _OpMsg,
+        cursor_id: Optional[int],
+        codec_options: CodecOptions[_DocumentType],
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> Sequence[_DocumentType]:
+        ...
+
+    @overload
+    def _unpack_response(
+        self,
+        response: _OpReply,
+        cursor_id: Optional[int],
+        codec_options: CodecOptions[Any],
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> Sequence[bytes]:
+        ...
+
+    def _unpack_response(
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
         codec_options: CodecOptions[Any],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> list[Mapping[str, Any]] | list[bytes]:
+    ) -> Sequence[Mapping[str, Any]] | Sequence[bytes]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array

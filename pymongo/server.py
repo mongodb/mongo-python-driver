@@ -16,7 +16,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Optional,
+    Sequence,
+    Union,
+    cast,
+)
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -101,7 +110,7 @@ class Server:
         operation: Union[_Query[_DocumentTypeArg], _GetMore[_DocumentTypeArg]],
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
-        unpack_res: Callable[..., list[_DocumentTypeArg]],
+        unpack_res: Callable[..., Sequence[_DocumentTypeArg]],
     ) -> Response[_DocumentTypeArg]:
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -211,7 +220,7 @@ class Server:
             if use_cmd:
                 decrypted = client._encrypter.decrypt(reply.raw_command_response())
                 docs = cast(
-                    "list[_DocumentTypeArg]",
+                    "Sequence[_DocumentTypeArg]",
                     _decode_all_selective(decrypted, operation.codec_options, user_fields),
                 )
 

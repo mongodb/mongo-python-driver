@@ -96,7 +96,7 @@ class PinnedResponse(Response[_DocumentType]):
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: list[_DocumentType],
+        docs: Sequence[_DocumentType],
         more_to_come: bool,
     ):
         """Represent a response to an exhaust cursor's initial query.

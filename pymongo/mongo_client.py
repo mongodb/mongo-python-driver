@@ -1348,7 +1348,7 @@ class MongoClient(common.BaseObject[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable[..., list[_DocumentType]],
+        unpack_res: Callable[..., Sequence[_DocumentType]],
         address: Optional[_Address] = None,
     ) -> Response[_DocumentType]:
         """Run a _Query/_GetMore operation and return a Response.

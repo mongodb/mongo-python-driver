@@ -220,7 +220,7 @@ class CommandCursor(Generic[_DocumentType]):
         codec_options: CodecOptions[_DocumentType],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> list[_DocumentType]:
+    ) -> Sequence[_DocumentType]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self) -> int:
