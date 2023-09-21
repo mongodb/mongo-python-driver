@@ -274,7 +274,7 @@ class Monitor(MonitorBase):
                 )
             return sd
 
-    def _check_with_socket(self, conn: Connection) -> tuple[Hello, float]:
+    def _check_with_socket(self, conn: Connection) -> tuple[Hello[Any], float]:
         """Return (Hello, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.

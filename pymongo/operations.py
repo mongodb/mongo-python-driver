@@ -24,6 +24,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 from bson.raw_bson import RawBSONDocument
@@ -60,14 +61,14 @@ class InsertOne(Generic[_DocumentType]):
 
     def _add_to_bulk(self, bulkobj: _Bulk) -> None:
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_insert(self._doc)  # type: ignore[arg-type]
+        bulkobj.add_insert(self._doc)
 
     def __repr__(self) -> str:
         return f"InsertOne({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return other._doc == self._doc
+            return cast(bool, other._doc == self._doc)
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:

@@ -120,7 +120,10 @@ class GridIn:
     """Class to write data to GridFS."""
 
     def __init__(
-        self, root_collection: Collection, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        root_collection: Collection[Mapping[str, Any]],
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
     ) -> None:
         """Write a file to GridFS
 
@@ -201,7 +204,9 @@ class GridIn:
         object.__setattr__(self, "_closed", False)
         object.__setattr__(self, "_ensured_index", False)
 
-    def __create_index(self, collection: Collection, index_key: Any, unique: bool) -> None:
+    def __create_index(
+        self, collection: Collection[Mapping[str, Any]], index_key: Any, unique: bool
+    ) -> None:
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
@@ -395,7 +400,7 @@ class GridIn:
     def writeable(self) -> bool:
         return True
 
-    def __enter__(self) -> "GridIn":
+    def __enter__(self) -> GridIn:
         """Support for the context manager protocol."""
         return self
 
@@ -420,7 +425,7 @@ class GridOut(io.IOBase):
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: Collection[Mapping[str, Any]],
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
@@ -753,7 +758,7 @@ class _GridOutChunkIterator:
     def __init__(
         self,
         grid_out: GridOut,
-        chunks: Collection,
+        chunks: Collection[Mapping[str, Any]],
         session: Optional[ClientSession],
         next_chunk: Any,
     ) -> None:
@@ -766,7 +771,7 @@ class _GridOutChunkIterator:
         self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
         self._cursor = None
 
-    _cursor: Optional[Cursor]
+    _cursor: Optional[Cursor[Mapping[str, Any]]]
 
     def expected_chunk_length(self, chunk_n: int) -> int:
         if chunk_n < self._num_chunks - 1:
@@ -844,7 +849,9 @@ class _GridOutChunkIterator:
 
 
 class GridOutIterator:
-    def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
+    def __init__(
+        self, grid_out: GridOut, chunks: Collection[Mapping[str, Any]], session: ClientSession
+    ):
         self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
 
     def __iter__(self) -> "GridOutIterator":
@@ -857,14 +864,14 @@ class GridOutIterator:
     __next__ = next
 
 
-class GridOutCursor(Cursor):
+class GridOutCursor(Cursor[Any]):
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
 
     def __init__(
         self,
-        collection: Collection,
+        collection: Collection[Any],
         filter: Optional[Mapping[str, Any]] = None,
         skip: int = 0,
         limit: int = 0,

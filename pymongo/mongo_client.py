@@ -137,7 +137,7 @@ _WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
 _ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
 
 
-class MongoClient(common.BaseObject, Generic[_DocumentType]):
+class MongoClient(common.BaseObject[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
 
@@ -153,7 +153,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
-    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+    _clients: weakref.WeakValueDictionary[
+        ObjectId, MongoClient[Any]
+    ] = weakref.WeakValueDictionary()
 
     def __init__(
         self,
@@ -820,11 +822,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
-        self.__kill_cursors_queue: list = []
+        self.__kill_cursors_queue: list[Any] = []
 
         self._event_listeners = options.pool_options._event_listeners
         super().__init__(
-            options.codec_options,
+            cast(bson.CodecOptions[_DocumentType], options.codec_options),
             options.read_preference,
             options.write_concern,
             options.read_concern,
@@ -891,7 +893,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Resets topology in a child after successfully forking."""
         self._init_background()
 
-    def _duplicate(self, **kwargs: Any) -> MongoClient:
+    def _duplicate(self, **kwargs: Any) -> MongoClient[_DocumentType]:
         args = self.__init_kwargs.copy()
         args.update(kwargs)
         return MongoClient(**args)
@@ -1093,7 +1095,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             TOPOLOGY_TYPE.Sharded,
         ):
             return None
-        return self._server_property("address")
+        return cast(tuple[str, int], self._server_property("address"))
 
     @property
     def primary(self) -> Optional[tuple[str, int]]:
@@ -1140,7 +1142,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         connection is established or raise ServerSelectionTimeoutError if no
         server is available.
         """
-        return self._server_property("is_writable")
+        return cast(bool, self._server_property("is_writable"))
 
     @property
     def is_mongos(self) -> bool:
@@ -1148,7 +1150,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         connected, this will block until a connection is established or raise
         ServerSelectionTimeoutError if no server is available.
         """
-        return self._server_property("server_type") == SERVER_TYPE.Mongos
+        return cast(bool, self._server_property("server_type") == SERVER_TYPE.Mongos)
 
     @property
     def nodes(self) -> FrozenSet[_Address]:
@@ -1346,9 +1348,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,
+        unpack_res: Callable[..., list[_DocumentType]],
         address: Optional[_Address] = None,
-    ) -> Response:
+    ) -> Response[_DocumentType]:
         """Run a _Query/_GetMore operation and return a Response.
 
         :Parameters:
@@ -1378,7 +1380,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             conn: Connection,
             read_preference: _ServerMode,
-        ) -> Response:
+        ) -> Response[_DocumentType]:
             operation.reset()  # Reset op in case of retry.
             return server.run_operation(
                 conn, operation, read_preference, self._event_listeners, unpack_res
@@ -1878,11 +1880,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return cast(
-            dict,
-            self.admin.command(
-                "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
-            ),
+        return self.admin.command(
+            "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
         )
 
     def list_databases(
@@ -2117,13 +2116,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
-    def _database_default_options(self, name: str) -> Database:
+    def _database_default_options(self, name: str) -> Database[dict[str, Any]]:
         """Get a Database instance with the default settings."""
-        return self.get_database(
-            name,
-            codec_options=DEFAULT_CODEC_OPTIONS,
-            read_preference=ReadPreference.PRIMARY,
-            write_concern=DEFAULT_WRITE_CONCERN,
+        return cast(
+            Database[dict[str, Any]],
+            self.get_database(
+                name,
+                codec_options=DEFAULT_CODEC_OPTIONS,
+                read_preference=ReadPreference.PRIMARY,
+                write_concern=DEFAULT_WRITE_CONCERN,
+            ),
         )
 
     def __enter__(self) -> "MongoClient[_DocumentType]":
@@ -2148,7 +2150,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
         # BulkWriteError is retryable.
         wces = exc.details["writeConcernErrors"]
         wce = wces[-1] if wces else None
-        return wce
+        return cast(Mapping[str, Any], wce)
     if isinstance(exc, (NotPrimaryError, OperationFailure)):
         return cast(Mapping[str, Any], exc.details)
     return None
@@ -2196,7 +2198,7 @@ class _MongoClientErrorHandler:
         "handled",
     )
 
-    def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
+    def __init__(self, client: MongoClient[Any], server: Server, session: Optional[ClientSession]):
         self.client = client
         self.server_address = server.description.address
         self.session = session
@@ -2260,7 +2262,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: MongoClient,
+        mongo_client: MongoClient[Any],
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[_Bulk],
         is_read: bool = False,

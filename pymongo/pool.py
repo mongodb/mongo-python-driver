@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import weakref
+from ssl import SSLCertVerificationError as _CertificateError
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -35,6 +36,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 import bson
@@ -66,7 +68,6 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
-    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
@@ -101,7 +102,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
-    from pymongo.typings import ClusterTime, _Address, _CollationIn
+    from pymongo.typings import ClusterTime, _Address, _CollationIn, _DocumentTypeArg
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -673,7 +674,7 @@ class Connection:
         self.closed = False
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
-        self.is_writable: bool = False
+        self.is_writable: Optional[bool] = False
         self.max_wire_version = MAX_WIRE_VERSION
         self.max_bson_size = MAX_BSON_SIZE
         self.max_message_size = MAX_MESSAGE_SIZE
@@ -695,7 +696,7 @@ class Connection:
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
         self.pool_gen = pool.gen
-        self.generation = self.pool_gen.get_overall()
+        self.generation: int = self.pool_gen.get_overall()
         self.ready = False
         self.cancel_context: Optional[_CancellationContext] = None
         if not pool.handshake:
@@ -721,7 +722,7 @@ class Connection:
         self.conn.settimeout(timeout)
 
     def apply_timeout(
-        self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
+        self, client: MongoClient[Mapping[str, Any]], cmd: Optional[MutableMapping[str, Any]]
     ) -> Optional[float]:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
@@ -815,7 +816,9 @@ class Connection:
 
         if performing_handshake:
             start = time.monotonic()
-        doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        doc: dict[str, Any] = self.command(
+            "admin", cmd, publish_events=False, exhaust_allowed=awaitable
+        )
         if performing_handshake:
             self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
@@ -826,14 +829,14 @@ class Connection:
         self.max_write_batch_size = hello.max_write_batch_size
         self.supports_sessions = hello.logical_session_timeout_minutes is not None
         self.hello_ok = hello.hello_ok
-        self.is_repl = hello.server_type in (
+        self.is_repl: bool = hello.server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.RSSecondary,
             SERVER_TYPE.RSArbiter,
             SERVER_TYPE.RSOther,
             SERVER_TYPE.RSGhost,
         )
-        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
+        self.is_standalone: bool = hello.server_type == SERVER_TYPE.Standalone
         self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(hello.compressors)
@@ -859,7 +862,7 @@ class Connection:
     def _next_reply(self) -> dict[str, Any]:
         reply = self.receive_message(None)
         self.more_to_come = reply.more_to_come
-        unpacked_docs = reply.unpack_response()
+        unpacked_docs: list[dict[str, Any]] = reply.unpack_response()
         response_doc = unpacked_docs[0]
         helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
@@ -870,7 +873,7 @@ class Connection:
         dbname: str,
         spec: MutableMapping[str, Any],
         read_preference: _ServerMode = ReadPreference.PRIMARY,
-        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
+        codec_options: CodecOptions[Any] = DEFAULT_CODEC_OPTIONS,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -878,7 +881,7 @@ class Connection:
         parse_write_concern_error: bool = False,
         collation: Optional[_CollationIn] = None,
         session: Optional[ClientSession] = None,
-        client: Optional[MongoClient] = None,
+        client: Optional[MongoClient[Any]] = None,
         retryable_write: bool = False,
         publish_events: bool = True,
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -1002,7 +1005,7 @@ class Connection:
         self.send_message(msg, max_doc_size)
 
     def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions
+        self, request_id: int, msg: bytes, codec_options: CodecOptions[Any]
     ) -> dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
 
@@ -1042,7 +1045,7 @@ class Connection:
                 self.listeners.publish_connection_ready(self.address, self.id)
 
     def validate_session(
-        self, client: Optional[MongoClient], session: Optional[ClientSession]
+        self, client: Optional[MongoClient[Any]], session: Optional[ClientSession]
     ) -> None:
         """Validate this session before use with client.
 
@@ -1083,7 +1086,7 @@ class Connection:
         self,
         command: MutableMapping[str, Any],
         session: Optional[ClientSession],
-        client: Optional[MongoClient],
+        client: Optional[MongoClient[Mapping[str, Any]]],
     ) -> None:
         """Add $clusterTime."""
         if client:
@@ -1097,7 +1100,7 @@ class Connection:
     def update_last_checkin_time(self) -> None:
         self.last_checkin_time = time.monotonic()
 
-    def update_is_writable(self, is_writable: bool) -> None:
+    def update_is_writable(self, is_writable: Optional[bool]) -> None:
         self.is_writable = is_writable
 
     def idle_time_seconds(self) -> float:
@@ -1132,7 +1135,7 @@ class Connection:
             raise
 
     def __eq__(self, other: Any) -> bool:
-        return self.conn == other.conn
+        return cast(bool, self.conn == other.conn)
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -1330,7 +1333,7 @@ class Pool:
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
-        self.conns: collections.deque = collections.deque()
+        self.conns: collections.deque[Connection] = collections.deque()
         self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1412,8 +1415,8 @@ class Pool:
             if service_id is None:
                 sockets, self.conns = self.conns, collections.deque()
             else:
-                discard: collections.deque = collections.deque()
-                keep: collections.deque = collections.deque()
+                discard: collections.deque[Connection] = collections.deque()
+                keep: collections.deque[Connection] = collections.deque()
                 for conn in self.conns:
                     if conn.service_id == service_id:
                         discard.append(conn)

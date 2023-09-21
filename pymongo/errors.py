@@ -22,16 +22,7 @@ from bson.errors import InvalidDocument
 if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
-try:
-    # CPython 3.7+
-    from ssl import SSLCertVerificationError as _CertificateError
-except ImportError:
-    try:
-        from ssl import CertificateError as _CertificateError
-    except ImportError:
-
-        class _CertificateError(ValueError):  # type: ignore
-            pass
+from ssl import SSLCertVerificationError as _CertificateError  # noqa
 
 
 class PyMongoError(Exception):

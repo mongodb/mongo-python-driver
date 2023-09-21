@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Union, cast
 
 try:
     import snappy
@@ -115,7 +115,7 @@ class SnappyContext:
 
     @staticmethod
     def compress(data: bytes) -> bytes:
-        return snappy.compress(data)
+        return cast(bytes, snappy.compress(data))
 
 
 class ZlibContext:
@@ -144,7 +144,7 @@ def decompress(data: bytes, compressor_id: int) -> bytes:
         # https://github.com/andrix/python-snappy/issues/65
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
-        return snappy.uncompress(bytes(data))
+        return cast(bytes, snappy.uncompress(bytes(data)))
     elif compressor_id == ZlibContext.compressor_id:
         return zlib.decompress(data)
     elif compressor_id == ZstdContext.compressor_id:

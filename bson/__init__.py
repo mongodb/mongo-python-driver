@@ -602,12 +602,24 @@ def _elements_to_dict(
     return result
 
 
+@overload
 def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType:
+    ...
+
+
+@overload
+def _bson_to_dict(data: Any, opts: CodecOptions[dict[str, Any]]) -> dict[str, Any]:
+    ...
+
+
+def _bson_to_dict(
+    data: Any, opts: CodecOptions[_DocumentType] | CodecOptions[dict[str, Any]]
+) -> _DocumentType | dict[str, Any]:
     """Decode a BSON string to document_class."""
     data, view = get_data_and_view(data)
     try:
         if _raw_document_class(opts.document_class):
-            return opts.document_class(data, opts)  # type:ignore[call-arg]
+            return opts.document_class(data, opts)  # type:ignore[call-arg, call-overload]
         _, end = _get_object_size(data, 0, len(data))
         return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
@@ -1164,25 +1176,25 @@ def decode_all(
 
 
 def _decode_selective(
-    rawdoc: Any, fields: Any, codec_options: CodecOptions[_DocumentType]
-) -> _DocumentType:
+    rawdoc: Any,
+    fields: Any,
+    codec_options: CodecOptions[_DocumentType] | CodecOptions[dict[str, Any]],
+) -> _DocumentType | dict[str, Any]:
     if _raw_document_class(codec_options.document_class):
         # If document_class is RawBSONDocument, use vanilla dictionary for
         # decoding command response.
-        doc: _DocumentType = {}  # type:ignore[assignment]
+        doc: dict[str, Any] = {}
     else:
         # Else, use the specified document_class.
-        doc = codec_options.document_class()
+        doc = codec_options.document_class()  # type:ignore[assignment]
     for key, value in rawdoc.items():
         if key in fields:
             if fields[key] == 1:
-                doc[key] = _bson_to_dict(rawdoc.raw, codec_options)[key]  # type:ignore[index]
+                doc[key] = _bson_to_dict(rawdoc.raw, codec_options)[key]
             else:
-                doc[key] = _decode_selective(  # type:ignore[index]
-                    value, fields[key], codec_options
-                )
+                doc[key] = _decode_selective(value, fields[key], codec_options)
         else:
-            doc[key] = value  # type:ignore[index]
+            doc[key] = value
     return doc
 
 
@@ -1226,9 +1238,25 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
             cursor[key] = []
 
 
+@overload
 def _decode_all_selective(
     data: Any, codec_options: CodecOptions[_DocumentType], fields: Any
 ) -> list[_DocumentType]:
+    ...
+
+
+@overload
+def _decode_all_selective(
+    data: Any, codec_options: CodecOptions[dict[str, Any]], fields: Any
+) -> list[dict[str, Any]]:
+    ...
+
+
+def _decode_all_selective(
+    data: Any,
+    codec_options: CodecOptions[_DocumentType] | CodecOptions[dict[str, Any]],
+    fields: Any,
+) -> list[_DocumentType] | list[dict[str, Any]]:
     """Decode BSON data to a single document while using user-provided
     custom decoding logic.
 
@@ -1265,10 +1293,13 @@ def _decode_all_selective(
     )
     _doc = _bson_to_dict(data, internal_codec_options)
     return [
-        _decode_selective(
-            _doc,
-            fields,
-            codec_options,
+        cast(
+            "dict[str, Any]",
+            _decode_selective(
+                _doc,
+                fields,
+                codec_options,
+            ),
         )
     ]
 
@@ -1316,7 +1347,7 @@ def decode_iter(
         elements = data[position : position + obj_size]
         position += obj_size
 
-        yield _bson_to_dict(elements, opts)  # type:ignore[misc, type-var]
+        yield _bson_to_dict(elements, opts)
 
 
 @overload
@@ -1363,7 +1394,7 @@ def decode_file_iter(
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
         elements = size_data + file_obj.read(max(0, obj_size))
-        yield _bson_to_dict(elements, opts)  # type:ignore[type-var, arg-type, misc]
+        yield _bson_to_dict(elements, opts)
 
 
 def is_valid(bson: bytes) -> bool:

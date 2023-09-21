@@ -29,6 +29,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generic,
     Iterable,
     Mapping,
     MutableMapping,
@@ -36,6 +37,7 @@ from typing import (
     Optional,
     Union,
     cast,
+    overload,
 )
 
 import bson
@@ -80,7 +82,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut, _DocumentType, _DocumentTypeArg
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -106,7 +108,7 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[dict[str, Any]] = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 
@@ -274,7 +276,7 @@ def _gen_get_more_command(
     return cmd
 
 
-class _Query:
+class _Query(Generic[_DocumentType]):
     """A query operation."""
 
     __slots__ = (
@@ -310,7 +312,7 @@ class _Query:
         ntoskip: int,
         spec: Mapping[str, Any],
         fields: Optional[Mapping[str, Any]],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[_DocumentType],
         read_preference: _ServerMode,
         limit: int,
         batch_size: int,
@@ -459,7 +461,7 @@ class _Query:
         )
 
 
-class _GetMore:
+class _GetMore(Generic[_DocumentType]):
     """A getmore operation."""
 
     __slots__ = (
@@ -486,7 +488,7 @@ class _GetMore:
         coll: str,
         ntoreturn: int,
         cursor_id: int,
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[_DocumentType],
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         client: MongoClient,
@@ -1031,7 +1033,7 @@ class _BulkWriteContext:
                 if isinstance(exc, OperationFailure):
                     failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
                 elif isinstance(exc, NotPrimaryError):
-                    failure = exc.details  # type: ignore[assignment]
+                    failure = exc.details
                 else:
                     failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
@@ -1063,7 +1065,7 @@ class _BulkWriteContext:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
+                    failure: _DocumentOut = exc.details
                 else:
                     failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
@@ -1508,13 +1510,34 @@ class _OpReply:
             return [self.documents]
         return []
 
+    @overload
     def unpack_response(
         self,
         cursor_id: Optional[int] = None,
-        codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
+        codec_options: CodecOptions[_DocumentTypeArg] = ...,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> list[_DocumentTypeArg]:
+        ...
+
+    @overload
+    def unpack_response(
+        self,
+        cursor_id: Optional[int] = None,
+        codec_options: CodecOptions[dict[str, Any]] = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> list[dict[str, Any]]:
+        ...
+
+    def unpack_response(
+        self,
+        cursor_id: Optional[int] = None,
+        codec_options: CodecOptions[_DocumentTypeArg]
+        | CodecOptions[dict[str, Any]] = _UNICODE_REPLACE_CODEC_OPTIONS,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> list[_DocumentTypeArg] | list[dict[str, Any]]:
         """Unpack a response from the database and decode the BSON document(s).
 
         Check the response for errors and unpack, returning a dictionary
@@ -1540,7 +1563,7 @@ class _OpReply:
 
     def command_response(self, codec_options: CodecOptions) -> dict[str, Any]:
         """Unpack a command response."""
-        docs = self.unpack_response(codec_options=codec_options)
+        docs: list[dict[str, Any]] = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
         return docs[0]
 
@@ -1595,13 +1618,34 @@ class _OpMsg:
         )
         return [inflated_response]
 
+    @overload
     def unpack_response(
         self,
         cursor_id: Optional[int] = None,
-        codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
+        codec_options: CodecOptions[dict[str, Any]] = ...,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> list[dict[str, Any]]:
+        ...
+
+    @overload
+    def unpack_response(
+        self,
+        cursor_id: Optional[int] = None,
+        codec_options: CodecOptions[_DocumentTypeArg] = ...,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> list[_DocumentTypeArg]:
+        ...
+
+    def unpack_response(
+        self,
+        cursor_id: Optional[int] = None,
+        codec_options: CodecOptions[_DocumentTypeArg]
+        | CodecOptions[dict[str, Any]] = _UNICODE_REPLACE_CODEC_OPTIONS,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> list[_DocumentTypeArg] | list[dict[str, Any]]:
         """Unpack a OP_MSG command response.
 
         :Parameters:

@@ -57,7 +57,7 @@ __all__ = [
 class GridFS:
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, database: Database, collection: str = "fs"):
+    def __init__(self, database: Database[Any], collection: str = "fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -454,7 +454,7 @@ class GridFSBucket:
 
     def __init__(
         self,
-        db: Database,
+        db: Database[Any],
         bucket_name: str = "fs",
         chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
         write_concern: Optional[WriteConcern] = None,
@@ -505,11 +505,11 @@ class GridFSBucket:
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks: Collection = self._collection.chunks.with_options(
+        self._chunks: Collection[Mapping[str, Any]] = self._collection.chunks.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
-        self._files: Collection = self._collection.files.with_options(
+        self._files: Collection[Mapping[str, Any]] = self._collection.files.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 

@@ -157,7 +157,7 @@ class ChangeStream(Generic[_DocumentType]):
         raise NotImplementedError
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient[_DocumentType]:
         """The client against which the aggregation commands for
         this ChangeStream will be run.
         """
@@ -199,7 +199,7 @@ class ChangeStream(Generic[_DocumentType]):
     def _aggregation_pipeline(self) -> list[dict[str, Any]]:
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
-        full_pipeline: list = [{"$changeStream": options}]
+        full_pipeline: list[dict[str, Any]] = [{"$changeStream": options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
@@ -230,7 +230,7 @@ class ChangeStream(Generic[_DocumentType]):
 
     def _run_aggregation_cmd(
         self, session: Optional[ClientSession], explicit_session: bool
-    ) -> CommandCursor:
+    ) -> CommandCursor[_DocumentType]:
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
@@ -247,7 +247,7 @@ class ChangeStream(Generic[_DocumentType]):
             cmd.get_cursor, self._target._read_preference_for(session), session
         )
 
-    def _create_cursor(self) -> CommandCursor:
+    def _create_cursor(self) -> CommandCursor[_DocumentType]:
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 
@@ -264,7 +264,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._closed = True
         self._cursor.close()
 
-    def __iter__(self) -> "ChangeStream[_DocumentType]":
+    def __iter__(self) -> ChangeStream[_DocumentType]:
         return self
 
     @property
@@ -422,6 +422,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._start_at_operation_time = None
 
         if self._decode_custom:
+            assert isinstance(change, RawBSONDocument)
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 

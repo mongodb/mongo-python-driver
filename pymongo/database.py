@@ -69,12 +69,12 @@ def _check_name(name: str) -> None:
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
-class Database(common.BaseObject, Generic[_DocumentType]):
+class Database(common.BaseObject[_DocumentType]):
     """A Mongo database."""
 
     def __init__(
         self,
-        client: "MongoClient[_DocumentType]",
+        client: MongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -127,7 +127,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                db.__my_collection__
         """
         super().__init__(
-            codec_options or client.codec_options,
+            cast(CodecOptions[_DocumentType], codec_options or client.codec_options),
             read_preference or client.read_preference,
             write_concern or client.write_concern,
             read_concern or client.read_concern,
@@ -144,7 +144,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self._timeout = client.options.timeout
 
     @property
-    def client(self) -> "MongoClient[_DocumentType]":
+    def client(self) -> MongoClient[_DocumentType]:
         """The client instance for this :class:`Database`."""
         return self.__client
 
@@ -194,7 +194,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return Database(
             self.client,
             self.__name,
-            codec_options or self.codec_options,
+            cast(CodecOptions[_DocumentType], codec_options or self.codec_options),
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,

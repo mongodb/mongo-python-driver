@@ -217,10 +217,10 @@ class CommandCursor(Generic[_DocumentType]):
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions[Mapping[str, Any]],
+        codec_options: CodecOptions[_DocumentType],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> Sequence[_DocumentOut]:
+    ) -> list[_DocumentType]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self) -> int:
@@ -381,7 +381,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             comment,
         )
 
-    def _unpack_response(  # type: ignore[override]
+    def _unpack_response(
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],

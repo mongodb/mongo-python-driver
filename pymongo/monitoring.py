@@ -187,6 +187,7 @@ from __future__ import annotations
 
 import datetime
 from collections import abc, namedtuple
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
@@ -201,16 +202,14 @@ if TYPE_CHECKING:
     from pymongo.topology_description import TopologyDescription
 
 
-_Listeners = namedtuple(
-    "_Listeners",
-    (
-        "command_listeners",
-        "server_listeners",
-        "server_heartbeat_listeners",
-        "topology_listeners",
-        "cmap_listeners",
-    ),
-)
+@dataclass
+class _Listeners:
+    command_listeners: list[CommandListener] = field(default_factory=list)
+    server_listeners: list[ServerListener] = field(default_factory=list)
+    server_heartbeat_listeners: list[ServerHeartbeatListener] = field(default_factory=list)
+    topology_listeners: list[TopologyListener] = field(default_factory=list)
+    cmap_listeners: list[ConnectionPoolListener] = field(default_factory=list)
+
 
 _LISTENERS = _Listeners([], [], [], [], [])
 
@@ -534,7 +533,7 @@ def register(listener: _EventListener) -> None:
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
 # every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS: set = {
+_SENSITIVE_COMMANDS: set[str] = {
     "authenticate",
     "saslstart",
     "saslcontinue",
@@ -1296,7 +1295,11 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     __slots__ = ("__duration", "__reply", "__awaited")
 
     def __init__(
-        self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False
+        self,
+        duration: float,
+        reply: Hello[Mapping[str, Any]],
+        connection_id: _Address,
+        awaited: bool = False,
     ) -> None:
         super().__init__(connection_id)
         self.__duration = duration
@@ -1309,7 +1312,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return self.__duration
 
     @property
-    def reply(self) -> Hello:
+    def reply(self) -> Hello[Mapping[str, Any]]:
         """An instance of :class:`~pymongo.hello.Hello`."""
         return self.__reply
 
@@ -1392,8 +1395,7 @@ class _EventListeners:
     def __init__(self, listeners: Optional[Sequence[_EventListener]]):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         self.__server_listeners = _LISTENERS.server_listeners[:]
-        lst = _LISTENERS.server_heartbeat_listeners
-        self.__server_heartbeat_listeners = lst[:]
+        self.__server_heartbeat_listeners = _LISTENERS.server_heartbeat_listeners[:]
         self.__topology_listeners = _LISTENERS.topology_listeners[:]
         self.__cmap_listeners = _LISTENERS.cmap_listeners[:]
         if listeners is not None:
@@ -1439,15 +1441,16 @@ class _EventListeners:
         """Are any ConnectionPoolListener instances registered?"""
         return self.__enabled_for_cmap
 
-    def event_listeners(self) -> list[_EventListeners]:
+    def event_listeners(self) -> list[_EventListener]:
         """List of registered event listeners."""
-        return (
+        listeners: list[_EventListener] = list(
             self.__command_listeners
             + self.__server_heartbeat_listeners
             + self.__server_listeners
             + self.__topology_listeners
-            + self.__cmap_listeners
+            + self.__cmap_listeners  # type:ignore[operator]
         )
+        return listeners
 
     def publish_command_start(
         self,
@@ -1569,7 +1572,11 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_server_heartbeat_succeeded(
-        self, connection_id: _Address, duration: float, reply: Hello, awaited: bool
+        self,
+        connection_id: _Address,
+        duration: float,
+        reply: Hello[Mapping[str, Any]],
+        awaited: bool,
     ) -> None:
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.

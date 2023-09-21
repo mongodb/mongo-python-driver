@@ -21,6 +21,7 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generic,
     Iterable,
     List,
@@ -56,7 +57,13 @@ from pymongo.message import (
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
-from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+from pymongo.typings import (
+    _Address,
+    _CollationIn,
+    _DocumentOut,
+    _DocumentType,
+    _DocumentTypeArg,
+)
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
@@ -204,9 +211,9 @@ class Cursor(Generic[_DocumentType]):
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
         self.__collection: Collection[_DocumentType] = collection
-        self.__id: Any = None
+        self.__id: int | None = None
         self.__exhaust = False
-        self.__sock_mgr: Any = None
+        self.__sock_mgr: _ConnectionManager | None = None
         self.__killed = False
         self.__session: Optional[ClientSession]
 
@@ -297,7 +304,7 @@ class Cursor(Generic[_DocumentType]):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__data: deque = deque()
+        self.__data: deque[_DocumentType] = deque()
         self.__address: Optional[_Address] = None
         self.__retrieved = 0
 
@@ -361,7 +368,9 @@ class Cursor(Generic[_DocumentType]):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy: bool = True, base: Optional[Cursor] = None) -> Cursor:
+    def _clone(
+        self, deepcopy: bool = True, base: Optional[Cursor[Any]] = None
+    ) -> Cursor[_DocumentType]:
         """Internal clone helper."""
         if not base:
             if self.__explicit_session:
@@ -404,7 +413,7 @@ class Cursor(Generic[_DocumentType]):
         base.__dict__.update(data)
         return base
 
-    def _clone_base(self, session: Optional[ClientSession]) -> Cursor:
+    def _clone_base(self, session: Optional[ClientSession]) -> Cursor[_DocumentType]:
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self.__collection, session=session)
 
@@ -425,6 +434,7 @@ class Cursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
+        assert self.__sock_mgr is not None
         self.__collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
@@ -883,7 +893,7 @@ class Cursor(Generic[_DocumentType]):
         self.__ordering = helpers._index_document(keys)
         return self
 
-    def distinct(self, key: str) -> list:
+    def distinct(self, key: str) -> list[_DocumentType]:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -930,7 +940,7 @@ class Cursor(Generic[_DocumentType]):
         # always use a hard limit for explains
         if c.__limit:
             c.__limit = -abs(c.__limit)
-        return next(c)
+        return cast(_DocumentType, next(c))
 
     def __set_hint(self, index: Optional[_Hint]) -> None:
         if index is None:
@@ -1020,7 +1030,7 @@ class Cursor(Generic[_DocumentType]):
         if self.__has_filter:
             spec = dict(self.__spec)
         else:
-            spec = cast(dict, self.__spec)
+            spec = cast(Dict[str, Any], self.__spec)
         spec["$where"] = code
         self.__spec = spec
         return self
@@ -1126,10 +1136,10 @@ class Cursor(Generic[_DocumentType]):
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[_DocumentTypeArg],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> Sequence[_DocumentOut]:
+    ) -> list[_DocumentTypeArg]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _read_preference(self) -> _ServerMode:
@@ -1286,29 +1296,35 @@ class Cursor(Generic[_DocumentType]):
         return self._clone(deepcopy=True)
 
     @overload
-    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:
+    def _deepcopy(
+        self, x: Iterable[Any], memo: Optional[dict[int, Union[list[Any], dict[Any, Any]]]] = None
+    ) -> list[Any]:
         ...
 
     @overload
     def _deepcopy(
-        self, x: SupportsItems, memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> dict:
+        self,
+        x: SupportsItems[Any, Any],
+        memo: Optional[dict[int, Union[list[Any], dict[Any, Any]]]] = None,
+    ) -> dict[Any, Any]:
         ...
 
     def _deepcopy(
-        self, x: Union[Iterable, SupportsItems], memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> Union[list, dict]:
+        self,
+        x: Union[Iterable[Any], SupportsItems[Any, Any]],
+        memo: Optional[dict[int, Union[list[Any], dict[Any, Any]]]] = None,
+    ) -> Union[list[Any], dict[Any, Any]]:
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y: Union[list, dict]
+        y: Union[list[Any], dict[Any, Any]]
         iterator: Iterable[tuple[Any, Any]]
         if not hasattr(x, "items"):
             y, is_list, iterator = [], True, enumerate(x)
         else:
-            y, is_list, iterator = {}, False, cast("SupportsItems", x).items()
+            y, is_list, iterator = {}, False, cast("SupportsItems[Any, Any]", x).items()
         if memo is None:
             memo = {}
         val_id = id(x)
@@ -1331,7 +1347,7 @@ class Cursor(Generic[_DocumentType]):
         return y
 
 
-class RawBatchCursor(Cursor, Generic[_DocumentType]):
+class RawBatchCursor(Cursor[_DocumentType]):
     """A cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery
@@ -1348,20 +1364,20 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         """
         super().__init__(collection, *args, **kwargs)
 
-    def _unpack_response(
+    def _unpack_response(  # type:ignore[override]
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions[Mapping[str, Any]],
+        codec_options: CodecOptions[Any],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> list[_DocumentOut]:
+    ) -> list[Mapping[str, Any]] | list[bytes]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List["_DocumentOut"], raw_response)
+        return raw_response
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

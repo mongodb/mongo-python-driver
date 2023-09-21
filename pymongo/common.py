@@ -24,6 +24,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generic,
     Iterator,
     Mapping,
     MutableMapping,
@@ -32,6 +33,7 @@ from typing import (
     Sequence,
     Type,
     Union,
+    cast,
     overload,
 )
 from urllib.parse import unquote_plus
@@ -51,13 +53,14 @@ from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
-from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
+    from pymongo.typings import _DocumentType
 
 
-ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
+ORDERED_TYPES: Sequence[Type[Any]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024**2)
@@ -175,6 +178,13 @@ _UUID_REPRESENTATIONS = {
 }
 
 
+def validate_boolean(option: str, value: Any) -> bool:
+    """Validates that 'value' is True or False."""
+    if isinstance(value, bool):
+        return value
+    raise TypeError(f"{option} must be True or False, was: {option}={value}")
+
+
 def validate_boolean_or_string(option: str, value: Any) -> bool:
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
@@ -218,9 +228,9 @@ def validate_readable(option: str, value: Any) -> Optional[str]:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
-    value = validate_string(option, value)
-    open(value).close()
-    return value
+    parsed = validate_string(option, value)
+    open(parsed).close()
+    return parsed
 
 
 def validate_positive_integer_or_none(option: str, value: Any) -> Optional[int]:
@@ -282,7 +292,7 @@ def validate_positive_float(option: str, value: Any) -> float:
     """
     errmsg = f"{option} must be an integer or float"
     try:
-        value = float(value)
+        parsed = float(value)
     except ValueError:
         raise ValueError(errmsg)
     except TypeError:
@@ -290,9 +300,9 @@ def validate_positive_float(option: str, value: Any) -> float:
 
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
-    if not 0 < value < 1e9:
+    if not 0 < parsed < 1e9:
         raise ValueError(f"{option} must be greater than 0 and less than one billion")
-    return value
+    return parsed
 
 
 def validate_positive_float_or_zero(option: str, value: Any) -> float:
@@ -369,14 +379,14 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
     """
     if value not in _MONGOS_MODES:
         raise ValueError(f"{value} is not a valid read preference")
-    return value
+    return cast(_ServerMode, value)
 
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
-    return value
+    return cast(str, value)
 
 
 def validate_uuid_representation(dummy: Any, value: Any) -> int:
@@ -396,7 +406,7 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets: list = []
+    tag_sets: list[dict[str, str]] = []
     for tag_set in value:
         if tag_set == "":
             tag_sets.append({})
@@ -486,7 +496,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
 
 def validate_document_class(
     option: str, value: Any
-) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
+) -> Union[Type[MutableMapping[str, Any]], Type[RawBSONDocument]]:
     """Validate the document_class option."""
     # issubclass can raise TypeError for generic aliases like SON[str, Any].
     # In that case we can use the base class for the comparison.
@@ -502,7 +512,7 @@ def validate_document_class(
             "bson.raw_bson.RawBSONDocument, or a "
             "subclass of collections.MutableMapping".format(option)
         )
-    return value
+    return cast(Type[RawBSONDocument], value)
 
 
 def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
@@ -512,14 +522,14 @@ def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     return value
 
 
-def validate_list(option: str, value: Any) -> list:
+def validate_list(option: str, value: Any) -> list[Any]:
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list")
     return value
 
 
-def validate_list_or_none(option: Any, value: Any) -> Optional[list]:
+def validate_list_or_none(option: Any, value: Any) -> Optional[list[Any]]:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value
@@ -561,11 +571,11 @@ def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
     """Validate the appname option."""
     if value is None:
         return value
-    validate_string(option, value)
+    parsed = validate_string(option, value)
     # We need length in bytes, so encode utf8 first.
-    if len(value.encode("utf-8")) > 128:
+    if len(parsed.encode("utf-8")) > 128:
         raise ValueError(f"{option} must be <= 128 bytes")
-    return value
+    return parsed
 
 
 def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
@@ -574,7 +584,7 @@ def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
         return value
     if not isinstance(value, DriverInfo):
         raise TypeError(f"{option} must be an instance of DriverInfo")
-    return value
+    return cast(DriverInfo, value)
 
 
 def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
@@ -586,13 +596,13 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable]:
+def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable[..., Any]]:
     """Validates that 'value' is a callable."""
     if value is None:
         return value
     if not callable(value):
         raise ValueError(f"{option} must be a callable")
-    return value
+    return cast(Callable[..., Any], value)
 
 
 def validate_ok_for_replace(replacement: Mapping[str, Any]) -> None:
@@ -871,7 +881,7 @@ def _ecoc_coll_name(encrypted_fields: Mapping[str, Any], name: str) -> Any:
 WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
 
 
-class BaseObject:
+class BaseObject(Generic[_DocumentType]):
     """A base class that provides attributes and methods common
     to multiple pymongo classes.
 
@@ -880,7 +890,7 @@ class BaseObject:
 
     def __init__(
         self,
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[_DocumentType],
         read_preference: _ServerMode,
         write_concern: WriteConcern,
         read_concern: ReadConcern,
@@ -908,7 +918,7 @@ class BaseObject:
         self.__read_concern = read_concern
 
     @property
-    def codec_options(self) -> CodecOptions:
+    def codec_options(self) -> CodecOptions[_DocumentType]:
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
         """

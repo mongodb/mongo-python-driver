@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union, cast
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection, Pool
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
-    from pymongo.typings import _DocumentOut
+    from pymongo.typings import _DocumentOut, _DocumentTypeArg
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -98,11 +98,11 @@ class Server:
     def run_operation(
         self,
         conn: Connection,
-        operation: Union[_Query, _GetMore],
+        operation: Union[_Query[_DocumentTypeArg], _GetMore[_DocumentTypeArg]],
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
-        unpack_res: Callable[..., list[_DocumentOut]],
-    ) -> Response:
+        unpack_res: Callable[..., list[_DocumentTypeArg]],
+    ) -> Response[_DocumentTypeArg]:
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -167,7 +167,7 @@ class Server:
             if publish:
                 duration = datetime.now() - start
                 if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
+                    failure: _DocumentOut = exc.details
                 else:
                     failure = _convert_exception(exc)
                 assert listeners is not None
@@ -210,7 +210,10 @@ class Server:
         if client and client._encrypter:
             if use_cmd:
                 decrypted = client._encrypter.decrypt(reply.raw_command_response())
-                docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
+                docs = cast(
+                    "list[_DocumentTypeArg]",
+                    _decode_all_selective(decrypted, operation.codec_options, user_fields),
+                )
 
         response: Response
 

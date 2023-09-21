@@ -15,12 +15,11 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
 from pymongo.auth import MongoCredential, _build_credentials_tuple
-from pymongo.common import validate_boolean
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
@@ -37,8 +36,9 @@ from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
-    from pymongo.encryption import AutoEncryptionOpts
+    from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
+    from pymongo.server_description import ServerDescription
     from pymongo.topology_description import _ServerSelector
 
 
@@ -56,7 +56,7 @@ def _parse_credentials(
 def _parse_read_preference(options: Mapping[str, Any]) -> _ServerMode:
     """Parse read preference options."""
     if "read_preference" in options:
-        return options["read_preference"]
+        return cast(_ServerMode, options["read_preference"])
 
     name = options.get("readpreference", "primary")
     mode = read_pref_mode_from_name(name)
@@ -84,7 +84,7 @@ def _parse_ssl_options(options: Mapping[str, Any]) -> tuple[Optional[SSLContext]
     """Parse ssl options."""
     use_tls = options.get("tls")
     if use_tls is not None:
-        validate_boolean("tls", use_tls)
+        common.validate_boolean("tls", use_tls)
 
     certfile = options.get("tlscertificatekeyfile")
     passphrase = options.get("tlscertificatekeyfilepassword")
@@ -196,10 +196,10 @@ class ClientOptions:
         self.__options = options
         self.__codec_options = _parse_codec_options(options)
         self.__direct_connection = options.get("directconnection")
-        self.__local_threshold_ms = options.get("localthresholdms", common.LOCAL_THRESHOLD_MS)
+        self.__local_threshold_ms: int = options.get("localthresholdms", common.LOCAL_THRESHOLD_MS)
         # self.__server_selection_timeout is in seconds. Must use full name for
         # common.SERVER_SELECTION_TIMEOUT because it is set directly by tests.
-        self.__server_selection_timeout = options.get(
+        self.__server_selection_timeout: int = options.get(
             "serverselectiontimeoutms", common.SERVER_SELECTION_TIMEOUT
         )
         self.__pool_options = _parse_pool_options(username, password, database, options)
@@ -208,10 +208,14 @@ class ClientOptions:
         self.__write_concern = _parse_write_concern(options)
         self.__read_concern = _parse_read_concern(options)
         self.__connect = options.get("connect")
-        self.__heartbeat_frequency = options.get("heartbeatfrequencyms", common.HEARTBEAT_FREQUENCY)
-        self.__retry_writes = options.get("retrywrites", common.RETRY_WRITES)
-        self.__retry_reads = options.get("retryreads", common.RETRY_READS)
-        self.__server_selector = options.get("server_selector", any_server_selector)
+        self.__heartbeat_frequency: int = options.get(
+            "heartbeatfrequencyms", common.HEARTBEAT_FREQUENCY
+        )
+        self.__retry_writes: bool = options.get("retrywrites", common.RETRY_WRITES)
+        self.__retry_reads: bool = options.get("retryreads", common.RETRY_READS)
+        self.__server_selector: Callable[
+            [list[ServerDescription]], list[ServerDescription]
+        ] = options.get("server_selector", any_server_selector)
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
         self.__load_balanced = options.get("loadbalanced")
         self.__timeout = options.get("timeoutms")
@@ -227,7 +231,7 @@ class ClientOptions:
         return self.__connect
 
     @property
-    def codec_options(self) -> CodecOptions:
+    def codec_options(self) -> CodecOptions[Mapping[str, Any]]:
         """A :class:`~bson.codec_options.CodecOptions` instance."""
         return self.__codec_options
 
@@ -309,7 +313,7 @@ class ClientOptions:
         return self.__load_balanced
 
     @property
-    def event_listeners(self) -> list[_EventListeners]:
+    def event_listeners(self) -> list[_EventListener]:
         """The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.

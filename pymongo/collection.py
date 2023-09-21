@@ -123,7 +123,7 @@ if TYPE_CHECKING:
     from pymongo.server import Server
 
 
-class Collection(common.BaseObject, Generic[_DocumentType]):
+class Collection(common.BaseObject[_DocumentType]):
     """A Mongo collection."""
 
     def __init__(
@@ -215,7 +215,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
         super().__init__(
-            codec_options or database.codec_options,
+            cast(CodecOptions[_DocumentType], codec_options or database.codec_options),
             read_preference or database.read_preference,
             write_concern or database.write_concern,
             read_concern or database.read_concern,
@@ -267,7 +267,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         conn: Connection,
         command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -465,7 +465,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.__database,
             self.__name,
             False,
-            codec_options or self.codec_options,
+            cast(CodecOptions[_DocumentType], codec_options or self.codec_options),
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
@@ -479,7 +479,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: bool = False,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -1908,7 +1908,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             result = self._aggregate_one_result(conn, read_preference, cmd, collation, session)
             if not result:
                 return 0
-            return result["n"]
+            return cast(int, result["n"])
 
         return self._retryable_non_cursor_read(_cmd, session)
 
@@ -2267,7 +2267,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        codec_options: CodecOptions = CodecOptions(SON)
+        codec_options: CodecOptions[SON[Any, Any]] = CodecOptions(SON)
         coll = cast(
             Collection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
@@ -2593,7 +2593,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not result:
             return {}
 
-        options = result.get("options", {})
+        options: MutableMapping[str, Any] = result.get("options", {})
         assert options is not None
         if "create" in options:
             del options["create"]
@@ -2605,7 +2605,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         aggregation_command: Type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[CommandCursor],
+        cursor_class: Type[CommandCursor[Any]],
         session: Optional[ClientSession],
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
@@ -2988,7 +2988,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> list:
+    ) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -3041,7 +3041,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
-        ) -> list:
+        ) -> list[Any]:
             return self._command(
                 conn,
                 cmd,
@@ -3073,9 +3073,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> _DocumentType:
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
@@ -3103,7 +3103,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _find_and_modify(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
-        ) -> Any:
+        ) -> _DocumentType:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
                 if not acknowledged:
@@ -3133,7 +3133,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
             _check_write_command_response(out)
 
-            return out.get("value")
+            return cast(_DocumentType, out.get("value"))
 
         return self.__database.client._retryable_write(
             write_concern.acknowledged, _find_and_modify, session

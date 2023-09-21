@@ -68,7 +68,7 @@ def command(
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
-    client: Optional[MongoClient],
+    client: Optional[MongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     address: Optional[_Address] = None,
@@ -199,7 +199,7 @@ def command(
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
+                failure: _DocumentOut = exc.details
             else:
                 failure = message._convert_exception(exc)
             assert listeners is not None

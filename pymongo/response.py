@@ -15,17 +15,17 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Sequence, Union
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import Connection
-    from pymongo.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 
-class Response:
+class Response(Generic[_DocumentType]):
     __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")
 
     def __init__(
@@ -35,7 +35,7 @@ class Response:
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: Sequence[Mapping[str, Any]],
+        docs: Sequence[_DocumentType],
     ):
         """Represent a response from the server.
 
@@ -45,6 +45,7 @@ class Response:
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: if the response is the result of a db command.
+          - `docs`: the documents in the response.
         """
         self._data = data
         self._address = address
@@ -79,12 +80,12 @@ class Response:
         return self._from_command
 
     @property
-    def docs(self) -> Sequence[Mapping[str, Any]]:
+    def docs(self) -> Sequence[_DocumentType]:
         """The decoded document(s)."""
         return self._docs
 
 
-class PinnedResponse(Response):
+class PinnedResponse(Response[_DocumentType]):
     __slots__ = ("_conn", "_more_to_come")
 
     def __init__(
@@ -95,7 +96,7 @@ class PinnedResponse(Response):
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
-        docs: list[_DocumentOut],
+        docs: list[_DocumentType],
         more_to_come: bool,
     ):
         """Represent a response to an exhaust cursor's initial query.

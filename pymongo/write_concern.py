@@ -20,14 +20,6 @@ from typing import Any, Optional, Union
 from pymongo.errors import ConfigurationError
 
 
-# Moved here to avoid a circular import.
-def validate_boolean(option: str, value: Any) -> bool:
-    """Validates that 'value' is True or False."""
-    if isinstance(value, bool):
-        return value
-    raise TypeError(f"{option} must be True or False, was: {option}={value}")
-
-
 class WriteConcern:
     """WriteConcern
 
@@ -72,6 +64,9 @@ class WriteConcern:
             if wtimeout < 0:
                 raise ValueError("wtimeout cannot be less than 0")
             self.__document["wtimeout"] = wtimeout
+
+        # Lazy import to avoid circular import.
+        from pymongo.common import validate_boolean
 
         if j is not None:
             validate_boolean("j", j)
