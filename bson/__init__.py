@@ -1175,6 +1175,24 @@ def decode_all(
     return _decode_all(data, codec_options)
 
 
+@overload
+def _decode_selective(
+    rawdoc: Any,
+    fields: Any,
+    codec_options: CodecOptions[_DocumentType],
+) -> _DocumentType:
+    ...
+
+
+@overload
+def _decode_selective(
+    rawdoc: Any,
+    fields: Any,
+    codec_options: CodecOptions[dict[str, Any]],
+) -> dict[str, Any]:
+    ...
+
+
 def _decode_selective(
     rawdoc: Any,
     fields: Any,
