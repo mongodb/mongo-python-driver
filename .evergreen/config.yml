@@ -324,7 +324,6 @@ functions:
           set -o xtrace
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          alias docker=podman
           VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
@@ -333,7 +332,6 @@ functions:
         script: |
           ${PREPARE_SHELL}
           set -o xtrace
-          alias docker=podman
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
 
   "stop mongo-orchestration":
