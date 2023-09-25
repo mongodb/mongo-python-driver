@@ -826,7 +826,7 @@ class MongoClient(common.BaseObject[_DocumentType]):
 
         self._event_listeners = options.pool_options._event_listeners
         super().__init__(
-            cast(bson.CodecOptions[_DocumentType], options.codec_options),
+            cast("bson.CodecOptions[_DocumentType]", options.codec_options),
             options.read_preference,
             options.write_concern,
             options.read_concern,
