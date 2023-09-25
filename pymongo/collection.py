@@ -215,7 +215,7 @@ class Collection(common.BaseObject[_DocumentType]):
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
         super().__init__(
-            cast(CodecOptions[_DocumentType], codec_options or database.codec_options),
+            cast("CodecOptions[_DocumentType]", codec_options or database.codec_options),
             read_preference or database.read_preference,
             write_concern or database.write_concern,
             read_concern or database.read_concern,
@@ -2269,7 +2269,7 @@ class Collection(common.BaseObject[_DocumentType]):
         """
         codec_options: CodecOptions[SON[Any, Any]] = CodecOptions(SON)
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            "Collection[MutableMapping[str, Any]]",
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -2765,7 +2765,7 @@ class Collection(common.BaseObject[_DocumentType]):
             kwargs["comment"] = comment
         with self.__database.client._tmp_session(session, close=False) as s:
             return cast(
-                RawBatchCursor[_DocumentType],
+                "RawBatchCursor[_DocumentType]",
                 self._aggregate(
                     _CollectionRawAggregationCommand,
                     pipeline,
