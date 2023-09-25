@@ -53,11 +53,11 @@ from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
+from pymongo.typings import _DocumentType
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
-    from pymongo.typings import _DocumentType
 
 
 ORDERED_TYPES: Sequence[Type[Any]] = (SON, OrderedDict)
