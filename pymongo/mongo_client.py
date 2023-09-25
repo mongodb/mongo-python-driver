@@ -2119,7 +2119,7 @@ class MongoClient(common.BaseObject[_DocumentType]):
     def _database_default_options(self, name: str) -> Database[dict[str, Any]]:
         """Get a Database instance with the default settings."""
         return cast(
-            Database[dict[str, Any]],
+            "Database[dict[str, Any]]",
             self.get_database(
                 name,
                 codec_options=DEFAULT_CODEC_OPTIONS,
