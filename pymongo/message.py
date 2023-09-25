@@ -70,6 +70,7 @@ from pymongo.errors import (
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
 from pymongo.read_preferences import ReadPreference
+from pymongo.typings import _DocumentOut
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _DocumentOut, _DocumentType, _DocumentTypeArg
+    from pymongo.typings import _Address, _DocumentType, _DocumentTypeArg
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
