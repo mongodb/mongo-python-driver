@@ -65,8 +65,9 @@ class WriteConcern:
                 raise ValueError("wtimeout cannot be less than 0")
             self.__document["wtimeout"] = wtimeout
 
-        # Lazy import to avoid circular import.
-        from pymongo.common import validate_boolean
+        if j is not None or fsync is not None:
+            # Lazy import to avoid circular import.
+            from pymongo.common import validate_boolean
 
         if j is not None:
             validate_boolean("j", j)
