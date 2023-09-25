@@ -1596,7 +1596,7 @@ class MongoClient(common.BaseObject[_DocumentType]):
         locks_allowed: bool,
         cursor_id: int,
         address: Optional[_CursorAddress],
-        conn_mgr: _ConnectionManager,
+        conn_mgr: Optional[_ConnectionManager],
         session: Optional[ClientSession],
         explicit_session: bool,
     ) -> None:

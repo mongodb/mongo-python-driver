@@ -434,7 +434,6 @@ class Cursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        assert self.__sock_mgr is not None
         self.__collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
