@@ -1095,7 +1095,7 @@ class MongoClient(common.BaseObject[_DocumentType]):
             TOPOLOGY_TYPE.Sharded,
         ):
             return None
-        return cast(tuple[str, int], self._server_property("address"))
+        return cast("tuple[str, int]", self._server_property("address"))
 
     @property
     def primary(self) -> Optional[tuple[str, int]]:
