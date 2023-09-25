@@ -15,14 +15,16 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Generic, Optional, Sequence, Union
+
+from pymongo.typings import _DocumentType
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.pool import Connection
-    from pymongo.typings import _Address, _DocumentOut, _DocumentType
+    from pymongo.typings import _Address
 
 
 class Response(Generic[_DocumentType]):
