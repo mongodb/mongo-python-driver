@@ -127,7 +127,7 @@ class Database(common.BaseObject[_DocumentType]):
                db.__my_collection__
         """
         super().__init__(
-            cast(CodecOptions[_DocumentType], codec_options or client.codec_options),
+            cast("CodecOptions[_DocumentType]", codec_options or client.codec_options),
             read_preference or client.read_preference,
             write_concern or client.write_concern,
             read_concern or client.read_concern,
@@ -1034,7 +1034,7 @@ class Database(common.BaseObject[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            "Collection[MutableMapping[str, Any]]",
             self.get_collection("$cmd", read_preference=read_preference),
         )
         cmd = SON([("listCollections", 1), ("cursor", {})])
