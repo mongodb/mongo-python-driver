@@ -186,7 +186,7 @@ will not add that listener to existing client instances.
 from __future__ import annotations
 
 import datetime
-from collections import abc, namedtuple
+from collections import abc
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 

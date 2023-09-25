@@ -24,7 +24,6 @@ from typing import (
     Dict,
     Generic,
     Iterable,
-    List,
     Mapping,
     NoReturn,
     Optional,
@@ -57,13 +56,7 @@ from pymongo.message import (
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
-from pymongo.typings import (
-    _Address,
-    _CollationIn,
-    _DocumentOut,
-    _DocumentType,
-    _DocumentTypeArg,
-)
+from pymongo.typings import _Address, _CollationIn, _DocumentType, _DocumentTypeArg
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems

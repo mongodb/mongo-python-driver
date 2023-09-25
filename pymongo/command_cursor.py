@@ -33,7 +33,7 @@ from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
-from pymongo.typings import _Address, _DocumentOut, _DocumentType
+from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession

@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
-    from pymongo.typings import ClusterTime, _Address, _CollationIn, _DocumentTypeArg
+    from pymongo.typings import ClusterTime, _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
