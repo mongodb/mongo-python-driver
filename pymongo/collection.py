@@ -465,7 +465,7 @@ class Collection(common.BaseObject[_DocumentType]):
             self.__database,
             self.__name,
             False,
-            cast(CodecOptions[_DocumentType], codec_options or self.codec_options),
+            cast("CodecOptions[_DocumentType]", codec_options or self.codec_options),
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
