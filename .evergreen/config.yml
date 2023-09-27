@@ -1137,7 +1137,6 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
-            set -x
             # Get azurekms credentials from the vault.
             bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
             source ./secrets-export.sh
@@ -3259,7 +3258,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: debian10-small
+  run_on: rhel87-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
