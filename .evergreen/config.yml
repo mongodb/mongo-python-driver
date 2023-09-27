@@ -1137,9 +1137,11 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
+            set -x
             # Get azurekms credentials from the vault.
             bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
             source ./secrets-export.sh
+            cat ./secrets-export.sh
             export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
             export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
