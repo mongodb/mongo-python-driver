@@ -77,8 +77,8 @@ class TestonDemandAzureCredentials(IntegrationTest):
     def setUp(self):
         super().setUp()
         self.master_key = {
-            "keyVaultEndpoint": "https://keyvault-drivers-2411.vault.azure.net/keys/",
-            "keyName": "KEY-NAME",
+            "keyVaultEndpoint": os.environ["AZUREKMS_KEYVAULTENDPOINT"],
+            "keyName": os.environ["AZUREKMS_KEYNAME"],
         }
 
     @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
