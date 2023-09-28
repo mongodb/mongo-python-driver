@@ -1156,6 +1156,7 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
+            set -x
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_SCOPE=${AZUREKMS_SCOPE}
