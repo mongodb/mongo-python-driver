@@ -1144,27 +1144,22 @@ task_groups:
             export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
             export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
-            # Add additional variables to the expansion.
-            cat <<EOT >> testazurekms-expansions.yml
-            AZUREKMS_KEYNAME: $AZUREKMS_KEYNAME
-            AZUREKMS_KEYVAULTENDPOINT: $AZUREKMS_KEYVAULTENDPOINT
-            EOT
       - command: expansions.update
         params:
           file: testazurekms-expansions.yml
-    # teardown_group:
-    #   # Load expansions again. The setup task may have failed before running `expansions.update`.
-    #   - command: expansions.update
-    #     params:
-    #       file: testazurekms-expansions.yml
-    #   - command: shell.exec
-    #     params:
-    #       shell: bash
-    #       script: |-
-    #         ${PREPARE_SHELL}
-    #         export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-    #         export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
-    #         $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+    teardown_group:
+      # Load expansions again. The setup task may have failed before running `expansions.update`.
+      - command: expansions.update
+        params:
+          file: testazurekms-expansions.yml
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
@@ -2241,6 +2236,7 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            source ./secrets-export.sh
             cd src
             echo "Copying files ... begin"
             export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
@@ -2262,6 +2258,7 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            source ./secrets-export.sh
             export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
