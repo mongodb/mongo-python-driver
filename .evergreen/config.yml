@@ -2258,6 +2258,7 @@ tasks:
             set -o errexit
             ${PREPARE_SHELL}
             source ./secrets-export.sh
+            cat ./secrets-export.sh
             export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
