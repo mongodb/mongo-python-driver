@@ -1158,6 +1158,7 @@ task_groups:
             ${PREPARE_SHELL}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
+            export AZUREKMS_SCOPE=${AZUREKMS_SCOPE}
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
