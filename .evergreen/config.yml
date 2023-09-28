@@ -79,6 +79,17 @@ functions:
               export PATH="$MONGODB_BINARIES:$PATH"
               export PROJECT="${project}"
               export PIP_QUIET=1
+           ENSURE_TOOLCHAIN_PYTHON_BINARY: |
+              # Make sure PYTHON_BINARY is set to a suitable toolchain python.
+              if [ -z "$PYTHON_BINARY" ]; then
+                  if [ "$(uname -s)" = "Darwin" ]; then
+                      export PYTHON_BINARY=/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+                  elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+                      export PYTHON_BINARY=/cygdrive/c/python/Python39/python
+                  else
+                      export PYTHON_BINARY=/opt/python/3.9/bin/python3
+                  fi
+              fi
            EOT
 
     # Load the expansion file to make an evergreen variable with the current unique version
@@ -655,7 +666,7 @@ functions:
               .evergreen/run-mongodb-aws-test.sh
           fi
 
-  "bootstrap oidc":
+  "run oidc auth test with aws credentials":
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
@@ -664,58 +675,11 @@ functions:
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-          export OIDC_TOKEN_DIR=/tmp/tokens
-
-          . ./activate-authoidcvenv.sh
-          python oidc_write_orchestration.py
-          python oidc_get_tokens.py
-
-  "run oidc auth test with aws credentials":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          mongosh setup_oidc.js
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
-            export OIDC_TOKEN_DIR=/tmp/tokens
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
+          ${ENSURE_TOOLCHAIN_PYTHON_BINARY}
+          bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -2133,16 +2097,7 @@ tasks:
 
     - name: "oidc-auth-test-latest"
       commands:
-        - func: "bootstrap oidc"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "replica_set"
-            VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
-          vars:
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
       commands:
@@ -3192,9 +3147,8 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8 ]
-    python-version: ["3.9"]
-  display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
+    platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
+  display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
 
