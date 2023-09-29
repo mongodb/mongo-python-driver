@@ -24,10 +24,11 @@ else # No toolchain present, set up virtualenv before installing tox
         . .evergreen/utils.sh
         venvcreate "$PYTHON_BINARY" toxenv
         trap "deactivate; rm -rf toxenv" EXIT HUP
+        $PYTHON_BINARY=python
     fi
-    python -m pip install -q tox
+    $PYTHON_BINARY -m pip install -q tox
     run_tox() {
-      python -m tox "$@"
+      $PYTHON_BINARY -m tox "$@"
     }
 fi
 
