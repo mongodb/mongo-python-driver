@@ -2,6 +2,11 @@
 
 set -o xtrace
 
+if [ -n "$DRIVERS_TOOLS" ]; then
+    # Import venvcreate from $DRIVERS_TOOLS
+    . $DRIVERS_TOOLS/.evergreen/venv-utils.sh
+fi
+
 # Usage:
 # testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
@@ -18,9 +23,6 @@ testinstall () {
             echo "Must specify DRIVERS_TOOLS"
             exit 1
         fi
-
-        # Import venvcreate from $DRIVERS_TOOLS
-        . $DRIVERS_TOOLS/.evergreen/venv-utils.sh
         venvcreate $PYTHON venvtestinstall
         PYTHON=python
     fi
