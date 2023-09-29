@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
+set -x
 
 if [ -z "$PYTHON_BINARY" ]; then
     # Make sure DRIVERS_TOOLS is set.
