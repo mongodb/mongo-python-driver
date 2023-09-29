@@ -8,7 +8,7 @@ if [ -z "$DRIVERS_TOOLS" ]; then
     exit 1
 fi
 
-# Import createvirtualenv from $DRIVERS_TOOLS
+# Import venvcreate from $DRIVERS_TOOLS
 . $DRIVERS_TOOLS/.evergreen/venv-utils.sh
 
 # Usage:
