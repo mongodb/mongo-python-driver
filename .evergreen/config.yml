@@ -329,6 +329,7 @@ functions:
           ${PREPARE_SHELL}
           set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
+          podman ps
 
   "stop mongo-orchestration":
     - command: shell.exec
