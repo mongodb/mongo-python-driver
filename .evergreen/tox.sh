@@ -19,9 +19,13 @@ if [ -n "$TOX" ]; then
       $PYTHON_BINARY -m tox "$@"
     }
 else # No toolchain present, set up virtualenv before installing tox
-    . .evergreen/utils.sh
-    venvcreate "$PYTHON_BINARY" toxenv
-    trap "deactivate; rm -rf toxenv" EXIT HUP
+    # If DRIVERS_TOOLS is set, we are on an EVG host, use a virtual env.
+    # Otherwise we are on temporary host, we can install directly.
+    if [ -n "$DRIVERS_TOOLS" ]; then
+        . .evergreen/utils.sh
+        venvcreate "$PYTHON_BINARY" toxenv
+        trap "deactivate; rm -rf toxenv" EXIT HUP
+    fi
     python -m pip install -q tox
     run_tox() {
       python -m tox "$@"
