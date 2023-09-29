@@ -7,7 +7,7 @@ if [ -z "$DRIVERS_TOOLS" ]; then
     exit 1
 fi
 
-. $DRIVERS_TOOLS/find-python3.sh
+. $DRIVERS_TOOLS/.evergreen/find-python3.sh
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then

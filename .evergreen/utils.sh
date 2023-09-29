@@ -9,7 +9,7 @@ if [ -z "$DRIVERS_TOOLS" ]; then
 fi
 
 # Import createvirtualenv from $DRIVERS_TOOLS
-. $DRIVERS_TOOLS/venv-utils.sh
+. $DRIVERS_TOOLS/.evergreen/venv-utils.sh
 
 # Usage:
 # testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
