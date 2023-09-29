@@ -22,7 +22,7 @@ testinstall () {
     NO_VIRTUALENV=$3
 
     if [ -z "$NO_VIRTUALENV" ]; then
-        createvirtualenv $PYTHON venvtestinstall
+        venvcreate $PYTHON venvtestinstall
         PYTHON=python
     fi
 

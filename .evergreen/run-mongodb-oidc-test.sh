@@ -23,11 +23,11 @@ if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
     source ./secrets-export.sh
 fi
 
-# Make the OIDC tokens.
+# Make the OIDC tokens - also activate the oidc venv.
 set -x
 pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-. ./activate-authoidcvenv.sh
-python oidc_get_tokens.py
+. oidc_get_tokens.sh
+pip install -q tox
 popd
 
 # Set up variables and run the test.
