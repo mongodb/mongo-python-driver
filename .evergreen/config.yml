@@ -79,17 +79,6 @@ functions:
               export PATH="$MONGODB_BINARIES:$PATH"
               export PROJECT="${project}"
               export PIP_QUIET=1
-           ENSURE_TOOLCHAIN_PYTHON_BINARY: |
-              # Make sure PYTHON_BINARY is set to a suitable toolchain python.
-              if [ -z "$PYTHON_BINARY" ]; then
-                  if [ "$(uname -s)" = "Darwin" ]; then
-                      export PYTHON_BINARY=/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-                  elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-                      export PYTHON_BINARY=/cygdrive/c/python/Python39/python
-                  else
-                      export PYTHON_BINARY=/opt/python/3.9/bin/python3
-                  fi
-              fi
            EOT
 
     # Load the expansion file to make an evergreen variable with the current unique version
@@ -108,7 +97,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch cleanup-python-binary-handlin https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -369,7 +358,6 @@ functions:
         script: |
           ${PREPARE_SHELL}
           set -o xtrace
-          export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
@@ -380,7 +368,7 @@ functions:
          script: |
            ${PREPARE_SHELL}
            set -o xtrace
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
+           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.
@@ -500,11 +488,6 @@ functions:
             export MONGODB_URI="${TEST_INDEX_URI}"
             export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
             export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
-          fi
-
-          export PYTHON_BINARY=${PYTHON_BINARY}
-          if [ -z "$PYTHON_BINARY" ]; then
-            export PYTHON_BINARY=${python3_binary}
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -678,7 +661,6 @@ functions:
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          ${ENSURE_TOOLCHAIN_PYTHON_BINARY}
           bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
@@ -1637,8 +1619,6 @@ tasks:
       tags: ["no-server"]
       commands:
         - func: "run tests"
-          vars:
-            PYTHON_BINARY: /opt/python/3.7/bin/python3
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -2115,7 +2095,6 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
         - func: "run tests"
 # }}}
     - name: "coverage-report"
@@ -2262,7 +2241,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
         display_name: "macOS 11.00"
@@ -2271,7 +2249,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100-arm64
         display_name: "macOS 11.00 Arm64"
@@ -2280,21 +2257,18 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel80-fips
         display_name: "RHEL 8.0 FIPS"
@@ -2306,14 +2280,10 @@ axes:
         display_name: "Ubuntu 22.04"
         run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: ubuntu-18.04
         display_name: "Ubuntu 18.04"
         run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
@@ -2336,7 +2306,6 @@ axes:
           skip_ECS_auth_test: true
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
@@ -2477,14 +2446,6 @@ axes:
         display_name: "PyPy 3.10"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-mac
-    display_name: "Python"
-    values:
-      - id: "system-python3"
-        display_name: "Python3"
-        variables:
-          PYTHON_BINARY: "python3"
 
   - id: python-version-windows
     display_name: "Python"
@@ -3168,7 +3129,6 @@ buildvariants:
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
     platform: [macos-1014]
-    python-version-mac: ["system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"

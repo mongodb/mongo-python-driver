@@ -13,20 +13,21 @@ fi
 
 # Get the drivers secrets.  Use an existing secrets file first.
 if [ ! -f "./secrets-export.sh" ]; then
-    bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
 fi
 source ./secrets-export.sh
 
 # # If the file did not have our creds, get them from the vault.
 if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
-    bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
     source ./secrets-export.sh
 fi
 
 # Make the OIDC tokens.
 set -x
 pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-. ./oidc_get_tokens.sh
+. ./activate-authoidcvenv.sh
+python oidc_get_tokens.py
 popd
 
 # Set up variables and run the test.
@@ -45,4 +46,5 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
+export PYTHON_BINARY=python
 bash ./.evergreen/tox.sh -m test-eg
