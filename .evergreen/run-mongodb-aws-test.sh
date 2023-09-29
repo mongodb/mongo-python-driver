@@ -30,7 +30,7 @@ if [ -n "$1" ]; then
   cd -
 fi
 
-export PYTHON_BINARY=python
+export PYTHON_BINARY=python3
 
 if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
   [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"

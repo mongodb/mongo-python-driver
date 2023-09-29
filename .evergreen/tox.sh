@@ -3,14 +3,13 @@ set -o errexit  # Exit the script with error if any of the commands fail
 set -x
 
 if [ -z "$PYTHON_BINARY" ]; then
-    # Make sure DRIVERS_TOOLS is set.
+    # If DRIVERS_TOOLS is not set, use the current python3.
     if [ -z "$DRIVERS_TOOLS" ]; then
-        echo "Must specify DRIVERS_TOOLS"
-        exit 1
+        PYTHON_BINARY=python3
+    else
+        . $DRIVERS_TOOLS/.evergreen/find-python3.sh
+        PYTHON_BINARY="$(find_python3 2>/dev/null)" || exit 1
     fi
-
-    . $DRIVERS_TOOLS/.evergreen/find-python3.sh
-    PYTHON_BINARY="$(find_python3 2>/dev/null)" || exit 1
 fi
 
 TOX=$($PYTHON_BINARY -m tox --version 2>/dev/null || echo "")
