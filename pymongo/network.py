@@ -116,6 +116,8 @@ def command(
     ns = dbname + ".$cmd"
     speculative_hello = False
 
+    print(f"EXHAUST_ALLOWED: {exhaust_allowed}")
+
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
     if is_mongos and not use_op_msg:
