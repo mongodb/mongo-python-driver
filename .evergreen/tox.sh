@@ -5,7 +5,7 @@ set -x
 if [ -z "$PYTHON_BINARY" ]; then
     # If DRIVERS_TOOLS is not set, use the current python3.
     if [ -z "$DRIVERS_TOOLS" ]; then
-        PYTHON_BINARY=python3
+        PYTHON_BINARY=$(command -v python3 || command -v python)
     else
         . $DRIVERS_TOOLS/.evergreen/find-python3.sh
         PYTHON_BINARY="$(find_python3 2>/dev/null)" || exit 1
@@ -24,7 +24,7 @@ else # No toolchain present, set up virtualenv before installing tox
         . .evergreen/utils.sh
         venvcreate "$PYTHON_BINARY" toxenv
         trap "deactivate; rm -rf toxenv" EXIT HUP
-        PYTHON_BINARY=python
+        PYTHON_BINARY=$(command -v python3 || command -v python)
     fi
     $PYTHON_BINARY -m pip install -q tox
     run_tox() {
