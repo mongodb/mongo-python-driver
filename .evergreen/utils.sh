@@ -2,15 +2,6 @@
 
 set -o xtrace
 
-# Make sure DRIVERS_TOOLS is set.
-if [ -z "$DRIVERS_TOOLS" ]; then
-    echo "Must specify DRIVERS_TOOLS"
-    exit 1
-fi
-
-# Import venvcreate from $DRIVERS_TOOLS
-. $DRIVERS_TOOLS/.evergreen/venv-utils.sh
-
 # Usage:
 # testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
@@ -22,6 +13,14 @@ testinstall () {
     NO_VIRTUALENV=$3
 
     if [ -z "$NO_VIRTUALENV" ]; then
+        # Make sure DRIVERS_TOOLS is set.
+        if [ -z "$DRIVERS_TOOLS" ]; then
+            echo "Must specify DRIVERS_TOOLS"
+            exit 1
+        fi
+
+        # Import venvcreate from $DRIVERS_TOOLS
+        . $DRIVERS_TOOLS/.evergreen/venv-utils.sh
         venvcreate $PYTHON venvtestinstall
         PYTHON=python
     fi
