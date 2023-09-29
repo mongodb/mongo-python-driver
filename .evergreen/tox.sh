@@ -13,8 +13,8 @@ if [ -z "$PYTHON_BINARY" ]; then
     PYTHON_BINARY="$(find_python3 2>/dev/null)" || exit 1
 fi
 
-TOX=$($PYTHON_BINARY -m tox --version 2>/dev/null || true)
-if [ -n "$TOX"]; then
+TOX=$($PYTHON_BINARY -m tox --version 2>/dev/null || echo "")
+if [ -n "$TOX" ]; then
     run_tox() {
       $PYTHON_BINARY -m tox "$@"
     }
