@@ -28,10 +28,15 @@ if [ -n "$1" ]; then
   . ./activate-authawsvenv.sh
   python aws_tester.py "$1"
   cd -
+  PYTHON_BINARY=$(command -v python)
+else
+  . ./.evergreen/utils.sh
+  PYTHON_BINARY=$(find_python3)
 fi
 
+
 if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
-  [ -s  PYTHON_BINARY=python "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
+  [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"
 fi
 
 if [ -n "$USE_ENV_VAR_CREDS" ]; then
