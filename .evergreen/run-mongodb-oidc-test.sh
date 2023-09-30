@@ -25,7 +25,9 @@ fi
 
 # Make the OIDC tokens.
 set -x
-bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/oidc_get_tokens.sh
+pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
+bash /oidc_get_tokens.sh
+popd
 
 # Set up variables and run the test.
 if [ -n "$LOCAL_OIDC_SERVER" ]; then
