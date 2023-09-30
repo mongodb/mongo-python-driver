@@ -18,6 +18,9 @@ echo "Running MONGODB-AWS authentication tests"
 # ensure no secrets are printed in log files
 set +x
 
+. ./.evergreen/utils.sh
+PYTHON_BINARY=$(find_python3)
+
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
   source ./secrets-export.sh
@@ -28,12 +31,7 @@ if [ -n "$1" ]; then
   . ./activate-authawsvenv.sh
   python aws_tester.py "$1"
   cd -
-  PYTHON_BINARY=$(command -v python)
-else
-  . ./.evergreen/utils.sh
-  PYTHON_BINARY=$(find_python3)
 fi
-
 
 if [ -z "${SKIP_PREPARE_AWS_ENV}" ]; then
   [ -s "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh" ] && source "${DRIVERS_TOOLS}/.evergreen/auth_aws/prepare_aws_env.sh"

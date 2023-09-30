@@ -13,7 +13,7 @@ VERSION=${VERSION:-3.10}
 PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
 rm -rf build
 
-venvcreate $PYTHON releasevenv
+createvirtualenv $PYTHON releasevenv
 python -m pip install build
 python -m build --wheel .
 deactivate || true
