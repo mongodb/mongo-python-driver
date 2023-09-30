@@ -47,9 +47,9 @@ createvirtualenv () {
     VENV="$PYTHON -m venv"
     VIRTUALENV=$(command -v virtualenv 2>/dev/null || echo "$PYTHON -m virtualenv")
     VIRTUALENV="$VIRTUALENV -p $PYTHON"
-    if ! "$VENV $VENVPATH" 2>/dev/null; then
+    if ! $VENV $VENVPATH 2>/dev/null; then
         # Workaround for bug in older versions of virtualenv.
-        "$VIRTUALENV $VENVPATH" || "$VIRTUALENV $VENVPATH"
+        $VIRTUALENV $VENVPATH 2>/dev/null || $VIRTUALENV $VENVPATH
     fi
     if [ "Windows_NT" = "$OS" ]; then
         # Workaround https://bugs.python.org/issue32451:
