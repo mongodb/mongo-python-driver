@@ -328,9 +328,10 @@ functions:
           ${PREPARE_SHELL}
           set -o xtrace
           echo "HI"
+          podman machine start
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
           echo "HELLO"
-          docker ps
+          podman ps
 
   "stop mongo-orchestration":
     - command: shell.exec
@@ -3134,7 +3135,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: ubuntu-22.04
+    platform: rhel8
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
