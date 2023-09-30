@@ -44,16 +44,12 @@ createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
     # Prefer venv
-    if $PYTHON -m venv -h > /dev/null; then
-        VIRTUALENV="$PYTHON -m venv --system-site-packages"
-    elif $PYTHON -m virtualenv --version > /dev/null; then
-        VIRTUALENV="$PYTHON -m virtualenv -p $PYTHON --system-site-packages"
-    else
-        echo "Cannot test without virtual env"
-        exit 1
+    VENV="$PYTHON -m venv --system-site-packages"
+    VIRTUALENV="$PYTHON -m virtualenv -p $PYTHON --system-site-packages"
+    if ! $VENV $$VENVPATH; then
+        # Workaround for bug in older versions of virtualenv.
+        $VIRTUALENV $VENVPATH || $VIRTUALENV $VENVPATH
     fi
-    # Workaround for bug in older versions of virtualenv.
-    $VIRTUALENV $VENVPATH || $PYTHON -m venv $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
         # Workaround https://bugs.python.org/issue32451:
         # mongovenv/Scripts/activate: line 3: $'\r': command not found
