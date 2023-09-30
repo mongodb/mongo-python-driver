@@ -3134,7 +3134,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: rhel8
+    platform: ubuntu-22.04
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
