@@ -324,17 +324,11 @@ functions:
     - command: shell.exec
       type: setup
       params:
-        background: true
         script: |
           ${PREPARE_SHELL}
           set -o xtrace
           echo "HI"
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
-    - command: shell.exec
-      type: setup
-      params:
-        script: |
-          sleep 5
           echo "HELLO"
           podman ps
 
