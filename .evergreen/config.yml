@@ -358,6 +358,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           set -o xtrace
+          export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
 
   "run doctests":
@@ -368,7 +369,7 @@ functions:
          script: |
            ${PREPARE_SHELL}
            set -o xtrace
-           bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
     # If testing FLE, start the KMS mock servers, first create the virtualenv.

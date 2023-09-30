@@ -46,9 +46,9 @@ createvirtualenv () {
     # Prefer venv
     VENV="$PYTHON -m venv --system-site-packages"
     VIRTUALENV="$PYTHON -m virtualenv -p $PYTHON --system-site-packages"
-    if ! $($VENV $$VENVPATH); then
+    if ! "$VENV $$VENVPATH"; then
         # Workaround for bug in older versions of virtualenv.
-        $($VIRTUALENV $VENVPATH) || $($VIRTUALENV $VENVPATH)
+        "$VIRTUALENV $VENVPATH" || "$VIRTUALENV $VENVPATH"
     fi
     if [ "Windows_NT" = "$OS" ]; then
         # Workaround https://bugs.python.org/issue32451:
