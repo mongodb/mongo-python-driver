@@ -44,10 +44,10 @@ createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
     # Prefer venv
-    VENV="$PYTHON -m venv --system-site-packages"
-    VIRTUALENV=$(command -v virtualenv || echo "$PYTHON -m virtualenv")
-    VIRTUALENV="$VIRTUALENV -p $PYTHON --system-site-packages"
-    if ! "$VENV $VENVPATH"; then
+    VENV="$PYTHON -m venv"
+    VIRTUALENV=$(command -v virtualenv 2>/dev/null || echo "$PYTHON -m virtualenv")
+    VIRTUALENV="$VIRTUALENV -p $PYTHON"
+    if ! "$VENV $VENVPATH" 2>/dev/null; then
         # Workaround for bug in older versions of virtualenv.
         "$VIRTUALENV $VENVPATH" || "$VIRTUALENV $VENVPATH"
     fi
