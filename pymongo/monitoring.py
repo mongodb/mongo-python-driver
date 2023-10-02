@@ -665,8 +665,12 @@ class CommandStartedEvent(_CommandEvent):
 
     @property
     def database_name(self) -> str:
-        """The name of the database this command was run against."""
-        return self.__db
+        """The name of the database this command was run against.
+
+        .. versionchanged:: 4.6
+           Derived from base class's property.
+        """
+        return super().database_name
 
     def __repr__(self) -> str:
         return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(

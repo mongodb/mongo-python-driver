@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Version 4.6
+----------------------
+
+PyMongo 4.6 brings a number of improvements including:
+- Added support for recording database name to command*Events (`PYTHON-3598`_)
+
 Changes in Version 4.5
 ----------------------
 
