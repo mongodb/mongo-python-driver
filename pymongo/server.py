@@ -131,8 +131,8 @@ class Server:
             request_id, data, max_doc_size = self._split_message(message)
 
         if publish:
-            assert listeners is not None
             cmd, dbn = operation.as_command(conn)
+            assert listeners is not None
             listeners.publish_command_start(
                 cmd, dbn, request_id, conn.address, service_id=conn.service_id
             )

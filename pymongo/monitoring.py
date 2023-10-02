@@ -629,7 +629,7 @@ class CommandStartedEvent(_CommandEvent):
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
 
-    __slots__ = ("__cmd",)
+    __slots__ = ("__cmd", "__db")
 
     def __init__(
         self,
@@ -662,6 +662,11 @@ class CommandStartedEvent(_CommandEvent):
     def command(self) -> _DocumentOut:
         """The command document."""
         return self.__cmd
+
+    @property
+    def database_name(self) -> str:
+        """The name of the database this command was run against."""
+        return self.__db
 
     def __repr__(self) -> str:
         return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
