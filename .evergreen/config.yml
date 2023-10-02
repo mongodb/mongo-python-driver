@@ -1098,24 +1098,14 @@ task_groups:
       - func: make files executable
       - command: shell.exec
         params:
-          silent: true
           shell: bash
           script: |-
-            set -o errexit
             ${PREPARE_SHELL}
-            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-            chmod 600 /tmp/testazurekms_privatekey
-            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-            export AZUREKMS_SECRET="${testazurekms_secret}"
-            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
       - command: expansions.update
         params:
@@ -1130,11 +1120,14 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
+            set -x
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
+            export AZUREKMS_SCOPE=${AZUREKMS_SCOPE}
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
+    teardown_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
@@ -2200,9 +2193,10 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            source ./secrets-export.sh
             cd src
             echo "Copying files ... begin"
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
             tar czf /tmp/mongo-python-driver.tgz .
@@ -2221,10 +2215,11 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            source ./secrets-export.sh
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
+            AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2242,10 +2237,13 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             cd src
             PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
-            KEY_NAME='${testazurekms_keyname}' \
-            KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
+            KEY_NAME="${AZUREKMS_KEYNAME}" \
+            KEY_VAULT_ENDPOINT="${AZUREKMS_KEYVAULTENDPOINT}" \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/tox.sh -m test-eg
@@ -3213,7 +3211,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: debian10-small
+  run_on: rhel87-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
