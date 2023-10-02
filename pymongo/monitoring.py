@@ -629,7 +629,7 @@ class CommandStartedEvent(_CommandEvent):
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
 
-    __slots__ = ("__cmd", "__db")
+    __slots__ = ("__cmd",)
 
     def __init__(
         self,
