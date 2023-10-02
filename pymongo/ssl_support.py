@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Support for SSL in PyMongo."""
+from __future__ import annotations
 
 from typing import Optional
 

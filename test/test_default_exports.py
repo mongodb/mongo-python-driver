@@ -33,7 +33,7 @@ GRIDFS_IGNORE = [
     "WriteConcern",
 ]
 PYMONGO_IGNORE = []
-GLOBAL_INGORE = ["TYPE_CHECKING"]
+GLOBAL_INGORE = ["TYPE_CHECKING", "annotations"]
 
 
 class TestDefaultExports(unittest.TestCase):

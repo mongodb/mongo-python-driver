@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Tools for representing files stored in GridFS."""
+from __future__ import annotations
+
 import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, NoReturn, Optional
+from typing import Any, Iterable, Mapping, NoReturn, Optional
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -480,7 +482,7 @@ class GridOut(io.IOBase):
     upload_date: datetime.datetime = _grid_out_property(
         "uploadDate", "Date that this file was first uploaded."
     )
-    aliases: Optional[List[str]] = _grid_out_property("aliases", "List of aliases for this file.")
+    aliases: Optional[list[str]] = _grid_out_property("aliases", "List of aliases for this file.")
     metadata: Optional[Mapping[str, Any]] = _grid_out_property(
         "metadata", "Metadata attached to this file."
     )

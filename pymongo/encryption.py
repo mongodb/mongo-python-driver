@@ -23,14 +23,12 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
     Iterator,
     Mapping,
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
 )
 
 try:
@@ -388,7 +386,7 @@ class _Encrypter:
 
     def encrypt(
         self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions
-    ) -> Dict[Any, Any]:
+    ) -> MutableMapping[Any, Any]:
         """Encrypt a MongoDB command.
 
         :Parameters:
@@ -595,7 +593,7 @@ class ClientEncryption(Generic[_DocumentType]):
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
+    ) -> tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
         .. warning::

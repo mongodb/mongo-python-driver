@@ -16,16 +16,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ContextManager,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -110,7 +101,7 @@ class Server:
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
-        unpack_res: Callable[..., List[_DocumentOut]],
+        unpack_res: Callable[..., list[_DocumentOut]],
     ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -277,8 +268,8 @@ class Server:
         return self._pool
 
     def _split_message(
-        self, message: Union[Tuple[int, Any], Tuple[int, Any, int]]
-    ) -> Tuple[int, Any, int]:
+        self, message: Union[tuple[int, Any], tuple[int, Any, int]]
+    ) -> tuple[int, Any, int]:
         """Return request_id, data, max_doc_size.
 
         :Parameters:

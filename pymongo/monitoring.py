@@ -187,7 +187,7 @@ from __future__ import annotations
 
 import datetime
 from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
@@ -837,12 +837,12 @@ class PoolCreatedEvent(_PoolEvent):
 
     __slots__ = ("__options",)
 
-    def __init__(self, address: _Address, options: Dict[str, Any]) -> None:
+    def __init__(self, address: _Address, options: dict[str, Any]) -> None:
         super().__init__(address)
         self.__options = options
 
     @property
-    def options(self) -> Dict[str, Any]:
+    def options(self) -> dict[str, Any]:
         """Any non-default pool options that were set on this Connection Pool."""
         return self.__options
 
@@ -1464,7 +1464,7 @@ class _EventListeners:
         """Are any ConnectionPoolListener instances registered?"""
         return self.__enabled_for_cmap
 
-    def event_listeners(self) -> List[_EventListeners]:
+    def event_listeners(self) -> list[_EventListeners]:
         """List of registered event listeners."""
         return (
             self.__command_listeners
@@ -1755,7 +1755,7 @@ class _EventListeners:
             except Exception:
                 _handle_exception()
 
-    def publish_pool_created(self, address: _Address, options: Dict[str, Any]) -> None:
+    def publish_pool_created(self, address: _Address, options: dict[str, Any]) -> None:
         """Publish a :class:`PoolCreatedEvent` to all pool listeners."""
         event = PoolCreatedEvent(address, options)
         for subscriber in self.__cmap_listeners:

@@ -29,5 +29,5 @@ export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
-python3.7 -m pip install --user tox
+python3.7 -m pip install -q --user tox
 bash .evergreen/tox.sh -m test-eg

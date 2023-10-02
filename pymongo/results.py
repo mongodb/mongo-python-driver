@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Mapping, Optional, cast
+from __future__ import annotations
+
+from typing import Any, Mapping, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -76,12 +78,12 @@ class InsertManyResult(_WriteResult):
 
     __slots__ = ("__inserted_ids",)
 
-    def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
+    def __init__(self, inserted_ids: list[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
         super().__init__(acknowledged)
 
     @property
-    def inserted_ids(self) -> List:
+    def inserted_ids(self) -> list:
         """A list of _ids of the inserted documents, in the order provided.
 
         .. note:: If ``False`` is passed for the `ordered` parameter to
@@ -163,7 +165,7 @@ class BulkWriteResult(_WriteResult):
 
     __slots__ = ("__bulk_api_result",)
 
-    def __init__(self, bulk_api_result: Dict[str, Any], acknowledged: bool) -> None:
+    def __init__(self, bulk_api_result: dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
         :Parameters:
@@ -176,7 +178,7 @@ class BulkWriteResult(_WriteResult):
         super().__init__(acknowledged)
 
     @property
-    def bulk_api_result(self) -> Dict[str, Any]:
+    def bulk_api_result(self) -> dict[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
 
@@ -211,7 +213,7 @@ class BulkWriteResult(_WriteResult):
         return cast(int, self.__bulk_api_result.get("nUpserted"))
 
     @property
-    def upserted_ids(self) -> Optional[Dict[int, Any]]:
+    def upserted_ids(self) -> Optional[dict[int, Any]]:
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
