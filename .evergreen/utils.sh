@@ -11,10 +11,10 @@ find_python3() {
     # Find a suitable toolchain version, if available.
     if [ "$(uname -s)" = "Darwin" ]; then
         # macos 10.14
-        if [ -d "/Library/Frameworks/Python.Framework/Versions/3.7" ]; then
+        if [[ "$(sw_vers -productVersion)" == "10.?" ]];
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.7/bin/python3"
-        # macos 11.00
-        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.10" ]; then
+        else
+            # macos 11.00
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
         fi
     elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
@@ -45,8 +45,12 @@ createvirtualenv () {
     VENVPATH=$2
     # Prefer venv
     VENV="$PYTHON -m venv"
-    VIRTUALENV=$(command -v virtualenv 2>/dev/null || echo "$PYTHON -m virtualenv")
-    VIRTUALENV="$VIRTUALENV -p $PYTHON"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        VIRTUALENV="$PYTHON -m virtualenv"
+    else
+        VIRTUALENV=$(command -v virtualenv 2>/dev/null || echo "$PYTHON -m virtualenv")
+        VIRTUALENV="$VIRTUALENV -p $PYTHON"
+    fi
     if ! $VENV $VENVPATH 2>/dev/null; then
         # Workaround for bug in older versions of virtualenv.
         $VIRTUALENV $VENVPATH 2>/dev/null || $VIRTUALENV $VENVPATH
