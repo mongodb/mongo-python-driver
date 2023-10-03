@@ -11,7 +11,7 @@ find_python3() {
     # Find a suitable toolchain version, if available.
     if [ "$(uname -s)" = "Darwin" ]; then
         # macos 10.14
-        if [[ "$(sw_vers -productVersion)" == "10.?" ]];
+        if [[ "$(sw_vers -productVersion)" == "10.?" ]]; then
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.7/bin/python3"
         else
             # macos 11.00
