@@ -4,7 +4,7 @@ Gevent
 PyMongo supports `Gevent <http://www.gevent.org/>`_. Simply call Gevent's
 ``monkey.patch_all()`` before loading any other modules:
 
-.. doctest::
+.. code-block:: pycon
 
   >>> # You must call patch_all() *before* importing any other modules
   >>> from gevent import monkey
