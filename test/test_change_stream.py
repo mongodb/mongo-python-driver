@@ -26,7 +26,7 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, Version, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
@@ -764,8 +764,12 @@ class ProseSpecTestsMixin:
 
     # Prose test no. 19
     @no_type_check
-    @client_context.require_version_min(6, 0, 9)
     def test_split_large_change(self):
+        server_version = client_context.version
+        if not server_version.at_least(6, 0, 9):
+            self.skipTest("$changeStreamSplitLargeEvent requires MongoDB 6.0.9+")
+        if server_version.at_least(6, 1, 0) and server_version < Version(7, 0, 0):
+            self.skipTest("$changeStreamSplitLargeEvent is not available in 6.x rapid releases")
         self.db.drop_collection("test_split_large_change")
         coll = self.db.create_collection(
             "test_split_large_change", changeStreamPreAndPostImages={"enabled": True}
