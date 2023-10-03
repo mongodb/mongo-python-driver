@@ -10,12 +10,12 @@ find_python3() {
     fi
     # Find a suitable toolchain version, if available.
     if [ "$(uname -s)" = "Darwin" ]; then
-        # macos 10.14
-        if [[ "$(sw_vers -productVersion)" =~ "10.*" ]]; then
-            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.7/bin/python3"
-        else
-            # macos 11.00
+        # macos 11.00
+        if [ -d "/Library/Frameworks/Python.Framework/Versions/3.10" ]; then
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
+        # macos 10.14
+        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.7" ]; then
+            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.7/bin/python3"
         fi
     elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         PYTHON="C:/python/Python37/python.exe"
