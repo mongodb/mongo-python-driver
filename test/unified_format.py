@@ -100,6 +100,10 @@ from pymongo.monitoring import (
     PoolReadyEvent,
     ServerClosedEvent,
     ServerDescriptionChangedEvent,
+    ServerHeartbeatFailedEvent,
+    ServerHeartbeatListener,
+    ServerHeartbeatStartedEvent,
+    ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
     TopologyEvent,
@@ -107,6 +111,7 @@ from pymongo.monitoring import (
     _ConnectionEvent,
     _PoolEvent,
     _ServerEvent,
+    _ServerHeartbeatEvent,
 )
 from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
@@ -287,7 +292,7 @@ class NonLazyCursor:
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
+class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -318,7 +323,11 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             return [e for e in self.events if isinstance(e, _CommandEvent)]
         if event_type == "cmap":
             return [e for e in self.events if isinstance(e, (_ConnectionEvent, _PoolEvent))]
-        return [e for e in self.events if isinstance(e, (_ServerEvent, TopologyEvent))]
+        return [
+            e
+            for e in self.events
+            if isinstance(e, (_ServerEvent, TopologyEvent, _ServerHeartbeatEvent))
+        ]
 
     def add_event(self, event):
         event_name = type(event).__name__.lower()
@@ -338,23 +347,32 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             self.add_event(event)
 
     def started(self, event):
-        if event.command == {}:
-            # Command is redacted. Observe only if flag is set.
-            if self._observe_sensitive_commands:
+        if isinstance(event, CommandStartedEvent):
+            if event.command == {}:
+                # Command is redacted. Observe only if flag is set.
+                if self._observe_sensitive_commands:
+                    self._command_event(event)
+            else:
                 self._command_event(event)
         else:
-            self._command_event(event)
+            self.add_event(event)
 
     def succeeded(self, event):
-        if event.reply == {}:
-            # Command is redacted. Observe only if flag is set.
-            if self._observe_sensitive_commands:
+        if isinstance(event, CommandSucceededEvent):
+            if event.reply == {}:
+                # Command is redacted. Observe only if flag is set.
+                if self._observe_sensitive_commands:
+                    self._command_event(event)
+            else:
                 self._command_event(event)
         else:
-            self._command_event(event)
+            self.add_event(event)
 
     def failed(self, event):
-        self._command_event(event)
+        if isinstance(event, CommandFailedEvent):
+            self._command_event(event)
+        else:
+            self.add_event(event)
 
     def opened(self, event: ServerOpeningEvent) -> None:
         self.add_event(event)
@@ -834,6 +852,18 @@ class MatchEvaluatorUtil:
                 )
             if "newDescription" in spec:
                 self.match_server_description(actual.new_description, spec["newDescription"])
+        elif name == "serverHeartbeatStartedEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "serverHeartbeatSucceededEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatSucceededEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "serverHeartbeatFailedEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
         else:
             raise Exception(f"Unsupported event type {name}")
 
@@ -869,7 +899,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.12")
+    SCHEMA_VERSION = Version.from_string("1.17")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
