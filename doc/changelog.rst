@@ -5,7 +5,8 @@ Changes in Version 4.6
 ----------------------
 
 PyMongo 4.6 brings a number of improvements including:
-- Added support for recording database name to command*Events (`PYTHON-3598`_)
+- Added the :attr:`pymongo.monitoring.CommandSucceededEvent.database_name` property.
+- Added the :attr:`pymongo.monitoring.CommandFailedEvent.database_name` property.
 
 Changes in Version 4.5
 ----------------------

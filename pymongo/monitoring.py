@@ -665,11 +665,7 @@ class CommandStartedEvent(_CommandEvent):
 
     @property
     def database_name(self) -> str:
-        """The name of the database this command was run against.
-
-        .. versionchanged:: 4.6
-           Derived from base class's property.
-        """
+        """The name of the database this command was run against."""
         return super().database_name
 
     def __repr__(self) -> str:
