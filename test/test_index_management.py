@@ -67,7 +67,6 @@ class TestSearchIndexProse(unittest.TestCase):
         password = os.environ["DB_PASSWORD"]
         cls.client = MongoClient(url, username=username, password=password)
         cls.client.drop_database(_NAME)
-        cls.addCleanup(cls.client.close)
         cls.db = cls.client.test_search_index_prose
 
     @classmethod
