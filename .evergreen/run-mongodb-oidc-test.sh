@@ -26,8 +26,7 @@ fi
 # Make the OIDC tokens.
 set -x
 pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-export OIDC_TOKEN_DIR=/tmp/tokens
-bash ./oidc_get_tokens.sh
+. ./oidc_get_tokens.sh
 popd
 
 # Set up variables and run the test.
