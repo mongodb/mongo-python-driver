@@ -492,6 +492,7 @@ functions:
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
