@@ -1214,7 +1214,7 @@ task_groups:
           binary: bash
           add_expansions_to_env: true
           env:
-            MONGODB_VERSION: "7.0"
+            MONGODB_VERSION: "6.0"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
       - command: expansions.update
