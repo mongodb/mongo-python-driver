@@ -1262,10 +1262,11 @@ class TopologyClosedEvent(TopologyEvent):
 class _ServerHeartbeatEvent:
     """Base class for server heartbeat events."""
 
-    __slots__ = "__connection_id"
+    __slots__ = ("__connection_id", "__awaited")
 
-    def __init__(self, connection_id: _Address) -> None:
+    def __init__(self, connection_id: _Address, awaited: bool = False) -> None:
         self.__connection_id = connection_id
+        self.__awaited = awaited
 
     @property
     def connection_id(self) -> _Address:
@@ -1274,8 +1275,16 @@ class _ServerHeartbeatEvent:
         """
         return self.__connection_id
 
+    @property
+    def awaited(self) -> bool:
+        """Whether the heartbeat was issued as an awaitable hello command.
+
+        .. versionadded:: 4.6
+        """
+        return self.__awaited
+
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id}>"
+        return f"<{self.__class__.__name__} {self.connection_id} {self.awaited}>"
 
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
@@ -1293,15 +1302,14 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ("__duration", "__reply", "__awaited")
+    __slots__ = ("__duration", "__reply")
 
     def __init__(
         self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False
     ) -> None:
-        super().__init__(connection_id)
+        super().__init__(connection_id, awaited)
         self.__duration = duration
         self.__reply = reply
-        self.__awaited = awaited
 
     @property
     def duration(self) -> float:
@@ -1320,8 +1328,10 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         If true, then :meth:`duration` reflects the sum of the round trip time
         to the server and the time that the server waited before sending a
         response.
+
+        .. versionadded:: 3.11
         """
-        return self.__awaited
+        return super().awaited
 
     def __repr__(self) -> str:
         return "<{} {} duration: {}, awaited: {}, reply: {}>".format(
@@ -1340,15 +1350,14 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ("__duration", "__reply", "__awaited")
+    __slots__ = ("__duration", "__reply")
 
     def __init__(
         self, duration: float, reply: Exception, connection_id: _Address, awaited: bool = False
     ) -> None:
-        super().__init__(connection_id)
+        super().__init__(connection_id, awaited)
         self.__duration = duration
         self.__reply = reply
-        self.__awaited = awaited
 
     @property
     def duration(self) -> float:
@@ -1367,8 +1376,10 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         If true, then :meth:`duration` reflects the sum of the round trip time
         to the server and the time that the server waited before sending a
         response.
+
+        .. versionadded:: 3.11
         """
-        return self.__awaited
+        return super().awaited
 
     def __repr__(self) -> str:
         return "<{} {} duration: {}, awaited: {}, reply: {!r}>".format(
@@ -1554,14 +1565,15 @@ class _EventListeners:
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_started(self, connection_id: _Address) -> None:
+    def publish_server_heartbeat_started(self, connection_id: _Address, awaited: bool) -> None:
         """Publish a ServerHeartbeatStartedEvent to all server heartbeat
         listeners.
 
         :Parameters:
          - `connection_id`: The address (host, port) pair of the connection.
+         - `awaited`: True if this heartbeat is part of an awaitable hello command.
         """
-        event = ServerHeartbeatStartedEvent(connection_id)
+        event = ServerHeartbeatStartedEvent(connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.started(event)

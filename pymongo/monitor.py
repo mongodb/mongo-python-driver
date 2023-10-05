@@ -261,7 +261,17 @@ class Monitor(MonitorBase):
         address = self._server_description.address
         if self._publish:
             assert self._listeners is not None
-            self._listeners.publish_server_heartbeat_started(address)
+            sd = self._server_description
+            # TODO: this is not accurate in the rare case the pool has a
+            #  connection but the checkout process closes it and creates
+            #  a new one.
+            awaited = bool(
+                self._pool.conns
+                and self._stream
+                and sd.is_server_type_known
+                and sd.topology_version
+            )
+            self._listeners.publish_server_heartbeat_started(address, awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()

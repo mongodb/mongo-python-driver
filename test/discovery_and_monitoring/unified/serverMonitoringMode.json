@@ -62,6 +62,7 @@
         {
           "client": "client0",
           "eventType": "sdam",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "serverHeartbeatStartedEvent": {
@@ -132,6 +133,7 @@
         {
           "client": "client1",
           "eventType": "sdam",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "serverHeartbeatStartedEvent": {
@@ -164,7 +166,8 @@
                 "client": {
                   "id": "client2",
                   "uriOptions": {
-                    "serverMonitoringMode": "poll"
+                    "serverMonitoringMode": "poll",
+                    "heartbeatFrequencyMS": 500
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -196,12 +199,24 @@
           "expectResult": {
             "ok": 1
           }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client2",
+            "event": {
+              "serverHeartbeatStartedEvent": {}
+            },
+            "count": 2
+          }
         }
       ],
       "expectEvents": [
         {
           "client": "client2",
           "eventType": "sdam",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "serverHeartbeatStartedEvent": {
