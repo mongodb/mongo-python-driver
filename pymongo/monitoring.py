@@ -1284,7 +1284,7 @@ class _ServerHeartbeatEvent:
         return self.__awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} {self.awaited}>"
+        return f"<{self.__class__.__name__} {self.connection_id} awaited: {self.awaited}>"
 
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
