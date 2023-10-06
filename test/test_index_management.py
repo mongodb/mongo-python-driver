@@ -225,6 +225,16 @@ if os.environ.get("TEST_INDEX_MANAGEMENT"):
             module=__name__,
         )
     )
+else:
+
+    class TestIndexManagementUnifiedTests(unittest.TestCase):
+        @classmethod
+        def setUpClass(cls) -> None:
+            raise unittest.SkipTest("Skipping index management pending PYTHON-3951")
+
+        def test_placeholder(self):
+            pass
+
 
 if __name__ == "__main__":
     unittest.main()
