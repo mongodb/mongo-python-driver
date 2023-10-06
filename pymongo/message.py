@@ -1097,6 +1097,7 @@ class _BulkWriteContext:
             self.conn.address,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
     def _fail(self, request_id: int, failure: _DocumentOut, duration: timedelta) -> None:
@@ -1109,6 +1110,7 @@ class _BulkWriteContext:
             self.conn.address,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
 
