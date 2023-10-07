@@ -13,13 +13,13 @@ fi
 
 # Get the drivers secrets.  Use an existing secrets file first.
 if [ ! -f "./secrets-export.sh" ]; then
-    bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
 fi
 source ./secrets-export.sh
 
 # # If the file did not have our creds, get them from the vault.
 if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
-    bash .evergreen/tox.sh -m aws-secrets -- drivers/oidc
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
     source ./secrets-export.sh
 fi
 
