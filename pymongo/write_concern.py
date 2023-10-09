@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """Tools for working with write concerns."""
+from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 from pymongo.errors import ConfigurationError
 
@@ -62,7 +63,7 @@ class WriteConcern:
         j: Optional[bool] = None,
         fsync: Optional[bool] = None,
     ) -> None:
-        self.__document: Dict[str, Any] = {}
+        self.__document: dict[str, Any] = {}
         self.__acknowledged = True
 
         if wtimeout is not None:
@@ -102,7 +103,7 @@ class WriteConcern:
         return self.__server_default
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         """The document representation of this write concern.
 
         .. note::

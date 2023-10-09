@@ -15,7 +15,7 @@
 """Tools to parse mongo client options."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -80,7 +80,7 @@ def _parse_read_concern(options: Mapping[str, Any]) -> ReadConcern:
     return ReadConcern(concern)
 
 
-def _parse_ssl_options(options: Mapping[str, Any]) -> Tuple[Optional[SSLContext], bool]:
+def _parse_ssl_options(options: Mapping[str, Any]) -> tuple[Optional[SSLContext], bool]:
     """Parse ssl options."""
     use_tls = options.get("tls")
     if use_tls is not None:
@@ -312,7 +312,7 @@ class ClientOptions:
         return self.__load_balanced
 
     @property
-    def event_listeners(self) -> List[_EventListeners]:
+    def event_listeners(self) -> list[_EventListeners]:
         """The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.

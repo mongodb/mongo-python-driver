@@ -13,10 +13,11 @@
 # permissions and limitations under the License.
 
 """Represent MongoClient's configuration."""
+from __future__ import annotations
 
 import threading
 import traceback
-from typing import Any, Collection, Dict, Optional, Tuple, Type, Union
+from typing import Any, Collection, Optional, Type, Union
 
 from bson.objectid import ObjectId
 from pymongo import common, monitor, pool
@@ -30,7 +31,7 @@ from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 class TopologySettings:
     def __init__(
         self,
-        seeds: Optional[Collection[Tuple[str, int]]] = None,
+        seeds: Optional[Collection[tuple[str, int]]] = None,
         replica_set_name: Optional[str] = None,
         pool_class: Optional[Type[Pool]] = None,
         pool_options: Optional[PoolOptions] = None,
@@ -57,7 +58,7 @@ class TopologySettings:
                 % (common.MIN_HEARTBEAT_INTERVAL * 1000,)
             )
 
-        self._seeds: Collection[Tuple[str, int]] = seeds or [("localhost", 27017)]
+        self._seeds: Collection[tuple[str, int]] = seeds or [("localhost", 27017)]
         self._replica_set_name = replica_set_name
         self._pool_class: Type[Pool] = pool_class or pool.Pool
         self._pool_options: PoolOptions = pool_options or PoolOptions()
@@ -80,7 +81,7 @@ class TopologySettings:
         self._stack = "".join(traceback.format_stack())
 
     @property
-    def seeds(self) -> Collection[Tuple[str, int]]:
+    def seeds(self) -> Collection[tuple[str, int]]:
         """List of server addresses."""
         return self._seeds
 
@@ -162,6 +163,6 @@ class TopologySettings:
         else:
             return TOPOLOGY_TYPE.Unknown
 
-    def get_server_descriptions(self) -> Dict[Union[Tuple[str, int], Any], ServerDescription]:
+    def get_server_descriptions(self) -> dict[Union[tuple[str, int], Any], ServerDescription]:
         """Initial dict of (address, ServerDescription) for all seeds."""
         return {address: ServerDescription(address) for address in self.seeds}

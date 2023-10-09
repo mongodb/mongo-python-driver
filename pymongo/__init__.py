@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
+from __future__ import annotations
 
 from typing import ContextManager, Optional
 
@@ -116,7 +117,7 @@ def has_c() -> bool:
         return False
 
 
-def timeout(seconds: Optional[float]) -> ContextManager:
+def timeout(seconds: Optional[float]) -> ContextManager[None]:
     """**(Provisional)** Apply the given timeout for a block of operations.
 
     .. note:: :func:`~pymongo.timeout` is currently provisional. Backwards

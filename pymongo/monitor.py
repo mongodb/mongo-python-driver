@@ -19,7 +19,7 @@ from __future__ import annotations
 import atexit
 import time
 import weakref
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
@@ -289,7 +289,7 @@ class Monitor(MonitorBase):
                 )
             return sd
 
-    def _check_with_socket(self, conn: Connection) -> Tuple[Hello, float]:
+    def _check_with_socket(self, conn: Connection) -> tuple[Hello, float]:
         """Return (Hello, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
@@ -343,7 +343,7 @@ class SrvMonitor(MonitorBase):
                 # Topology was garbage-collected.
                 self.close()
 
-    def _get_seedlist(self) -> Optional[List[Tuple[str, Any]]]:
+    def _get_seedlist(self) -> Optional[list[tuple[str, Any]]]:
         """Poll SRV records for a seedlist.
 
         Returns a list of ServerDescriptions.
@@ -400,7 +400,7 @@ class _RttMonitor(MonitorBase):
             self._moving_average.add_sample(sample)
             self._moving_min.add_sample(sample)
 
-    def get(self) -> Tuple[Optional[float], float]:
+    def get(self) -> tuple[Optional[float], float]:
         """Get the calculated average, or None if no samples yet and the min."""
         with self._lock:
             return self._moving_average.get(), self._moving_min.get()

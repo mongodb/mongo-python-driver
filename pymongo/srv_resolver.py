@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 try:
     from dns import resolver
@@ -107,7 +107,7 @@ class _SrvResolver:
 
     def _get_srv_response_and_hosts(
         self, encapsulate_errors: bool
-    ) -> Tuple[resolver.Answer, List[Tuple[str, Any]]]:
+    ) -> tuple[resolver.Answer, list[tuple[str, Any]]]:
         results = self._resolve_uri(encapsulate_errors)
 
         # Construct address tuples
@@ -127,11 +127,11 @@ class _SrvResolver:
             nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
-    def get_hosts(self) -> List[Tuple[str, Any]]:
+    def get_hosts(self) -> list[tuple[str, Any]]:
         _, nodes = self._get_srv_response_and_hosts(True)
         return nodes
 
-    def get_hosts_and_min_ttl(self) -> Tuple[List[Tuple[str, Any]], int]:
+    def get_hosts_and_min_ttl(self) -> tuple[list[tuple[str, Any]], int]:
         results, nodes = self._get_srv_response_and_hosts(False)
         rrset = results.rrset
         ttl = rrset.ttl if rrset else 0

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """An implementation of RFC4013 SASLprep."""
+from __future__ import annotations
+
 from typing import Any, Optional
 
 try:
@@ -20,7 +22,7 @@ try:
 except ImportError:
     HAVE_STRINGPREP = False
 
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> str:
+    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
         """SASLprep dummy"""
         if isinstance(data, str):
             raise TypeError(
@@ -49,7 +51,7 @@ else:
         stringprep.in_table_c9,
     )
 
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> str:
+    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
         """An implementation of RFC4013 SASLprep.
 
         :Parameters:

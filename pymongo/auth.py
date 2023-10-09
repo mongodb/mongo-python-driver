@@ -23,7 +23,16 @@ import socket
 import typing
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    MutableMapping,
+    Optional,
+    cast,
+)
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -155,11 +164,11 @@ def _build_credentials_tuple(
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
         request_token_callback = properties.get("request_token_callback")
-        refresh_token_callback = properties.get("refresh_token_callback", None)
         provider_name = properties.get("PROVIDER_NAME", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
+            "*.mongodb-qa.net",
             "*.mongodbgov.net",
             "localhost",
             "127.0.0.1",
@@ -172,11 +181,10 @@ def _build_credentials_tuple(
             )
         oidc_props = _OIDCProperties(
             request_token_callback=request_token_callback,
-            refresh_token_callback=refresh_token_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )
-        return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
+        return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 
     elif mech == "PLAIN":
         source_database = source or database or "$external"
@@ -193,10 +201,11 @@ def _xor(fir: bytes, sec: bytes) -> bytes:
     return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
 
 
-def _parse_scram_response(response: bytes) -> dict:
+def _parse_scram_response(response: bytes) -> Dict[bytes, bytes]:
     """Split a scram response into key, value pairs."""
     return dict(
-        typing.cast(typing.Tuple[str, str], item.split(b"=", 1)) for item in response.split(b",")
+        typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))
+        for item in response.split(b",")
     )
 
 
@@ -523,7 +532,7 @@ def _authenticate_default(credentials: MongoCredential, conn: Connection) -> Non
         return _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
 
 
-_AUTH_MAP: Mapping[str, Callable] = {
+_AUTH_MAP: Mapping[str, Callable[..., None]] = {
     "GSSAPI": _authenticate_gssapi,
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
@@ -547,13 +556,13 @@ class _AuthContext:
     ) -> Optional[_AuthContext]:
         spec_cls = _SPECULATIVE_AUTH_MAP.get(creds.mechanism)
         if spec_cls:
-            return spec_cls(creds, address)
+            return cast(_AuthContext, spec_cls(creds, address))
         return None
 
     def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         raise NotImplementedError
 
-    def parse_response(self, hello: Hello) -> None:
+    def parse_response(self, hello: Hello[Mapping[str, Any]]) -> None:
         self.speculative_authenticate = hello.speculative_authenticate
 
     def speculate_succeeded(self) -> bool:
@@ -595,7 +604,7 @@ class _OIDCContext(_AuthContext):
         return cmd
 
 
-_SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
+_SPECULATIVE_AUTH_MAP: Mapping[str, Any] = {
     "MONGODB-X509": _X509Context,
     "SCRAM-SHA-1": functools.partial(_ScramContext, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_ScramContext, mechanism="SCRAM-SHA-256"),

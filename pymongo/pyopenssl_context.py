@@ -23,7 +23,7 @@ import sys as _sys
 import time as _time
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
 from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
@@ -184,7 +184,7 @@ class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self) -> None:
-        self.trusted_ca_certs: Optional[List[Certificate]] = None
+        self.trusted_ca_certs: Optional[list[Certificate]] = None
         self.check_ocsp_endpoint: Optional[bool] = None
         self.ocsp_response_cache = _OCSPCache()
 

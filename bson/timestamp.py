@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for representing MongoDB internal Timestamps."""
+from __future__ import annotations
 
 import calendar
 import datetime

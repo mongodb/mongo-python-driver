@@ -24,12 +24,10 @@ from typing import (
     Callable,
     Container,
     Iterable,
-    List,
     Mapping,
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -100,7 +98,7 @@ def _gen_index_name(keys: _IndexList) -> str:
 
 def _index_list(
     key_or_list: _Hint, direction: Optional[Union[int, str]] = None
-) -> Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]:
+) -> Sequence[tuple[str, Union[int, str, Mapping[str, Any]]]]:
     """Helper to generate a list of (key, direction) pairs.
 
     Takes such a list, or a single key, or a single key and direction.
@@ -116,7 +114,7 @@ def _index_list(
             return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
-        values: List[Tuple[str, int]] = []
+        values: list[tuple[str, int]] = []
         for item in key_or_list:
             if isinstance(item, str):
                 item = (item, ASCENDING)
@@ -223,7 +221,7 @@ def _check_command_response(
     raise OperationFailure(errmsg, code, response, max_wire_version)
 
 
-def _raise_last_write_error(write_errors: List[Any]) -> NoReturn:
+def _raise_last_write_error(write_errors: list[Any]) -> NoReturn:
     # If the last batch had multiple errors only report
     # the last error to emulate continue_on_error.
     error = write_errors[-1]
