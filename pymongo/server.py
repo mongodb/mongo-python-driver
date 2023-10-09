@@ -178,6 +178,7 @@ class Server:
                     request_id,
                     conn.address,
                     service_id=conn.service_id,
+                    database_name=dbn,
                 )
             raise
 
@@ -203,6 +204,7 @@ class Server:
                 request_id,
                 conn.address,
                 service_id=conn.service_id,
+                database_name=dbn,
             )
 
         # Decrypt response.

@@ -67,8 +67,12 @@ class TestSearchIndexProse(unittest.TestCase):
         password = os.environ["DB_PASSWORD"]
         cls.client = MongoClient(url, username=username, password=password)
         cls.client.drop_database(_NAME)
-        cls.addClassCleanup(cls.client.close)
         cls.db = cls.client.test_search_index_prose
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.drop_database(_NAME)
+        cls.client.close()
 
     def wait_for_ready(self, coll, name=_NAME, predicate=None):
         """Wait for a search index to be ready."""
@@ -214,12 +218,23 @@ class TestSearchIndexProse(unittest.TestCase):
         coll0.drop_search_index("foo")
 
 
-globals().update(
-    generate_test_classes(
-        _TEST_PATH,
-        module=__name__,
+if os.environ.get("TEST_INDEX_MANAGEMENT"):
+    globals().update(
+        generate_test_classes(
+            _TEST_PATH,
+            module=__name__,
+        )
     )
-)
+else:
+
+    class TestIndexManagementUnifiedTests(unittest.TestCase):
+        @classmethod
+        def setUpClass(cls) -> None:
+            raise unittest.SkipTest("Skipping index management pending PYTHON-3951")
+
+        def test_placeholder(self):
+            pass
+
 
 if __name__ == "__main__":
     unittest.main()

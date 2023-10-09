@@ -139,14 +139,14 @@ KMS_TLS_OPTS = {
 
 # Build up a placeholder map.
 PLACEHOLDER_MAP = {}
-for (provider_name, provider_data) in [
+for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
     ("azure", AZURE_CREDS),
     ("gcp", GCP_CREDS),
     ("kmip", KMIP_CREDS),
 ]:
-    for (key, value) in provider_data.items():
+    for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
@@ -161,6 +161,7 @@ def with_metaclass(meta, *bases):
 
     Vendored from six: https://github.com/benjaminp/six/blob/master/six.py
     """
+
     # This requires a bit of explanation: the basic idea is to make a dummy
     # metaclass for one level of class instantiation that replaces itself with
     # the actual metaclass.
@@ -764,6 +765,10 @@ class MatchEvaluatorUtil:
             self.test.assertEqual(expectation, actual)
             return None
 
+    def assertHasDatabaseName(self, spec, actual):
+        if "databaseName" in spec:
+            self.test.assertEqual(spec["databaseName"], actual.database_name)
+
     def assertHasServiceId(self, spec, actual):
         if "hasServiceId" in spec:
             if spec.get("hasServiceId"):
@@ -796,21 +801,21 @@ class MatchEvaluatorUtil:
         if name == "commandStartedEvent":
             self.test.assertIsInstance(actual, CommandStartedEvent)
             command = spec.get("command")
-            database_name = spec.get("databaseName")
             if command:
                 self.match_result(command, actual.command)
-            if database_name:
-                self.test.assertEqual(database_name, actual.database_name)
+            self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get("reply")
             if reply:
                 self.match_result(reply, actual.reply)
+            self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
             self.assertHasServiceId(spec, actual)
+            self.assertHasDatabaseName(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":

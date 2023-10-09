@@ -18,6 +18,9 @@ echo "Running MONGODB-AWS authentication tests"
 # ensure no secrets are printed in log files
 set +x
 
+. ./.evergreen/utils.sh
+PYTHON_BINARY=$(find_python3)
+
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
   source ./secrets-export.sh
