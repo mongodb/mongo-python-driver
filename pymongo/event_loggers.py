@@ -26,6 +26,8 @@ or
 
 ``MongoClient(event_listeners=[CommandLogger()])``
 """
+from __future__ import annotations
+
 import logging
 
 from pymongo import monitoring

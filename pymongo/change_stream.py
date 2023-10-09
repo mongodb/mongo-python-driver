@@ -16,19 +16,9 @@
 from __future__ import annotations
 
 import copy
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generic,
-    List,
-    Mapping,
-    Optional,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
 
-from bson import _bson_to_dict
+from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
@@ -132,7 +122,7 @@ class ChangeStream(Generic[_DocumentType]):
         common.validate_non_negative_integer_or_none("batchSize", batch_size)
 
         self._decode_custom = False
-        self._orig_codec_options = target.codec_options
+        self._orig_codec_options: CodecOptions[_DocumentType] = target.codec_options
         if target.codec_options.type_registry._decoder_map:
             self._decode_custom = True
             # Keep the type registry so that we support encoding custom types
@@ -173,9 +163,9 @@ class ChangeStream(Generic[_DocumentType]):
         """
         raise NotImplementedError
 
-    def _change_stream_options(self) -> Dict[str, Any]:
+    def _change_stream_options(self) -> dict[str, Any]:
         """Return the options dict for the $changeStream pipeline stage."""
-        options: Dict[str, Any] = {}
+        options: dict[str, Any] = {}
         if self._full_document is not None:
             options["fullDocument"] = self._full_document
 
@@ -197,7 +187,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         return options
 
-    def _command_options(self) -> Dict[str, Any]:
+    def _command_options(self) -> dict[str, Any]:
         """Return the options dict for the aggregation command."""
         options = {}
         if self._max_await_time_ms is not None:
@@ -206,7 +196,7 @@ class ChangeStream(Generic[_DocumentType]):
             options["batchSize"] = self._batch_size
         return options
 
-    def _aggregation_pipeline(self) -> List[Dict[str, Any]]:
+    def _aggregation_pipeline(self) -> list[dict[str, Any]]:
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
         full_pipeline: list = [{"$changeStream": options}]
@@ -435,14 +425,14 @@ class ChangeStream(Generic[_DocumentType]):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    def __enter__(self) -> "ChangeStream":
+    def __enter__(self) -> ChangeStream[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
-class CollectionChangeStream(ChangeStream, Generic[_DocumentType]):
+class CollectionChangeStream(ChangeStream[_DocumentType]):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
@@ -458,11 +448,11 @@ class CollectionChangeStream(ChangeStream, Generic[_DocumentType]):
         return _CollectionAggregationCommand
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient[_DocumentType]:
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
+class DatabaseChangeStream(ChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use
@@ -478,11 +468,11 @@ class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
         return _DatabaseAggregationCommand
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient[_DocumentType]:
         return self._target.client
 
 
-class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
+class ClusterChangeStream(DatabaseChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use
@@ -491,7 +481,7 @@ class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     .. versionadded:: 3.7
     """
 
-    def _change_stream_options(self) -> Dict[str, Any]:
+    def _change_stream_options(self) -> dict[str, Any]:
         options = super()._change_stream_options()
         options["allChangesForCluster"] = True
         return options

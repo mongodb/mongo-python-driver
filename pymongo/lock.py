@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import threading
@@ -19,7 +20,7 @@ import weakref
 _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 
 # References to instances of _create_lock
-_forkable_locks: weakref.WeakSet = weakref.WeakSet()
+_forkable_locks: weakref.WeakSet[threading.Lock] = weakref.WeakSet()
 
 
 def _create_lock() -> threading.Lock:

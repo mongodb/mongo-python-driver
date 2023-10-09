@@ -29,14 +29,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Iterable,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
-    Tuple,
     Union,
     cast,
 )
@@ -137,14 +134,14 @@ def _maybe_add_read_preference(
     return spec
 
 
-def _convert_exception(exception: Exception) -> Dict[str, Any]:
+def _convert_exception(exception: Exception) -> dict[str, Any]:
     """Convert an Exception into a failure document for publishing."""
     return {"errmsg": str(exception), "errtype": exception.__class__.__name__}
 
 
 def _convert_write_result(
     operation: str, command: Mapping[str, Any], result: Mapping[str, Any]
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Convert a legacy write result to write command format."""
     # Based on _merge_legacy from bulk.py
     affected = result.get("n", 0)
@@ -340,7 +337,7 @@ class _Query:
         self.client = client
         self.allow_disk_use = allow_disk_use
         self.name = "find"
-        self._as_command: Optional[Tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[SON[str, Any], str]] = None
         self.exhaust = exhaust
 
     def reset(self) -> None:
@@ -367,7 +364,7 @@ class _Query:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> Tuple[SON[str, Any], str]:
+    ) -> tuple[SON[str, Any], str]:
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
         # Generate it once, for speed and to avoid repeating side-effects.
@@ -411,7 +408,7 @@ class _Query:
 
     def get_message(
         self, read_preference: _ServerMode, conn: Connection, use_cmd: bool = False
-    ) -> Tuple[int, bytes, int]:
+    ) -> tuple[int, bytes, int]:
         """Get a query message, possibly setting the secondaryOk bit."""
         # Use the read_preference decided by _socket_from_server.
         self.read_preference = read_preference
@@ -508,7 +505,7 @@ class _GetMore:
         self.client = client
         self.max_await_time_ms = max_await_time_ms
         self.conn_mgr = conn_mgr
-        self._as_command: Optional[Tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[SON[str, Any], str]] = None
         self.exhaust = exhaust
         self.comment = comment
 
@@ -531,7 +528,7 @@ class _GetMore:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> Tuple[SON[str, Any], str]:
+    ) -> tuple[SON[str, Any], str]:
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
         if self._as_command is not None:
@@ -561,7 +558,7 @@ class _GetMore:
 
     def get_message(
         self, dummy0: Any, conn: Connection, use_cmd: bool = False
-    ) -> Union[Tuple[int, bytes, int], Tuple[int, bytes]]:
+    ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
         ns = self.namespace()
         ctx = conn.compression_context
@@ -639,7 +636,7 @@ _COMPRESSION_HEADER_SIZE = 25
 
 def _compress(
     operation: int, data: bytes, ctx: Union[SnappyContext, ZlibContext, ZstdContext]
-) -> Tuple[int, bytes]:
+) -> tuple[int, bytes]:
     """Takes message data, compresses it, and adds an OP_COMPRESSED header."""
     compressed = ctx.compress(data)
     request_id = _randint()
@@ -659,7 +656,7 @@ def _compress(
 _pack_header = struct.Struct("<iiii").pack
 
 
-def __pack_message(operation: int, data: bytes) -> Tuple[int, bytes]:
+def __pack_message(operation: int, data: bytes) -> tuple[int, bytes]:
     """Takes message data and adds a message header based on the operation.
 
     Returns the resultant message string.
@@ -678,9 +675,9 @@ def _op_msg_no_header(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[List[Mapping[str, Any]]],
+    docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions,
-) -> Tuple[bytes, int, int]:
+) -> tuple[bytes, int, int]:
     """Get a OP_MSG message.
 
     Note: this method handles multiple documents in a type one payload but
@@ -710,10 +707,10 @@ def _op_msg_compressed(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[List[Mapping[str, Any]]],
+    docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> Tuple[int, bytes, int, int]:
+) -> tuple[int, bytes, int, int]:
     """Internal OP_MSG message helper."""
     msg, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
     rid, msg = _compress(2013, msg, ctx)
@@ -724,9 +721,9 @@ def _op_msg_uncompressed(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[List[Mapping[str, Any]]],
+    docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions,
-) -> Tuple[int, bytes, int, int]:
+) -> tuple[int, bytes, int, int]:
     """Internal compressed OP_MSG message helper."""
     data, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
     request_id, op_message = __pack_message(2013, data)
@@ -744,7 +741,7 @@ def _op_msg(
     read_preference: Optional[_ServerMode],
     opts: CodecOptions,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> Tuple[int, bytes, int, int]:
+) -> tuple[int, bytes, int, int]:
     """Get a OP_MSG message."""
     command["$db"] = dbname
     # getMore commands do not send $readPreference.
@@ -777,7 +774,7 @@ def _query_impl(
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
     opts: CodecOptions,
-) -> Tuple[bytes, int]:
+) -> tuple[bytes, int]:
     """Get an OP_QUERY message."""
     encoded = _dict_to_bson(query, False, opts)
     if field_selector:
@@ -809,7 +806,7 @@ def _query_compressed(
     field_selector: Optional[Mapping[str, Any]],
     opts: CodecOptions,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> Tuple[int, bytes, int]:
+) -> tuple[int, bytes, int]:
     """Internal compressed query message helper."""
     op_query, max_bson_size = _query_impl(
         options, collection_name, num_to_skip, num_to_return, query, field_selector, opts
@@ -826,7 +823,7 @@ def _query_uncompressed(
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
     opts: CodecOptions,
-) -> Tuple[int, bytes, int]:
+) -> tuple[int, bytes, int]:
     """Internal query message helper."""
     op_query, max_bson_size = _query_impl(
         options, collection_name, num_to_skip, num_to_return, query, field_selector, opts
@@ -848,7 +845,7 @@ def _query(
     field_selector: Optional[Mapping[str, Any]],
     opts: CodecOptions,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> Tuple[int, bytes, int]:
+) -> tuple[int, bytes, int]:
     """Get a **query** message."""
     if ctx:
         return _query_compressed(
@@ -879,14 +876,14 @@ def _get_more_compressed(
     num_to_return: int,
     cursor_id: int,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> Tuple[int, bytes]:
+) -> tuple[int, bytes]:
     """Internal compressed getMore message helper."""
     return _compress(2005, _get_more_impl(collection_name, num_to_return, cursor_id), ctx)
 
 
 def _get_more_uncompressed(
     collection_name: str, num_to_return: int, cursor_id: int
-) -> Tuple[int, bytes]:
+) -> tuple[int, bytes]:
     """Internal getMore message helper."""
     return __pack_message(2005, _get_more_impl(collection_name, num_to_return, cursor_id))
 
@@ -900,7 +897,7 @@ def _get_more(
     num_to_return: int,
     cursor_id: int,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> Tuple[int, bytes]:
+) -> tuple[int, bytes]:
     """Get a **getMore** message."""
     if ctx:
         return _get_more_compressed(collection_name, num_to_return, cursor_id, ctx)
@@ -950,8 +947,8 @@ class _BulkWriteContext:
         self.codec = codec
 
     def __batch_command(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]]
-    ) -> Tuple[int, bytes, List[Mapping[str, Any]]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         request_id, msg, to_send = _do_batched_op_msg(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -961,16 +958,16 @@ class _BulkWriteContext:
         return request_id, msg, to_send
 
     def execute(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]], client: MongoClient
-    ) -> Tuple[Mapping[str, Any], List[Mapping[str, Any]]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
+    ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
         result = self.write_command(cmd, request_id, msg, to_send)
         client._process_response(result, self.session)
         return result, to_send
 
     def execute_unack(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]], client: MongoClient
-    ) -> List[Mapping[str, Any]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
+    ) -> list[Mapping[str, Any]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
         # Though this isn't strictly a "legacy" write, the helper
         # handles publishing commands and sending our message
@@ -1009,7 +1006,7 @@ class _BulkWriteContext:
         request_id: int,
         msg: bytes,
         max_doc_size: int,
-        docs: List[Mapping[str, Any]],
+        docs: list[Mapping[str, Any]],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
         if self.publish:
@@ -1049,8 +1046,8 @@ class _BulkWriteContext:
         cmd: MutableMapping[str, Any],
         request_id: int,
         msg: bytes,
-        docs: List[Mapping[str, Any]],
-    ) -> Dict[str, Any]:
+        docs: list[Mapping[str, Any]],
+    ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         if self.publish:
             assert self.start_time is not None
@@ -1076,7 +1073,7 @@ class _BulkWriteContext:
         return reply
 
     def _start(
-        self, cmd: MutableMapping[str, Any], request_id: int, docs: List[Mapping[str, Any]]
+        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
     ) -> MutableMapping[str, Any]:
         """Publish a CommandStartedEvent."""
         cmd[self.field] = docs
@@ -1100,6 +1097,7 @@ class _BulkWriteContext:
             self.conn.address,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
     def _fail(self, request_id: int, failure: _DocumentOut, duration: timedelta) -> None:
@@ -1112,6 +1110,7 @@ class _BulkWriteContext:
             self.conn.address,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
 
@@ -1126,8 +1125,8 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
     __slots__ = ()
 
     def __batch_command(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]]
-    ) -> Tuple[Dict[str, Any], List[Mapping[str, Any]]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[MutableMapping[str, Any], list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -1137,12 +1136,12 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
         # Chop off the OP_QUERY header to get a properly batched write command.
         cmd_start = msg.index(b"\x00", 4) + 9
-        cmd = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
-        return cmd, to_send
+        outgoing = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
+        return outgoing, to_send
 
     def execute(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]], client: MongoClient
-    ) -> Tuple[Mapping[str, Any], List[Mapping[str, Any]]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
+    ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
         result: Mapping[str, Any] = self.conn.command(
             self.db_name, batched_cmd, codec_options=self.codec, session=self.session, client=client
@@ -1150,8 +1149,8 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         return result, to_send
 
     def execute_unack(
-        self, cmd: MutableMapping[str, Any], docs: List[Mapping[str, Any]], client: MongoClient
-    ) -> List[Mapping[str, Any]]:
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
+    ) -> list[Mapping[str, Any]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
         self.conn.command(
             self.db_name,
@@ -1196,12 +1195,12 @@ _OP_MSG_MAP = {
 def _batched_op_msg_impl(
     operation: int,
     command: Mapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     ack: bool,
     opts: CodecOptions,
     ctx: _BulkWriteContext,
     buf: _BytesIO,
-) -> Tuple[List[Mapping[str, Any]], int]:
+) -> tuple[list[Mapping[str, Any]], int]:
     """Create a batched OP_MSG write."""
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
@@ -1264,11 +1263,11 @@ def _batched_op_msg_impl(
 def _encode_batched_op_msg(
     operation: int,
     command: Mapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     ack: bool,
     opts: CodecOptions,
     ctx: _BulkWriteContext,
-) -> Tuple[bytes, List[Mapping[str, Any]]]:
+) -> tuple[bytes, list[Mapping[str, Any]]]:
     """Encode the next batched insert, update, or delete operation
     as OP_MSG.
     """
@@ -1285,11 +1284,11 @@ if _use_c:
 def _batched_op_msg_compressed(
     operation: int,
     command: Mapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     ack: bool,
     opts: CodecOptions,
     ctx: _BulkWriteContext,
-) -> Tuple[int, bytes, List[Mapping[str, Any]]]:
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
     with OP_MSG, compressed.
     """
@@ -1303,11 +1302,11 @@ def _batched_op_msg_compressed(
 def _batched_op_msg(
     operation: int,
     command: Mapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     ack: bool,
     opts: CodecOptions,
     ctx: _BulkWriteContext,
-) -> Tuple[int, bytes, List[Mapping[str, Any]]]:
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """OP_MSG implementation entry point."""
     buf = _BytesIO()
 
@@ -1336,10 +1335,10 @@ def _do_batched_op_msg(
     namespace: str,
     operation: int,
     command: MutableMapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     opts: CodecOptions,
     ctx: _BulkWriteContext,
-) -> Tuple[int, bytes, List[Mapping[str, Any]]]:
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
     using OP_MSG.
     """
@@ -1360,10 +1359,10 @@ def _encode_batched_write_command(
     namespace: str,
     operation: int,
     command: MutableMapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     opts: CodecOptions,
     ctx: _BulkWriteContext,
-) -> Tuple[bytes, List[Mapping[str, Any]]]:
+) -> tuple[bytes, list[Mapping[str, Any]]]:
     """Encode the next batched insert, update, or delete command."""
     buf = _BytesIO()
 
@@ -1379,11 +1378,11 @@ def _batched_write_command_impl(
     namespace: str,
     operation: int,
     command: MutableMapping[str, Any],
-    docs: List[Mapping[str, Any]],
+    docs: list[Mapping[str, Any]],
     opts: CodecOptions,
     ctx: _BulkWriteContext,
     buf: _BytesIO,
-) -> Tuple[List[Mapping[str, Any]], int]:
+) -> tuple[list[Mapping[str, Any]], int]:
     """Create a batched OP_QUERY write command."""
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
@@ -1468,7 +1467,7 @@ class _OpReply:
 
     def raw_response(
         self, cursor_id: Optional[int] = None, user_fields: Optional[Mapping[str, Any]] = None
-    ) -> List[bytes]:
+    ) -> list[bytes]:
         """Check the response header from the database, without decoding BSON.
 
         Check the response for errors and unpack.
@@ -1517,7 +1516,7 @@ class _OpReply:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Unpack a response from the database and decode the BSON document(s).
 
         Check the response for errors and unpack, returning a dictionary
@@ -1541,7 +1540,7 @@ class _OpReply:
             return bson.decode_all(self.documents, codec_options)
         return bson._decode_all_selective(self.documents, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> Dict[str, Any]:
+    def command_response(self, codec_options: CodecOptions) -> dict[str, Any]:
         """Unpack a command response."""
         docs = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
@@ -1588,7 +1587,7 @@ class _OpMsg:
         self,
         cursor_id: Optional[int] = None,
         user_fields: Optional[Mapping[str, Any]] = {},  # noqa: B006
-    ) -> List[Mapping[str, Any]]:
+    ) -> list[Mapping[str, Any]]:
         """
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
@@ -1604,7 +1603,7 @@ class _OpMsg:
         codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Unpack a OP_MSG command response.
 
         :Parameters:
@@ -1619,7 +1618,7 @@ class _OpMsg:
         assert not legacy_response
         return bson._decode_all_selective(self.payload_document, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> Dict[str, Any]:
+    def command_response(self, codec_options: CodecOptions) -> dict[str, Any]:
         """Unpack a command response."""
         return self.unpack_response(codec_options=codec_options)[0]
 
@@ -1652,7 +1651,7 @@ class _OpMsg:
         return cls(flags, payload_document)
 
 
-_UNPACK_REPLY: Dict[int, Callable[[bytes], Union[_OpReply, _OpMsg]]] = {
+_UNPACK_REPLY: dict[int, Callable[[bytes], Union[_OpReply, _OpMsg]]] = {
     _OpReply.OP_CODE: _OpReply.unpack,
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }

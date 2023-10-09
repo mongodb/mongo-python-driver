@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """A fake SSLContext implementation."""
+from __future__ import annotations
 
 import ssl as _ssl
 

@@ -19,8 +19,9 @@ from __future__ import annotations
 import functools
 import time
 from collections import deque
+from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from typing import Any, Callable, Deque, MutableMapping, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
 
 from pymongo.write_concern import WriteConcern
 
@@ -59,7 +60,7 @@ def clamp_remaining(max_timeout: float) -> float:
     return min(timeout, max_timeout)
 
 
-class _TimeoutContext:
+class _TimeoutContext(AbstractContextManager):
     """Internal timeout context manager.
 
     Use :func:`pymongo.timeout` instead::
@@ -68,11 +69,9 @@ class _TimeoutContext:
           client.test.test.insert_one({})
     """
 
-    __slots__ = ("_timeout", "_tokens")
-
     def __init__(self, timeout: Optional[float]):
         self._timeout = timeout
-        self._tokens: Optional[Tuple[Token, Token, Token]] = None
+        self._tokens: Optional[tuple[Token[Optional[float]], Token[float], Token[float]]] = None
 
     def __enter__(self) -> _TimeoutContext:
         timeout_token = TIMEOUT.set(self._timeout)
@@ -99,7 +98,7 @@ def apply(func: F) -> F:
     """Apply the client's timeoutMS to this operation."""
 
     @functools.wraps(func)
-    def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> F:
+    def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         if get_timeout() is None:
             timeout = self._timeout
             if timeout is not None:
@@ -110,7 +109,9 @@ def apply(func: F) -> F:
     return cast(F, csot_wrapper)
 
 
-def apply_write_concern(cmd: MutableMapping, write_concern: Optional[WriteConcern]) -> None:
+def apply_write_concern(
+    cmd: MutableMapping[str, Any], write_concern: Optional[WriteConcern]
+) -> None:
     """Apply the given write concern to a command."""
     if not write_concern or write_concern.is_server_default:
         return

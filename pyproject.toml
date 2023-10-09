@@ -81,6 +81,7 @@ tls = []
 zstd = [
     "zstandard",
 ]
+test = ["pytest>=7"]
 
 [project.urls]
 Homepage = "http://github.com/mongodb/mongo-python-driver"

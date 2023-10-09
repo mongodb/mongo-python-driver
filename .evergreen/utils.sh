@@ -2,6 +2,40 @@
 
 set -o xtrace
 
+find_python3() {
+    PYTHON=""
+    # Add a fallback system python3 if it is available and Python 3.7+.
+    if is_python_37 "$(command -v python3)"; then
+        PYTHON="$(command -v python3)"
+    fi
+    # Find a suitable toolchain version, if available.
+    if [ "$(uname -s)" = "Darwin" ]; then
+        # macos 11.00
+        if [ -d "/Library/Frameworks/Python.Framework/Versions/3.10" ]; then
+            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
+        # macos 10.14
+        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.7" ]; then
+            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.7/bin/python3"
+        fi
+    elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        PYTHON="C:/python/Python37/python.exe"
+    else
+        # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.7+.
+        if [ -f "/opt/python/3.7/bin/python3" ]; then
+            PYTHON="/opt/python/3.7/bin/python3"
+        elif is_python_37 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
+            PYTHON="/opt/mongodbtoolchain/v4/bin/python3"
+        elif is_python_37 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+            PYTHON="/opt/mongodbtoolchain/v3/bin/python3"
+        fi
+    fi
+    if [ -z "$PYTHON" ]; then
+        echo "Cannot test without python3.7+ installed!"
+        exit 1
+    fi
+    echo "$PYTHON"
+}
+
 # Usage:
 # createvirtualenv /path/to/python /output/path/for/venv
 # * param1: Python binary to use for the virtualenv
@@ -9,17 +43,18 @@ set -o xtrace
 createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
-    if $PYTHON -m virtualenv --version; then
+    # Prefer venv
+    VENV="$PYTHON -m venv"
+    if [ "$(uname -s)" = "Darwin" ]; then
         VIRTUALENV="$PYTHON -m virtualenv"
-    elif $PYTHON -m venv -h > /dev/null; then
-        # System virtualenv might not be compatible with the python3 on our path
-        VIRTUALENV="$PYTHON -m venv"
     else
-        echo "Cannot test without virtualenv"
-        exit 1
+        VIRTUALENV=$(command -v virtualenv 2>/dev/null || echo "$PYTHON -m virtualenv")
+        VIRTUALENV="$VIRTUALENV -p $PYTHON"
     fi
-    # Workaround for bug in older versions of virtualenv.
-    $VIRTUALENV $VENVPATH || $PYTHON -m venv $VENVPATH
+    if ! $VENV $VENVPATH 2>/dev/null; then
+        # Workaround for bug in older versions of virtualenv.
+        $VIRTUALENV $VENVPATH 2>/dev/null || $VIRTUALENV $VENVPATH
+    fi
     if [ "Windows_NT" = "$OS" ]; then
         # Workaround https://bugs.python.org/issue32451:
         # mongovenv/Scripts/activate: line 3: $'\r': command not found
@@ -29,8 +64,9 @@ createvirtualenv () {
         . $VENVPATH/bin/activate
     fi
 
+    export PIP_QUIET=1
     python -m pip install --upgrade pip
-    python -m pip install --upgrade setuptools wheel tox
+    python -m pip install --upgrade setuptools tox
 }
 
 # Usage:

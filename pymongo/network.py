@@ -28,6 +28,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 from bson import _decode_all_selective
@@ -204,7 +205,13 @@ def command(
             assert listeners is not None
             assert address is not None
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=conn.service_id
+                duration,
+                failure,
+                name,
+                request_id,
+                address,
+                service_id=conn.service_id,
+                database_name=dbname,
             )
         raise
     if publish:
@@ -219,11 +226,14 @@ def command(
             address,
             service_id=conn.service_id,
             speculative_hello=speculative_hello,
+            database_name=dbname,
         )
 
     if client and client._encrypter and reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
-        response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
+        response_doc = cast(
+            "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
+        )
 
     return response_doc  # type: ignore[return-value]
 

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Type aliases used by bson"""
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, TypeVar, Union
 
 if TYPE_CHECKING:

@@ -48,9 +48,6 @@ def create_test(test_case):
                 if props.get("REQUEST_TOKEN_CALLBACK"):
                     props["request_token_callback"] = lambda x, y: 1
                     del props["REQUEST_TOKEN_CALLBACK"]
-                if props.get("REFRESH_TOKEN_CALLBACK"):
-                    props["refresh_token_callback"] = lambda a, b: 1
-                    del props["REFRESH_TOKEN_CALLBACK"]
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
@@ -85,10 +82,6 @@ def create_test(test_case):
                         elif "request_token_callback" in expected:
                             self.assertEqual(
                                 actual.request_token_callback, expected["request_token_callback"]
-                            )
-                        elif "refresh_token_callback" in expected:
-                            self.assertEqual(
-                                actual.refresh_token_callback, expected["refresh_token_callback"]
                             )
                         else:
                             self.fail(f"Unhandled property: {key}")

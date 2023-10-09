@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """Tools for working with read concerns."""
+from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class ReadConcern:
@@ -50,7 +51,7 @@ class ReadConcern:
         return self.level is None or self.level == "local"
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         """The document representation of this read concern.
 
         .. note::

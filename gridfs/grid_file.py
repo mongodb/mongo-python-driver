@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Tools for representing files stored in GridFS."""
+from __future__ import annotations
+
 import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, NoReturn, Optional
+from typing import Any, Iterable, Mapping, NoReturn, Optional
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -233,14 +235,18 @@ class GridIn:
     _id: Any = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
     filename: Optional[str] = _grid_in_property("filename", "Name of this file.")
     name: Optional[str] = _grid_in_property("filename", "Alias for `filename`.")
-    content_type: Optional[str] = _grid_in_property("contentType", "Mime-type for this file.")
+    content_type: Optional[str] = _grid_in_property(
+        "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
+    )
     length: int = _grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
     chunk_size: int = _grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
     upload_date: datetime.datetime = _grid_in_property(
         "uploadDate", "Date that this file was uploaded.", closed_only=True
     )
     md5: Optional[str] = _grid_in_property(
-        "md5", "MD5 of the contents of this file if an md5 sum was created.", closed_only=True
+        "md5",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        closed_only=True,
     )
 
     _buffer: io.BytesIO
@@ -474,18 +480,23 @@ class GridOut(io.IOBase):
     _id: Any = _grid_out_property("_id", "The ``'_id'`` value for this file.")
     filename: str = _grid_out_property("filename", "Name of this file.")
     name: str = _grid_out_property("filename", "Alias for `filename`.")
-    content_type: Optional[str] = _grid_out_property("contentType", "Mime-type for this file.")
+    content_type: Optional[str] = _grid_out_property(
+        "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
+    )
     length: int = _grid_out_property("length", "Length (in bytes) of this file.")
     chunk_size: int = _grid_out_property("chunkSize", "Chunk size for this file.")
     upload_date: datetime.datetime = _grid_out_property(
         "uploadDate", "Date that this file was first uploaded."
     )
-    aliases: Optional[List[str]] = _grid_out_property("aliases", "List of aliases for this file.")
+    aliases: Optional[list[str]] = _grid_out_property(
+        "aliases", "DEPRECATED, will be removed in PyMongo 5.0. List of aliases for this file."
+    )
     metadata: Optional[Mapping[str, Any]] = _grid_out_property(
         "metadata", "Metadata attached to this file."
     )
     md5: Optional[str] = _grid_out_property(
-        "md5", "MD5 of the contents of this file if an md5 sum was created."
+        "md5",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
     )
 
     _file: Any
