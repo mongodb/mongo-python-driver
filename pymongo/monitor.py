@@ -262,9 +262,8 @@ class Monitor(MonitorBase):
         if self._publish:
             assert self._listeners is not None
             sd = self._server_description
-            # TODO: this is not accurate in the rare case the pool has a
-            #  connection but the checkout process closes it and creates
-            #  a new one.
+            # XXX: "awaited" could be incorrectly set to True in the rare case
+            # the pool checkout closes and recreates a connection.
             awaited = bool(
                 self._pool.conns
                 and self._stream
