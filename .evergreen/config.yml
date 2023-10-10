@@ -2442,9 +2442,9 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
-      - id: ubuntu-18.04
-        display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-small
+      - id: ubuntu-20.04
+        display_name: "Ubuntu 20.04"
+        run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
@@ -3289,7 +3289,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-22.04]
+    platform: [ubuntu-20.04]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
