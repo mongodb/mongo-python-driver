@@ -2280,9 +2280,9 @@ axes:
         display_name: "Ubuntu 22.04"
         run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
-      - id: ubuntu-18.04
-        display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-small
+      - id: ubuntu-20.04
+        display_name: "Ubuntu 20.04"
+        run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
@@ -3115,8 +3115,8 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-18.04]
-    python-version: ["3.7"]
+    platform: [ubuntu-20.04]
+    python-version: ["3.9"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test-4.4"
