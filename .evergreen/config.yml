@@ -97,7 +97,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone --branch BUILD-17329-4 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -2195,12 +2195,12 @@ tasks:
             TOPOLOGY: "server"
             VERSION: "rapid"
         - func: "add aws auth variables to file"
-        # - func: "run aws auth test with regular aws credentials"
-        # - func: "run aws auth test with assume role credentials"
-        # - func: "run aws auth test with aws credentials as environment variables"
-        # - func: "run aws auth test with aws credentials and session token as environment variables"
-        # - func: "run aws auth test with aws EC2 credentials"
-        # - func: "run aws auth test with aws web identity credentials"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-latest"
@@ -3290,7 +3290,7 @@ buildvariants:
 - matrix_name: "aws-auth-test"
   matrix_spec:
     platform: [ubuntu-20.04]
-    python-version: ["3.7"]
+    python-version: ["3.9"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test-4.4"
