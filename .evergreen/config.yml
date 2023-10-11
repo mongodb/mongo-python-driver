@@ -445,7 +445,7 @@ functions:
           set +x
           ${PREPARE_SHELL}
           if [ -n "${MONGODB_STARTED}" ]; then
-            export PYMONGO_MUST_CONNECT=1
+            export PYMONGO_MUST_CONNECT=true
           fi
           if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
             export PYMONGO_DISABLE_TEST_COMMANDS=1
@@ -491,12 +491,8 @@ functions:
             export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
-          export PYTHON_BINARY=${PYTHON_BINARY}
-          if [ -z "$PYTHON_BINARY" ]; then
-            export PYTHON_BINARY=${python3_binary}
-          fi
-
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
@@ -537,10 +533,12 @@ functions:
     - command: shell.exec
       type: test
       params:
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
+          set -o errexit
 
           DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
@@ -553,39 +551,21 @@ functions:
             TEST_ATLAS=1 \
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
-  "add aws auth variables to file":
+  "get aws auth secrets":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
     - command: shell.exec
       type: test
       params:
+        add_expansions_to_env: true
         working_dir: "src"
-        silent: true
         script: |
-          cat <<EOF > ${DRIVERS_TOOLS}/.evergreen/auth_aws/aws_e2e_setup.json
-          {
-              "iam_auth_ecs_account" : "${iam_auth_ecs_account}",
-              "iam_auth_ecs_secret_access_key" : "${iam_auth_ecs_secret_access_key}",
-              "iam_auth_ecs_account_arn": "arn:aws:iam::557821124784:user/authtest_fargate_user",
-              "iam_auth_ecs_cluster": "${iam_auth_ecs_cluster}",
-              "iam_auth_ecs_task_definition": "${iam_auth_ecs_task_definition_2004}",
-              "iam_auth_ecs_subnet_a": "${iam_auth_ecs_subnet_a}",
-              "iam_auth_ecs_subnet_b": "${iam_auth_ecs_subnet_b}",
-              "iam_auth_ecs_security_group": "${iam_auth_ecs_security_group}",
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
 
-              "iam_auth_assume_aws_account" : "${iam_auth_assume_aws_account}",
-              "iam_auth_assume_aws_secret_access_key" : "${iam_auth_assume_aws_secret_access_key}",
-              "iam_auth_assume_role_name" : "${iam_auth_assume_role_name}",
-
-              "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
-              "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
-              "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
-
-              "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
-              "iam_web_identity_issuer": "${iam_web_identity_issuer}",
-              "iam_web_identity_rsa_key": "${iam_web_identity_rsa_key}",
-              "iam_web_identity_jwks_uri": "${iam_web_identity_jwks_uri}",
-              "iam_web_identity_token_file": "${iam_web_identity_token_file}"
-          }
-          EOF
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/aws_auth
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
@@ -594,30 +574,13 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          python aws_tester.py regular
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
-            USER=$(urlencode ${iam_auth_ecs_account})
-            PASS=$(urlencode ${iam_auth_ecs_secret_access_key})
-            MONGODB_URI="mongodb://$USER:$PASS@localhost"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            .evergreen/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -626,36 +589,15 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          python aws_tester.py assume-role
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
-            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
-            USER=$(jsonkey AccessKeyId)
-            USER=$(urlencode $USER)
-            PASS=$(jsonkey SecretAccessKey)
-            PASS=$(urlencode $PASS)
-            SESSION_TOKEN=$(jsonkey SessionToken)
-            SESSION_TOKEN=$(urlencode $SESSION_TOKEN)
-            MONGODB_URI="mongodb://$USER:$PASS@localhost"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            ASSUME_ROLE_CREDENTIALS=true \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            .evergreen/run-mongodb-aws-test.sh assume-role
+
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -664,29 +606,20 @@ functions:
         working_dir: "src"
         shell: "bash"
         script: |
-          ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          python aws_tester.py ec2
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the EC2 auth test, skipping..."
-             exit 0
-          fi
-          # Write an empty prepare_mongodb_aws so no auth environment variables
-          # are set.
-          rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" || true
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            ASSERT_NO_URI_CREDS=true \
+            SKIP_PREPARE_AWS_ENV=true \
+            .evergreen/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
     - command: shell.exec
@@ -695,62 +628,30 @@ functions:
         working_dir: "src"
         shell: "bash"
         script: |
-          ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          python aws_tester.py web-identity
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
-            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
-            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
-            export AWS_ROLE_SESSION_NAME="test"
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
-  "bootstrap oidc":
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PYTHON_BINARY="${PYTHON_BINARY}" \
+            ASSERT_NO_URI_CREDS=true \
+            USE_WEB_IDENTITY_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh web-identity
+
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+          else
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+              PYTHON_BINARY=${PYTHON_BINARY} \
+              ASSERT_NO_URI_CREDS=true \
+              SKIP_PREPARE_AWS_ENV=true \
+              AWS_ROLE_SESSION_NAME="test" \
+              USE_WEB_IDENTITY_CREDS=true \
+              .evergreen/run-mongodb-aws-test.sh
+          fi
+
+  "run oidc auth test with aws credentials":
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
@@ -759,100 +660,47 @@ functions:
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-          export OIDC_TOKEN_DIR=/tmp/tokens
-
-          . ./activate-authoidcvenv.sh
-          python oidc_write_orchestration.py
-          python oidc_get_tokens.py
-
-  "run oidc auth test with aws credentials":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          mongosh setup_oidc.js
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
-            export OIDC_TOKEN_DIR=/tmp/tokens
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
+          bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
-        silent: true
+        shell: bash
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ACCESS_KEY_ID=${iam_auth_ecs_account}
-            export AWS_SECRET_ACCESS_KEY=${iam_auth_ecs_secret_access_key}
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            ASSERT_NO_URI_CREDS=true \
+            SKIP_PREPARE_AWS_ENV=true \
+            USE_ENV_VAR_CREDS=true \
+            .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
-        silent: true
+        shell: bash
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
-            export AWS_ACCESS_KEY_ID=$(jsonkey AccessKeyId)
-            export AWS_SECRET_ACCESS_KEY=$(jsonkey SecretAccessKey)
-            export AWS_SESSION_TOKEN=$(jsonkey SessionToken)
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          PYTHON_BINARY="${PYTHON_BINARY}" \
+            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
+            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
+            ASSERT_NO_URI_CREDS=true \
+            SESSION_TOKEN_CREDENTIALS=true \
+            .evergreen/run-mongodb-aws-test.sh
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -861,16 +709,26 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
           if [ "${skip_ECS_auth_test}" = "true" ]; then
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-          set -ex
+
+          # Disable xtrace for security reasons (just in case it was accidentally set).
+          set +x
+          set -o errexit
+
+          # Try to source exported AWS Secrets
+          if [ -f ./secrets-export.sh ]; then
+            source ./secrets-export.sh
+          fi
+
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
+
           export MONGODB_BINARIES="${MONGODB_BINARIES}";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
+
           python aws_tester.py ecs
           cd -
 
@@ -880,6 +738,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           rm -rf $DRIVERS_TOOLS || true
+          rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
     - command: shell.exec
@@ -1223,24 +1082,14 @@ task_groups:
       - func: make files executable
       - command: shell.exec
         params:
-          silent: true
           shell: bash
           script: |-
-            set -o errexit
             ${PREPARE_SHELL}
-            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-            chmod 600 /tmp/testazurekms_privatekey
-            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-            export AZUREKMS_SECRET="${testazurekms_secret}"
-            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
       - command: expansions.update
         params:
@@ -1255,11 +1104,14 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
+            set -x
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
+            export AZUREKMS_SCOPE=${AZUREKMS_SCOPE}
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
+    teardown_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
@@ -1712,7 +1564,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "6.0"
             TOPOLOGY: "replica_set"
         - func: "run tests"
           vars:
@@ -1762,8 +1614,6 @@ tasks:
       tags: ["no-server"]
       commands:
         - func: "run tests"
-          vars:
-            PYTHON_BINARY: /opt/python/3.7/bin/python3
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -2126,7 +1976,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "4.4"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2143,7 +1993,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "5.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2160,7 +2010,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "6.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2177,7 +2027,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "7.0"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2194,7 +2044,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "rapid"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2211,7 +2061,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "latest"
-        - func: "add aws auth variables to file"
+        - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
         - func: "run aws auth test with aws credentials as environment variables"
@@ -2222,16 +2072,7 @@ tasks:
 
     - name: "oidc-auth-test-latest"
       commands:
-        - func: "bootstrap oidc"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "replica_set"
-            VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
-          vars:
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
       commands:
@@ -2249,7 +2090,6 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
         - func: "run tests"
 # }}}
     - name: "coverage-report"
@@ -2334,9 +2174,10 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            source ./secrets-export.sh
             cd src
             echo "Copying files ... begin"
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
             tar czf /tmp/mongo-python-driver.tgz .
@@ -2355,10 +2196,11 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            source ./secrets-export.sh
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
+            AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2376,10 +2218,13 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             cd src
             PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
-            KEY_NAME='${testazurekms_keyname}' \
-            KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
+            KEY_NAME="${AZUREKMS_KEYNAME}" \
+            KEY_VAULT_ENDPOINT="${AZUREKMS_KEYVAULTENDPOINT}" \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/tox.sh -m test-eg
@@ -2396,7 +2241,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
         display_name: "macOS 11.00"
@@ -2405,7 +2249,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100-arm64
         display_name: "macOS 11.00 Arm64"
@@ -2414,21 +2257,18 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel80-fips
         display_name: "RHEL 8.0 FIPS"
@@ -2440,14 +2280,10 @@ axes:
         display_name: "Ubuntu 22.04"
         run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
@@ -2470,7 +2306,6 @@ axes:
           skip_ECS_auth_test: true
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
@@ -2611,14 +2446,6 @@ axes:
         display_name: "PyPy 3.10"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-mac
-    display_name: "Python"
-    values:
-      - id: "system-python3"
-        display_name: "Python3"
-        variables:
-          PYTHON_BINARY: "python3"
 
   - id: python-version-windows
     display_name: "Python"
@@ -3281,9 +3108,8 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8 ]
-    python-version: ["3.9"]
-  display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
+    platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
+  display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
 
@@ -3303,7 +3129,6 @@ buildvariants:
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
     platform: [macos-1014]
-    python-version-mac: ["system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"
@@ -3348,7 +3173,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: debian10-small
+  run_on: rhel87-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 try:
     import snappy
@@ -47,7 +47,7 @@ _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
-def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> List[str]:
+def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
     try:
         # `value` is string.
         compressors = value.split(",")  # type: ignore[union-attr]
@@ -91,12 +91,12 @@ def validate_zlib_compression_level(option: str, value: Any) -> int:
 
 
 class CompressionSettings:
-    def __init__(self, compressors: List[str], zlib_compression_level: int):
+    def __init__(self, compressors: list[str], zlib_compression_level: int):
         self.compressors = compressors
         self.zlib_compression_level = zlib_compression_level
 
     def get_compression_context(
-        self, compressors: Optional[List[str]]
+        self, compressors: Optional[list[str]]
     ) -> Union[SnappyContext, ZlibContext, ZstdContext, None]:
         if compressors:
             chosen = compressors[0]

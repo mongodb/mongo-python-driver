@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Represent one server the driver is connected to."""
+from __future__ import annotations
 
 import time
 import warnings
-from typing import Any, Dict, Mapping, Optional, Set, Tuple
+from typing import Any, Mapping, Optional
 
 from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId
@@ -129,7 +130,7 @@ class ServerDescription:
         return SERVER_TYPE._fields[self._server_type]
 
     @property
-    def all_hosts(self) -> Set[Tuple[str, int]]:
+    def all_hosts(self) -> set[tuple[str, int]]:
         """List of hosts, passives, and arbiters known to this server."""
         return self._all_hosts
 
@@ -143,7 +144,7 @@ class ServerDescription:
         return self._replica_set_name
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self) -> Optional[tuple[str, int]]:
         """This server's opinion about who the primary is, or None."""
         return self._primary
 
@@ -180,7 +181,7 @@ class ServerDescription:
         return self._cluster_time
 
     @property
-    def election_tuple(self) -> Tuple[Optional[int], Optional[ObjectId]]:
+    def election_tuple(self) -> tuple[Optional[int], Optional[ObjectId]]:
         warnings.warn(
             "'election_tuple' is deprecated, use  'set_version' and 'election_id' instead",
             DeprecationWarning,
@@ -189,7 +190,7 @@ class ServerDescription:
         return self._set_version, self._election_id
 
     @property
-    def me(self) -> Optional[Tuple[str, int]]:
+    def me(self) -> Optional[tuple[str, int]]:
         return self._me
 
     @property
@@ -297,4 +298,4 @@ class ServerDescription:
         )
 
     # For unittesting only. Use under no circumstances!
-    _host_to_round_trip_time: Dict = {}
+    _host_to_round_trip_time: dict = {}

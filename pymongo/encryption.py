@@ -29,7 +29,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
+    cast,
 )
 
 try:
@@ -72,7 +72,7 @@ from pymongo.pool import PoolOptions, _configured_socket, _raise_connection_fail
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
-from pymongo.typings import _DocumentType
+from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
@@ -84,7 +84,9 @@ _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to C
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 
-_DATA_KEY_OPTS: CodecOptions = CodecOptions(document_class=SON, uuid_representation=STANDARD)
+_DATA_KEY_OPTS: CodecOptions[SON[str, Any]] = CodecOptions(
+    document_class=SON[str, Any], uuid_representation=STANDARD
+)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
@@ -106,9 +108,9 @@ def _wrap_encryption_errors() -> Iterator[None]:
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
-        client: Optional[MongoClient],
-        key_vault_coll: Collection,
-        mongocryptd_client: Optional[MongoClient],
+        client: Optional[MongoClient[_DocumentTypeArg]],
+        key_vault_coll: Collection[_DocumentTypeArg],
+        mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
@@ -118,10 +120,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection] = key_vault_coll.with_options(
-            codec_options=_KEY_VAULT_OPTS,
-            read_concern=ReadConcern(level="majority"),
-            write_concern=WriteConcern(w="majority"),
+        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = cast(
+            Collection[RawBSONDocument],
+            key_vault_coll.with_options(
+                codec_options=_KEY_VAULT_OPTS,
+                read_concern=ReadConcern(level="majority"),
+                write_concern=WriteConcern(w="majority"),
+            ),
         )
         self.mongocryptd_client = mongocryptd_client
         self.opts = opts
@@ -181,7 +186,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
 
-    def collection_info(self, database: Database, filter: bytes) -> Optional[bytes]:
+    def collection_info(
+        self, database: Database[Mapping[str, Any]], filter: bytes
+    ) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -323,7 +330,7 @@ class _Encrypter:
     MongoDB commands.
     """
 
-    def __init__(self, client: MongoClient, opts: AutoEncryptionOpts):
+    def __init__(self, client: MongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
         """Create a _Encrypter for a client.
 
         :Parameters:
@@ -342,7 +349,9 @@ class _Encrypter:
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
 
-        def _get_internal_client(encrypter: _Encrypter, mongo_client: MongoClient) -> MongoClient:
+        def _get_internal_client(
+            encrypter: _Encrypter, mongo_client: MongoClient[_DocumentTypeArg]
+        ) -> MongoClient[_DocumentTypeArg]:
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -366,11 +375,13 @@ class _Encrypter:
         db, coll = opts._key_vault_namespace.split(".", 1)
         key_vault_coll = key_vault_client[db][coll]
 
-        mongocryptd_client: MongoClient = MongoClient(
+        mongocryptd_client: MongoClient[Mapping[str, Any]] = MongoClient(
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 
-        io_callbacks = _EncryptionIO(metadata_client, key_vault_coll, mongocryptd_client, opts)
+        io_callbacks = _EncryptionIO(
+            metadata_client, key_vault_coll, mongocryptd_client, opts
+        )  # type:ignore[misc]
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
             MongoCryptOptions(
@@ -386,8 +397,8 @@ class _Encrypter:
         self._closed = False
 
     def encrypt(
-        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions
-    ) -> MutableMapping[Any, Any]:
+        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
+    ) -> MutableMapping[str, Any]:
         """Encrypt a MongoDB command.
 
         :Parameters:
@@ -417,7 +428,7 @@ class _Encrypter:
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            return self._auto_encrypter.decrypt(response)
+            return cast(bytes, self._auto_encrypter.decrypt(response))
 
     def _check_closed(self) -> None:
         if self._closed:
@@ -483,8 +494,8 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: MongoClient,
-        codec_options: CodecOptions,
+        key_vault_client: MongoClient[_DocumentTypeArg],
+        codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Explicit client-side field level encryption.
@@ -584,17 +595,18 @@ class ClientEncryption(Generic[_DocumentType]):
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
         # Use the same key vault collection as the callback.
+        assert self._io_callbacks.key_vault_coll is not None
         self._key_vault_coll = self._io_callbacks.key_vault_coll
 
     def create_encrypted_collection(
         self,
-        database: Database,
+        database: Database[_DocumentTypeArg],
         name: str,
         encrypted_fields: Mapping[str, Any],
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
+    ) -> tuple[Collection[_DocumentTypeArg], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
         .. warning::
@@ -749,11 +761,14 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            return self._encryption.create_data_key(
-                kms_provider,
-                master_key=master_key,
-                key_alt_names=key_alt_names,
-                key_material=key_material,
+            return cast(
+                Binary,
+                self._encryption.create_data_key(
+                    kms_provider,
+                    master_key=master_key,
+                    key_alt_names=key_alt_names,
+                    key_material=key_material,
+                ),
             )
 
     def _encrypt_helper(
@@ -832,15 +847,18 @@ class ClientEncryption(Generic[_DocumentType]):
         .. versionchanged:: 4.2
            Added the `query_type` and `contention_factor` parameters.
         """
-        return self._encrypt_helper(
-            value=value,
-            algorithm=algorithm,
-            key_id=key_id,
-            key_alt_name=key_alt_name,
-            query_type=query_type,
-            contention_factor=contention_factor,
-            range_opts=range_opts,
-            is_expression=False,
+        return cast(
+            Binary,
+            self._encrypt_helper(
+                value=value,
+                algorithm=algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                query_type=query_type,
+                contention_factor=contention_factor,
+                range_opts=range_opts,
+                is_expression=False,
+            ),
         )
 
     def encrypt_expression(
@@ -879,15 +897,18 @@ class ClientEncryption(Generic[_DocumentType]):
 
         .. versionadded:: 4.4
         """
-        return self._encrypt_helper(
-            value=expression,
-            algorithm=algorithm,
-            key_id=key_id,
-            key_alt_name=key_alt_name,
-            query_type=query_type,
-            contention_factor=contention_factor,
-            range_opts=range_opts,
-            is_expression=True,
+        return cast(
+            RawBSONDocument,
+            self._encrypt_helper(
+                value=expression,
+                algorithm=algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                query_type=query_type,
+                contention_factor=contention_factor,
+                range_opts=range_opts,
+                is_expression=True,
+            ),
         )
 
     def decrypt(self, value: Binary) -> Any:
@@ -1088,7 +1109,7 @@ class ClientEncryption(Generic[_DocumentType]):
         result = self._key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
 
-    def __enter__(self) -> "ClientEncryption":
+    def __enter__(self) -> ClientEncryption[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

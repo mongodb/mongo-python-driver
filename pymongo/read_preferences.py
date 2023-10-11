@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections import abc
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -131,9 +131,9 @@ class _ServerMode:
         return self.__mongos_mode
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self) -> dict[str, Any]:
         """Read preference as a document."""
-        doc: Dict[str, Any] = {"mode": self.__mongos_mode}
+        doc: dict[str, Any] = {"mode": self.__mongos_mode}
         if self.__tag_sets not in (None, [{}]):
             doc["tags"] = self.__tag_sets
         if self.__max_staleness != -1:
@@ -235,7 +235,7 @@ class _ServerMode:
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         """Return value of object for pickling.
 
         Needed explicitly because __slots__() defined.

@@ -49,6 +49,9 @@ if [ "$AUTH" != "noauth" ]; then
     elif [ ! -z "$TEST_SERVERLESS" ]; then
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+        export DB_USER=$OIDC_ALTAS_USER
+        export DB_PASSWORD=$OIDC_ATLAS_PASSWORD
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
@@ -109,7 +112,7 @@ fi
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
     # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3827
+    # TODO: Remove after PYTHON-3952 is deployed.
     if [ "$(uname -s)" = "Darwin" ]; then
         python -m pip install certifi
         CERT_PATH=$(python -c "import certifi; print(certifi.where())")
@@ -224,7 +227,18 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_aws/test_auth_oidc.py"
+
+    # Work around for root certifi not being installed.
+    # TODO: Remove after PYTHON-3952 is deployed.
+    if [ "$(uname -s)" = "Darwin" ]; then
+        python -m pip install certifi
+        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
+        export SSL_CERT_FILE=${CERT_PATH}
+        export REQUESTS_CA_BUNDLE=${CERT_PATH}
+        export AWS_CA_BUNDLE=${CERT_PATH}
+    fi
+
+    TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
 
 if [ -n "$PERF_TEST" ]; then
@@ -244,7 +258,7 @@ python -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    python -m pip install pytest-cov
+    python -m pip install pytest-cov "coverage<7.3"
     TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
 fi
 
@@ -262,7 +276,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         python -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    python -m pytest -v $TEST_ARGS
+    python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi

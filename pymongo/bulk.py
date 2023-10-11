@@ -24,13 +24,10 @@ from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Iterator,
-    List,
     Mapping,
     NoReturn,
     Optional,
-    Tuple,
     Type,
     Union,
 )
@@ -76,7 +73,7 @@ _BAD_VALUE: int = 2
 _UNKNOWN_ERROR: int = 8
 _WRITE_CONCERN_ERROR: int = 64
 
-_COMMANDS: Tuple[str, str, str] = ("insert", "update", "delete")
+_COMMANDS: tuple[str, str, str] = ("insert", "update", "delete")
 
 
 class _Run:
@@ -85,8 +82,8 @@ class _Run:
     def __init__(self, op_type: int) -> None:
         """Initialize a new Run object."""
         self.op_type: int = op_type
-        self.index_map: List[int] = []
-        self.ops: List[Any] = []
+        self.index_map: list[int] = []
+        self.ops: list[Any] = []
         self.idx_offset: int = 0
 
     def index(self, idx: int) -> int:
@@ -182,7 +179,7 @@ class _Bulk:
             common.validate_is_document_type("let", self.let)
         self.comment: Optional[str] = comment
         self.ordered = ordered
-        self.ops: List[Tuple[int, Mapping[str, Any]]] = []
+        self.ops: list[tuple[int, Mapping[str, Any]]] = []
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
@@ -219,12 +216,12 @@ class _Bulk:
         multi: bool = False,
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, SON[str, Any], None] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: Dict[str, Any] = dict(
+        cmd: dict[str, Any] = dict(
             [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
         )
         if collation is not None:
@@ -414,7 +411,7 @@ class _Bulk:
         generator: Iterator[Any],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute using write commands."""
         # nModified is only reported for write commands, not legacy ops.
         full_result = {

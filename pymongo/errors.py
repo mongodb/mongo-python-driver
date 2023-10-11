@@ -15,17 +15,7 @@
 """Exceptions raised by PyMongo."""
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Union
 
 from bson.errors import InvalidDocument
 
@@ -110,11 +100,11 @@ class AutoReconnect(ConnectionFailure):
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
 
-    errors: Union[Mapping[str, Any], Sequence]
-    details: Union[Mapping[str, Any], Sequence]
+    errors: Union[Mapping[str, Any], Sequence[Any]]
+    details: Union[Mapping[str, Any], Sequence[Any]]
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence]] = None
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None
     ) -> None:
         error_labels = None
         if errors is not None:
@@ -138,7 +128,9 @@ class NetworkTimeout(AutoReconnect):
         return True
 
 
-def _format_detailed_error(message: str, details: Optional[Union[Mapping[str, Any], List]]) -> str:
+def _format_detailed_error(
+    message: str, details: Optional[Union[Mapping[str, Any], list[Any]]]
+) -> str:
     if details is not None:
         message = f"{message}, full error: {details}"
     return message
@@ -161,7 +153,7 @@ class NotPrimaryError(AutoReconnect):
     """
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], List]] = None
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], list[Any]]] = None
     ) -> None:
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
@@ -306,7 +298,7 @@ class BulkWriteError(OperationFailure):
     def __init__(self, results: _DocumentOut) -> None:
         super().__init__("batch op errors occurred", 65, results)
 
-    def __reduce__(self) -> Tuple[Any, Any]:
+    def __reduce__(self) -> tuple[Any, Any]:
         return self.__class__, (self.details,)
 
     @property
