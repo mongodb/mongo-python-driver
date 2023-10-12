@@ -1077,7 +1077,6 @@ class Cursor(Generic[_DocumentType]):
                 return
             raise
         except ConnectionFailure:
-            # Don't send killCursors because the cursor is already closed.
             self.__die(False)
             raise
         except Exception:
