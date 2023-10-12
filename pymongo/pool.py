@@ -396,7 +396,6 @@ def _raise_connection_failure(
     if msg_prefix:
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
-        print(f"DETAILS: {details}")
         raise NetworkTimeout(msg + format_timeout_details(details)) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
