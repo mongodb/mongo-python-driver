@@ -27,6 +27,7 @@ from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelle
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
+from pymongo.pool import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
@@ -138,7 +139,12 @@ class Monitor(MonitorBase):
             topology_settings,
             topology._create_pool_for_monitor(server_description.address),
         )
-        self.heartbeater = None
+        if topology_settings.server_monitoring_mode == "stream":
+            self._stream = True
+        elif topology_settings.server_monitoring_mode == "poll":
+            self._stream = False
+        else:
+            self._stream = not _is_faas()
 
     def cancel_check(self) -> None:
         """Cancel any concurrent hello check.
@@ -200,7 +206,7 @@ class Monitor(MonitorBase):
                 self._server_description, reset_pool=self._server_description.error
             )
 
-            if (
+            if self._stream and (
                 self._server_description.is_server_type_known
                 and self._server_description.topology_version
             ):
@@ -237,7 +243,7 @@ class Monitor(MonitorBase):
             address = sd.address
             duration = time.monotonic() - start
             if self._publish:
-                awaited = bool(sd.is_server_type_known and sd.topology_version)
+                awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
             self._reset_connection()
@@ -255,7 +261,16 @@ class Monitor(MonitorBase):
         address = self._server_description.address
         if self._publish:
             assert self._listeners is not None
-            self._listeners.publish_server_heartbeat_started(address)
+            sd = self._server_description
+            # XXX: "awaited" could be incorrectly set to True in the rare case
+            # the pool checkout closes and recreates a connection.
+            awaited = bool(
+                self._pool.conns
+                and self._stream
+                and sd.is_server_type_known
+                and sd.topology_version
+            )
+            self._listeners.publish_server_heartbeat_started(address, awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
@@ -284,7 +299,9 @@ class Monitor(MonitorBase):
         if conn.more_to_come:
             # Read the next streaming hello (MongoDB 4.4+).
             response = Hello(conn._next_reply(), awaitable=True)
-        elif conn.performed_handshake and self._server_description.topology_version:
+        elif (
+            self._stream and conn.performed_handshake and self._server_description.topology_version
+        ):
             # Initiate streaming hello (MongoDB 4.4+).
             response = conn._hello(
                 cluster_time,

@@ -18,6 +18,7 @@ from pymongo.monitoring import (
 
 open_connections = 0
 heartbeat_count = 0
+streaming_heartbeat_count = 0
 total_heartbeat_duration = 0
 total_commands = 0
 total_command_duration = 0
@@ -49,9 +50,11 @@ class ServerHeartbeatHandler(ServerHeartbeatListener):
         print("server heartbeat started", event)
 
     def succeeded(self, event):
-        global heartbeat_count, total_heartbeat_duration
+        global heartbeat_count, total_heartbeat_duration, streaming_heartbeat_count
         heartbeat_count += 1
         total_heartbeat_duration += event.duration
+        if event.awaited:
+            streaming_heartbeat_count += 1
         print("server heartbeat succeeded", event)
 
     def failed(self, event):
@@ -115,7 +118,9 @@ print("Connected")
 def create_response():
     return dict(
         averageCommandDuration=total_command_duration / total_commands,
-        averageHeartbeatDuration=total_heartbeat_duration / heartbeat_count,
+        averageHeartbeatDuration=total_heartbeat_duration / heartbeat_count
+        if heartbeat_count
+        else 0,
         openConnections=open_connections,
         heartbeatCount=heartbeat_count,
     )
@@ -145,5 +150,8 @@ def lambda_handler(event, context):
     response = json.dumps(create_response())
     reset()
     print("finished!")
+    assert (
+        streaming_heartbeat_count == 0
+    ), f"streaming_heartbeat_count was {streaming_heartbeat_count} not 0"
 
     return dict(statusCode=200, body=response)

@@ -1185,7 +1185,9 @@ class TestEventClasses(unittest.TestCase):
     def test_server_heartbeat_event_repr(self):
         connection_id = ("localhost", 27017)
         event = monitoring.ServerHeartbeatStartedEvent(connection_id)
-        self.assertEqual(repr(event), "<ServerHeartbeatStartedEvent ('localhost', 27017)>")
+        self.assertEqual(
+            repr(event), "<ServerHeartbeatStartedEvent ('localhost', 27017) awaited: False>"
+        )
         delta = 0.1
         event = monitoring.ServerHeartbeatSucceededEvent(
             delta, {"ok": 1}, connection_id  # type: ignore[arg-type]
