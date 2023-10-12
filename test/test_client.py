@@ -1948,6 +1948,8 @@ class TestExhaustCursor(IntegrationTest):
         self.assertRaises(ConnectionFailure, list, cursor)
         self.assertTrue(conn.closed)
 
+        # Wait for the deferred killCursor to complete
+        time.sleep(1)
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(conn, pool.conns)
         self.assertEqual(0, pool.requests)
