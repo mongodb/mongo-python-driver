@@ -53,8 +53,6 @@ from pymongo.common import (
     MIN_POOL_SIZE,
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
-    _get_timeout_details,
-    format_timeout_details,
 )
 from pymongo.errors import (
     AutoReconnect,
@@ -384,7 +382,7 @@ def _raise_connection_failure(
     address: Any,
     error: Exception,
     msg_prefix: Optional[str] = None,
-    details: Optional[dict[str, Any]] = None,
+    timeout_details: Optional[dict[str, float]] = None,
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
@@ -395,14 +393,15 @@ def _raise_connection_failure(
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
+    msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg + format_timeout_details(details)) from error
+        raise NetworkTimeout(msg) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
         # 'timed out' appears in all the timeout related SSLErrors raised.
-        raise NetworkTimeout(msg + format_timeout_details(details)) from error
+        raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error
 
@@ -410,6 +409,32 @@ def _raise_connection_failure(
 def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
     timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
+
+
+def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
+    details = {}
+    timeout = _csot.get_timeout()
+    socket_timeout = options.socket_timeout
+    connect_timeout = options.connect_timeout
+    if timeout:
+        details["timeout"] = timeout * 1000
+    if socket_timeout:
+        details["socketTimeout"] = socket_timeout * 1000
+    if connect_timeout:
+        details["connectTimeout"] = connect_timeout * 1000
+    return details
+
+
+def format_timeout_details(details: Optional[dict[str, float]]) -> str:
+    result = ""
+    if details:
+        result += " (configured timeouts:"
+        for timeout in ["socketTimeout", "timeout", "connectTimeout"]:
+            if timeout in details:
+                result += f" {timeout}: {details[timeout]}ms,"
+        result = result[:-1]
+        result += ")"
+    return result
 
 
 class PoolOptions:
@@ -743,7 +768,7 @@ class Connection:
         if max_time_ms < 0:
             # CSOT: raise an error without running the command since we know it will time out.
             errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
-            timeout_details = _get_timeout_details(client)
+            timeout_details = _get_timeout_details(self.opts)
             raise ExecutionTimeout(
                 errmsg + format_timeout_details(timeout_details),
                 50,
@@ -1136,7 +1161,8 @@ class Connection:
         self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, SSLError)):
-            _raise_connection_failure(self.address, error)
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(self.address, error, timeout_details=details)
         else:
             raise
 
@@ -1260,7 +1286,8 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        _raise_connection_failure(address, exc, "SSL handshake failed: ")
+        details = _get_timeout_details(options)
+        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
     if (
         ssl_context.verify_mode
         and not ssl_context.check_hostname
@@ -1558,10 +1585,8 @@ class Pool:
                 )
 
             if isinstance(error, (IOError, OSError, SSLError)):
-                timeout_details = None
-                if handler:
-                    timeout_details = _get_timeout_details(handler.client)
-                _raise_connection_failure(self.address, error, details=timeout_details)
+                details = _get_timeout_details(self.opts)
+                _raise_connection_failure(self.address, error, timeout_details=details)
 
             raise
 
@@ -1642,7 +1667,10 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR
                 )
-            _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(
+                self.address, AutoReconnect("connection pool paused"), timeout_details=details
+            )
 
     def _get_conn(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
