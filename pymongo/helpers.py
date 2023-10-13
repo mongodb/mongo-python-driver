@@ -111,7 +111,7 @@ def _index_list(
         if isinstance(key_or_list, str):
             return [(key_or_list, ASCENDING)]
         if isinstance(key_or_list, abc.ItemsView):
-            return list(key_or_list)
+            return list(key_or_list)  # type: ignore
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
         values: list[tuple[str, int]] = []
@@ -139,9 +139,9 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
     if is_mapping:
         for key in index_list:
-            value = index_list[key]
+            value = index_list[key]  # type: ignore
             _validate_index_key_pair(key, value)
-            index[key] = value
+            index[key] = value  # type: ignore
     else:
         for item in index_list:
             if isinstance(item, str):
@@ -152,7 +152,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
     return index
 
 
-def _validate_index_key_pair(key: any, value: any) -> NoReturn:
+def _validate_index_key_pair(key: Any, value: Any) -> None:
     if not isinstance(key, str):
         raise TypeError("first item in each key pair must be an instance of str")
     if not isinstance(value, (str, int, abc.Mapping)):

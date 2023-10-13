@@ -1836,6 +1836,13 @@ class TestClient(IntegrationTest):
             None,
         )
 
+    def test_dict_hints(self):
+        c = rs_or_single_client()
+        try:
+            c.t.t.find(hint={"x": 1})
+        except Exception:
+            self.fail("passing a dictionary hint to sort/create_index/hint failed!")
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
