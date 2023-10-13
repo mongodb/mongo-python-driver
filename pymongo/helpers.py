@@ -110,8 +110,10 @@ def _index_list(
     else:
         if isinstance(key_or_list, str):
             return [(key_or_list, ASCENDING)]
-        if isinstance(key_or_list, abc.ItemsView):
-            return list(key_or_list)  # type: ignore
+        elif isinstance(key_or_list, abc.ItemsView):
+            return list(key_or_list)  # type: ignore[arg-type]
+        elif isinstance(key_or_list, abc.Mapping):
+            return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
         values: list[tuple[str, int]] = []
@@ -127,8 +129,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
     Takes a list of (key, direction) pairs.
     """
-    is_mapping = isinstance(index_list, abc.Mapping)
-    if not isinstance(index_list, (list, tuple)) and not is_mapping:
+    if not isinstance(index_list, (list, tuple, abc.Mapping)):
         raise TypeError(
             "must use a dictionary or a list of (key, direction) pairs, not: " + repr(index_list)
         )
@@ -137,11 +138,11 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
     index: SON[str, Any] = SON()
 
-    if is_mapping:
+    if isinstance(index_list, abc.Mapping):
         for key in index_list:
-            value = index_list[key]  # type: ignore
+            value = index_list[key]
             _validate_index_key_pair(key, value)
-            index[key] = value  # type: ignore
+            index[key] = value
     else:
         for item in index_list:
             if isinstance(item, str):
