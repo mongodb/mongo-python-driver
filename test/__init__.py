@@ -510,6 +510,10 @@ class ClientContext:
             # Raised if self.server_status is None.
             return None
 
+    def check_auth_type(self, auth_type):
+        auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
+        return auth_type in auth_mechs
+
     def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""
         client: MongoClient = pymongo.MongoClient(

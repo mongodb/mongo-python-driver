@@ -224,6 +224,8 @@ def is_run_on_requirement_satisfied(requirement):
     if req_auth is not None:
         if req_auth:
             auth_satisfied = client_context.auth_enabled
+            if auth_satisfied and "authType" in requirement:
+                auth_satisfied = client_context.check_auth_type(requirement["authType"])
         else:
             auth_satisfied = not client_context.auth_enabled
 
