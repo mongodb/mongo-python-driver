@@ -317,22 +317,15 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          set -o xtrace
-          # The mongohouse build script needs to be passed the VARIANT variable, see
-          # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
         script: |
           ${PREPARE_SHELL}
-          set -o xtrace
-          echo "HI"
-          podman machine init
-          podman machine start
-          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
-          echo "HELLO"
-          podman ps
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
+          sleep 1
+          docker ps
 
   "stop mongo-orchestration":
     - command: shell.exec
@@ -3136,7 +3129,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: rhel8
+    platform: ubuntu-22.04
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
