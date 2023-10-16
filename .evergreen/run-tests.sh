@@ -295,6 +295,5 @@ fi
 
 # Handle coverage post actions.
 if [ -n "$COVERAGE" ]; then
-    find . -name "*.pyc"  -print0 | xargs rm
     rm -rf .pytest_cache
 fi
