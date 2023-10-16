@@ -37,8 +37,10 @@ if TYPE_CHECKING:
     from bson.son import SON
     from pymongo.bulk import _Bulk
 
-# Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
-_IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
+# Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
+_IndexList = Union[
+    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
+]
 _IndexKeyHint = Union[str, _IndexList]
 
 

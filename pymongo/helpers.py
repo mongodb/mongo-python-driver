@@ -110,8 +110,10 @@ def _index_list(
     else:
         if isinstance(key_or_list, str):
             return [(key_or_list, ASCENDING)]
-        if isinstance(key_or_list, abc.ItemsView):
-            return list(key_or_list)
+        elif isinstance(key_or_list, abc.ItemsView):
+            return list(key_or_list)  # type: ignore[arg-type]
+        elif isinstance(key_or_list, abc.Mapping):
+            return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
         values: list[tuple[str, int]] = []
@@ -127,31 +129,38 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
 
     Takes a list of (key, direction) pairs.
     """
-    if isinstance(index_list, abc.Mapping):
+    if not isinstance(index_list, (list, tuple, abc.Mapping)):
         raise TypeError(
-            "passing a dict to sort/create_index/hint is not "
-            "allowed - use a list of tuples instead. did you "
-            "mean %r?" % list(index_list.items())
+            "must use a dictionary or a list of (key, direction) pairs, not: " + repr(index_list)
         )
-    elif not isinstance(index_list, (list, tuple)):
-        raise TypeError("must use a list of (key, direction) pairs, not: " + repr(index_list))
     if not len(index_list):
-        raise ValueError("key_or_list must not be the empty list")
+        raise ValueError("key_or_list must not be empty")
 
     index: SON[str, Any] = SON()
-    for item in index_list:
-        if isinstance(item, str):
-            item = (item, ASCENDING)
-        key, value = item
-        if not isinstance(key, str):
-            raise TypeError("first item in each key pair must be an instance of str")
-        if not isinstance(value, (str, int, abc.Mapping)):
-            raise TypeError(
-                "second item in each key pair must be 1, -1, "
-                "'2d', or another valid MongoDB index specifier."
-            )
-        index[key] = value
+
+    if isinstance(index_list, abc.Mapping):
+        for key in index_list:
+            value = index_list[key]
+            _validate_index_key_pair(key, value)
+            index[key] = value
+    else:
+        for item in index_list:
+            if isinstance(item, str):
+                item = (item, ASCENDING)
+            key, value = item
+            _validate_index_key_pair(key, value)
+            index[key] = value
     return index
+
+
+def _validate_index_key_pair(key: Any, value: Any) -> None:
+    if not isinstance(key, str):
+        raise TypeError("first item in each key pair must be an instance of str")
+    if not isinstance(value, (str, int, abc.Mapping)):
+        raise TypeError(
+            "second item in each key pair must be 1, -1, "
+            "'2d', or another valid MongoDB index specifier."
+        )
 
 
 def _check_command_response(
