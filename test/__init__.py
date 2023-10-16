@@ -307,7 +307,10 @@ class ClientContext:
     @property
     def hello(self):
         if not self._hello:
-            self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
+            if self.serverless:
+                self._hello = self.client.admin.command(HelloCompat.CMD)
+            else:
+                self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
         return self._hello
 
     def _connect(self, host, port, **kwargs):
@@ -317,7 +320,10 @@ class ClientContext:
         )
         try:
             try:
-                client.admin.command(HelloCompat.LEGACY_CMD)  # Can we connect?
+                if self.serverless:
+                    client.admin.command(HelloCompat.CMD)  # Can we connect?
+                else:
+                    client.admin.command(HelloCompat.LEGACY_CMD)  # Can we connect?
             except pymongo.errors.OperationFailure as exc:
                 # SERVER-32063
                 self.connection_attempts.append(
