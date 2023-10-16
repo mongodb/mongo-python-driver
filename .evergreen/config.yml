@@ -488,12 +488,8 @@ functions:
             export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
-          export PYTHON_BINARY=${PYTHON_BINARY}
-          if [ -z "$PYTHON_BINARY" ]; then
-            export PYTHON_BINARY=${python3_binary}
-          fi
-
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
@@ -652,7 +648,7 @@ functions:
               .evergreen/run-mongodb-aws-test.sh
           fi
 
-  "bootstrap oidc":
+  "run oidc auth test with aws credentials":
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
@@ -661,58 +657,10 @@ functions:
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-          export OIDC_TOKEN_DIR=/tmp/tokens
-
-          . ./activate-authoidcvenv.sh
-          python oidc_write_orchestration.py
-          python oidc_get_tokens.py
-
-  "run oidc auth test with aws credentials":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          mongosh setup_oidc.js
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        silent: true
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
-            export OIDC_TOKEN_DIR=/tmp/tokens
-          EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the oidc auth test, skipping..."
-             exit 0
-          fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
+          bash .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -1131,24 +1079,14 @@ task_groups:
       - func: make files executable
       - command: shell.exec
         params:
-          silent: true
           shell: bash
           script: |-
-            set -o errexit
             ${PREPARE_SHELL}
-            echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
-            echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
-            # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
-            chmod 600 /tmp/testazurekms_privatekey
-            export AZUREKMS_CLIENTID="${testazurekms_clientid}"
-            export AZUREKMS_TENANTID="${testazurekms_tenantid}"
-            export AZUREKMS_SECRET="${testazurekms_secret}"
-            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
-            export AZUREKMS_RESOURCEGROUP="${testazurekms_resourcegroup}"
-            export AZUREKMS_PUBLICKEYPATH="/tmp/testazurekms_publickey"
-            export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
-            export AZUREKMS_SCOPE="${testazurekms_scope}"
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+            export AZUREKMS_DRIVERS_TOOLS="$DRIVERS_TOOLS"
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
       - command: expansions.update
         params:
@@ -1163,11 +1101,14 @@ task_groups:
           shell: bash
           script: |-
             ${PREPARE_SHELL}
+            set -x
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
+            export AZUREKMS_SCOPE=${AZUREKMS_SCOPE}
             $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
+    teardown_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
@@ -1620,7 +1561,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "6.0"
             TOPOLOGY: "replica_set"
         - func: "run tests"
           vars:
@@ -1670,8 +1611,6 @@ tasks:
       tags: ["no-server"]
       commands:
         - func: "run tests"
-          vars:
-            PYTHON_BINARY: /opt/python/3.7/bin/python3
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -2130,16 +2069,7 @@ tasks:
 
     - name: "oidc-auth-test-latest"
       commands:
-        - func: "bootstrap oidc"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "replica_set"
-            VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
-          vars:
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
       commands:
@@ -2157,7 +2087,6 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
         - func: "run tests"
 # }}}
     - name: "coverage-report"
@@ -2242,9 +2171,10 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            source ./secrets-export.sh
             cd src
             echo "Copying files ... begin"
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
             tar czf /tmp/mongo-python-driver.tgz .
@@ -2263,10 +2193,11 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
-            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            source ./secrets-export.sh
+            export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'  LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
+            AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/tox.sh -m test-eg" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 
     - name: testazurekms-fail-task
@@ -2284,10 +2215,13 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            # Get azurekms credentials from the vault.
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/azurekms
+            source ./secrets-export.sh
             cd src
             PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
-            KEY_NAME='${testazurekms_keyname}' \
-            KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
+            KEY_NAME="${AZUREKMS_KEYNAME}" \
+            KEY_VAULT_ENDPOINT="${AZUREKMS_KEYVAULTENDPOINT}" \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/tox.sh -m test-eg
@@ -2304,7 +2238,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
         display_name: "macOS 11.00"
@@ -2313,7 +2246,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100-arm64
         display_name: "macOS 11.00 Arm64"
@@ -2322,21 +2254,18 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel80-fips
         display_name: "RHEL 8.0 FIPS"
@@ -2348,14 +2277,10 @@ axes:
         display_name: "Ubuntu 22.04"
         run_on: ubuntu2204-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
-      - id: ubuntu-18.04
-        display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-small
+      - id: ubuntu-20.04
+        display_name: "Ubuntu 20.04"
+        run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
@@ -2378,7 +2303,6 @@ axes:
           skip_ECS_auth_test: true
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
-          python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
@@ -2519,14 +2443,6 @@ axes:
         display_name: "PyPy 3.10"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-mac
-    display_name: "Python"
-    values:
-      - id: "system-python3"
-        display_name: "Python3"
-        variables:
-          PYTHON_BINARY: "python3"
 
   - id: python-version-windows
     display_name: "Python"
@@ -3189,16 +3105,15 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8 ]
-    python-version: ["3.9"]
-  display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
+    platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
+  display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-18.04]
-    python-version: ["3.7"]
+    platform: [ubuntu-20.04]
+    python-version: ["3.9"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test-4.4"
@@ -3211,7 +3126,6 @@ buildvariants:
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
     platform: [macos-1014]
-    python-version-mac: ["system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"
@@ -3256,7 +3170,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: debian10-small
+  run_on: rhel87-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README

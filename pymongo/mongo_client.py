@@ -330,6 +330,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
+          - `serverMonitoringMode`: (optional) The server monitoring mode to use.
+            Valid values are the strings: "auto", "stream", "poll". Defaults to "auto".
           - `appname`: (string or None) The name of the application that
             created this MongoClient instance. The server will log this value
             upon establishing each connection. It is also recorded in the slow
@@ -584,6 +586,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             details.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+
+        .. versionchanged:: 4.5
+           Added the ``serverMonitoringMode`` keyword argument.
 
         .. versionchanged:: 4.2
            Added the ``timeoutMS`` keyword argument.
@@ -846,6 +851,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             load_balanced=options.load_balanced,
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
+            server_monitoring_mode=options.server_monitoring_mode,
         )
 
         self._init_background()

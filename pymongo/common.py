@@ -136,6 +136,9 @@ _MAX_END_SESSIONS = 10000
 # Default value for srvServiceName
 SRV_SERVICE_NAME = "mongodb"
 
+# Default value for serverMonitoringMode
+SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -440,8 +443,6 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 signature = inspect.signature(value)
                 if key == "request_token_callback":
                     expected_params = 2
-                elif key == "refresh_token_callback":
-                    expected_params = 2
                 else:
                     raise ValueError(f"Unrecognized Auth mechanism function {key}")
                 if len(signature.parameters) != expected_params:
@@ -666,6 +667,15 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
     raise TypeError(f"{option} must be a str or int representing DatetimeConversion")
 
 
+def validate_server_monitoring_mode(option: str, value: str) -> str:
+    """Validate the serverMonitoringMode option."""
+    if value not in {"auto", "stream", "poll"}:
+        raise ValueError(
+            f'{option}={value!r} is invalid. Must be one of "auto", "stream", or "poll"'
+        )
+    return value
+
+
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
 URI_OPTIONS_ALIAS_MAP: dict[str, list[str]] = {
@@ -714,6 +724,7 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
     "timeoutms": validate_timeoutms,
+    "servermonitoringmode": validate_server_monitoring_mode,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,

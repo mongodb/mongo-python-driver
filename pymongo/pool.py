@@ -290,6 +290,10 @@ def _is_vercel() -> bool:
     return bool(os.getenv("VERCEL"))
 
 
+def _is_faas() -> bool:
+    return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
+
+
 def _getenv_int(key: str) -> Optional[int]:
     """Like os.getenv but returns an int, or None if the value is missing/malformed."""
     val = os.getenv(key)

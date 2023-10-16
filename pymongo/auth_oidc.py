@@ -15,27 +15,14 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
-import os
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
 
 import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
@@ -44,39 +31,27 @@ if TYPE_CHECKING:
 
 @dataclass
 class _OIDCProperties:
-    request_token_callback: Optional[Callable[..., Dict]]
-    refresh_token_callback: Optional[Callable[..., Dict]]
+    request_token_callback: Optional[Callable[..., dict]]
     provider_name: Optional[str]
-    allowed_hosts: List[str]
+    allowed_hosts: list[str]
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
 
 TOKEN_BUFFER_MINUTES = 5
 CALLBACK_TIMEOUT_SECONDS = 5 * 60
-CACHE_TIMEOUT_MINUTES = 60 * 5
-CALLBACK_VERSION = 0
-
-_CACHE: Dict[str, "_OIDCAuthenticator"] = {}
+CALLBACK_VERSION = 1
 
 
 def _get_authenticator(
-    credentials: MongoCredential, address: Tuple[str, int]
+    credentials: MongoCredential, address: tuple[str, int]
 ) -> _OIDCAuthenticator:
-    # Clear out old items in the cache.
-    now_utc = datetime.now(timezone.utc)
-    to_remove = []
-    for key, value in _CACHE.items():
-        if value.cache_exp_utc is not None and value.cache_exp_utc < now_utc:
-            to_remove.append(key)
-    for key in to_remove:
-        del _CACHE[key]
+    if credentials.cache.data:
+        return credentials.cache.data
 
     # Extract values.
     principal_name = credentials.username
     properties = credentials.mechanism_properties
-    request_cb = properties.request_token_callback
-    refresh_cb = properties.refresh_token_callback
 
     # Validate that the address is allowed.
     if not properties.provider_name:
@@ -92,150 +67,99 @@ def _get_authenticator(
                 f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
             )
 
-    # Get or create the cache item.
-    cache_key = f"{principal_name}{address[0]}{address[1]}{id(request_cb)}{id(refresh_cb)}"
-    _CACHE.setdefault(cache_key, _OIDCAuthenticator(username=principal_name, properties=properties))
-
-    return _CACHE[cache_key]
-
-
-def _get_cache_exp() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
+    # Get or create the cache data.
+    credentials.cache.data = _OIDCAuthenticator(username=principal_name, properties=properties)
+    return credentials.cache.data
 
 
 @dataclass
 class _OIDCAuthenticator:
     username: str
     properties: _OIDCProperties
-    idp_info: Optional[Dict] = field(default=None)
-    idp_resp: Optional[Dict] = field(default=None)
-    reauth_gen_id: int = field(default=0)
-    idp_info_gen_id: int = field(default=0)
+    refresh_token: Optional[str] = field(default=None)
+    access_token: Optional[str] = field(default=None)
+    idp_info: Optional[dict] = field(default=None)
     token_gen_id: int = field(default=0)
-    token_exp_utc: Optional[datetime] = field(default=None)
-    cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def get_current_token(self, use_callbacks: bool = True) -> Optional[str]:
+    def get_current_token(self, use_callback: bool = True) -> Optional[str]:
         properties = self.properties
 
-        request_cb = properties.request_token_callback
-        refresh_cb = properties.refresh_token_callback
-        if not use_callbacks:
-            request_cb = None
-            refresh_cb = None
+        # TODO: DRIVERS-2672, handle machine callback here as well.
+        cb = properties.request_token_callback if use_callback else None
+        cb_type = "human"
 
-        current_valid_token = False
-        if self.token_exp_utc is not None:
-            now_utc = datetime.now(timezone.utc)
-            exp_utc = self.token_exp_utc
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
-                current_valid_token = True
+        prev_token = self.access_token
+        if prev_token:
+            return prev_token
 
-        timeout = CALLBACK_TIMEOUT_SECONDS
-        if not use_callbacks and not current_valid_token:
+        if not use_callback and not prev_token:
             return None
 
-        if not current_valid_token and request_cb is not None:
-            prev_token = self.idp_resp["access_token"] if self.idp_resp else None
+        if not prev_token and cb is not None:
             with self.lock:
                 # See if the token was changed while we were waiting for the
                 # lock.
-                new_token = self.idp_resp["access_token"] if self.idp_resp else None
+                new_token = self.access_token
                 if new_token != prev_token:
                     return new_token
 
-                refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-                refresh_token = refresh_token or ""
-                context = {
-                    "timeout_seconds": timeout,
-                    "version": CALLBACK_VERSION,
-                    "refresh_token": refresh_token,
-                }
+                # TODO: DRIVERS-2672 handle machine callback here.
+                if cb_type == "human":
+                    context = {
+                        "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
+                        "version": CALLBACK_VERSION,
+                        "refresh_token": self.refresh_token,
+                    }
+                    resp = cb(self.idp_info, context)
 
-                if self.idp_resp is None or refresh_cb is None:
-                    self.idp_resp = request_cb(self.idp_info, context)
-                elif request_cb is not None:
-                    self.idp_resp = refresh_cb(self.idp_info, context)
-                cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                    minutes=CACHE_TIMEOUT_MINUTES
-                )
-                self.cache_exp_utc = cache_exp_utc
+                    self.validate_request_token_response(resp)
+
                 self.token_gen_id += 1
 
-        token_result = self.idp_resp
+        return self.access_token
 
+    def validate_request_token_response(self, resp: Mapping[str, Any]) -> None:
         # Validate callback return value.
-        if not isinstance(token_result, dict):
+        if not isinstance(resp, dict):
             raise ValueError("OIDC callback returned invalid result")
 
-        if "access_token" not in token_result:
+        if "access_token" not in resp:
             raise ValueError("OIDC callback did not return an access_token")
 
-        expected = ["access_token", "expires_in_seconds", "refesh_token"]
-        for key in token_result:
+        expected = ["access_token", "refresh_token", "expires_in_seconds"]
+        for key in resp:
             if key not in expected:
                 raise ValueError(f'Unexpected field in callback result "{key}"')
 
-        token = token_result["access_token"]
+        self.access_token = resp["access_token"]
+        self.refresh_token = resp.get("refresh_token")
 
-        if "expires_in_seconds" in token_result:
-            expires_in = int(token_result["expires_in_seconds"])
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if expires_in >= buffer_seconds:
-                now_utc = datetime.now(timezone.utc)
-                exp_utc = now_utc + timedelta(seconds=expires_in)
-                self.token_exp_utc = exp_utc
-
-        return token
-
-    def auth_start_cmd(self, use_callbacks: bool = True) -> Optional[SON[str, Any]]:
-        properties = self.properties
-
-        # Handle aws provider credentials.
-        if properties.provider_name == "aws":
-            aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
-            with open(aws_identity_file) as fid:
-                token: Optional[str] = fid.read().strip()
-            payload = {"jwt": token}
-            cmd = SON(
-                [
-                    ("saslStart", 1),
-                    ("mechanism", "MONGODB-OIDC"),
-                    ("payload", Binary(bson.encode(payload))),
-                ]
-            )
-            return cmd
+    def principal_step_cmd(self) -> SON[str, Any]:
+        """Get a SASL start command with an optional principal name"""
+        # Send the SASL start with the optional principal name.
+        payload = {}
 
         principal_name = self.username
+        if principal_name:
+            payload["n"] = principal_name
 
-        if self.idp_info is not None:
-            self.cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                minutes=CACHE_TIMEOUT_MINUTES
-            )
+        cmd = SON(
+            [
+                ("saslStart", 1),
+                ("mechanism", "MONGODB-OIDC"),
+                ("payload", Binary(bson.encode(payload))),
+                ("autoAuthorize", 1),
+            ]
+        )
+        return cmd
 
+    def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
+        # TODO: DRIVERS-2672, check for provider_name in self.properties here.
         if self.idp_info is None:
-            self.cache_exp_utc = _get_cache_exp()
+            return self.principal_step_cmd()
 
-        if self.idp_info is None:
-            # Send the SASL start with the optional principal name.
-            payload = {}
-
-            if principal_name:
-                payload["n"] = principal_name
-
-            cmd = SON(
-                [
-                    ("saslStart", 1),
-                    ("mechanism", "MONGODB-OIDC"),
-                    ("payload", Binary(bson.encode(payload))),
-                    ("autoAuthorize", 1),
-                ]
-            )
-            return cmd
-
-        token = self.get_current_token(use_callbacks)
+        token = self.get_current_token(use_callback)
         if not token:
             return None
         bin_payload = Binary(bson.encode({"jwt": token}))
@@ -247,37 +171,59 @@ class _OIDCAuthenticator:
             ]
         )
 
-    def clear(self) -> None:
-        self.idp_info = None
-        self.idp_resp = None
-        self.token_exp_utc = None
-
     def run_command(
         self, conn: Connection, cmd: MutableMapping[str, Any]
     ) -> Optional[Mapping[str, Any]]:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
-        except OperationFailure as exc:
-            self.clear()
-            if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                if "jwt" in bson.decode(cmd["payload"]):
-                    if self.idp_info_gen_id > self.reauth_gen_id:
-                        raise
-                    return self.authenticate(conn, reauthenticate=True)
+        except OperationFailure:
+            self.access_token = None
             raise
 
-    def authenticate(
-        self, conn: Connection, reauthenticate: bool = False
-    ) -> Optional[Mapping[str, Any]]:
-        if reauthenticate:
-            prev_id = getattr(conn, "oidc_token_gen_id", None)
-            # Check if we've already changed tokens.
-            if prev_id == self.token_gen_id:
-                self.reauth_gen_id = self.idp_info_gen_id
-                self.token_exp_utc = None
-                if not self.properties.refresh_token_callback:
-                    self.clear()
+    def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+        """Handle a reauthenticate from the server."""
+        # First see if we have the a newer token on the authenticator.
+        prev_id = conn.oidc_token_gen_id or 0
+        # If we've already changed tokens, make one optimistic attempt.
+        if (prev_id < self.token_gen_id) and self.access_token:
+            try:
+                return self.authenticate(conn)
+            except OperationFailure:
+                pass
 
+        self.access_token = None
+
+        # TODO: DRIVERS-2672, check for provider_name in self.properties here.
+        # If so, we clear the access token and return finish_auth.
+
+        # Next see if the idp info has changed.
+        prev_idp_info = self.idp_info
+        self.idp_info = None
+        cmd = self.principal_step_cmd()
+        resp = self.run_command(conn, cmd)
+        assert resp is not None
+        server_resp: dict = bson.decode(resp["payload"])
+        if "issuer" in server_resp:
+            self.idp_info = server_resp
+
+        # Handle the case of changed idp info.
+        if not self.idp_info == prev_idp_info:
+            self.access_token = None
+            self.refresh_token = None
+
+        # If we have a refresh token, try using that.
+        if self.refresh_token:
+            try:
+                return self.finish_auth(resp, conn)
+            except OperationFailure:
+                self.refresh_token = None
+                # If that fails, try again without the refresh token.
+                return self.authenticate(conn)
+
+        # If we don't have a refresh token, just try once.
+        return self.finish_auth(resp, conn)
+
+    def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         ctx = conn.auth_ctx
         cmd = None
 
@@ -293,12 +239,16 @@ class _OIDCAuthenticator:
             conn.oidc_token_gen_id = self.token_gen_id
             return None
 
-        server_resp: Dict = bson.decode(resp["payload"])
+        server_resp: dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
-            self.idp_info_gen_id += 1
 
-        conversation_id = resp["conversationId"]
+        return self.finish_auth(resp, conn)
+
+    def finish_auth(
+        self, orig_resp: Mapping[str, Any], conn: Connection
+    ) -> Optional[Mapping[str, Any]]:
+        conversation_id = orig_resp["conversationId"]
         token = self.get_current_token()
         conn.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
@@ -312,7 +262,6 @@ class _OIDCAuthenticator:
         resp = self.run_command(conn, cmd)
         assert resp is not None
         if not resp["done"]:
-            self.clear()
             raise OperationFailure("SASL conversation failed to complete.")
         return resp
 
@@ -322,4 +271,7 @@ def _authenticate_oidc(
 ) -> Optional[Mapping[str, Any]]:
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, conn.address)
-    return authenticator.authenticate(conn, reauthenticate=reauthenticate)
+    if reauthenticate:
+        return authenticator.reauthenticate(conn)
+    else:
+        return authenticator.authenticate(conn)

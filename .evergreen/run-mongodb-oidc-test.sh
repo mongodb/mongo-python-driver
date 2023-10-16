@@ -1,56 +1,48 @@
 #!/bin/bash
 
-set -o xtrace
+set +x          # Disable debug trace
 set -o errexit  # Exit the script with error if any of the commands fail
 
-############################################
-#            Main Program                  #
-############################################
-
-# Supported/used environment variables:
-#  MONGODB_URI    Set the URI, including an optional username/password to use
-#                 to connect to the server via MONGODB-OIDC authentication
-#                 mechanism.
-#  PYTHON_BINARY  The Python version to use.
-
 echo "Running MONGODB-OIDC authentication tests"
-# ensure no secrets are printed in log files
-set +x
 
-# load the script
-shopt -s expand_aliases # needed for `urlencode` alias
-[ -s "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
-
-MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
-MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
-
-if [ -z "${OIDC_TOKEN_DIR}" ]; then
-    echo "Must specify OIDC_TOKEN_DIR"
+# Make sure DRIVERS_TOOLS is set.
+if [ -z "$DRIVERS_TOOLS" ]; then
+    echo "Must specify DRIVERS_TOOLS"
     exit 1
 fi
 
-export MONGODB_URI_SINGLE="$MONGODB_URI_SINGLE"
-export MONGODB_URI_MULTIPLE="$MONGODB_URI_MULTIPLE"
-export MONGODB_URI="$MONGODB_URI"
+# Get the drivers secrets.  Use an existing secrets file first.
+if [ ! -f "./secrets-export.sh" ]; then
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
+fi
+source ./secrets-export.sh
 
-echo $MONGODB_URI_SINGLE
-echo $MONGODB_URI_MULTIPLE
-echo $MONGODB_URI
-
-if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
-    if echo "$MONGODB_URI" | grep -q "@"; then
-        echo "MONGODB_URI unexpectedly contains user credentials!";
-        exit 1
-    fi
+# # If the file did not have our creds, get them from the vault.
+if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
+    bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
+    source ./secrets-export.sh
 fi
 
-if [ -z "$PYTHON_BINARY" ]; then
-    echo "Cannot test without specifying PYTHON_BINARY"
-    exit 1
+# Make the OIDC tokens.
+set -x
+pushd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
+. ./oidc_get_tokens.sh
+popd
+
+# Set up variables and run the test.
+if [ -n "$LOCAL_OIDC_SERVER" ]; then
+    export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
+    export MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
+    export MONGODB_URI_MULTI="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
+else
+    set +x   # turn off xtrace for this portion
+    export MONGODB_URI="$OIDC_ATLAS_URI_SINGLE"
+    export MONGODB_URI_SINGLE="$OIDC_ATLAS_URI_SINGLE/?authMechanism=MONGODB-OIDC"
+    export MONGODB_URI_MULTI="$OIDC_ATLAS_URI_MULTI/?authMechanism=MONGODB-OIDC"
+    set -x
 fi
 
 export TEST_AUTH_OIDC=1
+export COVERAGE=1
 export AUTH="auth"
-export SET_XTRACE_ON=1
 bash ./.evergreen/tox.sh -m test-eg
