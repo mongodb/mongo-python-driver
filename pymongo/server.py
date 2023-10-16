@@ -147,11 +147,6 @@ class Server:
                 conn.send_message(data, max_doc_size)
                 reply = conn.receive_message(request_id)
 
-            print(
-                f"\nOP_MSG for request {request_id}\nCHECKSUM_PRESENT: {reply.CHECKSUM_PRESENT}\nEXHAUST_ALLOWED: {reply.EXHAUST_ALLOWED}\nMORE_TO_COME: {reply.MORE_TO_COME}\nOP_CODE: {reply.OP_CODE}\nflags: {reply.flags}\nmore_to_come: {reply.more_to_come}\ndata: {reply.payload_document.obj}",
-                flush=True,
-            )
-
             # Unpack and check for command errors.
             if use_cmd:
                 user_fields = _CURSOR_DOC_FIELDS
