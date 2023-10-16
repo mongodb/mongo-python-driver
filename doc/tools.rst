@@ -85,12 +85,6 @@ MongoKit
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
-MongoAlchemy
-  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
-  PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available `on GitHub <http://github.com/jeffjenkins/MongoAlchemy>`_;
-  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
-
 Minimongo
   `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
   pythonic interface to MongoDB.  It retains pymongo's query and update API,
