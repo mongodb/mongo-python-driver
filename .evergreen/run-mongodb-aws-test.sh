@@ -15,10 +15,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-AWS authentication tests"
 
-# Get python executable.
-. ./.evergreen/utils.sh
-PYTHON_BINARY=$(find_python3)
-
 # Handle credentials and environment setup.
 . $DRIVERS_TOOLS/.evergreen/auth_aws/aws_setup.sh $1
 
