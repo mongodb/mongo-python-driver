@@ -13,7 +13,8 @@ if [ -z "$PYTHON_BINARY" ]; then
 fi
 
 createvirtualenv "$PYTHON_BINARY" covenv
-pip install -q coverage
+# coverage 7.3 dropped support for Python 3.7, keep in sync with run-tests.sh
+pip install -q "coverage<7.3"
 
 pip list
 ls -la coverage/
