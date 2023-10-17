@@ -132,7 +132,7 @@ class Server:
 
         if publish:
             cmd, dbn = operation.as_command(conn)
-            if "$db" not in cmd and dbn is not None:
+            if "$db" not in cmd:
                 cmd["$db"] = dbn
             assert listeners is not None
             listeners.publish_command_start(
