@@ -131,7 +131,12 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          bash .evergreen/combine-coverage.sh
+          set -o xtrace
+          # Coverage combine merges (and removes) all the coverage files and
+          # generates a new .coverage file in the current directory.
+          ls -la coverage/
+          /opt/python/3.7/bin/python3 -m coverage combine coverage/coverage.*
+          /opt/python/3.7/bin/python3 -m coverage html -d htmlcov
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
