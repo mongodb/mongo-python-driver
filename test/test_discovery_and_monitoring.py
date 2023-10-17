@@ -342,7 +342,7 @@ class TestPoolManagement(IntegrationTest):
             listener.wait_for_event(monitoring.PoolReadyEvent, 1)
 
 
-class TestSdamMode(IntegrationTest):
+class TestServerMonitoringMode(IntegrationTest):
     @client_context.require_no_serverless
     @client_context.require_no_load_balancer
     def setUp(self):
@@ -352,13 +352,21 @@ class TestSdamMode(IntegrationTest):
         client = rs_or_single_client(serverMonitoringMode="stream")
         self.addCleanup(client.close)
         client.admin.command("ping")
-        for _, server in client._topology._servers.items():
-            monitor = server._monitor
-            self.assertTrue(monitor._stream)
-            if client_context.version >= (4, 4):
-                self.assertIsNotNone(monitor._rtt_monitor._executor._thread)
-            else:
-                self.assertIsNone(monitor._rtt_monitor._executor._thread)
+
+        def predicate():
+            for _, server in client._topology._servers.items():
+                monitor = server._monitor
+                if not monitor._stream:
+                    return False
+                if client_context.version >= (4, 4):
+                    if monitor._rtt_monitor._executor._thread is None:
+                        return False
+                else:
+                    if monitor._rtt_monitor._executor._thread is not None:
+                        return False
+            return True
+
+        wait_until(predicate, "find all RTT monitors")
 
     def test_rtt_connection_is_disabled_poll(self):
         client = rs_or_single_client(serverMonitoringMode="poll")
