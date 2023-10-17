@@ -411,6 +411,31 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
 
+    def test_csot_timeout_message(self):
+        client = rs_or_single_client(timeoutMS=1)
+
+        with self.assertRaises(Exception) as error:
+            client.db.t.find_one({"$where": delay(2)})
+            self.assertTrue(
+                "(configured timeouts: operationTimeoutMS: 1.0ms)" in str(error.exception)
+            )
+
+    def test_socket_timeout_message(self):
+        client = rs_or_single_client(socketTimeoutMS=1)
+
+        with self.assertRaises(Exception) as error:
+            client.db.t.find_one({"$where": delay(2)})
+            self.assertTrue("(configured timeouts: socketTimeoutMS: 1.0ms)" in str(error.exception))
+
+    def test_connection_timeout_message(self):
+        client = rs_or_single_client("badhost", connectTimeoutMS=1, serverSelectionTimeoutMS=10)
+
+        with self.assertRaises(Exception) as error:
+            client.db.t.find_one({"$where": delay(2)})
+            self.assertTrue(
+                "(configured timeouts: connectTimeoutMS: 1.0ms)" in str(error.exception)
+            )
+
 
 class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):

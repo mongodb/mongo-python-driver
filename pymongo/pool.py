@@ -417,11 +417,11 @@ def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
     socket_timeout = options.socket_timeout
     connect_timeout = options.connect_timeout
     if timeout:
-        details["timeout"] = timeout * 1000
-    if socket_timeout:
-        details["socketTimeout"] = socket_timeout * 1000
+        details["operationTimeoutMS"] = timeout * 1000
+    if socket_timeout and not timeout:
+        details["socketTimeoutMS"] = socket_timeout * 1000
     if connect_timeout:
-        details["connectTimeout"] = connect_timeout * 1000
+        details["connectTimeoutMS"] = connect_timeout * 1000
     return details
 
 
@@ -429,7 +429,7 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
     result = ""
     if details:
         result += " (configured timeouts:"
-        for timeout in ["socketTimeout", "timeout", "connectTimeout"]:
+        for timeout in ["socketTimeoutMS", "operationTimeoutMS", "connectTimeoutMS"]:
             if timeout in details:
                 result += f" {timeout}: {details[timeout]}ms,"
         result = result[:-1]
@@ -766,11 +766,12 @@ class Connection:
             rtt = self.connect_rtt
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
-            # CSOT: raise an error without running the command since we know it will time out.
-            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
             timeout_details = _get_timeout_details(self.opts)
+            formatted = format_timeout_details(timeout_details)
+            # CSOT: raise an error without running the command since we know it will time out.
+            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
             raise ExecutionTimeout(
-                errmsg + format_timeout_details(timeout_details),
+                errmsg,
                 50,
                 {"ok": 0, "errmsg": errmsg, "code": 50},
                 self.max_wire_version,
