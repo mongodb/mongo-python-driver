@@ -69,6 +69,7 @@ functions:
            PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
            PREPARE_SHELL: |
               set -o errexit
+              export SKIP_LEGACY_SHELL=1
               export DRIVERS_TOOLS="$DRIVERS_TOOLS"
               export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
               export MONGODB_BINARIES="$MONGODB_BINARIES"
@@ -556,11 +557,9 @@ functions:
         add_expansions_to_env: true
         working_dir: "src"
         script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/aws_auth
+          ${PREPARE_SHELL}
+          cd $DRIVERS_TOOLS/.evergreen/auth_aws
+          ./setup_secrets.sh drivers/aws_auth
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
@@ -569,13 +568,8 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          PYTHON_BINARY="${PYTHON_BINARY}" \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            .evergreen/run-mongodb-aws-test.sh regular
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -584,15 +578,8 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            ASSUME_ROLE_CREDENTIALS=true \
-            PYTHON_BINARY="${PYTHON_BINARY}" \
-            .evergreen/run-mongodb-aws-test.sh assume-role
-
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh assume-role
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -605,16 +592,8 @@ functions:
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
-
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          PYTHON_BINARY=${PYTHON_BINARY} \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            ASSERT_NO_URI_CREDS=true \
-            SKIP_PREPARE_AWS_ENV=true \
-            .evergreen/run-mongodb-aws-test.sh ec2
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
     - command: shell.exec
@@ -627,24 +606,11 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PYTHON_BINARY="${PYTHON_BINARY}" \
-            ASSERT_NO_URI_CREDS=true \
-            USE_WEB_IDENTITY_CREDS=true \
+          ${PREPARE_SHELL}
+          # Test with and without AWS_ROLE_SESSION_NAME set.
+          .evergreen/run-mongodb-aws-test.sh web-identity
+          AWS_ROLE_SESSION_NAME="test" \
             .evergreen/run-mongodb-aws-test.sh web-identity
-
-          if [ "${skip_web_identity_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-          else
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-              PYTHON_BINARY=${PYTHON_BINARY} \
-              ASSERT_NO_URI_CREDS=true \
-              SKIP_PREPARE_AWS_ENV=true \
-              AWS_ROLE_SESSION_NAME="test" \
-              USE_WEB_IDENTITY_CREDS=true \
-              .evergreen/run-mongodb-aws-test.sh
-          fi
 
   "run oidc auth test with aws credentials":
     - command: ec2.assume_role
@@ -667,17 +633,8 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          PYTHON_BINARY="${PYTHON_BINARY}" \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
-            ASSERT_NO_URI_CREDS=true \
-            SKIP_PREPARE_AWS_ENV=true \
-            USE_ENV_VAR_CREDS=true \
-            .evergreen/run-mongodb-aws-test.sh
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh env-creds
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
@@ -686,16 +643,8 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          PYTHON_BINARY="${PYTHON_BINARY}" \
-            DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
-            ASSERT_NO_URI_CREDS=true \
-            SESSION_TOKEN_CREDENTIALS=true \
-            .evergreen/run-mongodb-aws-test.sh
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh session-creds
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -708,24 +657,8 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-
-          # Try to source exported AWS Secrets
-          if [ -f ./secrets-export.sh ]; then
-            source ./secrets-export.sh
-          fi
-
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-
-          export MONGODB_BINARIES="${MONGODB_BINARIES}";
-          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
-
-          python aws_tester.py ecs
-          cd -
+          ${PREPARE_SHELL}
+          .evergreen/run-mongodb-aws-test.sh session-creds
 
   "cleanup":
     - command: shell.exec
