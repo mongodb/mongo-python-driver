@@ -1837,26 +1837,16 @@ class TestClient(IntegrationTest):
         )
 
     def test_dict_hints(self):
-        c = rs_or_single_client()
-        try:
-            c.t.t.find(hint={"x": 1})
-        except Exception:
-            self.fail("passing a dictionary hint to find failed!")
+        self.db.t.find(hint={"x": 1})
 
     def test_dict_hints_sort(self):
-        c = rs_or_single_client()
-        try:
-            result = c.t.t.find()
-            result.sort({"x": 1})
-        except Exception:
-            self.fail("passing a dictionary to sort failed!")
+        result = self.db.t.find()
+        result.sort({"x": 1})
+
+        self.db.t.find(sort={"x": 1})
 
     def test_dict_hints_create_index(self):
-        c = rs_or_single_client()
-        try:
-            c.t.t.create_index({"x": pymongo.ASCENDING})
-        except Exception:
-            self.fail("passing a dictionary to create_index failed!")
+        self.db.t.create_index({"x": pymongo.ASCENDING})
 
 
 class TestExhaustCursor(IntegrationTest):
