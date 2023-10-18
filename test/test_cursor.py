@@ -1588,6 +1588,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
             n += 4
             listener.reset()
 
+    @client_context.require_version_min(5, 0, -1)
     @client_context.require_no_mongos
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
@@ -1599,7 +1600,9 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
         listener.reset()
 
-        list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
+        result = list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
+
+        self.assertEqual(len(result), 3)
 
         self.assertEqual(
             listener.started_command_names(), ["find", "getMore", "getMore", "getMore"]
