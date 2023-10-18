@@ -23,6 +23,7 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
+from test.unified_format import generate_test_classes
 from test.utils import EventListener
 
 from bson import SON
@@ -35,6 +36,11 @@ from pymongo.operations import InsertOne
 
 # Force MONGODB-OIDC to be enabled.
 _AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
+
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth", "unified")
+
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestAuthOIDC(unittest.TestCase):
