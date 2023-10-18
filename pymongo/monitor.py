@@ -67,7 +67,7 @@ class MonitorBase:
 
         self._executor = executor
 
-        def _on_topology_gc(_dummy: Optional[Topology] = None) -> None:
+        def _on_topology_gc(dummy: Optional[Topology] = None) -> None:
             # This prevents GC from waiting 10 seconds for hello to complete
             # See test_cleanup_executors_on_client_del.
             monitor = self_ref()

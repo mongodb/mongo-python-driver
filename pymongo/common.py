@@ -163,7 +163,7 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, _dummy: Any) -> NoReturn:
+def raise_config_error(key: str, dummy: Any) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
     raise ConfigurationError(f"Unknown option {key}")
 
@@ -356,14 +356,14 @@ def validate_max_staleness(option: str, value: Any) -> int:
     return validate_positive_integer(option, value)
 
 
-def validate_read_preference(_dummy: Any, value: Any) -> _ServerMode:
+def validate_read_preference(dummy: Any, value: Any) -> _ServerMode:
     """Validate a read preference."""
     if not isinstance(value, _ServerMode):
         raise TypeError(f"{value!r} is not a read preference.")
     return value
 
 
-def validate_read_preference_mode(_dummy: Any, value: Any) -> _ServerMode:
+def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
     """Validate read preference mode for a MongoClient.
 
     .. versionchanged:: 3.5
@@ -382,7 +382,7 @@ def validate_auth_mechanism(option: str, value: Any) -> str:
     return value
 
 
-def validate_uuid_representation(_dummy: Any, value: Any) -> int:
+def validate_uuid_representation(dummy: Any, value: Any) -> int:
     """Validate the uuid representation option selected in the URI."""
     try:
         return _UUID_REPRESENTATIONS[value]
@@ -622,7 +622,7 @@ def validate_ok_for_update(update: Any) -> None:
 _UNICODE_DECODE_ERROR_HANDLERS = frozenset(["strict", "replace", "ignore"])
 
 
-def validate_unicode_decode_error_handler(_dummy: Any, value: str) -> str:
+def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
@@ -633,7 +633,7 @@ def validate_unicode_decode_error_handler(_dummy: Any, value: str) -> str:
     return value
 
 
-def validate_tzinfo(_dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
+def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
     """Validate the tzinfo option"""
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError("%s must be an instance of datetime.tzinfo" % value)

@@ -47,7 +47,7 @@ _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
-def validate_compressors(_dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
+def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
     try:
         # `value` is string.
         compressors = value.split(",")  # type: ignore[union-attr]
