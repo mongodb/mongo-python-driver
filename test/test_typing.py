@@ -38,7 +38,7 @@ try:
         year: int
 
     class ImplicitMovie(TypedDict):
-        _id: NotRequired[ObjectId]
+        _id: NotRequired[ObjectId]  # pyright: ignore[reportGeneralTypeIssues]
         name: str
         year: int
 
