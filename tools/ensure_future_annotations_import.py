@@ -17,8 +17,7 @@
 from __future__ import annotations
 
 import sys
-
-from path import Path
+from pathlib import Path
 
 pattern = "from __future__ import annotations"
 missing = []
