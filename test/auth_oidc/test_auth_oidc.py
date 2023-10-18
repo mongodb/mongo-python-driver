@@ -39,10 +39,13 @@ from pymongo.operations import InsertOne
 _AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
 
 ROOT = Path(".").parent
-TEST_PATH = str(ROOT / "auth" / "unified")
+TEST_PATH = ROOT / "auth" / "unified"
+print(TEST_PATH.glob("*"))
+sys.exit(1)
+
 
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
 
 
 class TestAuthOIDC(unittest.TestCase):
