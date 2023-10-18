@@ -21,8 +21,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-
-from path import Path
+from pathlib import Path
 
 sys.path[0:0] = [""]
 

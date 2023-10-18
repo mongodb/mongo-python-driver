@@ -22,14 +22,14 @@ import sys
 from pathlib import Path
 
 try:
-    Path.unlink("pymongo/_cmessage.so")
-    Path.unlink("bson/_cbson.so")
+    Path("pymongo/_cmessage.so").unlink()
+    Path("bson/_cbson.so").unlink()
 except BaseException:  # noqa: S110
     pass
 
 try:
-    Path.unlink("pymongo/_cmessage.pyd")
-    Path.unlink("bson/_cbson.pyd")
+    Path("pymongo/_cmessage.pyd").unlink()
+    Path("bson/_cbson.pyd").unlink()
 except BaseException:  # noqa: S110
     pass
 
