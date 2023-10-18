@@ -79,9 +79,9 @@ if HAVE_SSL:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            ctx.verify_flags = getattr(
+            ctx.verify_flags = getattr(  # type:ignore[attr-defined]
                 _ssl, "VERIFY_CRL_CHECK_LEAF", 0
-            )  # type:ignore[attr-defined]
+            )
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
