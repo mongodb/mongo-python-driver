@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path[0:0] = [Path("..").resolve]
+sys.path[0:0] = [Path("..").resolve()]
 
 import pymongo  # noqa: E402
 
@@ -94,7 +94,7 @@ linkcheck_ignore = [
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
 
-doctest_path = [Path("..").resolve]
+doctest_path = [Path("..").resolve()]
 
 doctest_test_doctest_blocks = ""
 
