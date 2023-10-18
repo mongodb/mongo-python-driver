@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collation module."""
+from __future__ import annotations
 
 import functools
 import warnings

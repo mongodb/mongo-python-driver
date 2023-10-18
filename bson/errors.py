@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Exceptions raised by the BSON package."""
+from __future__ import annotations
 
 
 class BSONError(Exception):

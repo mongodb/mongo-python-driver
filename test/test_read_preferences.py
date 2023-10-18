@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+from __future__ import annotations
 
 import contextlib
 import copy
@@ -119,8 +120,8 @@ class TestReadPreferencesBase(IntegrationTest):
             return "secondary"
         else:
             self.fail(
-                "Cursor used address {}, expected either primary "
-                "{} or secondaries {}".format(address, client.primary, client.secondaries)
+                f"Cursor used address {address}, expected either primary "
+                f"{client.primary} or secondaries {client.secondaries}"
             )
             return None
 
@@ -272,7 +273,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertFalse(
             not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
-            " but didn't use {}\nlatencies: {}".format(not_used, latencies),
+            f" but didn't use {not_used}\nlatencies: {latencies}",
         )
 
 

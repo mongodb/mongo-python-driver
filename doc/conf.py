@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 #
 # PyMongo documentation build configuration file
 #
 # This file is execfile()d with the current directory set to its containing dir.
+from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
-sys.path[0:0] = [os.path.abspath("..")]
+sys.path[0:0] = [Path("..").resolve]
 
-import pymongo  # noqa
+import pymongo  # noqa: E402
 
 # -- General configuration -----------------------------------------------------
 
@@ -26,7 +26,7 @@ extensions = [
 
 # Add optional extensions
 try:
-    import sphinxcontrib.shellcheck  # noqa
+    import sphinxcontrib.shellcheck  # noqa: F401
 
     extensions += ["sphinxcontrib.shellcheck"]
 except ImportError:
@@ -94,7 +94,7 @@ linkcheck_ignore = [
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
 
-doctest_path = [os.path.abspath("..")]
+doctest_path = [Path("..").resolve]
 
 doctest_test_doctest_blocks = ""
 
@@ -108,7 +108,7 @@ db = client.doctest_test
 # -- Options for HTML output ---------------------------------------------------
 
 try:
-    import furo  # noqa
+    import furo  # noqa: F401
 
     html_theme = "furo"
 except ImportError:

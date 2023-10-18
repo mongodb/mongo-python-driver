@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client for mod_wsgi application, see bug PYTHON-353."""
+from __future__ import annotations
 
 import _thread as thread
 import random

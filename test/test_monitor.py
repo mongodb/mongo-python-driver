@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the monitor module."""
+from __future__ import annotations
 
 import gc
 import sys

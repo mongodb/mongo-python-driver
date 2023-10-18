@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Authentication Tests."""
+from __future__ import annotations
 
 import os
 import sys
@@ -179,7 +180,7 @@ class TestGSSAPI(unittest.TestCase):
 
                 client[GSSAPI_DB].list_collection_names()
 
-                uri = uri + f"&replicaSet={str(set_name)}"
+                uri = uri + f"&replicaSet={set_name!s}"
                 client = MongoClient(uri)
                 client[GSSAPI_DB].list_collection_names()
 
@@ -196,7 +197,7 @@ class TestGSSAPI(unittest.TestCase):
 
             client[GSSAPI_DB].list_collection_names()
 
-            mech_uri = mech_uri + f"&replicaSet={str(set_name)}"
+            mech_uri = mech_uri + f"&replicaSet={set_name!s}"
             client = MongoClient(mech_uri)
             client[GSSAPI_DB].list_collection_names()
 

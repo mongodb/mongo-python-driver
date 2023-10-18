@@ -14,16 +14,17 @@
 
 """Ensure that 'from __future__ import annotations' is used in all package files
 """
+from __future__ import annotations
 
-import glob
-import os
 import sys
+
+from path import Path
 
 pattern = "from __future__ import annotations"
 missing = []
 for dirname in ["pymongo", "bson", "gridfs"]:
-    for path in glob.glob(f"{dirname}/*.py"):
-        if os.path.basename(path) in ["_version.py", "errors.py"]:
+    for path in Path.glob(f"{dirname}/*.py"):
+        if Path(path).name in ["_version.py", "errors.py"]:
             continue
         found = False
         with open(path) as fid:
@@ -35,7 +36,7 @@ for dirname in ["pymongo", "bson", "gridfs"]:
             missing.append(path)
 
 if missing:
-    print(f"Missing '{pattern}' import in:")
+    print(f"Missing '{pattern}' import in:")  # noqa: T201
     for item in missing:
-        print(item)
+        print(item)  # noqa: T201
     sys.exit(1)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test MongoClient's mongos load balancing using a mock."""
+from __future__ import annotations
 
 import sys
 import threading
@@ -71,7 +72,7 @@ class TestMongosLoadBalancing(MockClientTest):
             mongoses=["a:1", "b:2", "c:3"],
             host="a:1,b:2,c:3",
             connect=False,
-            **kwargs
+            **kwargs,
         )
         self.addCleanup(mock_client.close)
 

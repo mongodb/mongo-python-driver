@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the monitoring of the server heartbeats."""
+from __future__ import annotations
 
 import sys
 

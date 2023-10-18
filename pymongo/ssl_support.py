@@ -35,7 +35,7 @@ if HAVE_SSL:
     # CPython ssl module constants to configure certificate verification
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
-    import ssl as _stdlibssl  # noqa
+    import ssl as _stdlibssl  # noqa: F401
     from ssl import CERT_NONE, CERT_REQUIRED
 
     HAS_SNI = _ssl.HAS_SNI
@@ -74,12 +74,12 @@ if HAVE_SSL:
             try:
                 ctx.load_cert_chain(certfile, None, passphrase)
             except _ssl.SSLError as exc:
-                raise ConfigurationError(f"Private key doesn't match certificate: {exc}")
+                raise ConfigurationError(f"Private key doesn't match certificate: {exc}") from None
         if crlfile is not None:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            setattr(ctx, "verify_flags", getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))  # noqa
+            ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)

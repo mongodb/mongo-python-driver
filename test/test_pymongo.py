@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo module itself."""
+from __future__ import annotations
 
 import sys
 

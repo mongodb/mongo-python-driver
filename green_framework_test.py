@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test PyMongo with a variety of greenlet-based monkey-patching frameworks."""
+from __future__ import annotations
 
 import getopt
 import sys
@@ -65,13 +66,10 @@ def run(framework_name, *args):
 
 def main():
     """Parse options and run tests."""
-    usage = """python %s FRAMEWORK_NAME
+    usage = f"""python {sys.argv[0]} FRAMEWORK_NAME
 
 Test PyMongo with a variety of greenlet-based monkey-patching frameworks. See
-python %s --help-frameworks.""" % (
-        sys.argv[0],
-        sys.argv[0],
-    )
+python {sys.argv[0]} --help-frameworks."""
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h", ["help", "help-frameworks"])

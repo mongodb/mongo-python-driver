@@ -22,7 +22,7 @@ try:
 except ImportError:
     HAVE_STRINGPREP = False
 
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
+    def saslprep(data: Any, _prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
         """SASLprep dummy"""
         if isinstance(data, str):
             raise TypeError(

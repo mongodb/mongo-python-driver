@@ -74,7 +74,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def __init__(
         self,
-        client: "MongoClient[_DocumentType]",
+        client: MongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -144,7 +144,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self._timeout = client.options.timeout
 
     @property
-    def client(self) -> "MongoClient[_DocumentType]":
+    def client(self) -> MongoClient[_DocumentType]:
         """The client instance for this :class:`Database`."""
         return self.__client
 
@@ -224,12 +224,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "Database has no attribute {!r}. To access the {}"
-                " collection, use database[{!r}].".format(name, name, name)
+                f"Database has no attribute {name!r}. To access the {name}"
+                f" collection, use database[{name!r}]."
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> "Collection[_DocumentType]":
+    def __getitem__(self, name: str) -> Collection[_DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -791,7 +791,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: "Optional[bson.codec_options.CodecOptions[_CodecDocumentType]]" = None,
+        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1012,7 +1012,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> dict[str, Any]:
@@ -1090,7 +1090,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
@@ -1377,7 +1377,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if dbref.database is not None and dbref.database != self.__name:
             raise ValueError(
                 "trying to dereference a DBRef that points to "
-                "another database ({!r} not {!r})".format(dbref.database, self.__name)
+                f"another database ({dbref.database!r} not {self.__name!r})"
             )
         return self[dbref.collection].find_one(
             {"_id": dbref.id}, session=session, comment=comment, **kwargs

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the gridfs package."""
+from __future__ import annotations
 
 import datetime
 import sys

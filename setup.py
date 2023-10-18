@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import warnings
@@ -75,7 +77,8 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
                 % (
                     "Extension modules",
                     "There was an issue with your platform configuration - see above.",
-                )
+                ),
+                stacklevel=2,
             )
 
     def build_extension(self, ext):
@@ -90,9 +93,10 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
             warnings.warn(
                 self.warning_message
                 % (
-                    "The %s extension module" % (name,),
+                    "The %s extension module" % (name,),  # noqa: UP031
                     "The output above this warning shows how the compilation failed.",
-                )
+                ),
+                stacklevel=2,
             )
 
 

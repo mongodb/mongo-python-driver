@@ -75,7 +75,7 @@ class CommandCursor(Generic[_DocumentType]):
         if self.__killed:
             self.__end_session(True)
 
-        if "ns" in cursor_info:
+        if "ns" in cursor_info:  # noqa: SIM401
             self.__ns = cursor_info["ns"]
         else:
             self.__ns = collection.full_name
@@ -121,7 +121,7 @@ class CommandCursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self.__die(True)
 
-    def batch_size(self, batch_size: int) -> "CommandCursor[_DocumentType]":
+    def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -340,7 +340,7 @@ class CommandCursor(Generic[_DocumentType]):
         """
         return self._try_next(get_more_allowed=True)
 
-    def __enter__(self) -> "CommandCursor[_DocumentType]":
+    def __enter__(self) -> CommandCursor[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

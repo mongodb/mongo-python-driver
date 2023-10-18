@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the Code wrapper."""
+from __future__ import annotations
 
 import sys
 

@@ -1297,7 +1297,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # We're running a getMore or this session is pinned to a mongos.
                 server = topology.select_server_by_address(address)
                 if not server:
-                    raise AutoReconnect("server %s:%s no longer available" % address)
+                    raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
                 server = topology.select_server(server_selector)
             return server
@@ -1380,7 +1380,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     )
 
         def _cmd(
-            session: Optional[ClientSession],
+            _session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: _ServerMode,
@@ -1579,8 +1579,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "MongoClient has no attribute {!r}. To access the {}"
-                " database, use client[{!r}].".format(name, name, name)
+                f"MongoClient has no attribute {name!r}. To access the {name}"
+                f" database, use client[{name!r}]."
             )
         return self.__getitem__(name)
 
@@ -2132,7 +2132,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             write_concern=DEFAULT_WRITE_CONCERN,
         )
 
-    def __enter__(self) -> "MongoClient[_DocumentType]":
+    def __enter__(self) -> MongoClient[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -2153,8 +2153,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
         # Check the last writeConcernError to determine if this
         # BulkWriteError is retryable.
         wces = exc.details["writeConcernErrors"]
-        wce = wces[-1] if wces else None
-        return wce
+        return wces[-1] if wces else None
     if isinstance(exc, (NotPrimaryError, OperationFailure)):
         return cast(Mapping[str, Any], exc.details)
     return None

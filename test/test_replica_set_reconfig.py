@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test clients and replica set configuration changes, using mocks."""
+from __future__ import annotations
 
 import sys
 
@@ -168,7 +169,7 @@ class TestSecondaryAdded(MockClientTest):
         )
         self.addCleanup(c.close)
 
-        wait_until(lambda: ("a", 1) == c.primary, "discover the primary")
+        wait_until(lambda: c.primary == ("a", 1), "discover the primary")
         wait_until(lambda: {("b", 2)} == c.secondaries, "discover the secondary")
 
         # C is added.

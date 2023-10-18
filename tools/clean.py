@@ -16,20 +16,21 @@
 
 Only really intended to be used by internal build scripts.
 """
+from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
 try:
-    os.remove("pymongo/_cmessage.so")
-    os.remove("bson/_cbson.so")
-except BaseException:
+    Path.unlink("pymongo/_cmessage.so")
+    Path.unlink("bson/_cbson.so")
+except BaseException:  # noqa: S110
     pass
 
 try:
-    os.remove("pymongo/_cmessage.pyd")
-    os.remove("bson/_cbson.pyd")
-except BaseException:
+    Path.unlink("pymongo/_cmessage.pyd")
+    Path.unlink("bson/_cbson.pyd")
+except BaseException:  # noqa: S110
     pass
 
 try:

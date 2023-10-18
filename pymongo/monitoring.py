@@ -226,7 +226,7 @@ class CommandListener(_EventListener):
     and `CommandFailedEvent`.
     """
 
-    def started(self, event: "CommandStartedEvent") -> None:
+    def started(self, event: CommandStartedEvent) -> None:
         """Abstract method to handle a `CommandStartedEvent`.
 
         :Parameters:
@@ -234,7 +234,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def succeeded(self, event: "CommandSucceededEvent") -> None:
+    def succeeded(self, event: CommandSucceededEvent) -> None:
         """Abstract method to handle a `CommandSucceededEvent`.
 
         :Parameters:
@@ -242,7 +242,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def failed(self, event: "CommandFailedEvent") -> None:
+    def failed(self, event: CommandFailedEvent) -> None:
         """Abstract method to handle a `CommandFailedEvent`.
 
         :Parameters:
@@ -267,7 +267,7 @@ class ConnectionPoolListener(_EventListener):
     .. versionadded:: 3.9
     """
 
-    def pool_created(self, event: "PoolCreatedEvent") -> None:
+    def pool_created(self, event: PoolCreatedEvent) -> None:
         """Abstract method to handle a :class:`PoolCreatedEvent`.
 
         Emitted when a connection Pool is created.
@@ -277,7 +277,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_ready(self, event: "PoolReadyEvent") -> None:
+    def pool_ready(self, event: PoolReadyEvent) -> None:
         """Abstract method to handle a :class:`PoolReadyEvent`.
 
         Emitted when a connection Pool is marked ready.
@@ -289,7 +289,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_cleared(self, event: "PoolClearedEvent") -> None:
+    def pool_cleared(self, event: PoolClearedEvent) -> None:
         """Abstract method to handle a `PoolClearedEvent`.
 
         Emitted when a connection Pool is cleared.
@@ -299,7 +299,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_closed(self, event: "PoolClosedEvent") -> None:
+    def pool_closed(self, event: PoolClosedEvent) -> None:
         """Abstract method to handle a `PoolClosedEvent`.
 
         Emitted when a connection Pool is closed.
@@ -309,7 +309,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_created(self, event: "ConnectionCreatedEvent") -> None:
+    def connection_created(self, event: ConnectionCreatedEvent) -> None:
         """Abstract method to handle a :class:`ConnectionCreatedEvent`.
 
         Emitted when a connection Pool creates a Connection object.
@@ -319,7 +319,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_ready(self, event: "ConnectionReadyEvent") -> None:
+    def connection_ready(self, event: ConnectionReadyEvent) -> None:
         """Abstract method to handle a :class:`ConnectionReadyEvent`.
 
         Emitted when a connection has finished its setup, and is now ready to
@@ -330,7 +330,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_closed(self, event: "ConnectionClosedEvent") -> None:
+    def connection_closed(self, event: ConnectionClosedEvent) -> None:
         """Abstract method to handle a :class:`ConnectionClosedEvent`.
 
         Emitted when a connection Pool closes a connection.
@@ -340,7 +340,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_check_out_started(self, event: "ConnectionCheckOutStartedEvent") -> None:
+    def connection_check_out_started(self, event: ConnectionCheckOutStartedEvent) -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
 
         Emitted when the driver starts attempting to check out a connection.
@@ -350,7 +350,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_check_out_failed(self, event: "ConnectionCheckOutFailedEvent") -> None:
+    def connection_check_out_failed(self, event: ConnectionCheckOutFailedEvent) -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
 
         Emitted when the driver's attempt to check out a connection fails.
@@ -360,7 +360,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_checked_out(self, event: "ConnectionCheckedOutEvent") -> None:
+    def connection_checked_out(self, event: ConnectionCheckedOutEvent) -> None:
         """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
 
         Emitted when the driver successfully checks out a connection.
@@ -370,7 +370,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_checked_in(self, event: "ConnectionCheckedInEvent") -> None:
+    def connection_checked_in(self, event: ConnectionCheckedInEvent) -> None:
         """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
 
         Emitted when the driver checks in a connection back to the connection
@@ -391,7 +391,7 @@ class ServerHeartbeatListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def started(self, event: "ServerHeartbeatStartedEvent") -> None:
+    def started(self, event: ServerHeartbeatStartedEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatStartedEvent`.
 
         :Parameters:
@@ -399,7 +399,7 @@ class ServerHeartbeatListener(_EventListener):
         """
         raise NotImplementedError
 
-    def succeeded(self, event: "ServerHeartbeatSucceededEvent") -> None:
+    def succeeded(self, event: ServerHeartbeatSucceededEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
 
         :Parameters:
@@ -407,7 +407,7 @@ class ServerHeartbeatListener(_EventListener):
         """
         raise NotImplementedError
 
-    def failed(self, event: "ServerHeartbeatFailedEvent") -> None:
+    def failed(self, event: ServerHeartbeatFailedEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatFailedEvent`.
 
         :Parameters:
@@ -424,7 +424,7 @@ class TopologyListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def opened(self, event: "TopologyOpenedEvent") -> None:
+    def opened(self, event: TopologyOpenedEvent) -> None:
         """Abstract method to handle a `TopologyOpenedEvent`.
 
         :Parameters:
@@ -432,7 +432,7 @@ class TopologyListener(_EventListener):
         """
         raise NotImplementedError
 
-    def description_changed(self, event: "TopologyDescriptionChangedEvent") -> None:
+    def description_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         """Abstract method to handle a `TopologyDescriptionChangedEvent`.
 
         :Parameters:
@@ -440,7 +440,7 @@ class TopologyListener(_EventListener):
         """
         raise NotImplementedError
 
-    def closed(self, event: "TopologyClosedEvent") -> None:
+    def closed(self, event: TopologyClosedEvent) -> None:
         """Abstract method to handle a `TopologyClosedEvent`.
 
         :Parameters:
@@ -457,7 +457,7 @@ class ServerListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def opened(self, event: "ServerOpeningEvent") -> None:
+    def opened(self, event: ServerOpeningEvent) -> None:
         """Abstract method to handle a `ServerOpeningEvent`.
 
         :Parameters:
@@ -465,7 +465,7 @@ class ServerListener(_EventListener):
         """
         raise NotImplementedError
 
-    def description_changed(self, event: "ServerDescriptionChangedEvent") -> None:
+    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
         """Abstract method to handle a `ServerDescriptionChangedEvent`.
 
         :Parameters:
@@ -473,7 +473,7 @@ class ServerListener(_EventListener):
         """
         raise NotImplementedError
 
-    def closed(self, event: "ServerClosedEvent") -> None:
+    def closed(self, event: ServerClosedEvent) -> None:
         """Abstract method to handle a `ServerClosedEvent`.
 
         :Parameters:
@@ -496,10 +496,10 @@ def _validate_event_listeners(
     for listener in listeners:
         if not isinstance(listener, _EventListener):
             raise TypeError(
-                "Listeners for {} must be either a "
+                f"Listeners for {option} must be either a "
                 "CommandListener, ServerHeartbeatListener, "
                 "ServerListener, TopologyListener, or "
-                "ConnectionPoolListener.".format(option)
+                "ConnectionPoolListener."
             )
     return listeners
 
@@ -514,10 +514,10 @@ def register(listener: _EventListener) -> None:
     """
     if not isinstance(listener, _EventListener):
         raise TypeError(
-            "Listeners for {} must be either a "
+            f"Listeners for {listener} must be either a "
             "CommandListener, ServerHeartbeatListener, "
             "ServerListener, TopologyListener, or "
-            "ConnectionPoolListener.".format(listener)
+            "ConnectionPoolListener."
         )
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
@@ -1147,11 +1147,7 @@ class _ServerEvent:
         return self.__topology_id
 
     def __repr__(self) -> str:
-        return "<{} {} topology_id: {}>".format(
-            self.__class__.__name__,
-            self.server_address,
-            self.topology_id,
-        )
+        return f"<{self.__class__.__name__} {self.server_address} topology_id: {self.topology_id}>"
 
 
 class ServerDescriptionChangedEvent(_ServerEvent):
@@ -1216,7 +1212,7 @@ class ServerClosedEvent(_ServerEvent):
 class TopologyEvent:
     """Base class for topology description events."""
 
-    __slots__ = "__topology_id"
+    __slots__ = ("__topology_id",)
 
     def __init__(self, topology_id: ObjectId) -> None:
         self.__topology_id = topology_id

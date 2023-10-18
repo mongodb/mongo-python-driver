@@ -55,9 +55,8 @@ from __future__ import annotations
 from typing import Any, ItemsView, Iterator, Mapping, MutableMapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
-from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
+from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER, CodecOptions
 from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
-from bson.codec_options import CodecOptions
 from bson.son import SON
 
 
@@ -135,7 +134,7 @@ class RawBSONDocument(Mapping[str, Any]):
         elif not issubclass(codec_options.document_class, RawBSONDocument):
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
-                "class {}".format(codec_options.document_class)
+                f"class {codec_options.document_class}"
             )
         self.__codec_options = codec_options
         # Validate the bson object size.
@@ -180,11 +179,7 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     def __repr__(self) -> str:
-        return "{}({!r}, codec_options={!r})".format(
-            self.__class__.__name__,
-            self.raw,
-            self.__codec_options,
-        )
+        return f"{self.__class__.__name__}({self.raw!r}, codec_options={self.__codec_options!r})"
 
 
 class _RawArrayBSONDocument(RawBSONDocument):

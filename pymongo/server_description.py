@@ -257,7 +257,7 @@ class ServerDescription:
     def topology_version(self) -> Optional[Mapping[str, Any]]:
         return self._topology_version
 
-    def to_unknown(self, error: Optional[Exception] = None) -> "ServerDescription":
+    def to_unknown(self, error: Optional[Exception] = None) -> ServerDescription:
         unknown = ServerDescription(self.address, error=error)
         unknown._topology_version = self.topology_version
         return unknown

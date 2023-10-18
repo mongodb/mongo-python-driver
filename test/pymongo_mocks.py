@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for mocking parts of PyMongo to test other parts."""
+from __future__ import annotations
 
 import contextlib
 import weakref

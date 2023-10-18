@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the mongo_client module."""
+from __future__ import annotations
 
 import _thread as thread
 import contextlib
@@ -558,7 +559,7 @@ class TestClient(IntegrationTest):
             # connections could be created and checked into the pool.
             self.assertGreaterEqual(len(server._pool.conns), 1)
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
-            wait_until(lambda: 1 <= len(server._pool.conns), "replace stale socket")
+            wait_until(lambda: len(server._pool.conns) >= 1, "replace stale socket")
             client.close()
 
     def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
@@ -572,7 +573,7 @@ class TestClient(IntegrationTest):
             # maxPoolSize=1 should prevent two connections from being created.
             self.assertEqual(1, len(server._pool.conns))
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
-            wait_until(lambda: 1 == len(server._pool.conns), "replace stale socket")
+            wait_until(lambda: len(server._pool.conns) == 1, "replace stale socket")
             client.close()
 
     def test_max_idle_time_reaper_removes_stale(self):
@@ -588,7 +589,7 @@ class TestClient(IntegrationTest):
                 pass
             self.assertIs(conn_one, conn_two)
             wait_until(
-                lambda: 0 == len(server._pool.conns),
+                lambda: len(server._pool.conns) == 0,
                 "stale socket reaped and new one NOT added to the pool",
             )
             client.close()
@@ -603,14 +604,14 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(minPoolSize=10)
             server = client._get_topology().select_server(readable_server_selector)
             wait_until(
-                lambda: 10 == len(server._pool.conns), "pool initialized with 10 connections"
+                lambda: len(server._pool.conns) == 10, "pool initialized with 10 connections"
             )
 
             # Assert that if a socket is closed, a new one takes its place
             with server._pool.checkout() as conn:
                 conn.close_conn(None)
             wait_until(
-                lambda: 10 == len(server._pool.conns),
+                lambda: len(server._pool.conns) == 10,
                 "a closed socket gets replaced from the pool",
             )
             self.assertFalse(conn in server._pool.conns)
@@ -745,7 +746,7 @@ class TestClient(IntegrationTest):
 
     def test_repr(self):
         # Used to test 'eval' below.
-        import bson  # noqa: F401
+        import bson
 
         client = MongoClient(  # type: ignore[type-var]
             "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"

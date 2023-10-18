@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utilities for testing pymongo"""
+from __future__ import annotations
 
 import contextlib
 import copy
@@ -542,7 +543,7 @@ class SpecTestCreator:
 def _connection_string(h):
     if h.startswith(("mongodb://", "mongodb+srv://")):
         return h
-    return f"mongodb://{str(h)}"
+    return f"mongodb://{h!s}"
 
 
 def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):

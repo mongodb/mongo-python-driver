@@ -547,7 +547,7 @@ class IndexModel:
 class SearchIndexModel:
     """Represents a search index to create."""
 
-    __slots__ = "__document"
+    __slots__ = ("__document",)
 
     def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
         """Create a Search Index instance.

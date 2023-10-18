@@ -298,7 +298,7 @@ class Decimal128:
         return str(dec)
 
     def __repr__(self) -> str:
-        return f"Decimal128('{str(self)}')"
+        return f"Decimal128('{self!s}')"
 
     def __setstate__(self, value: Tuple[int, int]) -> None:
         self.__high, self.__low = value

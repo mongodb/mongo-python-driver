@@ -47,7 +47,7 @@ _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
-def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
+def validate_compressors(_dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
     try:
         # `value` is string.
         compressors = value.split(",")  # type: ignore[union-attr]
@@ -58,24 +58,27 @@ def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[s
     for compressor in compressors[:]:
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)
-            warnings.warn(f"Unsupported compressor: {compressor}")
+            warnings.warn(f"Unsupported compressor: {compressor}", stacklevel=2)
         elif compressor == "snappy" and not _HAVE_SNAPPY:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with snappy is not available. "
-                "You must install the python-snappy module for snappy support."
+                "You must install the python-snappy module for snappy support.",
+                stacklevel=2,
             )
         elif compressor == "zlib" and not _HAVE_ZLIB:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zlib is not available. "
-                "The zlib module is not available."
+                "The zlib module is not available.",
+                stacklevel=2,
             )
         elif compressor == "zstd" and not _HAVE_ZSTD:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zstandard is not available. "
-                "You must install the zstandard module for zstandard support."
+                "You must install the zstandard module for zstandard support.",
+                stacklevel=2,
             )
     return compressors
 
@@ -84,7 +87,7 @@ def validate_zlib_compression_level(option: str, value: Any) -> int:
     try:
         level = int(value)
     except Exception:
-        raise TypeError(f"{option} must be an integer, not {value!r}.")
+        raise TypeError(f"{option} must be an integer, not {value!r}.") from None
     if level < -1 or level > 9:
         raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
     return level

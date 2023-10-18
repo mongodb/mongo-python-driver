@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Execute Transactions Spec tests."""
+from __future__ import annotations
 
 import os
 import sys

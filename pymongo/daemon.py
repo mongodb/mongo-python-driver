@@ -63,7 +63,7 @@ if sys.platform == "win32":
         try:
             with open(os.devnull, "r+b") as devnull:
                 popen = subprocess.Popen(
-                    args,
+                    args,  # noqa: S603
                     creationflags=_DETACHED_PROCESS,
                     stdin=devnull,
                     stderr=devnull,
@@ -94,7 +94,11 @@ else:
         try:
             with open(os.devnull, "r+b") as devnull:
                 return subprocess.Popen(
-                    args, close_fds=True, stdin=devnull, stderr=devnull, stdout=devnull
+                    args,  # noqa: S603
+                    close_fds=True,
+                    stdin=devnull,
+                    stderr=devnull,
+                    stdout=devnull,
                 )
         except FileNotFoundError as exc:
             warnings.warn(
@@ -108,7 +112,7 @@ else:
         """Spawn a daemon process using a double subprocess.Popen."""
         spawner_args = [sys.executable, _THIS_FILE]
         spawner_args.extend(args)
-        temp_proc = subprocess.Popen(spawner_args, close_fds=True)
+        temp_proc = subprocess.Popen(spawner_args, close_fds=True)  # noqa: S603
         # Reap the intermediate child process to avoid creating zombie
         # processes.
         _popen_wait(temp_proc, _WAIT_TIMEOUT)

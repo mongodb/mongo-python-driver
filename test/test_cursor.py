@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test the cursor module."""
+from __future__ import annotations
+
 import copy
 import gc
 import itertools
@@ -1174,7 +1176,7 @@ class TestCursor(IntegrationTest):
         while True:
             cursor.next()
             n += 1
-            if 3 == n:
+            if n == 3:
                 self.assertFalse(cursor.alive)
                 break
 
@@ -1405,7 +1407,7 @@ class TestRawBatchCursor(IntegrationTest):
 
         # The batch is a list of one raw bytes object.
         self.assertEqual(len(csr["firstBatch"]), 1)
-        self.assertEqual(decode_all(csr["firstBatch"][0]), [{"_id": i} for i in range(0, 4)])
+        self.assertEqual(decode_all(csr["firstBatch"][0]), [{"_id": i} for i in range(4)])
 
         listener.reset()
 

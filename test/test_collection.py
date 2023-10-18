@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collection module."""
+from __future__ import annotations
 
 import contextlib
 import re
@@ -715,7 +716,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertFalse(result.acknowledged)
         # The insert failed duplicate key...
-        wait_until(lambda: 2 == db.test.count_documents({}), "forcing duplicate key error")
+        wait_until(lambda: db.test.count_documents({}) == 2, "forcing duplicate key error")
 
         document = RawBSONDocument(encode({"_id": ObjectId(), "foo": "bar"}))
         result = db.test.insert_one(document)
@@ -816,7 +817,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 0 == db.test.count_documents({}), "delete 1 documents")
+        wait_until(lambda: db.test.count_documents({}) == 0, "delete 1 documents")
 
     def test_delete_many(self):
         self.db.test.drop()
@@ -837,7 +838,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 0 == db.test.count_documents({}), "delete 2 documents")
+        wait_until(lambda: db.test.count_documents({}) == 0, "delete 2 documents")
 
     def test_command_document_too_large(self):
         large = "*" * (client_context.max_bson_size + _COMMAND_OVERHEAD)
@@ -1537,7 +1538,7 @@ class TestCollection(IntegrationTest):
         while True:
             cursor.next()
             n += 1
-            if 3 == n:
+            if n == 3:
                 self.assertFalse(cursor.alive)
                 break
 
@@ -1848,7 +1849,7 @@ class TestCollection(IntegrationTest):
         unack_coll = db.collection_2.with_options(write_concern=WriteConcern(w=0))
         unack_coll.insert_many(insert_second_fails)
         wait_until(
-            lambda: 1 == db.collection_2.count_documents({}), "insert 1 document", timeout=60
+            lambda: db.collection_2.count_documents({}) == 1, "insert 1 document", timeout=60
         )
 
         db.collection_2.drop()
@@ -1878,7 +1879,7 @@ class TestCollection(IntegrationTest):
 
         # Only the first and third documents are inserted.
         wait_until(
-            lambda: 2 == db.collection_4.count_documents({}), "insert 2 documents", timeout=60
+            lambda: db.collection_4.count_documents({}) == 2, "insert 2 documents", timeout=60
         )
 
         db.collection_4.drop()
