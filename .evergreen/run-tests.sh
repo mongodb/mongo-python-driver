@@ -258,6 +258,7 @@ python -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+    # coverage 7.3 dropped support for Python 3.7, keep in sync with combine-coverage.sh.
     python -m pip install pytest-cov "coverage<7.3"
     TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
 fi
@@ -291,4 +292,9 @@ if [ -n "$PERF_TEST" ]; then
     echo "{\"failures\": 0, \"results\": [{\"status\": \"pass\", \"exit_code\": 0, \"test_file\": \"BenchMarkTests\", \"start\": $start_time, \"end\": $end_time, \"elapsed\": $elapsed_secs}]}" > report.json
 
     cat report.json
+fi
+
+# Handle coverage post actions.
+if [ -n "$COVERAGE" ]; then
+    rm -rf .pytest_cache
 fi

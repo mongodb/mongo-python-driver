@@ -1836,6 +1836,18 @@ class TestClient(IntegrationTest):
             None,
         )
 
+    def test_dict_hints(self):
+        self.db.t.find(hint={"x": 1})
+
+    def test_dict_hints_sort(self):
+        result = self.db.t.find()
+        result.sort({"x": 1})
+
+        self.db.t.find(sort={"x": 1})
+
+    def test_dict_hints_create_index(self):
+        self.db.t.create_index({"x": pymongo.ASCENDING})
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""

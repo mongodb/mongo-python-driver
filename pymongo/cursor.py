@@ -157,7 +157,9 @@ class _ConnectionManager:
             self.conn = None
 
 
-_Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
+_Sort = Union[
+    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
+]
 _Hint = Union[str, _Sort]
 
 

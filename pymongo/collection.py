@@ -798,7 +798,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
+                hint = helpers._index_document(hint)
             update_doc["hint"] = hint
         command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
         if let is not None:
@@ -1277,7 +1277,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
+                hint = helpers._index_document(hint)
             delete_doc["hint"] = hint
         command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
 
@@ -3097,7 +3097,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)  # type: ignore[assignment]
+                hint = helpers._index_document(hint)
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
