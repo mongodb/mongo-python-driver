@@ -116,7 +116,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ...), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(_fd: int) -> None:
+    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
         """Dummy function for platforms that don't provide fcntl."""
 
 

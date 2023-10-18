@@ -1240,7 +1240,7 @@ def clear_warning_registry():
     """Clear the __warningregistry__ for all modules."""
     for _, module in list(sys.modules.items()):
         if hasattr(module, "__warningregistry__"):
-            module.__warningregistry__ = {}
+            module.__warningregistry__ = {}  # type:ignore[attr-defined]
 
 
 class SystemCertsPatcher:

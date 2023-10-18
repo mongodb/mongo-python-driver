@@ -148,6 +148,7 @@ extend-ignore = [
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
 unfixable = [
+  "RUF100", # Unused noqa
   "T20",  # Removes print statements
   "F841", # Removes unused variables
 ]

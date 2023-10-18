@@ -605,7 +605,7 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
         opts = _CaseInsensitiveDictionary(options)
         opts = _handle_security_options(opts)
         opts = _normalize_options(opts)
-        opts = validate_options(opts)
+        opts = cast(_CaseInsensitiveDictionary, validate_options(opts))
         ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts)
         if ssl_context is None:
             raise ConfigurationError("TLS is required for KMS providers")
