@@ -1588,6 +1588,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
             n += 4
             listener.reset()
 
+    @client_context.require_no_mongos
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
