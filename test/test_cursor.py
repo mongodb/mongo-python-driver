@@ -1589,20 +1589,20 @@ class TestRawBatchCommandCursor(IntegrationTest):
             listener.reset()
 
     def test_exhaust_cursor_db_set(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         c = client.pymongo_test.test
-        c.drop()
+        c.delete_many({})
         c.insert_many([{"_id": i} for i in range(3)])
 
         listener.reset()
 
-        result = c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1)
+        list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
 
-        result.__next__()  # initial result from find
-        result.__next__()  # first getMore result
-        result.__next__()  # final getMore result
-
+        self.assertEqual(
+            listener.started_command_names(), ["find", "getMore", "getMore", "getMore"]
+        )
         for cmd in listener.started_events:
             self.assertEqual(cmd.command["$db"], "pymongo_test")
 
