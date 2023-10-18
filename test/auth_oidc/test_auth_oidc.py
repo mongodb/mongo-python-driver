@@ -38,11 +38,8 @@ from pymongo.operations import InsertOne
 # Force MONGODB-OIDC to be enabled.
 _AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
 
-ROOT = Path(".").parent
+ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
-print(TEST_PATH.glob("*"))
-sys.exit(1)
-
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
