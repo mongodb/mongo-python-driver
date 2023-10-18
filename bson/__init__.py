@@ -519,7 +519,7 @@ if _USE_C:
 
     def _element_to_dict(
         data: Any,
-        _view: Any,
+        view: Any,  # noqa: ARG001
         position: int,
         obj_end: int,
         opts: CodecOptions[Any],
