@@ -22,7 +22,7 @@ from pathlib import Path
 pattern = "from __future__ import annotations"
 missing = []
 for dirname in ["pymongo", "bson", "gridfs"]:
-    for path in Path.glob(f"{dirname}/*.py"):
+    for path in Path(dirname).glob("*.py"):
         if Path(path).name in ["_version.py", "errors.py"]:
             continue
         found = False

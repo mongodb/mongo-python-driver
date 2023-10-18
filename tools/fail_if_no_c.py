@@ -35,7 +35,7 @@ if not pymongo.has_c() or not bson.has_c():
 if os.environ.get("ENSURE_UNIVERSAL2") == "1":
     parent_dir = Path(pymongo.__path__[0]).parent
     for pkg in ["pymongo", "bson", "grifs"]:
-        for so_file in Path.glob(f"{parent_dir}/{pkg}/*.so"):
+        for so_file in Path(f"{parent_dir}/{pkg}").glob("*.so"):
             print(f"Checking universal2 compatibility in {so_file}...")  # noqa: T201
             output = subprocess.check_output(["file", so_file])  # noqa: S603, S607
             if "arm64" not in output.decode("utf-8"):
