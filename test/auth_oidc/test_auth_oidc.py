@@ -19,6 +19,7 @@ import sys
 import time
 import unittest
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict
 
 sys.path[0:0] = [""]
@@ -37,7 +38,8 @@ from pymongo.operations import InsertOne
 # Force MONGODB-OIDC to be enabled.
 _AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
 
-TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth", "unified")
+ROOT = Path(".").parent
+TEST_PATH = str(ROOT / "auth" / "unified")
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
