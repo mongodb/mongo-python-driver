@@ -1254,7 +1254,7 @@ class TestCursor(IntegrationTest):
         }
 
         with self.fail_point(delay_get_mores):
-            with self.assertRaises(Exception):
+            with self.assertRaises(ExecutionTimeout):
                 cursor.next()
 
         def assertCursorKilled():
@@ -1276,7 +1276,7 @@ class TestCursor(IntegrationTest):
         cursor.next()
 
         with self.fail_point(delay_get_mores):
-            with self.assertRaises(Exception):
+            with self.assertRaises(ExecutionTimeout):
                 cursor.next()
 
         assertCursorKilled()
