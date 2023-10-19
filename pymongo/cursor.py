@@ -1062,9 +1062,9 @@ class Cursor(Generic[_DocumentType]):
             if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
-            elif exc.timeout:
+            if exc.timeout:
                 self.__die(False)
-            if not exc.timeout:
+            else:
                 self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting

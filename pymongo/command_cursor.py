@@ -183,7 +183,7 @@ class CommandCursor(Generic[_DocumentType]):
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
-            elif exc.timeout:
+            if exc.timeout:
                 self.__die(False)
             else:
                 # Return the session and pinned connection, if necessary.

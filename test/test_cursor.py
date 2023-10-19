@@ -1225,17 +1225,13 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_failCommand_appName
     def test_timeout_kills_cursor_asynchronously(self):
-        # Kill any cursors possibly queued up by previous tests.
-        gc.collect()
-        self.client._process_periodic_tasks()
-
         listener = AllowListEventListener("killCursors")
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
-        docs_inserted = 2
+        docs_inserted = 10
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
         listener.reset()
@@ -1243,8 +1239,8 @@ class TestCursor(IntegrationTest):
         cursor = coll.find({}, batch_size=1)
         cursor.next()
 
-        # Ensure the cursor times out.
-        delay_get_mores = {
+        # Mock getMore commands timing out.
+        mock_timeout_errors = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
             "data": {
@@ -1253,7 +1249,7 @@ class TestCursor(IntegrationTest):
             },
         }
 
-        with self.fail_point(delay_get_mores):
+        with self.fail_point(mock_timeout_errors):
             with self.assertRaises(ExecutionTimeout):
                 cursor.next()
 
@@ -1263,7 +1259,6 @@ class TestCursor(IntegrationTest):
                 "waited for all killCursor requests to complete",
             )
 
-            print(listener.started_events, listener.succeeded_events, listener.failed_events)
             self.assertEqual(1, len(listener.started_events))
             self.assertEqual("killCursors", listener.started_events[0].command_name)
             self.assertEqual(1, len(listener.succeeded_events))
@@ -1275,7 +1270,7 @@ class TestCursor(IntegrationTest):
         cursor = coll.aggregate([], batchSize=1)
         cursor.next()
 
-        with self.fail_point(delay_get_mores):
+        with self.fail_point(mock_timeout_errors):
             with self.assertRaises(ExecutionTimeout):
                 cursor.next()
 
