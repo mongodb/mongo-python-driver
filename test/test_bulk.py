@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the bulk API."""
+from __future__ import annotations
 
 import sys
 import uuid
@@ -830,7 +831,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_ordered_failure(self):
@@ -845,7 +846,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 3 == self.coll.count_documents({}), "insert 3 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 3, "insert 3 documents")
         self.assertEqual({"_id": 1}, self.coll.find_one({"_id": 1}))
 
     def test_no_results_unordered_success(self):
@@ -857,7 +858,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_unordered_failure(self):
@@ -872,7 +873,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
 

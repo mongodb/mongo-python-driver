@@ -180,7 +180,7 @@ def _public_key_hash(cert: Certificate) -> bytes:
         pbytes = public_key.public_bytes(_Encoding.X962, _PublicFormat.UncompressedPoint)
     else:
         pbytes = public_key.public_bytes(_Encoding.DER, _PublicFormat.SubjectPublicKeyInfo)
-    digest = _Hash(_SHA1(), backend=_default_backend())
+    digest = _Hash(_SHA1(), backend=_default_backend())  # noqa: S303
     digest.update(pbytes)
     return digest.finalize()
 
@@ -262,7 +262,7 @@ def _verify_response_signature(issuer: Certificate, response: OCSPResponse) -> i
 def _build_ocsp_request(cert: Certificate, issuer: Certificate) -> OCSPRequest:
     # https://cryptography.io/en/latest/x509/ocsp/#creating-requests
     builder = _OCSPRequestBuilder()
-    builder = builder.add_certificate(cert, issuer, _SHA1())
+    builder = builder.add_certificate(cert, issuer, _SHA1())  # noqa: S303
     return builder.build()
 
 

@@ -35,7 +35,7 @@ try:
     set_use_cached_credentials(True)
 except ImportError:
 
-    def set_cached_credentials(creds: Optional[AwsCredential]) -> None:
+    def set_cached_credentials(_creds: Optional[AwsCredential]) -> None:
         pass
 
 
@@ -110,7 +110,9 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
-        raise OperationFailure(f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})")
+        raise OperationFailure(
+            f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})"
+        ) from None
     except Exception:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)

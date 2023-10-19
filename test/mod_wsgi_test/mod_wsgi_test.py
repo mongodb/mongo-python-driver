@@ -14,6 +14,7 @@
 
 """Minimal test of PyMongo in a WSGI application, see bug PYTHON-353
 """
+from __future__ import annotations
 
 import datetime
 import os
@@ -42,10 +43,10 @@ from pymongo.mongo_client import MongoClient
 assert bson.has_c()
 assert pymongo.has_c()
 
-OPTS: "CodecOptions[dict]" = CodecOptions(
+OPTS: CodecOptions[dict] = CodecOptions(
     uuid_representation=STANDARD, datetime_conversion=DatetimeConversion.DATETIME_AUTO
 )
-client: "MongoClient[dict]" = MongoClient()
+client: MongoClient[dict] = MongoClient()
 # Use a unique collection name for each process:
 coll_name = f"test-{uuid.uuid4()}"
 collection = client.test.get_collection(coll_name, codec_options=OPTS)

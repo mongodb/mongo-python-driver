@@ -116,7 +116,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ...), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:
+    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
         """Dummy function for platforms that don't provide fcntl."""
 
 
@@ -1076,7 +1076,7 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     def conn_closed(self) -> bool:
@@ -1250,7 +1250,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError) as exc:  # noqa: B014
+    except (OSError, SSLError) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
@@ -1811,7 +1811,7 @@ class Pool:
             return True
 
         if self._check_interval_seconds is not None and (
-            0 == self._check_interval_seconds or idle_time_seconds > self._check_interval_seconds
+            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
         ):
             if conn.conn_closed():
                 conn.close_conn(ConnectionClosedReason.ERROR)
@@ -1847,7 +1847,7 @@ class Pool:
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
-            "maxPoolSize: {}, timeout: {}".format(self.opts.max_pool_size, timeout)
+            f"maxPoolSize: {self.opts.max_pool_size}, timeout: {timeout}"
         )
 
     def __del__(self) -> None:

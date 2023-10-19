@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Exceptions raised by the :mod:`gridfs` package"""
+from __future__ import annotations
 
 from pymongo.errors import PyMongoError
 

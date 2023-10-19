@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the command monitoring unified format spec tests."""
+from __future__ import annotations
 
 import os
 import sys

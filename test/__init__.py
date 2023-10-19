@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test suite for pymongo, bson, and gridfs."""
+from __future__ import annotations
 
 import base64
 import gc
@@ -29,7 +30,7 @@ import unittest
 import warnings
 
 try:
-    import ipaddress  # noqa
+    import ipaddress
 
     HAVE_IPADDRESS = True
 except ImportError:
@@ -795,11 +796,12 @@ class ClientContext:
             return True
         return False
 
-    def require_cluster_type(self, topologies=[]):  # noqa
+    def require_cluster_type(self, topologies=None):
         """Run a test only if the client is connected to a cluster that
         conforms to one of the specified topologies. Acceptable topologies
         are 'single', 'replicaset', and 'sharded'.
         """
+        topologies = topologies or []
 
         def _is_valid_topology():
             return self.is_topology_type(topologies)
@@ -1169,9 +1171,9 @@ def print_running_topology(topology):
     if running:
         print(
             "WARNING: found Topology with running threads:\n"
-            "  Threads: {}\n"
-            "  Topology: {}\n"
-            "  Creation traceback:\n{}".format(running, topology, topology._settings._stack)
+            f"  Threads: {running}\n"
+            f"  Topology: {topology}\n"
+            f"  Creation traceback:\n{topology._settings._stack}"
         )
 
 
@@ -1238,7 +1240,7 @@ def clear_warning_registry():
     """Clear the __warningregistry__ for all modules."""
     for _, module in list(sys.modules.items()):
         if hasattr(module, "__warningregistry__"):
-            setattr(module, "__warningregistry__", {})  # noqa
+            module.__warningregistry__ = {}  # type:ignore[attr-defined]
 
 
 class SystemCertsPatcher:

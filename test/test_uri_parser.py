@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo uri_parser module."""
+from __future__ import annotations
 
 import copy
 import sys

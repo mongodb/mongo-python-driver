@@ -200,7 +200,7 @@ class SessionOptions:
     def __init__(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional["TransactionOptions"] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> None:
         if snapshot:
@@ -227,7 +227,7 @@ class SessionOptions:
         return self._causal_consistency
 
     @property
-    def default_transaction_options(self) -> Optional["TransactionOptions"]:
+    def default_transaction_options(self) -> Optional[TransactionOptions]:
         """The default TransactionOptions to use for transactions started on
         this session.
 
@@ -287,25 +287,25 @@ class TransactionOptions:
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError(
                     "read_concern must be an instance of "
-                    "pymongo.read_concern.ReadConcern, not: {!r}".format(read_concern)
+                    f"pymongo.read_concern.ReadConcern, not: {read_concern!r}"
                 )
         if write_concern is not None:
             if not isinstance(write_concern, WriteConcern):
                 raise TypeError(
                     "write_concern must be an instance of "
-                    "pymongo.write_concern.WriteConcern, not: {!r}".format(write_concern)
+                    f"pymongo.write_concern.WriteConcern, not: {write_concern!r}"
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
                     "transactions do not support unacknowledged write concern"
-                    ": {!r}".format(write_concern)
+                    f": {write_concern!r}"
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
                 raise TypeError(
-                    "{!r} is not valid for read_preference. See "
+                    f"{read_preference!r} is not valid for read_preference. See "
                     "pymongo.read_preferences for valid "
-                    "options.".format(read_preference)
+                    "options."
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
@@ -354,7 +354,7 @@ def _validate_session_write_concern(
             else:
                 raise ConfigurationError(
                     "Explicit sessions are incompatible with "
-                    "unacknowledged write concern: {!r}".format(write_concern)
+                    f"unacknowledged write concern: {write_concern!r}"
                 )
     return session
 
@@ -535,7 +535,7 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def __enter__(self) -> "ClientSession":
+    def __enter__(self) -> ClientSession:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -585,7 +585,7 @@ class ClientSession:
 
     def with_transaction(
         self,
-        callback: Callable[["ClientSession"], _T],
+        callback: Callable[[ClientSession], _T],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -838,7 +838,7 @@ class ClientSession:
         """
 
         def func(
-            session: Optional[ClientSession], conn: Connection, retryable: bool
+            _session: Optional[ClientSession], conn: Connection, _retryable: bool
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
@@ -1002,8 +1002,7 @@ class ClientSession:
         if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
-                    "read preference in a transaction must be primary, not: "
-                    "{!r}".format(read_preference)
+                    f"read preference in a transaction must be primary, not: {read_preference!r}"
                 )
 
             if self._transaction.state == _TxnState.STARTING:

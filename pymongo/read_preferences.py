@@ -64,9 +64,9 @@ def _validate_tag_sets(tag_sets: Optional[_TagSets]) -> Optional[_TagSets]:
     for tags in tag_sets:
         if not isinstance(tags, abc.Mapping):
             raise TypeError(
-                "Tag set {!r} invalid, must be an instance of dict, "
+                f"Tag set {tags!r} invalid, must be an instance of dict, "
                 "bson.son.SON or other type that inherits from "
-                "collection.Mapping".format(tags)
+                "collection.Mapping"
             )
 
     return list(tag_sets)

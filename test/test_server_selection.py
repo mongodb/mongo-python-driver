@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module's Server Selection Spec implementation."""
+from __future__ import annotations
 
 import os
 import sys

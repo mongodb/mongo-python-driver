@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the objectid module."""
+from __future__ import annotations
 
 import datetime
 import pickle

@@ -32,10 +32,10 @@ class _WriteResult:
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
             raise InvalidOperation(
-                "A value for {} is not available when "
+                f"A value for {property_name} is not available when "
                 "the write is unacknowledged. Check the "
                 "acknowledged attribute to avoid this "
-                "error.".format(property_name)
+                "error."
             )
 
     @property

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+from __future__ import annotations
 
 import base64
 import copy
@@ -2658,7 +2659,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 EncryptionError, "expected matching 'min' and value type. Got range option"
             ):
                 self.client_encryption.encrypt(
-                    int(6) if cast_func != int else float(6),
+                    6 if cast_func != int else float(6),
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGEPREVIEW,
                     contention_factor=0,

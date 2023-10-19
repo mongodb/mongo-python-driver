@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import unittest
 from test.unified_format import generate_test_classes

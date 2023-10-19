@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the client_session module."""
+from __future__ import annotations
 
 import copy
 import sys

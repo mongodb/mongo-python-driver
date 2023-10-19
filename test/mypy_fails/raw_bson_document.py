@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from bson.raw_bson import RawBSONDocument
 from pymongo import MongoClient
 

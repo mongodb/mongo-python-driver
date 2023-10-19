@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utilities for testing driver specs."""
+from __future__ import annotations
 
 import functools
 import threading

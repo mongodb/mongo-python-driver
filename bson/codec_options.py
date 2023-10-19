@@ -168,7 +168,7 @@ class TypeRegistry:
             if issubclass(cast(TypeCodec, codec).python_type, pytype):
                 err_msg = (
                     "TypeEncoders cannot change how built-in types are "
-                    "encoded (encoder {} transforms type {})".format(codec, pytype)
+                    f"encoded (encoder {codec} transforms type {pytype})"
                 )
                 raise TypeError(err_msg)
 

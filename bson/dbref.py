@@ -89,7 +89,7 @@ class DBRef:
         try:
             return self.__kwargs[key]
         except KeyError:
-            raise AttributeError(key)
+            raise AttributeError(key) from None
 
     def as_doc(self) -> SON[str, Any]:
         """Get the SON document representation of this DBRef.

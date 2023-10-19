@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test MONGODB-OIDC Authentication."""
+from __future__ import annotations
 
 import os
 import sys

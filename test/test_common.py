@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo common module."""
+from __future__ import annotations
 
 import sys
 import uuid

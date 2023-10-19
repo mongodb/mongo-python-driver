@@ -737,8 +737,7 @@ def _parse_canonical_regex(doc: Any) -> Regex[str]:
         raise TypeError(f"Bad $regularExpression, extra field(s): {doc}")
     if len(regex) != 2:
         raise TypeError(
-            'Bad $regularExpression must include only "pattern"'
-            'and "options" components: {}'.format(doc)
+            f'Bad $regularExpression must include only "pattern and "options" components: {doc}'
         )
     opts = regex["options"]
     if not isinstance(opts, str):
@@ -812,7 +811,7 @@ def _parse_canonical_decimal128(doc: Any) -> Decimal128:
 
 def _parse_canonical_minkey(doc: Any) -> MinKey:
     """Decode a JSON MinKey to bson.min_key.MinKey."""
-    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:
+    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:  # noqa: E721
         raise TypeError(f"$minKey value must be 1: {doc}")
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")
@@ -821,7 +820,7 @@ def _parse_canonical_minkey(doc: Any) -> MinKey:
 
 def _parse_canonical_maxkey(doc: Any) -> MaxKey:
     """Decode a JSON MaxKey to bson.max_key.MaxKey."""
-    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:
+    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:  # noqa: E721
         raise TypeError("$maxKey value must be 1: %s", (doc,))
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")

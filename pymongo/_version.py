@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Current version of PyMongo."""
+from __future__ import annotations
+
 from typing import Tuple, Union
 
 version_tuple: Tuple[Union[int, str], ...] = (4, 6, 0, ".dev0")

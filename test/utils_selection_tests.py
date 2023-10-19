@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utilities for testing Server Selection and Max Staleness."""
+from __future__ import annotations
 
 import datetime
 import os

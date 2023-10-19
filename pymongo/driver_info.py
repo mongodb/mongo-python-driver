@@ -31,13 +31,12 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
 
     def __new__(
         cls, name: str, version: Optional[str] = None, platform: Optional[str] = None
-    ) -> "DriverInfo":
+    ) -> DriverInfo:
         self = super().__new__(cls, name, version, platform)
         for key, value in self._asdict().items():
             if value is not None and not isinstance(value, str):
                 raise TypeError(
-                    "Wrong type for DriverInfo {} option, value "
-                    "must be an instance of str".format(key)
+                    f"Wrong type for DriverInfo {key} option, value must be an instance of str"
                 )
 
         return self

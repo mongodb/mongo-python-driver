@@ -86,7 +86,7 @@ def _is_ip_address(address: Any) -> bool:
     try:
         _ip_address(address)
         return True
-    except (ValueError, UnicodeError):  # noqa: B014
+    except (ValueError, UnicodeError):
         return False
 
 
@@ -122,8 +122,8 @@ class _sslConn(_SSL.Connection):
                 # Check for closed socket.
                 if self.fileno() == -1:
                     if timeout and _time.monotonic() - start > timeout:
-                        raise _socket.timeout("timed out")
-                    raise SSLError("Underlying socket has been closed")
+                        raise _socket.timeout("timed out") from None
+                    raise SSLError("Underlying socket has been closed") from None
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
                     want_write = False
@@ -135,7 +135,7 @@ class _sslConn(_SSL.Connection):
                     want_write = True
                 self.socket_checker.select(self, want_read, want_write, timeout)
                 if timeout and _time.monotonic() - start > timeout:
-                    raise _socket.timeout("timed out")
+                    raise _socket.timeout("timed out") from None
                 continue
 
     def do_handshake(self, *args: Any, **kwargs: Any) -> None:
@@ -169,7 +169,7 @@ class _sslConn(_SSL.Connection):
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
-            except OSError as exc:  # noqa: B014
+            except OSError as exc:
                 if _errno_from_exception(exc) == _EINTR:
                     continue
                 raise
@@ -226,10 +226,10 @@ class SSLContext:
         """Setter for verify_mode."""
 
         def _cb(
-            connobj: _SSL.Connection,
-            x509obj: _crypto.X509,
-            errnum: int,
-            errdepth: int,
+            _connobj: _SSL.Connection,
+            _x509obj: _crypto.X509,
+            _errnum: int,
+            _errdepth: int,
             retcode: int,
         ) -> bool:
             # It seems we don't need to do anything here. Twisted doesn't,
@@ -295,7 +295,7 @@ class SSLContext:
         # Password callback MUST be set first or it will be ignored.
         if password:
 
-            def _pwcb(max_length: int, prompt_twice: bool, user_data: bytes) -> bytes:
+            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: bytes) -> bytes:
                 # XXX:We could check the password length against what OpenSSL
                 # tells us is the max, but we can't raise an exception, so...
                 # warn?
@@ -410,5 +410,5 @@ class SSLContext:
                     else:
                         _verify_hostname(ssl_conn, server_hostname)
                 except (_SICertificateError, _SIVerificationError) as exc:
-                    raise _CertificateError(str(exc))
+                    raise _CertificateError(str(exc)) from None
         return ssl_conn

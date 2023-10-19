@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Tests for SSL support."""
+from __future__ import annotations
 
 import os
 import socket
 import sys
-from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -40,12 +40,12 @@ from pymongo.write_concern import WriteConcern
 _HAVE_PYOPENSSL = False
 try:
     # All of these must be available to use PyOpenSSL
-    import OpenSSL  # noqa
-    import requests  # noqa
-    import service_identity  # noqa
+    import OpenSSL
+    import requests
+    import service_identity
 
     # Ensure service_identity>=18.1 is installed
-    from service_identity.pyopenssl import verify_ip_address  # noqa
+    from service_identity.pyopenssl import verify_ip_address
 
     from pymongo.ocsp_support import _load_trusted_ca_certs
 
@@ -185,7 +185,7 @@ class TestSSL(IntegrationTest):
                     tlsCertificateKeyFilePassword="qwerty",
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=5000,
-                    **self.credentials  # type: ignore[arg-type]
+                    **self.credentials,  # type: ignore[arg-type]
                 )
             )
 
@@ -317,7 +317,7 @@ class TestSSL(IntegrationTest):
                     tlsAllowInvalidCertificates=False,
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=500,
-                    **self.credentials  # type: ignore[arg-type]
+                    **self.credentials,  # type: ignore[arg-type]
                 )
             )
 
@@ -330,7 +330,7 @@ class TestSSL(IntegrationTest):
                 tlsCAFile=CA_PEM,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=500,
-                **self.credentials  # type: ignore[arg-type]
+                **self.credentials,  # type: ignore[arg-type]
             )
         )
 
@@ -345,7 +345,7 @@ class TestSSL(IntegrationTest):
                         tlsAllowInvalidCertificates=False,
                         tlsCAFile=CA_PEM,
                         serverSelectionTimeoutMS=500,
-                        **self.credentials  # type: ignore[arg-type]
+                        **self.credentials,  # type: ignore[arg-type]
                     )
                 )
 
@@ -359,7 +359,7 @@ class TestSSL(IntegrationTest):
                     tlsCAFile=CA_PEM,
                     tlsAllowInvalidHostnames=True,
                     serverSelectionTimeoutMS=500,
-                    **self.credentials  # type: ignore[arg-type]
+                    **self.credentials,  # type: ignore[arg-type]
                 )
             )
 
@@ -383,7 +383,7 @@ class TestSSL(IntegrationTest):
                     ssl=True,
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=1000,
-                    **self.credentials  # type: ignore[arg-type]
+                    **self.credentials,  # type: ignore[arg-type]
                 )
             )
 
@@ -395,7 +395,7 @@ class TestSSL(IntegrationTest):
                         tlsCAFile=CA_PEM,
                         tlsCRLFile=CRL_PEM,
                         serverSelectionTimeoutMS=1000,
-                        **self.credentials  # type: ignore[arg-type]
+                        **self.credentials,  # type: ignore[arg-type]
                     )
                 )
 
@@ -435,7 +435,7 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=1000,
-                **self.credentials  # type: ignore[arg-type]
+                **self.credentials,  # type: ignore[arg-type]
             )
         )
 
@@ -458,7 +458,6 @@ class TestSSL(IntegrationTest):
         ):
             raise SkipTest("Can't test when system CA certificates are loadable.")
 
-        ssl_support: Any
         have_certifi = ssl_support.HAVE_CERTIFI
         have_wincertstore = ssl_support.HAVE_WINCERTSTORE
         # Force the test regardless of environment.
@@ -477,7 +476,6 @@ class TestSSL(IntegrationTest):
             # with SSLContext and SSLContext provides no information
             # about ca_certs.
             raise SkipTest("Can't test when SSLContext available.")
-        ssl_support: Any
         if not ssl_support.HAVE_CERTIFI:
             raise SkipTest("Need certifi to test certifi support.")
 

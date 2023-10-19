@@ -224,7 +224,7 @@ class GridFS:
             doc = next(cursor)
             return GridOut(self.__collection, file_document=doc, session=session)
         except StopIteration:
-            raise NoFile("no version %d for filename %r" % (version, filename))
+            raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
     def get_last_version(
         self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any
@@ -932,7 +932,7 @@ class GridFSBucket:
             grid_file = next(cursor)
             return GridOut(self._collection, file_document=grid_file, session=session)
         except StopIteration:
-            raise NoFile("no version %d for filename %r" % (revision, filename))
+            raise NoFile("no version %d for filename %r" % (revision, filename)) from None
 
     @_csot.apply
     def download_to_stream_by_name(

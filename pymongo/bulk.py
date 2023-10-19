@@ -221,7 +221,7 @@ class _Bulk:
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = dict(
+        cmd: dict[str, Any] = dict(  # noqa: C406
             [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
         )
         if collation is not None:

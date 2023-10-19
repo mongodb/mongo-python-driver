@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import unittest
 
@@ -63,7 +64,7 @@ class TestHandshake(unittest.TestCase):
         client = MongoClient(
             "mongodb://" + primary.address_string,
             appname="my app",  # For _check_handshake_data()
-            **dict([k_map.get((k, v), (k, v)) for k, v in kwargs.items()])  # type: ignore[arg-type]
+            **dict([k_map.get((k, v), (k, v)) for k, v in kwargs.items()]),  # type: ignore[arg-type]
         )
 
         self.addCleanup(client.close)
@@ -236,14 +237,12 @@ class TestHandshake(unittest.TestCase):
                 request.reply(
                     OpMsgReply(
                         **primary_response,
-                        **{
-                            "payload": b"r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0"
-                            b"1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky"
-                            b"tXdF9r,"
-                            b"s=4dcxugMJq2P4hQaDbGXZR8uR3ei"
-                            b"PHrSmh4uhkg==,i=15000",
-                            "saslSupportedMechs": ["SCRAM-SHA-1"],
-                        }
+                        payload=b"r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0"
+                        b"1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky"
+                        b"tXdF9r,"
+                        b"s=4dcxugMJq2P4hQaDbGXZR8uR3ei"
+                        b"PHrSmh4uhkg==,i=15000",
+                        saslSupportedMechs=["SCRAM-SHA-1"],
                     )
                 )
                 return None

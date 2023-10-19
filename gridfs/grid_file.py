@@ -357,12 +357,14 @@ class GridIn:
         except AttributeError:
             # string
             if not isinstance(data, (str, bytes)):
-                raise TypeError("can only write strings or file-like objects")
+                raise TypeError("can only write strings or file-like objects") from None
             if isinstance(data, str):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
-                    raise TypeError("must specify an encoding for file in order to write str")
+                    raise TypeError(
+                        "must specify an encoding for file in order to write str"
+                    ) from None
             read = io.BytesIO(data).read
 
         if self._buffer.tell() > 0:
@@ -395,7 +397,7 @@ class GridIn:
     def writeable(self) -> bool:
         return True
 
-    def __enter__(self) -> "GridIn":
+    def __enter__(self) -> GridIn:
         """Support for the context manager protocol."""
         return self
 
@@ -671,7 +673,7 @@ class GridOut(io.IOBase):
     def seekable(self) -> bool:
         return True
 
-    def __iter__(self) -> "GridOut":
+    def __iter__(self) -> GridOut:
         """Return an iterator over all of this file's data.
 
         The iterator will return lines (delimited by ``b'\\n'``) of
@@ -708,7 +710,7 @@ class GridOut(io.IOBase):
     def writable(self) -> bool:
         return False
 
-    def __enter__(self) -> "GridOut":
+    def __enter__(self) -> GridOut:
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
@@ -773,7 +775,7 @@ class _GridOutChunkIterator:
             return self._chunk_size
         return self._length - (self._chunk_size * (self._num_chunks - 1))
 
-    def __iter__(self) -> "_GridOutChunkIterator":
+    def __iter__(self) -> _GridOutChunkIterator:
         return self
 
     def _create_cursor(self) -> None:
@@ -806,7 +808,7 @@ class _GridOutChunkIterator:
         except StopIteration:
             if self._next_chunk >= self._num_chunks:
                 raise
-            raise CorruptGridFile("no chunk #%d" % self._next_chunk)
+            raise CorruptGridFile("no chunk #%d" % self._next_chunk) from None
 
         if chunk["n"] != self._next_chunk:
             self.close()
@@ -847,7 +849,7 @@ class GridOutIterator:
     def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
         self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
 
-    def __iter__(self) -> "GridOutIterator":
+    def __iter__(self) -> GridOutIterator:
         return self
 
     def next(self) -> bytes:
@@ -914,6 +916,6 @@ class GridOutCursor(Cursor):
     def remove_option(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def _clone_base(self, session: Optional[ClientSession]) -> "GridOutCursor":
+    def _clone_base(self, session: Optional[ClientSession]) -> GridOutCursor:
         """Creates an empty GridOutCursor for information to be copied into."""
         return GridOutCursor(self.__root_collection, session=session)

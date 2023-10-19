@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the change_stream module."""
+from __future__ import annotations
 
 import os
 import random

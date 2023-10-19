@@ -24,12 +24,12 @@ repos:
     files: \.py$
     args: [--line-length=100]
 
-- repo: https://github.com/PyCQA/isort
-  rev: 5.12.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.1.0
   hooks:
-  - id: isort
-    files: \.py$
-    args: [--profile=black]
+    - id: ruff
+      args: ["--fix", "--show-fixes"]
 
 - repo: https://github.com/adamchainz/blacken-docs
   rev: "1.13.0"
@@ -37,18 +37,6 @@ repos:
   - id: blacken-docs
     additional_dependencies:
     - black==22.3.0
-
-- repo: https://github.com/PyCQA/flake8
-  rev: 3.9.2
-  hooks:
-  - id: flake8
-    files: \.py$
-    additional_dependencies: [
-        'flake8-bugbear==20.1.4',
-        'flake8-logging-format==0.6.0',
-        'flake8-implicit-str-concat==0.2.0',
-    ]
-    stages: [manual]
 
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit

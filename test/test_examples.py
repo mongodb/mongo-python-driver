@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """MongoDB documentation examples in Python."""
+from __future__ import annotations
 
 import datetime
 import sys

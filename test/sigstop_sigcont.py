@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Used by test_client.TestClient.test_sigstop_sigcont."""
+from __future__ import annotations
 
 import logging
 import os

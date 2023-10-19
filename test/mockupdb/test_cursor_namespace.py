@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test list_indexes with more than one batch."""
+from __future__ import annotations
 
 import unittest
 
