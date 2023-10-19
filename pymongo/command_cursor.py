@@ -185,7 +185,7 @@ class CommandCursor(Generic[_DocumentType]):
                 self.__killed = True
             elif exc.timeout:
                 self.__die(False)
-            if not exc.timeout:
+            else:
                 # Return the session and pinned connection, if necessary.
                 self.close()
             raise

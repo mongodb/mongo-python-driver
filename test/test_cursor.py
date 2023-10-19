@@ -31,12 +31,13 @@ from test.utils import (
     OvertCommandListener,
     ignore_deprecations,
     rs_or_single_client,
+    wait_until,
 )
 
 from bson import decode_all
 from bson.code import Code
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, timeout
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
@@ -1221,6 +1222,53 @@ class TestCursor(IntegrationTest):
             assertCursorKilled()
         else:
             self.assertEqual(0, len(listener.started_events))
+
+    def test_timeout_kills_cursor_asynchronously(self):
+        # Kill any cursors possibly queued up by previous tests.
+        gc.collect()
+        self.client._process_periodic_tasks()
+
+        listener = AllowListEventListener("killCursors")
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client[self.db.name].test_timeout_kills_cursor
+
+        # Add some test data.
+        docs_inserted = 2
+        coll.insert_many([{"i": i} for i in range(docs_inserted)])
+
+        listener.reset()
+
+        # Ensure the cursor times out.
+        cursor = coll.find({}, batch_size=1)
+        cursor.next()
+        with timeout(0.00001):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        def assertCursorKilled():
+            wait_until(
+                lambda: len(client._MongoClient__kill_cursors_queue) == 0,
+                "waited for all killCursor requests to complete",
+            )
+
+            print(listener.started_events, listener.succeeded_events, listener.failed_events)
+            self.assertEqual(1, len(listener.started_events))
+            self.assertEqual("killCursors", listener.started_events[0].command_name)
+            self.assertEqual(1, len(listener.succeeded_events))
+            self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
+
+        assertCursorKilled()
+        listener.reset()
+
+        # Ensure the command cursor times out.
+        cursor = coll.aggregate([], batchSize=1)
+        cursor.next()
+        with timeout(0.00001):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        assertCursorKilled()
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__
