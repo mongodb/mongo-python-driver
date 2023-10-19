@@ -22,6 +22,8 @@ import sys
 import threading
 import time
 
+import pymongo
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
@@ -1585,6 +1587,28 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
             n += 4
             listener.reset()
+
+    @client_context.require_version_min(5, 0, -1)
+    @client_context.require_no_mongos
+    def test_exhaust_cursor_db_set(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        c = client.pymongo_test.test
+        c.delete_many({})
+        c.insert_many([{"_id": i} for i in range(3)])
+
+        listener.reset()
+
+        result = list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
+
+        self.assertEqual(len(result), 3)
+
+        self.assertEqual(
+            listener.started_command_names(), ["find", "getMore", "getMore", "getMore"]
+        )
+        for cmd in listener.started_events:
+            self.assertEqual(cmd.command["$db"], "pymongo_test")
 
 
 if __name__ == "__main__":
