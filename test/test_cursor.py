@@ -37,7 +37,7 @@ from test.utils import (
 from bson import decode_all
 from bson.code import Code
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING, timeout
+from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
@@ -1223,6 +1223,7 @@ class TestCursor(IntegrationTest):
         else:
             self.assertEqual(0, len(listener.started_events))
 
+    @client_context.require_failCommand_appName
     def test_timeout_kills_cursor_asynchronously(self):
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
@@ -1239,11 +1240,21 @@ class TestCursor(IntegrationTest):
 
         listener.reset()
 
-        # Ensure the cursor times out.
         cursor = coll.find({}, batch_size=1)
         cursor.next()
-        with timeout(0.00001):
-            with self.assertRaises(ExecutionTimeout):
+
+        # Ensure the cursor times out.
+        delay_get_mores = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "errorCode": 50,
+                "failCommands": ["getMore"],
+            },
+        }
+
+        with self.fail_point(delay_get_mores):
+            with self.assertRaises(Exception):
                 cursor.next()
 
         def assertCursorKilled():
@@ -1261,11 +1272,11 @@ class TestCursor(IntegrationTest):
         assertCursorKilled()
         listener.reset()
 
-        # Ensure the command cursor times out.
         cursor = coll.aggregate([], batchSize=1)
         cursor.next()
-        with timeout(0.00001):
-            with self.assertRaises(ExecutionTimeout):
+
+        with self.fail_point(delay_get_mores):
+            with self.assertRaises(Exception):
                 cursor.next()
 
         assertCursorKilled()
