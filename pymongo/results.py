@@ -71,7 +71,9 @@ class InsertOneResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__inserted_id!r}, {self.acknowledged})"
+        return (
+            f"{self.__class__.__name__}({self.__inserted_id!r}, acknowledged={self.acknowledged})"
+        )
 
     @property
     def inserted_id(self) -> Any:
@@ -89,7 +91,9 @@ class InsertManyResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__inserted_ids!r}, {self.acknowledged})"
+        return (
+            f"{self.__class__.__name__}({self.__inserted_ids!r}, acknowledged={self.acknowledged})"
+        )
 
     @property
     def inserted_ids(self) -> list[Any]:
@@ -116,7 +120,7 @@ class UpdateResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__raw_result!r}, {self.acknowledged})"
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def raw_result(self) -> Optional[Mapping[str, Any]]:
@@ -161,7 +165,7 @@ class DeleteResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__raw_result!r}, {self.acknowledged})"
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def raw_result(self) -> Mapping[str, Any]:
@@ -193,7 +197,7 @@ class BulkWriteResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, {self.acknowledged})"
+        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def bulk_api_result(self) -> dict[str, Any]:

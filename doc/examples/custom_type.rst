@@ -135,7 +135,7 @@ Now, we can seamlessly encode and decode instances of
 .. doctest::
 
   >>> collection.insert_one({"num": Decimal("45.321")})
-  InsertOneResult(ObjectId('...'), True)
+  InsertOneResult(ObjectId('...'), acknowledged=True)
   >>> mydoc = collection.find_one()
   >>> import pprint
   >>> pprint.pprint(mydoc)
@@ -217,7 +217,7 @@ object, we can seamlessly encode instances of ``DecimalInt``:
   >>> collection = db.get_collection("test", codec_options=codec_options)
   >>> collection.drop()
   >>> collection.insert_one({"num": DecimalInt("45.321")})
-  InsertOneResult(ObjectId('...'), True)
+  InsertOneResult(ObjectId('...'), acknowledged=True)
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
   {'_id': ObjectId('...'), 'num': Decimal('45.321')}
@@ -311,7 +311,7 @@ We can now seamlessly encode instances of :py:class:`~decimal.Decimal`:
 .. doctest::
 
   >>> collection.insert_one({"num": Decimal("45.321")})
-  InsertOneResult(ObjectId('...'), True)
+  InsertOneResult(ObjectId('...'), acknowledged=True)
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
   {'_id': ObjectId('...'), 'num': Decimal128('45.321')}

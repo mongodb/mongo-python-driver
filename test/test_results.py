@@ -35,7 +35,7 @@ class TestResults(unittest.TestCase):
     def repr_test(self, cls, result_arg):
         for acknowledged in (True, False):
             result = cls(result_arg, acknowledged)
-            expected_repr = "%s(%r, %r)" % (cls.__name__, result_arg, acknowledged)
+            expected_repr = "%s(%r, acknowledged=%r)" % (cls.__name__, result_arg, acknowledged)
             self.assertEqual(acknowledged, result.acknowledged)
             self.assertEqual(expected_repr, repr(result))
 
@@ -132,3 +132,7 @@ class TestResults(unittest.TestCase):
             result.modified_count
         with self.assertRaisesRegex(InvalidOperation, error_msg):
             result.upserted_id
+
+
+if __name__ == "__main__":
+    unittest.main()
