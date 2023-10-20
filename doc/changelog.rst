@@ -5,8 +5,28 @@ Changes in Version 4.6
 ----------------------
 
 PyMongo 4.6 brings a number of improvements including:
+- Added the ``serverMonitoringMode`` URI and keyword argument to :class:`~pymongo.mongo_client.MongoClient`.
+- Improved client performance and reduced connection requirements in Function-as-a-service (FaaS)
+  environments like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
 - Added the :attr:`pymongo.monitoring.CommandSucceededEvent.database_name` property.
 - Added the :attr:`pymongo.monitoring.CommandFailedEvent.database_name` property.
+- Allow passing a ``dict`` to sort/create_index/hint.
+- Added :func:`repr` support to the write result classes:
+  :class:`~pymongo.results.BulkWriteResult`,
+  :class:`~pymongo.results.DeleteResult`,
+  :class:`~pymongo.results.InsertManyResult`,
+  :class:`~pymongo.results.InsertOneResult`,
+  :class:`~pymongo.results.UpdateResult`, and
+  :class:`~pymongo.encryption.RewrapManyDataKeyResult`. For example:
+
+    >>> client.t.t.insert_one({})
+    InsertOneResult(ObjectId('65319acdd55bb3a27ab5502b'), acknowledged=True)
+    >>> client.t.t.insert_many([{} for _ in range(3)])
+    InsertManyResult([ObjectId('65319af2d55bb3a27ab5502c'), ObjectId('65319af2d55bb3a27ab5502d'), ObjectId('65319af2d55bb3a27ab5502e')], acknowledged=True)': [], 'writeConcernErrors': [], 'nInserted': 1, 'nUpserted': 0, 'nMatched': 0, 'nModified': 0, 'nRemoved': 0, 'upserted': []}, acknowledged=True)
+
+- :meth:`~pymongo.uri_parser.parse_uri` now considers the delimiting slash (``/``)
+  between hosts and connection options optional. For example,
+  "mongodb://example.com?tls=true" is now a valid URI.
 
 Changes in Version 4.5
 ----------------------
