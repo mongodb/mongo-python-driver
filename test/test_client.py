@@ -1961,6 +1961,10 @@ class TestExhaustCursor(IntegrationTest):
         self.assertRaises(ConnectionFailure, list, cursor)
         self.assertTrue(conn.closed)
 
+        wait_until(
+            lambda: len(client._MongoClient__kill_cursors_queue) == 0,
+            "waited for all killCursor requests to complete",
+        )
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(conn, pool.conns)
         self.assertEqual(0, pool.requests)

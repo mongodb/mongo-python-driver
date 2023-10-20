@@ -35,6 +35,7 @@ from test.utils import (
     OvertCommandListener,
     ignore_deprecations,
     rs_or_single_client,
+    wait_until,
 )
 
 from bson import decode_all
@@ -1225,6 +1226,59 @@ class TestCursor(IntegrationTest):
             assertCursorKilled()
         else:
             self.assertEqual(0, len(listener.started_events))
+
+    @client_context.require_failCommand_appName
+    def test_timeout_kills_cursor_asynchronously(self):
+        listener = AllowListEventListener("killCursors")
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client[self.db.name].test_timeout_kills_cursor
+
+        # Add some test data.
+        docs_inserted = 10
+        coll.insert_many([{"i": i} for i in range(docs_inserted)])
+
+        listener.reset()
+
+        cursor = coll.find({}, batch_size=1)
+        cursor.next()
+
+        # Mock getMore commands timing out.
+        mock_timeout_errors = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "errorCode": 50,
+                "failCommands": ["getMore"],
+            },
+        }
+
+        with self.fail_point(mock_timeout_errors):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        def assertCursorKilled():
+            wait_until(
+                lambda: len(client._MongoClient__kill_cursors_queue) == 0,
+                "waited for all killCursor requests to complete",
+            )
+
+            self.assertEqual(1, len(listener.started_events))
+            self.assertEqual("killCursors", listener.started_events[0].command_name)
+            self.assertEqual(1, len(listener.succeeded_events))
+            self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
+
+        assertCursorKilled()
+        listener.reset()
+
+        cursor = coll.aggregate([], batchSize=1)
+        cursor.next()
+
+        with self.fail_point(mock_timeout_errors):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        assertCursorKilled()
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__

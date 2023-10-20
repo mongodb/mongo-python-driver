@@ -73,7 +73,6 @@ if TYPE_CHECKING:
 _CURSOR_CLOSED_ERRORS = frozenset(
     [
         43,  # CursorNotFound
-        50,  # MaxTimeMSExpired
         175,  # QueryPlanKilled
         237,  # CursorKilled
         # On a tailable cursor, the following errors mean the capped collection
@@ -1065,7 +1064,10 @@ class Cursor(Generic[_DocumentType]):
             if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
-            self.close()
+            if exc.timeout:
+                self.__die(False)
+            else:
+                self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -1077,7 +1079,6 @@ class Cursor(Generic[_DocumentType]):
                 return
             raise
         except ConnectionFailure:
-            # Don't send killCursors because the cursor is already closed.
             self.__killed = True
             self.close()
             raise
