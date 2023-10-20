@@ -422,7 +422,7 @@ class TestPooling(_TestPoolingBase):
         client = rs_or_single_client(socketTimeoutMS=1)
 
         with self.assertRaises(Exception) as error:
-            client.db.t.find_one({"$where": delay(2)})
+            client.db.t.find_one({"$where": delay(5)})
 
         self.assertTrue("(configured timeouts: socketTimeoutMS: 1.0ms" in str(error.exception))
 
