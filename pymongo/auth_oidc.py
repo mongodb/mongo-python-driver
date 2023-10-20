@@ -15,6 +15,7 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
+import os
 import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 @dataclass
 class _OIDCProperties:
     request_token_callback: Optional[Callable[..., dict]]
+    machine_token_callback: Optional[Callable[..., str]]
     provider_name: Optional[str]
     allowed_hosts: list[str]
 
@@ -72,6 +74,16 @@ def _get_authenticator(
     return credentials.cache.data
 
 
+def _oidc_aws_callback(context: dict[str, Any]) -> str:
+    token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
+    if not token_file:
+        raise RuntimeError(
+            'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
+        )
+    with open(token_file) as fid:
+        return fid.read().strip()
+
+
 @dataclass
 class _OIDCAuthenticator:
     username: str
@@ -85,9 +97,14 @@ class _OIDCAuthenticator:
     def get_current_token(self, use_callback: bool = True) -> Optional[str]:
         properties = self.properties
 
-        # TODO: DRIVERS-2672, handle machine callback here as well.
-        cb = properties.request_token_callback if use_callback else None
-        cb_type = "human"
+        if not use_callback:
+            cb = None
+        elif properties.request_token_callback:
+            cb = properties.request_token_callback
+            cb_type = "human"
+        elif properties.machine_token_callback:
+            cb = properties.machine_token_callback
+            cb_type = "machine"
 
         prev_token = self.access_token
         if prev_token:
@@ -104,7 +121,6 @@ class _OIDCAuthenticator:
                 if new_token != prev_token:
                     return new_token
 
-                # TODO: DRIVERS-2672 handle machine callback here.
                 if cb_type == "human":
                     context = {
                         "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
@@ -112,9 +128,15 @@ class _OIDCAuthenticator:
                         "refresh_token": self.refresh_token,
                     }
                     resp = cb(self.idp_info, context)
+                else:
+                    # TODO: handle CSOT for machine workflow.
+                    context = {
+                        "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
+                        "version": CALLBACK_VERSION,
+                    }
+                    resp = dict(access_token=cb(context))
 
-                    self.validate_request_token_response(resp)
-
+                self.validate_request_token_response(resp)
                 self.token_gen_id += 1
 
         return self.access_token
@@ -155,8 +177,7 @@ class _OIDCAuthenticator:
         return cmd
 
     def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
-        # TODO: DRIVERS-2672, check for provider_name in self.properties here.
-        if self.idp_info is None:
+        if not self.properties.provider_name and self.idp_info is None:
             return self.principal_step_cmd()
 
         token = self.get_current_token(use_callback)
@@ -193,8 +214,11 @@ class _OIDCAuthenticator:
 
         self.access_token = None
 
-        # TODO: DRIVERS-2672, check for provider_name in self.properties here.
-        # If so, we clear the access token and return finish_auth.
+        # If we are using machine callbacks, clear the access token and
+        # re-authenticate.
+        if self.properties.provider_name:
+            self.access_token = None
+            return self.authenticate(conn)
 
         # Next see if the idp info has changed.
         prev_idp_info = self.idp_info

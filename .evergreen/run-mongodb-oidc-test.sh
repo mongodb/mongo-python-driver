@@ -45,4 +45,5 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
+export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
 bash ./.evergreen/tox.sh -m test-eg

@@ -137,7 +137,7 @@ KMS_TLS_OPTS = {
 }
 
 
-# Build up a placeholder map.
+# Build up a placeholder maps.
 PLACEHOLDER_MAP = {}
 for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
@@ -149,6 +149,9 @@ for provider_name, provider_data in [
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
+
+PLACEHOLDER_VALUE_MAP = {}
+PLACEHOLDER_VALUE_MAP["/uriOptions/authMechanismProperties"] = "PROVIDER_NAME:aws"
 
 
 def interrupt_loop():
@@ -424,6 +427,14 @@ class EntityMapUtil:
             if path not in PLACEHOLDER_MAP:
                 raise ValueError(f"Could not find a placeholder value for {path}")
             return PLACEHOLDER_MAP[path]
+
+        for (key, value) in current.items():
+            if value != "$$placeholder":
+                continue
+            subpath = f"{path}/{key}"
+            if subpath not in PLACEHOLDER_VALUE_MAP:
+                raise ValueError(f"Could not find a placeholder value for {path}")
+            current[key] = PLACEHOLDER_VALUE_MAP[subpath]
 
         for key in list(current):
             value = current[key]

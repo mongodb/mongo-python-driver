@@ -38,7 +38,12 @@ from urllib.parse import quote
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.auth_aws import _authenticate_aws
-from pymongo.auth_oidc import _authenticate_oidc, _get_authenticator, _OIDCProperties
+from pymongo.auth_oidc import (
+    _authenticate_oidc,
+    _get_authenticator,
+    _oidc_aws_callback,
+    _OIDCProperties,
+)
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -164,6 +169,7 @@ def _build_credentials_tuple(
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
         request_token_callback = properties.get("request_token_callback")
+        machine_token_callback = properties.get("machine_token_callback")
         provider_name = properties.get("PROVIDER_NAME", "")
         default_allowed = [
             "*.mongodb.net",
@@ -175,12 +181,27 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
-        if not request_token_callback and provider_name != "aws":
-            raise ConfigurationError(
-                "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name of 'aws'"
-            )
+        msg = "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name and machine_token_callback"
+        if not request_token_callback and not provider_name:
+            raise ConfigurationError(msg)
+        elif machine_token_callback and not provider_name:
+            raise ConfigurationError(msg)
+        elif provider_name and not machine_token_callback:
+            if provider_name == "aws":
+                machine_token_callback = _oidc_aws_callback
+            else:
+                raise ConfigurationError(
+                    f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
+                )
+        elif provider_name and machine_token_callback:
+            if provider_name != "custom":
+                raise ConfigurationError(
+                    "When providing a machine token callback, the provider_name must be 'custom'"
+                )
+
         oidc_props = _OIDCProperties(
             request_token_callback=request_token_callback,
+            machine_token_callback=machine_token_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )
