@@ -413,10 +413,10 @@ class TestPooling(_TestPoolingBase):
 
     def test_csot_timeout_message(self):
         with self.assertRaises(Exception) as error:
-            with timeout(1):
-                self.client.db.t.find_one({"$where": delay(2)})
+            with timeout(0.001):
+                self.client.db.t.find_one({"$where": delay(1)})
 
-        self.assertTrue("(configured timeouts: timeoutMS: 1000.0ms" in str(error.exception))
+        self.assertTrue("(configured timeouts: timeoutMS: 1.0ms" in str(error.exception))
 
     def test_socket_timeout_message(self):
         client = rs_or_single_client(socketTimeoutMS=1)
