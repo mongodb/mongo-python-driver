@@ -513,7 +513,7 @@ def parse_uri(
     if path_part:
         dbase, _, opts = path_part.partition("?")
     else:
-        # No slash scheme_free, check for sole "?".
+        # There was no slash in scheme_free, check for a sole "?".
         host_part, _, opts = host_part.partition("?")
 
     if dbase:
