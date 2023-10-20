@@ -794,13 +794,11 @@ class TestClient(IntegrationTest):
         self.assertIsInstance(cursor, CommandCursor)
         helper_docs = list(cursor)
         self.assertTrue(len(helper_docs) > 0)
-        # sizeOnDisk can change between calls.
-        for doc_list in (helper_docs, cmd_docs):
-            for doc in doc_list:
-                doc.pop("sizeOnDisk", None)
-        self.assertEqual(helper_docs, cmd_docs)
-        for doc in helper_docs:
-            self.assertIs(type(doc), dict)
+        self.assertEqual(len(helper_docs), len(cmd_docs))
+        # PYTHON-3529 Some fields may change between calls, just compare names.
+        for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
+            self.assertIs(type(helper_doc), dict)
+            self.assertEqual(helper_doc.keys(), cmd_doc.keys())
         client = rs_or_single_client(document_class=SON)
         self.addCleanup(client.close)
         for doc in client.list_databases():
