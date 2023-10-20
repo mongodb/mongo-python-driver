@@ -393,7 +393,8 @@ def _raise_connection_failure(
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
-    msg += format_timeout_details(timeout_details)
+    if "configured timeouts" not in msg:
+        msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
@@ -417,7 +418,7 @@ def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
     socket_timeout = options.socket_timeout
     connect_timeout = options.connect_timeout
     if timeout:
-        details["operationTimeoutMS"] = timeout * 1000
+        details["timeoutMS"] = timeout * 1000
     if socket_timeout and not timeout:
         details["socketTimeoutMS"] = socket_timeout * 1000
     if connect_timeout:
@@ -429,7 +430,7 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
     result = ""
     if details:
         result += " (configured timeouts:"
-        for timeout in ["socketTimeoutMS", "operationTimeoutMS", "connectTimeoutMS"]:
+        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
             if timeout in details:
                 result += f" {timeout}: {details[timeout]}ms,"
         result = result[:-1]

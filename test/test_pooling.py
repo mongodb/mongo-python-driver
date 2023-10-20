@@ -23,7 +23,7 @@ import time
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import MongoClient, message
+from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 
 sys.path[0:0] = [""]
@@ -412,29 +412,39 @@ class TestPooling(_TestPoolingBase):
         print(len(pool.conns))
 
     def test_csot_timeout_message(self):
-        client = rs_or_single_client(timeoutMS=1)
-
         with self.assertRaises(Exception) as error:
-            client.db.t.find_one({"$where": delay(2)})
-            self.assertTrue(
-                "(configured timeouts: operationTimeoutMS: 1.0ms)" in str(error.exception)
-            )
+            with timeout(1):
+                self.client.db.t.find_one({"$where": delay(2)})
+
+        self.assertTrue("(configured timeouts: timeoutMS: 1000.0ms" in str(error.exception))
 
     def test_socket_timeout_message(self):
         client = rs_or_single_client(socketTimeoutMS=1)
 
         with self.assertRaises(Exception) as error:
             client.db.t.find_one({"$where": delay(2)})
-            self.assertTrue("(configured timeouts: socketTimeoutMS: 1.0ms)" in str(error.exception))
 
+        self.assertTrue("(configured timeouts: socketTimeoutMS: 1.0ms" in str(error.exception))
+
+    @client_context.require_no_mongos
     def test_connection_timeout_message(self):
-        client = rs_or_single_client("badhost", connectTimeoutMS=1, serverSelectionTimeoutMS=10)
+        client = rs_or_single_client(connectTimeoutMS=1)
 
-        with self.assertRaises(Exception) as error:
-            client.db.t.find_one({"$where": delay(2)})
-            self.assertTrue(
-                "(configured timeouts: connectTimeoutMS: 1.0ms)" in str(error.exception)
-            )
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "closeConnection": True,
+                "failCommands": ["find"],
+            },
+        }
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                client.db.t.find_one({"$where": delay(2)})
+
+        self.assertTrue("(configured timeouts: connectTimeoutMS: 1.0ms" in str(error.exception))
 
 
 class TestPoolMaxSize(_TestPoolingBase):
