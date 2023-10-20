@@ -185,9 +185,21 @@ class TestWriteOpsComparison(unittest.TestCase):
 
     def test_DeleteOneEquals(self):
         self.assertEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 42}))
+        self.assertEqual(DeleteOne({"foo": 42}, {"bar": 43}), DeleteOne({"foo": 42}, {"bar": 43}))
+        self.assertEqual(
+            DeleteOne({"foo": 42}, {"bar": 43}, {"hint": 1}),
+            DeleteOne({"foo": 42}, {"bar": 43}, {"hint": 1}),
+        )
 
     def test_DeleteOneNotEquals(self):
         self.assertNotEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 23}))
+        self.assertNotEqual(
+            DeleteOne({"foo": 42}, {"bar": 43}), DeleteOne({"foo": 42}, {"bar": 56})
+        )
+        self.assertNotEqual(
+            DeleteOne({"foo": 42}, {"bar": 43}, {"hint": 1}),
+            DeleteOne({"foo": 42}, {"bar": 43}, {"hint": 2}),
+        )
 
     def test_DeleteManyEquals(self):
         self.assertEqual(DeleteMany({"foo": 42}), DeleteMany({"foo": 42}))
