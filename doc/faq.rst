@@ -195,7 +195,7 @@ instance of :class:`~bson.objectid.ObjectId`. For example::
 
   >>> my_doc = {'x': 1}
   >>> collection.insert_one(my_doc)
-  <pymongo.results.InsertOneResult object at 0x7f3fc25bd640>
+  InsertOneResult(ObjectId('560db337fba522189f171720'), acknowledged=True)
   >>> my_doc
   {'x': 1, '_id': ObjectId('560db337fba522189f171720')}
 
@@ -531,9 +531,9 @@ objects as before:
     >>> from pymongo import MongoClient
     >>> client = MongoClient(datetime_conversion=DatetimeConversion.DATETIME_AUTO)
     >>> client.db.collection.insert_one({"x": datetime(1970, 1, 1)})
-    <pymongo.results.InsertOneResult object at 0x...>
+    InsertOneResult(ObjectId('...'), acknowledged=True)
     >>> client.db.collection.insert_one({"x": DatetimeMS(2**62)})
-    <pymongo.results.InsertOneResult object at 0x...>
+    InsertOneResult(ObjectId('...'), acknowledged=True)
     >>> for x in client.db.collection.find():
     ...     print(x)
     ...

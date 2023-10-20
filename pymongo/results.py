@@ -28,6 +28,9 @@ class _WriteResult:
     def __init__(self, acknowledged: bool) -> None:
         self.__acknowledged = acknowledged
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__acknowledged})"
+
     def _raise_if_unacknowledged(self, property_name: str) -> None:
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
@@ -67,6 +70,11 @@ class InsertOneResult(_WriteResult):
         self.__inserted_id = inserted_id
         super().__init__(acknowledged)
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.__inserted_id!r}, acknowledged={self.acknowledged})"
+        )
+
     @property
     def inserted_id(self) -> Any:
         """The inserted document's _id."""
@@ -81,6 +89,11 @@ class InsertManyResult(_WriteResult):
     def __init__(self, inserted_ids: list[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
         super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.__inserted_ids!r}, acknowledged={self.acknowledged})"
+        )
 
     @property
     def inserted_ids(self) -> list[Any]:
@@ -105,6 +118,9 @@ class UpdateResult(_WriteResult):
     def __init__(self, raw_result: Optional[Mapping[str, Any]], acknowledged: bool):
         self.__raw_result = raw_result
         super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def raw_result(self) -> Optional[Mapping[str, Any]]:
@@ -148,6 +164,9 @@ class DeleteResult(_WriteResult):
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
+
     @property
     def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
@@ -176,6 +195,9 @@ class BulkWriteResult(_WriteResult):
         """
         self.__bulk_api_result = bulk_api_result
         super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def bulk_api_result(self) -> dict[str, Any]:
