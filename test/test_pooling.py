@@ -426,7 +426,7 @@ class TestPooling(_TestPoolingBase):
 
         self.assertTrue("(configured timeouts: socketTimeoutMS: 1.0ms" in str(error.exception))
 
-    @client_context.require_no_mongos
+    @client_context.require_failCommand_fail_point
     def test_connection_timeout_message(self):
         client = rs_or_single_client(connectTimeoutMS=1)
 
