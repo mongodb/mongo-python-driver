@@ -126,11 +126,15 @@ class DeleteOne:
         )
 
     def __repr__(self) -> str:
-        return f"DeleteOne({self._filter!r}, {self._collation!r})"
+        return f"DeleteOne({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._collation) == (self._filter, self._collation)
+            return (other._filter, other._collation, other._hint) == (
+                self._filter,
+                self._collation,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -187,11 +191,15 @@ class DeleteMany:
         )
 
     def __repr__(self) -> str:
-        return f"DeleteMany({self._filter!r}, {self._collation!r})"
+        return f"DeleteMany({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._collation) == (self._filter, self._collation)
+            return (other._filter, other._collation, other._hint) == (
+                self._filter,
+                self._collation,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
