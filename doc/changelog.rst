@@ -5,6 +5,7 @@ Changes in Version 4.6
 ----------------------
 
 PyMongo 4.6 brings a number of improvements including:
+
 - Added the ``serverMonitoringMode`` URI and keyword argument to :class:`~pymongo.mongo_client.MongoClient`.
 - Improved client performance and reduced connection requirements in Function-as-a-service (FaaS)
   environments like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
@@ -22,7 +23,7 @@ PyMongo 4.6 brings a number of improvements including:
     >>> client.t.t.insert_one({})
     InsertOneResult(ObjectId('65319acdd55bb3a27ab5502b'), acknowledged=True)
     >>> client.t.t.insert_many([{} for _ in range(3)])
-    InsertManyResult([ObjectId('65319af2d55bb3a27ab5502c'), ObjectId('65319af2d55bb3a27ab5502d'), ObjectId('65319af2d55bb3a27ab5502e')], acknowledged=True)': [], 'writeConcernErrors': [], 'nInserted': 1, 'nUpserted': 0, 'nMatched': 0, 'nModified': 0, 'nRemoved': 0, 'upserted': []}, acknowledged=True)
+    InsertManyResult([ObjectId('6532f85e826f2b6125d6ce39'), ObjectId('6532f85e826f2b6125d6ce3a'), ObjectId('6532f85e826f2b6125d6ce3b')], acknowledged=True)
 
 - :meth:`~pymongo.uri_parser.parse_uri` now considers the delimiting slash (``/``)
   between hosts and connection options optional. For example,
