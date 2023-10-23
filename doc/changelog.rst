@@ -28,6 +28,8 @@ PyMongo 4.6 brings a number of improvements including:
 - :meth:`~pymongo.uri_parser.parse_uri` now considers the delimiting slash (``/``)
   between hosts and connection options optional. For example,
   "mongodb://example.com?tls=true" is now a valid URI.
+- Fixed a bug where PyMongo would incorrectly promote all cursors to exhaust cursors
+  when connected to load balanced MongoDB clusters or Serverless clusters.
 
 Changes in Version 4.5
 ----------------------
