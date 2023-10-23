@@ -565,7 +565,7 @@ class _GetMore:
 
         if use_cmd:
             spec = self.as_command(conn, apply_timeout=True)[0]
-            if self.conn_mgr:
+            if self.conn_mgr and self.exhaust:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
                 flags = 0
