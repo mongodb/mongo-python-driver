@@ -261,7 +261,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # coverage 7.3 dropped support for Python 3.7, keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
     python -m pip install pytest-cov "coverage>=5,<7.3"
-    TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
+    TEST_ARGS="$TEST_ARGS --cov"
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
