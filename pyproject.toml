@@ -163,3 +163,25 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]
 "green_framework_test.py" = ["T201"]
+
+[tool.coverage.run]
+branch = true
+source = ["pymongo", "bson", "gridfs" ]
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "if (.*and +)*_use_c( and.*)*:",
+    "def has_c",
+    "def get_version_string",
+    "^except AttributeError:",
+    "except ImportError:",
+    "raise NotImplementedError",
+    "return NotImplemented",
+    "_use_c = true",
+    "if __name__ == '__main__':",
+    ]
+partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
+
+[tool.coverage.html]
+directory = "htmlcov"
