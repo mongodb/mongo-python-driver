@@ -1259,8 +1259,8 @@ class TestCursor(IntegrationTest):
 
         def assertCursorKilled():
             wait_until(
-                lambda: len(client._MongoClient__kill_cursors_queue) == 0,
-                "waited for all killCursor requests to complete",
+                lambda: len(listener.succeeded_events),
+                "find successful killCursors command",
             )
 
             self.assertEqual(1, len(listener.started_events))
