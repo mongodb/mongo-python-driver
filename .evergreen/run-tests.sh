@@ -8,7 +8,7 @@ set -o xtrace
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
 #  SSL                  Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
-#  C_EXTENSIONS         If non-empty, c extensions are enabled.
+#  C_EXTENSIONS         Pass --no_ext to skip installing the C extensions.
 #  COVERAGE             If non-empty, run the test suite with coverage.
 #  COMPRESSORS          If non-empty, install appropriate compressor.
 #  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
@@ -272,12 +272,7 @@ fi
 PIP_QUIET=0 python -m pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-        python setup.py build_ext -i
-        # This will set a non-zero exit status if either import fails,
-        # causing this script to exit.
-        python -c "from bson import _cbson; from pymongo import _cmessage"
-    fi
+    .evergreen/check-c-extensions.sh
     python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
