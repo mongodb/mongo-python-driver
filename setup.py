@@ -119,10 +119,11 @@ ext_modules = [
 ]
 
 
-if "--no_ext" in sys.argv:
-    sys.argv.remove("--no_ext")
-    ext_modules = []
-if os.environ.get("NO_EXT"):
+if "--no_ext" in sys.argv or os.environ.get("NO_EXT"):
+    try:
+        sys.argv.remove("--no_ext")
+    except ValueError:
+        pass
     ext_modules = []
 elif sys.platform.startswith("java") or sys.platform == "cli" or "PyPy" in sys.version:
     sys.stdout.write(
