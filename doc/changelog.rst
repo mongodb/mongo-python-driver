@@ -604,6 +604,135 @@ in this release.
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
 .. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
 
+Changes in Version 3.13.0
+-------------------------
+
+Version 3.13 provides an upgrade path to PyMongo 4.x. Most of the API changes
+from PyMongo 4.0 have been backported in a backward compatible way, allowing
+applications to be written against PyMongo >= 3.13, rather then PyMongo 3.x or
+PyMongo 4.x. See the `PyMongo 4 Migration Guide`_ for detailed examples.
+
+Notable improvements
+....................
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
+
+
+Issues Resolved
+...............
+
+PyMongo 3.13 drops support for Python 3.4.
+
+Bug fixes
+.........
+
+- Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
+  ``codec_options`` argument (`PYTHON-3222`_).
+- Fixed a bug where :func:`~bson.decode_all` did not accept ``codec_options``
+  as a keyword argument (`PYTHON-3222`_).
+
+Deprecations
+............
+- Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
+  :meth:`~pymongo.collection.Collection.inline_map_reduce`.
+  Use :meth:`~pymongo.collection.Collection.aggregate` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+  Use :attr:`~pymongo.mongo_client.options.event_listeners` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_pool_size` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_idle_time_seconds` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+  Use :attr:`~pymongo.mongo_client.options.local_threshold_ms` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+  Use :attr:`~pymongo.mongo_client.options.server_selection_timeout` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+  Use :attr:`~pymongo.mongo_client.options.retry_writes` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+  Use :attr:`~pymongo.mongo_client.options.retry_reads` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
+  :attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
+  :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+  were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+  with mixed versions. Use the `hello command`_ to get the authoritative
+  value from the remote server instead. Code like this::
+
+    max_bson_size = client.max_bson_size
+    max_message_size = client.max_message_size
+    max_write_batch_size = client.max_write_batch_size
+
+can be changed to this::
+
+    doc = client.admin.command('hello')
+    max_bson_size = doc['maxBsonObjectSize']
+    max_message_size = doc['maxMessageSizeBytes']
+    max_write_batch_size = doc['maxWriteBatchSize']
+
+.. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
+
+See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4 Migration Guide: https://pymongo.readthedocs.io/en/stable/migrate-to-pymongo4.html
+.. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
+.. _PyMongo 3.13.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31570
+
+Changes in Version 3.12.3
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.3 fixes a bug that prevented :meth:`bson.json_util.loads` from
+decoding a document with a non-string "$regex" field (`PYTHON-3028`_).
+
+See the `PyMongo 3.12.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3028: https://jira.mongodb.org/browse/PYTHON-3028
+.. _PyMongo 3.12.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32505
+
+Changes in Version 3.12.2
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.2 fixes a number of bugs:
+
+- Fixed a bug that prevented PyMongo from retrying bulk writes
+  after a ``writeConcernError`` on MongoDB 4.4+ (`PYTHON-2984`_).
+- Fixed a bug that could cause the driver to hang during automatic
+  client side field level encryption (`PYTHON-3017`_).
+
+See the `PyMongo 3.12.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2984: https://jira.mongodb.org/browse/PYTHON-2984
+.. _PYTHON-3017: https://jira.mongodb.org/browse/PYTHON-3017
+.. _PyMongo 3.12.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32310
+
+Changes in Version 3.12.1
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.1 fixes a number of bugs:
+
+- Fixed a bug that caused a multi-document transaction to fail when the first
+  operation was large bulk write (>48MB) that required splitting a batched
+  write command (`PYTHON-2915`_).
+- Fixed a bug that caused the ``tlsDisableOCSPEndpointCheck`` URI option to
+  be applied incorrectly (`PYTHON-2866`_).
+
+See the `PyMongo 3.12.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2915: https://jira.mongodb.org/browse/PYTHON-2915
+.. _PYTHON-2866: https://jira.mongodb.org/browse/PYTHON-2866
+.. _PyMongo 3.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31527
+
 Changes in Version 3.12.0
 -------------------------
 
