@@ -412,18 +412,47 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
 
+    @client_context.require_failCommand_fail_point
     def test_csot_timeout_message(self):
-        with self.assertRaises(Exception) as error:
-            with timeout(0.5):
-                self.client.db.t.find_one({"$where": delay(2)})
+        client = rs_or_single_client(appName="connectionTimeoutApp")
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+                "failCommands": ["find"],
+                "appName": "connectionTimeoutApp",
+            },
+        }
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                with timeout(0.5):
+                    client.db.t.find_one({"$where": delay(2)})
 
         self.assertTrue("(configured timeouts: timeoutMS: 500.0ms" in str(error.exception))
 
+    @client_context.require_failCommand_fail_point
     def test_socket_timeout_message(self):
-        client = rs_or_single_client(socketTimeoutMS=500)
+        client = rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
 
-        with self.assertRaises(Exception) as error:
-            client.db.t.find_one({"$where": delay(2)})
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+                "failCommands": ["find"],
+                "appName": "connectionTimeoutApp",
+            },
+        }
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                client.db.t.find_one({"$where": delay(2)})
 
         self.assertTrue(
             "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)"
