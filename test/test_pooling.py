@@ -427,6 +427,8 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
+        client.db.t.insert_one({"x": 1})
+
         with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
                 with timeout(0.5):
@@ -449,6 +451,8 @@ class TestPooling(_TestPoolingBase):
                 "appName": "connectionTimeoutApp",
             },
         }
+
+        client.db.t.insert_one({"x": 1})
 
         with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
