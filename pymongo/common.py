@@ -56,7 +56,6 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
 
-
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
@@ -803,7 +802,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "sockettimeoutms",
     "waitqueuetimeoutms",
 ]
-
 
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
