@@ -464,6 +464,9 @@ class TestPooling(_TestPoolingBase):
         )
 
     @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(
+        4, 9, 0
+    )  # configureFailPoint does not allow failure on handshake before 4.9, fixed in SERVER-49336
     def test_connection_timeout_message(self):
         # Mock a connection failing due to timeout.
         mock_connection_timeout = {
