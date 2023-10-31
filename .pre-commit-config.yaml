@@ -86,6 +86,7 @@ repos:
     files: \.py$
     exclude: "^(test|tools)/"
     stages: [manual]
+    args: ["--no-strict-imports"]
 
 - repo: https://github.com/codespell-project/codespell
   rev: "v2.2.6"

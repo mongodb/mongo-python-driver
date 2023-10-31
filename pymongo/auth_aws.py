@@ -17,7 +17,7 @@ from __future__ import annotations
 
 try:
     import pymongo_auth_aws  # type:ignore[import]
-    from pymongo_auth_aws import (
+    from pymongo_auth_aws import (  # type:ignore[import]
         AwsCredential,
         AwsSaslContext,
         PyMongoAuthAwsError,
