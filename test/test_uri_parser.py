@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import sys
 import warnings
+from typing import Any
 from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
@@ -470,7 +471,7 @@ class TestURI(unittest.TestCase):
             "&authMechanismProperties=AWS_SESSION_TOKEN:" + quoted_val
         )
         res = parse_uri(uri)
-        options = {
+        options: dict[str, Any] = {
             "authmechanism": "MONGODB-AWS",
             "authmechanismproperties": {"AWS_SESSION_TOKEN": unquoted_val},
         }

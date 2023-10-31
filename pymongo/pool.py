@@ -54,7 +54,7 @@ from pymongo.common import (
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
 )
-from pymongo.errors import (
+from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
     ConnectionFailure,

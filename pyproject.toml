@@ -110,8 +110,11 @@ filterwarnings = ["error"]
 python_version = "3.7"
 strict = true
 show_error_codes = true
-enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
-warn_unreachable = true
+disable_error_code = ["type-arg", "no-any-return"]
+
+[[tool.mypy.overrides]]
+module = ["test.*"]
+disable_error_code = ["no-untyped-def", "no-untyped-call"]
 
 [tool.ruff]
 target-version = "py37"
@@ -206,4 +209,5 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 directory = "htmlcov"
 
 [tool.repo-review]
-ignore = ["PY007", "PP308", "GH102", "PC140", "PC180", "PC901", "MY100"]
+ignore = ["PY007", "PP308", "GH102", "PC140", "PC180", "PC901",
+          "MY100", "MY103", "MY104", "MY105", "MY106"]
