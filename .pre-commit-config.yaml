@@ -38,6 +38,20 @@ repos:
     additional_dependencies:
     - black==22.3.0
 
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: "v1.10.0"
+  hooks:
+    - id: rst-backticks
+    - id: rst-directive-colons
+    - id: rst-inline-touching-normal
+
+- repo: https://github.com/rstcheck/rstcheck
+  rev: v6.2.0
+  hooks:
+  - id: rstcheck
+    additional_dependencies: [sphinx]
+    args: ["--ignore-directives=doctest,testsetup,todo,automodule","--ignore-substitutions=release", "--report-level=error"]
+
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit
 - repo: https://github.com/shellcheck-py/shellcheck-py

@@ -2,7 +2,7 @@ Server Selector Example
 =======================
 
 Users can exert fine-grained control over the `server selection algorithm`_
-by setting the `server_selector` option on the :class:`~pymongo.MongoClient`
+by setting the ``server_selector`` option on the :class:`~pymongo.MongoClient`
 to an appropriate callable. This example shows how to use this functionality
 to prefer servers running on ``localhost``.
 

@@ -37,7 +37,7 @@ time. Avoid doing this:
 
    >>> result = db.objects.insert_one({"last_modified": datetime.datetime.now()})
 
-The value for `last_modified` is very different between these two examples, even
+The value for ``last_modified`` is very different between these two examples, even
 though both documents were stored at around the same local time. This will be
 confusing to the application that reads them:
 
@@ -47,7 +47,7 @@ confusing to the application that reads them:
    [datetime.datetime(2015, 7, 8, 18, 17, 28, 324000),
     datetime.datetime(2015, 7, 8, 11, 17, 42, 911000)]
 
-:class:`bson.codec_options.CodecOptions` has a `tz_aware` option that enables
+:class:`bson.codec_options.CodecOptions` has a ``tz_aware`` option that enables
 "aware" :class:`datetime.datetime` objects, i.e., datetimes that know what
 timezone they're in. By default, PyMongo retrieves naive datetimes:
 
@@ -65,7 +65,7 @@ Saving Datetimes with Timezones
 -------------------------------
 
 When storing :class:`datetime.datetime` objects that specify a timezone
-(i.e. they have a `tzinfo` property that isn't ``None``), PyMongo will convert
+(i.e. they have a ``tzinfo`` property that isn't ``None``), PyMongo will convert
 those datetimes to UTC automatically:
 
 .. doctest::
@@ -82,12 +82,12 @@ Reading Time
 
 As previously mentioned, by default all :class:`datetime.datetime` objects
 returned by PyMongo will be naive but reflect UTC (i.e. the time as stored in
-MongoDB). By setting the `tz_aware` option on
+MongoDB). By setting the ``tz_aware`` option on
 :class:`~bson.codec_options.CodecOptions`, :class:`datetime.datetime` objects
-will be timezone-aware and have a `tzinfo` property that reflects the UTC
+will be timezone-aware and have a ``tzinfo`` property that reflects the UTC
 timezone.
 
-PyMongo 3.1 introduced a `tzinfo` property that can be set on
+PyMongo 3.1 introduced a ``tzinfo`` property that can be set on
 :class:`~bson.codec_options.CodecOptions` to convert :class:`datetime.datetime`
 objects to local time automatically. For example, if we wanted to read all times
 out of MongoDB in US/Pacific time:
@@ -159,7 +159,7 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`:
 :attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_CLAMP` will clamp
 resulting :class:`~datetime.datetime` objects to be within
 :attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
-(trimmed to `999000` microseconds):
+(trimmed to ``999000`` microseconds):
 
 .. doctest::
 

@@ -5,7 +5,7 @@ Periodic Executors
 
 PyMongo implements a :class:`~periodic_executor.PeriodicExecutor` for two
 purposes: as the background thread for :class:`~monitor.Monitor`, and to
-regularly check if there are `OP_KILL_CURSORS` messages that must be sent to the server.
+regularly check if there are ``OP_KILL_CURSORS`` messages that must be sent to the server.
 
 Killing Cursors
 ---------------
@@ -17,7 +17,7 @@ the cursor before finishing iteration::
     for doc in collection.find():
         raise Exception()
 
-We try to send an `OP_KILL_CURSORS` to the server to tell it to clean up the
+We try to send an ``OP_KILL_CURSORS`` to the server to tell it to clean up the
 server-side cursor. But we must not take any locks directly from the cursor's
 destructor (see `PYTHON-799`_), so we cannot safely use the PyMongo data
 structures required to send a message. The solution is to add the cursor's id
@@ -26,7 +26,7 @@ to an array on the :class:`~mongo_client.MongoClient` without taking any locks.
 Each client has a :class:`~periodic_executor.PeriodicExecutor` devoted to
 checking the array for cursor ids. Any it sees are the result of cursors that
 were freed while the server-side cursor was still open. The executor can safely
-take the locks it needs in order to send the `OP_KILL_CURSORS` message.
+take the locks it needs in order to send the ``OP_KILL_CURSORS`` message.
 
 .. _PYTHON-799: https://jira.mongodb.org/browse/PYTHON-799
 
@@ -103,7 +103,7 @@ the exponential backoff is restarted frequently. Overall, the condition variable
 is not waking a few times a second, but hundreds of times. (See `PYTHON-983`_.)
 
 Thus the current design of periodic executors is surprisingly simple: they
-do a simple `time.sleep` for a half-second, check if it is time to wake or
+do a simple ``time.sleep`` for a half-second, check if it is time to wake or
 terminate, and sleep again.
 
 .. _Server Discovery And Monitoring Spec: https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check
