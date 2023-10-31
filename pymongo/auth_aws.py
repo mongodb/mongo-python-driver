@@ -17,7 +17,7 @@ from __future__ import annotations
 
 try:
     import pymongo_auth_aws  # type:ignore[import]
-    from pymongo_auth_aws import (  # type:ignore[import]
+    from pymongo_auth_aws import (
         AwsCredential,
         AwsSaslContext,
         PyMongoAuthAwsError,
@@ -33,7 +33,7 @@ except ImportError:
     _HAVE_MONGODB_AWS = False
 
 try:
-    from pymongo_auth_aws.auth import (
+    from pymongo_auth_aws.auth import (  # type:ignore[import]
         set_cached_credentials,
         set_use_cached_credentials,
     )

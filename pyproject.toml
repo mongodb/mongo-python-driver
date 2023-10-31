@@ -108,6 +108,7 @@ filterwarnings = [
     "error",
     "module:use an explicit session with no_cursor_timeout=True:UserWarning",
     "module:serverselectiontimeoutms must be:UserWarning",
+    "module:Unsupported compressor:UserWarning",
 ]
 
 [tool.mypy]
