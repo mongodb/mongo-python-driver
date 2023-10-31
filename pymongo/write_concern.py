@@ -20,6 +20,14 @@ from typing import Any, Optional, Union
 from pymongo.errors import ConfigurationError
 
 
+# Duplicated here to avoid a circular import.
+def validate_boolean(option: str, value: Any) -> bool:
+    """Validates that 'value' is True or False."""
+    if isinstance(value, bool):
+        return value
+    raise TypeError(f"{option} must be True or False, was: {option}={value}")
+
+
 class WriteConcern:
     """WriteConcern
 
@@ -66,16 +74,10 @@ class WriteConcern:
             self.__document["wtimeout"] = wtimeout
 
         if j is not None:
-            # Delayed import to avoid circular reference.
-            from pymongo.common import validate_boolean
-
             validate_boolean("j", j)
             self.__document["j"] = j
 
         if fsync is not None:
-            # Delayed import to avoid circular reference.
-            from pymongo.common import validate_boolean
-
             validate_boolean("fsync", fsync)
             if j and fsync:
                 raise ConfigurationError("Can't set both j and fsync at the same time")
