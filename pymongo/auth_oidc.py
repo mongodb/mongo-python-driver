@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 @dataclass
 class _OIDCProperties:
     request_token_callback: Optional[Callable[..., dict]]
-    machine_token_callback: Optional[Callable[..., str]]
+    custom_token_callback: Optional[Callable[..., str]]
     provider_name: Optional[str]
     allowed_hosts: list[str]
 
@@ -102,8 +102,8 @@ class _OIDCAuthenticator:
         elif properties.request_token_callback:
             cb = properties.request_token_callback
             cb_type = "human"
-        elif properties.machine_token_callback:
-            cb = properties.machine_token_callback
+        elif properties.custom_token_callback:
+            cb = properties.custom_token_callback
             cb_type = "machine"
 
         prev_token = self.access_token
