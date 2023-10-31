@@ -30,6 +30,7 @@ PyMongo 4.6 brings a number of improvements including:
   "mongodb://example.com?tls=true" is now a valid URI.
 - Fixed a bug where PyMongo would incorrectly promote all cursors to exhaust cursors
   when connected to load balanced MongoDB clusters or Serverless clusters.
+- Added the :ref:`network-compression-example` documentation page.
 
 Changes in Version 4.5
 ----------------------
@@ -1278,8 +1279,8 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
 
 - Support for single replica set multi-document ACID transactions.
   See :ref:`transactions-ref`.
-- Support for wire protocol compression. See the
-  :meth:`~pymongo.mongo_client.MongoClient` documentation for details.
+- Support for wire protocol compression via the new ``compressors`` URI and keyword argument to
+  :meth:`~pymongo.mongo_client.MongoClient`. See :ref:`network-compression-example` for details.
 - Support for Python 3.7.
 - New count methods, :meth:`~pymongo.collection.Collection.count_documents`
   and :meth:`~pymongo.collection.Collection.estimated_document_count`.
