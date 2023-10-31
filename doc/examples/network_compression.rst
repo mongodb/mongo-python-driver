@@ -20,14 +20,12 @@ Applications can enable wire protocol compression via the ``compressors`` URI an
 keyword argument to :meth:`~pymongo.mongo_client.MongoClient`. For example::
 
   >>> client = MongoClient(compressors='zlib')
-  >>> client.test.test.insert_one({'data': 's'*1*1024*1024})  # Will be compressed with zlib.
 
 When multiple compression algorithms are given, the driver selects the first one in the
 list supported by the MongoDB instance to which it is connected. For example::
 
-  >>> client = MongoClient(compressors='snappy,zlib')
-  >>> client.test.test.insert_one({'data': 's'*1*1024*1024})  # Will be compressed with snappy.
+  >>> client = MongoClient(compressors='snappy,zstandard,zlib')
 
 The ``compressors`` option can also be set via the URI::
 
-  >>> client = MongoClient('mongodb://example.com/?compressors=zstandard,snappy,zlib')
+  >>> client = MongoClient('mongodb://example.com/?compressors=snappy,zstandard,zlib')
