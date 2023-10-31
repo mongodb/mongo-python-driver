@@ -125,7 +125,7 @@ drop below the minimum, more sockets are opened until the minimum is reached.
 
 The maximum number of milliseconds that a connection can remain idle in the
 pool before being removed and replaced can be set with ``maxIdleTimeMS``, which
-defaults to `None` (no limit).
+defaults to ``None`` (no limit).
 
 The default configuration for a :class:`~pymongo.mongo_client.MongoClient`
 works for most applications::
@@ -495,9 +495,9 @@ and :class:`~bson.dbref.DBRef`) that are not supported in JSON.
 
 `python-bsonjs <https://pypi.python.org/pypi/python-bsonjs>`_ is a fast
 BSON to MongoDB Extended JSON converter built on top of
-`libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` does not
+`libbson <https://github.com/mongodb/libbson>`_. ``python-bsonjs`` does not
 depend on PyMongo and can offer a nice performance improvement over
-:mod:`~bson.json_util`. `python-bsonjs` works best with PyMongo when using
+:mod:`~bson.json_util`. ``python-bsonjs`` works best with PyMongo when using
 :class:`~bson.raw_bson.RawBSONDocument`.
 
 Why do I get OverflowError decoding dates stored by another language's driver?
@@ -543,7 +543,7 @@ objects as before:
 For other options, please refer to
 :class:`~bson.codec_options.DatetimeConversion`.
 
-Another option that does not involve setting `datetime_conversion` is to to
+Another option that does not involve setting ``datetime_conversion`` is to to
 filter out documents values outside of the range supported by
 :class:`~datetime.datetime`:
 

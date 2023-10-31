@@ -115,7 +115,7 @@ To run ``pre-commit`` manually, run::
 
     pre-commit run --all-files
 
-To run a manual hook like `flake8` manually, run::
+To run a manual hook like ``flake8`` manually, run::
 
     pre-commit run --all-files --hook-stage manual flake8
 
