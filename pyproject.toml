@@ -110,15 +110,17 @@ filterwarnings = [
     "module:serverselectiontimeoutms must be:UserWarning",
     "module:Unsupported compressor:UserWarning",
     "module:zlibcompressionlevel must be:UserWarning",
+    "module:Wire protocol compression with:UserWarning",
+    # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
-    "module:Wire protocol compression with:UserWarning",
 ]
 
 [tool.mypy]
 python_version = "3.7"
 strict = true
 show_error_codes = true
+pretty = true
 disable_error_code = ["type-arg", "no-any-return"]
 
 [[tool.mypy.overrides]]
