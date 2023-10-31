@@ -55,9 +55,6 @@ class WriteConcern:
         j: Optional[bool] = None,
         fsync: Optional[bool] = None,
     ) -> None:
-        # Delayed import to avoid circular reference
-        from pymongo.common import validate_boolean
-
         self.__document: dict[str, Any] = {}
         self.__acknowledged = True
 
@@ -69,10 +66,16 @@ class WriteConcern:
             self.__document["wtimeout"] = wtimeout
 
         if j is not None:
+            # Delayed import to avoid circular reference.
+            from pymongo.common import validate_boolean
+
             validate_boolean("j", j)
             self.__document["j"] = j
 
         if fsync is not None:
+            # Delayed import to avoid circular reference.
+            from pymongo.common import validate_boolean
+
             validate_boolean("fsync", fsync)
             if j and fsync:
                 raise ConfigurationError("Can't set both j and fsync at the same time")

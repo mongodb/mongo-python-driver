@@ -17,7 +17,11 @@ from __future__ import annotations
 
 try:
     import pymongo_auth_aws  # type:ignore[import]
-    from pymongo_auth_aws import AwsCredential, AwsSaslContext, PyMongoAuthAwsError
+    from pymongo_auth_aws import (
+        AwsCredential,
+        AwsSaslContext,
+        PyMongoAuthAwsError,
+    )
 
     _HAVE_MONGODB_AWS = True
 except ImportError:

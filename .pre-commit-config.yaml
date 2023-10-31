@@ -99,9 +99,3 @@ repos:
     # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
     # - test/test_client.py:188: te ==> the, be, we, to
     args: ["-L", "fle,fo,infinit,isnt,nin,te"]
-
-- repo: https://github.com/scientific-python/cookie
-  rev: "2023.10.27"
-  hooks:
-    - id: sp-repo-review
-      additional_dependencies: ["repo-review[cli]"]

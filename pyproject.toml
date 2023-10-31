@@ -207,7 +207,3 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 
 [tool.coverage.html]
 directory = "htmlcov"
-
-[tool.repo-review]
-ignore = ["PY007", "PP308", "GH102", "PC140", "PC180", "PC901",
-          "MY100", "MY103", "MY104", "MY105", "MY106"]
