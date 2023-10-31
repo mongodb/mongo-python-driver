@@ -80,7 +80,7 @@ from pymongo.results import (
     UpdateResult,
 )
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
-from pymongo.write_concern import WriteConcern
+from pymongo.write_concern import WriteConcern, validate_boolean
 
 T = TypeVar("T")
 
@@ -774,7 +774,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
-        common.validate_boolean("upsert", upsert)
+        validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -3092,7 +3092,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if sort is not None:
             cmd["sort"] = helpers._index_document(sort)
         if upsert is not None:
-            common.validate_boolean("upsert", upsert)
+            validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):

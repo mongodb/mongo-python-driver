@@ -1089,7 +1089,7 @@ class TestCursor(IntegrationTest):
                     for _doc in cursor:
                         pass
                 except OperationFailure as e:
-                    if e.code != 237:
+                    if e.code != 237:  # CursorKilled error code
                         raise
 
         t = threading.Thread(target=iterate_cursor)
