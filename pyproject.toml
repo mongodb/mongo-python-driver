@@ -106,6 +106,7 @@ faulthandler_timeout = 1500
 xfail_strict = true
 filterwarnings = [
     "error",
+    "module:use an explicit session with no_cursor_timeout=True:UserWarning",
 ]
 
 [tool.mypy]
