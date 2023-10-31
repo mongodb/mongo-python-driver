@@ -1085,8 +1085,12 @@ class TestCursor(IntegrationTest):
 
         def iterate_cursor():
             while cursor.alive:
-                for _doc in cursor:
-                    pass
+                try:
+                    for _doc in cursor:
+                        pass
+                except OperationFailure as e:
+                    if e.code != 237:
+                        raise
 
         t = threading.Thread(target=iterate_cursor)
         t.start()
