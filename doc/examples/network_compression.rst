@@ -29,3 +29,9 @@ list supported by the MongoDB instance to which it is connected. For example::
 The ``compressors`` option can also be set via the URI::
 
   >>> client = MongoClient('mongodb://example.com/?compressors=snappy,zstandard,zlib')
+
+Additionally, zlib compression allows specifying a compression level with supported values from -1 to 9::
+
+  >>> client = MongoClient(compressors='zlib', zlibCompressionLevel=-1)
+
+The ``zlibCompressionLevel`` is passed as the ``level`` argument to :func:`zlib.compress`.
