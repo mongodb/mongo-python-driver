@@ -111,6 +111,7 @@ filterwarnings = [
     "module:Unsupported compressor:UserWarning",
     "module:zlibcompressionlevel must be:UserWarning",
     "module:unclosed <socket.socket:ResourceWarning",
+    "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:Wire protocol compression with:UserWarning",
 ]
 
