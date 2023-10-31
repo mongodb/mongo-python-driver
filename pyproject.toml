@@ -109,6 +109,7 @@ filterwarnings = [
     "module:use an explicit session with no_cursor_timeout=True:UserWarning",
     "module:serverselectiontimeoutms must be:UserWarning",
     "module:Unsupported compressor:UserWarning",
+    "module:zlibcompressionlevel must be:UserWarning",
     "module:unclosed <socket.socket:ResourceWarning",
 ]
 
