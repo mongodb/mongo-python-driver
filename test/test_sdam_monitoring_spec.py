@@ -88,7 +88,6 @@ def compare_events(expected_dict, actual):
             )
 
     elif expected_type == "server_description_changed_event":
-
         if not isinstance(actual, monitoring.ServerDescriptionChangedEvent):
             return (False, "Expected ServerDescriptionChangedEvent, got %s" % (actual.__class__))
         if expected["address"] != "{}:{}".format(*actual.server_address):
@@ -197,7 +196,7 @@ def create_test(scenario_def):
 
         try:
             for phase in scenario_def["phases"]:
-                for (source, response) in phase.get("responses", []):
+                for source, response in phase.get("responses", []):
                     source_address = clean_node(source)
                     topology.on_change(
                         ServerDescription(

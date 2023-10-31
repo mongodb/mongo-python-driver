@@ -356,7 +356,6 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
 
 
 class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
-
     TypeA: Any
     TypeB: Any
     fallback_encoder_A2B: Any

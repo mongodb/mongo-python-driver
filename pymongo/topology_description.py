@@ -586,7 +586,6 @@ def _update_rs_from_primary(
             server.server_type is SERVER_TYPE.RSPrimary
             and server.address != server_description.address
         ):
-
             # Reset old primary's type to Unknown.
             sds[server.address] = server.to_unknown()
 

@@ -87,7 +87,6 @@ class SrvPollingKnobs:
 
 
 class TestSrvPolling(unittest.TestCase):
-
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
         ("localhost.test.build.10gen.cc", 27018),

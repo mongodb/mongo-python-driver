@@ -267,7 +267,13 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._doc, other._upsert, other._collation, other._hint,) == (
+            return (
+                other._filter,
+                other._doc,
+                other._upsert,
+                other._collation,
+                other._hint,
+            ) == (
                 self._filter,
                 self._doc,
                 self._upsert,

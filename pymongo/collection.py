@@ -112,7 +112,6 @@ class ReturnDocument:
 
 
 if TYPE_CHECKING:
-
     import bson
     from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession

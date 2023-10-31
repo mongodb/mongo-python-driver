@@ -122,7 +122,6 @@ class _AggregationCommand:
     def get_read_preference(
         self, session: Optional[ClientSession]
     ) -> Union[_AggWritePref, _ServerMode]:
-
         if self._write_preference:
             return self._write_preference
         pref = self._target._read_preference_for(session)

@@ -31,7 +31,6 @@ from bson.son import SON
 
 
 class TestRawBSONDocument(IntegrationTest):
-
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
     #  'name': 'Sherlock',
     #  'addresses': [{'street': 'Baker Street'}]}

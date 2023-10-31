@@ -2316,7 +2316,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
-
     MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
             "region": "us-east-1",

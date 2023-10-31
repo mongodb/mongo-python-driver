@@ -104,7 +104,11 @@ log_cli_level = "INFO"
 norecursedirs = ["test/*"]
 faulthandler_timeout = 1500
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "module:use an explicit session with no_cursor_timeout=True:UserWarning",
+    "module:serverselectiontimeoutms must be greater than:UserWarning",
+]
 
 [tool.mypy]
 python_version = "3.7"
