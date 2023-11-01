@@ -116,6 +116,8 @@ filterwarnings = [
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
+    # https://github.com/eventlet/eventlet/issues/818
+    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning"
 ]
 
 [tool.mypy]
