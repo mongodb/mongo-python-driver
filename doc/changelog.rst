@@ -31,6 +31,7 @@ PyMongo 4.6 brings a number of improvements including:
 - Fixed a bug where PyMongo would incorrectly promote all cursors to exhaust cursors
   when connected to load balanced MongoDB clusters or Serverless clusters.
 - Added the :ref:`network-compression-example` documentation page.
+- Added more timeout information to network errors.
 
 Changes in Version 4.5
 ----------------------
