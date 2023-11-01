@@ -36,4 +36,4 @@ Additionally, zlib compression allows specifying a compression level with suppor
 
 The ``zlibCompressionLevel`` is passed as the ``level`` argument to :func:`zlib.compress`.
 
-.. seealso:: The MongoDB documentation on `network compression URI options <https://www.mongodb.com/docs/manual/reference/connection-string/#compression-options>`_.
+.. seealso:: The MongoDB documentation on `network compression URI options <https://dochub.mongodb.org/core/compression-options>`_.
