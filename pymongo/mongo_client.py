@@ -402,6 +402,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             package. By default no compression is used. Compression support
             must also be enabled on the server. MongoDB 3.6+ supports snappy
             and zlib compression. MongoDB 4.2+ adds support for zstd.
+            See :ref:`network-compression-example` for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
             are -1 through 9. -1 tells the zlib library to use its default
