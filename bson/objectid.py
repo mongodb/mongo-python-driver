@@ -57,7 +57,7 @@ class ObjectId:
 
     _type_marker = 7
 
-    def __init__(self, oid: Optional[Union[str, "ObjectId", bytes]] = None) -> None:
+    def __init__(self, oid: Optional[Union[str, ObjectId, bytes]] = None) -> None:
         """Initialize a new ObjectId.
 
         An ObjectId is a 12-byte unique identifier consisting of:
@@ -103,7 +103,7 @@ class ObjectId:
             self.__validate(oid)
 
     @classmethod
-    def from_datetime(cls: Type["ObjectId"], generation_time: datetime.datetime) -> "ObjectId":
+    def from_datetime(cls: Type[ObjectId], generation_time: datetime.datetime) -> ObjectId:
         """Create a dummy ObjectId instance with a specific generation time.
 
         This method is useful for doing range queries on a field
@@ -138,7 +138,7 @@ class ObjectId:
         return cls(oid)
 
     @classmethod
-    def is_valid(cls: Type["ObjectId"], oid: Any) -> bool:
+    def is_valid(cls: Type[ObjectId], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
         :Parameters:
@@ -245,7 +245,7 @@ class ObjectId:
         return binascii.hexlify(self.__id).decode()
 
     def __repr__(self) -> str:
-        return f"ObjectId('{str(self)}')"
+        return f"ObjectId('{self!s}')"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):

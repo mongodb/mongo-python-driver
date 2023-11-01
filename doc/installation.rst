@@ -30,13 +30,16 @@ Dependencies
 
 PyMongo supports CPython 3.7+ and PyPy3.7+.
 
-Required dependencies:
+Required dependencies
+.....................
 
 Support for mongodb+srv:// URIs requires `dnspython
 <https://pypi.python.org/pypi/dnspython>`_
 
+.. _optional-deps:
 
-Optional dependencies:
+Optional dependencies
+.....................
 
 GSSAPI authentication requires `pykerberos
 <https://pypi.python.org/pypi/pykerberos>`_ on Unix or `WinKerberos

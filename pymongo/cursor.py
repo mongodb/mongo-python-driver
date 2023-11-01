@@ -73,7 +73,6 @@ if TYPE_CHECKING:
 _CURSOR_CLOSED_ERRORS = frozenset(
     [
         43,  # CursorNotFound
-        50,  # MaxTimeMSExpired
         175,  # QueryPlanKilled
         237,  # CursorKilled
         # On a tailable cursor, the following errors mean the capped collection
@@ -335,7 +334,7 @@ class Cursor(Generic[_DocumentType]):
     def __del__(self) -> None:
         self.__die()
 
-    def rewind(self) -> "Cursor[_DocumentType]":
+    def rewind(self) -> Cursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.
 
         Reset this cursor if it has been partially or completely evaluated.
@@ -353,7 +352,7 @@ class Cursor(Generic[_DocumentType]):
 
         return self
 
-    def clone(self) -> "Cursor[_DocumentType]":
+    def clone(self) -> Cursor[_DocumentType]:
         """Get a clone of this cursor.
 
         Returns a new Cursor instance with options matching those that have
@@ -505,7 +504,7 @@ class Cursor(Generic[_DocumentType]):
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
-    def add_option(self, mask: int) -> "Cursor[_DocumentType]":
+    def add_option(self, mask: int) -> Cursor[_DocumentType]:
         """Set arbitrary query flags using a bitmask.
 
         To set the tailable flag:
@@ -525,7 +524,7 @@ class Cursor(Generic[_DocumentType]):
         self.__query_flags |= mask
         return self
 
-    def remove_option(self, mask: int) -> "Cursor[_DocumentType]":
+    def remove_option(self, mask: int) -> Cursor[_DocumentType]:
         """Unset arbitrary query flags using a bitmask.
 
         To unset the tailable flag:
@@ -541,7 +540,7 @@ class Cursor(Generic[_DocumentType]):
         self.__query_flags &= ~mask
         return self
 
-    def allow_disk_use(self, allow_disk_use: bool) -> "Cursor[_DocumentType]":
+    def allow_disk_use(self, allow_disk_use: bool) -> Cursor[_DocumentType]:
         """Specifies whether MongoDB can use temporary disk files while
         processing a blocking sort operation.
 
@@ -563,7 +562,7 @@ class Cursor(Generic[_DocumentType]):
         self.__allow_disk_use = allow_disk_use
         return self
 
-    def limit(self, limit: int) -> "Cursor[_DocumentType]":
+    def limit(self, limit: int) -> Cursor[_DocumentType]:
         """Limits the number of results to be returned by this cursor.
 
         Raises :exc:`TypeError` if `limit` is not an integer. Raises
@@ -586,7 +585,7 @@ class Cursor(Generic[_DocumentType]):
         self.__limit = limit
         return self
 
-    def batch_size(self, batch_size: int) -> "Cursor[_DocumentType]":
+    def batch_size(self, batch_size: int) -> Cursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -614,7 +613,7 @@ class Cursor(Generic[_DocumentType]):
         self.__batch_size = batch_size
         return self
 
-    def skip(self, skip: int) -> "Cursor[_DocumentType]":
+    def skip(self, skip: int) -> Cursor[_DocumentType]:
         """Skips the first `skip` results of this cursor.
 
         Raises :exc:`TypeError` if `skip` is not an integer. Raises
@@ -635,7 +634,7 @@ class Cursor(Generic[_DocumentType]):
         self.__skip = skip
         return self
 
-    def max_time_ms(self, max_time_ms: Optional[int]) -> "Cursor[_DocumentType]":
+    def max_time_ms(self, max_time_ms: Optional[int]) -> Cursor[_DocumentType]:
         """Specifies a time limit for a query operation. If the specified
         time is exceeded, the operation will be aborted and
         :exc:`~pymongo.errors.ExecutionTimeout` is raised. If `max_time_ms`
@@ -655,7 +654,7 @@ class Cursor(Generic[_DocumentType]):
         self.__max_time_ms = max_time_ms
         return self
 
-    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> "Cursor[_DocumentType]":
+    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
         :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
@@ -687,7 +686,7 @@ class Cursor(Generic[_DocumentType]):
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> "Cursor[_DocumentType]":
+    def __getitem__(self, index: slice) -> Cursor[_DocumentType]:
         ...
 
     def __getitem__(self, index: Union[int, slice]) -> Union[_DocumentType, Cursor[_DocumentType]]:
@@ -770,7 +769,7 @@ class Cursor(Generic[_DocumentType]):
             raise IndexError("no such item for Cursor instance")
         raise TypeError("index %r cannot be applied to Cursor instances" % index)
 
-    def max_scan(self, max_scan: Optional[int]) -> "Cursor[_DocumentType]":
+    def max_scan(self, max_scan: Optional[int]) -> Cursor[_DocumentType]:
         """**DEPRECATED** - Limit the number of documents to scan when
         performing the query.
 
@@ -790,7 +789,7 @@ class Cursor(Generic[_DocumentType]):
         self.__max_scan = max_scan
         return self
 
-    def max(self, spec: _Sort) -> "Cursor[_DocumentType]":
+    def max(self, spec: _Sort) -> Cursor[_DocumentType]:
         """Adds ``max`` operator that specifies upper bound for specific index.
 
         When using ``max``, :meth:`~hint` should also be configured to ensure
@@ -813,7 +812,7 @@ class Cursor(Generic[_DocumentType]):
         self.__max = SON(spec)
         return self
 
-    def min(self, spec: _Sort) -> "Cursor[_DocumentType]":
+    def min(self, spec: _Sort) -> Cursor[_DocumentType]:
         """Adds ``min`` operator that specifies lower bound for specific index.
 
         When using ``min``, :meth:`~hint` should also be configured to ensure
@@ -838,7 +837,7 @@ class Cursor(Generic[_DocumentType]):
 
     def sort(
         self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None
-    ) -> "Cursor[_DocumentType]":
+    ) -> Cursor[_DocumentType]:
         """Sorts this cursor's results.
 
         Pass a field name and a direction, either
@@ -944,7 +943,7 @@ class Cursor(Generic[_DocumentType]):
         else:
             self.__hint = helpers._index_document(index)
 
-    def hint(self, index: Optional[_Hint]) -> "Cursor[_DocumentType]":
+    def hint(self, index: Optional[_Hint]) -> Cursor[_DocumentType]:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
         Judicious use of hints can greatly improve query
@@ -969,7 +968,7 @@ class Cursor(Generic[_DocumentType]):
         self.__set_hint(index)
         return self
 
-    def comment(self, comment: Any) -> "Cursor[_DocumentType]":
+    def comment(self, comment: Any) -> Cursor[_DocumentType]:
         """Adds a 'comment' to the cursor.
 
         http://mongodb.com/docs/manual/reference/operator/comment/
@@ -984,7 +983,7 @@ class Cursor(Generic[_DocumentType]):
         self.__comment = comment
         return self
 
-    def where(self, code: Union[str, Code]) -> "Cursor[_DocumentType]":
+    def where(self, code: Union[str, Code]) -> Cursor[_DocumentType]:
         """Adds a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`str` or
@@ -1027,7 +1026,7 @@ class Cursor(Generic[_DocumentType]):
         self.__spec = spec
         return self
 
-    def collation(self, collation: Optional[_CollationIn]) -> "Cursor[_DocumentType]":
+    def collation(self, collation: Optional[_CollationIn]) -> Cursor[_DocumentType]:
         """Adds a :class:`~pymongo.collation.Collation` to this query.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
@@ -1065,7 +1064,10 @@ class Cursor(Generic[_DocumentType]):
             if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
-            self.close()
+            if exc.timeout:
+                self.__die(False)
+            else:
+                self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -1077,7 +1079,6 @@ class Cursor(Generic[_DocumentType]):
                 return
             raise
         except ConnectionFailure:
-            # Don't send killCursors because the cursor is already closed.
             self.__killed = True
             self.close()
             raise
@@ -1253,7 +1254,7 @@ class Cursor(Generic[_DocumentType]):
             return self.__session
         return None
 
-    def __iter__(self) -> "Cursor[_DocumentType]":
+    def __iter__(self) -> Cursor[_DocumentType]:
         return self
 
     def next(self) -> _DocumentType:
@@ -1267,13 +1268,13 @@ class Cursor(Generic[_DocumentType]):
 
     __next__ = next
 
-    def __enter__(self) -> "Cursor[_DocumentType]":
+    def __enter__(self) -> Cursor[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __copy__(self) -> "Cursor[_DocumentType]":
+    def __copy__(self) -> Cursor[_DocumentType]:
         """Support function for `copy.copy()`.
 
         .. versionadded:: 2.4
@@ -1320,15 +1321,15 @@ class Cursor(Generic[_DocumentType]):
 
         for key, value in iterator:
             if isinstance(value, (dict, list)) and not isinstance(value, SON):
-                value = self._deepcopy(value, memo)
+                value = self._deepcopy(value, memo)  # noqa: PLW2901
             elif not isinstance(value, RE_TYPE):
-                value = copy.deepcopy(value, memo)
+                value = copy.deepcopy(value, memo)  # noqa: PLW2901
 
             if is_list:
                 y.append(value)  # type: ignore[union-attr]
             else:
                 if not isinstance(key, RE_TYPE):
-                    key = copy.deepcopy(key, memo)
+                    key = copy.deepcopy(key, memo)  # noqa: PLW2901
                 y[key] = value
         return y
 

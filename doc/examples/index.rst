@@ -28,6 +28,7 @@ MongoDB, you can start it like so:
    gridfs
    high_availability
    mod_wsgi
+   network_compression
    server_selection
    tailable
    timeouts

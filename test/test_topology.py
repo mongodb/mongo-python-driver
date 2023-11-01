@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+from __future__ import annotations
 
 import sys
 
@@ -647,13 +648,13 @@ class TestMultiServerTopology(TopologyTest):
         )
         self.assertEqual(
             repr(t.description),
-            "<TopologyDescription id: {}, "
+            f"<TopologyDescription id: {t._topology_id}, "
             "topology_type: ReplicaSetWithPrimary, servers: ["
             "<ServerDescription ('a', 27017) server_type: RSPrimary, rtt: 0>, "
             "<ServerDescription ('b', 27017) server_type: Unknown,"
             " rtt: None>, "
             "<ServerDescription ('c', 27017) server_type: Unknown,"
-            " rtt: None>]>".format(t._topology_id),
+            " rtt: None>]>",
         )
 
     def test_unexpected_load_balancer(self):

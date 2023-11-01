@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collection module."""
+from __future__ import annotations
 
 import os
 import sys
@@ -184,15 +185,45 @@ class TestWriteOpsComparison(unittest.TestCase):
 
     def test_DeleteOneEquals(self):
         self.assertEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 42}))
+        self.assertEqual(
+            DeleteOne({"foo": 42}, {"locale": "en_US"}), DeleteOne({"foo": 42}, {"locale": "en_US"})
+        )
+        self.assertEqual(
+            DeleteOne({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+            DeleteOne({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+        )
 
     def test_DeleteOneNotEquals(self):
         self.assertNotEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 23}))
+        self.assertNotEqual(
+            DeleteOne({"foo": 42}, {"locale": "en_US"}), DeleteOne({"foo": 42}, {"locale": "en_GB"})
+        )
+        self.assertNotEqual(
+            DeleteOne({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+            DeleteOne({"foo": 42}, {"locale": "en_US"}, {"hint": 2}),
+        )
 
     def test_DeleteManyEquals(self):
         self.assertEqual(DeleteMany({"foo": 42}), DeleteMany({"foo": 42}))
+        self.assertEqual(
+            DeleteMany({"foo": 42}, {"locale": "en_US"}),
+            DeleteMany({"foo": 42}, {"locale": "en_US"}),
+        )
+        self.assertEqual(
+            DeleteMany({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+            DeleteMany({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+        )
 
     def test_DeleteManyNotEquals(self):
         self.assertNotEqual(DeleteMany({"foo": 42}), DeleteMany({"foo": 23}))
+        self.assertNotEqual(
+            DeleteMany({"foo": 42}, {"locale": "en_US"}),
+            DeleteMany({"foo": 42}, {"locale": "en_GB"}),
+        )
+        self.assertNotEqual(
+            DeleteMany({"foo": 42}, {"locale": "en_US"}, {"hint": 1}),
+            DeleteMany({"foo": 42}, {"locale": "en_US"}, {"hint": 2}),
+        )
 
     def test_DeleteOneNotEqualsDeleteMany(self):
         self.assertNotEqual(DeleteOne({"foo": 42}), DeleteMany({"foo": 42}))

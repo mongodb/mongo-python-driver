@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test built in connection-pooling with threads."""
+from __future__ import annotations
 
 import gc
 import random
@@ -23,8 +24,9 @@ import time
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import MongoClient, message
+from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
+from pymongo.hello import HelloCompat
 
 sys.path[0:0] = [""]
 
@@ -410,6 +412,84 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = 2:         15-22 connections in ~0.108+ seconds
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
+
+    @client_context.require_failCommand_fail_point
+    def test_csot_timeout_message(self):
+        client = rs_or_single_client(appName="connectionTimeoutApp")
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+                "failCommands": ["find"],
+                "appName": "connectionTimeoutApp",
+            },
+        }
+
+        client.db.t.insert_one({"x": 1})
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                with timeout(0.5):
+                    client.db.t.find_one({"$where": delay(2)})
+
+        self.assertTrue("(configured timeouts: timeoutMS: 500.0ms" in str(error.exception))
+
+    @client_context.require_failCommand_fail_point
+    def test_socket_timeout_message(self):
+        client = rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
+
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+                "failCommands": ["find"],
+                "appName": "connectionTimeoutApp",
+            },
+        }
+
+        client.db.t.insert_one({"x": 1})
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                client.db.t.find_one({"$where": delay(2)})
+
+        self.assertTrue(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)"
+            in str(error.exception)
+        )
+
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(
+        4, 9, 0
+    )  # configureFailPoint does not allow failure on handshake before 4.9, fixed in SERVER-49336
+    def test_connection_timeout_message(self):
+        # Mock a connection failing due to timeout.
+        mock_connection_timeout = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "appName": "connectionTimeoutApp",
+            },
+        }
+
+        with self.fail_point(mock_connection_timeout):
+            with self.assertRaises(Exception) as error:
+                client = rs_or_single_client(connectTimeoutMS=500, appName="connectionTimeoutApp")
+                client.admin.command("ping")
+
+        self.assertTrue(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)"
+            in str(error.exception)
+        )
 
 
 class TestPoolMaxSize(_TestPoolingBase):

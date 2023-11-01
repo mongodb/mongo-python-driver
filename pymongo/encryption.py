@@ -34,7 +34,7 @@ from typing import (
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
-    from pymongocrypt.errors import MongoCryptError  # noqa: F401
+    from pymongocrypt.errors import MongoCryptError
     from pymongocrypt.explicit_encrypter import ExplicitEncrypter
     from pymongocrypt.mongocrypt import MongoCryptOptions
     from pymongocrypt.state_machine import MongoCryptCallback
@@ -102,7 +102,7 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # we should propagate them unchanged.
         raise
     except Exception as exc:
-        raise EncryptionError(exc)
+        raise EncryptionError(exc) from None
 
 
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
@@ -177,7 +177,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
             except BLOCKING_IO_ERRORS:
-                raise socket.timeout("timed out")
+                raise socket.timeout("timed out") from None
             finally:
                 conn.close()
         except (PyMongoError, MongoCryptError):
@@ -322,6 +322,9 @@ class RewrapManyDataKeyResult:
         """
         return self._bulk_write_result
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._bulk_write_result!r})"
+
 
 class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
@@ -414,8 +417,7 @@ class _Encrypter:
         with _wrap_encryption_errors():
             encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-            encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
-            return encrypt_cmd
+            return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
     def decrypt(self, response: bytes) -> Optional[bytes]:
         """Decrypt a MongoDB command response.

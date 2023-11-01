@@ -168,12 +168,12 @@ class TopologyDescription:
     def has_server(self, address: _Address) -> bool:
         return address in self._server_descriptions
 
-    def reset_server(self, address: _Address) -> "TopologyDescription":
+    def reset_server(self, address: _Address) -> TopologyDescription:
         """A copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
 
-    def reset(self) -> "TopologyDescription":
+    def reset(self) -> TopologyDescription:
         """A copy of this description, with all servers marked Unknown."""
         if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
             topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
@@ -381,7 +381,7 @@ _SERVER_TYPE_TO_TOPOLOGY_TYPE = {
 
 def updated_topology_description(
     topology_description: TopologyDescription, server_description: ServerDescription
-) -> "TopologyDescription":
+) -> TopologyDescription:
     """Return an updated copy of a TopologyDescription.
 
     :Parameters:
@@ -672,5 +672,5 @@ def _check_has_primary(sds: Mapping[_Address, ServerDescription]) -> int:
     for s in sds.values():
         if s.server_type == SERVER_TYPE.RSPrimary:
             return TOPOLOGY_TYPE.ReplicaSetWithPrimary
-    else:
+    else:  # noqa: PLW0120
         return TOPOLOGY_TYPE.ReplicaSetNoPrimary

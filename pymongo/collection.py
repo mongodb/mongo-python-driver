@@ -368,8 +368,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if name.startswith("_"):
             full_name = f"{self.__name}.{name}"
             raise AttributeError(
-                "Collection has no attribute {!r}. To access the {}"
-                " collection, use database['{}'].".format(name, full_name, full_name)
+                f"Collection has no attribute {name!r}. To access the {full_name}"
+                f" collection, use database['{full_name}']."
             )
         return self.__getitem__(name)
 
@@ -563,7 +563,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             try:
                 request._add_to_bulk(blk)
             except AttributeError:
-                raise TypeError(f"{request!r} is not a valid request")
+                raise TypeError(f"{request!r} is not a valid request") from None
 
         write_concern = self._write_concern_for(session)
         bulk_api_result = blk.execute(write_concern, session)
@@ -1812,7 +1812,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
@@ -1901,7 +1901,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
@@ -2277,7 +2277,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
@@ -2348,7 +2348,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         info = {}
         for index in cursor:
             index["key"] = list(index["key"].items())
-            index = dict(index)
+            index = dict(index)  # noqa: PLW2901
             info[index.pop("name")] = index
         return info
 
@@ -3038,7 +3038,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(
             session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> list:

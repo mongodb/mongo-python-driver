@@ -24,12 +24,12 @@ repos:
     files: \.py$
     args: [--line-length=100]
 
-- repo: https://github.com/PyCQA/isort
-  rev: 5.12.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.1.0
   hooks:
-  - id: isort
-    files: \.py$
-    args: [--profile=black]
+    - id: ruff
+      args: ["--fix", "--show-fixes"]
 
 - repo: https://github.com/adamchainz/blacken-docs
   rev: "1.13.0"
@@ -38,17 +38,19 @@ repos:
     additional_dependencies:
     - black==22.3.0
 
-- repo: https://github.com/PyCQA/flake8
-  rev: 3.9.2
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: "v1.10.0"
   hooks:
-  - id: flake8
-    files: \.py$
-    additional_dependencies: [
-        'flake8-bugbear==20.1.4',
-        'flake8-logging-format==0.6.0',
-        'flake8-implicit-str-concat==0.2.0',
-    ]
-    stages: [manual]
+    - id: rst-backticks
+    - id: rst-directive-colons
+    - id: rst-inline-touching-normal
+
+- repo: https://github.com/rstcheck/rstcheck
+  rev: v6.2.0
+  hooks:
+  - id: rstcheck
+    additional_dependencies: [sphinx]
+    args: ["--ignore-directives=doctest,testsetup,todo,automodule","--ignore-substitutions=release", "--report-level=error"]
 
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit

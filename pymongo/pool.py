@@ -116,7 +116,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ...), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:
+    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
         """Dummy function for platforms that don't provide fcntl."""
 
 
@@ -383,7 +383,10 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
 
 
 def _raise_connection_failure(
-    address: Any, error: Exception, msg_prefix: Optional[str] = None
+    address: Any,
+    error: Exception,
+    msg_prefix: Optional[str] = None,
+    timeout_details: Optional[dict[str, float]] = None,
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
@@ -394,6 +397,8 @@ def _raise_connection_failure(
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
+    if "configured timeouts" not in msg:
+        msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
@@ -409,6 +414,32 @@ def _raise_connection_failure(
 def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
     timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
+
+
+def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
+    details = {}
+    timeout = _csot.get_timeout()
+    socket_timeout = options.socket_timeout
+    connect_timeout = options.connect_timeout
+    if timeout:
+        details["timeoutMS"] = timeout * 1000
+    if socket_timeout and not timeout:
+        details["socketTimeoutMS"] = socket_timeout * 1000
+    if connect_timeout:
+        details["connectTimeoutMS"] = connect_timeout * 1000
+    return details
+
+
+def format_timeout_details(details: Optional[dict[str, float]]) -> str:
+    result = ""
+    if details:
+        result += " (configured timeouts:"
+        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
+            if timeout in details:
+                result += f" {timeout}: {details[timeout]}ms,"
+        result = result[:-1]
+        result += ")"
+    return result
 
 
 class PoolOptions:
@@ -740,10 +771,15 @@ class Connection:
             rtt = self.connect_rtt
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
+            timeout_details = _get_timeout_details(self.opts)
+            formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
-            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
+            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
             raise ExecutionTimeout(
-                errmsg, 50, {"ok": 0, "errmsg": errmsg, "code": 50}, self.max_wire_version
+                errmsg,
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
@@ -1076,7 +1112,7 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     def conn_closed(self) -> bool:
@@ -1131,7 +1167,8 @@ class Connection:
         self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, SSLError)):
-            _raise_connection_failure(self.address, error)
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(self.address, error, timeout_details=details)
         else:
             raise
 
@@ -1250,12 +1287,13 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError) as exc:  # noqa: B014
+    except (OSError, SSLError) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        _raise_connection_failure(address, exc, "SSL handshake failed: ")
+        details = _get_timeout_details(options)
+        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
     if (
         ssl_context.verify_mode
         and not ssl_context.check_hostname
@@ -1553,7 +1591,8 @@ class Pool:
                 )
 
             if isinstance(error, (IOError, OSError, SSLError)):
-                _raise_connection_failure(self.address, error)
+                details = _get_timeout_details(self.opts)
+                _raise_connection_failure(self.address, error, timeout_details=details)
 
             raise
 
@@ -1634,7 +1673,10 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR
                 )
-            _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(
+                self.address, AutoReconnect("connection pool paused"), timeout_details=details
+            )
 
     def _get_conn(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
@@ -1811,7 +1853,7 @@ class Pool:
             return True
 
         if self._check_interval_seconds is not None and (
-            0 == self._check_interval_seconds or idle_time_seconds > self._check_interval_seconds
+            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
         ):
             if conn.conn_closed():
                 conn.close_conn(ConnectionClosedReason.ERROR)
@@ -1847,7 +1889,7 @@ class Pool:
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
-            "maxPoolSize: {}, timeout: {}".format(self.opts.max_pool_size, timeout)
+            f"maxPoolSize: {self.opts.max_pool_size}, timeout: {timeout}"
         )
 
     def __del__(self) -> None:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the SRV support tests."""
+from __future__ import annotations
 
 import sys
 from time import sleep

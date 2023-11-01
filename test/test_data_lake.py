@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test Atlas Data Lake."""
+from __future__ import annotations
 
 import os
 import sys

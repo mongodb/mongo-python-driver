@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the unit tests for WriteConcern."""
+from __future__ import annotations
 
 import collections
 import unittest
@@ -37,7 +38,7 @@ class TestWriteConcern(unittest.TestCase):
         concern = WriteConcern()
         self.assertNotEqual(concern, None)
         # Explicitly use the != operator.
-        self.assertTrue(concern != None)  # noqa
+        self.assertTrue(concern != None)  # noqa: E711
 
     def test_equality_compatible_type(self):
         class _FakeWriteConcern:

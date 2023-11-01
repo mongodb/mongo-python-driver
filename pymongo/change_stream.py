@@ -225,7 +225,7 @@ class ChangeStream(Generic[_DocumentType]):
                 if self._start_at_operation_time is None:
                     raise OperationFailure(
                         "Expected field 'operationTime' missing from command "
-                        "response : {!r}".format(result)
+                        f"response : {result!r}"
                     )
 
     def _run_aggregation_cmd(
@@ -264,7 +264,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._closed = True
         self._cursor.close()
 
-    def __iter__(self) -> "ChangeStream[_DocumentType]":
+    def __iter__(self) -> ChangeStream[_DocumentType]:
         return self
 
     @property
@@ -406,7 +406,7 @@ class ChangeStream(Generic[_DocumentType]):
             self.close()
             raise InvalidOperation(
                 "Cannot provide resume functionality when the resume token is missing."
-            )
+            ) from None
 
         # If this is the last change document from the current batch, cache the
         # postBatchResumeToken.

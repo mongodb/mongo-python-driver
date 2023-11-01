@@ -186,7 +186,8 @@ class Topology:
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe"
+                "is-pymongo-fork-safe",
+                stacklevel=2,
             )
             with self._lock:
                 # Close servers and clear the pools.

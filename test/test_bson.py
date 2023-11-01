@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Test the bson module."""
+from __future__ import annotations
 
 import array
 import collections

@@ -122,12 +122,12 @@ class ServerApi:
         if strict is not None and not isinstance(strict, bool):
             raise TypeError(
                 "Wrong type for ServerApi strict, value must be an instance "
-                "of bool, not {}".format(type(strict))
+                f"of bool, not {type(strict)}"
             )
         if deprecation_errors is not None and not isinstance(deprecation_errors, bool):
             raise TypeError(
                 "Wrong type for ServerApi deprecation_errors, value must be "
-                "an instance of bool, not {}".format(type(deprecation_errors))
+                f"an instance of bool, not {type(deprecation_errors)}"
             )
         self._version = version
         self._strict = strict

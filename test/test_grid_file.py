@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the grid_file module."""
+from __future__ import annotations
 
 import datetime
 import io

@@ -178,7 +178,7 @@ def _parse_options(opts: str, delim: Optional[str]) -> _CaseInsensitiveDictionar
             options.setdefault(key, []).append(value)
         else:
             if key in options:
-                warnings.warn(f"Duplicate URI option '{key}'.")
+                warnings.warn(f"Duplicate URI option '{key}'.", stacklevel=2)
             if key.lower() == "authmechanismproperties":
                 val = value
             else:
@@ -350,7 +350,7 @@ def split_options(
         else:
             raise ValueError
     except ValueError:
-        raise InvalidURI("MongoDB URI options are key=value pairs.")
+        raise InvalidURI("MongoDB URI options are key=value pairs.") from None
 
     options = _handle_security_options(options)
 
@@ -456,7 +456,11 @@ def parse_uri(
           to their internally-used names. Default: ``True``.
         - `connect_timeout` (optional): The maximum time in milliseconds to
           wait for a response from the DNS server.
-        - 'srv_service_name` (optional): A custom SRV service name
+        - `srv_service_name` (optional): A custom SRV service name
+
+    .. versionchanged:: 4.6
+       The delimiting slash (``/``) between hosts and connection options is now optional.
+       For example, "mongodb://example.com?tls=true" is now a valid URI.
 
     .. versionchanged:: 4.0
        To better follow RFC 3986, unquoted percent signs ("%") are no longer
@@ -506,22 +510,23 @@ def parse_uri(
         host_part = path_part
         path_part = ""
 
-    if not path_part and "?" in host_part:
-        raise InvalidURI("A '/' is required between the host list and any options.")
-
     if path_part:
         dbase, _, opts = path_part.partition("?")
-        if dbase:
-            dbase = unquote_plus(dbase)
-            if "." in dbase:
-                dbase, collection = dbase.split(".", 1)
-            if _BAD_DB_CHARS.search(dbase):
-                raise InvalidURI('Bad database name "%s"' % dbase)
-        else:
-            dbase = None
+    else:
+        # There was no slash in scheme_free, check for a sole "?".
+        host_part, _, opts = host_part.partition("?")
 
-        if opts:
-            options.update(split_options(opts, validate, warn, normalize))
+    if dbase:
+        dbase = unquote_plus(dbase)
+        if "." in dbase:
+            dbase, collection = dbase.split(".", 1)
+        if _BAD_DB_CHARS.search(dbase):
+            raise InvalidURI('Bad database name "%s"' % dbase)
+    else:
+        dbase = None
+
+    if opts:
+        options.update(split_options(opts, validate, warn, normalize))
     if srv_service_name is None:
         srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
     if "@" in host_part:
@@ -598,14 +603,14 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
     if not isinstance(kms_tls_options, dict):
         raise TypeError("kms_tls_options must be a dict")
     contexts = {}
-    for provider, opts in kms_tls_options.items():
-        if not isinstance(opts, dict):
+    for provider, options in kms_tls_options.items():
+        if not isinstance(options, dict):
             raise TypeError(f'kms_tls_options["{provider}"] must be a dict')
-        opts.setdefault("tls", True)
-        opts = _CaseInsensitiveDictionary(opts)
+        options.setdefault("tls", True)
+        opts = _CaseInsensitiveDictionary(options)
         opts = _handle_security_options(opts)
         opts = _normalize_options(opts)
-        opts = validate_options(opts)
+        opts = cast(_CaseInsensitiveDictionary, validate_options(opts))
         ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts)
         if ssl_context is None:
             raise ConfigurationError("TLS is required for KMS providers")
@@ -628,7 +633,7 @@ if __name__ == "__main__":
     import pprint
 
     try:
-        pprint.pprint(parse_uri(sys.argv[1]))
+        pprint.pprint(parse_uri(sys.argv[1]))  # noqa: T203
     except InvalidURI as exc:
-        print(exc)
+        print(exc)  # noqa: T201
     sys.exit(0)

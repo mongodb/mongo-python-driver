@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test compliance with the connections survive primary step down spec."""
+from __future__ import annotations
 
 import sys
 

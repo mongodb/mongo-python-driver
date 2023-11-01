@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test retryable reads spec."""
+from __future__ import annotations
 
 import os
 import pprint

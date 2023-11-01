@@ -119,7 +119,7 @@ def _index_list(
         values: list[tuple[str, int]] = []
         for item in key_or_list:
             if isinstance(item, str):
-                item = (item, ASCENDING)
+                item = (item, ASCENDING)  # noqa: PLW2901
             values.append(item)
         return values
 
@@ -146,7 +146,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
     else:
         for item in index_list:
             if isinstance(item, str):
-                item = (item, ASCENDING)
+                item = (item, ASCENDING)  # noqa: PLW2901
             key, value = item
             _validate_index_key_pair(key, value)
             index[key] = value

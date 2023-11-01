@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test the default exports of the top level packages."""
+from __future__ import annotations
+
 import inspect
 import unittest
 

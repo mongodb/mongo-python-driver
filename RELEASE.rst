@@ -77,11 +77,11 @@ Doing a Release
 12. Publish the release version in Jira.
 
 13. Announce the release on:
-    https://www.mongodb.com/community/forums/c/announcements/driver-releases/110
+    https://www.mongodb.com/community/forums/tags/c/announcements/driver-releases/110/python
 
 14. File a ticket for DOCSP highlighting changes in server version and Python
     version compatibility or the lack thereof, for example:
-    https://jira.mongodb.org/browse/DOCSP-13536
+    https://jira.mongodb.org/browse/DOCSP-34040
 
 15. Create a GitHub Release for the tag using
     https://github.com/mongodb/mongo-python-driver/releases/new.

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the Binary wrapper."""
+from __future__ import annotations
 
 import array
 import base64

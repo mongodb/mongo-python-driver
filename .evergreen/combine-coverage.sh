@@ -14,7 +14,8 @@ fi
 
 createvirtualenv "$PYTHON_BINARY" covenv
 # coverage 7.3 dropped support for Python 3.7, keep in sync with run-tests.sh
-pip install -q "coverage<7.3"
+# coverage >=5 is needed for relative_files=true.
+pip install -q "coverage>=5,<7.3"
 
 pip list
 ls -la coverage/

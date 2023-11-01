@@ -166,7 +166,7 @@ class _OIDCAuthenticator:
         if principal_name:
             payload["n"] = principal_name
 
-        cmd = SON(
+        return SON(
             [
                 ("saslStart", 1),
                 ("mechanism", "MONGODB-OIDC"),
@@ -174,7 +174,6 @@ class _OIDCAuthenticator:
                 ("autoAuthorize", 1),
             ]
         )
-        return cmd
 
     def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
         if not self.properties.provider_name and self.idp_info is None:
@@ -231,7 +230,7 @@ class _OIDCAuthenticator:
             self.idp_info = server_resp
 
         # Handle the case of changed idp info.
-        if not self.idp_info == prev_idp_info:
+        if self.idp_info != prev_idp_info:
             self.access_token = None
             self.refresh_token = None
 

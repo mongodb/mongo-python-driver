@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the MongoDB Driver Performance Benchmarking Spec."""
+from __future__ import annotations
 
 import multiprocessing as mp
 import os

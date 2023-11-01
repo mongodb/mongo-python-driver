@@ -106,14 +106,14 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Mapping[str, Any]] = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 
 
 def _randint() -> int:
     """Generate a pseudo random 32 bit integer."""
-    return random.randint(MIN_INT32, MAX_INT32)
+    return random.randint(MIN_INT32, MAX_INT32)  # noqa: S311
 
 
 def _maybe_add_read_preference(
@@ -565,7 +565,7 @@ class _GetMore:
 
         if use_cmd:
             spec = self.as_command(conn, apply_timeout=True)[0]
-            if self.conn_mgr:
+            if self.conn_mgr and self.exhaust:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
                 flags = 0
@@ -731,7 +731,7 @@ def _op_msg_uncompressed(
 
 
 if _use_c:
-    _op_msg_uncompressed = _cmessage._op_msg  # noqa: F811
+    _op_msg_uncompressed = _cmessage._op_msg
 
 
 def _op_msg(
@@ -833,7 +833,7 @@ def _query_uncompressed(
 
 
 if _use_c:
-    _query_uncompressed = _cmessage._query_message  # noqa: F811
+    _query_uncompressed = _cmessage._query_message
 
 
 def _query(
@@ -889,7 +889,7 @@ def _get_more_uncompressed(
 
 
 if _use_c:
-    _get_more_uncompressed = _cmessage._get_more_message  # noqa: F811
+    _get_more_uncompressed = _cmessage._get_more_message
 
 
 def _get_more(
@@ -942,7 +942,7 @@ class _BulkWriteContext:
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
         self.session = session
-        self.compress = True if conn.compression_context else False
+        self.compress = bool(conn.compression_context)
         self.op_type = op_type
         self.codec = codec
 
@@ -1222,7 +1222,7 @@ def _batched_op_msg_impl(
     try:
         buf.write(_OP_MSG_MAP[operation])
     except KeyError:
-        raise InvalidOperation("Unknown command")
+        raise InvalidOperation("Unknown command") from None
 
     to_send = []
     idx = 0
@@ -1278,7 +1278,7 @@ def _encode_batched_op_msg(
 
 
 if _use_c:
-    _encode_batched_op_msg = _cmessage._encode_batched_op_msg  # noqa: F811
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
 
 def _batched_op_msg_compressed(
@@ -1328,7 +1328,7 @@ def _batched_op_msg(
 
 
 if _use_c:
-    _batched_op_msg = _cmessage._batched_op_msg  # noqa: F811
+    _batched_op_msg = _cmessage._batched_op_msg
 
 
 def _do_batched_op_msg(
@@ -1371,7 +1371,7 @@ def _encode_batched_write_command(
 
 
 if _use_c:
-    _encode_batched_write_command = _cmessage._encode_batched_write_command  # noqa: F811
+    _encode_batched_write_command = _cmessage._encode_batched_write_command
 
 
 def _batched_write_command_impl(
@@ -1410,7 +1410,7 @@ def _batched_write_command_impl(
     try:
         buf.write(_OP_MAP[operation])
     except KeyError:
-        raise InvalidOperation("Unknown command")
+        raise InvalidOperation("Unknown command") from None
 
     # Where to write list document length
     list_start = buf.tell() - 4
@@ -1586,7 +1586,7 @@ class _OpMsg:
     def raw_response(
         self,
         cursor_id: Optional[int] = None,
-        user_fields: Optional[Mapping[str, Any]] = {},  # noqa: B006
+        user_fields: Optional[Mapping[str, Any]] = {},
     ) -> list[Mapping[str, Any]]:
         """
         cursor_id is ignored

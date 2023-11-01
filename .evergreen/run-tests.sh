@@ -8,7 +8,7 @@ set -o xtrace
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
 #  SSL                  Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
-#  C_EXTENSIONS         If non-empty, c extensions are enabled.
+#  C_EXTENSIONS         Pass --no_ext to skip installing the C extensions.
 #  COVERAGE             If non-empty, run the test suite with coverage.
 #  COMPRESSORS          If non-empty, install appropriate compressor.
 #  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
@@ -260,8 +260,9 @@ python -c 'import sys; print(sys.version)'
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # coverage 7.3 dropped support for Python 3.7, keep in sync with combine-coverage.sh.
-    python -m pip install pytest-cov "coverage<7.3"
-    TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
+    # coverage >=5 is needed for relative_files=true.
+    python -m pip install pytest-cov "coverage>=5,<7.3"
+    TEST_ARGS="$TEST_ARGS --cov"
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
@@ -272,12 +273,7 @@ fi
 PIP_QUIET=0 python -m pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-        python setup.py build_ext -i
-        # This will set a non-zero exit status if either import fails,
-        # causing this script to exit.
-        python -c "from bson import _cbson; from pymongo import _cmessage"
-    fi
+    .evergreen/check-c-extensions.sh
     python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS

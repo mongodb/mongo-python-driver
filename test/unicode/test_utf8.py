@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 
 sys.path[0:0] = [""]

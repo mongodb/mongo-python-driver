@@ -18,6 +18,8 @@
 - A direct connection to a slave.
 - A direct connection to a mongos.
 """
+from __future__ import annotations
+
 import itertools
 import unittest
 from queue import Queue
@@ -43,10 +45,7 @@ class TestSlaveOkaySharded(unittest.TestCase):
                 "ismaster", minWireVersion=2, maxWireVersion=6, ismaster=True, msg="isdbgrid"
             )
 
-        self.mongoses_uri = "mongodb://{},{}".format(
-            self.mongos1.address_string,
-            self.mongos2.address_string,
-        )
+        self.mongoses_uri = f"mongodb://{self.mongos1.address_string},{self.mongos2.address_string}"
 
 
 def create_slave_ok_sharded_test(mode, operation):

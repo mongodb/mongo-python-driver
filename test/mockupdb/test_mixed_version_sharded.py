@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test PyMongo with a mixed-version cluster."""
+from __future__ import annotations
 
 import time
 import unittest

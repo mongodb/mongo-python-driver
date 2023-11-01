@@ -56,7 +56,6 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
 
-
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
@@ -195,7 +194,7 @@ def validate_integer(option: str, value: Any) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError(f"The value of {option} must be an integer")
+            raise ValueError(f"The value of {option} must be an integer") from None
     raise TypeError(f"Wrong type for {option}, value must be an integer")
 
 
@@ -287,9 +286,9 @@ def validate_positive_float(option: str, value: Any) -> float:
     try:
         value = float(value)
     except ValueError:
-        raise ValueError(errmsg)
+        raise ValueError(errmsg) from None
     except TypeError:
-        raise TypeError(errmsg)
+        raise TypeError(errmsg) from None
 
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
@@ -388,10 +387,10 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
         raise ValueError(
-            "{} is an invalid UUID representation. "
+            f"{value} is an invalid UUID representation. "
             "Must be one of "
-            "{}".format(value, tuple(_UUID_REPRESENTATIONS))
-        )
+            f"{tuple(_UUID_REPRESENTATIONS)}"
+        ) from None
 
 
 def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]:
@@ -411,7 +410,7 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
-            raise ValueError(f"{tag_set!r} not a valid value for {name}")
+            raise ValueError(f"{tag_set!r} not a valid value for {name}") from None
     return tag_sets
 
 
@@ -432,7 +431,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError("Auth mechanism properties must be given as a string or a dictionary")
-        for key, value in value.items():
+        for key, value in value.items():  # noqa: B020
             if isinstance(value, str):
                 props[key] = value
             elif isinstance(value, bool):
@@ -464,20 +463,20 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         except ValueError:
             # Try not to leak the token.
             if "AWS_SESSION_TOKEN" in opt:
-                opt = (
+                opt = (  # noqa: PLW2901
                     "AWS_SESSION_TOKEN:<redacted token>, did you forget "
                     "to percent-escape the token with quote_plus?"
                 )
             raise ValueError(
                 "auth mechanism properties must be "
                 "key:value pairs like SERVICE_NAME:"
-                "mongodb, not {}.".format(opt)
-            )
+                f"mongodb, not {opt}."
+            ) from None
         if key not in _MECHANISM_PROPS:
             raise ValueError(
-                "{} is not a supported auth "
+                f"{key} is not a supported auth "
                 "mechanism property. Must be one of "
-                "{}.".format(key, tuple(_MECHANISM_PROPS))
+                f"{tuple(_MECHANISM_PROPS)}."
             )
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
@@ -501,9 +500,9 @@ def validate_document_class(
             is_mapping = issubclass(value.__origin__, abc.MutableMapping)
     if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
-            "{} must be dict, bson.son.SON, "
+            f"{option} must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "subclass of collections.MutableMapping".format(option)
+            "subclass of collections.MutableMapping"
         )
     return value
 
@@ -533,9 +532,9 @@ def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
-            "{} must either be a list or an instance of dict, "
+            f"{option} must either be a list or an instance of dict, "
             "bson.son.SON, or any other type that inherits from "
-            "collections.Mapping".format(option)
+            "collections.Mapping"
         )
 
 
@@ -543,9 +542,9 @@ def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError(
-            "{} must be an instance of dict, bson.son.SON, or "
+            f"{option} must be an instance of dict, bson.son.SON, or "
             "any other type that inherits from "
-            "collections.Mapping".format(option)
+            "collections.Mapping"
         )
 
 
@@ -553,10 +552,10 @@ def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError(
-            "{} must be an instance of dict, bson.son.SON, "
+            f"{option} must be an instance of dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or "
             "a type that inherits from "
-            "collections.MutableMapping".format(option)
+            "collections.MutableMapping"
         )
 
 
@@ -628,9 +627,9 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            "{} is an invalid Unicode decode error handler. "
+            f"{value} is an invalid Unicode decode error handler. "
             "Must be one of "
-            "{}".format(value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
+            f"{tuple(_UNICODE_DECODE_ERROR_HANDLERS)}"
         )
     return value
 
@@ -806,7 +805,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "waitqueuetimeoutms",
 ]
 
-
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
 
@@ -843,28 +841,28 @@ def get_validated_options(
         validated_options = _CaseInsensitiveDictionary()
 
         def get_normed_key(x: str) -> str:
-            return x  # noqa: E731
+            return x
 
         def get_setter_key(x: str) -> str:
-            return options.cased_key(x)  # type: ignore[attr-defined] # noqa: E731
+            return options.cased_key(x)  # type: ignore[attr-defined]
 
     else:
         validated_options = {}
 
         def get_normed_key(x: str) -> str:
-            return x.lower()  # noqa: E731
+            return x.lower()
 
         def get_setter_key(x: str) -> str:
-            return x  # noqa: E731
+            return x
 
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
             validator = URI_OPTIONS_VALIDATOR_MAP.get(normed_key, raise_config_error)
-            value = validator(opt, value)
+            value = validator(opt, value)  # noqa: PLW2901
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
-                warnings.warn(str(exc))
+                warnings.warn(str(exc), stacklevel=2)
             else:
                 raise
         else:
@@ -904,9 +902,9 @@ class BaseObject:
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
-                "{!r} is not valid for read_preference. See "
+                f"{read_preference!r} is not valid for read_preference. See "
                 "pymongo.read_preferences for valid "
-                "options.".format(read_preference)
+                "options."
             )
         self.__read_preference = read_preference
 
@@ -1006,7 +1004,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
             return NotImplemented
         if len(self) != len(other):
             return False
-        for key in other:
+        for key in other:  # noqa: SIM110
             if self[key] != other[key]:
                 return False
 

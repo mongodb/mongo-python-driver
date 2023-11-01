@@ -180,7 +180,7 @@ URI::
   >>> client = MongoClient(uri)
   >>>
 
-The default service name used by MongoDB and PyMongo is `mongodb`. You can
+The default service name used by MongoDB and PyMongo is ``mongodb``. You can
 specify a custom service name with the ``authMechanismProperties`` option::
 
   >>> from pymongo import MongoClient

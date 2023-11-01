@@ -242,7 +242,7 @@ class Binary(bytes):
     @classmethod
     def from_uuid(
         cls: Type[Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
-    ) -> "Binary":
+    ) -> Binary:
         """Create a BSON Binary object from a Python UUID.
 
         Creates a :class:`~bson.binary.Binary` object from a

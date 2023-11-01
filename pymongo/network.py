@@ -265,8 +265,8 @@ def receive_message(
         )
     if length > max_message_size:
         raise ProtocolError(
-            "Message length ({!r}) is larger than server max "
-            "message size ({!r})".format(length, max_message_size)
+            f"Message length ({length!r}) is larger than server max "
+            f"message size ({max_message_size!r})"
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
@@ -279,7 +279,9 @@ def receive_message(
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
-        raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
+        raise ProtocolError(
+            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
+        ) from None
     return unpack_reply(data)
 
 
@@ -337,8 +339,8 @@ def _receive_data_on_socket(conn: Connection, length: int, deadline: Optional[fl
                 conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
             chunk_length = conn.conn.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
-            raise socket.timeout("timed out")
-        except OSError as exc:  # noqa: B014
+            raise socket.timeout("timed out") from None
+        except OSError as exc:
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
             raise

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the Transactions unified spec tests."""
+from __future__ import annotations
 
 import os
 import sys
