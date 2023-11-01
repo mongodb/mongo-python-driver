@@ -25,6 +25,8 @@ import sys
 import threading
 import time
 import weakref
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -268,6 +270,34 @@ else:
         (platform.python_implementation(), ".".join(map(str, sys.version_info)))
     )
 
+DOCKER_ENV_PATH = "/.dockerenv"
+ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
+
+RUNTIME_NAME_DOCKER = "docker"
+ORCHESTRATOR_NAME_K8S = "kubernetes"
+
+
+@dataclass
+class ContainerInfo:
+    runtime: Optional[str]
+    orchestrator: Optional[str]
+
+
+def get_container_env_info() -> Optional[ContainerInfo]:
+    """Returns the runtime and orchestrator of a container.
+    If neither value is present, the metadata client.env.container field will be omitted."""
+    runtime, orchestrator = None, None
+
+    if Path.exists(Path(DOCKER_ENV_PATH)):
+        runtime = RUNTIME_NAME_DOCKER
+    if os.getenv(ENV_VAR_K8S):
+        orchestrator = ORCHESTRATOR_NAME_K8S
+
+    if runtime is not None or orchestrator is not None:
+        return ContainerInfo(runtime, orchestrator)
+
+    return None
+
 
 def _is_lambda() -> bool:
     if os.getenv("AWS_LAMBDA_RUNTIME_API"):
@@ -307,6 +337,13 @@ def _getenv_int(key: str) -> Optional[int]:
 
 def _metadata_env() -> dict[str, Any]:
     env: dict[str, Any] = {}
+    container = get_container_env_info()
+    if container is not None:
+        env["container"] = {}
+        if container.runtime:
+            env["container"]["runtime"] = container.runtime
+        if container.orchestrator:
+            env["container"]["orchestrator"] = container.orchestrator
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
