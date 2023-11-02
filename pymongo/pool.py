@@ -25,7 +25,6 @@ import sys
 import threading
 import time
 import weakref
-from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -277,26 +276,17 @@ RUNTIME_NAME_DOCKER = "docker"
 ORCHESTRATOR_NAME_K8S = "kubernetes"
 
 
-@dataclass
-class ContainerInfo:
-    runtime: Optional[str]
-    orchestrator: Optional[str]
-
-
-def get_container_env_info() -> Optional[ContainerInfo]:
+def get_container_env_info() -> dict[str, str]:
     """Returns the runtime and orchestrator of a container.
     If neither value is present, the metadata client.env.container field will be omitted."""
-    runtime, orchestrator = None, None
+    container = {}
 
     if Path(DOCKER_ENV_PATH).exists():
-        runtime = RUNTIME_NAME_DOCKER
+        container["runtime"] = RUNTIME_NAME_DOCKER
     if os.getenv(ENV_VAR_K8S):
-        orchestrator = ORCHESTRATOR_NAME_K8S
+        container["orchestrator"] = ORCHESTRATOR_NAME_K8S
 
-    if runtime is not None or orchestrator is not None:
-        return ContainerInfo(runtime, orchestrator)
-
-    return None
+    return container
 
 
 def _is_lambda() -> bool:
@@ -338,12 +328,8 @@ def _getenv_int(key: str) -> Optional[int]:
 def _metadata_env() -> dict[str, Any]:
     env: dict[str, Any] = {}
     container = get_container_env_info()
-    if container is not None:
-        env["container"] = {}
-        if container.runtime:
-            env["container"]["runtime"] = container.runtime
-        if container.orchestrator:
-            env["container"]["orchestrator"] = container.orchestrator
+    if container:
+        env["container"] = container
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
