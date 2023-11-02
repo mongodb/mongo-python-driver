@@ -33,6 +33,7 @@ from test.utils import (
     CMAPListener,
     OvertCommandListener,
     SpecTestCreator,
+    rs_client,
     rs_or_single_client,
 )
 from test.utils_spec_runner import SpecRunner
@@ -219,6 +220,72 @@ class TestPoolPausedError(IntegrationTest):
         self.assertEqual(2, len(succeeded), msg)
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
+
+
+class TestRetryableReads(IntegrationTest):
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_closeConnection
+    def test_retryable_reads_in_sharded_cluster_multiple_available(self):
+        listener = OvertCommandListener()
+
+        client = rs_client(
+            client_context.mongos_seeds(),
+            appName="retryableReadTest",
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorCode": 6,
+                "closeConnection": True,
+                "appName": "retryableReadTest",
+            },
+        }
+
+        client.t.t.insert_one({"x": 1})
+
+        with self.fail_point(fail_command):
+            client.find({})
+
+        failed = listener.failed_events
+        self.assertEqual(len(failed), 2)
+
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_closeConnection
+    def test_retryable_reads_in_sharded_cluster_one_available(self):
+        listener = OvertCommandListener()
+
+        client = rs_client(
+            client_context.mongos_seeds()[0],
+            appName="retryableReadTest",
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorCode": 6,
+                "closeConnection": True,
+                "appName": "retryableReadTest",
+            },
+        }
+
+        client.t.t.insert_one({"x": 1})
+
+        with self.fail_point(fail_command):
+            client.find({})
+
+        failed = listener.failed_events
+        succeeded = listener.succeeded_events
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(len(succeeded), 1)
 
 
 if __name__ == "__main__":

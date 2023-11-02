@@ -2338,8 +2338,8 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise
                         self._retrying = True
                         self._last_error = exc
-                        # if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
-                        #     self._deprioritized_servers.append(self._server)
+                        if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
+                            self._deprioritized_servers.append(self._server)
                     else:
                         raise
 
@@ -2360,8 +2360,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._bulk.retrying = True
                     else:
                         self._retrying = True
-                        # if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
-                        #     self._deprioritized_servers.append(self._server)
+                        if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
+                            self._deprioritized_servers.append(self._server)
                     if not exc.has_error_label("NoWritesPerformed"):
                         self._last_error = exc
                     if self._last_error is None:
