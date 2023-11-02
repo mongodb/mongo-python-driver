@@ -170,7 +170,7 @@ def _build_credentials_tuple(
         properties = extra.get("authmechanismproperties", {})
         request_token_callback = properties.get("request_token_callback")
         custom_token_callback = properties.get("custom_token_callback")
-        provider_name = properties.get("PROVIDER_NAME", "")
+        provider_name = properties.get("PROVIDER_NAME")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -181,23 +181,21 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
-        msg = "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name and custom_token_callback"
-        if not request_token_callback and not provider_name:
-            raise ConfigurationError(msg)
-        elif custom_token_callback and not provider_name:
-            raise ConfigurationError(msg)
-        elif provider_name and not custom_token_callback:
+        msg = "authentication with MONGODB-OIDC requires providing a request_token_callback, a provider_name, or a custom_token_callback"
+        if request_token_callback is not None:
+            if provider_name is not None or custom_token_callback is not None:
+                raise ConfigurationError(msg)
+        elif provider_name is not None:
+            if custom_token_callback is not None:
+                raise ConfigurationError(msg)
             if provider_name == "aws":
                 custom_token_callback = _oidc_aws_callback
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
                 )
-        elif provider_name and custom_token_callback:
-            if provider_name != "custom":
-                raise ConfigurationError(
-                    "When providing a machine token callback, the provider_name must be 'custom'"
-                )
+        elif custom_token_callback is None:
+            raise ConfigurationError(msg)
 
         oidc_props = _OIDCProperties(
             request_token_callback=request_token_callback,

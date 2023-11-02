@@ -153,7 +153,9 @@ for provider_name, provider_data in [
         PLACEHOLDER_MAP[placeholder] = value
 
 PLACEHOLDER_VALUE_MAP = {}
-PLACEHOLDER_VALUE_MAP["/uriOptions/authMechanismProperties"] = "PROVIDER_NAME:aws"
+PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+if PROVIDER_NAME == "aws":
+    PLACEHOLDER_VALUE_MAP["/uriOptions/authMechanismProperties"] = "PROVIDER_NAME:aws"
 
 
 def interrupt_loop():

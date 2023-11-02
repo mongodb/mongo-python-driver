@@ -46,40 +46,24 @@ TEST_PATH = ROOT / "auth" / "unified"
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
 
 
-class TestAuthOIDC(unittest.TestCase):
-    uri: str
-
+class OIDCTestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
         cls.uri_multiple = os.environ["MONGODB_URI_MULTI"]
         cls.uri_admin = os.environ["MONGODB_URI"]
-        cls.token_dir = os.environ["OIDC_TOKEN_DIR"]
 
     def setUp(self):
         self.request_called = 0
 
-    def create_request_cb(self, username="test_user1", sleep=0):
-
-        token_file = os.path.join(self.token_dir, username).replace(os.sep, "/")
-
-        def request_token(server_info, context):
-            # Validate the info.
-            self.assertIn("issuer", server_info)
-            self.assertIn("clientId", server_info)
-
-            # Validate the timeout.
-            timeout_seconds = context["timeout_seconds"]
-            self.assertEqual(timeout_seconds, 60 * 5)
+    def get_token(self, username):
+        """Get a token for the current provider."""
+        provider_name = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+        if provider_name == "aws":
+            token_dir = os.environ["OIDC_TOKEN_DIR"]
+            token_file = os.path.join(token_dir, username).replace(os.sep, "/")
             with open(token_file) as fid:
-                token = fid.read()
-            resp = {"access_token": token, "refresh_token": token}
-
-            time.sleep(sleep)
-            self.request_called += 1
-            return resp
-
-        return request_token
+                return fid.read()
 
     @contextmanager
     def fail_point(self, command_args):
@@ -91,6 +75,28 @@ class TestAuthOIDC(unittest.TestCase):
             yield
         finally:
             client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+
+
+class TestAuthOIDCHuman(OIDCTestBase):
+    uri: str
+
+    def create_request_cb(self, username="test_user1", sleep=0):
+        def request_token(server_info, context):
+            # Validate the info.
+            self.assertIn("issuer", server_info)
+            self.assertIn("clientId", server_info)
+
+            # Validate the timeout.
+            timeout_seconds = context["timeout_seconds"]
+            self.assertEqual(timeout_seconds, 60 * 5)
+            token = self.get_token(username)
+            resp = {"access_token": token, "refresh_token": token}
+
+            time.sleep(sleep)
+            self.request_called += 1
+            return resp
+
+        return request_token
 
     def test_connect_request_callback_single_implicit_username(self):
         request_token = self.create_request_cb()
@@ -575,6 +581,32 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.request_called, 3)
         client1.close()
         client2.close()
+
+
+class TestAuthOIDCMachine(OIDCTestBase):
+    uri: str
+
+    def setUp(self):
+        self.request_called = 0
+
+    def create_request_cb(self, username="test_user1", sleep=0):
+        def request_token(context):
+            # Validate the timeout.
+            timeout_seconds = context["timeout_seconds"]
+            self.assertEqual(timeout_seconds, 60 * 5)
+            token = self.get_token(username)
+            time.sleep(sleep)
+            self.request_called += 1
+            return token
+
+        return request_token
+
+    def test_custom_token_callback(self):
+        request_cb = self.create_request_cb()
+        props: Dict = {"custom_token_callback": request_cb}
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
 
 
 if __name__ == "__main__":
