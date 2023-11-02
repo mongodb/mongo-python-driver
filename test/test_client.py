@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 from typing import Iterable, Type, no_type_check
+from unittest import mock
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -347,14 +348,13 @@ class ClientUnitTest(unittest.TestCase):
         options = client._MongoClient__options
         self.assertEqual(options.pool_options.metadata, metadata)
 
+    @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
-        os.environ[ENV_VAR_K8S] = "1"
         metadata = copy.deepcopy(_METADATA)
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
         client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client._MongoClient__options
-        del os.environ[ENV_VAR_K8S]
         self.assertEqual(options.pool_options.metadata["env"], metadata["env"])
 
     def test_kwargs_codec_options(self):

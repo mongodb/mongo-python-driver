@@ -288,7 +288,7 @@ def get_container_env_info() -> Optional[ContainerInfo]:
     If neither value is present, the metadata client.env.container field will be omitted."""
     runtime, orchestrator = None, None
 
-    if Path.exists(Path(DOCKER_ENV_PATH)):
+    if Path(DOCKER_ENV_PATH).exists():
         runtime = RUNTIME_NAME_DOCKER
     if os.getenv(ENV_VAR_K8S):
         orchestrator = ORCHESTRATOR_NAME_K8S
