@@ -282,11 +282,13 @@ class Topology:
         selector: Callable[[Selection], Selection],
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         servers = self.select_servers(selector, server_selection_timeout, address)
-        if len(servers) == 1:
-            return servers[0]
-        server1, server2 = random.sample(servers, 2)
+        filtered_servers = filter_servers(servers, deprioritized_servers)
+        if len(filtered_servers) == 1:
+            return filtered_servers[0]
+        server1, server2 = random.sample(filtered_servers, 2)
         if server1.pool.operation_count <= server2.pool.operation_count:
             return server1
         else:
@@ -297,9 +299,12 @@ class Topology:
         selector: Callable[[Selection], Selection],
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server = self._select_server(selector, server_selection_timeout, address)
+        server = self._select_server(
+            selector, server_selection_timeout, address, deprioritized_servers
+        )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
         return server
@@ -931,3 +936,17 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
     if current_tv["processId"] != new_tv["processId"]:
         return False
     return current_tv["counter"] > new_tv["counter"]
+
+
+def filter_servers(candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None):
+    """Filter out deprioritized servers from a list of server candidates."""
+    if deprioritized_servers is None:
+        return candidates
+
+    filtered = [server for server in candidates if server not in deprioritized_servers]
+
+    # Not possible to pick a prioritized server, return the original list
+    if len(filtered) == 0:
+        return candidates
+
+    return filtered
