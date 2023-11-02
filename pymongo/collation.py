@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional, Union
 
 from pymongo import common
+from pymongo.write_concern import validate_boolean
 
 
 class CollationStrength:
@@ -170,13 +171,13 @@ class Collation:
         locale = common.validate_string("locale", locale)
         self.__document: dict[str, Any] = {"locale": locale}
         if caseLevel is not None:
-            self.__document["caseLevel"] = common.validate_boolean("caseLevel", caseLevel)
+            self.__document["caseLevel"] = validate_boolean("caseLevel", caseLevel)
         if caseFirst is not None:
             self.__document["caseFirst"] = common.validate_string("caseFirst", caseFirst)
         if strength is not None:
             self.__document["strength"] = common.validate_integer("strength", strength)
         if numericOrdering is not None:
-            self.__document["numericOrdering"] = common.validate_boolean(
+            self.__document["numericOrdering"] = validate_boolean(
                 "numericOrdering", numericOrdering
             )
         if alternate is not None:
@@ -184,11 +185,9 @@ class Collation:
         if maxVariable is not None:
             self.__document["maxVariable"] = common.validate_string("maxVariable", maxVariable)
         if normalization is not None:
-            self.__document["normalization"] = common.validate_boolean(
-                "normalization", normalization
-            )
+            self.__document["normalization"] = validate_boolean("normalization", normalization)
         if backwards is not None:
-            self.__document["backwards"] = common.validate_boolean("backwards", backwards)
+            self.__document["backwards"] = validate_boolean("backwards", backwards)
         self.__document.update(kwargs)
 
     @property

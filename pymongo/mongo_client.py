@@ -86,7 +86,7 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
-from pymongo.pool import ConnectionClosedReason
+from pymongo.monitoring import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE

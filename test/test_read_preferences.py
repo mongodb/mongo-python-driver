@@ -20,6 +20,7 @@ import copy
 import pickle
 import random
 import sys
+from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -135,7 +136,6 @@ class TestReadPreferencesBase(IntegrationTest):
 
 class TestSingleSecondaryOk(TestReadPreferencesBase):
     def test_reads_from_secondary(self):
-
         host, port = next(iter(self.client.secondaries))
         # Direct connection to a secondary.
         client = single_client(host, port)
@@ -442,7 +442,6 @@ class TestMovingAverage(unittest.TestCase):
 
 class TestMongosAndReadPreference(IntegrationTest):
     def test_read_preference_document(self):
-
         pref = Primary()
         self.assertEqual(pref.document, {"mode": "primary"})
 
@@ -514,7 +513,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             else:
                 self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            hedge = {"enabled": True}
+            hedge: dict[str, Any] = {"enabled": True}
             pref = cls(hedge=hedge)
             self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
             out = _maybe_add_read_preference({}, pref)
@@ -559,7 +558,6 @@ class TestMongosAndReadPreference(IntegrationTest):
                 self.assertNotIn("$readPreference", cmd)
 
     def test_maybe_add_read_preference(self):
-
         # Primary doesn't add $readPreference
         out = _maybe_add_read_preference({}, Primary())
         self.assertEqual(out, {})

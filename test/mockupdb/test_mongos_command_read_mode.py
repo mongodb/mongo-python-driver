@@ -47,7 +47,6 @@ class TestMongosCommandReadMode(unittest.TestCase):
         secondary_collection = collection.with_options(read_preference=ReadPreference.SECONDARY)
 
         with going(secondary_collection.aggregate, []):
-
             command = server.receives(
                 OpMsg(
                     {

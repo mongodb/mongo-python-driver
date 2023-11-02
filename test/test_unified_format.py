@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import sys
+from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -58,7 +59,7 @@ class TestMatchEvaluatorUtil(unittest.TestCase):
         self.match_evaluator = MatchEvaluatorUtil(self)
 
     def test_unsetOrMatches(self):
-        spec = {"$$unsetOrMatches": {"y": {"$$unsetOrMatches": 2}}}
+        spec: dict[str, Any] = {"$$unsetOrMatches": {"y": {"$$unsetOrMatches": 2}}}
         for actual in [{}, {"y": 2}, None]:
             self.match_evaluator.match_result(spec, actual)
 

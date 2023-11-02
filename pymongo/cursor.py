@@ -40,7 +40,6 @@ from bson.son import SON
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
-    validate_boolean,
     validate_is_document_type,
     validate_is_mapping,
 )
@@ -57,6 +56,7 @@ from pymongo.message import (
 )
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems

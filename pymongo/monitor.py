@@ -52,6 +52,7 @@ class MonitorBase:
         The background thread is signaled to stop when the Topology or
         this instance is freed.
         """
+
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
         def target() -> bool:
