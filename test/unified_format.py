@@ -1404,8 +1404,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned "
-                "session {}".format(spec["session"])
+                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
+                    spec["session"]
+                )
             )
 
         client = single_client("{}:{}".format(*session._pinned_address))

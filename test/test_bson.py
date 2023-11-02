@@ -783,7 +783,9 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(0, bson_re1.flags)
 
         doc1 = {"r": bson_re1}
-        doc1_bson = b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"  # document length  # r: regex  # document terminator
+        doc1_bson = (
+            b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"
+        )  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc1_bson, encode(doc1))
         self.assertEqual(doc1, decode(doc1_bson))
@@ -794,7 +796,9 @@ class TestBSON(unittest.TestCase):
 
         doc2_with_re = {"r": re2}
         doc2_with_bson_re = {"r": bson_re2}
-        doc2_bson = b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"  # document length  # r: regex  # document terminator
+        doc2_bson = (
+            b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"
+        )  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc2_bson, encode(doc2_with_re))
         self.assertEqual(doc2_bson, encode(doc2_with_bson_re))

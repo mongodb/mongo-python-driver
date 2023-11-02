@@ -1191,7 +1191,9 @@ class TestEventClasses(unittest.TestCase):
         )
         delta = 0.1
         event = monitoring.ServerHeartbeatSucceededEvent(
-            delta, {"ok": 1}, connection_id  # type: ignore[arg-type]
+            delta,
+            {"ok": 1},  # type: ignore[arg-type]
+            connection_id,
         )
         self.assertEqual(
             repr(event),
@@ -1199,7 +1201,9 @@ class TestEventClasses(unittest.TestCase):
             "duration: 0.1, awaited: False, reply: {'ok': 1}>",
         )
         event = monitoring.ServerHeartbeatFailedEvent(
-            delta, "ERROR", connection_id  # type: ignore[arg-type]
+            delta,
+            "ERROR",  # type: ignore[arg-type]
+            connection_id,
         )
         self.assertEqual(
             repr(event),
@@ -1216,7 +1220,10 @@ class TestEventClasses(unittest.TestCase):
             "<ServerOpeningEvent ('localhost', 27017) topology_id: 000000000000000000000001>",
         )
         event = monitoring.ServerDescriptionChangedEvent(
-            "PREV", "NEW", server_address, topology_id  # type: ignore[arg-type]
+            "PREV",  # type: ignore[arg-type]
+            "NEW",  # type: ignore[arg-type]
+            server_address,
+            topology_id,
         )
         self.assertEqual(
             repr(event),
@@ -1233,7 +1240,9 @@ class TestEventClasses(unittest.TestCase):
         event = monitoring.TopologyOpenedEvent(topology_id)
         self.assertEqual(repr(event), "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
         event = monitoring.TopologyDescriptionChangedEvent(
-            "PREV", "NEW", topology_id  # type: ignore[arg-type]
+            "PREV",  # type: ignore[arg-type]
+            "NEW",  # type: ignore[arg-type]
+            topology_id,
         )
         self.assertEqual(
             repr(event),
