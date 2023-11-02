@@ -452,7 +452,9 @@ class TestMultiServerTopology(TopologyTest):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Topology can do it.
         topology_settings = SetNameDiscoverySettings(
-            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor  # type: ignore[arg-type]
+            seeds=[address],
+            pool_class=MockPool,  # type: ignore[arg-type]
+            monitor_class=DummyMonitor,  # type: ignore[arg-type]
         )
 
         t = Topology(topology_settings)
@@ -480,7 +482,9 @@ class TestMultiServerTopology(TopologyTest):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Topology can do it.
         topology_settings = SetNameDiscoverySettings(
-            seeds=[address], pool_class=MockPool, monitor_class=DummyMonitor  # type: ignore[arg-type]
+            seeds=[address],
+            pool_class=MockPool,  # type: ignore[arg-type]
+            monitor_class=DummyMonitor,  # type: ignore[arg-type]
         )
 
         t = Topology(topology_settings)

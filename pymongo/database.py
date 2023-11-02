@@ -551,7 +551,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return self.client._retryable_read(
-                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write  # type: ignore[arg-type]
+                cmd.get_cursor,
+                cmd.get_read_preference(s),  # type: ignore[arg-type]
+                s,
+                retryable=not cmd._performs_write,
             )
 
     def watch(

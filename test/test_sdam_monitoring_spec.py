@@ -83,8 +83,9 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerOpeningEvent published with wrong address (expected"
-                " {}, got {}".format(expected["address"], actual.server_address),
+                "ServerOpeningEvent published with wrong address (expected" " {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "server_description_changed_event":
@@ -93,8 +94,9 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerDescriptionChangedEvent has wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerDescriptionChangedEvent has wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
         if not compare_server_descriptions(expected["newDescription"], actual.new_description):
@@ -113,8 +115,9 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerClosedEvent published with wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerClosedEvent published with wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "topology_opening_event":
