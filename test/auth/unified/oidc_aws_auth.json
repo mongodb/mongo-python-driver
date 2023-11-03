@@ -14,7 +14,7 @@
         "id": "client0",
         "uriOptions": {
           "authMechanism": "MONGODB-OIDC",
-          "authMechanismProperties": "$$placeholder",
+          "authMechanismProperties": { "$$placeholder": 1 },
           "retryReads": true,
           "retryWrites": true
         },

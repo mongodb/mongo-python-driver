@@ -152,10 +152,9 @@ for provider_name, provider_data in [
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
-PLACEHOLDER_VALUE_MAP = {}
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 if PROVIDER_NAME == "aws":
-    PLACEHOLDER_VALUE_MAP["/uriOptions/authMechanismProperties"] = "PROVIDER_NAME:aws"
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
 
 
 def interrupt_loop():
@@ -431,14 +430,6 @@ class EntityMapUtil:
             if path not in PLACEHOLDER_MAP:
                 raise ValueError(f"Could not find a placeholder value for {path}")
             return PLACEHOLDER_MAP[path]
-
-        for (key, value) in current.items():
-            if value != "$$placeholder":
-                continue
-            subpath = f"{path}/{key}"
-            if subpath not in PLACEHOLDER_VALUE_MAP:
-                raise ValueError(f"Could not find a placeholder value for {path}")
-            current[key] = PLACEHOLDER_VALUE_MAP[subpath]
 
         for key in list(current):
             value = current[key]
