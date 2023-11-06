@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch DRIVERS-2543 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -313,18 +313,15 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          set -o xtrace
-          # The mongohouse build script needs to be passed the VARIANT variable, see
-          # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
-        background: true
         script: |
           ${PREPARE_SHELL}
-          set -o xtrace
-          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
+          sleep 1
+          docker ps
 
   "stop mongo-orchestration":
     - command: shell.exec
@@ -2976,7 +2973,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: rhel8
+    platform: ubuntu-22.04
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
