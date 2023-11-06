@@ -20,6 +20,9 @@ import pprint
 import sys
 import threading
 
+from bson import SON
+from pymongo.errors import AutoReconnect
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -31,10 +34,12 @@ from test import (
 )
 from test.utils import (
     CMAPListener,
+    EventListener,
     OvertCommandListener,
     SpecTestCreator,
     rs_client,
     rs_or_single_client,
+    set_fail_point,
 )
 from test.utils_spec_runner import SpecRunner
 
@@ -224,68 +229,150 @@ class TestPoolPausedError(IntegrationTest):
 
 class TestRetryableReads(IntegrationTest):
     @client_context.require_multiple_mongoses
-    @client_context.require_failCommand_closeConnection
+    @client_context.require_failCommand_fail_point
     def test_retryable_reads_in_sharded_cluster_multiple_available(self):
-        listener = OvertCommandListener()
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "closeConnection": True,
+                "appName": "retryableReadTest",
+            },
+        }
 
-        client = rs_client(
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos, directConnection=True)
+            set_fail_point(client, fail_command)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
             client_context.mongos_seeds(),
             appName="retryableReadTest",
             event_listeners=[listener],
             retryReads=True,
         )
 
+        with self.assertRaises(AutoReconnect):
+            client.t.t.find_one({})
+
+        # Disable failpoints on each mongos
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos, directConnection=True)
+
+            fail_command["mode"] = "off"
+            set_fail_point(client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 2)
+        self.assertEqual(len(listener.succeeded_events), 0)
+
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_in_sharded_cluster_one_available(self):
+        single_mongos = client_context.mongos_seeds().split(",")[0]
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
             "data": {
                 "failCommands": ["find"],
-                "errorCode": 6,
                 "closeConnection": True,
                 "appName": "retryableReadTest",
             },
         }
 
-        client.t.t.insert_one({"x": 1})
+        direct_client = rs_or_single_client(single_mongos, directConnection=True)
+        set_fail_point(direct_client, fail_command)
 
-        with self.fail_point(fail_command):
-            client.find({})
-
-        failed = listener.failed_events
-        self.assertEqual(len(failed), 2)
-
-    @client_context.require_multiple_mongoses
-    @client_context.require_failCommand_closeConnection
-    def test_retryable_reads_in_sharded_cluster_one_available(self):
         listener = OvertCommandListener()
-
-        client = rs_client(
-            client_context.mongos_seeds()[0],
+        client = rs_or_single_client(
+            single_mongos,
             appName="retryableReadTest",
             event_listeners=[listener],
             retryReads=True,
         )
 
+        client.t.t.find_one({})
+
+        # Disable failpoint on the tested mongos
+        fail_command["mode"] = "off"
+        set_fail_point(direct_client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+
+class TestRetryableWrites(IntegrationTest):
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_fail_point
+    def test_retryable_writes_in_sharded_cluster_multiple_available(self):
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
             "data": {
-                "failCommands": ["find"],
-                "errorCode": 6,
+                "failCommands": ["insert"],
                 "closeConnection": True,
-                "appName": "retryableReadTest",
+                "appName": "retryableWriteTest",
             },
         }
 
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos, directConnection=True)
+            set_fail_point(client, fail_command)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            client_context.mongos_seeds(),
+            appName="retryableWriteTest",
+            event_listeners=[listener],
+            retryWrites=True,
+        )
+
+        with self.assertRaises(AutoReconnect):
+            client.t.t.insert_one({"x": 1})
+
+        # Disable failpoints on each mongos
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos, directConnection=True)
+
+            fail_command["mode"] = "off"
+            set_fail_point(client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 2)
+        self.assertEqual(len(listener.succeeded_events), 0)
+
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_fail_point
+    def test_retryable_writes_in_sharded_cluster_one_available(self):
+        single_mongos = client_context.mongos_seeds().split(",")[0]
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "closeConnection": True,
+                "appName": "retryableWriteTest",
+            },
+        }
+
+        direct_client = rs_or_single_client(single_mongos, directConnection=True)
+        set_fail_point(direct_client, fail_command)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            single_mongos,
+            appName="retryableWriteTest",
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
         client.t.t.insert_one({"x": 1})
 
-        with self.fail_point(fail_command):
-            client.find({})
+        # Disable failpoint on the tested mongos
+        fail_command["mode"] = "off"
+        set_fail_point(direct_client, fail_command)
 
-        failed = listener.failed_events
-        succeeded = listener.succeeded_events
-        self.assertEqual(len(failed), 1)
-        self.assertEqual(len(succeeded), 1)
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
 
 
 if __name__ == "__main__":
