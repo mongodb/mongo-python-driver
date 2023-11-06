@@ -938,7 +938,9 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
     return current_tv["counter"] > new_tv["counter"]
 
 
-def filter_servers(candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None):
+def filter_servers(
+    candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None
+) -> list[Server]:
     """Filter out deprioritized servers from a list of server candidates."""
     if deprioritized_servers is None:
         return candidates

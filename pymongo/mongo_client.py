@@ -2294,7 +2294,7 @@ class _ClientConnectionRetryable(Generic[T]):
         )
         self._address = address
         self._server: Server = None  # type: ignore
-        self._deprioritized_servers = []
+        self._deprioritized_servers: list[Server] = []
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
