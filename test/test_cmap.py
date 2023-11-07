@@ -144,7 +144,10 @@ class TestCMAP(IntegrationTest):
 
     def clear(self, op):
         """Run the 'clear' operation."""
-        self.pool.reset()
+        if "interruptInUseConnections" in op:
+            self.pool.reset(interrupt_connections=op["interruptInUseConnections"])
+        else:
+            self.pool.reset()
 
     def close(self, op):
         """Run the 'close' operation."""

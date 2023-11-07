@@ -739,10 +739,7 @@ class Connection:
         self.pool_gen = pool.gen
         self.generation = self.pool_gen.get_overall()
         self.ready = False
-        self.cancel_context: Optional[_CancellationContext] = None
-        if not pool.handshake:
-            # This is a Monitor connection.
-            self.cancel_context = _CancellationContext()
+        self.cancel_context = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come: bool = False
         # For load balancer support.
@@ -1112,8 +1109,8 @@ class Connection:
         if self.closed:
             return
         self.closed = True
-        if self.cancel_context:
-            self.cancel_context.cancel()
+        self.active = False
+        self.cancel_context.cancel()
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
         try:
@@ -1377,7 +1374,8 @@ class Pool:
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
-        self.conns: collections.deque = collections.deque()
+        self.available_conns: collections.deque = collections.deque()
+        self.active_conns: list[Connection] = []
         self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1442,7 +1440,11 @@ class Pool:
         return self.state == PoolState.CLOSED
 
     def _reset(
-        self, close: bool, pause: bool = True, service_id: Optional[ObjectId] = None
+        self,
+        close: bool,
+        pause: bool = True,
+        service_id: Optional[ObjectId] = None,
+        interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
         with self.size_cond:
@@ -1457,17 +1459,17 @@ class Pool:
                 self.active_sockets = 0
                 self.operation_count = 0
             if service_id is None:
-                sockets, self.conns = self.conns, collections.deque()
+                sockets, self.available_conns = self.available_conns, collections.deque()
             else:
                 discard: collections.deque = collections.deque()
                 keep: collections.deque = collections.deque()
-                for conn in self.conns:
+                for conn in self.available_conns:
                     if conn.service_id == service_id:
                         discard.append(conn)
                     else:
                         keep.append(conn)
                 sockets = discard
-                self.conns = keep
+                self.available_conns = keep
 
             if close:
                 self.state = PoolState.CLOSED
@@ -1476,6 +1478,7 @@ class Pool:
             self.size_cond.notify_all()
 
         listeners = self.opts._event_listeners
+
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
@@ -1488,9 +1491,19 @@ class Pool:
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
                 assert listeners is not None
-                listeners.publish_pool_cleared(self.address, service_id=service_id)
+                listeners.publish_pool_cleared(
+                    self.address,
+                    service_id=service_id,
+                    interrupt_in_use_connections=interrupt_connections,
+                )
             for conn in sockets:
                 conn.close_conn(ConnectionClosedReason.STALE)
+
+        if interrupt_connections:
+            for conn in self.active_conns:
+                conn.cancel_context.cancel()
+                conn.close_conn(ConnectionClosedReason.STALE)
+            self.active_conns = []
 
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
@@ -1498,11 +1511,13 @@ class Pool:
         """
         self.is_writable = is_writable
         with self.lock:
-            for _socket in self.conns:
+            for _socket in self.available_conns:
                 _socket.update_is_writable(self.is_writable)
 
-    def reset(self, service_id: Optional[ObjectId] = None) -> None:
-        self._reset(close=False, service_id=service_id)
+    def reset(
+        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
+    ) -> None:
+        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1527,16 +1542,17 @@ class Pool:
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
                 while (
-                    self.conns
-                    and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
+                    self.available_conns
+                    and self.available_conns[-1].idle_time_seconds()
+                    > self.opts.max_idle_time_seconds
                 ):
-                    conn = self.conns.pop()
+                    conn = self.available_conns.pop()
                     conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
                 # There are enough sockets in the pool.
-                if len(self.conns) + self.active_sockets >= self.opts.min_pool_size:
+                if len(self.available_conns) + self.active_sockets >= self.opts.min_pool_size:
                     return
                 if self.requests >= self.opts.min_pool_size:
                     return
@@ -1557,7 +1573,7 @@ class Pool:
                     if self.gen.get_overall() != reference_generation:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
-                    self.conns.appendleft(conn)
+                    self.available_conns.appendleft(conn)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1644,6 +1660,7 @@ class Pool:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
+            self.active_conns.append(conn)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
@@ -1737,18 +1754,18 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(emit_event=False)
-                    while not (self.conns or self._pending < self._max_connecting):
+                    while not (self.available_conns or self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < self._max_connecting:
+                            if self.available_conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
                         self._raise_if_not_ready(emit_event=False)
 
                     try:
-                        conn = self.conns.popleft()
+                        conn = self.available_conns.popleft()
                     except IndexError:
                         self._pending += 1
                 if conn:  # We got a socket from the pool
@@ -1794,6 +1811,8 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
+        # Always remove a connection from the active pool on check in
+        self.active_conns.remove(conn)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
@@ -1818,7 +1837,7 @@ class Pool:
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
-                        self.conns.appendleft(conn)
+                        self.available_conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
 
@@ -1899,5 +1918,5 @@ class Pool:
         # Avoid ResourceWarnings in Python 3
         # Close all sockets without calling reset() or close() because it is
         # not safe to acquire a lock in __del__.
-        for conn in self.conns:
+        for conn in self.available_conns:
             conn.close_conn(None)

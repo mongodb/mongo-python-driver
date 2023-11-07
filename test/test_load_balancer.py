@@ -42,11 +42,11 @@ class TestLB(IntegrationTest):
             # Tracked in PYTHON-3011
             self.skipTest("Test is flaky on PyPy")
         pool = get_pool(self.client)
-        n_conns = len(pool.conns)
+        n_conns = len(pool.available_conns)
         self.db.test.find_one({})
-        self.assertEqual(len(pool.conns), n_conns)
+        self.assertEqual(len(pool.available_conns), n_conns)
         list(self.db.test.aggregate([{"$limit": 1}]))
-        self.assertEqual(len(pool.conns), n_conns)
+        self.assertEqual(len(pool.available_conns), n_conns)
 
     @client_context.require_load_balancer
     def test_unpin_committed_transaction(self):

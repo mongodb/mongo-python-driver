@@ -297,7 +297,6 @@ _POLL_TIMEOUT = 0.5
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     context = conn.cancel_context
-    # Only Monitor connections can be cancelled.
     if context:
         sock = conn.conn
         timed_out = False
@@ -320,7 +319,7 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
                     timeout = _POLL_TIMEOUT
                 readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
             if context.cancelled:
-                raise _OperationCancelled("hello cancelled")
+                raise _OperationCancelled("operation cancelled")
             if readable:
                 return
             if timed_out:

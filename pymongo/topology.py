@@ -330,7 +330,10 @@ class Topology:
         return self.select_server(any_server_selector, server_selection_timeout, address)
 
     def _process_change(
-        self, server_description: ServerDescription, reset_pool: bool = False
+        self,
+        server_description: ServerDescription,
+        reset_pool: bool = False,
+        interrupt_connections: bool = False,
     ) -> None:
         """Process a new ServerDescription on an opened topology.
 
@@ -387,12 +390,17 @@ class Topology:
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
-                server.pool.reset()
+                server.pool.reset(interrupt_connections=interrupt_connections)
 
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
-    def on_change(self, server_description: ServerDescription, reset_pool: bool = False) -> None:
+    def on_change(
+        self,
+        server_description: ServerDescription,
+        reset_pool: bool = False,
+        interrupt_connections: bool = False,
+    ) -> None:
         """Process a new ServerDescription after an hello call completes."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -405,7 +413,7 @@ class Topology:
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
-                self._process_change(server_description, reset_pool)
+                self._process_change(server_description, reset_pool, interrupt_connections)
 
     def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.

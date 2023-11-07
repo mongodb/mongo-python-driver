@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
-from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
+from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
@@ -204,7 +204,9 @@ class Monitor(MonitorBase):
 
             # Update the Topology and clear the server pool on error.
             self._topology.on_change(
-                self._server_description, reset_pool=self._server_description.error
+                self._server_description,
+                reset_pool=self._server_description.error,
+                interrupt_connections=isinstance(self._server_description.error, NetworkTimeout),
             )
 
             if self._stream and (
@@ -266,7 +268,7 @@ class Monitor(MonitorBase):
             # XXX: "awaited" could be incorrectly set to True in the rare case
             # the pool checkout closes and recreates a connection.
             awaited = bool(
-                self._pool.conns
+                self._pool.available_conns
                 and self._stream
                 and sd.is_server_type_known
                 and sd.topology_version
