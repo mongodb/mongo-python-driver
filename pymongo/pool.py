@@ -1618,6 +1618,7 @@ class Pool:
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        self.active_conns.append(conn)
         try:
             if self.handshake:
                 conn.hello()
@@ -1660,7 +1661,8 @@ class Pool:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
-            self.active_conns.append(conn)
+            if conn not in self.active_conns:
+                self.active_conns.append(conn)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
