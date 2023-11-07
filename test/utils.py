@@ -938,7 +938,7 @@ def gevent_monkey_patched():
     try:
         import socket
 
-        import gevent.socket
+        import gevent.socket  # type:ignore[import]
 
         return socket.socket is gevent.socket.socket
     except ImportError:

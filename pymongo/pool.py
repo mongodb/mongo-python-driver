@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import weakref
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -54,7 +55,7 @@ from pymongo.common import (
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
 )
-from pymongo.errors import (
+from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
     ConnectionFailure,
@@ -268,6 +269,25 @@ else:
         (platform.python_implementation(), ".".join(map(str, sys.version_info)))
     )
 
+DOCKER_ENV_PATH = "/.dockerenv"
+ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
+
+RUNTIME_NAME_DOCKER = "docker"
+ORCHESTRATOR_NAME_K8S = "kubernetes"
+
+
+def get_container_env_info() -> dict[str, str]:
+    """Returns the runtime and orchestrator of a container.
+    If neither value is present, the metadata client.env.container field will be omitted."""
+    container = {}
+
+    if Path(DOCKER_ENV_PATH).exists():
+        container["runtime"] = RUNTIME_NAME_DOCKER
+    if os.getenv(ENV_VAR_K8S):
+        container["orchestrator"] = ORCHESTRATOR_NAME_K8S
+
+    return container
+
 
 def _is_lambda() -> bool:
     if os.getenv("AWS_LAMBDA_RUNTIME_API"):
@@ -307,6 +327,9 @@ def _getenv_int(key: str) -> Optional[int]:
 
 def _metadata_env() -> dict[str, Any]:
     env: dict[str, Any] = {}
+    container = get_container_env_info()
+    if container:
+        env["container"] = container
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env

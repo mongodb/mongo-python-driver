@@ -11,7 +11,6 @@ from bson.errors import InvalidStringData
 
 
 class TestUTF8(unittest.TestCase):
-
     # Verify that python and bson have the same understanding of
     # legal utf-8 if the first byte is 0xf4 (244)
     def _assert_same_utf8_validation(self, data):

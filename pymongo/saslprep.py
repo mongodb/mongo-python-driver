@@ -23,7 +23,8 @@ except ImportError:
     HAVE_STRINGPREP = False
 
     def saslprep(
-        data: Any, prohibit_unassigned_code_points: Optional[bool] = True  # noqa: ARG001
+        data: Any,
+        prohibit_unassigned_code_points: Optional[bool] = True,  # noqa: ARG001
     ) -> Any:
         """SASLprep dummy"""
         if isinstance(data, str):

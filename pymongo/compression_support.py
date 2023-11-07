@@ -17,7 +17,7 @@ import warnings
 from typing import Any, Iterable, Optional, Union
 
 try:
-    import snappy
+    import snappy  # type:ignore[import]
 
     _HAVE_SNAPPY = True
 except ImportError:

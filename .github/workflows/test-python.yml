@@ -3,6 +3,7 @@ name: Python Tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: tests-${{ github.ref }}

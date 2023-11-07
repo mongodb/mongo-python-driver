@@ -130,7 +130,12 @@ def create_response():
 
 # Reset the numbers.
 def reset():
-    global open_connections, heartbeat_count, total_heartbeat_duration, total_commands, total_command_duration
+    global \
+        open_connections, \
+        heartbeat_count, \
+        total_heartbeat_duration, \
+        total_commands, \
+        total_command_duration
     open_connections = 0
     heartbeat_count = 0
     total_heartbeat_duration = 0

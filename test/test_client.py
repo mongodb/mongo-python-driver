@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 from typing import Iterable, Type, no_type_check
+from unittest import mock
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -97,7 +98,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool import _METADATA, Connection, PoolOptions
+from pymongo.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -346,6 +347,15 @@ class ClientUnitTest(unittest.TestCase):
         )
         options = client._MongoClient__options
         self.assertEqual(options.pool_options.metadata, metadata)
+
+    @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
+    def test_container_metadata(self):
+        metadata = copy.deepcopy(_METADATA)
+        metadata["env"] = {}
+        metadata["env"]["container"] = {"orchestrator": "kubernetes"}
+        client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
+        options = client._MongoClient__options
+        self.assertEqual(options.pool_options.metadata["env"], metadata["env"])
 
     def test_kwargs_codec_options(self):
         class MyFloatType:

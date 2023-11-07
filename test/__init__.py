@@ -51,7 +51,7 @@ from pymongo.database import Database
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-from pymongo.ssl_support import HAVE_SSL, _ssl
+from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.uri_parser import parse_uri
 
 if HAVE_SSL:

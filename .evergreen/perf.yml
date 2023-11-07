@@ -26,7 +26,7 @@ timeout:
 
 functions:
   "fetch source":
-    # Executes git clone and applies the submitted patch, if any
+    # Executes clone and applies the submitted patch, if any
     - command: git.get_project
       params:
         directory: "src"
@@ -67,7 +67,6 @@ functions:
            PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
            PREPARE_SHELL: |
               set -o errexit
-              set -o xtrace
               export DRIVERS_TOOLS="$DRIVERS_TOOLS"
               export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
               export MONGODB_BINARIES="$MONGODB_BINARIES"

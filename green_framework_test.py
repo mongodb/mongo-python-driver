@@ -98,7 +98,8 @@ python {sys.argv[0]} --help-frameworks."""
         sys.exit(1)
 
     run(
-        args[0], *args[1:]  # Framework name.
+        args[0],
+        *args[1:],  # Framework name.
     )  # Command line args to pytest, like what test to run.
 
 

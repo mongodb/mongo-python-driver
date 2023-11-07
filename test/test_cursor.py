@@ -23,6 +23,7 @@ import re
 import sys
 import threading
 import time
+from typing import Any
 
 import pymongo
 
@@ -354,7 +355,7 @@ class TestCursor(IntegrationTest):
             db.test.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain,
         )
 
-        spec = [("num", DESCENDING)]
+        spec: list[Any] = [("num", DESCENDING)]
         _ = db.test.create_index(spec)
 
         first = next(db.test.find())
@@ -729,7 +730,7 @@ class TestCursor(IntegrationTest):
         random.shuffle(shuffled)
 
         db.test.drop()
-        for (a, b) in shuffled:
+        for a, b in shuffled:
             db.test.insert_one({"a": a, "b": b})
 
         result = [
@@ -1084,8 +1085,12 @@ class TestCursor(IntegrationTest):
 
         def iterate_cursor():
             while cursor.alive:
-                for _doc in cursor:
-                    pass
+                try:
+                    for _doc in cursor:
+                        pass
+                except OperationFailure as e:
+                    if e.code != 237:  # CursorKilled error code
+                        raise
 
         t = threading.Thread(target=iterate_cursor)
         t.start()

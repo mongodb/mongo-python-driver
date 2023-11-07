@@ -33,11 +33,11 @@ from typing import (
 )
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter
-    from pymongocrypt.errors import MongoCryptError
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter
-    from pymongocrypt.mongocrypt import MongoCryptOptions
-    from pymongocrypt.state_machine import MongoCryptCallback
+    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
+    from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
+    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
@@ -382,9 +382,9 @@ class _Encrypter:
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 
-        io_callbacks = _EncryptionIO(
+        io_callbacks = _EncryptionIO(  # type:ignore[misc]
             metadata_client, key_vault_coll, mongocryptd_client, opts
-        )  # type:ignore[misc]
+        )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
             MongoCryptOptions(

@@ -97,7 +97,7 @@ else:
 
     HAS_SNI = False
     IPADDR_SAFE = False
-    BLOCKING_IO_ERRORS = ()  # type: ignore
+    BLOCKING_IO_ERRORS = ()  # type:ignore[assignment]
 
     def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""

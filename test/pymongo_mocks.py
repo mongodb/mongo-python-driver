@@ -47,7 +47,7 @@ class MockPool(Pool):
 
         assert host_and_port in (
             client.mock_standalones + client.mock_members + client.mock_mongoses
-        ), ("bad host: %s" % host_and_port)
+        ), "bad host: %s" % host_and_port
 
         with Pool.checkout(self, handler) as conn:
             conn.mock_host = self.mock_host

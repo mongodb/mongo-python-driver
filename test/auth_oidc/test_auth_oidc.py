@@ -306,7 +306,6 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_reauthenticate_succeeds_after_refresh_fails(self):
-
         # Create request callback that returns valid credentials.
         request_cb = self.create_request_cb()
 
@@ -333,7 +332,6 @@ class TestAuthOIDCHuman(OIDCTestBase):
         self.assertEqual(self.request_called, 3)
 
     def test_reauthenticate_fails(self):
-
         # Create request callback that returns valid credentials.
         request_cb = self.create_request_cb()
 

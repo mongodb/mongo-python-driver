@@ -34,7 +34,7 @@ from service_identity.pyopenssl import verify_hostname as _verify_hostname
 from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
 from pymongo.errors import ConfigurationError as _ConfigurationError
-from pymongo.errors import _CertificateError
+from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
 from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
 from pymongo.socket_checker import SocketChecker as _SocketChecker
@@ -270,7 +270,7 @@ class SSLContext:
         return self._ctx.set_options(0)
 
     def __set_options(self, value: int) -> None:
-        # Explcitly convert to int, since newer CPython versions
+        # Explicitly convert to int, since newer CPython versions
         # use enum.IntFlag for options. The values are the same
         # regardless of implementation.
         self._ctx.set_options(int(value))

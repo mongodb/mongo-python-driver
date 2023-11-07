@@ -173,7 +173,7 @@ def with_metaclass(meta, *bases):
     # the actual metaclass.
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if sys.version_info[:2] >= (3, 7):
+            if sys.version_info[:2] >= (3, 7):  # noqa: UP036
                 # This version introduced PEP 560 that requires a bit
                 # of extra care (we mimic what is done by __build_class__).
                 resolved_bases = types.resolve_bases(bases)
@@ -1410,8 +1410,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned "
-                "session {}".format(spec["session"])
+                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
+                    spec["session"]
+                )
             )
 
         client = single_client("{}:{}".format(*session._pinned_address))
