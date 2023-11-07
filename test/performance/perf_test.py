@@ -122,7 +122,9 @@ class PerformanceTest:
         self.max_iterations = NUM_ITERATIONS
         for i in range(NUM_ITERATIONS):
             if time.monotonic() - start > MAX_ITERATION_TIME:
-                warnings.warn("Test timed out, completed %s iterations." % i)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("default")
+                    warnings.warn("Test timed out, completed %s iterations." % i)
                 break
             self.before()
             with Timer() as timer:
