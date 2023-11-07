@@ -24,7 +24,6 @@ from typing import Any, Iterable, Mapping, NoReturn, Optional
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.objectid import ObjectId
-from bson.son import SON
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.client_session import ClientSession
@@ -50,8 +49,8 @@ NEWLN = b"\n"
 # Slightly under a power of 2, to work well with server's record allocations.
 DEFAULT_CHUNK_SIZE = 255 * 1024
 
-_C_INDEX: SON[str, Any] = SON([("files_id", ASCENDING), ("n", ASCENDING)])
-_F_INDEX: SON[str, Any] = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
+_C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
+_F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
 
 
 def _grid_in_property(

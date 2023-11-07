@@ -47,7 +47,6 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
-from bson.son import SON
 
 try:
     from pymongo import _cmessage  # type: ignore[attr-defined]
@@ -129,7 +128,7 @@ def _maybe_add_read_preference(
     # the secondaryOkay bit has the same effect).
     if mode and (mode != ReadPreference.SECONDARY_PREFERRED.mode or len(document) > 1):
         if "$query" not in spec:
-            spec = SON([("$query", spec)])
+            spec = {"$query": spec}
         spec["$readPreference"] = document
     return spec
 
@@ -175,33 +174,29 @@ def _convert_write_result(
     return res
 
 
-_OPTIONS = SON(
-    [
-        ("tailable", 2),
-        ("oplogReplay", 8),
-        ("noCursorTimeout", 16),
-        ("awaitData", 32),
-        ("allowPartialResults", 128),
-    ]
-)
+_OPTIONS = {
+    "tailable": 2,
+    "oplogReplay": 8,
+    "noCursorTimeout": 16,
+    "awaitData": 32,
+    "allowPartialResults": 128,
+}
 
 
-_MODIFIERS = SON(
-    [
-        ("$query", "filter"),
-        ("$orderby", "sort"),
-        ("$hint", "hint"),
-        ("$comment", "comment"),
-        ("$maxScan", "maxScan"),
-        ("$maxTimeMS", "maxTimeMS"),
-        ("$max", "max"),
-        ("$min", "min"),
-        ("$returnKey", "returnKey"),
-        ("$showRecordId", "showRecordId"),
-        ("$showDiskLoc", "showRecordId"),  # <= MongoDb 3.0
-        ("$snapshot", "snapshot"),
-    ]
-)
+_MODIFIERS = {
+    "$query": "filter",
+    "$orderby": "sort",
+    "$hint": "hint",
+    "$comment": "comment",
+    "$maxScan": "maxScan",
+    "$maxTimeMS": "maxTimeMS",
+    "$max": "max",
+    "$min": "min",
+    "$returnKey": "returnKey",
+    "$showRecordId": "showRecordId",
+    "$showDiskLoc": "showRecordId",  # <= MongoDb 3.0
+    "$snapshot": "snapshot",
+}
 
 
 def _gen_find_command(
@@ -216,9 +211,9 @@ def _gen_find_command(
     collation: Optional[Mapping[str, Any]] = None,
     session: Optional[ClientSession] = None,
     allow_disk_use: Optional[bool] = None,
-) -> SON[str, Any]:
+) -> dict[str, Any]:
     """Generate a find command document."""
-    cmd: SON[str, Any] = SON([("find", coll)])
+    cmd: dict[str, Any] = {"find": coll}
     if "$query" in spec:
         cmd.update(
             [
@@ -262,9 +257,9 @@ def _gen_get_more_command(
     max_await_time_ms: Optional[int],
     comment: Optional[Any],
     conn: Connection,
-) -> SON[str, Any]:
+) -> dict[str, Any]:
     """Generate a getMore command document."""
-    cmd: SON[str, Any] = SON([("getMore", cursor_id), ("collection", coll)])
+    cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
     if batch_size:
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
@@ -337,7 +332,7 @@ class _Query:
         self.client = client
         self.allow_disk_use = allow_disk_use
         self.name = "find"
-        self._as_command: Optional[tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
 
     def reset(self) -> None:
@@ -364,7 +359,7 @@ class _Query:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> tuple[SON[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
         # Generate it once, for speed and to avoid repeating side-effects.
@@ -372,7 +367,7 @@ class _Query:
             return self._as_command
 
         explain = "$explain" in self.spec
-        cmd: SON[str, Any] = _gen_find_command(
+        cmd: dict[str, Any] = _gen_find_command(
             self.coll,
             self.spec,
             self.fields,
@@ -387,7 +382,7 @@ class _Query:
         )
         if explain:
             self.name = "explain"
-            cmd = SON([("explain", cmd)])
+            cmd = {"explain": cmd}
         session = self.session
         conn.add_server_api(cmd)
         if session:
@@ -399,7 +394,7 @@ class _Query:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(SON[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = cast(dict[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd)
@@ -505,7 +500,7 @@ class _GetMore:
         self.client = client
         self.max_await_time_ms = max_await_time_ms
         self.conn_mgr = conn_mgr
-        self._as_command: Optional[tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
         self.comment = comment
 
@@ -528,13 +523,13 @@ class _GetMore:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> tuple[SON[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
         if self._as_command is not None:
             return self._as_command
 
-        cmd: SON[str, Any] = _gen_get_more_command(
+        cmd: dict[str, Any] = _gen_get_more_command(
             self.cursor_id,
             self.coll,
             self.ntoreturn,
@@ -549,7 +544,7 @@ class _GetMore:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(SON[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = cast(dict[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd=None)

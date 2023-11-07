@@ -23,6 +23,7 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generic,
     Iterator,
     Mapping,
@@ -49,7 +50,6 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
-from bson.son import SON
 from pymongo import _csot
 from pymongo.collection import Collection
 from pymongo.common import CONNECT_TIMEOUT
@@ -83,9 +83,8 @@ _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
-
-_DATA_KEY_OPTS: CodecOptions[SON[str, Any]] = CodecOptions(
-    document_class=SON[str, Any], uuid_representation=STANDARD
+_DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
+    document_class=Dict[str, Any], uuid_representation=STANDARD
 )
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.

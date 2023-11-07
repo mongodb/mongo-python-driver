@@ -18,7 +18,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
@@ -122,7 +121,6 @@ class _AggregationCommand:
     def get_read_preference(
         self, session: Optional[ClientSession]
     ) -> Union[_AggWritePref, _ServerMode]:
-
         if self._write_preference:
             return self._write_preference
         pref = self._target._read_preference_for(session)
@@ -138,7 +136,7 @@ class _AggregationCommand:
         read_preference: _ServerMode,
     ) -> CommandCursor[_DocumentType]:
         # Serialize command.
-        cmd = SON([("aggregate", self._aggregation_target), ("pipeline", self._pipeline)])
+        cmd = {"aggregate": self._aggregation_target, "pipeline": self._pipeline}
         cmd.update(self._options)
 
         # Apply this target's read concern if:

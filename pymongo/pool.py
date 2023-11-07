@@ -39,7 +39,6 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.son import SON
 from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
@@ -179,11 +178,7 @@ else:
         _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
 
 
-_METADATA: SON[str, Any] = SON(
-    [
-        ("driver", SON([("name", "PyMongo"), ("version", __version__)])),
-    ]
-)
+_METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
 
 if sys.platform.startswith("linux"):
     # platform.linux_distribution was deprecated in Python 3.5
@@ -191,61 +186,51 @@ if sys.platform.startswith("linux"):
     # raises DeprecationWarning
     # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
     _name = platform.system()
-    _METADATA["os"] = SON(
-        [
-            ("type", _name),
-            ("name", _name),
-            ("architecture", platform.machine()),
-            # Kernel version (e.g. 4.4.0-17-generic).
-            ("version", platform.release()),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": _name,
+        "name": _name,
+        "architecture": platform.machine(),
+        # Kernel version (e.g. 4.4.0-17-generic).
+        "version": platform.release(),
+    }
 elif sys.platform == "darwin":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", platform.system()),
-            ("architecture", platform.machine()),
-            # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
-            # kernel version.
-            ("version", platform.mac_ver()[0]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": platform.system(),
+        "architecture": platform.machine(),
+        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+        # kernel version.
+        "version": platform.mac_ver()[0],
+    }
 elif sys.platform == "win32":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            # "Windows XP", "Windows 7", "Windows 10", etc.
-            ("name", " ".join((platform.system(), platform.release()))),
-            ("architecture", platform.machine()),
-            # Windows patch level (e.g. 5.1.2600-SP3)
-            ("version", "-".join(platform.win32_ver()[1:3])),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        # "Windows XP", "Windows 7", "Windows 10", etc.
+        "name": " ".join((platform.system(), platform.release())),
+        "architecture": platform.machine(),
+        # Windows patch level (e.g. 5.1.2600-SP3)
+        "version": "-".join(platform.win32_ver()[1:3]),
+    }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA["os"] = SON(
-        [
-            # Linux, Windows 7, Mac OS X, etc.
-            ("type", _name),
-            ("name", _name),
-            # x86, x86_64, AMD64, etc.
-            ("architecture", _arch),
-            # Linux kernel version, OSX version, etc.
-            ("version", _ver),
-        ]
-    )
+    _METADATA["os"] = {
+        # Linux, Windows 7, Mac OS X, etc.
+        "type": _name,
+        "name": _name,
+        # x86, x86_64, AMD64, etc.
+        "architecture": _arch,
+        # Linux kernel version, OSX version, etc.
+        "version": _ver,
+    }
 else:
     # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
     _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", " ".join([part for part in _aliased[:2] if part])),
-            ("architecture", platform.machine()),
-            ("version", _aliased[2]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": " ".join([part for part in _aliased[:2] if part]),
+        "architecture": platform.machine(),
+        "version": _aliased[2],
+    }
 
 if platform.python_implementation().startswith("PyPy"):
     _METADATA["platform"] = " ".join(
@@ -659,7 +644,7 @@ class PoolOptions:
         return self.__compression_settings
 
     @property
-    def metadata(self) -> SON[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """A dict of metadata about the application, driver, os, and platform."""
         return self.__metadata.copy()
 
@@ -801,14 +786,14 @@ class Connection:
         else:
             self.close_conn(ConnectionClosedReason.STALE)
 
-    def hello_cmd(self) -> SON[str, Any]:
+    def hello_cmd(self) -> dict[str, Any]:
         # Handshake spec requires us to use OP_MSG+hello command for the
         # initial handshake in load balanced or stable API mode.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             self.op_msg_enabled = True
-            return SON([(HelloCompat.CMD, 1)])
+            return {HelloCompat.CMD: 1}
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
+            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello[dict[str, Any]]:
         return self._hello(None, None, None)
@@ -951,7 +936,7 @@ class Connection:
 
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
-            spec = SON(spec)
+            spec = dict(spec)
 
         if not (write_concern is None or write_concern.acknowledged or collation is None):
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")

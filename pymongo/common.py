@@ -56,7 +56,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
 
-ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
+ORDERED_TYPES: Sequence[Type] = (dict, SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024**2)

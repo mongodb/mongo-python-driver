@@ -43,7 +43,6 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Type
 
 import bson
 from bson.binary import Binary
-from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -87,21 +86,17 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
             )
         )
         client_payload = ctx.step(None)
-        client_first = SON(
-            [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
-        )
+        client_first = {"saslStart": 1, "mechanism": "MONGODB-AWS", "payload": client_payload}
         server_first = conn.command("$external", client_first)
         res = server_first
         # Limit how many times we loop to catch protocol / library issues
         for _ in range(10):
             client_payload = ctx.step(res["payload"])
-            cmd = SON(
-                [
-                    ("saslContinue", 1),
-                    ("conversationId", server_first["conversationId"]),
-                    ("payload", client_payload),
-                ]
-            )
+            cmd = {
+                "saslContinue": 1,
+                "conversationId": server_first["conversationId"],
+                "payload": client_payload,
+            }
             res = conn.command("$external", cmd)
             if res["done"]:
                 # SASL complete.

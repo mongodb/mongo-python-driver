@@ -34,7 +34,6 @@ from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 if TYPE_CHECKING:
-    from bson.son import SON
     from pymongo.bulk import _Bulk
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
@@ -110,7 +109,7 @@ class DeleteOne:
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -175,7 +174,7 @@ class DeleteMany:
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -247,7 +246,7 @@ class ReplaceOne(Generic[_DocumentType]):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -311,7 +310,7 @@ class _UpdateOp:
         if array_filters is not None:
             validate_list("array_filters", array_filters)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
 
