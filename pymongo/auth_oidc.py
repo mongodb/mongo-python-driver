@@ -74,14 +74,14 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-def _oidc_aws_callback(context: dict[str, Any]) -> str:
+def _oidc_aws_callback(_context: dict[str, Any]) -> str:
     token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
     if not token_file:
         raise RuntimeError(
             'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
         )
     with open(token_file) as fid:
-        return fid.read().strip()
+        return dict(access_token=fid.read().strip())
 
 
 @dataclass
@@ -134,7 +134,7 @@ class _OIDCAuthenticator:
                         "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
                         "version": CALLBACK_VERSION,
                     }
-                    resp = dict(access_token=cb(context))
+                    resp = cb(context)
 
                 self.validate_request_token_response(resp)
                 self.token_gen_id += 1

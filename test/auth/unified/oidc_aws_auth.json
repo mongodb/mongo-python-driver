@@ -222,6 +222,86 @@
           ]
         }
       ]
+    },
+    {
+      "description": "Write command should fail to reauthenticate when second attempt fails",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 2
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "errorCode": 391
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          },
+          "expectError": {
+            "errorCode": 391
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "insert"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "insert"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
