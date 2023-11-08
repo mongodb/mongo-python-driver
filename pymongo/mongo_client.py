@@ -2329,7 +2329,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
                         if self._is_not_eligible_for_retry() or (
-                            exc_code and exc_code not in helpers._RETRYABLE_ERROR_CODES
+                            isinstance(exc, OperationFailure)
+                            and exc_code not in helpers._RETRYABLE_ERROR_CODES
                         ):
                             raise
                         self._retrying = True
