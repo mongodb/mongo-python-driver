@@ -17,5 +17,6 @@
     "password": "$4to@L8=MC",
     "db": "mydb?"
   },
+  "ping": false,
   "comment": "Encoded user, pass, and DB parse correctly"
 }
