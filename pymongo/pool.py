@@ -1109,7 +1109,6 @@ class Connection:
         if self.closed:
             return
         self.closed = True
-        self.active = False
         self.cancel_context.cancel()
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
@@ -1477,6 +1476,10 @@ class Pool:
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
+            if interrupt_connections:
+                for conn in self.active_conns:
+                    conn.cancel_context.cancel()
+
         listeners = self.opts._event_listeners
 
         # CMAP spec says that close() MUST close sockets before publishing the
@@ -1498,12 +1501,6 @@ class Pool:
                 )
             for conn in sockets:
                 conn.close_conn(ConnectionClosedReason.STALE)
-
-        if interrupt_connections:
-            for conn in self.active_conns:
-                conn.cancel_context.cancel()
-                conn.close_conn(ConnectionClosedReason.STALE)
-            self.active_conns = []
 
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
