@@ -35,7 +35,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext, filter_servers
+from pymongo.topology import Topology, _ErrorContext, _filter_servers
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 
@@ -687,16 +687,16 @@ class TestMultiServerTopology(TopologyTest):
         s2 = Server(ServerDescription(("localhost2", 27017)), pool=object(), monitor=object())  # type: ignore[arg-type]
         servers = [s1, s2]
 
-        result = filter_servers(servers, deprioritized_servers=[s2])
+        result = _filter_servers(servers, deprioritized_servers=[s2])
         self.assertEqual(result, [s1])
 
-        result = filter_servers(servers, deprioritized_servers=[s1, s2])
+        result = _filter_servers(servers, deprioritized_servers=[s1, s2])
         self.assertEqual(result, servers)
 
-        result = filter_servers(servers, deprioritized_servers=[])
+        result = _filter_servers(servers, deprioritized_servers=[])
         self.assertEqual(result, servers)
 
-        result = filter_servers(servers)
+        result = _filter_servers(servers)
         self.assertEqual(result, servers)
 
 

@@ -241,9 +241,13 @@ class TestRetryableReads(IntegrationTest):
             },
         }
 
+        mongos_clients = []
+
         for mongos in client_context.mongos_seeds().split(","):
-            client = rs_or_single_client(mongos, directConnection=True)
+            client = rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
+            self.addCleanup(client.close)
+            mongos_clients.append(client)
 
         listener = OvertCommandListener()
         client = rs_or_single_client(
@@ -253,13 +257,12 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
-        with self.assertRaises(AutoReconnect):
-            client.t.t.find_one({})
+        with self.fail_point(fail_command):
+            with self.assertRaises(AutoReconnect):
+                client.t.t.find_one({})
 
         # Disable failpoints on each mongos
-        for mongos in client_context.mongos_seeds().split(","):
-            client = rs_or_single_client(mongos, directConnection=True)
-
+        for client in mongos_clients:
             fail_command["mode"] = "off"
             set_fail_point(client, fail_command)
 
