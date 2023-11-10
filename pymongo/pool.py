@@ -1810,8 +1810,6 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
-        # Always remove a connection from the active pool on check in
-        self.active_conns.remove(conn)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
@@ -1836,6 +1834,7 @@ class Pool:
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
+                        self.active_conns.remove(conn)
                         self.available_conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()

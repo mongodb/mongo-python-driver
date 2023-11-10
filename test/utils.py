@@ -301,7 +301,7 @@ class MockPool:
         self._lock = _create_lock()
         self.opts = options
         self.operation_count = 0
-        self.conns = []
+        self.available_conns = []
 
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
@@ -319,7 +319,7 @@ class MockPool:
     def ready(self):
         pass
 
-    def reset(self, service_id=None):
+    def reset(self, service_id=None, interrupt_connections=False):
         self._reset()
 
     def reset_without_pause(self):
