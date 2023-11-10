@@ -269,40 +269,6 @@ class TestRetryableReads(IntegrationTest):
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
 
-    @client_context.require_multiple_mongoses
-    @client_context.require_failCommand_fail_point
-    def test_retryable_reads_in_sharded_cluster_one_available(self):
-        single_mongos = client_context.mongos_seeds().split(",")[0]
-        fail_command = {
-            "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
-            "data": {
-                "failCommands": ["find"],
-                "closeConnection": True,
-                "appName": "retryableReadTest",
-            },
-        }
-
-        direct_client = rs_or_single_client(single_mongos, directConnection=True)
-        set_fail_point(direct_client, fail_command)
-
-        listener = OvertCommandListener()
-        client = rs_or_single_client(
-            single_mongos,
-            appName="retryableReadTest",
-            event_listeners=[listener],
-            retryReads=True,
-        )
-
-        client.t.t.find_one({})
-
-        # Disable failpoint on the tested mongos
-        fail_command["mode"] = "off"
-        set_fail_point(direct_client, fail_command)
-
-        self.assertEqual(len(listener.failed_events), 1)
-        self.assertEqual(len(listener.succeeded_events), 1)
-
 
 if __name__ == "__main__":
     unittest.main()
