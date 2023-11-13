@@ -974,7 +974,7 @@ class Connection:
 
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
-            spec = SON(spec)
+            spec = dict(spec)
 
         if not (write_concern is None or write_concern.acknowledged or collation is None):
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
