@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 import types
-from collections import abc
+from collections import abc, defaultdict
 from test import (
     AWS_CREDS,
     AZURE_CREDS,
@@ -1035,6 +1035,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "timeoutMode" in op.get("arguments", {}):
                 self.skipTest("PyMongo does not support timeoutMode")
 
+        # if spec["description"] != "A failed command":
+        #     self.skipTest("for now...")
+
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
@@ -1661,6 +1664,41 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def check_log_messages(self, operations, spec):
+        def format_logs(log_list):
+            client_to_log = defaultdict(list)
+            for log in log_list:
+                data = json_util.loads(log.message)
+                client = data["clientID"]
+                data.pop("clientID")
+                client_to_log[client].append(
+                    {
+                        "level": log.levelname.lower(),
+                        "component": log.name.removeprefix("pymongo."),
+                        "data": data,
+                    }
+                )
+            return client_to_log
+
+        # cmd_started_log = json_util.loads(cm.records[0].message)
+
+        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+            self.run_operations(operations)
+            formatted_logs = format_logs(cm.records)
+            # print(len(cm.output), len(spec))
+            # print(spec)
+            # FIXME: currently I assume all msgs are coming from client
+            for client in spec:
+                clientid = self.entity_map[client["client"]]._topology_settings._topology_id
+                actual_logs = formatted_logs[clientid]
+                self.assertEqual(len(client["messages"]), len(actual_logs))
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                    shared = set(expected_msg.keys()) & set(actual_msg.keys())
+                    all = set(expected_msg.keys()) | set(actual_msg.keys())
+                    print(all - shared)
+                    self.maxDiff = None
+                    self.assertEqual(expected_msg, actual_msg)
+
     def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1721,8 +1759,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
 
-        # process operations
-        self.run_operations(spec["operations"])
+        if "expectLogMessages" in spec:
+            expect_log_messages = spec["expectLogMessages"]
+            self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
+            self.check_log_messages(spec["operations"], expect_log_messages)
+        else:
+            # process operations
+            self.run_operations(spec["operations"])
 
         # process expectEvents
         if "expectEvents" in spec:

@@ -1374,6 +1374,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         operation.read_preference,
                         self._event_listeners,
                         unpack_res,
+                        self,
                     )
 
         def _cmd(
@@ -1384,7 +1385,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
             return server.run_operation(
-                conn, operation, read_preference, self._event_listeners, unpack_res
+                conn,
+                operation,
+                read_preference,
+                self._event_listeners,
+                unpack_res,
+                self,
             )
 
         return self._retryable_read(
