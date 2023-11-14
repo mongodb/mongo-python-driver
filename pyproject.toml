@@ -116,8 +116,11 @@ filterwarnings = [
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
+    "module:unclosed <socket object:ResourceWarning",
     # https://github.com/eventlet/eventlet/issues/818
-    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning"
+    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
+    # https://github.com/dateutil/dateutil/issues/1314
+    "module:datetime.datetime.utc:DeprecationWarning:dateutil",
 ]
 
 [tool.mypy]
