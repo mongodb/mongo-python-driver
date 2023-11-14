@@ -59,7 +59,7 @@ class TestCursor(unittest.TestCase):
                 request.replies({"cursor": {"id": cursor_id, "nextBatch": [{}]}})
 
 
-class TestNonRetryableErrorCodeCatch(PyMongoTestCase):
+class TestRetryableErrorCodeCatch(PyMongoTestCase):
     def _test_fail_on_operation_failure_with_code(self, code):
         """Test reads on error codes that should not be retried"""
         server = MockupDB()
