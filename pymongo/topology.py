@@ -285,10 +285,10 @@ class Topology:
         deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         servers = self.select_servers(selector, server_selection_timeout, address)
-        filtered_servers = _filter_servers(servers, deprioritized_servers)
-        if len(filtered_servers) == 1:
-            return filtered_servers[0]
-        server1, server2 = random.sample(filtered_servers, 2)
+        servers = _filter_servers(servers, deprioritized_servers)
+        if len(servers) == 1:
+            return servers[0]
+        server1, server2 = random.sample(servers, 2)
         if server1.pool.operation_count <= server2.pool.operation_count:
             return server1
         else:
