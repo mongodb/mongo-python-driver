@@ -2996,7 +2996,7 @@ buildvariants:
     python-version: "*"
     auth-ssl: auth-ssl
     serverless: "*"
-  display_name: "Serverless ${python-version} ${platform}"
+  display_name: "Serverless Next ${python-version} ${platform}"
   tasks:
     - name: "serverless_next_task_group"
 
