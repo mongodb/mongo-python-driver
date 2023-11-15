@@ -16,11 +16,13 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 from mockupdb import MockupDB, OpMsg, going
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 
 
 class TestCursor(unittest.TestCase):
@@ -55,6 +57,32 @@ class TestCursor(unittest.TestCase):
                 self.assertEqual(request.flags, 0, "exhaustAllowed should not be set")
                 cursor_id = 123 if i < 2 else 0
                 request.replies({"cursor": {"id": cursor_id, "nextBatch": [{}]}})
+
+
+class TestRetryableErrorCodeCatch(PyMongoTestCase):
+    def _test_fail_on_operation_failure_with_code(self, code):
+        """Test reads on error codes that should not be retried"""
+        server = MockupDB()
+        server.run()
+        self.addCleanup(server.stop)
+        server.autoresponds("ismaster", maxWireVersion=6)
+
+        client = MongoClient(server.uri)
+
+        with going(lambda: server.receives(OpMsg({"find": "collection"})).command_err(code=code)):
+            cursor = client.db.collection.find()
+            with self.assertRaises(OperationFailure) as ctx:
+                cursor.next()
+            self.assertEqual(ctx.exception.code, code)
+
+    def test_fail_on_operation_failure_none(self):
+        self._test_fail_on_operation_failure_with_code(None)
+
+    def test_fail_on_operation_failure_zero(self):
+        self._test_fail_on_operation_failure_with_code(0)
+
+    def test_fail_on_operation_failure_one(self):
+        self._test_fail_on_operation_failure_with_code(1)
 
 
 if __name__ == "__main__":
