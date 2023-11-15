@@ -1028,7 +1028,6 @@ class _BulkWriteContext:
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
                 serviceId=self.conn.service_id,
-                uuidRepresentation=self.codec.uuid_representation,
             )
         )
         if self.publish:
@@ -1056,7 +1055,6 @@ class _BulkWriteContext:
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
-                    uuidRepresentation=self.codec.uuid_representation,
                 )
             )
             if self.publish:
@@ -1083,7 +1081,7 @@ class _BulkWriteContext:
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
-                    uuidRepresentation=self.codec.uuid_representation,
+                    isServerSideError=isinstance(exc, OperationFailure),
                 )
             )
             if self.publish:
@@ -1121,7 +1119,6 @@ class _BulkWriteContext:
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
                 serviceId=self.conn.service_id,
-                uuidRepresentation=self.codec.uuid_representation,
             )
         )
         if self.publish:
@@ -1144,7 +1141,6 @@ class _BulkWriteContext:
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
-                    uuidRepresentation=self.codec.uuid_representation,
                 )
             )
             if self.publish:
@@ -1169,7 +1165,7 @@ class _BulkWriteContext:
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
-                    uuidRepresentation=self.codec.uuid_representation,
+                    isServerSideError=isinstance(exc, OperationFailure),
                 )
             )
             if self.publish:

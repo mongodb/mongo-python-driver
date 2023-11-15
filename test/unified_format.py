@@ -1696,9 +1696,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+
                     if "failureIsRedacted" in expected_msg:
-                        # value = expected_msg.pop("failureIsRedacted")
                         self.assertIn("failure", actual_data)
+                        should_redact = expected_msg.pop("failureIsRedacted")
+                        if should_redact:
+                            actual_fields = set(json_util.loads(actual_data["failure"]).keys())
+                            self.assertTrue(
+                                {"code", "codeName", "errorLabels"}.issuperset(actual_fields)
+                            )
 
                     self.match_evaluator.match_result(expected_data, actual_data)
                     self.match_evaluator.match_result(expected_msg, actual_msg)

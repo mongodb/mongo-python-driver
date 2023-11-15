@@ -241,6 +241,7 @@ def command(
                     serverHost=conn.address[0],
                     serverPort=conn.address[1],
                     serviceId=conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
                 )
             )
         if publish:

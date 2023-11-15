@@ -20,6 +20,8 @@ SENSITIVE_COMMANDS = [
 ]
 HELLO_COMMANDS = ["hello", "ismaster", "isMaster"]
 
+REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
+
 
 class StructuredMessage:
     def __init__(self, **kwargs):
@@ -31,12 +33,18 @@ class StructuredMessage:
         json_options = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
         for doc in _documents:
             if doc in kwargs:
+                if doc == "failure" and kwargs.pop("isServerSideError", False):
+                    kwargs[doc] = {
+                        k: v for k, v in kwargs[doc].items() if k in REDACTED_FAILURE_FIELDS
+                    }
                 is_speculative_authenticate = (
                     kwargs.pop("speculative_authenticate", False)
                     or "speculativeAuthenticate" in kwargs[doc]
                 )
-                if ("commandName" in kwargs and kwargs["commandName"] in SENSITIVE_COMMANDS) or (
-                    kwargs["commandName"] in HELLO_COMMANDS and is_speculative_authenticate
+                if (
+                    doc != "failure"
+                    and ("commandName" in kwargs and kwargs["commandName"] in SENSITIVE_COMMANDS)
+                    or (kwargs["commandName"] in HELLO_COMMANDS and is_speculative_authenticate)
                 ):
                     kwargs[doc] = json_util.dumps({})
                 else:
