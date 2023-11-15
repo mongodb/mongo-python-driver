@@ -35,6 +35,11 @@ class TestAuthSpec(unittest.TestCase):
     pass
 
 
+class SampleHumanCallback(OIDCHumanCallback):
+    def fetch(self, info, context):
+        pass
+
+
 def create_test(test_case):
     def run_test(self):
         uri = test_case["uri"]
@@ -48,7 +53,7 @@ def create_test(test_case):
             if credential:
                 props = credential["mechanism_properties"] or {}
                 if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["request_token_callback"] = OIDCHumanCallback()
+                    props["request_token_callback"] = SampleHumanCallback()
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:

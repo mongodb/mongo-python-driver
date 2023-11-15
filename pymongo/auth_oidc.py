@@ -19,12 +19,7 @@ import abc
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional
-
-try:
-    from typing import TypedDict
-except AttributeError:
-    TypedDict = Dict[str, Any]
+from typing import TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional, Union
 
 import bson
 from bson.binary import Binary
@@ -37,61 +32,13 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
 
 
-class OIDCIdPInfo(TypedDict):
-    """The IdP info provided for a server."""
-
-    issuer: str
-    authorization_endpoint: Optional[str]
-    token_endpoint: Optional[str]
-    device_authorization_endpoint: Optional[str]
-    jwks_uri: Optional[str]
-
-
-class OIDCMachineCallbackContext(TypedDict):
-    """The options dict passed to an OIDC machine (workload federation)
-    callback.
-    """
-
-    timeout: float
-    version: int
-
-
-class OIDCMachineCallbackResult(TypedDict):
-    """The result dict returned from an OIDC machine (workload federation)
-    callback.
-    """
-
-    access_token: str
-    expires_in: Optional[float]
-
-
-class OIDCHumanCallbackContext(TypedDict):
-    """The options dict passed to an OIDC human (workforce federation)
-    callback.
-    """
-
-    timeout: float
-    version: int
-    refresh_token: Optional[str]
-
-
-class OIDCHumanCallbackResult(TypedDict):
-    """The result dict returned from an OIDC machine (workforce federation)
-    callback.
-    """
-
-    access_token: str
-    refresh_token: Optional[str]
-    expires_in: Optional[float]
-
-
 class OIDCMachineCallback(abc.ABC):
     """A base class for defining OIDC machine (workload federation)
     callbacks.
     """
 
     @abc.abstractmethod
-    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+    def fetch(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Convert the given BSON value into our own type."""
 
 
@@ -101,9 +48,7 @@ class OIDCHumanCallback(abc.ABC):
     """
 
     @abc.abstractmethod
-    def fetch(
-        self, idp_info: OIDCIdPInfo, context: OIDCHumanCallbackContext
-    ) -> OIDCHumanCallbackResult:
+    def fetch(self, idp_info: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """Convert the given BSON value into our own type."""
 
 
@@ -152,7 +97,7 @@ def _get_authenticator(
 
 
 class _OIDCAWSCallback(OIDCMachineCallback):
-    def fetch(self, context):
+    def fetch(self, context: Dict[str, Any]) -> Dict[str, Any]:
         token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
         if not token_file:
             raise RuntimeError(
@@ -168,21 +113,19 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     refresh_token: Optional[str] = field(default=None)
     access_token: Optional[str] = field(default=None)
-    idp_info: Optional[OIDCIdPInfo] = field(default=None)
+    idp_info: Optional[Dict[str, Any]] = field(default=None)
     token_gen_id: int = field(default=0)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def get_current_token(self, use_callback: bool = True) -> Optional[str]:
         properties = self.properties
-
+        cb: Union[None, OIDCHumanCallback, OIDCMachineCallback]
         if not use_callback:
             cb = None
         elif properties.request_token_callback:
             cb = properties.request_token_callback
-            cb_type = "human"
         elif properties.custom_token_callback:
             cb = properties.custom_token_callback
-            cb_type = "machine"
 
         prev_token = self.access_token
         if prev_token:
@@ -199,12 +142,13 @@ class _OIDCAuthenticator:
                 if new_token != prev_token:
                     return new_token
 
-                if cb_type == "human":
-                    context = {
+                if isinstance(cb, OIDCHumanCallback):
+                    context: Dict[str, Any] = {
                         "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
                         "version": CALLBACK_VERSION,
                         "refresh_token": self.refresh_token,
                     }
+                    assert self.idp_info is not None
                     resp = cb.fetch(self.idp_info, context)
                 else:
                     context = {
