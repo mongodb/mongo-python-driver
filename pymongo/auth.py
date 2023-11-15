@@ -41,7 +41,7 @@ from pymongo.auth_aws import _authenticate_aws
 from pymongo.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
-    _oidc_aws_callback,
+    _OIDCAWSCallback,
     _OIDCProperties,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -189,7 +189,7 @@ def _build_credentials_tuple(
             if custom_token_callback is not None:
                 raise ConfigurationError(msg)
             if provider_name == "aws":
-                custom_token_callback = _oidc_aws_callback
+                custom_token_callback = _OIDCAWSCallback()
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"

@@ -26,6 +26,7 @@ from test import unittest
 from test.unified_format import generate_test_classes
 
 from pymongo import MongoClient
+from pymongo.auth_oidc import OIDCHumanCallback
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
@@ -47,8 +48,7 @@ def create_test(test_case):
             if credential:
                 props = credential["mechanism_properties"] or {}
                 if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["request_token_callback"] = lambda x, y: 1
-                    del props["REQUEST_TOKEN_CALLBACK"]
+                    props["request_token_callback"] = OIDCHumanCallback()
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:

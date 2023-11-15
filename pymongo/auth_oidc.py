@@ -15,14 +15,21 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
+import abc
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Mapping, MutableMapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional
+
+try:
+    from typing import TypedDict
+except AttributeError:
+    TypedDict = Dict[str, Any]
 
 import bson
 from bson.binary import Binary
 from bson.son import SON
+from pymongo._csot import remaining
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -30,10 +37,80 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
 
 
+class OIDCIdPInfo(TypedDict):
+    """The IdP info provided for a server."""
+
+    issuer: str
+    authorization_endpoint: Optional[str]
+    token_endpoint: Optional[str]
+    device_authorization_endpoint: Optional[str]
+    jwks_uri: Optional[str]
+
+
+class OIDCMachineCallbackContext(TypedDict):
+    """The options dict passed to an OIDC machine (workload federation)
+    callback.
+    """
+
+    timeout: float
+    version: int
+
+
+class OIDCMachineCallbackResult(TypedDict):
+    """The result dict returned from an OIDC machine (workload federation)
+    callback.
+    """
+
+    access_token: str
+    expires_in: Optional[float]
+
+
+class OIDCHumanCallbackContext(TypedDict):
+    """The options dict passed to an OIDC human (workforce federation)
+    callback.
+    """
+
+    timeout: float
+    version: int
+    refresh_token: Optional[str]
+
+
+class OIDCHumanCallbackResult(TypedDict):
+    """The result dict returned from an OIDC machine (workforce federation)
+    callback.
+    """
+
+    access_token: str
+    refresh_token: Optional[str]
+    expires_in: Optional[float]
+
+
+class OIDCMachineCallback(abc.ABC):
+    """A base class for defining OIDC machine (workload federation)
+    callbacks.
+    """
+
+    @abc.abstractmethod
+    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+        """Convert the given BSON value into our own type."""
+
+
+class OIDCHumanCallback(abc.ABC):
+    """A base class for defining OIDC human (workforce federation)
+    callbacks.
+    """
+
+    @abc.abstractmethod
+    def fetch(
+        self, idp_info: OIDCIdPInfo, context: OIDCHumanCallbackContext
+    ) -> OIDCHumanCallbackResult:
+        """Convert the given BSON value into our own type."""
+
+
 @dataclass
 class _OIDCProperties:
-    request_token_callback: Optional[Callable[..., dict]]
-    custom_token_callback: Optional[Callable[..., str]]
+    request_token_callback: Optional[OIDCHumanCallback]
+    custom_token_callback: Optional[OIDCMachineCallback]
     provider_name: Optional[str]
     allowed_hosts: list[str]
 
@@ -74,14 +151,15 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-def _oidc_aws_callback(_context: dict[str, Any]) -> str:
-    token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
-    if not token_file:
-        raise RuntimeError(
-            'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
-        )
-    with open(token_file) as fid:
-        return dict(access_token=fid.read().strip())
+class _OIDCAWSCallback(OIDCMachineCallback):
+    def fetch(self, context):
+        token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
+        if not token_file:
+            raise RuntimeError(
+                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
+            )
+        with open(token_file) as fid:
+            return dict(access_token=fid.read().strip())
 
 
 @dataclass
@@ -90,7 +168,7 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     refresh_token: Optional[str] = field(default=None)
     access_token: Optional[str] = field(default=None)
-    idp_info: Optional[dict] = field(default=None)
+    idp_info: Optional[OIDCIdPInfo] = field(default=None)
     token_gen_id: int = field(default=0)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -127,14 +205,13 @@ class _OIDCAuthenticator:
                         "version": CALLBACK_VERSION,
                         "refresh_token": self.refresh_token,
                     }
-                    resp = cb(self.idp_info, context)
+                    resp = cb.fetch(self.idp_info, context)
                 else:
-                    # TODO: handle CSOT for machine workflow.
                     context = {
-                        "timeout_seconds": CALLBACK_TIMEOUT_SECONDS,
+                        "timeout_seconds": remaining(),
                         "version": CALLBACK_VERSION,
                     }
-                    resp = cb(context)
+                    resp = cb.fetch(context)
 
                 self.validate_request_token_response(resp)
                 self.token_gen_id += 1
