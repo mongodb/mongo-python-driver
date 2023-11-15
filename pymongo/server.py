@@ -201,7 +201,7 @@ class Server:
                     clientID=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
-                    reply=failure,
+                    failure=failure,
                     commandName=next(iter(cmd)),
                     databaseName=dbn,
                     requestID=request_id,

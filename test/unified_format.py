@@ -677,6 +677,12 @@ class MatchEvaluatorUtil:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
+    def _operation_matchAsDocument(self, spec, actual, key_to_compare):
+        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
+
+    def _operation_matchAsRoot(self, spec, actual, key_to_compare):
+        self._match_document(spec, actual, True)
+
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_{}".format(opname.strip("$"))
         try:
@@ -1680,24 +1686,22 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             return client_to_log
 
-        # cmd_started_log = json_util.loads(cm.records[0].message)
-
         with self.assertLogs("pymongo.command", level="DEBUG") as cm:
             self.run_operations(operations)
             formatted_logs = format_logs(cm.records)
-            # print(len(cm.output), len(spec))
-            # print(spec)
             # FIXME: currently I assume all msgs are coming from client
             for client in spec:
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
                 self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
-                    shared = set(expected_msg.keys()) & set(actual_msg.keys())
-                    all = set(expected_msg.keys()) | set(actual_msg.keys())
-                    print(all - shared)
-                    self.maxDiff = None
-                    self.assertEqual(expected_msg, actual_msg)
+                    expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+                    if "failureIsRedacted" in expected_msg:
+                        # value = expected_msg.pop("failureIsRedacted")
+                        self.assertIn("failure", actual_data)
+
+                    self.match_evaluator.match_result(expected_data, actual_data)
+                    self.match_evaluator.match_result(expected_msg, actual_msg)
 
     def verify_outcome(self, spec):
         for collection_data in spec:

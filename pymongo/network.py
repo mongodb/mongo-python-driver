@@ -232,7 +232,7 @@ def command(
                     clientID=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
-                    reply=failure,
+                    failure=failure,
                     commandName=next(iter(spec)),
                     databaseName=dbname,
                     requestID=request_id,
@@ -273,6 +273,7 @@ def command(
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
                 serviceId=conn.service_id,
+                speculative_authenticate="speculativeAuthenticate" in orig,
             )
         )
     if publish:
