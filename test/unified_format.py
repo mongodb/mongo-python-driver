@@ -1675,8 +1675,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             client_to_log = defaultdict(list)
             for log in log_list:
                 data = json_util.loads(log.message)
-                client = data["clientID"]
-                data.pop("clientID")
+                client = data["clientId"]
+                data.pop("clientId")
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),

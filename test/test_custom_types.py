@@ -92,6 +92,9 @@ class UndecipherableInt64Type:
         # Does not compare equal to integers.
         return False
 
+    def to_json(self):
+        return self.value
+
 
 class UndecipherableIntDecoder(TypeDecoder):
     bson_type = Int64

@@ -171,13 +171,13 @@ def command(
     if client is not None:
         command_logger.debug(
             StructuredMessage(
-                clientID=client._topology_settings._topology_id,
+                clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=spec,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
-                requestID=request_id,
-                operationID=request_id,
+                requestId=request_id,
+                operationId=request_id,
                 driverConnectionId=conn.id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
@@ -229,14 +229,14 @@ def command(
         if client is not None:
             command_logger.debug(
                 StructuredMessage(
-                    clientID=client._topology_settings._topology_id,
+                    clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(spec)),
                     databaseName=dbname,
-                    requestID=request_id,
-                    operationID=request_id,
+                    requestId=request_id,
+                    operationId=request_id,
                     driverConnectionId=conn.id,
                     serverHost=conn.address[0],
                     serverPort=conn.address[1],
@@ -261,14 +261,14 @@ def command(
     if client is not None:
         command_logger.debug(
             StructuredMessage(
-                clientID=client._topology_settings._topology_id,
+                clientId=client._topology_settings._topology_id,
                 message="Command succeeded",
                 durationMS=duration,
                 reply=response_doc,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
-                requestID=request_id,
-                operationID=request_id,
+                requestId=request_id,
+                operationId=request_id,
                 driverConnectionId=conn.id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],

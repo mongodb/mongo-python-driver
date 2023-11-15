@@ -46,6 +46,8 @@ class StructuredMessage:
 
         if "durationMS" in kwargs:
             kwargs["durationMS"] = kwargs["durationMS"].total_seconds() * 1000
+        if "serviceId" in kwargs and kwargs["serviceId"] is None:
+            del kwargs["serviceId"]
 
     def __str__(self):
         return "%s" % (json_util.dumps(self.kwargs))

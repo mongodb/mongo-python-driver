@@ -44,7 +44,7 @@ class TestLogger(IntegrationTest):
                 with self.assertRaises(OperationFailure):
                     db.command({"notARealCommand": True})
                 cmd_failed_log = json_util.loads(cm.records[-1].message)
-                self.assertEqual(len(cmd_failed_log["reply"]), 5 + 3)
+                self.assertEqual(len(cmd_failed_log["failure"]), 5 + 3)
 
     # def test_truncation_multi_byte_codepoints(self):
     #     ...

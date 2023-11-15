@@ -1017,13 +1017,13 @@ class _BulkWriteContext:
         # TODO: add serverConnectionId
         command_logger.debug(
             StructuredMessage(
-                clientID=client._topology_settings._topology_id,
+                clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
-                requestID=request_id,
-                operationID=request_id,
+                requestId=request_id,
+                operationId=request_id,
                 driverConnectionId=self.conn.id,
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
@@ -1044,14 +1044,14 @@ class _BulkWriteContext:
                 reply = {"ok": 1}
             command_logger.debug(
                 StructuredMessage(
-                    clientID=client._topology_settings._topology_id,
+                    clientId=client._topology_settings._topology_id,
                     message="Command succeeded",
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
                     databaseName=self.db_name,
-                    requestID=request_id,
-                    operationID=request_id,
+                    requestId=request_id,
+                    operationId=request_id,
                     driverConnectionId=self.conn.id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
@@ -1071,14 +1071,14 @@ class _BulkWriteContext:
                 failure = _convert_exception(exc)
             command_logger.debug(
                 StructuredMessage(
-                    clientID=client._topology_settings._topology_id,
+                    clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
                     databaseName=self.db_name,
-                    requestID=request_id,
-                    operationID=request_id,
+                    requestId=request_id,
+                    operationId=request_id,
                     driverConnectionId=self.conn.id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
@@ -1110,13 +1110,13 @@ class _BulkWriteContext:
         cmd[self.field] = docs
         command_logger.debug(
             StructuredMessage(
-                clientID=client._topology_settings._topology_id,
+                clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
-                requestID=request_id,
-                operationID=request_id,
+                requestId=request_id,
+                operationId=request_id,
                 driverConnectionId=self.conn.id,
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
@@ -1132,14 +1132,14 @@ class _BulkWriteContext:
             duration = (datetime.datetime.now() - start) + duration
             command_logger.debug(
                 StructuredMessage(
-                    clientID=client._topology_settings._topology_id,
+                    clientId=client._topology_settings._topology_id,
                     message="Command succeeded",
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
                     databaseName=self.db_name,
-                    requestID=request_id,
-                    operationID=request_id,
+                    requestId=request_id,
+                    operationId=request_id,
                     driverConnectionId=self.conn.id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
@@ -1157,14 +1157,14 @@ class _BulkWriteContext:
                 failure = _convert_exception(exc)
             command_logger.debug(
                 StructuredMessage(
-                    clientID=client._topology_settings._topology_id,
+                    clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
                     databaseName=self.db_name,
-                    requestID=request_id,
-                    operationID=request_id,
+                    requestId=request_id,
+                    operationId=request_id,
                     driverConnectionId=self.conn.id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
@@ -1191,6 +1191,7 @@ class _BulkWriteContext:
             self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
+            docs,
         )
         return cmd
 
