@@ -675,6 +675,61 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
+    def test_reauthenticate_succeeds(self):
+        listener = EventListener()
+
+        # Create request callback that returns valid credentials.
+        request_cb = self.create_request_cb()
+
+        # Create a client with the callback.
+        props: Dict = {"custom_token_callback": request_cb}
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authmechanismproperties=props
+        )
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Assert that the request callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        listener.reset()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        started_events = [
+            i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
+        ]
+        succeeded_events = [
+            i.command_name
+            for i in listener.succeeded_events
+            if not i.command_name.startswith("sasl")
+        ]
+        failed_events = [
+            i.command_name for i in listener.failed_events if not i.command_name.startswith("sasl")
+        ]
+
+        self.assertEqual(
+            started_events,
+            [
+                "find",
+                "find",
+            ],
+        )
+        self.assertEqual(succeeded_events, ["find"])
+        self.assertEqual(failed_events, ["find"])
+
+        # Assert that the request callback has been called twice.
+        self.assertEqual(self.request_called, 2)
+        client.close()
+
     def test_reauthentication_succeeds_multiple_connections(self):
         client1 = self.create_client()
         client2 = self.create_client()
