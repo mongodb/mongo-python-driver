@@ -905,6 +905,25 @@ functions:
         content_type: ${content_type|application/gzip}
         display_name: Release files all
 
+  "run perf tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
+
+  "attach benchmark test results":
+    - command: attach.results
+      params:
+        file_location: src/report.json
+
+  "send dashboard data":
+    - command: perf.send
+      params:
+        file: src/results.json
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -2154,6 +2173,17 @@ tasks:
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/tox.sh -m test-eg
 
+    - name: "perf-6.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 axes:
   # Choice of distro
   - id: platform
@@ -3116,6 +3146,13 @@ buildvariants:
   tags: ["release_tag"]
   tasks:
   - ".release_tag"
+
+- name: "perf-tests"
+  display_name: "Performance Benchmark Tests"
+  batchtime: 10080  # 7 days
+  run_on: rhel90-dbx-perf-large
+  tasks:
+     - name: "perf-6.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
