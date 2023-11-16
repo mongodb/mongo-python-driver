@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_ARGS="$1"
+TEST_ARGS="${@:1}"
 PYTHON=$(which python)
 export PIP_QUIET=1  # Quiet by default
 

@@ -66,7 +66,7 @@ if hasattr(gc, "set_debug"):
 # The host and port of a single mongod or mongos, or the seed host
 # for a replica set.
 host = os.environ.get("DB_IP", "localhost")
-port = int(os.environ.get("DB_PORT", 27107))
+port = int(os.environ.get("DB_PORT", 27017))
 IS_SRV = "mongodb+srv" in host
 
 db_user = os.environ.get("DB_USER", "user")
