@@ -1179,6 +1179,7 @@ class _BulkWriteContext:
         self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
     ) -> MutableMapping[str, Any]:
         """Publish a CommandStartedEvent."""
+        cmd[self.field] = docs
         self.listeners.publish_command_start(
             cmd,
             self.db_name,
@@ -1187,7 +1188,6 @@ class _BulkWriteContext:
             self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
-            docs,
         )
         return cmd
 

@@ -1485,7 +1485,6 @@ class _EventListeners:
         server_connection_id: Optional[int],
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
-        docs: Optional[list[Mapping[str, Any]]] = None,
     ) -> None:
         """Publish a CommandStartedEvent to all command listeners.
 
@@ -1498,13 +1497,6 @@ class _EventListeners:
         :param op_id: The (optional) operation id for this operation.
         :param service_id: The service_id this command was sent to, or ``None``.
         """
-        if docs:
-            if "insert" in command:
-                command["documents"] = docs  # type: ignore[index]
-            elif "update" in command:
-                command["updates"] = docs  # type: ignore[index]
-            else:
-                command["deletes"] = docs  # type: ignore[index]
         if op_id is None:
             op_id = request_id
         event = CommandStartedEvent(
