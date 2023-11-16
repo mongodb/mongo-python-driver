@@ -2,7 +2,7 @@
 
 ## Versioning
 
-We follow [semver](ttps://semver.org/) and [pep-0440](https://www.python.org/dev/peps/pep-0440)
+We follow [semver](https://semver.org/) and [pep-0440](https://www.python.org/dev/peps/pep-0440)
 for versioning.
 
 We shoot for a release every few months - that will generally just
@@ -15,7 +15,7 @@ API changes.
 
 In between releases we add `.devN` to the version number to denote the
 version under development. So if we just released `3.6.0`, then the
-current dev version might be `3.6.1.dev0` or `3.7.0.dev0``. When we make the
+current dev version might be `3.6.1.dev0` or `3.7.0.dev0`. When we make the
 next release we replace all instances of `3.x.x.devN` in the docs with the
 new version number.
 

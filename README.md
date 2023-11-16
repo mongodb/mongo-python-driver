@@ -214,9 +214,9 @@ documentation can be found in the `doc/build/html/` directory.
 
 ## Learning Resources
 
-MongoDB Learn - [Python
+- MongoDB Learn - [Python
 courses](https://learn.mongodb.com/catalog?labels=%5B%22Language%22%5D&values=%5B%22Python%22%5D).
-[Python Articles on Developer
+- [Python Articles on Developer
 Center](https://www.mongodb.com/developer/languages/python/).
 
 ## Testing
