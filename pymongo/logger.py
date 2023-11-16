@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions
@@ -24,7 +25,7 @@ REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
 
 
 class StructuredMessage:
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         document_length = int(os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", DEFAULT_DOCUMENT_LENGTH))
         if document_length < 0:
             document_length = DEFAULT_DOCUMENT_LENGTH
@@ -59,5 +60,5 @@ class StructuredMessage:
         if "serviceId" in kwargs and kwargs["serviceId"] is None:
             del kwargs["serviceId"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s" % (json_util.dumps(self.kwargs))

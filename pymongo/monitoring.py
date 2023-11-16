@@ -1500,11 +1500,11 @@ class _EventListeners:
         """
         if docs:
             if "insert" in command:
-                command["documents"] = docs
+                command["documents"] = docs  # type: ignore[index]
             elif "update" in command:
-                command["updates"] = docs
+                command["updates"] = docs  # type: ignore[index]
             else:
-                command["deletes"] = docs
+                command["deletes"] = docs  # type: ignore[index]
         if op_id is None:
             op_id = request_id
         event = CommandStartedEvent(
