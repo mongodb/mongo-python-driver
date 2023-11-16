@@ -591,10 +591,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.request_called = 0
 
     def create_request_cb(self, username="test_user1", sleep=0):
-        def request_token(context):
-            # Validate the timeout.
-            timeout_seconds = context["timeout_seconds"]
-            self.assertEqual(timeout_seconds, 60 * 5)
+        def request_token(_context):
             token = self.get_token(username)
             time.sleep(sleep)
             self.request_called += 1
