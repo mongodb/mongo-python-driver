@@ -1277,6 +1277,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         server_selector: Callable[[Selection], Selection],
         session: Optional[ClientSession],
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         """Select a server to run an operation on this client.
 
@@ -1300,7 +1301,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if not server:
                     raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
-                server = topology.select_server(server_selector)
+                server = topology.select_server(
+                    server_selector, deprioritized_servers=deprioritized_servers
+                )
             return server
         except PyMongoError as exc:
             # Server selection errors in a transaction are transient.
@@ -2291,6 +2294,7 @@ class _ClientConnectionRetryable(Generic[T]):
         )
         self._address = address
         self._server: Server = None  # type: ignore
+        self._deprioritized_servers: list[Server] = []
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2329,7 +2333,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
                         if self._is_not_eligible_for_retry() or (
-                            exc_code and exc_code not in helpers._RETRYABLE_ERROR_CODES
+                            isinstance(exc, OperationFailure)
+                            and exc_code not in helpers._RETRYABLE_ERROR_CODES
                         ):
                             raise
                         self._retrying = True
@@ -2358,6 +2363,9 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
+
+                if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
+                    self._deprioritized_servers.append(self._server)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
@@ -2397,7 +2405,10 @@ class _ClientConnectionRetryable(Generic[T]):
             Abstraction to connect to server
         """
         return self._client._select_server(
-            self._server_selector, self._session, address=self._address
+            self._server_selector,
+            self._session,
+            address=self._address,
+            deprioritized_servers=self._deprioritized_servers,
         )
 
     def _write(self) -> T:
