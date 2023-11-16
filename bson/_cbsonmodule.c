@@ -3134,7 +3134,7 @@ static PyMethodDef _CBSONMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-#define INITERROR return NULL
+#define INITERROR return -1;
 static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->Binary);
     Py_VISIT(GETSTATE(m)->Code);
@@ -3215,22 +3215,12 @@ static int _cbson_clear(PyObject *m) {
     return 0;
 }
 
-static struct PyModuleDef moduledef = {
-    PyModuleDef_HEAD_INIT,
-    "_cbson",
-    NULL,
-    sizeof(struct module_state),
-    _CBSONMethods,
-    NULL,
-    _cbson_traverse,
-    _cbson_clear,
-    NULL
-};
-
-PyMODINIT_FUNC
-PyInit__cbson(void)
+/* Multi-phase extension module initialization code.
+ * See https://peps.python.org/pep-0489/.
+*/
+static int
+_cbson_exec(PyObject *m)
 {
-    PyObject *m;
     PyObject *c_api_object;
     static void *_cbson_API[_cbson_API_POINTER_COUNT];
 
@@ -3257,12 +3247,6 @@ PyInit__cbson(void)
     if (c_api_object == NULL)
         INITERROR;
 
-    m = PyModule_Create(&moduledef);
-    if (m == NULL) {
-        Py_DECREF(c_api_object);
-        INITERROR;
-    }
-
     /* Import several python objects */
     if (_load_python_objects(m)) {
         Py_DECREF(c_api_object);
@@ -3276,5 +3260,29 @@ PyInit__cbson(void)
         INITERROR;
     }
 
-    return m;
+    return 0;
+}
+
+static PyModuleDef_Slot _cbson_slots[] = {
+    {Py_mod_exec, _cbson_exec},
+    {0, NULL}
+};
+
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_cbson",
+    NULL,
+    sizeof(struct module_state),
+    _CBSONMethods,
+    _cbson_slots,
+    _cbson_traverse,
+    _cbson_clear,
+    NULL
+};
+
+PyMODINIT_FUNC
+PyInit__cbson(void)
+{
+    return PyModuleDef_Init(&moduledef);
 }
