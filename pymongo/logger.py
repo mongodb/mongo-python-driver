@@ -48,7 +48,9 @@ class StructuredMessage:
                 ):
                     kwargs[doc] = json_util.dumps({})
                 else:
-                    kwargs[doc] = json_util.dumps(kwargs[doc], json_options=json_options)
+                    kwargs[doc] = json_util.dumps(
+                        kwargs[doc], json_options=json_options, default=lambda o: o.__repr__()
+                    )
                 if len(kwargs[doc]) > document_length:
                     kwargs[doc] = kwargs[doc][:document_length] + "..."
 

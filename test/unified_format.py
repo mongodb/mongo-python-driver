@@ -1680,7 +1680,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
-                        "component": log.name.removeprefix("pymongo."),
+                        "component": log.name.strip("pymongo."),
                         "data": data,
                     }
                 )

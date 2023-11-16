@@ -467,8 +467,6 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    if "default" not in kwargs:
-        kwargs["default"] = lambda o: o.to_json()
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
