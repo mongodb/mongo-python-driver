@@ -96,7 +96,7 @@ class PerformanceTest:
                     },
                 },
                 "metrics": [
-                    {"name": "bytes_per_sec", "value": bytes_per_sec},
+                    {"name": "megabytes_per_sec", "value": bytes_per_sec / 1000000},
                 ],
             }
         )
