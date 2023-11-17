@@ -996,7 +996,7 @@ fail:
 
 static PyModuleDef_Slot _cmessage_slots[] = {
     {Py_mod_exec, _cmessage_exec},
-    {0, NULL}
+    {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
 };
 
 
