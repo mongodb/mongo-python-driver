@@ -136,7 +136,12 @@ class Server:
                 cmd["$db"] = dbn
             assert listeners is not None
             listeners.publish_command_start(
-                cmd, dbn, request_id, conn.address, service_id=conn.service_id
+                cmd,
+                dbn,
+                request_id,
+                conn.address,
+                service_id=conn.service_id,
+                server_connection_id=conn.server_connection_id,
             )
             start = datetime.now()
 
@@ -181,6 +186,7 @@ class Server:
                     conn.address,
                     service_id=conn.service_id,
                     database_name=dbn,
+                    server_connection_id=conn.server_connection_id,
                 )
             raise
 
@@ -207,6 +213,7 @@ class Server:
                 conn.address,
                 service_id=conn.service_id,
                 database_name=dbn,
+                server_connection_id=conn.server_connection_id,
             )
 
         # Decrypt response.

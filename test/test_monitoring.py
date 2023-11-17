@@ -1161,7 +1161,7 @@ class TestEventClasses(unittest.TestCase):
         self.assertEqual(
             repr(event),
             "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
-            "command: 'ping', operation_id: 2, service_id: None>",
+            "command: 'ping', operation_id: 2, service_id: None, server_connection_id: None>",
         )
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
@@ -1171,7 +1171,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandSucceededEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "service_id: None>",
+            "service_id: None, server_connection_id: None>",
         )
         event = monitoring.CommandFailedEvent(
             delta, {"ok": 0}, "ping", request_id, connection_id, operation_id, database_name=db_name
@@ -1180,7 +1180,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandFailedEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "failure: {'ok': 0}, service_id: None>",
+            "failure: {'ok': 0}, service_id: None, server_connection_id: None>",
         )
 
     def test_server_heartbeat_event_repr(self):

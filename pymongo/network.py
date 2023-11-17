@@ -168,7 +168,12 @@ def command(
         assert listeners is not None
         assert address is not None
         listeners.publish_command_start(
-            orig, dbname, request_id, address, service_id=conn.service_id
+            orig,
+            dbname,
+            request_id,
+            address,
+            service_id=conn.service_id,
+            server_connection_id=conn.server_connection_id,
         )
         start = datetime.datetime.now()
 
@@ -212,6 +217,7 @@ def command(
                 address,
                 service_id=conn.service_id,
                 database_name=dbname,
+                server_connection_id=conn.server_connection_id,
             )
         raise
     if publish:
@@ -227,6 +233,7 @@ def command(
             service_id=conn.service_id,
             speculative_hello=speculative_hello,
             database_name=dbname,
+            server_connection_id=conn.server_connection_id,
         )
 
     if client and client._encrypter and reply:
