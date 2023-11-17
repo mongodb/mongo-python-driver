@@ -3281,7 +3281,7 @@ _cbson_exec(PyObject *m)
 
 static PyModuleDef_Slot _cbson_slots[] = {
     {Py_mod_exec, _cbson_exec},
-    {0, NULL}
+    {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
 };
 
 
