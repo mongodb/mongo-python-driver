@@ -72,7 +72,7 @@ Wire protocol compression with zstandard requires `zstandard
 
   $ python3 -m pip install "pymongo[zstd]"
 
-:ref:`Client-Side Field Level Encryption` requires `pymongocrypt
+:ref:`client-side-field-level-encryption` requires `pymongocrypt
 <https://pypi.org/project/pymongocrypt/>`_ and
 `pymongo-auth-aws <https://pypi.org/project/pymongo-auth-aws/>`_::
 

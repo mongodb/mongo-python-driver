@@ -21,8 +21,11 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.todo",
     "sphinx.ext.intersphinx",
+    "myst_parser",
 ]
 
+
+myst_enable_extensions = ["colon_fence"]
 
 # Add optional extensions
 try:

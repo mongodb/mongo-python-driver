@@ -115,7 +115,7 @@ PyMongo 4.4 brings a number of improvements including:
   :class:`~pymongo.encryption_options.RangeOpts`,
   and :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW` as part of the experimental
   Queryable Encryption beta.
-- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB
+- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use-Encryption` support. MongoDB
   Server 7.0 introduced a backwards breaking change to the QE protocol. Users taking
   advantage of the Queryable Encryption beta must now upgrade to MongoDB 7.0+ and
   PyMongo 4.4+.
@@ -143,7 +143,7 @@ Changes in Version 4.3.3
 
 Version 4.3.3 documents support for the following:
 
-- :ref:`CSFLE on-demand credentials` for cloud KMS providers.
+- :ref:`csfle-on-demand-credentials` for cloud KMS providers.
 - Authentication support for :ref:`EKS Clusters`.
 - Added the :ref:`timeout-example` example page to improve the documentation
   for :func:`pymongo.timeout`.
