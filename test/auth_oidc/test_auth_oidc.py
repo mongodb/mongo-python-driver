@@ -32,7 +32,12 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth import _AUTH_MAP, _authenticate_oidc
-from pymongo.auth_oidc import OIDCHumanCallback, OIDCMachineCallback
+from pymongo.auth_oidc import (
+    OIDCHumanCallback,
+    OIDCHumanCallbackResult,
+    OIDCMachineCallback,
+    OIDCMachineCallbackResult,
+)
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -85,14 +90,14 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def create_request_cb(self, username="test_user1", sleep=0):
         def request_token(server_info, context):
             # Validate the info.
-            self.assertIn("issuer", server_info)
-            self.assertIn("clientId", server_info)
+            self.assertIsInstance(server_info.issuer, str)
+            self.assertIsInstance(server_info.clientId, str)
 
             # Validate the timeout.
-            timeout_seconds = context["timeout_seconds"]
+            timeout_seconds = context.timeout_seconds
             self.assertEqual(timeout_seconds, 60 * 5)
             token = self.get_token(username)
-            resp = {"access_token": token, "refresh_token": token}
+            resp = OIDCHumanCallbackResult(access_token=token, refresh_token=token)
 
             time.sleep(sleep)
             self.request_called += 1
@@ -166,7 +171,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         class CustomCB(OIDCMachineCallback):
             def fetch(self, ctx):
-                return dict(access_token="")
+                return None
 
         props: Dict = {"request_token_callback": request_token}
 
@@ -211,20 +216,6 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 return {}
 
         props: Dict = {"request_token_callback": CallbackInvalidToken()}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-        root_cb = self.create_request_cb()
-
-        class CallbackExtraValue(OIDCHumanCallback):
-            def fetch(self, server_info, context):
-                result = root_cb.fetch(server_info, context)
-                result["foo"] = "bar"
-                return result
-
-        props: Dict = {"request_token_callback": CallbackExtraValue()}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -308,7 +299,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         class CustomRequest(OIDCHumanCallback):
             def fetch(self, *args, **kwargs):
                 result = cb.fetch(*args, **kwargs)
-                del result["refresh_token"]
+                result.refresh_token = None
                 return result
 
         # Create a client with the callback.
@@ -595,7 +586,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             token = self.get_token(username)
             time.sleep(sleep)
             self.request_called += 1
-            return dict(access_token=token)
+            return OIDCMachineCallbackResult(access_token=token)
 
         class Inner(OIDCMachineCallback):
             def fetch(self, context):
@@ -640,20 +631,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
                 return {}
 
         props: Dict = {"custom_token_callback": CallbackTokenInvalid()}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-        root_cb = self.create_request_cb()
-
-        class CallbackTokenExtra(OIDCMachineCallback):
-            def fetch(self, context):
-                result = root_cb.fetch(context)
-                result["foo"] = "bar"
-                return result
-
-        props: Dict = {"custom_token_callback": CallbackTokenExtra()}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
