@@ -225,22 +225,16 @@ class TestDocument(PerformanceTest):
         self.client.perftest.drop_collection("corpus")
 
 
-class TestFindOneByID(TestDocument, unittest.TestCase):
+class FindTest(TestDocument):
     dataset = "tweet.json"
 
     def setUp(self):
         super().setUp()
-
         self.data_size = len(encode(self.document)) * NUM_DOCS
         documents = [self.document.copy() for _ in range(NUM_DOCS)]
         self.corpus = self.client.perftest.corpus
         result = self.corpus.insert_many(documents)
         self.inserted_ids = result.inserted_ids
-
-    def do_task(self):
-        find_one = self.corpus.find_one
-        for _id in self.inserted_ids:
-            find_one({"_id": _id})
 
     def before(self):
         pass
@@ -249,30 +243,40 @@ class TestFindOneByID(TestDocument, unittest.TestCase):
         pass
 
 
-class TestSmallDocInsertOne(TestDocument, unittest.TestCase):
+class TestFindOneByID(FindTest, unittest.TestCase):
+    def do_task(self):
+        find_one = self.corpus.find_one
+        for _id in self.inserted_ids:
+            find_one({"_id": _id})
+
+
+class SmallDocInsertTest(TestDocument):
     dataset = "small_doc.json"
 
     def setUp(self):
         super().setUp()
-
         self.data_size = len(encode(self.document)) * NUM_DOCS
         self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
+
+class TestSmallDocInsertOne(SmallDocInsertTest, unittest.TestCase):
     def do_task(self):
         insert_one = self.corpus.insert_one
         for doc in self.documents:
             insert_one(doc)
 
 
-class TestLargeDocInsertOne(TestDocument, unittest.TestCase):
+class LargeDocInsertTest(TestDocument):
     dataset = "large_doc.json"
 
     def setUp(self):
         super().setUp()
+        n_docs = 10
+        self.data_size = len(encode(self.document)) * n_docs
+        self.documents = [self.document.copy() for _ in range(n_docs)]
 
-        self.data_size = len(encode(self.document)) * 10
-        self.documents = [self.document.copy() for _ in range(10)]
 
+class TestLargeDocInsertOne(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         insert_one = self.corpus.insert_one
         for doc in self.documents:
@@ -280,52 +284,17 @@ class TestLargeDocInsertOne(TestDocument, unittest.TestCase):
 
 
 # MULTI-DOC BENCHMARKS
-class TestFindManyAndEmptyCursor(TestDocument, unittest.TestCase):
-    dataset = "tweet.json"
-
-    def setUp(self):
-        super().setUp()
-
-        self.data_size = len(encode(self.document)) * 10000
-        self.corpus = self.client.perftest.corpus
-        self.corpus.insert_many([self.document.copy() for _ in range(10000)])
-
+class TestFindManyAndEmptyCursor(FindTest, unittest.TestCase):
     def do_task(self):
         list(self.corpus.find())
 
-    def before(self):
-        pass
 
-    def after(self):
-        pass
-
-
-class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
-    dataset = "small_doc.json"
-
-    def setUp(self):
-        super().setUp()
-        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
-        self.data_size = len(encode(self.document)) * NUM_DOCS
-
-    def before(self):
-        self.corpus = self.client.perftest.create_collection("corpus")
-
+class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
 
 
-class TestLargeDocBulkInsert(TestDocument, unittest.TestCase):
-    dataset = "large_doc.json"
-
-    def setUp(self):
-        super().setUp()
-        self.documents = [self.document.copy() for _ in range(10)]
-        self.data_size = len(encode(self.document)) * 10
-
-    def before(self):
-        self.corpus = self.client.perftest.create_collection("corpus")
-
+class TestLargeDocBulkInsert(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
 
