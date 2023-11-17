@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.logger import StructuredMessage
+from pymongo.logger import LogMessage
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -135,7 +135,7 @@ class Server:
         command_logger = logging.getLogger("pymongo.command")
         # TODO: add serverConnection
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=cmd,
@@ -197,7 +197,7 @@ class Server:
             else:
                 failure = _convert_exception(exc)
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
@@ -240,7 +240,7 @@ class Server:
             else:
                 res["cursor"]["nextBatch"] = docs
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command succeeded",
                 durationMS=duration,

@@ -68,7 +68,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.logger import StructuredMessage
+from pymongo.logger import LogMessage
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -1016,7 +1016,7 @@ class _BulkWriteContext:
         duration = datetime.datetime.now() - self.start_time
         # TODO: add serverConnectionId
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=cmd,
@@ -1042,7 +1042,7 @@ class _BulkWriteContext:
                 # Comply with APM spec.
                 reply = {"ok": 1}
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command succeeded",
                     durationMS=duration,
@@ -1068,7 +1068,7 @@ class _BulkWriteContext:
             else:
                 failure = _convert_exception(exc)
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
@@ -1107,7 +1107,7 @@ class _BulkWriteContext:
         duration = datetime.datetime.now() - self.start_time
         cmd[self.field] = docs
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=cmd,
@@ -1128,7 +1128,7 @@ class _BulkWriteContext:
             reply = self.conn.write_command(request_id, msg, self.codec)
             duration = (datetime.datetime.now() - start) + duration
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command succeeded",
                     durationMS=duration,
@@ -1152,7 +1152,7 @@ class _BulkWriteContext:
             else:
                 failure = _convert_exception(exc)
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,

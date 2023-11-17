@@ -42,7 +42,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import StructuredMessage
+from pymongo.logger import LogMessage
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -170,7 +170,7 @@ def command(
         assert True
     if client is not None:
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command started",
                 command=spec,
@@ -228,7 +228,7 @@ def command(
             failure = message._convert_exception(exc)
         if client is not None:
             command_logger.debug(
-                StructuredMessage(
+                LogMessage(
                     clientId=client._topology_settings._topology_id,
                     message="Command failed",
                     durationMS=duration,
@@ -261,7 +261,7 @@ def command(
     duration = (datetime.datetime.now() - start) + encoding_duration
     if client is not None:
         command_logger.debug(
-            StructuredMessage(
+            LogMessage(
                 clientId=client._topology_settings._topology_id,
                 message="Command succeeded",
                 durationMS=duration,
