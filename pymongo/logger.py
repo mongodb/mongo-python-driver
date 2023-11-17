@@ -7,7 +7,7 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions
 
 DEFAULT_DOCUMENT_LENGTH = 1000
-SENSITIVE_COMMANDS = [
+_SENSITIVE_COMMANDS = [
     "authenticate",
     "saslStart",
     "saslContinue",
@@ -18,9 +18,9 @@ SENSITIVE_COMMANDS = [
     "copydbsaslstart",
     "copydb",
 ]
-HELLO_COMMANDS = ["hello", "ismaster", "isMaster"]
-REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
-DOCUMENTS = ["command", "reply", "failure"]
+_HELLO_COMMANDS = ["hello", "ismaster", "isMaster"]
+_REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
+_DOCUMENTS = ["command", "reply", "failure"]
 
 
 class LogMessage:
@@ -50,19 +50,19 @@ class LogMessage:
         is_server_side_error = self.kwargs.pop("isServerSideError", False)
         is_speculative_authenticate = self.kwargs.pop("speculative_authenticate", False)
         is_sensitive_command = (
-            "commandName" in self.kwargs and self.kwargs["commandName"] in SENSITIVE_COMMANDS
+            "commandName" in self.kwargs and self.kwargs["commandName"] in _SENSITIVE_COMMANDS
         )
-        for doc in DOCUMENTS:
+        for doc in _DOCUMENTS:
             if doc in self.kwargs:
                 if doc == "failure" and is_server_side_error:
                     self.kwargs[doc] = {
-                        k: v for k, v in self.kwargs[doc].items() if k in REDACTED_FAILURE_FIELDS
+                        k: v for k, v in self.kwargs[doc].items() if k in _REDACTED_FAILURE_FIELDS
                     }
                 is_speculative_authenticate = (
                     is_speculative_authenticate or "speculativeAuthenticate" in self.kwargs[doc]
                 )
                 is_sensitive_hello = (
-                    self.kwargs["commandName"] in HELLO_COMMANDS and is_speculative_authenticate
+                    self.kwargs["commandName"] in _HELLO_COMMANDS and is_speculative_authenticate
                 )
                 if doc != "failure" and (is_sensitive_command or is_sensitive_hello):
                     self.kwargs[doc] = json_util.dumps({})
