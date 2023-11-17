@@ -1,0 +1,17 @@
+[
+    {
+        "info": {
+            "test_name": "FindManyAndEmptyCursor",
+            "args": {
+                "threads": 1
+            }
+        },
+        "metrics": [
+            {
+                "name": "megabytes_per_sec",
+                "type": "MEDIAN",
+                "value": 141.76800952366082
+            }
+        ]
+    }
+]
