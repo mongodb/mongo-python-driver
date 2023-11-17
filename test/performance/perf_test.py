@@ -83,9 +83,10 @@ class PerformanceTest:
         pass
 
     def tearDown(self):
-        name = self.__class__.__name__
+        # Remove "Test" so that TestFlatEncoding is reported as "FlatEncoding".
+        name = self.__class__.__name__[4:]
         median = self.percentile(50)
-        bytes_per_sec = self.data_size / median
+        megabytes_per_sec = self.data_size / median / 1000000
         print(f"Running {self.__class__.__name__}. MEDIAN={self.percentile(50)}")
         result_data.append(
             {
@@ -96,7 +97,7 @@ class PerformanceTest:
                     },
                 },
                 "metrics": [
-                    {"name": "bytes_per_sec", "value": bytes_per_sec},
+                    {"name": "megabytes_per_sec", "type": "MEDIAN", "value": megabytes_per_sec},
                 ],
             }
         )
