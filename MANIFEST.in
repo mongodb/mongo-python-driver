@@ -9,6 +9,7 @@ exclude .readthedocs.yaml
 exclude CONTRIBUTING.rst
 exclude RELEASE.rst
 recursive-include doc *.rst
+recursive-include doc *.md
 recursive-include doc *.py
 recursive-include doc *.conf
 recursive-include doc *.css
