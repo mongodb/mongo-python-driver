@@ -86,7 +86,9 @@ class PerformanceTest:
         name = self.__class__.__name__[4:]
         median = self.percentile(50)
         megabytes_per_sec = self.data_size / median / 1000000
-        print(f"Running {self.__class__.__name__}. MEDIAN={self.percentile(50)}")
+        print(
+            f"Running {self.__class__.__name__}. MB/s={megabytes_per_sec}, MEDIAN={self.percentile(50)}"
+        )
         result_data.append(
             {
                 "info": {
