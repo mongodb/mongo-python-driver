@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Version 4.6.1
+------------------------
+
+PyMongo 4.6.1 fixes the following bug:
+
+- Ensure retryable read ``OperationFailure`` errors re-raise exception when 0 or NoneType error code is provided.
+
 Changes in Version 4.6
 ----------------------
 
