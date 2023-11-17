@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.logger import LogMessage
+from pymongo.logger import LogMessage, LogMessageStatus
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -137,7 +137,7 @@ class Server:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command started",
+                message=LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=dbn,
@@ -163,7 +163,6 @@ class Server:
                 conn.server_connection_id,
                 service_id=conn.service_id,
             )
-        start = datetime.now()
 
         try:
             if more_to_come:
@@ -199,7 +198,7 @@ class Server:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command failed",
+                    message=LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -242,7 +241,7 @@ class Server:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command succeeded",
+                message=LogMessageStatus.SUCCEEDED,
                 durationMS=duration,
                 reply=res,
                 commandName=next(iter(cmd)),

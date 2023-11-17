@@ -68,7 +68,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.logger import LogMessage
+from pymongo.logger import LogMessage, LogMessageStatus
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -1013,12 +1013,11 @@ class _BulkWriteContext:
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
         command_logger = logging.getLogger("pymongo.command")
-        duration = datetime.datetime.now() - self.start_time
         # TODO: add serverConnectionId
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command started",
+                message=LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
@@ -1032,10 +1031,9 @@ class _BulkWriteContext:
         )
         if self.publish:
             cmd = self._start(cmd, request_id, docs)
-        start = datetime.datetime.now()
         try:
             result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
-            duration = (datetime.datetime.now() - start) + duration
+            duration = datetime.datetime.now() - self.start_time
             if result is not None:
                 reply = _convert_write_result(self.name, cmd, result)
             else:
@@ -1044,7 +1042,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command succeeded",
+                    message=LogMessageStatus.SUCCEEDED,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -1060,7 +1058,7 @@ class _BulkWriteContext:
             if self.publish:
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
-            duration = (datetime.datetime.now() - start) + duration
+            duration = datetime.datetime.now() - self.start_time
             if isinstance(exc, OperationFailure):
                 failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
             elif isinstance(exc, NotPrimaryError):
@@ -1070,7 +1068,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command failed",
+                    message=LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -1104,12 +1102,11 @@ class _BulkWriteContext:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         command_logger = logging.getLogger("pymongo.command")
         # TODO: add serverConnectionId
-        duration = datetime.datetime.now() - self.start_time
         cmd[self.field] = docs
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command started",
+                message=LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
@@ -1123,14 +1120,13 @@ class _BulkWriteContext:
         )
         if self.publish:
             self._start(cmd, request_id, docs)
-        start = datetime.datetime.now()
         try:
             reply = self.conn.write_command(request_id, msg, self.codec)
-            duration = (datetime.datetime.now() - start) + duration
+            duration = datetime.datetime.now() - self.start_time
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command succeeded",
+                    message=LogMessageStatus.SUCCEEDED,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -1146,7 +1142,7 @@ class _BulkWriteContext:
             if self.publish:
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
-            duration = (datetime.datetime.now() - start) + duration
+            duration = datetime.datetime.now() - self.start_time
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
@@ -1154,7 +1150,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command failed",
+                    message=LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),

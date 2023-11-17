@@ -42,7 +42,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import LogMessage
+from pymongo.logger import LogMessage, LogMessageStatus
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -163,16 +163,13 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    encoding_duration = datetime.datetime.now() - start
     command_logger = logging.getLogger("pymongo.command")
     # TODO: add serverConnectionId
-    if name == "insert":
-        assert True
     if client is not None:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command started",
+                message=LogMessageStatus.STARTED,
                 command=spec,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
@@ -195,7 +192,6 @@ def command(
             conn.server_connection_id,
             service_id=conn.service_id,
         )
-    start = datetime.datetime.now()
 
     try:
         conn.conn.sendall(msg)
@@ -221,7 +217,7 @@ def command(
                     parse_write_concern_error=parse_write_concern_error,
                 )
     except Exception as exc:
-        duration = (datetime.datetime.now() - start) + encoding_duration
+        duration = datetime.datetime.now() - start
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
@@ -230,7 +226,7 @@ def command(
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message="Command failed",
+                    message=LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(spec)),
@@ -258,12 +254,12 @@ def command(
                 database_name=dbname,
             )
         raise
-    duration = (datetime.datetime.now() - start) + encoding_duration
+    duration = datetime.datetime.now() - start
     if client is not None:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message="Command succeeded",
+                message=LogMessageStatus.SUCCEEDED,
                 durationMS=duration,
                 reply=response_doc,
                 commandName=next(iter(spec)),
