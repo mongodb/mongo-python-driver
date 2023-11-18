@@ -20,6 +20,7 @@ import datetime
 import inspect
 import warnings
 from collections import OrderedDict, abc
+from difflib import get_close_matches
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -162,10 +163,12 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, dummy: Any) -> NoReturn:
+def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
-    raise ConfigurationError(f"Unknown option {key}")
-
+    msg = f"Unknown option {key}."
+    if suggestions:
+        msg += f" Did you mean: {', '.join(suggestions)}?"
+    raise ConfigurationError(msg)
 
 # Mapping of URI uuid representation options to valid subtypes.
 _UUID_REPRESENTATIONS = {
@@ -817,10 +820,13 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
 def validate(option: str, value: Any) -> tuple[str, Any]:
     """Generic validation function."""
     lower = option.lower()
-    validator = VALIDATORS.get(lower, raise_config_error)
-    value = validator(option, value)
-    return option, value
-
+    try:
+        validator = VALIDATORS[lower]
+        value = validator(option, value)
+        return option, value
+    except KeyError:
+        suggestions = get_close_matches(lower, VALIDATORS, cutoff=0.2)
+        raise_config_error(option, suggestions)
 
 def get_validated_options(
     options: Mapping[str, Any], warn: bool = True
@@ -856,8 +862,12 @@ def get_validated_options(
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            validator = URI_OPTIONS_VALIDATOR_MAP.get(normed_key, raise_config_error)
-            value = validator(opt, value)  # noqa: PLW2901
+            try:
+                validator = URI_OPTIONS_VALIDATOR_MAP[normed_key]
+                value = validator(opt, value)  # noqa: PLW2901
+            except KeyError:
+                suggestions = get_close_matches(normed_key, URI_OPTIONS_VALIDATOR_MAP, cutoff=0.2)
+                raise_config_error(opt, suggestions)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc), stacklevel=2)
