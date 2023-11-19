@@ -144,6 +144,15 @@ class TestURI(unittest.TestCase):
         self.assertEqual({"authsource": "foobar"}, split_options("authSource=foobar"))
         self.assertEqual({"maxpoolsize": 50}, split_options("maxpoolsize=50"))
 
+        # Test suggestions given when invalid kwarg passed
+        try:
+            split_options("auth=GSSAPI")
+        except ConfigurationError as exc:
+            expected = "'Unknown option: auth. Did you mean: authsource, authmechanism, timeoutms?'"
+            self.assertEqual(exc.args[0], expected)
+
+
+
     def test_parse_uri(self):
         self.assertRaises(InvalidURI, parse_uri, "http://foobar.com")
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")

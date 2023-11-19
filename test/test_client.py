@@ -535,6 +535,18 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIsInstance(c.options.retry_writes, bool)
         self.assertIsInstance(c.options.retry_reads, bool)
 
+    def test_validate_suggestion(self):
+        """Validate kwargs in constructor."""
+        self.assertRaises(ConfigurationError, MongoClient, auth='standard')
+
+        try:
+            MongoClient(auth='standard')
+        except ConfigurationError as exc:
+            expected = "Unknown option: auth. Did you mean: authsource, authmechanism, authoidcallowedhosts?"
+            self.assertEqual(exc.args[0], expected)
+
+
+
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):

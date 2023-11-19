@@ -165,7 +165,7 @@ def clean_node(node: str) -> tuple[str, int]:
 
 def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
-    msg = f"Unknown option {key}."
+    msg = f"Unknown option: {key}."
     if suggestions:
         msg += f" Did you mean: {', '.join(suggestions)}?"
     raise ConfigurationError(msg)
