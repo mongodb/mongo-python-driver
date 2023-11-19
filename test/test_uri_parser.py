@@ -148,7 +148,7 @@ class TestURI(unittest.TestCase):
         try:
             split_options("auth=GSSAPI")
         except ConfigurationError as exc:
-            expected = "'Unknown option: auth. Did you mean: authsource, authmechanism, timeoutms?'"
+            expected = "Unknown option: auth. Did you mean: authsource, authmechanism, timeoutms?"
             self.assertEqual(exc.args[0], expected)
 
 
