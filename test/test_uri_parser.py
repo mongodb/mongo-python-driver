@@ -151,8 +151,6 @@ class TestURI(unittest.TestCase):
             expected = "Unknown option: auth. Did you mean: authsource, authmechanism, timeoutms?"
             self.assertEqual(exc.args[0], expected)
 
-
-
     def test_parse_uri(self):
         self.assertRaises(InvalidURI, parse_uri, "http://foobar.com")
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")

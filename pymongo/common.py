@@ -170,6 +170,7 @@ def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn
         msg += f" Did you mean: {', '.join(suggestions)}?"
     raise ConfigurationError(msg)
 
+
 # Mapping of URI uuid representation options to valid subtypes.
 _UUID_REPRESENTATIONS = {
     "unspecified": UuidRepresentation.UNSPECIFIED,
@@ -827,6 +828,7 @@ def validate(option: str, value: Any) -> tuple[str, Any]:
     except KeyError:
         suggestions = get_close_matches(lower, VALIDATORS, cutoff=0.2)
         raise_config_error(option, suggestions)
+
 
 def get_validated_options(
     options: Mapping[str, Any], warn: bool = True
