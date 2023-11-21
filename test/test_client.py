@@ -542,7 +542,7 @@ class ClientUnitTest(unittest.TestCase):
         try:
             MongoClient(auth="standard")
         except ConfigurationError as exc:
-            expected = "Unknown option: auth. Did you mean: authsource, authmechanism, authoidcallowedhosts?"
+            expected = "Unknown option: auth. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
             self.assertEqual(exc.args[0], expected)
 
 

@@ -167,7 +167,7 @@ def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn
     """Raise ConfigurationError with the given key name."""
     msg = f"Unknown option: {key}."
     if suggestions:
-        msg += f" Did you mean: {', '.join(suggestions)}?"
+        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
     raise ConfigurationError(msg)
 
 
@@ -792,8 +792,8 @@ for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
         if alias not in URI_OPTIONS_VALIDATOR_MAP:
             URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
 
-# Map containing all URI option and keyword argument validators.
-VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
+    # Map containing all URI option and keyword argument validators.
+    VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
