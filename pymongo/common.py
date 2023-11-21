@@ -823,11 +823,11 @@ def validate(option: str, value: Any) -> tuple[str, Any]:
     lower = option.lower()
     try:
         validator = VALIDATORS[lower]
-        value = validator(option, value)
-        return option, value
     except KeyError:
         suggestions = get_close_matches(lower, VALIDATORS, cutoff=0.2)
         raise_config_error(option, suggestions)
+    value = validator(option, value)
+    return option, value
 
 
 def get_validated_options(
@@ -866,10 +866,10 @@ def get_validated_options(
         try:
             try:
                 validator = URI_OPTIONS_VALIDATOR_MAP[normed_key]
-                value = validator(opt, value)  # noqa: PLW2901
             except KeyError:
                 suggestions = get_close_matches(normed_key, URI_OPTIONS_VALIDATOR_MAP, cutoff=0.2)
                 raise_config_error(opt, suggestions)
+            value = validator(opt, value)  # noqa: PLW2901
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc), stacklevel=2)
