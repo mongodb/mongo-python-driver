@@ -542,7 +542,7 @@ class ClientUnitTest(unittest.TestCase):
             expected = f"Unknown option: {typo}. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
             expected = re.escape(expected)
             with self.assertRaisesRegex(ConfigurationError, expected):
-                MongoClient(**{typo: "standard"})
+                MongoClient(**{typo: "standard"})  # type: ignore
 
 
 class TestClient(IntegrationTest):
