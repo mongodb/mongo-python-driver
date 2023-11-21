@@ -1246,7 +1246,7 @@ def _decode_all_selective(
         ``{'field1': {'subfield1': 1}}``. If ``fields``  is an empty map or
         None, this method is the same as ``decode_all``.
 
-    :return: - `document_list`: Single-member list containing the decoded document.
+    :return: Single-member list containing the decoded document.
 
     .. versionadded:: 3.8
     """

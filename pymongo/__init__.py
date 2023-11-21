@@ -161,7 +161,7 @@ def timeout(seconds: Optional[float]) -> ContextManager[None]:
 
     :param seconds: A non-negative floating point number expressing seconds, or None.
 
-    :raises: - :py:class:`ValueError`: When `seconds` is negative.
+    :raises: :py:class:`ValueError`: When `seconds` is negative.
 
     See :ref:`timeout-example` for more examples.
 

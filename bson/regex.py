@@ -89,7 +89,7 @@ class Regex(Generic[_T]):
         incompatible with Python's regular expression dialect.
 
         :param pattern: string
-        :param flags: (optional) an integer bitmask, or a string of flag
+        :param flags: an integer bitmask, or a string of flag
             characters like "im" for IGNORECASE and MULTILINE
         """
         if not isinstance(pattern, (str, bytes)):

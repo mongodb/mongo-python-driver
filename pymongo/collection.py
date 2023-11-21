@@ -1462,15 +1462,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         The :meth:`find_one` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 
-
-          - `filter` (optional): a dictionary specifying
+        :param filter: a dictionary specifying
             the query to be performed OR any other type to be used as
             the value for a query for ``"_id"``.
 
-          - `*args` (optional): any additional positional arguments
+        :param *args: any additional positional arguments
             are the same as the arguments to :meth:`find`.
 
-          - `**kwargs` (optional): any additional keyword arguments
+        :param **kwargs: any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
               >>> collection.find_one(max_time_ms=100)
@@ -1548,53 +1547,53 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
               results to the client without waiting for the client to request
               each batch, reducing latency. See notes on compatibility below.
 
-          - `sort` (optional): a list of (key, direction) pairs
+        :param sort: a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
-          - `allow_partial_results` (optional): if True, mongos will return
+        :param allow_partial_results: if True, mongos will return
             partial results if some shards are down instead of returning an
             error.
-          - `oplog_replay` (optional): **DEPRECATED** - if True, set the
+        :param oplog_replay: **DEPRECATED** - if True, set the
             oplogReplay query flag. Default: False.
-          - `batch_size` (optional): Limits the number of documents returned in
+        :param batch_size: Limits the number of documents returned in
             a single batch.
-          - `collation` (optional): An instance of
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `return_key` (optional): If True, return only the index keys in
+        :param return_key: If True, return only the index keys in
             each document.
-          - `show_record_id` (optional): If True, adds a field ``$recordId`` in
+        :param show_record_id: If True, adds a field ``$recordId`` in
             each document with the storage engine's internal record identifier.
-          - `snapshot` (optional): **DEPRECATED** - If True, prevents the
+        :param snapshot: **DEPRECATED** - If True, prevents the
             cursor from returning a document more than once because of an
             intervening write operation.
-          - `hint` (optional): An index, in the same format as passed to
+        :param hint: An index, in the same format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.hint` on the cursor to tell Mongo the
             proper index to use for the query.
-          - `max_time_ms` (optional): Specifies a time limit for a query
+        :param max_time_ms: Specifies a time limit for a query
             operation. If the specified time is exceeded, the operation will be
             aborted and :exc:`~pymongo.errors.ExecutionTimeout` is raised. Pass
             this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max_time_ms` on the cursor.
-          - `max_scan` (optional): **DEPRECATED** - The maximum number of
+        :param max_scan: **DEPRECATED** - The maximum number of
             documents to scan. Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max_scan` on the cursor.
-          - `min` (optional): A list of field, limit pairs specifying the
+        :param min: A list of field, limit pairs specifying the
             inclusive lower bound for all keys of a specific index in order.
             Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.min` on the cursor. ``hint`` must
             also be passed to ensure the query utilizes the correct index.
-          - `max` (optional): A list of field, limit pairs specifying the
+        :param max: A list of field, limit pairs specifying the
             exclusive upper bound for all keys of a specific index in order.
             Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max` on the cursor. ``hint`` must
             also be passed to ensure the query utilizes the correct index.
-          - `comment` (optional): A string to attach to the query to help
+        :param comment: A string to attach to the query to help
             interpret and trace the operation in the server logs and in profile
             data. Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.comment` on the cursor.
-          - `allow_disk_use` (optional): if True, MongoDB may use temporary
+        :param allow_disk_use: if True, MongoDB may use temporary
             disk files to store data exceeding the system memory limit while
             processing a blocking sort operation. The option has no effect if
             MongoDB can satisfy the specified sort using an index, or if the
@@ -1841,7 +1840,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
            +-------------+-------------------------------------+
 
-        :param filter` (required): A query document that selects which documents
+        :param filter: A query document that selects which documents
             to count in the collection. Can be an empty document to count all
             documents.
         :param session: a

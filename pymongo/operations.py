@@ -562,8 +562,8 @@ class SearchIndexModel:
 
         For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
 
-        :param definition` - The definition for this index.
-        :param name` (optional) - The name for this index, if present.
+        :param definition: - The definition for this index.
+        :param name: - The name for this index, if present.
 
         .. versionadded:: 4.5
 
