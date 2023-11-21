@@ -1466,11 +1466,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             the query to be performed OR any other type to be used as
             the value for a query for ``"_id"``.
 
-        :param *args: any additional positional arguments
+        :param args: any additional positional arguments
             are the same as the arguments to :meth:`find`.
 
-        :param **kwargs: any additional keyword arguments
+        :param kwargs: any additional keyword arguments
             are the same as the arguments to :meth:`find`.
+
+            :: code-block: python
 
               >>> collection.find_one(max_time_ms=100)
 
