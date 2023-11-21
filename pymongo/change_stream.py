@@ -356,8 +356,7 @@ class ChangeStream(Generic[_DocumentType]):
         document is returned, otherwise, if the getMore returns no documents
         (because there have been no changes) then ``None`` is returned.
 
-        :Returns:
-          The next change document or ``None`` when no document is available
+        :return: The next change document or ``None`` when no document is available
           after running a single getMore or when the cursor is closed.
 
         .. versionadded:: 3.8

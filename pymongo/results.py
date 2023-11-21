@@ -187,9 +187,8 @@ class BulkWriteResult(_WriteResult):
     def __init__(self, bulk_api_result: dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
-        :Parameters:
-          - `bulk_api_result`: A result dict from the bulk API
-          - `acknowledged`: Was this write result acknowledged? If ``False``
+        :param bulk_api_result: A result dict from the bulk API
+        :param acknowledged: Was this write result acknowledged? If ``False``
             then all properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         """

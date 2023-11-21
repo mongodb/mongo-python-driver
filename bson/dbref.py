@@ -47,11 +47,10 @@ class DBRef:
         keyword arguments will create additional fields in the resultant
         embedded document.
 
-        :Parameters:
-          - `collection`: name of the collection the document is stored in
-          - `id`: the value of the document's ``"_id"`` field
-          - `database` (optional): name of the database to reference
-          - `**kwargs` (optional): additional keyword arguments will
+        :param collection: name of the collection the document is stored in
+        :param id: the value of the document's ``"_id"`` field
+        :param database: name of the database to reference
+        :param kwargs: additional keyword arguments will
             create additional, custom fields
 
         .. seealso:: The MongoDB documentation on `dbrefs <https://dochub.mongodb.org/core/dbrefs>`_.

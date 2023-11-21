@@ -69,8 +69,7 @@ class AutoEncryptionOpts:
 
         See :ref:`automatic-client-side-encryption` for an example.
 
-        :Parameters:
-          - `kms_providers`: Map of KMS provider options. The `kms_providers`
+        :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
@@ -232,11 +231,10 @@ class RangeOpts:
 
         .. note:: This feature is experimental only, and not intended for public use.
 
-        :Parameters:
-          - `sparsity`: An integer.
-          - `min`: A BSON scalar value corresponding to the type being queried.
-          - `max`: A BSON scalar value corresponding to the type being queried.
-          - `precision`: An integer, may only be set for double or decimal128 types.
+        :param sparsity: An integer.
+        :param min: A BSON scalar value corresponding to the type being queried.
+        :param max: A BSON scalar value corresponding to the type being queried.
+        :param precision: An integer, may only be set for double or decimal128 types.
 
         .. versionadded:: 4.4
         """

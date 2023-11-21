@@ -97,15 +97,14 @@ class CollationCaseFirst:
 class Collation:
     """Collation
 
-    :Parameters:
-      - `locale`: (string) The locale of the collation. This should be a string
+    :param locale: (string) The locale of the collation. This should be a string
         that identifies an `ICU locale ID` exactly. For example, ``en_US`` is
         valid, but ``en_us`` and ``en-US`` are not. Consult the MongoDB
         documentation for a list of supported locales.
-      - `caseLevel`: (optional) If ``True``, turn on case sensitivity if
+    :param caseLevel: (optional) If ``True``, turn on case sensitivity if
         `strength` is 1 or 2 (case sensitivity is implied if `strength` is
         greater than 2). Defaults to ``False``.
-      - `caseFirst`: (optional) Specify that either uppercase or lowercase
+    :param caseFirst: (optional) Specify that either uppercase or lowercase
         characters take precedence. Must be one of the following values:
 
           * :data:`~CollationCaseFirst.UPPER`
