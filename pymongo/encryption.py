@@ -521,20 +521,20 @@ class ClientEncryption(Generic[_DocumentType]):
                 data keys. This key should be generated and stored as securely
                 as possible.
 
-          - `key_vault_namespace`: The namespace for the key vault collection.
+        :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
             collection. Data keys are protected with encryption by a KMS
             provider.
-          - `key_vault_client`: A MongoClient connected to a MongoDB cluster
+        :param key_vault_client: A MongoClient connected to a MongoDB cluster
             containing the `key_vault_namespace` collection.
-          - `codec_options`: An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
             value for encryption and decoding the decrypted BSON value. This
             should be the same CodecOptions instance configured on the
             MongoClient, Database, or Collection used to access application
             data.
-          - `kms_tls_options` (optional): A map of KMS provider names to TLS
+        :param kms_tls_options: A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
             Accepts the same TLS options as
             :class:`pymongo.mongo_client.MongoClient`. For example, to
@@ -720,7 +720,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `endpoint` (string): Optional. Host with optional
                  port, e.g. "example.vault.azure.net:".
 
-          - `key_alt_names` (optional): An optional list of string alternate
+        :param key_alt_names: An optional list of string alternate
             names used to reference a key. If a key is created with alternate
             names, then encryption may refer to the key by the unique alternate
             name instead of by ``key_id``. The following example shows creating
@@ -730,7 +730,7 @@ class ClientEncryption(Generic[_DocumentType]):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", key_alt_name="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
-          - `key_material` (optional): Sets the custom key material to be used
+        :param key_material: Sets the custom key material to be used
             by the data key for encryption and decryption.
 
         :return: The ``_id`` of the created data key document as a

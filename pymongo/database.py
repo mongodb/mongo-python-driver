@@ -824,25 +824,25 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                should use an instance of :class:`~bson.son.SON` or
                a string and kwargs instead of a Python `dict`.
 
-          - `value` (optional): value to use for the command verb when
+        :param value: value to use for the command verb when
             `command` is passed as a string
-          - `check` (optional): check the response for errors, raising
+        :param check: check the response for errors, raising
             :class:`~pymongo.errors.OperationFailure` if there are any
-          - `allowable_errors`: if `check` is ``True``, error messages
+        :param allowable_errors: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
-          - `read_preference` (optional): The read preference for this
+        :param read_preference: The read preference for this
             operation. See :mod:`~pymongo.read_preferences` for options.
             If the provided `session` is in a transaction, defaults to the
             read preference configured for the transaction.
             Otherwise, defaults to
             :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-          - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
+        :param codec_options: A :class:`~bson.codec_options.CodecOptions`
             instance.
-          - `session` (optional): A
+        :param session: A
             :class:`~pymongo.client_session.ClientSession`.
-          - `comment` (optional): A user-provided comment to attach to this
+        :param comment: A user-provided comment to attach to this
             command.
-          - `**kwargs` (optional): additional keyword arguments will
+        :param kwargs: additional keyword arguments will
             be added to the command document before it is sent
 
 
@@ -922,23 +922,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                should use an instance of :class:`~bson.son.SON` or
                a string and kwargs instead of a Python `dict`.
 
-          - `value` (optional): value to use for the command verb when
-            `command` is passed as a string
-          - `read_preference` (optional): The read preference for this
-            operation. See :mod:`~pymongo.read_preferences` for options.
-            If the provided `session` is in a transaction, defaults to the
-            read preference configured for the transaction.
-            Otherwise, defaults to
-            :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-          - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
-            instance.
-          - `session` (optional): A
-            :class:`~pymongo.client_session.ClientSession`.
-          - `comment` (optional): A user-provided comment to attach to future getMores for this
-            command.
-          - `max_await_time_ms` (optional): The number of ms to wait for more data on future getMores for this command.
-          - `**kwargs` (optional): additional keyword arguments will
-            be added to the command document before it is sent
+        :param value: value to use for the command verb when
+          `command` is passed as a string
+        :param read_preference: The read preference for this
+          operation. See :mod:`~pymongo.read_preferences` for options.
+          If the provided `session` is in a transaction, defaults to the
+          read preference configured for the transaction.
+          Otherwise, defaults to
+          :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
+        :param codec_options`: A :class:`~bson.codec_options.CodecOptions`
+          instance.
+        :param session: A
+          :class:`~pymongo.client_session.ClientSession`.
+        :param comment: A user-provided comment to attach to future getMores for this
+          command.
+        :param max_await_time_ms: The number of ms to wait for more data on future getMores for this command.
+        :param kwargs: additional keyword arguments will
+          be added to the command document before it is sent
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the

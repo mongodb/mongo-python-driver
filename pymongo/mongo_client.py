@@ -1470,11 +1470,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Re-raises any exception thrown by func().
 
-          - `func`: Read call we want to execute
-          - `read_pref`: Desired topology of read operation
-          - `session`: Client session we should use to execute operation
-          - `address`: Optional address when sending a message, defaults to None
-          - `retryable`: if we should attempt retries
+        :param func: Read call we want to execute
+        :param read_pref: Desired topology of read operation
+        :param session: Client session we should use to execute operation
+        :param address: Optional address when sending a message, defaults to None
+        :param retryable: if we should attempt retries
             (may not always be supported even if supplied), defaults to False
         """
 

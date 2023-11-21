@@ -2615,6 +2615,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :param pipeline: a list of aggregation pipeline stages
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
+        :param let: A dict of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. ``"$$var"``). This option is
+            only supported on MongoDB >= 5.0.
+        :param comment: A user-provided comment to attach to this
+            command.
         :param kwargs: extra `aggregate command`_ parameters.
 
         All optional `aggregate command`_ parameters should be passed as
@@ -2631,13 +2638,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
-          - `let` (dict): A dict of parameter names and values. Values must be
-            constant or closed expressions that do not reference document
-            fields. Parameters can then be accessed as variables in an
-            aggregate expression context (e.g. ``"$$var"``). This option is
-            only supported on MongoDB >= 5.0.
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
 
 
         :return: A :class:`~pymongo.command_cursor.CommandCursor` over the result
