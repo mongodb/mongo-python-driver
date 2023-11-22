@@ -792,8 +792,8 @@ for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
         if alias not in URI_OPTIONS_VALIDATOR_MAP:
             URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
 
-    # Map containing all URI option and keyword argument validators.
-    VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
+# Map containing all URI option and keyword argument validators.
+VALIDATORS: dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
