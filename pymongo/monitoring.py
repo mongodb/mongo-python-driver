@@ -229,24 +229,21 @@ class CommandListener(_EventListener):
     def started(self, event: CommandStartedEvent) -> None:
         """Abstract method to handle a `CommandStartedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`CommandStartedEvent`.
+        :param event: An instance of :class:`CommandStartedEvent`.
         """
         raise NotImplementedError
 
     def succeeded(self, event: CommandSucceededEvent) -> None:
         """Abstract method to handle a `CommandSucceededEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`CommandSucceededEvent`.
+        :param event: An instance of :class:`CommandSucceededEvent`.
         """
         raise NotImplementedError
 
     def failed(self, event: CommandFailedEvent) -> None:
         """Abstract method to handle a `CommandFailedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`CommandFailedEvent`.
+        :param event: An instance of :class:`CommandFailedEvent`.
         """
         raise NotImplementedError
 
@@ -272,8 +269,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool is created.
 
-        :Parameters:
-          - `event`: An instance of :class:`PoolCreatedEvent`.
+        :param event: An instance of :class:`PoolCreatedEvent`.
         """
         raise NotImplementedError
 
@@ -282,8 +278,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool is marked ready.
 
-        :Parameters:
-          - `event`: An instance of :class:`PoolReadyEvent`.
+        :param event: An instance of :class:`PoolReadyEvent`.
 
         .. versionadded:: 4.0
         """
@@ -294,8 +289,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool is cleared.
 
-        :Parameters:
-          - `event`: An instance of :class:`PoolClearedEvent`.
+        :param event: An instance of :class:`PoolClearedEvent`.
         """
         raise NotImplementedError
 
@@ -304,8 +298,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool is closed.
 
-        :Parameters:
-          - `event`: An instance of :class:`PoolClosedEvent`.
+        :param event: An instance of :class:`PoolClosedEvent`.
         """
         raise NotImplementedError
 
@@ -314,8 +307,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool creates a Connection object.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCreatedEvent`.
+        :param event: An instance of :class:`ConnectionCreatedEvent`.
         """
         raise NotImplementedError
 
@@ -325,8 +317,7 @@ class ConnectionPoolListener(_EventListener):
         Emitted when a connection has finished its setup, and is now ready to
         use.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionReadyEvent`.
+        :param event: An instance of :class:`ConnectionReadyEvent`.
         """
         raise NotImplementedError
 
@@ -335,8 +326,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when a connection Pool closes a connection.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionClosedEvent`.
+        :param event: An instance of :class:`ConnectionClosedEvent`.
         """
         raise NotImplementedError
 
@@ -345,8 +335,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when the driver starts attempting to check out a connection.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckOutStartedEvent`.
+        :param event: An instance of :class:`ConnectionCheckOutStartedEvent`.
         """
         raise NotImplementedError
 
@@ -355,8 +344,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when the driver's attempt to check out a connection fails.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckOutFailedEvent`.
+        :param event: An instance of :class:`ConnectionCheckOutFailedEvent`.
         """
         raise NotImplementedError
 
@@ -365,8 +353,7 @@ class ConnectionPoolListener(_EventListener):
 
         Emitted when the driver successfully checks out a connection.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckedOutEvent`.
+        :param event: An instance of :class:`ConnectionCheckedOutEvent`.
         """
         raise NotImplementedError
 
@@ -376,8 +363,7 @@ class ConnectionPoolListener(_EventListener):
         Emitted when the driver checks in a connection back to the connection
         Pool.
 
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckedInEvent`.
+        :param event: An instance of :class:`ConnectionCheckedInEvent`.
         """
         raise NotImplementedError
 
@@ -394,24 +380,21 @@ class ServerHeartbeatListener(_EventListener):
     def started(self, event: ServerHeartbeatStartedEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatStartedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatStartedEvent`.
+        :param event: An instance of :class:`ServerHeartbeatStartedEvent`.
         """
         raise NotImplementedError
 
     def succeeded(self, event: ServerHeartbeatSucceededEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatSucceededEvent`.
+        :param event: An instance of :class:`ServerHeartbeatSucceededEvent`.
         """
         raise NotImplementedError
 
     def failed(self, event: ServerHeartbeatFailedEvent) -> None:
         """Abstract method to handle a `ServerHeartbeatFailedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatFailedEvent`.
+        :param event: An instance of :class:`ServerHeartbeatFailedEvent`.
         """
         raise NotImplementedError
 
@@ -427,24 +410,21 @@ class TopologyListener(_EventListener):
     def opened(self, event: TopologyOpenedEvent) -> None:
         """Abstract method to handle a `TopologyOpenedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`TopologyOpenedEvent`.
+        :param event: An instance of :class:`TopologyOpenedEvent`.
         """
         raise NotImplementedError
 
     def description_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         """Abstract method to handle a `TopologyDescriptionChangedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`TopologyDescriptionChangedEvent`.
+        :param event: An instance of :class:`TopologyDescriptionChangedEvent`.
         """
         raise NotImplementedError
 
     def closed(self, event: TopologyClosedEvent) -> None:
         """Abstract method to handle a `TopologyClosedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`TopologyClosedEvent`.
+        :param event: An instance of :class:`TopologyClosedEvent`.
         """
         raise NotImplementedError
 
@@ -460,24 +440,21 @@ class ServerListener(_EventListener):
     def opened(self, event: ServerOpeningEvent) -> None:
         """Abstract method to handle a `ServerOpeningEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerOpeningEvent`.
+        :param event: An instance of :class:`ServerOpeningEvent`.
         """
         raise NotImplementedError
 
     def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
         """Abstract method to handle a `ServerDescriptionChangedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerDescriptionChangedEvent`.
+        :param event: An instance of :class:`ServerDescriptionChangedEvent`.
         """
         raise NotImplementedError
 
     def closed(self, event: ServerClosedEvent) -> None:
         """Abstract method to handle a `ServerClosedEvent`.
 
-        :Parameters:
-          - `event`: An instance of :class:`ServerClosedEvent`.
+        :param event: An instance of :class:`ServerClosedEvent`.
         """
         raise NotImplementedError
 
@@ -507,8 +484,7 @@ def _validate_event_listeners(
 def register(listener: _EventListener) -> None:
     """Register a global event listener.
 
-    :Parameters:
-      - `listener`: A subclasses of :class:`CommandListener`,
+    :param listener: A subclasses of :class:`CommandListener`,
         :class:`ServerHeartbeatListener`, :class:`ServerListener`,
         :class:`TopologyListener`, or :class:`ConnectionPoolListener`.
     """
@@ -619,14 +595,13 @@ class _CommandEvent:
 class CommandStartedEvent(_CommandEvent):
     """Event published when a command starts.
 
-    :Parameters:
-      - `command`: The command document.
-      - `database_name`: The name of the database this command was run against.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
+    :param command: The command document.
+    :param database_name: The name of the database this command was run against.
+    :param request_id: The request id for this operation.
+    :param connection_id: The address (host, port) of the server this command
         was sent to.
-      - `operation_id`: An optional identifier for a series of related events.
-      - `service_id`: The service_id this command was sent to, or ``None``.
+    :param operation_id: An optional identifier for a series of related events.
+    :param service_id: The service_id this command was sent to, or ``None``.
     """
 
     __slots__ = ("__cmd",)
@@ -682,16 +657,15 @@ class CommandStartedEvent(_CommandEvent):
 class CommandSucceededEvent(_CommandEvent):
     """Event published when a command succeeds.
 
-    :Parameters:
-      - `duration`: The command duration as a datetime.timedelta.
-      - `reply`: The server reply document.
-      - `command_name`: The command name.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
+    :param duration: The command duration as a datetime.timedelta.
+    :param reply: The server reply document.
+    :param command_name: The command name.
+    :param request_id: The request id for this operation.
+    :param connection_id: The address (host, port) of the server this command
         was sent to.
-      - `operation_id`: An optional identifier for a series of related events.
-      - `service_id`: The service_id this command was sent to, or ``None``.
-      - `database_name`: The database this command was sent to, or ``""``.
+    :param operation_id: An optional identifier for a series of related events.
+    :param service_id: The service_id this command was sent to, or ``None``.
+    :param database_name: The database this command was sent to, or ``""``.
     """
 
     __slots__ = ("__duration_micros", "__reply")
@@ -749,16 +723,15 @@ class CommandSucceededEvent(_CommandEvent):
 class CommandFailedEvent(_CommandEvent):
     """Event published when a command fails.
 
-    :Parameters:
-      - `duration`: The command duration as a datetime.timedelta.
-      - `failure`: The server reply document.
-      - `command_name`: The command name.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
+    :param duration: The command duration as a datetime.timedelta.
+    :param failure: The server reply document.
+    :param command_name: The command name.
+    :param request_id: The request id for this operation.
+    :param connection_id: The address (host, port) of the server this command
         was sent to.
-      - `operation_id`: An optional identifier for a series of related events.
-      - `service_id`: The service_id this command was sent to, or ``None``.
-      - `database_name`: The database this command was sent to, or ``""``.
+    :param operation_id: An optional identifier for a series of related events.
+    :param service_id: The service_id this command was sent to, or ``None``.
+    :param database_name: The database this command was sent to, or ``""``.
     """
 
     __slots__ = ("__duration_micros", "__failure")
@@ -833,8 +806,7 @@ class _PoolEvent:
 class PoolCreatedEvent(_PoolEvent):
     """Published when a Connection Pool is created.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this Pool is
+    :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
 
     .. versionadded:: 3.9
@@ -858,8 +830,7 @@ class PoolCreatedEvent(_PoolEvent):
 class PoolReadyEvent(_PoolEvent):
     """Published when a Connection Pool is marked ready.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this Pool is
+    :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
 
     .. versionadded:: 4.0
@@ -871,10 +842,9 @@ class PoolReadyEvent(_PoolEvent):
 class PoolClearedEvent(_PoolEvent):
     """Published when a Connection Pool is cleared.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this Pool is
+    :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
-     - `service_id`: The service_id this command was sent to, or ``None``.
+    :param service_id: The service_id this command was sent to, or ``None``.
 
     .. versionadded:: 3.9
     """
@@ -902,8 +872,7 @@ class PoolClearedEvent(_PoolEvent):
 class PoolClosedEvent(_PoolEvent):
     """Published when a Connection Pool is closed.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this Pool is
+    :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
 
     .. versionadded:: 3.9
@@ -995,10 +964,9 @@ class ConnectionCreatedEvent(_ConnectionIdEvent):
     NOTE: This connection is not ready for use until the
     :class:`ConnectionReadyEvent` is published.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `connection_id`: The integer ID of the Connection in this Pool.
+    :param connection_id: The integer ID of the Connection in this Pool.
 
     .. versionadded:: 3.9
     """
@@ -1009,10 +977,9 @@ class ConnectionCreatedEvent(_ConnectionIdEvent):
 class ConnectionReadyEvent(_ConnectionIdEvent):
     """Published when a Connection has finished its setup, and is ready to use.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `connection_id`: The integer ID of the Connection in this Pool.
+    :param connection_id: The integer ID of the Connection in this Pool.
 
     .. versionadded:: 3.9
     """
@@ -1023,11 +990,10 @@ class ConnectionReadyEvent(_ConnectionIdEvent):
 class ConnectionClosedEvent(_ConnectionIdEvent):
     """Published when a Connection is closed.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `connection_id`: The integer ID of the Connection in this Pool.
-     - `reason`: A reason explaining why this connection was closed.
+    :param connection_id: The integer ID of the Connection in this Pool.
+    :param reason: A reason explaining why this connection was closed.
 
     .. versionadded:: 3.9
     """
@@ -1059,8 +1025,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
     """Published when the driver starts attempting to check out a connection.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
 
     .. versionadded:: 3.9
@@ -1072,10 +1037,9 @@ class ConnectionCheckOutStartedEvent(_ConnectionEvent):
 class ConnectionCheckOutFailedEvent(_ConnectionEvent):
     """Published when the driver's attempt to check out a connection fails.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `reason`: A reason explaining why connection check out failed.
+    :param reason: A reason explaining why connection check out failed.
 
     .. versionadded:: 3.9
     """
@@ -1102,10 +1066,9 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
 class ConnectionCheckedOutEvent(_ConnectionIdEvent):
     """Published when the driver successfully checks out a connection.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `connection_id`: The integer ID of the Connection in this Pool.
+    :param connection_id: The integer ID of the Connection in this Pool.
 
     .. versionadded:: 3.9
     """
@@ -1116,10 +1079,9 @@ class ConnectionCheckedOutEvent(_ConnectionIdEvent):
 class ConnectionCheckedInEvent(_ConnectionIdEvent):
     """Published when the driver checks in a Connection into the Pool.
 
-    :Parameters:
-     - `address`: The address (host, port) pair of the server this
+    :param address: The address (host, port) pair of the server this
        Connection is attempting to connect to.
-     - `connection_id`: The integer ID of the Connection in this Pool.
+    :param connection_id: The integer ID of the Connection in this Pool.
 
     .. versionadded:: 3.9
     """
@@ -1422,8 +1384,7 @@ class _EventListeners:
 
     Any event listeners registered globally are included by default.
 
-    :Parameters:
-      - `listeners`: A list of event listeners.
+    :param listeners: A list of event listeners.
     """
 
     def __init__(self, listeners: Optional[Sequence[_EventListener]]):
@@ -1497,15 +1458,14 @@ class _EventListeners:
     ) -> None:
         """Publish a CommandStartedEvent to all command listeners.
 
-        :Parameters:
-          - `command`: The command document.
-          - `database_name`: The name of the database this command was run
+        :param command: The command document.
+        :param database_name: The name of the database this command was run
             against.
-          - `request_id`: The request id for this operation.
-          - `connection_id`: The address (host, port) of the server this
+        :param request_id: The request id for this operation.
+        :param connection_id: The address (host, port) of the server this
             command was sent to.
-          - `op_id`: The (optional) operation id for this operation.
-          - `service_id`: The service_id this command was sent to, or ``None``.
+        :param op_id: The (optional) operation id for this operation.
+        :param service_id: The service_id this command was sent to, or ``None``.
         """
         if op_id is None:
             op_id = request_id
@@ -1532,17 +1492,16 @@ class _EventListeners:
     ) -> None:
         """Publish a CommandSucceededEvent to all command listeners.
 
-        :Parameters:
-          - `duration`: The command duration as a datetime.timedelta.
-          - `reply`: The server reply document.
-          - `command_name`: The command name.
-          - `request_id`: The request id for this operation.
-          - `connection_id`: The address (host, port) of the server this
+        :param duration: The command duration as a datetime.timedelta.
+        :param reply: The server reply document.
+        :param command_name: The command name.
+        :param request_id: The request id for this operation.
+        :param connection_id: The address (host, port) of the server this
             command was sent to.
-          - `op_id`: The (optional) operation id for this operation.
-          - `service_id`: The service_id this command was sent to, or ``None``.
-          - `speculative_hello`: Was the command sent with speculative auth?
-          - `database_name`: The database this command was sent to, or ``""``.
+        :param op_id: The (optional) operation id for this operation.
+        :param service_id: The service_id this command was sent to, or ``None``.
+        :param speculative_hello: Was the command sent with speculative auth?
+        :param database_name: The database this command was sent to, or ``""``.
         """
         if op_id is None:
             op_id = request_id
@@ -1579,17 +1538,16 @@ class _EventListeners:
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 
-        :Parameters:
-          - `duration`: The command duration as a datetime.timedelta.
-          - `failure`: The server reply document or failure description
+        :param duration: The command duration as a datetime.timedelta.
+        :param failure: The server reply document or failure description
             document.
-          - `command_name`: The command name.
-          - `request_id`: The request id for this operation.
-          - `connection_id`: The address (host, port) of the server this
+        :param command_name: The command name.
+        :param request_id: The request id for this operation.
+        :param connection_id: The address (host, port) of the server this
             command was sent to.
-          - `op_id`: The (optional) operation id for this operation.
-          - `service_id`: The service_id this command was sent to, or ``None``.
-          - `database_name`: The database this command was sent to, or ``""``.
+        :param op_id: The (optional) operation id for this operation.
+        :param service_id: The service_id this command was sent to, or ``None``.
+        :param database_name: The database this command was sent to, or ``""``.
         """
         if op_id is None:
             op_id = request_id
@@ -1613,9 +1571,8 @@ class _EventListeners:
         """Publish a ServerHeartbeatStartedEvent to all server heartbeat
         listeners.
 
-        :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
-         - `awaited`: True if this heartbeat is part of an awaitable hello command.
+        :param connection_id: The address (host, port) pair of the connection.
+        :param awaited: True if this heartbeat is part of an awaitable hello command.
         """
         event = ServerHeartbeatStartedEvent(connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
@@ -1630,12 +1587,11 @@ class _EventListeners:
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.
 
-        :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
-         - `duration`: The execution time of the event in the highest possible
+        :param connection_id: The address (host, port) pair of the connection.
+        :param duration: The execution time of the event in the highest possible
             resolution for the platform.
-         - `reply`: The command reply.
-         - `awaited`: True if the response was awaited.
+        :param reply: The command reply.
+        :param awaited: True if the response was awaited.
         """
         event = ServerHeartbeatSucceededEvent(duration, reply, connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
@@ -1650,12 +1606,11 @@ class _EventListeners:
         """Publish a ServerHeartbeatFailedEvent to all server heartbeat
         listeners.
 
-        :Parameters:
-         - `connection_id`: The address (host, port) pair of the connection.
-         - `duration`: The execution time of the event in the highest possible
+        :param connection_id: The address (host, port) pair of the connection.
+        :param duration: The execution time of the event in the highest possible
             resolution for the platform.
-         - `reply`: The command reply.
-         - `awaited`: True if the response was awaited.
+        :param reply: The command reply.
+        :param awaited: True if the response was awaited.
         """
         event = ServerHeartbeatFailedEvent(duration, reply, connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
@@ -1667,9 +1622,8 @@ class _EventListeners:
     def publish_server_opened(self, server_address: _Address, topology_id: ObjectId) -> None:
         """Publish a ServerOpeningEvent to all server listeners.
 
-        :Parameters:
-         - `server_address`: The address (host, port) pair of the server.
-         - `topology_id`: A unique identifier for the topology this server
+        :param server_address: The address (host, port) pair of the server.
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = ServerOpeningEvent(server_address, topology_id)
@@ -1682,9 +1636,8 @@ class _EventListeners:
     def publish_server_closed(self, server_address: _Address, topology_id: ObjectId) -> None:
         """Publish a ServerClosedEvent to all server listeners.
 
-        :Parameters:
-         - `server_address`: The address (host, port) pair of the server.
-         - `topology_id`: A unique identifier for the topology this server
+        :param server_address: The address (host, port) pair of the server.
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = ServerClosedEvent(server_address, topology_id)
@@ -1703,11 +1656,10 @@ class _EventListeners:
     ) -> None:
         """Publish a ServerDescriptionChangedEvent to all server listeners.
 
-        :Parameters:
-         - `previous_description`: The previous server description.
-         - `server_address`: The address (host, port) pair of the server.
-         - `new_description`: The new server description.
-         - `topology_id`: A unique identifier for the topology this server
+        :param previous_description: The previous server description.
+        :param server_address: The address (host, port) pair of the server.
+        :param new_description: The new server description.
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = ServerDescriptionChangedEvent(
@@ -1722,8 +1674,7 @@ class _EventListeners:
     def publish_topology_opened(self, topology_id: ObjectId) -> None:
         """Publish a TopologyOpenedEvent to all topology listeners.
 
-        :Parameters:
-         - `topology_id`: A unique identifier for the topology this server
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = TopologyOpenedEvent(topology_id)
@@ -1736,8 +1687,7 @@ class _EventListeners:
     def publish_topology_closed(self, topology_id: ObjectId) -> None:
         """Publish a TopologyClosedEvent to all topology listeners.
 
-        :Parameters:
-         - `topology_id`: A unique identifier for the topology this server
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = TopologyClosedEvent(topology_id)
@@ -1755,10 +1705,9 @@ class _EventListeners:
     ) -> None:
         """Publish a TopologyDescriptionChangedEvent to all topology listeners.
 
-        :Parameters:
-         - `previous_description`: The previous topology description.
-         - `new_description`: The new topology description.
-         - `topology_id`: A unique identifier for the topology this server
+        :param previous_description: The previous topology description.
+        :param new_description: The new topology description.
+        :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
         event = TopologyDescriptionChangedEvent(previous_description, new_description, topology_id)

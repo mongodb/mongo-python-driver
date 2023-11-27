@@ -183,13 +183,12 @@ if TYPE_CHECKING:
 class SessionOptions:
     """Options for a new :class:`ClientSession`.
 
-    :Parameters:
-      - `causal_consistency` (optional): If True, read operations are causally
+    :param causal_consistency: If True, read operations are causally
         ordered within the session. Defaults to True when the ``snapshot``
         option is ``False``.
-      - `default_transaction_options` (optional): The default
+    :param default_transaction_options: The default
         TransactionOptions to use for transactions started on this session.
-      - `snapshot` (optional): If True, then all reads performed using this
+    :param snapshot: If True, then all reads performed using this
         session will read from the same snapshot. This option is incompatible
         with ``causal_consistency=True``. Defaults to ``False``.
 
@@ -247,21 +246,20 @@ class SessionOptions:
 class TransactionOptions:
     """Options for :meth:`ClientSession.start_transaction`.
 
-    :Parameters:
-      - `read_concern` (optional): The
+    :param read_concern: The
         :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
         If ``None`` (the default) the :attr:`read_preference` of
         the :class:`MongoClient` is used.
-      - `write_concern` (optional): The
+    :param write_concern: The
         :class:`~pymongo.write_concern.WriteConcern` to use for this
         transaction. If ``None`` (the default) the :attr:`read_preference` of
         the :class:`MongoClient` is used.
-      - `read_preference` (optional): The read preference to use. If
+    :param read_preference: The read preference to use. If
         ``None`` (the default) the :attr:`read_preference` of this
         :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
         for options. Transactions which read must use
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-      - `max_commit_time_ms` (optional): The maximum amount of time to allow a
+    :param max_commit_time_ms: The maximum amount of time to allow a
         single commitTransaction command to run. This option is an alias for
         maxTimeMS option on the commitTransaction command. If ``None`` (the
         default) maxTimeMS is not used.
@@ -655,24 +653,22 @@ class ClientSession:
         timeout is reached will be re-raised. Applications that desire a
         different timeout duration should not use this method.
 
-        :Parameters:
-          - `callback`: The callable ``callback`` to run inside a transaction.
+        :param callback: The callable ``callback`` to run inside a transaction.
             The callable must accept a single argument, this session. Note,
             under certain error conditions the callback may be run multiple
             times.
-          - `read_concern` (optional): The
+        :param read_concern: The
             :class:`~pymongo.read_concern.ReadConcern` to use for this
             transaction.
-          - `write_concern` (optional): The
+        :param write_concern: The
             :class:`~pymongo.write_concern.WriteConcern` to use for this
             transaction.
-          - `read_preference` (optional): The read preference to use for this
+        :param read_preference: The read preference to use for this
             transaction. If ``None`` (the default) the :attr:`read_preference`
             of this :class:`Database` is used. See
             :mod:`~pymongo.read_preferences` for options.
 
-        :Returns:
-          The return value of the ``callback``.
+        :return: The return value of the ``callback``.
 
         .. versionadded:: 3.9
         """
@@ -833,8 +829,7 @@ class ClientSession:
     def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
 
-        :Parameters:
-          - `command_name`: Either "commitTransaction" or "abortTransaction".
+        :param command_name: Either "commitTransaction" or "abortTransaction".
         """
 
         def func(
@@ -882,8 +877,7 @@ class ClientSession:
     def advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
         """Update the cluster time for this session.
 
-        :Parameters:
-          - `cluster_time`: The
+        :param cluster_time: The
             :data:`~pymongo.client_session.ClientSession.cluster_time` from
             another `ClientSession` instance.
         """
@@ -904,8 +898,7 @@ class ClientSession:
     def advance_operation_time(self, operation_time: Timestamp) -> None:
         """Update the operation time for this session.
 
-        :Parameters:
-          - `operation_time`: The
+        :param operation_time: The
             :data:`~pymongo.client_session.ClientSession.operation_time` from
             another `ClientSession` instance.
         """

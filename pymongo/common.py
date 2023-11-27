@@ -828,9 +828,8 @@ def get_validated_options(
     """Validate each entry in options and raise a warning if it is not valid.
     Returns a copy of options with invalid entries removed.
 
-    :Parameters:
-        - `opts`: A dict containing MongoDB URI options.
-        - `warn` (optional): If ``True`` then warnings will be logged and
+    :param opts: A dict containing MongoDB URI options.
+    :param warn: If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """

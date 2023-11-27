@@ -36,12 +36,11 @@ class PeriodicExecutor:
 
         If the target's return value is false, the executor stops.
 
-        :Parameters:
-          - `interval`: Seconds between calls to `target`.
-          - `min_interval`: Minimum seconds between calls if `wake` is
+        :param interval: Seconds between calls to `target`.
+        :param min_interval: Minimum seconds between calls if `wake` is
             called very often.
-          - `target`: A function.
-          - `name`: A name to give the underlying thread.
+        :param target: A function.
+        :param name: A name to give the underlying thread.
         """
         # threading.Event and its internal condition variable are expensive
         # in Python 2, see PYTHON-983. Use a boolean to know when to wake.

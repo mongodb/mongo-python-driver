@@ -89,18 +89,16 @@ class _Run:
     def index(self, idx: int) -> int:
         """Get the original index of an operation in this run.
 
-        :Parameters:
-          - `idx`: The Run index that maps to the original index.
+        :param idx: The Run index that maps to the original index.
         """
         return self.index_map[idx]
 
     def add(self, original_index: int, operation: Any) -> None:
         """Add an operation to this Run instance.
 
-        :Parameters:
-          - `original_index`: The original index of this operation
+        :param original_index: The original index of this operation
             within a larger bulk operation.
-          - `operation`: The operation document.
+        :param operation: The operation document.
         """
         self.index_map.append(original_index)
         self.ops.append(operation)

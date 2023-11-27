@@ -84,8 +84,7 @@ class ObjectId:
         Raises :class:`~bson.errors.InvalidId` if `oid` is not 12 bytes nor
         24 hex digits, or :class:`TypeError` if `oid` is not an accepted type.
 
-        :Parameters:
-          - `oid` (optional): a valid ObjectId.
+        :param oid: a valid ObjectId.
 
         .. seealso:: The MongoDB documentation on  `ObjectIds <http://dochub.mongodb.org/core/objectids>`_.
 
@@ -126,8 +125,7 @@ class ObjectId:
         >>> dummy_id = ObjectId.from_datetime(gen_time)
         >>> result = collection.find({"_id": {"$lt": dummy_id}})
 
-        :Parameters:
-          - `generation_time`: :class:`~datetime.datetime` to be used
+        :param generation_time: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
         """
         offset = generation_time.utcoffset()
@@ -141,8 +139,7 @@ class ObjectId:
     def is_valid(cls: Type[ObjectId], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
-        :Parameters:
-          - `oid`: the object id to validate
+        :param oid: the object id to validate
 
         .. versionadded:: 2.3
         """
@@ -186,8 +183,7 @@ class ObjectId:
         :class:`bytes`, or ObjectId. Raises InvalidId if it is not a
         valid ObjectId.
 
-        :Parameters:
-          - `oid`: a valid ObjectId
+        :param oid: a valid ObjectId
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.binary

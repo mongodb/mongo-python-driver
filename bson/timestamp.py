@@ -47,11 +47,10 @@ class Timestamp:
         an instance of :class:`int`. Raises :class:`ValueError` if
         `time` or `inc` is not in [0, 2**32).
 
-        :Parameters:
-          - `time`: time in seconds since epoch UTC, or a naive UTC
+        :param time: time in seconds since epoch UTC, or a naive UTC
             :class:`~datetime.datetime`, or an aware
             :class:`~datetime.datetime`
-          - `inc`: the incrementing counter
+        :param inc: the incrementing counter
         """
         if isinstance(time, datetime.datetime):
             offset = time.utcoffset()

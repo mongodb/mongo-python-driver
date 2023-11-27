@@ -211,10 +211,9 @@ class Binary(bytes):
     .. note::
       Instances of Binary with subtype 0 will be decoded directly to :class:`bytes`.
 
-    :Parameters:
-      - `data`: the binary data to represent. Can be any bytes-like type
+    :param data: the binary data to represent. Can be any bytes-like type
         that implements the buffer protocol.
-      - `subtype` (optional): the `binary subtype
+    :param subtype: the `binary subtype
         <https://bsonspec.org/spec.html>`_
         to use
 
@@ -253,9 +252,8 @@ class Binary(bytes):
         Raises :exc:`TypeError` if `uuid` is not an instance of
         :class:`~uuid.UUID`.
 
-        :Parameters:
-          - `uuid`: A :class:`uuid.UUID` instance.
-          - `uuid_representation`: A member of
+        :param uuid: A :class:`uuid.UUID` instance.
+        :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
             See :ref:`handling-uuid-data-example` for details.
@@ -304,8 +302,7 @@ class Binary(bytes):
         Raises :exc:`ValueError` if this :class:`~bson.binary.Binary` instance
         does not contain a UUID.
 
-        :Parameters:
-          - `uuid_representation`: A member of
+        :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
             See :ref:`handling-uuid-data-example` for details.
