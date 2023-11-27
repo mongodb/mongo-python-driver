@@ -63,9 +63,8 @@ class GridFS:
         Raises :class:`TypeError` if `database` is not an instance of
         :class:`~pymongo.database.Database`.
 
-        :Parameters:
-          - `database`: database to use
-          - `collection` (optional): root collection to use
+        :param database: database to use
+        :param collection: root collection to use
 
         .. versionchanged:: 4.0
            Removed the `disable_md5` parameter. See
@@ -110,8 +109,7 @@ class GridFS:
         not already exist in GridFS. Otherwise
         :class:`~gridfs.errors.FileExists` is raised.
 
-        :Parameters:
-          - `**kwargs` (optional): keyword arguments for file creation
+        :param kwargs: keyword arguments for file creation
         """
         return GridIn(self.__collection, **kwargs)
 
@@ -135,9 +133,8 @@ class GridFS:
         not already exist in GridFS. Otherwise
         :class:`~gridfs.errors.FileExists` is raised.
 
-        :Parameters:
-          - `data`: data to be written as a file.
-          - `**kwargs` (optional): keyword arguments for file creation
+        :param data: data to be written as a file.
+        :param kwargs: keyword arguments for file creation
 
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
@@ -152,9 +149,8 @@ class GridFS:
         Returns an instance of :class:`~gridfs.grid_file.GridOut`,
         which provides a file-like interface for reading.
 
-        :Parameters:
-          - `file_id`: ``"_id"`` of the file to get
-          - `session` (optional): a
+        :param file_id: ``"_id"`` of the file to get
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -193,13 +189,12 @@ class GridFS:
         Raises :class:`~gridfs.errors.NoFile` if no such version of
         that file exists.
 
-        :Parameters:
-          - `filename`: ``"filename"`` of the file to get, or `None`
-          - `version` (optional): version of the file to get (defaults
+        :param filename: ``"filename"`` of the file to get, or `None`
+        :param version: version of the file to get (defaults
             to -1, the most recent version uploaded)
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
-          - `**kwargs` (optional): find files by custom metadata.
+        :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -235,11 +230,10 @@ class GridFS:
         Equivalent to calling :meth:`get_version` with the default
         `version` (``-1``).
 
-        :Parameters:
-          - `filename`: ``"filename"`` of the file to get, or `None`
-          - `session` (optional): a
+        :param filename: ``"filename"`` of the file to get, or `None`
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
-          - `**kwargs` (optional): find files by custom metadata.
+        :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -261,9 +255,8 @@ class GridFS:
         .. note:: Deletes of non-existent files are considered successful
            since the end result is the same: no file with that _id remains.
 
-        :Parameters:
-          - `file_id`: ``"_id"`` of the file to delete
-          - `session` (optional): a
+        :param file_id: ``"_id"`` of the file to delete
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -280,8 +273,7 @@ class GridFS:
         """List the names of all files stored in this instance of
         :class:`GridFS`.
 
-        :Parameters:
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -309,19 +301,20 @@ class GridFS:
         All arguments to :meth:`find` are also valid arguments for
         :meth:`find_one`, although any `limit` argument will be
         ignored. Returns a single :class:`~gridfs.grid_file.GridOut`,
-        or ``None`` if no matching file is found. For example::
+        or ``None`` if no matching file is found. For example:
+
+        .. code-block: python
 
             file = fs.find_one({"filename": "lisa.txt"})
 
-        :Parameters:
-          - `filter` (optional): a dictionary specifying
+        :param filter: a dictionary specifying
             the query to be performing OR any other type to be used as
             the value for a query for ``"_id"`` in the file collection.
-          - `*args` (optional): any additional positional arguments are
+        :param args: any additional positional arguments are
             the same as the arguments to :meth:`find`.
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
-          - `**kwargs` (optional): any additional keyword arguments
+        :param kwargs: any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
         .. versionchanged:: 3.6
@@ -367,20 +360,19 @@ class GridFS:
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
-        :Parameters:
-          - `filter` (optional): A query document that selects which files
+        :param filter: A query document that selects which files
             to include in the result set. Can be an empty document to include
             all files.
-          - `skip` (optional): the number of files to omit (from
+        :param skip: the number of files to omit (from
             the start of the result set) when returning the results
-          - `limit` (optional): the maximum number of results to
+        :param limit: the maximum number of results to
             return
-          - `no_cursor_timeout` (optional): if False (the default), any
+        :param no_cursor_timeout: if False (the default), any
             returned cursor is closed by the server after 10 minutes of
             inactivity. If set to True, the returned cursor will never
             time out on the server. Care should be taken to ensure that
             cursors with no_cursor_timeout turned on are properly closed.
-          - `sort` (optional): a list of (key, direction) pairs
+        :param sort: a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
 
@@ -429,12 +421,11 @@ class GridFS:
         create appropriate indexes; application developers should be
         sure to create indexes if needed and as appropriate.
 
-        :Parameters:
-          - `document_or_id` (optional): query document, or _id of the
+        :param document_or_id: query document, or _id of the
             document to check for
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
-          - `**kwargs` (optional): keyword arguments are used as a
+        :param kwargs: keyword arguments are used as a
             query document, if they're present.
 
         .. versionchanged:: 3.6
@@ -468,15 +459,14 @@ class GridFSBucket:
         Raises :exc:`~pymongo.errors.ConfigurationError` if `write_concern`
         is not acknowledged.
 
-        :Parameters:
-          - `database`: database to use.
-          - `bucket_name` (optional): The name of the bucket. Defaults to 'fs'.
-          - `chunk_size_bytes` (optional): The chunk size in bytes. Defaults
+        :param database: database to use.
+        :param bucket_name: The name of the bucket. Defaults to 'fs'.
+        :param chunk_size_bytes: The chunk size in bytes. Defaults
             to 255KB.
-          - `write_concern` (optional): The
+        :param write_concern: The
             :class:`~pymongo.write_concern.WriteConcern` to use. If ``None``
             (the default) db.write_concern is used.
-          - `read_preference` (optional): The read preference to use. If
+        :param read_preference: The read preference to use. If
             ``None`` (the default) db.read_preference is used.
 
         .. versionchanged:: 4.0
@@ -545,14 +535,13 @@ class GridFSBucket:
         that file exists.
         Raises :exc:`~ValueError` if `filename` is not a string.
 
-        :Parameters:
-          - `filename`: The name of the file to upload.
-          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+        :param filename: The name of the file to upload.
+        :param chunk_size_bytes` (options): The number of bytes per chunk of this
             file. Defaults to the chunk_size_bytes in :class:`GridFSBucket`.
-          - `metadata` (optional): User data for the 'metadata' field of the
+        :param metadata: User data for the 'metadata' field of the
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -603,16 +592,15 @@ class GridFSBucket:
         that file exists.
         Raises :exc:`~ValueError` if `filename` is not a string.
 
-        :Parameters:
-          - `file_id`: The id to use for this file. The id must not have
+        :param file_id: The id to use for this file. The id must not have
             already been used for another file.
-          - `filename`: The name of the file to upload.
-          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+        :param filename: The name of the file to upload.
+        :param chunk_size_bytes` (options): The number of bytes per chunk of this
             file. Defaults to the chunk_size_bytes in :class:`GridFSBucket`.
-          - `metadata` (optional): User data for the 'metadata' field of the
+        :param metadata: User data for the 'metadata' field of the
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -661,16 +649,15 @@ class GridFSBucket:
         that file exists.
         Raises :exc:`~ValueError` if `filename` is not a string.
 
-        :Parameters:
-          - `filename`: The name of the file to upload.
-          - `source`: The source stream of the content to be uploaded. Must be
+        :param filename: The name of the file to upload.
+        :param source: The source stream of the content to be uploaded. Must be
             a file-like object that implements :meth:`read` or a string.
-          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+        :param chunk_size_bytes` (options): The number of bytes per chunk of this
             file. Defaults to the chunk_size_bytes of :class:`GridFSBucket`.
-          - `metadata` (optional): User data for the 'metadata' field of the
+        :param metadata: User data for the 'metadata' field of the
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -710,18 +697,17 @@ class GridFSBucket:
         that file exists.
         Raises :exc:`~ValueError` if `filename` is not a string.
 
-        :Parameters:
-          - `file_id`: The id to use for this file. The id must not have
+        :param file_id: The id to use for this file. The id must not have
             already been used for another file.
-          - `filename`: The name of the file to upload.
-          - `source`: The source stream of the content to be uploaded. Must be
+        :param filename: The name of the file to upload.
+        :param source: The source stream of the content to be uploaded. Must be
             a file-like object that implements :meth:`read` or a string.
-          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+        :param chunk_size_bytes` (options): The number of bytes per chunk of this
             file. Defaults to the chunk_size_bytes of :class:`GridFSBucket`.
-          - `metadata` (optional): User data for the 'metadata' field of the
+        :param metadata: User data for the 'metadata' field of the
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -751,9 +737,8 @@ class GridFSBucket:
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with file_id exists.
 
-        :Parameters:
-          - `file_id`: The _id of the file to be downloaded.
-          - `session` (optional): a
+        :param file_id: The _id of the file to be downloaded.
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -786,10 +771,9 @@ class GridFSBucket:
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with file_id exists.
 
-        :Parameters:
-          - `file_id`: The _id of the file to be downloaded.
-          - `destination`: a file-like object implementing :meth:`write`.
-          - `session` (optional): a
+        :param file_id: The _id of the file to be downloaded.
+        :param destination: a file-like object implementing :meth:`write`.
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -817,9 +801,8 @@ class GridFSBucket:
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with file_id exists.
 
-        :Parameters:
-          - `file_id`: The _id of the file to be deleted.
-          - `session` (optional): a
+        :param file_id: The _id of the file to be deleted.
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6
@@ -864,17 +847,16 @@ class GridFSBucket:
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
-        :Parameters:
-          - `filter`: Search query.
-          - `batch_size` (optional): The number of documents to return per
+        :param filter: Search query.
+        :param batch_size: The number of documents to return per
             batch.
-          - `limit` (optional): The maximum number of documents to return.
-          - `no_cursor_timeout` (optional): The server normally times out idle
+        :param limit: The maximum number of documents to return.
+        :param no_cursor_timeout: The server normally times out idle
             cursors after an inactivity period (10 minutes) to prevent excess
             memory use. Set this option to True prevent that.
-          - `skip` (optional): The number of documents to skip before
+        :param skip: The number of documents to skip before
             returning.
-          - `sort` (optional): The order by which to sort results. Defaults to
+        :param sort: The order by which to sort results. Defaults to
             None.
         """
         return GridOutCursor(self._collection, *args, **kwargs)
@@ -899,12 +881,11 @@ class GridFSBucket:
 
         Raises :exc:`~ValueError` filename is not a string.
 
-        :Parameters:
-          - `filename`: The name of the file to read from.
-          - `revision` (optional): Which revision (documents with the same
+        :param filename: The name of the file to read from.
+        :param revision: Which revision (documents with the same
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         :Note: Revision numbers are defined as follows:
@@ -958,13 +939,12 @@ class GridFSBucket:
 
         Raises :exc:`~ValueError` if `filename` is not a string.
 
-        :Parameters:
-          - `filename`: The name of the file to read from.
-          - `destination`: A file-like object that implements :meth:`write`.
-          - `revision` (optional): Which revision (documents with the same
+        :param filename: The name of the file to read from.
+        :param destination: A file-like object that implements :meth:`write`.
+        :param revision: Which revision (documents with the same
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         :Note: Revision numbers are defined as follows:
@@ -1001,10 +981,9 @@ class GridFSBucket:
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with file_id exists.
 
-        :Parameters:
-          - `file_id`: The _id of the file to be renamed.
-          - `new_filename`: The new name of the file.
-          - `session` (optional): a
+        :param file_id: The _id of the file to be renamed.
+        :param new_filename: The new name of the file.
+        :param session: a
             :class:`~pymongo.client_session.ClientSession`
 
         .. versionchanged:: 3.6

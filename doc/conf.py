@@ -94,6 +94,8 @@ linkcheck_ignore = [
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
 
+autodoc_typehints = "description"
+
 doctest_path = [Path("..").resolve()]
 
 doctest_test_doctest_blocks = ""

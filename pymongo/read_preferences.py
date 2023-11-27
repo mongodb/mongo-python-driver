@@ -301,15 +301,14 @@ class PrimaryPreferred(_ServerMode):
       created reads will be routed to an available secondary until the
       primary of the replica set is discovered.
 
-    :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
+    :param tag_sets: The :attr:`~tag_sets` to use if the primary is not
         available.
-      - `max_staleness`: (integer, in seconds) The maximum estimated
+    :param max_staleness: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-      - `hedge`: The :attr:`~hedge` to use if the primary is not available.
+    :param hedge: The :attr:`~hedge` to use if the primary is not available.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -345,14 +344,13 @@ class Secondary(_ServerMode):
     * When connected to a replica set queries are distributed among
       secondaries. An error is raised if no secondaries are available.
 
-    :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer, in seconds) The maximum estimated
+    :param tag_sets: The :attr:`~tag_sets` for this read preference.
+    :param max_staleness: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-      - `hedge`: The :attr:`~hedge` for this read preference.
+    :param hedge: The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -389,14 +387,13 @@ class SecondaryPreferred(_ServerMode):
       created reads will be routed to the primary of the replica set until
       an available secondary is discovered.
 
-    :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer, in seconds) The maximum estimated
+    :param tag_sets: The :attr:`~tag_sets` for this read preference.
+    :param max_staleness: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-      - `hedge`: The :attr:`~hedge` for this read preference.
+    :param hedge: The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -434,14 +431,13 @@ class Nearest(_ServerMode):
     * When connected to a replica set queries are distributed among all
       members.
 
-    :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer, in seconds) The maximum estimated
+    :param tag_sets: The :attr:`~tag_sets` for this read preference.
+    :param max_staleness: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-      - `hedge`: The :attr:`~hedge` for this read preference.
+    :param hedge: The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -471,8 +467,7 @@ class _AggWritePref:
       primary read preference.
     * Otherwise use `pref` read preference.
 
-    :Parameters:
-      - `pref`: The read preference to use on MongoDB 5.0+.
+    :param pref: The read preference to use on MongoDB 5.0+.
     """
 
     __slots__ = ("pref", "effective_pref")
