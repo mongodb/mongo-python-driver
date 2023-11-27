@@ -69,14 +69,13 @@ class TopologyDescription:
     ) -> None:
         """Representation of a deployment of MongoDB servers.
 
-        :Parameters:
-          - `topology_type`: initial type
-          - `server_descriptions`: dict of (address, ServerDescription) for
+        :param topology_type: initial type
+        :param server_descriptions: dict of (address, ServerDescription) for
             all seeds
-          - `replica_set_name`: replica set name or None
-          - `max_set_version`: greatest setVersion seen from a primary, or None
-          - `max_election_id`: greatest electionId seen from a primary, or None
-          - `topology_settings`: a TopologySettings
+        :param replica_set_name: replica set name or None
+        :param max_set_version: greatest setVersion seen from a primary, or None
+        :param max_election_id: greatest electionId seen from a primary, or None
+        :param topology_settings: a TopologySettings
         """
         self._topology_type = topology_type
         self._replica_set_name = replica_set_name
@@ -283,12 +282,11 @@ class TopologyDescription:
     ) -> list[ServerDescription]:
         """List of servers matching the provided selector(s).
 
-        :Parameters:
-          - `selector`: a callable that takes a Selection as input and returns
+        :param selector: a callable that takes a Selection as input and returns
             a Selection as output. For example, an instance of a read
             preference from :mod:`~pymongo.read_preferences`.
-          - `address` (optional): A server address to select.
-          - `custom_selector` (optional): A callable that augments server
+        :param address: A server address to select.
+        :param custom_selector: A callable that augments server
             selection rules. Accepts a list of
             :class:`~pymongo.server_description.ServerDescription` objects and
             return a list of server descriptions that should be considered
@@ -333,8 +331,7 @@ class TopologyDescription:
         """Does this topology have any readable servers available matching the
         given read preference?
 
-        :Parameters:
-          - `read_preference`: an instance of a read preference from
+        :param read_preference: an instance of a read preference from
             :mod:`~pymongo.read_preferences`. Defaults to
             :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
 
@@ -384,9 +381,8 @@ def updated_topology_description(
 ) -> TopologyDescription:
     """Return an updated copy of a TopologyDescription.
 
-    :Parameters:
-      - `topology_description`: the current TopologyDescription
-      - `server_description`: a new ServerDescription that resulted from
+    :param topology_description: the current TopologyDescription
+    :param server_description: a new ServerDescription that resulted from
         a hello call
 
     Called after attempting (successfully or not) to call hello on the
@@ -489,9 +485,8 @@ def _updated_topology_description_srv_polling(
 ) -> TopologyDescription:
     """Return an updated copy of a TopologyDescription.
 
-    :Parameters:
-      - `topology_description`: the current TopologyDescription
-      - `seedlist`: a list of new seeds new ServerDescription that resulted from
+    :param topology_description: the current TopologyDescription
+    :param seedlist: a list of new seeds new ServerDescription that resulted from
         a hello call
     """
     assert topology_description.topology_type in SRV_POLLING_TOPOLOGIES

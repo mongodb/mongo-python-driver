@@ -39,12 +39,11 @@ class Response:
     ):
         """Represent a response from the server.
 
-        :Parameters:
-          - `data`: A network response message.
-          - `address`: (host, port) of the source server.
-          - `request_id`: The request id of this operation.
-          - `duration`: The duration of the operation.
-          - `from_command`: if the response is the result of a db command.
+        :param data: A network response message.
+        :param address: (host, port) of the source server.
+        :param request_id: The request id of this operation.
+        :param duration: The duration of the operation.
+        :param from_command: if the response is the result of a db command.
         """
         self._data = data
         self._address = address
@@ -100,15 +99,14 @@ class PinnedResponse(Response):
     ):
         """Represent a response to an exhaust cursor's initial query.
 
-        :Parameters:
-          - `data`:  A network response message.
-          - `address`: (host, port) of the source server.
-          - `conn`: The Connection used for the initial query.
-          - `request_id`: The request id of this operation.
-          - `duration`: The duration of the operation.
-          - `from_command`: If the response is the result of a db command.
-          - `docs`: List of documents.
-          - `more_to_come`: Bool indicating whether cursor is ready to be
+        :param data:  A network response message.
+        :param address: (host, port) of the source server.
+        :param conn: The Connection used for the initial query.
+        :param request_id: The request id of this operation.
+        :param duration: The duration of the operation.
+        :param from_command: If the response is the result of a db command.
+        :param docs: List of documents.
+        :param more_to_come: Bool indicating whether cursor is ready to be
             exhausted.
         """
         super().__init__(data, address, request_id, duration, from_command, docs)

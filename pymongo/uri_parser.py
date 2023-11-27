@@ -56,8 +56,7 @@ DEFAULT_PORT = 27017
 def _unquoted_percent(s: str) -> bool:
     """Check for unescaped percent signs.
 
-    :Parameters:
-        - `s`: A string. `s` can have things like '%25', '%2525',
+    :param s: A string. `s` can have things like '%25', '%2525',
            and '%E2%85%A8' but cannot have unquoted percent like '%foo'.
     """
     for i in range(len(s)):
@@ -78,8 +77,7 @@ def parse_userinfo(userinfo: str) -> tuple[str, str]:
     Returns a 2-tuple containing the unescaped username followed
     by the unescaped password.
 
-    :Parameters:
-        - `userinfo`: A string of the form <username>:<password>
+    :param userinfo: A string of the form <username>:<password>
     """
     if "@" in userinfo or userinfo.count(":") > 1 or _unquoted_percent(userinfo):
         raise InvalidURI(
@@ -103,10 +101,9 @@ def parse_ipv6_literal_host(
     Returns a 2-tuple of IPv6 literal followed by port where
     port is default_port if it wasn't specified in entity.
 
-    :Parameters:
-        - `entity`: A string that represents an IPv6 literal enclosed
+    :param entity: A string that represents an IPv6 literal enclosed
                     in braces (e.g. '[::1]' or '[::1]:27017').
-        - `default_port`: The port number to use when one wasn't
+    :param default_port: The port number to use when one wasn't
                           specified in entity.
     """
     if entity.find("]") == -1:
@@ -125,10 +122,9 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
     Returns a 2-tuple of host followed by port where port is default_port
     if it wasn't specified in the string.
 
-    :Parameters:
-        - `entity`: A host or host:port string where host could be a
+    :param entity: A host or host:port string where host could be a
                     hostname or IP address.
-        - `default_port`: The port number to use when one wasn't
+    :param default_port: The port number to use when one wasn't
                           specified in entity.
     """
     host = entity
@@ -192,8 +188,7 @@ def _handle_security_options(options: _CaseInsensitiveDictionary) -> _CaseInsens
     """Raise appropriate errors when conflicting TLS options are present in
     the options dictionary.
 
-    :Parameters:
-        - `options`: Instance of _CaseInsensitiveDictionary containing
+    :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
     # Implicitly defined options must not be explicitly specified.
@@ -247,8 +242,7 @@ def _handle_option_deprecations(options: _CaseInsensitiveDictionary) -> _CaseIns
     options dictionary. Removes deprecated option key, value pairs if the
     options dictionary is found to also have the renamed option.
 
-    :Parameters:
-        - `options`: Instance of _CaseInsensitiveDictionary containing
+    :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
     for optname in list(options):
@@ -286,8 +280,7 @@ def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveD
     """Normalizes option names in the options dictionary by converting them to
     their internally-used names.
 
-    :Parameters:
-        - `options`: Instance of _CaseInsensitiveDictionary containing
+    :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
     # Expand the tlsInsecure option.
@@ -312,9 +305,8 @@ def validate_options(opts: Mapping[str, Any], warn: bool = False) -> MutableMapp
     False then errors will be thrown for invalid options, otherwise they will
     be ignored and a warning will be issued.
 
-    :Parameters:
-        - `opts`: A dict of MongoDB URI options.
-        - `warn` (optional): If ``True`` then warnings will be logged and
+    :param opts: A dict of MongoDB URI options.
+    :param warn: If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise invalid options will
           cause errors.
     """
@@ -327,13 +319,12 @@ def split_options(
     """Takes the options portion of a MongoDB URI, validates each option
     and returns the options in a dictionary.
 
-    :Parameters:
-        - `opt`: A string representing MongoDB URI options.
-        - `validate`: If ``True`` (the default), validate and normalize all
+    :param opt: A string representing MongoDB URI options.
+    :param validate: If ``True`` (the default), validate and normalize all
           options.
-        - `warn`: If ``False`` (the default), suppress all warnings raised
+    :param warn: If ``False`` (the default), suppress all warnings raised
           during validation of options.
-        - `normalize`: If ``True`` (the default), renames all options to their
+    :param normalize: If ``True`` (the default), renames all options to their
           internally-used names.
     """
     and_idx = opts.find("&")
@@ -375,9 +366,8 @@ def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[
     Returns a set of 2-tuples containing the host name (or IP) followed by
     port number.
 
-    :Parameters:
-        - `hosts`: A string of the form host1[:port],host2[:port],...
-        - `default_port`: The port number to use when one wasn't specified
+    :param hosts: A string of the form host1[:port],host2[:port],...
+    :param default_port: The port number to use when one wasn't specified
           for a host.
     """
     nodes = []
@@ -442,21 +432,20 @@ def parse_uri(
     If the URI scheme is "mongodb+srv://" DNS SRV and TXT lookups will be done
     to build nodelist and options.
 
-    :Parameters:
-        - `uri`: The MongoDB URI to parse.
-        - `default_port`: The port number to use when one wasn't specified
+    :param uri: The MongoDB URI to parse.
+    :param default_port: The port number to use when one wasn't specified
           for a host in the URI.
-        - `validate` (optional): If ``True`` (the default), validate and
+    :param validate: If ``True`` (the default), validate and
           normalize all options. Default: ``True``.
-        - `warn` (optional): When validating, if ``True`` then will warn
+    :param warn: When validating, if ``True`` then will warn
           the user then ignore any invalid options or values. If ``False``,
           validation will error when options are unsupported or values are
           invalid. Default: ``False``.
-        - `normalize` (optional): If ``True``, convert names of URI options
+    :param normalize: If ``True``, convert names of URI options
           to their internally-used names. Default: ``True``.
-        - `connect_timeout` (optional): The maximum time in milliseconds to
+    :param connect_timeout: The maximum time in milliseconds to
           wait for a response from the DNS server.
-        - `srv_service_name` (optional): A custom SRV service name
+    :param srv_service_name: A custom SRV service name
 
     .. versionchanged:: 4.6
        The delimiting slash (``/``) between hosts and connection options is now optional.

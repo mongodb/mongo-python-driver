@@ -66,8 +66,7 @@ class Regex(Generic[_T]):
           >>> regex.flags ^= re.UNICODE
           >>> db.collection.insert_one({'pattern': regex})
 
-        :Parameters:
-          - `regex`: A regular expression object from ``re.compile()``.
+        :param regex: A regular expression object from ``re.compile()``.
 
         .. warning::
            Python regular expressions use a different syntax and different
@@ -89,9 +88,8 @@ class Regex(Generic[_T]):
         This class is useful to store and retrieve regular expressions that are
         incompatible with Python's regular expression dialect.
 
-        :Parameters:
-          - `pattern`: string
-          - `flags`: (optional) an integer bitmask, or a string of flag
+        :param pattern: string
+        :param flags: an integer bitmask, or a string of flag
             characters like "im" for IGNORECASE and MULTILINE
         """
         if not isinstance(pattern, (str, bytes)):

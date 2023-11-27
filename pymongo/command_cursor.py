@@ -134,8 +134,7 @@ class CommandCursor(Generic[_DocumentType]):
         Raises :exc:`TypeError` if `batch_size` is not an integer.
         Raises :exc:`ValueError` if `batch_size` is less than ``0``.
 
-        :Parameters:
-          - `batch_size`: The size of each batch of results requested.
+        :param batch_size: The size of each batch of results requested.
         """
         if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer")
@@ -335,8 +334,7 @@ class CommandCursor(Generic[_DocumentType]):
         document is returned, otherwise, if the getMore returns no documents
         (because there is no additional data) then ``None`` is returned.
 
-        :Returns:
-          The next document or ``None`` when no document is available
+        :return: The next document or ``None`` when no document is available
           after running a single getMore or when the cursor is closed.
 
         .. versionadded:: 4.5

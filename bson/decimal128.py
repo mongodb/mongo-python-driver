@@ -70,8 +70,7 @@ def create_decimal128_context() -> decimal.Context:
 def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
     """Converts a decimal.Decimal to BID (high bits, low bits).
 
-    :Parameters:
-      - `value`: An instance of decimal.Decimal
+    :param value: An instance of decimal.Decimal
     """
     with decimal.localcontext(_DEC128_CTX) as ctx:
         value = ctx.create_decimal(value)
@@ -126,8 +125,7 @@ class Decimal128:
       >>> Decimal128((3474527112516337664, 5))
       Decimal128('0.0005')
 
-    :Parameters:
-      - `value`: An instance of :class:`decimal.Decimal`, string, or tuple of
+    :param value: An instance of :class:`decimal.Decimal`, string, or tuple of
         (high bits, low bits) from Binary Integer Decimal (BID) format.
 
     .. note:: :class:`~Decimal128` uses an instance of :class:`decimal.Context`
@@ -275,8 +273,7 @@ class Decimal128:
         """Create an instance of :class:`Decimal128` from Binary Integer
         Decimal string.
 
-        :Parameters:
-          - `value`: 16 byte string (128-bit IEEE 754-2008 decimal floating
+        :param value: 16 byte string (128-bit IEEE 754-2008 decimal floating
             point in Binary Integer Decimal (BID) format).
         """
         if not isinstance(value, bytes):

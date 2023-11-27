@@ -159,11 +159,9 @@ def timeout(seconds: Optional[float]) -> ContextManager[None]:
               coll.find_one()  # Still uses the original 5 second deadline.
           coll.find_one()  # Uses the original 5 second deadline.
 
-    :Parameters:
-      - `seconds`: A non-negative floating point number expressing seconds, or None.
+    :param seconds: A non-negative floating point number expressing seconds, or None.
 
-    :Raises:
-      - :py:class:`ValueError`: When `seconds` is negative.
+    :raises: :py:class:`ValueError`: When `seconds` is negative.
 
     See :ref:`timeout-example` for more examples.
 

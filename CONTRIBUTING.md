@@ -172,6 +172,8 @@ request](https://help.github.com/articles/using-pull-requests). You
 might also use the GitHub
 [Edit](https://github.com/blog/844-forking-with-the-edit-button) button.
 
+We use the [Sphinx docstring format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html).
+
 You can build the documentation locally by running:
 
 ```bash

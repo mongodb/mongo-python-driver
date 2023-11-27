@@ -106,12 +106,11 @@ class ServerApi:
     ):
         """Options to configure MongoDB Stable API.
 
-        :Parameters:
-          - `version`: The API version string. Must be one of the values in
+        :param version: The API version string. Must be one of the values in
             :class:`ServerApiVersion`.
-          - `strict` (optional): Set to ``True`` to enable API strict mode.
+        :param strict: Set to ``True`` to enable API strict mode.
             Defaults to ``None`` which means "use the server's default".
-          - `deprecation_errors` (optional): Set to ``True`` to enable
+        :param deprecation_errors: Set to ``True`` to enable
             deprecation errors. Defaults to ``None`` which means "use the
             server's default".
 
@@ -162,9 +161,8 @@ class ServerApi:
 def _add_to_command(cmd: MutableMapping[str, Any], server_api: Optional[ServerApi]) -> None:
     """Internal helper which adds API versioning options to a command.
 
-    :Parameters:
-      - `cmd`: The command.
-      - `server_api` (optional): A :class:`ServerApi` or ``None``.
+    :param cmd: The command.
+    :param server_api: A :class:`ServerApi` or ``None``.
     """
     if not server_api:
         return
