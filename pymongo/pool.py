@@ -763,7 +763,7 @@ class Connection:
         self.more_to_come: bool = False
         # For load balancer support.
         self.service_id: Optional[ObjectId] = None
-        self.server_connection_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False

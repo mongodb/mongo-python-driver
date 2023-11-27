@@ -579,7 +579,7 @@ class _CommandEvent:
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
@@ -626,8 +626,8 @@ class _CommandEvent:
         return self.__db
 
     @property
-    def server_connection_id(self) -> Optional[ObjectId]:
-        """The server-side connection id for the connection this command was sent to, or ``None``.
+    def server_connection_id(self) -> Optional[int]:
+        """The server-side connection id for the connection this command was sent on, or ``None``.
 
         .. versionadded:: 4.7
         """
@@ -657,7 +657,7 @@ class CommandStartedEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         if not command:
             raise ValueError(f"{command!r} is not a valid command")
@@ -729,7 +729,7 @@ class CommandSucceededEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -799,7 +799,7 @@ class CommandFailedEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -1523,7 +1523,7 @@ class _EventListeners:
         connection_id: _Address,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandStartedEvent to all command listeners.
 
@@ -1565,7 +1565,7 @@ class _EventListeners:
         service_id: Optional[ObjectId] = None,
         speculative_hello: bool = False,
         database_name: str = "",
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandSucceededEvent to all command listeners.
 
@@ -1614,7 +1614,7 @@ class _EventListeners:
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
-        server_connection_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 
