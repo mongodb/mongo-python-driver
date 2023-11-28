@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: ${{env.PYTHON_VERSION}}
           cache: 'pip'
-          cache-dependency-path: 'bindings/python/pyproject.toml'
+          cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
       - name: Set up QEMU
@@ -71,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
-          path: ./bindings/python/wheelhouse/*.whl
+          path: ./wheelhouse/*.whl
           if-no-files-found: error
 
   make_sdist:
@@ -94,7 +94,6 @@ jobs:
           python -m build --sdist .
 
       - name: Test Sdist
-        working-directory: ./bindings/python
         run: |
           python -m pip install dist/*.gz
           cd ..
