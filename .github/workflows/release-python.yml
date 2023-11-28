@@ -68,11 +68,12 @@ jobs:
         if: ${{ matrix.python == 'cp37' && matrix.buildplat[0] == 'macos-11' }}
         env:
           CIBW_BUILD: cp37-macosx_x86_64
+          CIBW_ARCHS: x86_64
           CIBW_TEST_COMMAND: "python {project}/tools/fail_if_no_c.py"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build wheels
-        if: ${{ matrix.python != 'cp38' || matrix.buildplat[0] != 'macos-11' }}
+        if: ${{ matrix.python != 'cp37' || matrix.buildplat[0] != 'macos-11' }}
         env:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
         run: python -m cibuildwheel --output-dir wheelhouse
