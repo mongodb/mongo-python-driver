@@ -2,7 +2,7 @@ name: Python Wheels
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
       - "[0-9]+.[0-9]+.[0-9]+.post[0-9]+"
@@ -131,20 +131,21 @@ jobs:
           find . -type d -empty -delete
       - uses: actions/upload-artifact@v3
         with:
-          name: dist
+          name: all-dist-${{ github.head_ref || github.ref_name }}
           path: "./*"
 
   publish:
+    # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#publishing-the-distribution-to-pypi
     needs: [collect_dist]
-    name: "Publish Python 🐍 distribution 📦 to PyPI"
-    # only publish to PyPI on tag pushes
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: release
     permissions:
       id-token: write
     steps:
-    - name: Retrieve package artifacts
+    - name: Download all the dists
       uses: actions/download-artifact@v3
-    - name: Upload packages
+      with:
+        name: all-dist-${{ github.head_ref || github.ref_name }}
+        path: dist/
+    - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
