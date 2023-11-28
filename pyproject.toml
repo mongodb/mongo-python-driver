@@ -226,12 +226,12 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 directory = "htmlcov"
 
 [tool.cibuildwheel]
-skip = "pp* *-manylinux_i686 *-musllinux*"
+skip = "pp* *-musllinux*"
 build-frontend = "build"
 test-command = "python -c \"from pymongo import has_c; assert has_c()\""
 
 [tool.cibuildwheel.linux]
-archs = "x86_64 aarch64 ppc64le s390x"
+archs = "x86_64 aarch64 ppc64le s390x i686"
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]

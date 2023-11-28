@@ -31,8 +31,10 @@ jobs:
         - [ubuntu-20.04, manylinux_aarch64]
         - [ubuntu-20.04, manylinux_ppc64le]
         - [ubuntu-20.04, manylinux_s390x]
+        - [ubuntu-20.04, manylinux_i686]
         - [macos-11, macosx_*]
         - [windows-2019, win_amd64]
+        - [windows-2019, win32]
         python: ["cp37", "cp38", "cp39", "cp310", "cp311", "cp312"]
 
     steps:
@@ -118,5 +120,5 @@ jobs:
           find . -type d -empty -delete
       - uses: actions/upload-artifact@v3
         with:
-          name: pymongo-all-dist-${{ github.ref_name }}
+          name: pymongo-all-dist-${{ github.head_ref || github.ref_name }}
           path: "./*"
