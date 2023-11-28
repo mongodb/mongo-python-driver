@@ -118,5 +118,5 @@ jobs:
           find . -type d -empty -delete
       - uses: actions/upload-artifact@v3
         with:
-          name: all-dist
+          name: pymongo-all-dist-${{ github.ref_name }}
           path: "./*"
