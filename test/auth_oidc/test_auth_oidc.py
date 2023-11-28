@@ -599,60 +599,12 @@ class TestAuthOIDCMachine(OIDCTestBase):
         props: Dict = {"custom_token_callback": request_cb}
         return MongoClient(self.uri_single, authmechanismproperties=props)
 
-    def test_request_callback_invalid_result(self):
-        request_cb = self.create_request_cb()
-        props: Dict = {"custom_token_callback": request_cb, "PROVIDER_NAME": PROVIDER_NAME}
-        with self.assertRaises(ConfigurationError):
-            _ = MongoClient(self.uri_single, authmechanismproperties=props)
-
-    def test_valid_request_token_callback(self):
+    def test_custom_callback(self):
         client = self.create_client()
         client.test.test.find_one()
         client.close()
 
-        client = self.create_client()
-        client.test.test.find_one()
-        client.close()
-
-    def test_request_callback_returns_null(self):
-        class CallbackNullToken(OIDCMachineCallback):
-            def fetch(self, a):
-                return None
-
-        props: Dict = {"custom_token_callback": CallbackNullToken()}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-    def test_request_callback_invalid_result(self):
-        class CallbackTokenInvalid(OIDCMachineCallback):
-            def fetch(self, a):
-                return {}
-
-        props: Dict = {"custom_token_callback": CallbackTokenInvalid()}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-    def test_speculative_auth_success(self):
-        client = self.create_client()
-
-        # Set a fail point for saslStart commands.
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a find operation.
-            client.test.test.find_one()
-
-        # Close the client.
-        client.close()
-
-    def test_reauthenticate_succeeds(self):
+    def test_callback_is_called_during_reauthentication(self):
         listener = EventListener()
 
         # Create request callback that returns valid credentials.
@@ -705,6 +657,67 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
+        client.close()
+
+    def test_callback_is_called_twice_on_handshake_authentication_failure(self):
+        client = self.create_client()
+
+        # Set a fail point for ``saslStart`` commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Assert that the request callback has been called twice.
+        self.assertEqual(self.request_called, 2)
+        client.close()
+
+    def test_request_callback_invalid_result(self):
+        request_cb = self.create_request_cb()
+        props: Dict = {"custom_token_callback": request_cb, "PROVIDER_NAME": PROVIDER_NAME}
+        with self.assertRaises(ConfigurationError):
+            _ = MongoClient(self.uri_single, authmechanismproperties=props)
+
+    def test_request_callback_returns_null(self):
+        class CallbackNullToken(OIDCMachineCallback):
+            def fetch(self, a):
+                return None
+
+        props: Dict = {"custom_token_callback": CallbackNullToken()}
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+    def test_request_callback_invalid_result(self):
+        class CallbackTokenInvalid(OIDCMachineCallback):
+            def fetch(self, a):
+                return {}
+
+        props: Dict = {"custom_token_callback": CallbackTokenInvalid()}
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+    def test_speculative_auth_success(self):
+        client = self.create_client()
+
+        # Set a fail point for saslStart commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Close the client.
         client.close()
 
     def test_reauthentication_succeeds_multiple_connections(self):

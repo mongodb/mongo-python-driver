@@ -80,7 +80,7 @@
     },
     {
       "description": "should accept generic mechanism property (GSSAPI)",
-      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true",
+      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:forward,SERVICE_HOST:example.com",
       "valid": true,
       "credential": {
         "username": "user@DOMAIN.COM",
@@ -89,9 +89,45 @@
         "mechanism": "GSSAPI",
         "mechanism_properties": {
           "SERVICE_NAME": "other",
-          "CANONICALIZE_HOST_NAME": true
+          "SERVICE_HOST": "example.com",
+          "CANONICALIZE_HOST_NAME": "forward"
         }
       }
+    },
+    {
+      "description": "should accept forwardAndReverse hostname canonicalization (GSSAPI)",
+      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:forwardAndReverse",
+      "valid": true,
+      "credential": {
+        "username": "user@DOMAIN.COM",
+        "password": null,
+        "source": "$external",
+        "mechanism": "GSSAPI",
+        "mechanism_properties": {
+          "SERVICE_NAME": "other",
+          "CANONICALIZE_HOST_NAME": "forwardAndReverse"
+        }
+      }
+    },
+    {
+      "description": "should accept no hostname canonicalization (GSSAPI)",
+      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:none",
+      "valid": true,
+      "credential": {
+        "username": "user@DOMAIN.COM",
+        "password": null,
+        "source": "$external",
+        "mechanism": "GSSAPI",
+        "mechanism_properties": {
+          "SERVICE_NAME": "other",
+          "CANONICALIZE_HOST_NAME": "none"
+        }
+      }
+    },
+    {
+      "description": "must raise an error when the hostname canonicalization is invalid",
+      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:invalid",
+      "valid": false
     },
     {
       "description": "should accept the password (GSSAPI)",
@@ -448,7 +484,9 @@
     {
       "description": "should recognise the mechanism and request callback (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "callback": ["oidcRequest"],
+      "callback": [
+        "oidcRequest"
+      ],
       "valid": true,
       "credential": {
         "username": null,
@@ -456,14 +494,16 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-            "REQUEST_TOKEN_CALLBACK": true
+          "REQUEST_TOKEN_CALLBACK": true
         }
       }
     },
     {
       "description": "should recognise the mechanism when auth source is explicitly specified and with request callback (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authSource=$external",
-      "callback": ["oidcRequest"],
+      "callback": [
+        "oidcRequest"
+      ],
       "valid": true,
       "credential": {
         "username": null,
@@ -471,14 +511,35 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-            "REQUEST_TOKEN_CALLBACK": true
+          "REQUEST_TOKEN_CALLBACK": true
+        }
+      }
+    },
+    {
+      "description": "should recognise the mechanism with request and refresh callback (MONGODB-OIDC)",
+      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
+      "callback": [
+        "oidcRequest",
+        "oidcRefresh"
+      ],
+      "valid": true,
+      "credential": {
+        "username": null,
+        "password": null,
+        "source": "$external",
+        "mechanism": "MONGODB-OIDC",
+        "mechanism_properties": {
+          "REQUEST_TOKEN_CALLBACK": true,
+          "REFRESH_TOKEN_CALLBACK": true
         }
       }
     },
     {
       "description": "should recognise the mechanism and username with request callback (MONGODB-OIDC)",
       "uri": "mongodb://principalName@localhost/?authMechanism=MONGODB-OIDC",
-      "callback": ["oidcRequest"],
+      "callback": [
+        "oidcRequest"
+      ],
       "valid": true,
       "credential": {
         "username": "principalName",
@@ -486,7 +547,7 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-            "REQUEST_TOKEN_CALLBACK": true
+          "REQUEST_TOKEN_CALLBACK": true
         }
       }
     },
@@ -500,7 +561,7 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-            "PROVIDER_NAME": "aws"
+          "PROVIDER_NAME": "aws"
         }
       }
     },
@@ -514,14 +575,16 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-            "PROVIDER_NAME": "aws"
+          "PROVIDER_NAME": "aws"
         }
       }
     },
     {
       "description": "should throw an exception if username and password are specified (MONGODB-OIDC)",
       "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC",
-      "callback": ["oidcRequest"],
+      "callback": [
+        "oidcRequest"
+      ],
       "valid": false,
       "credential": null
     },
@@ -538,8 +601,17 @@
       "credential": null
     },
     {
-      "description": "should throw an exception if neither deviceName nor callback specified (MONGODB-OIDC)",
+      "description": "should throw an exception if neither deviceName nor callbacks specified (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
+      "valid": false,
+      "credential": null
+    },
+    {
+      "description": "should throw an exception when only refresh callback is specified (MONGODB-OIDC)",
+      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
+      "callback": [
+        "oidcRefresh"
+      ],
       "valid": false,
       "credential": null
     },

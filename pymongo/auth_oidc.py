@@ -225,7 +225,7 @@ class _OIDCAuthenticator:
         )
 
     def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
-        if not self.properties.provider_name and self.idp_info is None:
+        if self.properties.request_token_callback is not None and self.idp_info is None:
             return self.principal_step_cmd()
 
         token = self.get_current_token(use_callback)
@@ -265,7 +265,6 @@ class _OIDCAuthenticator:
         # If we are using machine callbacks, clear the access token and
         # re-authenticate.
         if self.properties.provider_name:
-            self.access_token = None
             return self.authenticate(conn)
 
         # Next see if the idp info has changed.
@@ -346,4 +345,10 @@ def _authenticate_oidc(
     if reauthenticate:
         return authenticator.reauthenticate(conn)
     else:
-        return authenticator.authenticate(conn)
+        try:
+            return authenticator.authenticate(conn)
+        except Exception as e:
+            # Try one more time an an authentication failure.
+            if isinstance(e, OperationFailure) and e.code == 18:
+                return authenticator.authenticate(conn)
+            raise
