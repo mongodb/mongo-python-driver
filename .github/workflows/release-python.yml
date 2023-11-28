@@ -4,7 +4,10 @@ on:
   push:
     branches: ["main"]
     tags:
-      - "**"
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+.post[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+[a-b][0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
   pull_request:
   workflow_dispatch:
 
@@ -80,7 +83,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
+          name: wheel-${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
           if-no-files-found: error
 
@@ -114,7 +117,7 @@ jobs:
           name: "sdist"
           path: ./dist/*.tar.gz
 
-  collect-dist:
+  collect_dist:
     runs-on: ubuntu-latest
     needs: [build_wheels, make_sdist]
     name: Download Wheels
@@ -128,5 +131,20 @@ jobs:
           find . -type d -empty -delete
       - uses: actions/upload-artifact@v3
         with:
-          name: all-dist-${{ github.head_ref || github.ref_name }}
+          name: dist
           path: "./*"
+
+  publish:
+    needs: [collect_dist]
+    name: "Publish Python 🐍 distribution 📦 to PyPI"
+    # only publish to PyPI on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+    - name: Retrieve package artifacts
+      uses: actions/download-artifact@v3
+    - name: Upload packages
+      uses: pypa/gh-action-pypi-publish@release/v1
