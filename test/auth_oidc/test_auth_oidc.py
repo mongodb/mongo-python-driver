@@ -705,7 +705,14 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client.close()
 
     def test_speculative_auth_success(self):
-        client = self.create_client()
+        client1 = self.create_client()
+        client1.test.test.find_one()
+        client2 = self.create_client()
+
+        # Prime the cache of the second client.
+        client2.options.pool_options._credentials.cache.data = (
+            client1.options.pool_options._credentials.cache.data
+        )
 
         # Set a fail point for saslStart commands.
         with self.fail_point(
@@ -715,10 +722,11 @@ class TestAuthOIDCMachine(OIDCTestBase):
             }
         ):
             # Perform a find operation.
-            client.test.test.find_one()
+            client2.test.test.find_one()
 
-        # Close the client.
-        client.close()
+        # Close the clients.
+        client2.close()
+        client1.close()
 
     def test_reauthentication_succeeds_multiple_connections(self):
         client1 = self.create_client()

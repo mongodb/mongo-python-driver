@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class OIDCIdPInfo:
     issuer: str
     clientId: str
-    requestScopes: Optional[list[str]] = field(default_factory=list)
+    requestScopes: Optional[list[str]] = field(default=None)
 
 
 @dataclass
