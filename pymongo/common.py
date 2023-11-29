@@ -818,14 +818,20 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
     return option, value
 
 
+def _get_validator(
+    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
+):
+    normed_key = normed_key or key
+    try:
+        return validators[normed_key]
+    except KeyError:
+        suggestions = get_close_matches(normed_key, validators, cutoff=0.2)
+        raise_config_error(key, suggestions)
+
+
 def validate(option: str, value: Any) -> tuple[str, Any]:
     """Generic validation function."""
-    lower = option.lower()
-    try:
-        validator = VALIDATORS[lower]
-    except KeyError:
-        suggestions = get_close_matches(lower, VALIDATORS, cutoff=0.2)
-        raise_config_error(option, suggestions)
+    validator = _get_validator(option, VALIDATORS, normed_key=option.lower())
     value = validator(option, value)
     return option, value
 
@@ -864,7 +870,8 @@ def get_validated_options(
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            _, validated = validate(normed_key, value)
+            validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
+            validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc), stacklevel=2)

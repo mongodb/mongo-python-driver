@@ -146,7 +146,7 @@ class TestURI(unittest.TestCase):
 
         # Test suggestions given when invalid kwarg passed
 
-        expected = r"Unknown option: auth. Did you mean one of \(authsource, authmechanism, authoidcallowedhosts\) or maybe a camelCase version of one\? Refer to docstring."
+        expected = r"Unknown option: auth. Did you mean one of \(authsource, authmechanism, timeoutms\) or maybe a camelCase version of one\? Refer to docstring."
         with self.assertRaisesRegex(ConfigurationError, expected):
             split_options("auth=GSSAPI")
 
