@@ -38,6 +38,7 @@ from pymongo.auth_oidc import (
     OIDCMachineCallback,
     OIDCMachineCallbackResult,
 )
+from pymongo.azure_helpers import _get_azure_response
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -71,6 +72,9 @@ class OIDCTestBase(unittest.TestCase):
             token_file = os.path.join(token_dir, username).replace(os.sep, "/")
             with open(token_file) as fid:
                 return fid.read()
+        elif PROVIDER_NAME == "azure":
+            token_aud = os.environ["OIDC_TOKEN_AUIDENCE"]
+            return _get_azure_response(token_aud)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):
@@ -86,6 +90,11 @@ class OIDCTestBase(unittest.TestCase):
 
 class TestAuthOIDCHuman(OIDCTestBase):
     uri: str
+
+    @classmethod
+    def setUpClass(cls):
+        if PROVIDER_NAME != "aws":
+            raise unittest.SkipTest("Human workflows are only tested with the aws provider")
 
     def create_request_cb(self, username="test_user1", sleep=0):
         def request_token(server_info, context):

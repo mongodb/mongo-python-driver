@@ -25,6 +25,7 @@ import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo._csot import remaining
+from pymongo.azure_helpers import _get_azure_response
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -142,6 +143,18 @@ class _OIDCAWSCallback(OIDCMachineCallback):
             )
         with open(token_file) as fid:
             return OIDCMachineCallbackResult(access_token=fid.read().strip())
+
+
+class _OIDCAzureCallback(OIDCMachineCallback):
+    def __init__(self, token_audience: str, token_client_id: Optional[str]) -> None:
+        self.token_audience = token_audience
+        self.token_client_id = token_client_id
+
+    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+        resp = _get_azure_response(
+            self.token_audience, self.token_client_id, context.timeout_seconds
+        )
+        return OIDCMachineCallbackResult(**resp)
 
 
 @dataclass

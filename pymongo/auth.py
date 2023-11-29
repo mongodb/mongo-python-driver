@@ -42,6 +42,7 @@ from pymongo.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
     _OIDCAWSCallback,
+    _OIDCAzureCallback,
     _OIDCProperties,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -171,6 +172,8 @@ def _build_credentials_tuple(
         request_token_callback = properties.get("request_token_callback")
         custom_token_callback = properties.get("custom_token_callback")
         provider_name = properties.get("PROVIDER_NAME")
+        token_audience = properties.get("TOKEN_AUDIENCE", "")
+        token_client_id = properties.get("TOKEN_CLIENT_ID", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -190,6 +193,8 @@ def _build_credentials_tuple(
                 raise ConfigurationError(msg)
             if provider_name == "aws":
                 custom_token_callback = _OIDCAWSCallback()
+            elif provider_name == "azure":
+                custom_token_callback = _OIDCAzureCallback(token_audience, token_client_id)
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
