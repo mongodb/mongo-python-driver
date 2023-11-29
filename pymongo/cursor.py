@@ -473,7 +473,7 @@ class Cursor(Generic[_DocumentType]):
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
-            spec = dict(copy.copy(self.__spec))
+            spec = dict(self.__spec)
 
             # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:

@@ -2250,7 +2250,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           >>> for index in db.test.list_indexes():
           ...     print(index)
           ...
-          SON([('v', 2), ('key', SON([('_id': 1)])), ('name', '_id_')])
+          SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
         :Parameters:
           - `session` (optional): a
