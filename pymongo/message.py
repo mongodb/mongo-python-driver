@@ -1082,9 +1082,9 @@ class _BulkWriteContext:
             self.db_name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
-            self.conn.server_connection_id,
         )
         return cmd
 
@@ -1096,10 +1096,10 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
-            server_connection_id=self.conn.server_connection_id,
         )
 
     def _fail(self, request_id: int, failure: _DocumentOut, duration: timedelta) -> None:
@@ -1110,10 +1110,10 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
-            server_connection_id=self.conn.server_connection_id,
         )
 
 

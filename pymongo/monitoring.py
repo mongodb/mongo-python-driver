@@ -1521,9 +1521,9 @@ class _EventListeners:
         database_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: int,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
-        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandStartedEvent to all command listeners.
 
@@ -1561,11 +1561,11 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: int,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         speculative_hello: bool = False,
         database_name: str = "",
-        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandSucceededEvent to all command listeners.
 
@@ -1611,10 +1611,10 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: int,
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
-        server_connection_id: Optional[int] = None,
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
 

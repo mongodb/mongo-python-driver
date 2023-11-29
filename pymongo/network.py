@@ -172,8 +172,8 @@ def command(
             dbname,
             request_id,
             address,
+            conn.server_connection_id,
             service_id=conn.service_id,
-            server_connection_id=conn.server_connection_id,
         )
         start = datetime.datetime.now()
 
@@ -215,9 +215,9 @@ def command(
                 name,
                 request_id,
                 address,
+                conn.server_connection_id,
                 service_id=conn.service_id,
                 database_name=dbname,
-                server_connection_id=conn.server_connection_id,
             )
         raise
     if publish:
@@ -230,10 +230,10 @@ def command(
             name,
             request_id,
             address,
+            conn.server_connection_id,
             service_id=conn.service_id,
             speculative_hello=speculative_hello,
             database_name=dbname,
-            server_connection_id=conn.server_connection_id,
         )
 
     if client and client._encrypter and reply:

@@ -140,8 +140,8 @@ class Server:
                 dbn,
                 request_id,
                 conn.address,
+                conn.server_connection_id,
                 service_id=conn.service_id,
-                server_connection_id=conn.server_connection_id,
             )
             start = datetime.now()
 
@@ -184,9 +184,9 @@ class Server:
                     operation.name,
                     request_id,
                     conn.address,
+                    conn.server_connection_id,
                     service_id=conn.service_id,
                     database_name=dbn,
-                    server_connection_id=conn.server_connection_id,
                 )
             raise
 
@@ -211,9 +211,9 @@ class Server:
                 operation.name,
                 request_id,
                 conn.address,
+                conn.server_connection_id,
                 service_id=conn.service_id,
                 database_name=dbn,
-                server_connection_id=conn.server_connection_id,
             )
 
         # Decrypt response.
