@@ -814,7 +814,7 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
     """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError(f"Unknown authentication option: {option}")
+        raise ConfigurationError(f"Unknown option: {option}. Must be in {_AUTH_OPTIONS}")
     return option, value
 
 
@@ -864,19 +864,14 @@ def get_validated_options(
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            try:
-                validator = URI_OPTIONS_VALIDATOR_MAP[normed_key]
-            except KeyError:
-                suggestions = get_close_matches(normed_key, URI_OPTIONS_VALIDATOR_MAP, cutoff=0.2)
-                raise_config_error(opt, suggestions)
-            value = validator(opt, value)  # noqa: PLW2901
+            _, validated = validate(normed_key, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc), stacklevel=2)
             else:
                 raise
         else:
-            validated_options[get_setter_key(normed_key)] = value
+            validated_options[get_setter_key(normed_key)] = validated
     return validated_options
 
 
