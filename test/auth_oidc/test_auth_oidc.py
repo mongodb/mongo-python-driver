@@ -43,6 +43,7 @@ from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
+from pymongo.uri_parser import parse_uri
 
 # Force MONGODB-OIDC to be enabled.
 _AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
@@ -73,7 +74,8 @@ class OIDCTestBase(unittest.TestCase):
             with open(token_file) as fid:
                 return fid.read()
         elif PROVIDER_NAME == "azure":
-            token_aud = os.environ["OIDC_TOKEN_AUDIENCE"]
+            opts = parse_uri(self.uri_single)
+            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud)["access_token"]
 
     @contextmanager
