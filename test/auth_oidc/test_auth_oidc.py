@@ -95,6 +95,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def setUpClass(cls):
         if PROVIDER_NAME != "aws":
             raise unittest.SkipTest("Human workflows are only tested with the aws provider")
+        super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
         def request_token(server_info, context):
