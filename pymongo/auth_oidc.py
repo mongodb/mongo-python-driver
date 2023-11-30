@@ -151,6 +151,7 @@ class _OIDCAzureCallback(OIDCMachineCallback):
         self.token_client_id = token_client_id
 
     def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+        print("***DEBUG**", self.token_audience, self.token_client_id)  # noqa: T201
         resp = _get_azure_response(
             self.token_audience, self.token_client_id, context.timeout_seconds
         )
