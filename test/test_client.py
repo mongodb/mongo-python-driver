@@ -21,6 +21,7 @@ import copy
 import datetime
 import gc
 import os
+import re
 import signal
 import socket
 import struct
@@ -534,6 +535,14 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(c.options.pool_options.max_idle_time_seconds, None)
         self.assertIsInstance(c.options.retry_writes, bool)
         self.assertIsInstance(c.options.retry_reads, bool)
+
+    def test_validate_suggestion(self):
+        """Validate kwargs in constructor."""
+        for typo in ["auth", "Auth", "AUTH"]:
+            expected = f"Unknown option: {typo}. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
+            expected = re.escape(expected)
+            with self.assertRaisesRegex(ConfigurationError, expected):
+                MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
 
 class TestClient(IntegrationTest):
