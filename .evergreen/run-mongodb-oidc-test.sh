@@ -14,6 +14,9 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         exit 1
     fi
 
+    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
+
     # Get the drivers secrets.  Use an existing secrets file first.
     if [ ! -f "./secrets-export.sh" ]; then
         bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
@@ -51,6 +54,8 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
         echo "Must specify an AZUREOIDC_CLIENTID"
         exit 1
     fi
+    export OIDC_ADMIN_USER=bob
+    export OIDC_ADMIN_PWD=pwd123
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
     MONGODB_URI_SINGLE="${MONGODB_URI}&authMechanismProperties=PROVIDER_NAME:azure"

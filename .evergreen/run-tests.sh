@@ -50,8 +50,8 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
     elif [ ! -z "$TEST_AUTH_OIDC" ]; then
-        export DB_USER=$OIDC_ALTAS_USER
-        export DB_PASSWORD=$OIDC_ATLAS_PASSWORD
+        export DB_USER=$OIDC_ADMIN_USER
+        export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
     else
         export DB_USER="bob"
