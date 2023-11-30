@@ -155,6 +155,12 @@ for provider_name, provider_data in [
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 if PROVIDER_NAME == "aws":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
+elif PROVIDER_NAME == "azure":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "PROVIDER_NAME": "aws",
+        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_CLIENTID"],
+        "TOKEN_CLIENT": os.environ["AZUREOIDC_TOKENCLIENT"],
+    }
 
 
 def interrupt_loop():
