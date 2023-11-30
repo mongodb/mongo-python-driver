@@ -820,7 +820,7 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
 
 def _get_validator(
     key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
-):
+) -> Callable:
     normed_key = normed_key or key
     try:
         return validators[normed_key]
