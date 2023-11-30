@@ -74,7 +74,7 @@ class OIDCTestBase(unittest.TestCase):
             with open(token_file) as fid:
                 return fid.read()
         elif PROVIDER_NAME == "azure":
-            opts = parse_uri(self.uri_single)
+            opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud)["access_token"]
 
