@@ -4,6 +4,16 @@ Changelog
 Changes in Version 4.6.1
 ------------------------
 
+PyMongo 4.7 brings a number of improvements including:
+
+- Added the :class:`~pymongo.hello.Hello.server_connection_id`,
+  :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
+  :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
+  :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
+
+Changes in Version 4.6.1
+------------------------
+
 PyMongo 4.6.1 fixes the following bug:
 
 - Ensure retryable read ``OperationFailure`` errors re-raise exception when 0 or NoneType error code is provided.
