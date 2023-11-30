@@ -76,7 +76,8 @@ class OIDCTestBase(unittest.TestCase):
         elif PROVIDER_NAME == "azure":
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-            return _get_azure_response(token_aud)["access_token"]
+            token_client = os.environ["AZUREOIDC_TOKENCLIENT"]
+            return _get_azure_response(token_aud, token_client)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):
