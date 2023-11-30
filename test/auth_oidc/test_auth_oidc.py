@@ -783,6 +783,28 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client1.close()
         client2.close()
 
+    def test_azure_multiple_client_ids(self):
+        if PROVIDER_NAME != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+
+        opts = parse_uri(self.uri_single)["options"]
+        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+        token_client = os.environ["AZUREOIDC_TOKENCLIENT2"]
+
+        props = dict(token_audience=token_aud, token_client_id=token_client, provider_name="azure")
+        client = MongoClient(
+            self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
+        )
+        client.test.test.find_one()
+        client.close()
+
+        props["token_client_id"] = os.environ["AZUREOIDC_TOKENCLIENT"]
+        client = MongoClient(
+            self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
+        )
+        client.test.test.find_one()
+        client.close()
+
 
 if __name__ == "__main__":
     unittest.main()
