@@ -154,7 +154,9 @@ class _OIDCAzureCallback(OIDCMachineCallback):
         resp = _get_azure_response(
             self.token_audience, self.token_client_id, context.timeout_seconds
         )
-        return OIDCMachineCallbackResult(**resp)
+        return OIDCMachineCallbackResult(
+            access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
+        )
 
 
 @dataclass
