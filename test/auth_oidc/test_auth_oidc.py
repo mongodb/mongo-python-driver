@@ -73,7 +73,7 @@ class OIDCTestBase(unittest.TestCase):
             with open(token_file) as fid:
                 return fid.read()
         elif PROVIDER_NAME == "azure":
-            token_aud = os.environ["OIDC_TOKEN_AUIDENCE"]
+            token_aud = os.environ["OIDC_TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud)["access_token"]
 
     @contextmanager
