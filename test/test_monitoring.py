@@ -1085,7 +1085,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         self.listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1093,6 +1093,7 @@ class TestCommandMonitoring(IntegrationTest):
             "getnonce",
             12345,
             self.client.address,  # type: ignore[arg-type]
+            None,
             database_name="pymongo_test",
         )
         started = self.listener.started_events[0]
