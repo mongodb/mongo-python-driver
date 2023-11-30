@@ -791,14 +791,14 @@ class TestAuthOIDCMachine(OIDCTestBase):
         token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
         token_client = os.environ["AZUREOIDC_TOKENCLIENT2"]
 
-        props = dict(token_audience=token_aud, token_client_id=token_client, provider_name="azure")
+        props = dict(TOKEN_AUDIENCE=token_aud, TOKEN_CLIENT_ID=token_client, PROVIDER_NAME="azure")
         client = MongoClient(
             self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
         )
         client.test.test.find_one()
         client.close()
 
-        props["token_client_id"] = os.environ["AZUREOIDC_TOKENCLIENT"]
+        props["TOKEN_CLIENT_ID"] = os.environ["AZUREOIDC_TOKENCLIENT"]
         client = MongoClient(
             self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
         )
