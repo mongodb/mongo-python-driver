@@ -591,12 +591,6 @@ class TestAuthOIDCHuman(OIDCTestBase):
 class TestAuthOIDCMachine(OIDCTestBase):
     uri: str
 
-    @classmethod
-    def setUpClass(cls):
-        if PROVIDER_NAME != "aws":
-            raise unittest.SkipTest("Human workflows are only tested with the aws provider")
-        super().setUpClass()
-
     def setUp(self):
         self.request_called = 0
 
