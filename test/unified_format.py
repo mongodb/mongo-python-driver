@@ -158,7 +158,7 @@ if PROVIDER_NAME == "aws":
 elif PROVIDER_NAME == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
         "PROVIDER_NAME": "azure",
-        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_CLIENTID"],
+        "TOKEN_AUDIENCE": f'api://{os.environ["AZUREOIDC_CLIENTID"]}',
         "TOKEN_CLIENT_ID": os.environ["AZUREOIDC_TOKENCLIENT"],
     }
 
