@@ -25,3 +25,6 @@ test/lambda/env.json
 test/lambda/mongodb/pymongo/*
 test/lambda/mongodb/gridfs/*
 test/lambda/mongodb/bson/*
+
+# test results in Evergreen compatible XUnit XML
+xunit-results/
