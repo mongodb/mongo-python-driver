@@ -416,7 +416,7 @@ functions:
         include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace
-          set -x
+          set +x
           ${PREPARE_SHELL}
           # Fetch vault secrets if needed
           bash .evergreen/fetch-aws-vault-secrets.sh
