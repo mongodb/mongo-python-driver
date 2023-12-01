@@ -9,12 +9,14 @@ build/
 doc/_build/
 dist/
 tools/settings.py
+drivers-evergreen-tools
 pymongo.egg-info/
 *.so
-*.egg
+*.egg*
 .tox
 mongocryptd.pid
 .idea/
+.vscode/
 .nova/
 venv/
 secrets-export.sh
@@ -25,3 +27,7 @@ test/lambda/env.json
 test/lambda/mongodb/pymongo/*
 test/lambda/mongodb/gridfs/*
 test/lambda/mongodb/bson/*
+
+# test results and logs
+xunit-results/
+server.log
