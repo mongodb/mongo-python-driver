@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.6.1
+Changes in Version 4.7
 ------------------------
 
 PyMongo 4.7 brings a number of improvements including:
