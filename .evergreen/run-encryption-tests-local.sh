@@ -12,4 +12,5 @@ export AWS_SESSION_TOKEN=
 tox -e encryption-tests
 
 rm -rf libmongocrypt*
+# shellcheck disable=SC2046
 kill -9 $(pgrep -f 'python')
