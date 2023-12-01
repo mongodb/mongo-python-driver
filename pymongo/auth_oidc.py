@@ -193,16 +193,17 @@ class _OIDCAuthenticator:
 
         if not prev_token and cb is not None:
             with self.lock:
-                # Ensure that we are waiting a min time between callback invocations.
-                delta = time.time() - self.last_call_time
-                if delta < TIME_BETWEEN_CALLS_SECONDS:
-                    time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
-
                 # See if the token was changed while we were waiting for the
                 # lock.
                 new_token = self.access_token
                 if new_token != prev_token:
                     return new_token
+
+                # Ensure that we are waiting a min time between callback invocations.
+                delta = time.time() - self.last_call_time
+                if delta < TIME_BETWEEN_CALLS_SECONDS:
+                    time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
+                self.last_call_time = time.time()
 
                 if isinstance(cb, OIDCHumanCallback):
                     human_context = OIDCHumanCallbackContext(
