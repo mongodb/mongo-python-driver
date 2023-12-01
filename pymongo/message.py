@@ -1082,6 +1082,7 @@ class _BulkWriteContext:
             self.db_name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
         )
@@ -1095,6 +1096,7 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
@@ -1108,6 +1110,7 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
