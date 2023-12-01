@@ -18,6 +18,7 @@ from __future__ import annotations
 import abc
 import os
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
 
@@ -103,6 +104,7 @@ HUMAN_CALLBACK_TIMEOUT_SECONDS = 5 * 60
 HUMAN_CALLBACK_VERSION = 1
 MACHINE_CALLBACK_TIMEOUT_SECONDS = 60
 MACHINE_CALLBACK_VERSION = 1
+TIME_BETWEEN_CALLS_SECONDS = 0.1
 
 
 def _get_authenticator(
@@ -151,7 +153,6 @@ class _OIDCAzureCallback(OIDCMachineCallback):
         self.token_client_id = token_client_id
 
     def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
-        print("***DEBUG**", self.token_audience, self.token_client_id)  # noqa: T201
         resp = _get_azure_response(
             self.token_audience, self.token_client_id, context.timeout_seconds
         )
@@ -169,27 +170,34 @@ class _OIDCAuthenticator:
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
     token_gen_id: int = field(default=0)
     lock: threading.Lock = field(default_factory=threading.Lock)
+    last_call_time: float = field(default=0)
 
-    def get_current_token(self, use_callback: bool = True) -> Optional[str]:
+    def get_current_token(self, use_human_callback: bool = True) -> Optional[str]:
         properties = self.properties
         cb: Union[None, OIDCHumanCallback, OIDCMachineCallback]
         resp: Union[None, OIDCHumanCallbackResult, OIDCMachineCallbackResult]
-        if not use_callback:
+
+        if properties.custom_token_callback:
+            cb = properties.custom_token_callback
+        elif not use_human_callback:
             cb = None
         elif properties.request_token_callback:
             cb = properties.request_token_callback
-        elif properties.custom_token_callback:
-            cb = properties.custom_token_callback
 
         prev_token = self.access_token
         if prev_token:
             return prev_token
 
-        if not use_callback and not prev_token:
+        if cb is None and not prev_token:
             return None
 
         if not prev_token and cb is not None:
             with self.lock:
+                # Ensure that we are waiting a min time between callback invocations.
+                delta = time.time() - self.last_call_time
+                if delta < TIME_BETWEEN_CALLS_SECONDS:
+                    time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
+
                 # See if the token was changed while we were waiting for the
                 # lock.
                 new_token = self.access_token
@@ -240,11 +248,11 @@ class _OIDCAuthenticator:
             ]
         )
 
-    def auth_start_cmd(self, use_callback: bool = True) -> Optional[SON[str, Any]]:
+    def auth_start_cmd(self, use_human_callback: bool = True) -> Optional[SON[str, Any]]:
         if self.properties.request_token_callback is not None and self.idp_info is None:
             return self.principal_step_cmd()
 
-        token = self.get_current_token(use_callback)
+        token = self.get_current_token(use_human_callback)
         if not token:
             return None
         bin_payload = Binary(bson.encode({"jwt": token}))
@@ -362,9 +370,10 @@ def _authenticate_oidc(
         return authenticator.reauthenticate(conn)
     else:
         try:
+            had_cache = authenticator.access_token is not None
             return authenticator.authenticate(conn)
         except Exception as e:
-            # Try one more time an an authentication failure.
-            if isinstance(e, OperationFailure) and e.code == 18:
+            # Try one more time an an authentication failure and had used a cached value.
+            if isinstance(e, OperationFailure) and e.code == 18 and had_cache:
                 return authenticator.authenticate(conn)
             raise

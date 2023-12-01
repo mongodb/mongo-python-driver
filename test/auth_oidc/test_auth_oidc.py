@@ -672,7 +672,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 2)
         client.close()
 
-    def test_callback_is_called_twice_on_handshake_authentication_failure(self):
+    def test_callback_is_called_once_on_handshake_authentication_failure(self):
         client = self.create_client()
 
         # Set a fail point for ``saslStart`` commands.
@@ -685,8 +685,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
             # Perform a find operation.
             client.test.test.find_one()
 
-        # Assert that the request callback has been called twice.
-        self.assertEqual(self.request_called, 2)
+        # Assert that the request callback has been called once.
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_request_callback_invalid_result(self):
