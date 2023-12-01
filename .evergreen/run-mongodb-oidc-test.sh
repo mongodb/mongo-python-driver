@@ -6,6 +6,8 @@ set -o errexit  # Exit the script with error if any of the commands fail
 echo "Running MONGODB-OIDC authentication tests"
 
 OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-"aws"}
+echo "HELLO $OIDC_PROVIDER_NAME"
+exit 1
 
 if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     # Make sure DRIVERS_TOOLS is set.
