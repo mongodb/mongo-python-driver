@@ -19,6 +19,7 @@ import glob
 import json
 import os
 import sys
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -47,7 +48,9 @@ def create_test(test_case):
         credential = test_case.get("credential")
 
         if not valid:
-            self.assertRaises(Exception, MongoClient, uri, connect=False)
+            with warnings.catch_warnings():
+                warnings.simplefilter("default")
+                self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
             props = {}
             if credential:

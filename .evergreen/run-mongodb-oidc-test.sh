@@ -14,9 +14,6 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         exit 1
     fi
 
-    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
-    export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
-
     # Get the drivers secrets.  Use an existing secrets file first.
     if [ ! -f "./secrets-export.sh" ]; then
         bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
@@ -48,6 +45,8 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         set -x
     fi
     export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
+    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
 
 elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
     if [ -z "${AZUREOIDC_CLIENTID}" ]; then
