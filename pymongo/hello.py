@@ -218,3 +218,7 @@ class Hello(Generic[_DocumentType]):
     @property
     def hello_ok(self) -> bool:
         return self._doc.get("helloOk", False)
+
+    @property
+    def connection_id(self) -> Optional[int]:
+        return self._doc.get("connectionId")

@@ -537,7 +537,15 @@ def _is_speculative_authenticate(command_name: str, doc: Mapping[str, Any]) -> b
 class _CommandEvent:
     """Base class for command events."""
 
-    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id", "__service_id", "__db")
+    __slots__ = (
+        "__cmd_name",
+        "__rqst_id",
+        "__conn_id",
+        "__op_id",
+        "__service_id",
+        "__db",
+        "__server_conn_id",
+    )
 
     def __init__(
         self,
@@ -547,6 +555,7 @@ class _CommandEvent:
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
+        server_connection_id: Optional[int] = None,
     ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
@@ -554,6 +563,7 @@ class _CommandEvent:
         self.__op_id = operation_id
         self.__service_id = service_id
         self.__db = database_name
+        self.__server_conn_id = server_connection_id
 
     @property
     def command_name(self) -> str:
@@ -591,6 +601,14 @@ class _CommandEvent:
         """
         return self.__db
 
+    @property
+    def server_connection_id(self) -> Optional[int]:
+        """The server-side connection id for the connection this command was sent on, or ``None``.
+
+        .. versionadded:: 4.7
+        """
+        return self.__server_conn_id
+
 
 class CommandStartedEvent(_CommandEvent):
     """Event published when a command starts.
@@ -614,6 +632,7 @@ class CommandStartedEvent(_CommandEvent):
         connection_id: _Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
+        server_connection_id: Optional[int] = None,
     ) -> None:
         if not command:
             raise ValueError(f"{command!r} is not a valid command")
@@ -626,6 +645,7 @@ class CommandStartedEvent(_CommandEvent):
             operation_id,
             service_id=service_id,
             database_name=database_name,
+            server_connection_id=server_connection_id,
         )
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
@@ -644,13 +664,16 @@ class CommandStartedEvent(_CommandEvent):
         return super().database_name
 
     def __repr__(self) -> str:
-        return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
+        return (
+            "<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}, server_connection_id: {}>"
+        ).format(
             self.__class__.__name__,
             self.connection_id,
             self.database_name,
             self.command_name,
             self.operation_id,
             self.service_id,
+            self.server_connection_id,
         )
 
 
@@ -680,6 +703,7 @@ class CommandSucceededEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
+        server_connection_id: Optional[int] = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -688,6 +712,7 @@ class CommandSucceededEvent(_CommandEvent):
             operation_id,
             service_id=service_id,
             database_name=database_name,
+            server_connection_id=server_connection_id,
         )
         self.__duration_micros = _to_micros(duration)
         cmd_name = command_name.lower()
@@ -708,7 +733,7 @@ class CommandSucceededEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}>"
+            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}, server_connection_id: {}>"
         ).format(
             self.__class__.__name__,
             self.connection_id,
@@ -717,6 +742,7 @@ class CommandSucceededEvent(_CommandEvent):
             self.operation_id,
             self.duration_micros,
             self.service_id,
+            self.server_connection_id,
         )
 
 
@@ -746,6 +772,7 @@ class CommandFailedEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
+        server_connection_id: Optional[int] = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -754,6 +781,7 @@ class CommandFailedEvent(_CommandEvent):
             operation_id,
             service_id=service_id,
             database_name=database_name,
+            server_connection_id=server_connection_id,
         )
         self.__duration_micros = _to_micros(duration)
         self.__failure = failure
@@ -771,7 +799,7 @@ class CommandFailedEvent(_CommandEvent):
     def __repr__(self) -> str:
         return (
             "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, "
-            "failure: {!r}, service_id: {}>"
+            "failure: {!r}, service_id: {}, server_connection_id: {}>"
         ).format(
             self.__class__.__name__,
             self.connection_id,
@@ -781,6 +809,7 @@ class CommandFailedEvent(_CommandEvent):
             self.duration_micros,
             self.failure,
             self.service_id,
+            self.server_connection_id,
         )
 
 
@@ -1453,6 +1482,7 @@ class _EventListeners:
         database_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: Optional[int],
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
     ) -> None:
@@ -1470,7 +1500,13 @@ class _EventListeners:
         if op_id is None:
             op_id = request_id
         event = CommandStartedEvent(
-            command, database_name, request_id, connection_id, op_id, service_id=service_id
+            command,
+            database_name,
+            request_id,
+            connection_id,
+            op_id,
+            service_id=service_id,
+            server_connection_id=server_connection_id,
         )
         for subscriber in self.__command_listeners:
             try:
@@ -1485,6 +1521,7 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: Optional[int],
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         speculative_hello: bool = False,
@@ -1518,6 +1555,7 @@ class _EventListeners:
             op_id,
             service_id,
             database_name=database_name,
+            server_connection_id=server_connection_id,
         )
         for subscriber in self.__command_listeners:
             try:
@@ -1532,6 +1570,7 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
+        server_connection_id: Optional[int],
         op_id: Optional[int] = None,
         service_id: Optional[ObjectId] = None,
         database_name: str = "",
@@ -1560,6 +1599,7 @@ class _EventListeners:
             op_id,
             service_id=service_id,
             database_name=database_name,
+            server_connection_id=server_connection_id,
         )
         for subscriber in self.__command_listeners:
             try:
