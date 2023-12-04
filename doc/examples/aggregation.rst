@@ -3,7 +3,7 @@ Aggregation Examples
 
 There are several methods of performing aggregations in MongoDB.  These
 examples cover the new aggregation framework, using map reduce and using the
-group method.
+group method.  And this is more text.
 
 .. testsetup::
 
