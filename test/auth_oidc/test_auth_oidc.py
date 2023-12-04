@@ -31,7 +31,6 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.auth import _AUTH_MAP, _authenticate_oidc
 from pymongo.auth_oidc import (
     OIDCHumanCallback,
     OIDCHumanCallbackResult,
@@ -44,9 +43,6 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
 from pymongo.uri_parser import parse_uri
-
-# Force MONGODB-OIDC to be enabled.
-_AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
