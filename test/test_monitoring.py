@@ -1085,7 +1085,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         self.listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1093,6 +1093,7 @@ class TestCommandMonitoring(IntegrationTest):
             "getnonce",
             12345,
             self.client.address,  # type: ignore[arg-type]
+            None,
             database_name="pymongo_test",
         )
         started = self.listener.started_events[0]
@@ -1161,7 +1162,7 @@ class TestEventClasses(unittest.TestCase):
         self.assertEqual(
             repr(event),
             "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
-            "command: 'ping', operation_id: 2, service_id: None>",
+            "command: 'ping', operation_id: 2, service_id: None, server_connection_id: None>",
         )
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
@@ -1171,7 +1172,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandSucceededEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "service_id: None>",
+            "service_id: None, server_connection_id: None>",
         )
         event = monitoring.CommandFailedEvent(
             delta, {"ok": 0}, "ping", request_id, connection_id, operation_id, database_name=db_name
@@ -1180,7 +1181,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandFailedEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "failure: {'ok': 0}, service_id: None>",
+            "failure: {'ok': 0}, service_id: None, server_connection_id: None>",
         )
 
     def test_server_heartbeat_event_repr(self):

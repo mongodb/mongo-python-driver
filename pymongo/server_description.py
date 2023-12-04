@@ -29,12 +29,11 @@ from pymongo.typings import ClusterTime, _Address
 class ServerDescription:
     """Immutable representation of one server.
 
-    :Parameters:
-      - `address`: A (host, port) pair
-      - `hello`: Optional Hello instance
-      - `round_trip_time`: Optional float
-      - `error`: Optional, the last error attempting to connect to the server
-      - `round_trip_time`: Optional float, the min latency from the most recent samples
+    :param address: A (host, port) pair
+    :param hello: Optional Hello instance
+    :param round_trip_time: Optional float
+    :param error: Optional, the last error attempting to connect to the server
+    :param round_trip_time: Optional float, the min latency from the most recent samples
     """
 
     __slots__ = (

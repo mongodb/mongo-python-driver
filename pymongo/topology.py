@@ -215,13 +215,12 @@ class Topology:
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
-        :Parameters:
-          - `selector`: function that takes a list of Servers and returns
+        :param selector: function that takes a list of Servers and returns
             a subset of them.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value common.SERVER_SELECTION_TIMEOUT
             is used.
-          - `address`: optional server address to select.
+        :param address: optional server address to select.
 
         Calls self.open() if needed.
 
@@ -318,9 +317,8 @@ class Topology:
         servers. Time out after "server_selection_timeout" if the server
         cannot be reached.
 
-        :Parameters:
-          - `address`: A (host, port) pair.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param address: A (host, port) pair.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value
             common.SERVER_SELECTION_TIMEOUT is used.
 

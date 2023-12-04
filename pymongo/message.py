@@ -1082,6 +1082,7 @@ class _BulkWriteContext:
             self.db_name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
         )
@@ -1095,6 +1096,7 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
@@ -1108,6 +1110,7 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
             database_name=self.db_name,
@@ -1475,8 +1478,7 @@ class _OpReply:
         Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
-        :Parameters:
-          - `cursor_id` (optional): cursor_id we sent to get this response -
+        :param cursor_id: cursor_id we sent to get this response -
             used for raising an informative exception when we get cursor id not
             valid at server response.
         """
@@ -1525,13 +1527,12 @@ class _OpReply:
         Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
-        :Parameters:
-          - `cursor_id` (optional): cursor_id we sent to get this response -
+        :param cursor_id: cursor_id we sent to get this response -
             used for raising an informative exception when we get cursor id not
             valid at server response
-          - `codec_options` (optional): an instance of
+        :param codec_options: an instance of
             :class:`~bson.codec_options.CodecOptions`
-          - `user_fields` (optional): Response fields that should be decoded
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
@@ -1606,11 +1607,10 @@ class _OpMsg:
     ) -> list[dict[str, Any]]:
         """Unpack a OP_MSG command response.
 
-        :Parameters:
-          - `cursor_id` (optional): Ignored, for compatibility with _OpReply.
-          - `codec_options` (optional): an instance of
+        :param cursor_id: Ignored, for compatibility with _OpReply.
+        :param codec_options: an instance of
             :class:`~bson.codec_options.CodecOptions`
-          - `user_fields` (optional): Response fields that should be decoded
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
