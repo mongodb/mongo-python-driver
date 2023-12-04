@@ -365,49 +365,6 @@ functions:
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
-    # If testing FLE, start the KMS mock servers, first create the virtualenv.
-    - command: shell.exec
-      params:
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-          fi
-    # Run in the background so the mock servers don't block the EVG task.
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-            # The -u options forces the stdout and stderr streams to be unbuffered.
-            # TMPDIR is required to avoid "AF_UNIX path too long" errors.
-            TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
-          fi
-    # Wait up to 10 seconds for the KMIP server to start.
-    - command: shell.exec
-      params:
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-            for i in $(seq 1 1 10); do
-               sleep 1
-               if python -u kms_kmip_client.py; then
-                  echo 'KMS KMIP server started!'
-                  exit 0
-               fi
-            done
-            echo 'Failed to start KMIP server!'
-            exit 1
-          fi
     - command: shell.exec
       type: test
       params:
@@ -429,6 +386,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
+            ./evergreen/start-kmip-server.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
             if [ -n "${test_encryption_pyopenssl}" ]; then
@@ -652,6 +610,7 @@ functions:
           ${PREPARE_SHELL}
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
+          ./evergreen/cleanup-tests.sh
 
   "fix absolute paths":
     - command: shell.exec
