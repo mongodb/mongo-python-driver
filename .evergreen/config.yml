@@ -366,6 +366,17 @@ functions:
 
   "run tests":
     - command: shell.exec
+      params:
+        working_dir: "src"
+        shell: bash
+        background: true
+        script: |
+          ${PREPARE_SHELL}
+          set -x
+          if [ -n "${test_encryption}" ]; then
+            bash ./.evergreen/start-kmip-server.sh
+          fi
+    - command: shell.exec
       type: test
       params:
         working_dir: "src"
@@ -386,7 +397,6 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
-            ./evergreen/start-kmip-server.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
             if [ -n "${test_encryption_pyopenssl}" ]; then
@@ -606,11 +616,12 @@ functions:
   "cleanup":
     - command: shell.exec
       params:
+        working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          ./.evergreen/cleanup-tests.sh
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
-          ./evergreen/cleanup-tests.sh
 
   "fix absolute paths":
     - command: shell.exec
