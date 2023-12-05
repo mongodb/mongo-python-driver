@@ -481,7 +481,10 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 f"{tuple(_MECHANISM_PROPS)}."
             )
         if key == "CANONICALIZE_HOST_NAME":
-            props[key] = validate_boolean_or_string(key, val)
+            if val in ["none", "forward", "forwardAndReverse"]:
+                props[key] = val
+            else:
+                props[key] = validate_boolean_or_string(key, val)
         else:
             props[key] = unquote_plus(val)
 
