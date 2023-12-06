@@ -372,7 +372,6 @@ functions:
         background: true
         script: |
           ${PREPARE_SHELL}
-          set -x
           if [ -n "${test_encryption}" ]; then
             bash ./.evergreen/start-kmip-server.sh
           fi
@@ -619,7 +618,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          ./.evergreen/cleanup-tests.sh
+          . .evergreen/stop-kmip-server.sh
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
