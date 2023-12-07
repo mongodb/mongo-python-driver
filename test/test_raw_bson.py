@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from test import client_context, unittest
 from test.test_client import IntegrationTest
 
-from bson import decode, encode
+from bson import Code, decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
@@ -198,6 +198,12 @@ class TestRawBSONDocument(IntegrationTest):
 
         for rkey, elt in zip(rawdoc, keyvaluepairs):
             self.assertEqual(rkey, elt[0])
+
+    def test_contains_code_with_scope(self):
+        raw_bson = [("value", Code("x=1", scope={}))]
+        doc = RawBSONDocument(encode(SON(raw_bson)))
+
+        self.assertEqual(decode(encode(doc)), {"value": Code("x=1", {})})
 
 
 if __name__ == "__main__":
