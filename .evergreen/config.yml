@@ -398,16 +398,10 @@ functions:
             set +x
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+            . .evergreen/setup-encryption-variables.sh
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1
             fi
-
-            source ./secrets-export.sh
-
-            export AWS_SESSION_TOKEN=
-            export AWS_ACCESS_KEY_ID=$FLE_AWS_KEY
-            export AWS_SECRET_ACCESS_KEY=$FLE_AWS_SECRET
-            export AWS_DEFAULT_REGION=us-east-1
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
