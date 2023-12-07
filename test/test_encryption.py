@@ -74,6 +74,7 @@ from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
     ConfigurationError,
+    DocumentTooLarge,
     DuplicateKeyError,
     EncryptedCollectionError,
     EncryptionError,
@@ -1232,16 +1233,13 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc = {"_id": "encryption_exceeds_16mib", "unencrypted": "a" * (_16_MiB - 2000)}
         doc.update(limits_doc)
 
-        with self.assertRaisesRegex(WriteError, "object to insert too large"):
+        err_msg = "the connected server supports BSON document sizes up to 16777216 bytes."
+        with self.assertRaisesRegex(DocumentTooLarge, expected_regex=err_msg):
             self.coll_encrypted.insert_one(doc)
 
         # Same with bulk_write.
-        doc["_id"] = "encryption_exceeds_16mib_bulk"
-        with self.assertRaises(BulkWriteError) as ctx:
+        with self.assertRaisesRegex(DocumentTooLarge, expected_regex=err_msg):
             self.coll_encrypted.bulk_write([InsertOne(doc)])
-        err = ctx.exception.details["writeErrors"][0]
-        self.assertEqual(2, err["code"])
-        self.assertIn("object to insert too large", err["errmsg"])
 
 
 class TestCustomEndpoint(EncryptionIntegrationTest):
