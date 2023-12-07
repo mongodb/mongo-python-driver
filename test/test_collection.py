@@ -855,7 +855,7 @@ class TestCollection(IntegrationTest):
         half_str = "x" * half_size
         self.assertEqual(max_size, 16777216)
 
-        self.assertRaises(OperationFailure, self.db.test.insert_one, {"foo": max_str})
+        self.assertRaises(DocumentTooLarge, self.db.test.insert_one, {"foo": max_str})
         self.assertRaises(
             OperationFailure, self.db.test.replace_one, {}, {"foo": max_str}, upsert=True
         )

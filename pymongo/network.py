@@ -150,15 +150,18 @@ def command(
         request_id, msg, size, max_doc_size = message._op_msg(
             flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
         )
-        # If this is an unacknowledged write then make sure the encoded doc(s)
-        # are small enough, otherwise rely on the server to return an error.
-        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            message._raise_document_too_large(name, size, max_bson_size)
+        # If this is an unacknowledged write or insert,
+        # we can check that the largest individual document is < 16MB (max_bson_size).
+        # Otherwise, we rely on the server to return an error.
+        if unacknowledged or name == "insert":
+            if max_bson_size is not None and max_doc_size > max_bson_size:
+                message._raise_document_too_large(name, size, max_bson_size)
+
     else:
         request_id, msg, size = message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
-
+    # We also check that entire message is under the message size limit
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
 
