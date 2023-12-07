@@ -2445,10 +2445,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (buffer[*position + scope_size - 1]) {
                 goto invalid;
             }
-
             scope = elements_to_dict(self, buffer + *position,
                                  scope_size, options);
-
             if (!scope) {
                 Py_DECREF(code);
                 goto invalid;
