@@ -204,6 +204,12 @@ tox -e doc
 -   Run the tests from the `pymongo` checkout directory using:
     `TEST_LOADBALANCER=1 tox -m test-eg`.
 
+## Running Encryption Tests Locally
+- Run `AWS_PROFILE=<profile> tox -e setup-encryption` after setting up your AWS profile with `aws configure sso`
+- Run the tests with `TEST_ENCRYPTION=1 LIBMONGOCRYPT_URL=<url> tox -e test-eg`.
+  Look in `.evergreen/config.yml` for the correct `LIBMONGOCRYPT_URL` for your platform.
+- When done, run `tox -e teardown-encryption` to clean up.
+
 ## Re-sync Spec Tests
 
 If you would like to re-sync the copy of the specification tests in the
