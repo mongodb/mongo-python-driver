@@ -39,7 +39,7 @@ from pymongo.auth_oidc import (
 )
 from pymongo.azure_helpers import _get_azure_response
 from pymongo.cursor import CursorType
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
 from pymongo.uri_parser import parse_uri
@@ -603,69 +603,103 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         return Inner()
 
-    def create_client(self):
+    def create_client(self, **kwargs):
         request_cb = self.create_request_cb()
         props: Dict = {"custom_token_callback": request_cb}
-        return MongoClient(self.uri_single, authmechanismproperties=props)
+        return MongoClient(self.uri_single, authmechanismproperties=props, **kwargs)
 
-    def test_custom_callback(self):
+    def test_01_custom_callback(self):
+        # Create a ``MongoClient`` configured with a custom OIDC callback that
+        # implements the AWS provider logic.
         client = self.create_client()
+        # Perform a ``find`` operation that succeeds.
         client.test.test.find_one()
+        # Close the client.
         client.close()
 
-    def test_callback_is_called_during_reauthentication(self):
-        listener = EventListener()
+    def test_02_callback_is_called_during_reauthentication(self):
+        # Create a ``MongoClient`` configured with a custom OIDC callback that
+        # implements the AWS provider logic.
+        client = self.create_client()
 
-        # Create request callback that returns valid credentials.
-        request_cb = self.create_request_cb()
-
-        # Create a client with the callback.
-        props: Dict = {"custom_token_callback": request_cb}
-        client = MongoClient(
-            self.uri_single, event_listeners=[listener], authmechanismproperties=props
-        )
-
-        # Perform a find operation.
-        client.test.test.find_one()
-
-        # Assert that the request callback has been called once.
-        self.assertEqual(self.request_called, 1)
-
-        listener.reset()
-
+        # Set a fail point for the find command.s
         with self.fail_point(
             {
                 "mode": {"times": 1},
                 "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
-            # Perform a find operation.
+            # Perform a ``find`` operation that succeeds.
             client.test.test.find_one()
 
-        started_events = [
-            i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
-        ]
-        succeeded_events = [
-            i.command_name
-            for i in listener.succeeded_events
-            if not i.command_name.startswith("sasl")
-        ]
-        failed_events = [
-            i.command_name for i in listener.failed_events if not i.command_name.startswith("sasl")
-        ]
-
-        self.assertEqual(
-            started_events,
-            [
-                "find",
-                "find",
-            ],
-        )
-        self.assertEqual(succeeded_events, ["find"])
-        self.assertEqual(failed_events, ["find"])
-
-        # Assert that the request callback has been called twice.
+        # Verify that the callback was called 2 times (once during the connection
+        # handshake, and again during reauthentication).
         self.assertEqual(self.request_called, 2)
+
+        # Close the client.
+        client.close()
+
+    def test_03_authentication_failures_with_cached_tokens_retry_with_a_new_token(self):
+        # create a ``MongoClient`` configured with ``retryReads=false`` and a custom
+        # OIDC callback that implements the AWS provider logic.
+        client = self.create_client(retryReads=False)
+
+        # Set a fail point for ``find`` command.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391, "closeConnection": True},
+            }
+        ):
+            # Perform a ``find`` operation that fails. This is to force the ``MongoClient``
+            # to cache an access token.
+            with self.assertRaises(AutoReconnect):
+                client.test.test.find_one()
+
+        # Set a fail point for ``saslStart`` command.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a ``find`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Verify that the callback was called 2 times during connection handshake (once
+        # to get the initial token, and once to refresh the token after the
+        # authentication failure).
+        self.assertEqual(self.request_called, 2)
+
+        # Close the client.
+        client.close()
+
+    def test_04_reauthentication_messages_are_sent(self):
+        # Create a ``MongoClient`` configured with a custom OIDC callback that
+        # implements the AWS provider logic.
+        client = self.create_client()
+
+        # Perform a ``find`` operation that succeeds.
+        client.test.test.find_one()
+
+        # Set fail points for ``find`` and ``saslStart``.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ), self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a ``find`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Close the client.
         client.close()
 
     def test_callback_is_called_once_on_handshake_authentication_failure(self):
