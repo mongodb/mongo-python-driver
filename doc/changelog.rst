@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Version 4.8
+----------------------
+
+- Drop support for manylinux1 wheels, which were end of life in January 2022.
+
+
 Changes in Version 4.7
 ------------------------
 
