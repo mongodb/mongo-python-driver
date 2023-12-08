@@ -1878,19 +1878,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
-            if (options->is_raw_bson) {
-                value = PyObject_CallFunction(
-                    options->document_class, "y#O",
-                    buffer + *position, (Py_ssize_t)size, options->options_obj);
-                if (!value) {
-                    goto invalid;
-                }
-                *position += size;
-                break;
-            }
-
-            value = elements_to_dict(self, buffer + *position + 4,
-                                     size - 5, options);
+            value = elements_to_dict(self, buffer + *position,
+                                     size, options);
             if (!value) {
                 goto invalid;
             }
@@ -2456,8 +2445,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (buffer[*position + scope_size - 1]) {
                 goto invalid;
             }
-            scope = elements_to_dict(self, buffer + *position + 4,
-                                     scope_size - 5, options);
+            scope = elements_to_dict(self, buffer + *position,
+                                 scope_size, options);
             if (!scope) {
                 Py_DECREF(code);
                 goto invalid;
@@ -2809,9 +2798,14 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
                                   unsigned max,
                                   const codec_options_t* options) {
     PyObject* result;
+    if (options->is_raw_bson) {
+        return PyObject_CallFunction(
+            options->document_class, "y#O",
+            string, max, options->options_obj);
+    }
     if (Py_EnterRecursiveCall(" while decoding a BSON document"))
         return NULL;
-    result = _elements_to_dict(self, string, max, options);
+    result = _elements_to_dict(self, string + 4, max - 5, options);
     Py_LeaveRecursiveCall();
     return result;
 }
@@ -2902,15 +2896,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         goto done;
     }
 
-    /* No need to decode fields if using RawBSONDocument */
-    if (options.is_raw_bson) {
-        result = PyObject_CallFunction(
-            options.document_class, "y#O", string, (Py_ssize_t)size,
-            options_obj);
-    }
-    else {
-        result = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
-    }
+    result = elements_to_dict(self, string, (unsigned)size, &options);
 done:
     PyBuffer_Release(&view);
     destroy_codec_options(&options);
@@ -2988,14 +2974,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             goto fail;
         }
 
-        /* No need to decode fields if using RawBSONDocument. */
-        if (options.is_raw_bson) {
-            dict = PyObject_CallFunction(
-                options.document_class, "y#O", string, (Py_ssize_t)size,
-                options_obj);
-        } else {
-            dict = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
-        }
+        dict = elements_to_dict(self, string, (unsigned)size, &options);
         if (!dict) {
             Py_DECREF(result);
             goto fail;
