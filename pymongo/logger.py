@@ -84,4 +84,8 @@ class LogMessage:
                         default=lambda o: o.__repr__(),
                     )
                 if len(self.kwargs[doc]) > document_length:
-                    self.kwargs[doc] = self.kwargs[doc][:document_length] + "..."
+                    self.kwargs[doc] = (
+                        self.kwargs[doc]
+                        .encode()[:document_length]
+                        .decode("unicode-escape", "ignore")
+                    ) + "..."

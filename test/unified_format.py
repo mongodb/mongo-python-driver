@@ -1043,9 +1043,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "timeoutMode" in op.get("arguments", {}):
                 self.skipTest("PyMongo does not support timeoutMode")
 
-        # if spec["description"] != "A failed command":
-        #     self.skipTest("for now...")
-
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
@@ -1677,12 +1674,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             client_to_log = defaultdict(list)
             for log in log_list:
                 data = json_util.loads(log.message)
-                client = data["clientId"]
-                data.pop("clientId")
+                client = data.pop("clientId")
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
-                        "component": log.name.strip("pymongo."),
+                        "component": log.name.replace("pymongo.", "", 1),
                         "data": data,
                     }
                 )
