@@ -375,6 +375,7 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.validate_collection(db.test, True, True))
 
     @client_context.require_version_min(4, 3, 3)
+    @client_context.require_no_standalone
     def test_validate_collection_background(self):
         db = self.client.pymongo_test
         db.test.insert_one({"dummy": "object"})

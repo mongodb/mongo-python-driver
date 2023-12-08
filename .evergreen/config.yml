@@ -365,78 +365,28 @@ functions:
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
 
   "run tests":
-    # If testing FLE, start the KMS mock servers, first create the virtualenv.
     - command: shell.exec
       params:
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-          fi
-    # Run in the background so the mock servers don't block the EVG task.
-    - command: shell.exec
-      params:
+        working_dir: "src"
+        shell: bash
         background: true
         script: |
+          ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-            # The -u options forces the stdout and stderr streams to be unbuffered.
-            # TMPDIR is required to avoid "AF_UNIX path too long" errors.
-            TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-            python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
-          fi
-    # Wait up to 10 seconds for the KMIP server to start.
-    - command: shell.exec
-      params:
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            . ./activate-kmstlsvenv.sh
-            for i in $(seq 1 1 10); do
-               sleep 1
-               if python -u kms_kmip_client.py; then
-                  echo 'KMS KMIP server started!'
-                  exit 0
-               fi
-            done
-            echo 'Failed to start KMIP server!'
-            exit 1
-          fi
-    - command: shell.exec
-      type: test
-      params:
-        silent: true
-        working_dir: "src"
-        script: |
-          if [ -n "${test_encryption}" ]; then
-            cat <<EOT > fle_creds.sh
-            export FLE_AWS_KEY="${fle_aws_key}"
-            export FLE_AWS_SECRET="${fle_aws_secret}"
-            export FLE_AZURE_CLIENTID="${fle_azure_clientid}"
-            export FLE_AZURE_TENANTID="${fle_azure_tenantid}"
-            export FLE_AZURE_CLIENTSECRET="${fle_azure_clientsecret}"
-            export FLE_GCP_EMAIL="${fle_gcp_email}"
-            export FLE_GCP_PRIVATEKEY="${fle_gcp_privatekey}"
-            # Needed for generating temporary aws credentials.
-            export AWS_ACCESS_KEY_ID="${fle_aws_key}"
-            export AWS_SECRET_ACCESS_KEY="${fle_aws_secret}"
-            export AWS_DEFAULT_REGION=us-east-1
-          EOT
+            bash ./.evergreen/start-kmip-server.sh
           fi
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
+        shell: bash
+        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace
           set +x
           ${PREPARE_SHELL}
+          # Fetch vault secrets if needed
+          bash .evergreen/fetch-aws-vault-secrets.sh
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=true
           fi
@@ -446,10 +396,9 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
-            . ./fle_creds.sh
-            rm -f ./fle_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+            . .evergreen/setup-encryption-variables.sh
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1
             fi
@@ -655,13 +604,22 @@ functions:
              exit 0
           fi
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh session-creds
+          set -ex
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate-authawsvenv.sh
+          . aws_setup.sh ecs
+          export MONGODB_BINARIES="${MONGODB_BINARIES}";
+          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
+          python aws_tester.py ecs
+          cd -
 
   "cleanup":
     - command: shell.exec
       params:
+        working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          . .evergreen/stop-kmip-server.sh
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
@@ -716,6 +674,11 @@ functions:
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
           [ -f "$file" ] && bash $file || echo "$file not available, skipping"
+
+  "assume ec2 role":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
 
   "run-ocsp-test":
     - command: shell.exec
@@ -932,6 +895,7 @@ pre:
   - func: "init test-results"
   - func: "make files executable"
   - func: "install dependencies"
+  - func: "assume ec2 role"
 
 post:
   # Disabled, causing timeouts

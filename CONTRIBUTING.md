@@ -172,13 +172,24 @@ request](https://help.github.com/articles/using-pull-requests). You
 might also use the GitHub
 [Edit](https://github.com/blog/844-forking-with-the-edit-button) button.
 
-We use the [Sphinx docstring format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html).
+We use [reStructuredText](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html) for all
+documentation including narrative docs, and the [Sphinx docstring format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html).
 
 You can build the documentation locally by running:
 
 ```bash
 tox -e doc
 ```
+
+When updating docs, it can be helpful to run the live docs server as:
+
+```bash
+tox -e doc-serve
+```
+
+Browse to the link provided, and then as you make changes to docstrings or narrative docs,
+the pages will re-render and the browser will automatically refresh.
+
 
 ## Running Tests Locally
 
@@ -203,6 +214,12 @@ tox -e doc
     `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' $PWD/drivers-evergreen-tools/.evergreen/run-load-balancer.sh start`.
 -   Run the tests from the `pymongo` checkout directory using:
     `TEST_LOADBALANCER=1 tox -m test-eg`.
+
+## Running Encryption Tests Locally
+- Run `AWS_PROFILE=<profile> tox -e setup-encryption` after setting up your AWS profile with `aws configure sso`
+- Run the tests with `TEST_ENCRYPTION=1 LIBMONGOCRYPT_URL=<url> tox -e test-eg`.
+  Look in `.evergreen/config.yml` for the correct `LIBMONGOCRYPT_URL` for your platform.
+- When done, run `tox -e teardown-encryption` to clean up.
 
 ## Re-sync Spec Tests
 
