@@ -200,10 +200,10 @@ class TestRawBSONDocument(IntegrationTest):
             self.assertEqual(rkey, elt[0])
 
     def test_contains_code_with_scope(self):
-        raw_bson = [("value", Code("x=1", scope={}))]
-        doc = RawBSONDocument(encode(SON(raw_bson)))
+        doc = RawBSONDocument(encode({"value": Code("x=1", scope={})}))
 
         self.assertEqual(decode(encode(doc)), {"value": Code("x=1", {})})
+        self.assertEqual(doc["value"].scope, RawBSONDocument(encode({})))
 
 
 if __name__ == "__main__":
