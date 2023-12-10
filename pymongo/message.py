@@ -1174,7 +1174,7 @@ def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> N
     """Internal helper for raising DocumentTooLarge."""
     if operation == "insert":
         raise DocumentTooLarge(
-            "BSON document too large (%d bytes)"
+            "BSON document too large (%d bytes) "
             " - the connected server supports"
             " BSON document sizes up to %d"
             " bytes." % (doc_size, max_size)
@@ -1235,16 +1235,17 @@ def _batched_op_msg_impl(
         doc_length = len(value)
         new_message_size = buf.tell() + doc_length
         # Does first document exceed max_message_size?
-        doc_too_large = idx == 0 and (new_message_size > max_message_size)
+        msg_too_large = idx == 0 and (new_message_size > max_message_size)
         # When OP_MSG is used unacknowledged we have to check
         # document size client side or applications won't be notified.
         # Otherwise we let the server deal with documents that are too large
         # since ordered=False causes those documents to be skipped instead of
         # halting the bulk write operation.
-        unacked_doc_too_large = not ack and (doc_length > max_bson_size)
-        if doc_too_large or unacked_doc_too_large:
-            write_op = list(_FIELD_MAP.keys())[operation]
-            _raise_document_too_large(write_op, len(value), max_bson_size)
+        write_op = list(_FIELD_MAP.keys())[operation]
+        doc_too_large = (not ack or write_op == "insert") and (doc_length > max_bson_size)
+        # unacked_doc_too_large = not ack and (doc_length > max_bson_size)
+        if msg_too_large or doc_too_large:
+            _raise_document_too_large(write_op, doc_length, max_bson_size)
         # We have enough data, return this batch.
         if new_message_size > max_message_size:
             break
