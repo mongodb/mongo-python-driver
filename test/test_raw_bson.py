@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from test import client_context, unittest
 from test.test_client import IntegrationTest
 
-from bson import Code, decode, encode
+from bson import Code, DBRef, decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
@@ -204,6 +204,14 @@ class TestRawBSONDocument(IntegrationTest):
 
         self.assertEqual(decode(encode(doc)), {"value": Code("x=1", {})})
         self.assertEqual(doc["value"].scope, RawBSONDocument(encode({})))
+
+    def test_contains_dbref(self):
+        doc = RawBSONDocument(encode({"value": DBRef("test", "id")}))
+        raw = {"$ref": "test", "$id": "id"}
+        raw_encoded = encode(decode(encode(raw)))
+
+        self.assertEqual(decode(encode(doc)), {"value": DBRef("test", "id")})
+        self.assertEqual(doc["value"].raw, raw_encoded)
 
 
 if __name__ == "__main__":

@@ -1884,6 +1884,11 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
+            if (options->is_raw_bson) {
+                *position += size;
+                break;
+            }
+
             /* Hook for DBRefs */
             value = _dbref_hook(self, value);
             if (!value) {
