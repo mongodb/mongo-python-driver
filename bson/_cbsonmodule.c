@@ -1880,7 +1880,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
             value = elements_to_dict(self, buffer + *position,
                                      size, options);
-
             if (!value) {
                 goto invalid;
             }
