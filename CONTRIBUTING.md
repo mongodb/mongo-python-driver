@@ -172,13 +172,24 @@ request](https://help.github.com/articles/using-pull-requests). You
 might also use the GitHub
 [Edit](https://github.com/blog/844-forking-with-the-edit-button) button.
 
-We use the [Sphinx docstring format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html).
+We use [reStructuredText](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html) for all
+documentation including narrative docs, and the [Sphinx docstring format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html).
 
 You can build the documentation locally by running:
 
 ```bash
 tox -e doc
 ```
+
+When updating docs, it can be helpful to run the live docs server as:
+
+```bash
+tox -e doc-serve
+```
+
+Browse to the link provided, and then as you make changes to docstrings or narrative docs,
+the pages will re-render and the browser will automatically refresh.
+
 
 ## Running Tests Locally
 
