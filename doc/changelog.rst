@@ -1,12 +1,6 @@
 Changelog
 =========
 
-Changes in Version 4.8
-----------------------
-
-- Drop support for manylinux1 wheels, which were end of life in January 2022.
-
-
 Changes in Version 4.7
 ------------------------
 
@@ -16,6 +10,7 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
+- Drop support for manylinux1 wheels, which were end of life in January 2022.
 
 Changes in Version 4.6.1
 ------------------------
