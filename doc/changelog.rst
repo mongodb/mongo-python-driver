@@ -10,7 +10,6 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
-- Drop support for manylinux1 wheels, which were end of life in January 2022.
 - Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
 
 Changes in Version 4.6.1
