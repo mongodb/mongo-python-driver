@@ -1,3 +1,16 @@
+# Copyright 2023-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from __future__ import annotations
 
 from test import unittest
@@ -6,7 +19,7 @@ from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
-from pymongo.logger import DEFAULT_DOCUMENT_LENGTH
+from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
 
 
 # https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests
@@ -19,15 +32,15 @@ class TestLogger(IntegrationTest):
             db.test.insert_many(docs)
 
             cmd_started_log = json_util.loads(cm.records[0].message)
-            self.assertEqual(len(cmd_started_log["command"]), DEFAULT_DOCUMENT_LENGTH + 3)
+            self.assertEqual(len(cmd_started_log["command"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             cmd_succeeded_log = json_util.loads(cm.records[1].message)
-            self.assertLessEqual(len(cmd_succeeded_log["reply"]), DEFAULT_DOCUMENT_LENGTH + 3)
+            self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
         with self.assertLogs("pymongo.command", level="DEBUG") as cm:
             list(db.test.find({}))
             cmd_succeeded_log = json_util.loads(cm.records[1].message)
-            self.assertEqual(len(cmd_succeeded_log["reply"]), DEFAULT_DOCUMENT_LENGTH + 3)
+            self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
     def test_configured_truncation_limit(self):
         cmd = {"hello": True}

@@ -68,7 +68,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.logger import LogMessage, LogMessageStatus
+from pymongo.logger import LogMessage, _LogMessageStatus
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -1017,13 +1017,14 @@ class _BulkWriteContext:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.STARTED,
+                message=_LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
                 serviceId=self.conn.service_id,
@@ -1042,7 +1043,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.SUCCEEDED,
+                    message=_LogMessageStatus.SUCCEEDED,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -1050,6 +1051,7 @@ class _BulkWriteContext:
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
@@ -1068,7 +1070,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.FAILED,
+                    message=_LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -1076,6 +1078,7 @@ class _BulkWriteContext:
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
@@ -1106,13 +1109,14 @@ class _BulkWriteContext:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.STARTED,
+                message=_LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=self.db_name,
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
                 serverHost=self.conn.address[0],
                 serverPort=self.conn.address[1],
                 serviceId=self.conn.service_id,
@@ -1126,7 +1130,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.SUCCEEDED,
+                    message=_LogMessageStatus.SUCCEEDED,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -1134,6 +1138,7 @@ class _BulkWriteContext:
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,
@@ -1150,7 +1155,7 @@ class _BulkWriteContext:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.FAILED,
+                    message=_LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -1158,6 +1163,7 @@ class _BulkWriteContext:
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
                     serverHost=self.conn.address[0],
                     serverPort=self.conn.address[1],
                     serviceId=self.conn.service_id,

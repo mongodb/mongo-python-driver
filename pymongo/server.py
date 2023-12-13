@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.logger import LogMessage, LogMessageStatus
+from pymongo.logger import LogMessage, _LogMessageStatus
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -137,13 +137,14 @@ class Server:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.STARTED,
+                message=_LogMessageStatus.STARTED,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=dbn,
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
                 serviceId=conn.service_id,
@@ -198,7 +199,7 @@ class Server:
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.FAILED,
+                    message=_LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -206,6 +207,7 @@ class Server:
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
                     serverHost=conn.address[0],
                     serverPort=conn.address[1],
                     serviceId=conn.service_id,
@@ -241,7 +243,7 @@ class Server:
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.SUCCEEDED,
+                message=_LogMessageStatus.SUCCEEDED,
                 durationMS=duration,
                 reply=res,
                 commandName=next(iter(cmd)),
@@ -249,6 +251,7 @@ class Server:
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
                 serviceId=conn.service_id,

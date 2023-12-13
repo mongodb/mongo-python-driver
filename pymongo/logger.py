@@ -1,3 +1,16 @@
+# Copyright 2023-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from __future__ import annotations
 
 import enum
@@ -8,13 +21,13 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions
 
 
-class LogMessageStatus(str, enum.Enum):
+class _LogMessageStatus(str, enum.Enum):
     STARTED = "Command started"
     SUCCEEDED = "Command succeeded"
     FAILED = "Command failed"
 
 
-DEFAULT_DOCUMENT_LENGTH = 1000
+_DEFAULT_DOCUMENT_LENGTH = 1000
 _SENSITIVE_COMMANDS = [
     "authenticate",
     "saslStart",
@@ -28,64 +41,65 @@ _SENSITIVE_COMMANDS = [
 ]
 _HELLO_COMMANDS = ["hello", "ismaster", "isMaster"]
 _REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
-_DOCUMENTS = ["command", "reply", "failure"]
+_DOCUMENT_NAMES = ["command", "reply", "failure"]
 _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 
 
 class LogMessage:
+    __slots__ = ["_kwargs"]
+
     def __init__(self, **kwargs: Any):
-        self.kwargs = kwargs
+        self._kwargs = kwargs
 
-        self._process_documents()
-
-        if "durationMS" in self.kwargs:
-            self.kwargs["durationMS"] = self.kwargs["durationMS"].total_seconds() * 1000
-        if "serviceId" in self.kwargs and self.kwargs["serviceId"] is None:
-            del self.kwargs["serviceId"]
+        if "durationMS" in self._kwargs:
+            self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
+        if "serviceId" in self._kwargs and self._kwargs["serviceId"] is None:
+            del self._kwargs["serviceId"]
 
     def __str__(self) -> str:
+        self._redact()
         return "%s" % (
-            json_util.dumps(self.kwargs, json_options=_JSON_OPTIONS, default=lambda o: o.__repr__())
+            json_util.dumps(
+                self._kwargs, json_options=_JSON_OPTIONS, default=lambda o: o.__repr__()
+            )
         )
 
-    def _is_sensitive(self, doc: str) -> bool:
+    def _is_sensitive(self, doc_name: str) -> bool:
         is_speculative_authenticate = (
-            self.kwargs.pop("speculative_authenticate", False)
-            or "speculativeAuthenticate" in self.kwargs[doc]
+            self._kwargs.pop("speculative_authenticate", False)
+            or "speculativeAuthenticate" in self._kwargs[doc_name]
         )
         is_sensitive_command = (
-            "commandName" in self.kwargs and self.kwargs["commandName"] in _SENSITIVE_COMMANDS
+            "commandName" in self._kwargs and self._kwargs["commandName"] in _SENSITIVE_COMMANDS
         )
 
         is_sensitive_hello = (
-            self.kwargs["commandName"] in _HELLO_COMMANDS and is_speculative_authenticate
+            self._kwargs["commandName"] in _HELLO_COMMANDS and is_speculative_authenticate
         )
 
         return is_sensitive_command or is_sensitive_hello
 
-    def _process_documents(self) -> None:
-        document_length = int(os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", DEFAULT_DOCUMENT_LENGTH))
+    def _redact(self) -> None:
+        document_length = int(os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", _DEFAULT_DOCUMENT_LENGTH))
         if document_length < 0:
-            document_length = DEFAULT_DOCUMENT_LENGTH
-        is_server_side_error = self.kwargs.pop("isServerSideError", False)
+            document_length = _DEFAULT_DOCUMENT_LENGTH
+        is_server_side_error = self._kwargs.pop("isServerSideError", False)
 
-        for doc in _DOCUMENTS:
-            if doc in self.kwargs:
-                if doc == "failure" and is_server_side_error:
-                    self.kwargs[doc] = {
-                        k: v for k, v in self.kwargs[doc].items() if k in _REDACTED_FAILURE_FIELDS
-                    }
-                if doc != "failure" and self._is_sensitive(doc):
-                    self.kwargs[doc] = json_util.dumps({})
+        for doc_name in _DOCUMENT_NAMES:
+            doc = self._kwargs.get(doc_name)
+            if doc:
+                if doc_name == "failure" and is_server_side_error:
+                    doc = {k: v for k, v in doc.items() if k in _REDACTED_FAILURE_FIELDS}
+                if doc_name != "failure" and self._is_sensitive(doc_name):
+                    doc = json_util.dumps({})
                 else:
-                    self.kwargs[doc] = json_util.dumps(
-                        self.kwargs[doc],
+                    doc = json_util.dumps(
+                        doc,
                         json_options=_JSON_OPTIONS,
                         default=lambda o: o.__repr__(),
                     )
-                if len(self.kwargs[doc]) > document_length:
-                    self.kwargs[doc] = (
-                        self.kwargs[doc]
-                        .encode()[:document_length]
-                        .decode("unicode-escape", "ignore")
+                if len(doc) > document_length:
+                    doc = (
+                        doc.encode()[:document_length].decode("unicode-escape", "ignore")
                     ) + "..."
+                self._kwargs[doc_name] = doc

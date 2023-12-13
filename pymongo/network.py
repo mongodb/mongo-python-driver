@@ -42,7 +42,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import LogMessage, LogMessageStatus
+from pymongo.logger import LogMessage, _LogMessageStatus
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -169,13 +169,14 @@ def command(
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.STARTED,
+                message=_LogMessageStatus.STARTED,
                 command=spec,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
                 serviceId=conn.service_id,
@@ -226,7 +227,7 @@ def command(
             command_logger.debug(
                 LogMessage(
                     clientId=client._topology_settings._topology_id,
-                    message=LogMessageStatus.FAILED,
+                    message=_LogMessageStatus.FAILED,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(spec)),
@@ -234,6 +235,7 @@ def command(
                     requestId=request_id,
                     operationId=request_id,
                     driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
                     serverHost=conn.address[0],
                     serverPort=conn.address[1],
                     serviceId=conn.service_id,
@@ -259,7 +261,7 @@ def command(
         command_logger.debug(
             LogMessage(
                 clientId=client._topology_settings._topology_id,
-                message=LogMessageStatus.SUCCEEDED,
+                message=_LogMessageStatus.SUCCEEDED,
                 durationMS=duration,
                 reply=response_doc,
                 commandName=next(iter(spec)),
@@ -267,6 +269,7 @@ def command(
                 requestId=request_id,
                 operationId=request_id,
                 driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
                 serverHost=conn.address[0],
                 serverPort=conn.address[1],
                 serviceId=conn.service_id,

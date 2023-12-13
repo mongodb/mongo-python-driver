@@ -998,8 +998,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if "command log messages include server connection id" == spec["description"]:
-            self.skipTest("TODO: Implement https://jira.mongodb.org/browse/PYTHON-2822")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
