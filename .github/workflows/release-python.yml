@@ -84,7 +84,7 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 wheel if applicable
-        if: ${{ matrix.buildplat[0] == 'manylinux_x86_64' || matrix.buildplat[0] == 'manylinux_i686' }}
+        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
         env:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
