@@ -137,7 +137,7 @@ from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
-from bson.son import RE_TYPE, SON
+from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
@@ -505,7 +505,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
     converted into json.
     """
     if hasattr(obj, "items"):
-        return SON(((k, _json_convert(v, json_options)) for k, v in obj.items()))
+        return {k: _json_convert(v, json_options) for k, v in obj.items()}
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
         return [_json_convert(v, json_options) for v in obj]
     try:
@@ -826,20 +826,73 @@ def _parse_canonical_maxkey(doc: Any) -> MaxKey:
 
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
-        return SON([("$binary", base64.b64encode(data).decode()), ("$type", "%02x" % subtype)])
-    return {
-        "$binary": SON([("base64", base64.b64encode(data).decode()), ("subType", "%02x" % subtype)])
-    }
+        return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
+    return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
+
+
+def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
+    type_marker = obj._type_marker
+    if type_marker == 7:  # ObjectId
+        return {"$oid": str(obj)}
+    elif type_marker == 100:  # DBRef
+        return _json_convert(obj.as_doc(), json_options=json_options)
+    elif type_marker == 9:  # DatetimeMS
+        if (
+            json_options.datetime_representation == DatetimeRepresentation.ISO8601
+            and 0 <= int(obj) <= _max_datetime_ms()
+        ):
+            return default(obj.as_datetime(), json_options)
+        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+            return {"$date": str(int(obj))}
+        return {"$date": {"$numberLong": str(int(obj))}}
+    elif json_options.strict_number_long and type_marker == 18:  # Int64
+        return {"$numberLong": str(obj)}
+    elif type_marker == 255:  # MinKey
+        return {"$minKey": 1}
+    elif type_marker == 127:  # MaxKey
+        return {"$maxKey": 1}
+    elif type_marker == 17:  # Timestamp
+        return {"$timestamp": {"t": obj.time, "i": obj.inc}}
+    elif type_marker == 13:  # Code
+        if obj.scope is None:
+            return {"$code": str(obj)}
+        return {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)}
+    elif type_marker == 5:  # Binary
+        return _encode_binary(obj, obj.subtype, json_options)
+    elif type_marker == 19:  # Decimal128
+        return {"$numberDecimal": str(obj)}
+    raise TypeError("%r is not JSON serializable" % obj)
 
 
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
     # returning a SON for those types instead of a dict.
-    if isinstance(obj, ObjectId):
-        return {"$oid": str(obj)}
-    if isinstance(obj, DBRef):
-        return _json_convert(obj.as_doc(), json_options=json_options)
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, bool):
+        return obj
+    elif isinstance(obj, (RE_TYPE, Regex)):
+        flags = ""
+        if obj.flags & re.IGNORECASE:
+            flags += "i"
+        if obj.flags & re.LOCALE:
+            flags += "l"
+        if obj.flags & re.MULTILINE:
+            flags += "m"
+        if obj.flags & re.DOTALL:
+            flags += "s"
+        if obj.flags & re.UNICODE:
+            flags += "u"
+        if obj.flags & re.VERBOSE:
+            flags += "x"
+        if isinstance(obj.pattern, str):
+            pattern = obj.pattern
+        else:
+            pattern = obj.pattern.decode("utf-8")
+        if json_options.json_mode == JSONMode.LEGACY:
+            return {"$regex": pattern, "$options": flags}
+        return {"$regularExpression": {"pattern": pattern, "options": flags}}
+    elif hasattr(obj, "_type_marker"):
+        return _encode_bson(obj, json_options)
+    elif isinstance(obj, datetime.datetime):
         if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
             if not obj.tzinfo:
                 obj = obj.replace(tzinfo=utc)
@@ -860,67 +913,19 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": millis}
         return {"$date": {"$numberLong": str(millis)}}
-    if isinstance(obj, DatetimeMS):
-        if (
-            json_options.datetime_representation == DatetimeRepresentation.ISO8601
-            and 0 <= int(obj) <= _max_datetime_ms()
-        ):
-            return default(obj.as_datetime(), json_options)
-        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": str(int(obj))}
-        return {"$date": {"$numberLong": str(int(obj))}}
-    if json_options.strict_number_long and isinstance(obj, Int64):
-        return {"$numberLong": str(obj)}
-    if isinstance(obj, (RE_TYPE, Regex)):
-        flags = ""
-        if obj.flags & re.IGNORECASE:
-            flags += "i"
-        if obj.flags & re.LOCALE:
-            flags += "l"
-        if obj.flags & re.MULTILINE:
-            flags += "m"
-        if obj.flags & re.DOTALL:
-            flags += "s"
-        if obj.flags & re.UNICODE:
-            flags += "u"
-        if obj.flags & re.VERBOSE:
-            flags += "x"
-        if isinstance(obj.pattern, str):
-            pattern = obj.pattern
-        else:
-            pattern = obj.pattern.decode("utf-8")
-        if json_options.json_mode == JSONMode.LEGACY:
-            return SON([("$regex", pattern), ("$options", flags)])
-        return {"$regularExpression": SON([("pattern", pattern), ("options", flags)])}
-    if isinstance(obj, MinKey):
-        return {"$minKey": 1}
-    if isinstance(obj, MaxKey):
-        return {"$maxKey": 1}
-    if isinstance(obj, Timestamp):
-        return {"$timestamp": SON([("t", obj.time), ("i", obj.inc)])}
-    if isinstance(obj, Code):
-        if obj.scope is None:
-            return {"$code": str(obj)}
-        return SON([("$code", str(obj)), ("$scope", _json_convert(obj.scope, json_options))])
-    if isinstance(obj, Binary):
-        return _encode_binary(obj, obj.subtype, json_options)
-    if isinstance(obj, bytes):
+    elif isinstance(obj, bytes):
         return _encode_binary(obj, 0, json_options)
-    if isinstance(obj, uuid.UUID):
+    elif isinstance(obj, uuid.UUID):
         if json_options.strict_uuid:
             binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
             return _encode_binary(binval, binval.subtype, json_options)
         else:
             return {"$uuid": obj.hex}
-    if isinstance(obj, Decimal128):
-        return {"$numberDecimal": str(obj)}
-    if isinstance(obj, bool):
-        return obj
-    if json_options.json_mode == JSONMode.CANONICAL and isinstance(obj, int):
+    elif json_options.json_mode == JSONMode.CANONICAL and isinstance(obj, int):
         if -(2**31) <= obj < 2**31:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
-    if json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
+    elif json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
         if math.isnan(obj):
             return {"$numberDouble": "NaN"}
         elif math.isinf(obj):
