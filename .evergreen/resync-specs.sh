@@ -105,6 +105,13 @@ do
     apm|APM|command-monitoring|command_monitoring)
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
       ;;
+    command-logging|command_logging)
+      cpjson command-logging-and-monitoring/tests/logging command_logging
+      ;;
+    clam|CLAM|command-logging-and-monitoring|command_logging_and_monitoring)
+      cpjson command-logging-and-monitoring/tests/logging command_logging
+      cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
+      ;;
     crud|CRUD)
       cpjson crud/tests/ crud
       ;;
