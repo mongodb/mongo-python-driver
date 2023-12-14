@@ -92,6 +92,9 @@ class UndecipherableInt64Type:
         # Does not compare equal to integers.
         return False
 
+    def __repr__(self):
+        return repr(self.value)
+
 
 class UndecipherableIntDecoder(TypeDecoder):
     bson_type = Int64
