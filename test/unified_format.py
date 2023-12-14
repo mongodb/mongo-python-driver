@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 import types
-from collections import abc
+from collections import abc, defaultdict
 from test import (
     AWS_CREDS,
     AZURE_CREDS,
@@ -676,6 +676,12 @@ class MatchEvaluatorUtil:
         if key_to_compare not in actual:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
         self.test.assertLessEqual(actual[key_to_compare], spec)
+
+    def _operation_matchAsDocument(self, spec, actual, key_to_compare):
+        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
+
+    def _operation_matchAsRoot(self, spec, actual, key_to_compare):
+        self._match_document(spec, actual, True)
 
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_{}".format(opname.strip("$"))
@@ -1670,6 +1676,44 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def check_log_messages(self, operations, spec):
+        def format_logs(log_list):
+            client_to_log = defaultdict(list)
+            for log in log_list:
+                data = json_util.loads(log.message)
+                client = data.pop("clientId")
+                client_to_log[client].append(
+                    {
+                        "level": log.levelname.lower(),
+                        "component": log.name.replace("pymongo.", "", 1),
+                        "data": data,
+                    }
+                )
+            return client_to_log
+
+        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+            self.run_operations(operations)
+            formatted_logs = format_logs(cm.records)
+            # FIXME: currently I assume all msgs are coming from client
+            for client in spec:
+                clientid = self.entity_map[client["client"]]._topology_settings._topology_id
+                actual_logs = formatted_logs[clientid]
+                self.assertEqual(len(client["messages"]), len(actual_logs))
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                    expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+
+                    if "failureIsRedacted" in expected_msg:
+                        self.assertIn("failure", actual_data)
+                        should_redact = expected_msg.pop("failureIsRedacted")
+                        if should_redact:
+                            actual_fields = set(json_util.loads(actual_data["failure"]).keys())
+                            self.assertTrue(
+                                {"code", "codeName", "errorLabels"}.issuperset(actual_fields)
+                            )
+
+                    self.match_evaluator.match_result(expected_data, actual_data)
+                    self.match_evaluator.match_result(expected_msg, actual_msg)
+
     def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1730,8 +1774,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
 
-        # process operations
-        self.run_operations(spec["operations"])
+        if "expectLogMessages" in spec:
+            expect_log_messages = spec["expectLogMessages"]
+            self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
+            self.check_log_messages(spec["operations"], expect_log_messages)
+        else:
+            # process operations
+            self.run_operations(spec["operations"])
 
         # process expectEvents
         if "expectEvents" in spec:
