@@ -824,6 +824,14 @@ def _parse_canonical_maxkey(doc: Any) -> MaxKey:
     return MaxKey()
 
 
+def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
+    type_marker = obj._type_marker
+    try:
+        return _encoders.get(type_marker)(obj, json_options)
+    except KeyError:
+        raise TypeError("%r is not JSON serializable" % obj) from None
+
+
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
         return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
