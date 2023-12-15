@@ -448,6 +448,20 @@ The same as :const:`RELAXED_JSON_OPTIONS`.
 .. versionadded:: 3.4
 """
 
+# Encoders for BSON types
+_encoders = {
+    5: lambda obj, json_options: _encode_binary(obj, obj.subtype, json_options),  # Binary
+    7: lambda obj, json_options: {"$oid": str(obj)},  # noqa: ARG005 ObjectId
+    9: lambda obj, json_options: _encode_datetimems(obj, json_options),  # DatetimeMS
+    13: lambda obj, json_options: _encode_code(obj, json_options),  # Code
+    17: lambda obj, json_options: {"$timestamp": {"t": obj.time, "i": obj.inc}},  # noqa: ARG005 Timestamp
+    18: lambda obj, json_options: _encode_int64(obj, json_options),  # Int64
+    19: lambda obj, json_options: {"$numberDecimal": str(obj)},  # noqa: ARG005 Decimal128
+    100: lambda obj, json_options: _json_convert(obj.as_doc(), json_options=json_options),  # DBRef
+    127: lambda obj, json_options: {"$maxKey": 1},  # noqa: ARG005 MaxKey
+    255: lambda obj, json_options: {"$minKey": 1},  # noqa: ARG005 MinKey
+}
+
 
 def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     """Helper function that wraps :func:`json.dumps`.
@@ -824,44 +838,43 @@ def _parse_canonical_maxkey(doc: Any) -> MaxKey:
     return MaxKey()
 
 
+def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
+    type_marker = obj._type_marker
+    try:
+        return _encoders.get(type_marker)(obj, json_options)
+    except KeyError:
+        raise TypeError("%r is not JSON serializable" % obj) from None
+
+
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
         return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
     return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
 
 
-def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
-    type_marker = obj._type_marker
-    if type_marker == 7:  # ObjectId
-        return {"$oid": str(obj)}
-    elif type_marker == 100:  # DBRef
-        return _json_convert(obj.as_doc(), json_options=json_options)
-    elif type_marker == 9:  # DatetimeMS
-        if (
-            json_options.datetime_representation == DatetimeRepresentation.ISO8601
-            and 0 <= int(obj) <= _max_datetime_ms()
-        ):
-            return default(obj.as_datetime(), json_options)
-        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": str(int(obj))}
-        return {"$date": {"$numberLong": str(int(obj))}}
-    elif json_options.strict_number_long and type_marker == 18:  # Int64
-        return {"$numberLong": str(obj)}
-    elif type_marker == 255:  # MinKey
-        return {"$minKey": 1}
-    elif type_marker == 127:  # MaxKey
-        return {"$maxKey": 1}
-    elif type_marker == 17:  # Timestamp
-        return {"$timestamp": {"t": obj.time, "i": obj.inc}}
-    elif type_marker == 13:  # Code
-        if obj.scope is None:
-            return {"$code": str(obj)}
+def _encode_datetimems(obj, json_options: JSONOptions) -> dict:
+    if (
+        json_options.datetime_representation == DatetimeRepresentation.ISO8601
+        and 0 <= int(obj) <= _max_datetime_ms()
+    ):
+        return default(obj.as_datetime(), json_options)
+    elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+        return {"$date": str(int(obj))}
+    return {"$date": {"$numberLong": str(int(obj))}}
+
+
+def _encode_code(obj: Code, json_options: JSONOptions) -> dict:
+    if obj.scope is None:
+        return {"$code": str(obj)}
+    else:
         return {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)}
-    elif type_marker == 5:  # Binary
-        return _encode_binary(obj, obj.subtype, json_options)
-    elif type_marker == 19:  # Decimal128
-        return {"$numberDecimal": str(obj)}
-    raise TypeError("%r is not JSON serializable" % obj)
+
+
+def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
+    if json_options.strict_number_long:
+        return {"$numberLong": str(obj)}
+    else:
+        return obj
 
 
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
