@@ -1,11 +1,9 @@
 # PyMongo
 
-See [the mongo site](http://www.mongodb.org) for more information.
-See [GitHub](http://github.com/mongodb/mongo-python-driver) for the
-latest source.
-
-Documentation: available at [pymongo.readthedocs.io](https://pymongo.readthedocs.io/en/stable/)
-Author: The MongoDB Python Team
+[![PyPI Version](https://img.shields.io/pypi/v/pymongo)](https://pypi.org/project/pymongo)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pymongo)](https://pypi.org/project/pymongo)
+[![Monthly Downloads](https://static.pepy.tech/badge/pymongo/month)](https://pepy.tech/project/pymongo)
+[![Documentation Status](https://readthedocs.org/projects/pymongo/badge/?version=stable)](http://pymongo.readthedocs.io/en/stable/?badge=stable)
 
 ## About
 
