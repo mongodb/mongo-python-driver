@@ -841,7 +841,7 @@ def _parse_canonical_maxkey(doc: Any) -> MaxKey:
 def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
     type_marker = obj._type_marker
     try:
-        return _encoders.get(type_marker)(obj, json_options)
+        return _encoders.get(type_marker)(obj, json_options)  # type: ignore
     except KeyError:
         raise TypeError("%r is not JSON serializable" % obj) from None
 
@@ -852,7 +852,7 @@ def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
 
 
-def _encode_datetimems(obj, json_options: JSONOptions) -> dict:
+def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     if (
         json_options.datetime_representation == DatetimeRepresentation.ISO8601
         and 0 <= int(obj) <= _max_datetime_ms()
