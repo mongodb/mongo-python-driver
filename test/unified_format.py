@@ -480,7 +480,7 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
-            kwargs["username"] = os.environ["OIDC_USERNAME"]
+            kwargs["username"] = os.environ["AZUREOIDC_USERNAME"]
             client = rs_or_single_client(**kwargs)
             self[spec["id"]] = client
             self.test.addCleanup(client.close)
