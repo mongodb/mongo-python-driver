@@ -131,8 +131,7 @@ def main(options, mode, urls):
 
         if options.verbose:
             print(
-                "Getting {} {} times total in {} threads, "
-                "{} times per thread".format(
+                "Getting {} {} times total in {} threads, " "{} times per thread".format(
                     urls,
                     nrequests_per_thread * options.nthreads,
                     options.nthreads,

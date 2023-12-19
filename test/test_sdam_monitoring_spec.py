@@ -83,19 +83,20 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerOpeningEvent published with wrong address (expected"
-                " {}, got {}".format(expected["address"], actual.server_address),
+                "ServerOpeningEvent published with wrong address (expected" " {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "server_description_changed_event":
-
         if not isinstance(actual, monitoring.ServerDescriptionChangedEvent):
             return (False, "Expected ServerDescriptionChangedEvent, got %s" % (actual.__class__))
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerDescriptionChangedEvent has wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerDescriptionChangedEvent has wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
         if not compare_server_descriptions(expected["newDescription"], actual.new_description):
@@ -114,8 +115,9 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerClosedEvent published with wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerClosedEvent published with wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "topology_opening_event":
@@ -197,7 +199,7 @@ def create_test(scenario_def):
 
         try:
             for phase in scenario_def["phases"]:
-                for (source, response) in phase.get("responses", []):
+                for source, response in phase.get("responses", []):
                     source_address = clean_node(source)
                     topology.on_change(
                         ServerDescription(

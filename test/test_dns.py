@@ -132,6 +132,8 @@ def create_test(test_case):
                     wait_until(
                         lambda: num_hosts == len(client.nodes), "wait to connect to num_hosts"
                     )
+                if test_case.get("ping", True):
+                    client.admin.command("ping")
                 # XXX: we should block until SRV poller runs at least once
                 # and re-run these assertions.
         else:

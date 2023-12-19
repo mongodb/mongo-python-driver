@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pymongo"
 dynamic = ["version"]
 description = "Python driver for MongoDB <http://www.mongodb.org>"
-readme = "README.rst"
+readme = "README.md"
 license = {file="LICENSE"}
 requires-python = ">=3.7"
 authors = [
@@ -83,7 +83,10 @@ zstd = [
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "http://github.com/mongodb/mongo-python-driver"
+Homepage = "https://www.mongodb.org"
+Documentation = "https://pymongo.readthedocs.io"
+Source = "https://github.com/mongodb/pymongo"
+Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.setuptools.dynamic]
 version = {attr = "pymongo._version.__version__"}
@@ -96,9 +99,49 @@ bson=["py.typed", "*.pyi"]
 pymongo=["py.typed", "*.pyi"]
 gridfs=["py.typed", "*.pyi"]
 
+[tool.pytest.ini_options]
+minversion = "7"
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml"]
+testpaths = ["test"]
+log_cli_level = "INFO"
+norecursedirs = ["test/*"]
+faulthandler_timeout = 1500
+xfail_strict = true
+filterwarnings = [
+    "error",
+    # Internal warnings raised during tests.
+    "module:use an explicit session with no_cursor_timeout=True:UserWarning",
+    "module:serverselectiontimeoutms must be:UserWarning",
+    "module:Unsupported compressor:UserWarning",
+    "module:zlibcompressionlevel must be:UserWarning",
+    "module:Wire protocol compression with:UserWarning",
+    # TODO: Remove as part of PYTHON-3923.
+    "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
+    "module:unclosed <socket.socket:ResourceWarning",
+    "module:unclosed <ssl.SSLSocket:ResourceWarning",
+    "module:unclosed <socket object:ResourceWarning",
+    # https://github.com/eventlet/eventlet/issues/818
+    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
+    # https://github.com/dateutil/dateutil/issues/1314
+    "module:datetime.datetime.utc:DeprecationWarning:dateutil",
+]
+
+[tool.mypy]
+python_version = "3.7"
+strict = true
+show_error_codes = true
+pretty = true
+disable_error_code = ["type-arg", "no-any-return"]
+
+[[tool.mypy.overrides]]
+module = ["test.*"]
+disable_error_code = ["no-untyped-def", "no-untyped-call"]
+
 [tool.ruff]
 target-version = "py37"
 line-length = 100
+
+[tool.ruff.lint]
 select = [
   "E", "F", "W", # flake8
   "B",           # flake8-bugbear
@@ -107,7 +150,6 @@ select = [
   "C4",          # flake8-comprehensions
   "EM",          # flake8-errmsg
   "ICN",         # flake8-import-conventions
-  "ISC",         # flake8-implicit-str-concat
   "G",           # flake8-logging-format
   "PGH",         # pygrep-hooks
   "PIE",         # flake8-pie
@@ -123,7 +165,7 @@ select = [
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
 ]
-extend-ignore = [
+ignore = [
   "PLR",    # Design related pylint codes
   "E501",   # Line too long
   "PT004",  # Use underscore for non-returning fixture (use usefixture instead)
@@ -157,7 +199,7 @@ flake8-unused-arguments.ignore-variadic-names = true
 isort.required-imports = ["from __future__ import annotations"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
@@ -185,3 +227,16 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[tool.cibuildwheel]
+skip = "pp* *-musllinux*"
+build-frontend = "build"
+test-command = "python {project}/tools/fail_if_no_c.py"
+
+[tool.cibuildwheel.linux]
+archs = "x86_64 aarch64 ppc64le s390x i686"
+
+[tool.cibuildwheel.macos]
+archs = "universal2"
+test-command =  "ENSURE_UNIVERSAL2=1 python {project}/tools/fail_if_no_c.py"
+test-skip = "*-macosx_universal2:arm64"

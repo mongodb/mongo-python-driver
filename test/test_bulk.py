@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 import uuid
+from typing import Any, Optional
 
 from pymongo.mongo_client import MongoClient
 
@@ -155,7 +156,6 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, self.coll.count_documents({}))
 
     def _test_update_many(self, update):
-
         expected = {
             "nMatched": 2,
             "nModified": 2,
@@ -218,7 +218,6 @@ class TestBulk(BulkTestBase):
         self._test_update_one([{"$set": {"foo": "bar"}}])
 
     def test_replace_one(self):
-
         expected = {
             "nMatched": 1,
             "nModified": 1,
@@ -275,7 +274,6 @@ class TestBulk(BulkTestBase):
         self.assertEqual(self.coll.count_documents({}), 1)
 
     def test_upsert(self):
-
         expected = {
             "nMatched": 0,
             "nModified": 0,
@@ -948,7 +946,7 @@ class TestBulkWriteConcern(BulkTestBase):
         result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
         self.assertTrue(result.acknowledged)
 
-        requests = [InsertOne({"a": 1}), InsertOne({"a": 2})]
+        requests: list[Any] = [InsertOne({"a": 1}), InsertOne({"a": 2})]
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:

@@ -269,7 +269,6 @@ class TestSASLPlain(unittest.TestCase):
             raise SkipTest("Must set SASL_HOST, SASL_USER, and SASL_PASS to test SASL")
 
     def test_sasl_plain(self):
-
         client = MongoClient(
             SASL_HOST,
             SASL_PORT,

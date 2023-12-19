@@ -169,7 +169,7 @@ def with_metaclass(meta, *bases):
     # the actual metaclass.
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if sys.version_info[:2] >= (3, 7):
+            if sys.version_info[:2] >= (3, 7):  # noqa: UP036
                 # This version introduced PEP 560 that requires a bit
                 # of extra care (we mimic what is done by __build_class__).
                 resolved_bases = types.resolve_bases(bases)
@@ -779,6 +779,14 @@ class MatchEvaluatorUtil:
             else:
                 self.test.assertIsNone(actual.service_id)
 
+    def assertHasServerConnectionId(self, spec, actual):
+        if "hasServerConnectionId" in spec:
+            if spec.get("hasServerConnectionId"):
+                self.test.assertIsNotNone(actual.server_connection_id)
+                self.test.assertIsInstance(actual.server_connection_id, int)
+            else:
+                self.test.assertIsNone(actual.server_connection_id)
+
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         if "type" in spec:
             self.test.assertEqual(actual.server_type_name, spec["type"])
@@ -807,6 +815,7 @@ class MatchEvaluatorUtil:
                 self.match_result(command, actual.command)
             self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get("reply")
@@ -814,10 +823,12 @@ class MatchEvaluatorUtil:
                 self.match_result(reply, actual.reply)
             self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
             self.assertHasServiceId(spec, actual)
             self.assertHasDatabaseName(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":
@@ -1404,8 +1415,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned "
-                "session {}".format(spec["session"])
+                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
+                    spec["session"]
+                )
             )
 
         client = single_client("{}:{}".format(*session._pinned_address))

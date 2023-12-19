@@ -52,7 +52,6 @@ class TestAuthOIDC(unittest.TestCase):
         self.request_called = 0
 
     def create_request_cb(self, username="test_user1", sleep=0):
-
         token_file = os.path.join(self.token_dir, username).replace(os.sep, "/")
 
         def request_token(server_info, context):
@@ -292,7 +291,6 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_reauthenticate_succeeds_after_refresh_fails(self):
-
         # Create request callback that returns valid credentials.
         request_cb = self.create_request_cb()
 
@@ -319,7 +317,6 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.request_called, 3)
 
     def test_reauthenticate_fails(self):
-
         # Create request callback that returns valid credentials.
         request_cb = self.create_request_cb()
 

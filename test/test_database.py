@@ -204,7 +204,7 @@ class TestDatabase(IntegrationTest):
         db.capped.insert_one({})
         db.non_capped.insert_one({})
         self.addCleanup(client.drop_database, db.name)
-        filter: Union[None, dict]
+        filter: Union[None, Mapping[str, Any]]
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             listener.reset()
@@ -375,6 +375,7 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.validate_collection(db.test, True, True))
 
     @client_context.require_version_min(4, 3, 3)
+    @client_context.require_no_standalone
     def test_validate_collection_background(self):
         db = self.client.pymongo_test
         db.test.insert_one({"dummy": "object"})
@@ -457,7 +458,7 @@ class TestDatabase(IntegrationTest):
         )
         cursor = db.test.find()
         for x in cursor:
-            for (k, _v) in x.items():
+            for k, _v in x.items():
                 self.assertEqual(k, "_id")
                 break
 
@@ -470,7 +471,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.dereference, None)
 
         self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
-        obj = {"x": True}
+        obj: dict[str, Any] = {"x": True}
         key = db.test.insert_one(obj).inserted_id
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
         self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))

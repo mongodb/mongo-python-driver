@@ -159,7 +159,9 @@ class SON(Dict[_Key, _Value]):
         if kwargs:
             self.update(kwargs)
 
-    def get(self, key: _Key, default: Optional[Union[_Value, _T]] = None) -> Union[_Value, _T, None]:  # type: ignore[override]
+    def get(  # type: ignore[override]
+        self, key: _Key, default: Optional[Union[_Value, _T]] = None
+    ) -> Union[_Value, _T, None]:
         try:
             return self[key]
         except KeyError:

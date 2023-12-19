@@ -1085,7 +1085,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         self.listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1093,6 +1093,7 @@ class TestCommandMonitoring(IntegrationTest):
             "getnonce",
             12345,
             self.client.address,  # type: ignore[arg-type]
+            None,
             database_name="pymongo_test",
         )
         started = self.listener.started_events[0]
@@ -1161,7 +1162,7 @@ class TestEventClasses(unittest.TestCase):
         self.assertEqual(
             repr(event),
             "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
-            "command: 'ping', operation_id: 2, service_id: None>",
+            "command: 'ping', operation_id: 2, service_id: None, server_connection_id: None>",
         )
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
@@ -1171,7 +1172,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandSucceededEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "service_id: None>",
+            "service_id: None, server_connection_id: None>",
         )
         event = monitoring.CommandFailedEvent(
             delta, {"ok": 0}, "ping", request_id, connection_id, operation_id, database_name=db_name
@@ -1180,7 +1181,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<CommandFailedEvent ('localhost', 27017) db: 'admin', "
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
-            "failure: {'ok': 0}, service_id: None>",
+            "failure: {'ok': 0}, service_id: None, server_connection_id: None>",
         )
 
     def test_server_heartbeat_event_repr(self):
@@ -1191,7 +1192,9 @@ class TestEventClasses(unittest.TestCase):
         )
         delta = 0.1
         event = monitoring.ServerHeartbeatSucceededEvent(
-            delta, {"ok": 1}, connection_id  # type: ignore[arg-type]
+            delta,
+            {"ok": 1},  # type: ignore[arg-type]
+            connection_id,
         )
         self.assertEqual(
             repr(event),
@@ -1199,7 +1202,9 @@ class TestEventClasses(unittest.TestCase):
             "duration: 0.1, awaited: False, reply: {'ok': 1}>",
         )
         event = monitoring.ServerHeartbeatFailedEvent(
-            delta, "ERROR", connection_id  # type: ignore[arg-type]
+            delta,
+            "ERROR",  # type: ignore[arg-type]
+            connection_id,
         )
         self.assertEqual(
             repr(event),
@@ -1216,7 +1221,10 @@ class TestEventClasses(unittest.TestCase):
             "<ServerOpeningEvent ('localhost', 27017) topology_id: 000000000000000000000001>",
         )
         event = monitoring.ServerDescriptionChangedEvent(
-            "PREV", "NEW", server_address, topology_id  # type: ignore[arg-type]
+            "PREV",  # type: ignore[arg-type]
+            "NEW",  # type: ignore[arg-type]
+            server_address,
+            topology_id,
         )
         self.assertEqual(
             repr(event),
@@ -1233,7 +1241,9 @@ class TestEventClasses(unittest.TestCase):
         event = monitoring.TopologyOpenedEvent(topology_id)
         self.assertEqual(repr(event), "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
         event = monitoring.TopologyDescriptionChangedEvent(
-            "PREV", "NEW", topology_id  # type: ignore[arg-type]
+            "PREV",  # type: ignore[arg-type]
+            "NEW",  # type: ignore[arg-type]
+            topology_id,
         )
         self.assertEqual(
             repr(event),

@@ -42,7 +42,12 @@ class Empty:
 
 class TestComment(IntegrationTest):
     def _test_ops(
-        self, helpers, already_supported, listener, db=Empty(), coll=Empty()  # noqa: B008
+        self,
+        helpers,
+        already_supported,
+        listener,
+        db=Empty(),  # noqa: B008
+        coll=Empty(),  # noqa: B008
     ):
         for h, args in helpers:
             c = "testing comment with " + h.__name__
@@ -84,7 +89,7 @@ class TestComment(IntegrationTest):
                     self.assertTrue(tested)
                     if h not in [coll.aggregate_raw_batches]:
                         self.assertIn(
-                            "`comment` (optional):",
+                            ":param comment:",
                             h.__doc__,
                         )
                         if h not in already_supported:

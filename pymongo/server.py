@@ -109,12 +109,11 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :Parameters:
-          - `conn`: A Connection instance.
-          - `operation`: A _Query or _GetMore object.
-          - `read_preference`: The read preference to use.
-          - `listeners`: Instance of _EventListeners or None.
-          - `unpack_res`: A callable that decodes the wire protocol response.
+        :param conn: A Connection instance.
+        :param operation: A _Query or _GetMore object.
+        :param read_preference: The read preference to use.
+        :param listeners: Instance of _EventListeners or None.
+        :param unpack_res: A callable that decodes the wire protocol response.
         """
         duration = None
         assert listeners is not None
@@ -136,7 +135,12 @@ class Server:
                 cmd["$db"] = dbn
             assert listeners is not None
             listeners.publish_command_start(
-                cmd, dbn, request_id, conn.address, service_id=conn.service_id
+                cmd,
+                dbn,
+                request_id,
+                conn.address,
+                conn.server_connection_id,
+                service_id=conn.service_id,
             )
             start = datetime.now()
 
@@ -179,6 +183,7 @@ class Server:
                     operation.name,
                     request_id,
                     conn.address,
+                    conn.server_connection_id,
                     service_id=conn.service_id,
                     database_name=dbn,
                 )
@@ -205,6 +210,7 @@ class Server:
                 operation.name,
                 request_id,
                 conn.address,
+                conn.server_connection_id,
                 service_id=conn.service_id,
                 database_name=dbn,
             )
@@ -274,8 +280,7 @@ class Server:
     ) -> tuple[int, Any, int]:
         """Return request_id, data, max_doc_size.
 
-        :Parameters:
-          - `message`: (request_id, data, max_doc_size) or (request_id, data)
+        :param message: (request_id, data, max_doc_size) or (request_id, data)
         """
         if len(message) == 3:
             return message  # type: ignore[return-value]

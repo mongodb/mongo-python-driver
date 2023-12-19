@@ -1,7 +1,7 @@
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.1.0
+  rev: v4.5.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -17,22 +17,16 @@ repos:
     exclude: .patch
     exclude_types: [json]
 
-- repo: https://github.com/psf/black
-  rev: 22.3.0
-  hooks:
-  - id: black
-    files: \.py$
-    args: [--line-length=100]
-
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
-  rev: v0.1.0
+  rev: v0.1.3
   hooks:
     - id: ruff
       args: ["--fix", "--show-fixes"]
+    - id: ruff-format
 
 - repo: https://github.com/adamchainz/blacken-docs
-  rev: "1.13.0"
+  rev: "1.16.0"
   hooks:
   - id: blacken-docs
     additional_dependencies:
@@ -55,7 +49,7 @@ repos:
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit
 - repo: https://github.com/shellcheck-py/shellcheck-py
-  rev: v0.8.0.4
+  rev: v0.9.0.6
   hooks:
     - id: shellcheck
       name: shellcheck
@@ -63,14 +57,14 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/PyCQA/doc8
-  rev: 0.11.1
+  rev: v1.1.1
   hooks:
     - id: doc8
       args: ["--ignore=D001"]  # ignore line length
       stages: [manual]
 
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.14.1
+  rev: 0.27.0
   hooks:
     - id: check-jsonschema
       name: "Check GitHub Workflows"
@@ -80,15 +74,16 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/ariebovenberg/slotscheck
-  rev: v0.14.0
+  rev: v0.17.0
   hooks:
   - id: slotscheck
     files: \.py$
     exclude: "^(test|tools)/"
     stages: [manual]
+    args: ["--no-strict-imports"]
 
 - repo: https://github.com/codespell-project/codespell
-  rev: "v2.2.4"
+  rev: "v2.2.6"
   hooks:
   - id: codespell
     # Examples of errors or updates to justify the exceptions:

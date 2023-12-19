@@ -246,33 +246,32 @@ class JSONOptions(_BASE_CLASS):
     def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
-        :Parameters:
-          - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
+        :param strict_number_long: If ``True``, :class:`~bson.int64.Int64` objects
             are encoded to MongoDB Extended JSON's *Strict mode* type
             `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
             will be encoded as an `int`. Defaults to ``False``.
-          - `datetime_representation`: The representation to use when encoding
+        :param datetime_representation: The representation to use when encoding
             instances of :class:`datetime.datetime`. Defaults to
             :const:`~DatetimeRepresentation.LEGACY`.
-          - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
+        :param strict_uuid: If ``True``, :class:`uuid.UUID` object are encoded to
             MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
             will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
-          - `json_mode`: The :class:`JSONMode` to use when encoding BSON types to
+        :param json_mode: The :class:`JSONMode` to use when encoding BSON types to
             Extended JSON. Defaults to :const:`~JSONMode.LEGACY`.
-          - `document_class`: BSON documents returned by :func:`loads` will be
+        :param document_class: BSON documents returned by :func:`loads` will be
             decoded to an instance of this class. Must be a subclass of
             :class:`collections.MutableMapping`. Defaults to :class:`dict`.
-          - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
+        :param uuid_representation: The :class:`~bson.binary.UuidRepresentation`
             to use when encoding and decoding instances of :class:`uuid.UUID`.
             Defaults to :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
-          - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
+        :param tz_aware: If ``True``, MongoDB Extended JSON's *Strict mode* type
             `Date` will be decoded to timezone aware instances of
             :class:`datetime.datetime`. Otherwise they will be naive. Defaults
             to ``False``.
-          - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
+        :param tzinfo: A :class:`datetime.tzinfo` subclass that specifies the
             timezone from which :class:`~datetime.datetime` objects should be
             decoded. Defaults to :const:`~bson.tz_util.utc`.
-          - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        :param datetime_conversion: Specifies how UTC datetimes should be decoded
             within BSON. Valid options include 'datetime_ms' to return as a
             DatetimeMS, 'datetime' to return as a datetime.datetime and
             raising a ValueError for out-of-range values, 'datetime_auto' to
@@ -280,8 +279,8 @@ class JSONOptions(_BASE_CLASS):
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
             :ref:`handling-out-of-range-datetimes` for details.
-          - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
-          - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
+        :param args: arguments to :class:`~bson.codec_options.CodecOptions`
+        :param kwargs: arguments to :class:`~bson.codec_options.CodecOptions`
 
         .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
 
@@ -456,8 +455,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
 
-    :Parameters:
-      - `json_options`: A :class:`JSONOptions` instance used to modify the
+    :param json_options: A :class:`JSONOptions` instance used to modify the
         encoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
 
@@ -480,8 +478,7 @@ def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     Raises ``TypeError``, ``ValueError``, ``KeyError``, or
     :exc:`~bson.errors.InvalidId` on invalid MongoDB Extended JSON.
 
-    :Parameters:
-      - `json_options`: A :class:`JSONOptions` instance used to modify the
+    :param json_options: A :class:`JSONOptions` instance used to modify the
         decoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
 

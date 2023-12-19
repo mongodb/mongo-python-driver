@@ -64,9 +64,8 @@ def _inflate_bson(
 ) -> MutableMapping[str, Any]:
     """Inflates the top level fields of a BSON document.
 
-    :Parameters:
-      - `bson_bytes`: the BSON bytes that compose this document
-      - `codec_options`: An instance of
+    :param bson_bytes: the BSON bytes that compose this document
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions` whose ``document_class``
         must be :class:`RawBSONDocument`.
     """
@@ -106,9 +105,8 @@ class RawBSONDocument(Mapping[str, Any]):
             >>> raw_doc['_id']
             'my_doc'
 
-        :Parameters:
-          - `bson_bytes`: the BSON bytes that compose this document
-          - `codec_options` (optional): An instance of
+        :param bson_bytes: the BSON bytes that compose this document
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` whose ``document_class``
             must be :class:`RawBSONDocument`. The default is
             :attr:`DEFAULT_RAW_BSON_OPTIONS`.

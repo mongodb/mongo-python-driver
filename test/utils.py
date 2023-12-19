@@ -938,7 +938,7 @@ def gevent_monkey_patched():
     try:
         import socket
 
-        import gevent.socket
+        import gevent.socket  # type:ignore[import]
 
         return socket.socket is gevent.socket.socket
     except ImportError:
@@ -1153,3 +1153,9 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                 raise AssertionError(f"Unsupported cursorType: {cursor_type}")
         else:
             arguments[c2s] = arguments.pop(arg_name)
+
+
+def set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    client.admin.command(cmd)

@@ -23,7 +23,8 @@ except ImportError:
     HAVE_STRINGPREP = False
 
     def saslprep(
-        data: Any, prohibit_unassigned_code_points: Optional[bool] = True  # noqa: ARG001
+        data: Any,
+        prohibit_unassigned_code_points: Optional[bool] = True,  # noqa: ARG001
     ) -> Any:
         """SASLprep dummy"""
         if isinstance(data, str):
@@ -56,18 +57,16 @@ else:
     def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
         """An implementation of RFC4013 SASLprep.
 
-        :Parameters:
-          - `data`: The string to SASLprep. Unicode strings
+        :param data: The string to SASLprep. Unicode strings
             (:class:`str`) are supported. Byte strings
             (:class:`bytes`) are ignored.
-          - `prohibit_unassigned_code_points`: True / False. RFC 3454
+        :param prohibit_unassigned_code_points: True / False. RFC 3454
             and RFCs for various SASL mechanisms distinguish between
             `queries` (unassigned code points allowed) and
             `stored strings` (unassigned code points prohibited). Defaults
             to ``True`` (unassigned code points are prohibited).
 
-        :Returns:
-        The SASLprep'ed version of `data`.
+        :return: The SASLprep'ed version of `data`.
         """
         prohibited: Any
 

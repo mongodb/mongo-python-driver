@@ -215,13 +215,12 @@ class Topology:
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
-        :Parameters:
-          - `selector`: function that takes a list of Servers and returns
+        :param selector: function that takes a list of Servers and returns
             a subset of them.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value common.SERVER_SELECTION_TIMEOUT
             is used.
-          - `address`: optional server address to select.
+        :param address: optional server address to select.
 
         Calls self.open() if needed.
 
@@ -282,8 +281,10 @@ class Topology:
         selector: Callable[[Selection], Selection],
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         servers = self.select_servers(selector, server_selection_timeout, address)
+        servers = _filter_servers(servers, deprioritized_servers)
         if len(servers) == 1:
             return servers[0]
         server1, server2 = random.sample(servers, 2)
@@ -297,9 +298,12 @@ class Topology:
         selector: Callable[[Selection], Selection],
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server = self._select_server(selector, server_selection_timeout, address)
+        server = self._select_server(
+            selector, server_selection_timeout, address, deprioritized_servers
+        )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
         return server
@@ -313,9 +317,8 @@ class Topology:
         servers. Time out after "server_selection_timeout" if the server
         cannot be reached.
 
-        :Parameters:
-          - `address`: A (host, port) pair.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param address: A (host, port) pair.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value
             common.SERVER_SELECTION_TIMEOUT is used.
 
@@ -931,3 +934,16 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
     if current_tv["processId"] != new_tv["processId"]:
         return False
     return current_tv["counter"] > new_tv["counter"]
+
+
+def _filter_servers(
+    candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None
+) -> list[Server]:
+    """Filter out deprioritized servers from a list of server candidates."""
+    if not deprioritized_servers:
+        return candidates
+
+    filtered = [server for server in candidates if server not in deprioritized_servers]
+
+    # If not possible to pick a prioritized server, return the original list
+    return filtered or candidates

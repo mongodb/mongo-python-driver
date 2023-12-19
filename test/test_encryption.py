@@ -503,7 +503,10 @@ class TestExplicitSimple(EncryptionIntegrationTest):
     def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, "codec_options must be"):
             ClientEncryption(
-                KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None  # type: ignore[arg-type]
+                KMS_PROVIDERS,
+                "keyvault.datakeys",
+                client_context.client,
+                None,  # type: ignore[arg-type]
             )
 
         opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
@@ -1072,7 +1075,9 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value["value"], algo, **kwargs  # type: ignore[arg-type]
+                        value["value"],
+                        algo,
+                        **kwargs,  # type: ignore[arg-type]
                     )
                     if not value["allowed"]:
                         self.fail(f"encrypt should have failed: {key!r}: {value!r}")
@@ -2316,7 +2321,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
-
     MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
             "region": "us-east-1",

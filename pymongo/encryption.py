@@ -34,11 +34,11 @@ from typing import (
 )
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter
-    from pymongocrypt.errors import MongoCryptError
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter
-    from pymongocrypt.mongocrypt import MongoCryptOptions
-    from pymongocrypt.state_machine import MongoCryptCallback
+    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
+    from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
+    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
@@ -134,11 +134,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def kms_request(self, kms_context: MongoCryptKmsContext) -> None:
         """Complete a KMS request.
 
-        :Parameters:
-          - `kms_context`: A :class:`MongoCryptKmsContext`.
+        :param kms_context: A :class:`MongoCryptKmsContext`.
 
-        :Returns:
-          None
+        :return: None
         """
         endpoint = kms_context.endpoint
         message = kms_context.message
@@ -193,12 +191,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         The returned collection info is passed to libmongocrypt which reads
         the JSON schema.
 
-        :Parameters:
-          - `database`: The database on which to run listCollections.
-          - `filter`: The filter to pass to listCollections.
+        :param database: The database on which to run listCollections.
+        :param filter: The filter to pass to listCollections.
 
-        :Returns:
-          The first document from the listCollections command response as BSON.
+        :return: The first document from the listCollections command response as BSON.
         """
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             for doc in cursor:
@@ -219,12 +215,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def mark_command(self, database: str, cmd: bytes) -> bytes:
         """Mark a command for encryption.
 
-        :Parameters:
-          - `database`: The database on which to run this command.
-          - `cmd`: The BSON command to run.
+        :param database: The database on which to run this command.
+        :param cmd: The BSON command to run.
 
-        :Returns:
-          The marked command response from mongocryptd.
+        :return: The marked command response from mongocryptd.
         """
         if not self._spawned and not self.opts._mongocryptd_bypass_spawn:
             self.spawn()
@@ -248,11 +242,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def fetch_keys(self, filter: bytes) -> Iterator[bytes]:
         """Yields one or more keys from the key vault.
 
-        :Parameters:
-          - `filter`: The filter to pass to find.
+        :param filter: The filter to pass to find.
 
-        :Returns:
-          A generator which yields the requested keys from the key vault.
+        :return: A generator which yields the requested keys from the key vault.
         """
         assert self.key_vault_coll is not None
         with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
@@ -262,11 +254,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def insert_data_key(self, data_key: bytes) -> Binary:
         """Insert a data key into the key vault.
 
-        :Parameters:
-          - `data_key`: The data key document to insert.
+        :param data_key: The data key document to insert.
 
-        :Returns:
-          The _id of the inserted data key document.
+        :return: The _id of the inserted data key document.
         """
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
@@ -282,11 +272,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
 
         A document can be any mapping type (like :class:`dict`).
 
-        :Parameters:
-          - `doc`: mapping type representing a document
+        :param doc: mapping type representing a document
 
-        :Returns:
-          The encoded BSON bytes.
+        :return: The encoded BSON bytes.
         """
         return encode(doc)
 
@@ -335,9 +323,8 @@ class _Encrypter:
     def __init__(self, client: MongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
         """Create a _Encrypter for a client.
 
-        :Parameters:
-          - `client`: The encrypted MongoClient.
-          - `opts`: The encrypted client's :class:`AutoEncryptionOpts`.
+        :param client: The encrypted MongoClient.
+        :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
         if opts._schema_map is None:
             schema_map = None
@@ -381,9 +368,9 @@ class _Encrypter:
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 
-        io_callbacks = _EncryptionIO(
+        io_callbacks = _EncryptionIO(  # type:ignore[misc]
             metadata_client, key_vault_coll, mongocryptd_client, opts
-        )  # type:ignore[misc]
+        )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
             MongoCryptOptions(
@@ -403,13 +390,11 @@ class _Encrypter:
     ) -> MutableMapping[str, Any]:
         """Encrypt a MongoDB command.
 
-        :Parameters:
-          - `database`: The database for this command.
-          - `cmd`: A command document.
-          - `codec_options`: The CodecOptions to use while encoding `cmd`.
+        :param database: The database for this command.
+        :param cmd: A command document.
+        :param codec_options: The CodecOptions to use while encoding `cmd`.
 
-        :Returns:
-          The encrypted command to execute.
+        :return: The encrypted command to execute.
         """
         self._check_closed()
         encoded_cmd = _dict_to_bson(cmd, False, codec_options)
@@ -421,11 +406,9 @@ class _Encrypter:
     def decrypt(self, response: bytes) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
-        :Parameters:
-          - `response`: A MongoDB command response as BSON.
+        :param response: A MongoDB command response as BSON.
 
-        :Returns:
-          The decrypted command response.
+        :return: The decrypted command response.
         """
         self._check_closed()
         with _wrap_encryption_errors():
@@ -512,8 +495,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         See :ref:`explicit-client-side-encryption` for an example.
 
-        :Parameters:
-          - `kms_providers`: Map of KMS provider options. The `kms_providers`
+        :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
@@ -538,20 +520,20 @@ class ClientEncryption(Generic[_DocumentType]):
                 data keys. This key should be generated and stored as securely
                 as possible.
 
-          - `key_vault_namespace`: The namespace for the key vault collection.
+        :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
             collection. Data keys are protected with encryption by a KMS
             provider.
-          - `key_vault_client`: A MongoClient connected to a MongoDB cluster
+        :param key_vault_client: A MongoClient connected to a MongoDB cluster
             containing the `key_vault_namespace` collection.
-          - `codec_options`: An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
             value for encryption and decoding the decrypted BSON value. This
             should be the same CodecOptions instance configured on the
             MongoClient, Database, or Collection used to access application
             data.
-          - `kms_tls_options` (optional): A map of KMS provider names to TLS
+        :param kms_tls_options: A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
             Accepts the same TLS options as
             :class:`pymongo.mongo_client.MongoClient`. For example, to
@@ -620,10 +602,11 @@ class ClientEncryption(Generic[_DocumentType]):
         creation. :class:`~pymongo.errors.EncryptionError` will be
         raised if the collection already exists.
 
-        :Parameters:
-          - `name`: the name of the collection to create
-          - `encrypted_fields` (dict): Document that describes the encrypted fields for
-            Queryable Encryption. For example::
+        :param name: the name of the collection to create
+        :param encrypted_fields: Document that describes the encrypted fields for
+            Queryable Encryption. The "keyId" may be set to ``None`` to auto-generate the data keys.  For example:
+
+            .. code-block: python
 
               {
                 "escCollection": "enxcol_.encryptedCollection.esc",
@@ -643,19 +626,17 @@ class ClientEncryption(Generic[_DocumentType]):
                   ]
               }
 
-            The "keyId" may be set to ``None`` to auto-generate the data keys.
-          - `kms_provider` (optional): the KMS provider to be used
-          - `master_key` (optional): Identifies a KMS-specific key used to encrypt the
+          :param kms_provider: the KMS provider to be used
+          :param master_key: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
-          - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
+          :param kwargs: additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method.
         See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
 
-        :Raises:
-          - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
+        :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
 
         .. versionadded:: 4.4
 
@@ -692,10 +673,9 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
-        :Parameters:
-          - `kms_provider`: The KMS provider to use. Supported values are
+        :param kms_provider: The KMS provider to use. Supported values are
             "aws", "azure", "gcp", "kmip", and "local".
-          - `master_key`: Identifies a KMS-specific key used to encrypt the
+        :param master_key: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
 
@@ -739,7 +719,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `endpoint` (string): Optional. Host with optional
                  port, e.g. "example.vault.azure.net:".
 
-          - `key_alt_names` (optional): An optional list of string alternate
+        :param key_alt_names: An optional list of string alternate
             names used to reference a key. If a key is created with alternate
             names, then encryption may refer to the key by the unique alternate
             name instead of by ``key_id``. The following example shows creating
@@ -749,11 +729,10 @@ class ClientEncryption(Generic[_DocumentType]):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", key_alt_name="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
-          - `key_material` (optional): Sets the custom key material to be used
+        :param key_material: Sets the custom key material to be used
             by the data key for encryption and decryption.
 
-        :Returns:
-          The ``_id`` of the created data key document as a
+        :return: The ``_id`` of the created data key document as a
           :class:`~bson.binary.Binary` with subtype
           :data:`~bson.binary.UUID_SUBTYPE`.
 
@@ -827,23 +806,21 @@ class ClientEncryption(Generic[_DocumentType]):
         Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
         provided.
 
-        :Parameters:
-          - `value`: The BSON value to encrypt.
-          - `algorithm` (string): The encryption algorithm to use. See
+        :param value: The BSON value to encrypt.
+        :param algorithm` (string): The encryption algorithm to use. See
             :class:`Algorithm` for some valid options.
-          - `key_id`: Identifies a data key by ``_id`` which must be a
+        :param key_id: Identifies a data key by ``_id`` which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-          - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `query_type` (str): The query type to execute. See :class:`QueryType` for valid options.
-          - `contention_factor` (int): The contention factor to use
+        :param key_alt_name: Identifies a key vault document by 'keyAltName'.
+        :param query_type` (str): The query type to execute. See :class:`QueryType` for valid options.
+        :param contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: Experimental only, not intended for public use.
+        :param range_opts: Experimental only, not intended for public use.
 
-        :Returns:
-          The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+        :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.2
            Added the `query_type` and `contention_factor` parameters.
@@ -877,24 +854,22 @@ class ClientEncryption(Generic[_DocumentType]):
         Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
         provided.
 
-        :Parameters:
-          - `expression`: The BSON aggregate or match expression to encrypt.
-          - `algorithm` (string): The encryption algorithm to use. See
+        :param expression: The BSON aggregate or match expression to encrypt.
+        :param algorithm` (string): The encryption algorithm to use. See
             :class:`Algorithm` for some valid options.
-          - `key_id`: Identifies a data key by ``_id`` which must be a
+        :param key_id: Identifies a data key by ``_id`` which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-          - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `query_type` (str): The query type to execute. See
+        :param key_alt_name: Identifies a key vault document by 'keyAltName'.
+        :param query_type` (str): The query type to execute. See
             :class:`QueryType` for valid options.
-          - `contention_factor` (int): The contention factor to use
+        :param contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: Experimental only, not intended for public use.
+        :param range_opts: Experimental only, not intended for public use.
 
-        :Returns:
-          The encrypted expression, a :class:`~bson.RawBSONDocument`.
+        :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
         .. versionadded:: 4.4
         """
@@ -915,12 +890,10 @@ class ClientEncryption(Generic[_DocumentType]):
     def decrypt(self, value: Binary) -> Any:
         """Decrypt an encrypted value.
 
-        :Parameters:
-          - `value` (Binary): The encrypted value, a
+        :param value` (Binary): The encrypted value, a
             :class:`~bson.binary.Binary` with subtype 6.
 
-        :Returns:
-          The decrypted BSON value.
+        :return: The decrypted BSON value.
         """
         self._check_closed()
         if not (isinstance(value, Binary) and value.subtype == 6):
@@ -934,13 +907,11 @@ class ClientEncryption(Generic[_DocumentType]):
     def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
         """Get a data key by id.
 
-        :Parameters:
-          - `id` (Binary): The UUID of a key a which must be a
+        :param id` (Binary): The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
 
-        :Returns:
-          The key document.
+        :return: The key document.
 
         .. versionadded:: 4.2
         """
@@ -951,8 +922,7 @@ class ClientEncryption(Generic[_DocumentType]):
     def get_keys(self) -> Cursor[RawBSONDocument]:
         """Get all of the data keys.
 
-        :Returns:
-          An instance of :class:`~pymongo.cursor.Cursor` over the data key
+        :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key
           documents.
 
         .. versionadded:: 4.2
@@ -964,13 +934,11 @@ class ClientEncryption(Generic[_DocumentType]):
     def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
 
-        :Parameters:
-          - `id` (Binary): The UUID of a key a which must be a
+        :param id` (Binary): The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
 
-        :Returns:
-          The delete result.
+        :return: The delete result.
 
         .. versionadded:: 4.2
         """
@@ -981,14 +949,12 @@ class ClientEncryption(Generic[_DocumentType]):
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
-        :Parameters:
-          - ``id``: The UUID of a key a which must be a
+        :param `id`: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-          - ``key_alt_name``: The key alternate name to add.
+        :param `key_alt_name`: The key alternate name to add.
 
-        :Returns:
-          The previous version of the key document.
+        :return: The previous version of the key document.
 
         .. versionadded:: 4.2
         """
@@ -1000,11 +966,9 @@ class ClientEncryption(Generic[_DocumentType]):
     def get_key_by_alt_name(self, key_alt_name: str) -> Optional[RawBSONDocument]:
         """Get a key document in the key vault collection that has the given ``key_alt_name``.
 
-        :Parameters:
-          - `key_alt_name`: (str): The key alternate name of the key to get.
+        :param key_alt_name: (str): The key alternate name of the key to get.
 
-        :Returns:
-          The key document.
+        :return: The key document.
 
         .. versionadded:: 4.2
         """
@@ -1017,14 +981,12 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
 
-        :Parameters:
-          - ``id``: The UUID of a key a which must be a
+        :param `id`: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-          - ``key_alt_name``: The key alternate name to remove.
+        :param `key_alt_name`: The key alternate name to remove.
 
-        :Returns:
-          Returns the previous version of the key document.
+        :return: Returns the previous version of the key document.
 
         .. versionadded:: 4.2
         """
@@ -1058,15 +1020,13 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> RewrapManyDataKeyResult:
         """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 
-        :Parameters:
-          - `filter`: A document used to filter the data keys.
-          - `provider`: The new KMS provider to use to encrypt the data keys,
+        :param filter: A document used to filter the data keys.
+        :param provider: The new KMS provider to use to encrypt the data keys,
             or ``None`` to use the current KMS provider(s).
-          - ``master_key``: The master key fields corresponding to the new KMS
+        :param `master_key`: The master key fields corresponding to the new KMS
             provider when ``provider`` is not ``None``.
 
-        :Returns:
-          A :class:`RewrapManyDataKeyResult`.
+        :return: A :class:`RewrapManyDataKeyResult`.
 
         This method allows you to re-encrypt all of your data-keys with a new CMK, or master key.
         Note that this does *not* require re-encrypting any of the data in your encrypted collections,

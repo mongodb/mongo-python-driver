@@ -20,6 +20,9 @@ import pprint
 import sys
 import threading
 
+from bson import SON
+from pymongo.errors import AutoReconnect
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -31,9 +34,12 @@ from test import (
 )
 from test.utils import (
     CMAPListener,
+    EventListener,
     OvertCommandListener,
     SpecTestCreator,
+    rs_client,
     rs_or_single_client,
+    set_fail_point,
 )
 from test.utils_spec_runner import SpecRunner
 
@@ -219,6 +225,49 @@ class TestPoolPausedError(IntegrationTest):
         self.assertEqual(2, len(succeeded), msg)
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
+
+
+class TestRetryableReads(IntegrationTest):
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_in_sharded_cluster_multiple_available(self):
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "closeConnection": True,
+                "appName": "retryableReadTest",
+            },
+        }
+
+        mongos_clients = []
+
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos)
+            set_fail_point(client, fail_command)
+            self.addCleanup(client.close)
+            mongos_clients.append(client)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            client_context.mongos_seeds(),
+            appName="retryableReadTest",
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        with self.fail_point(fail_command):
+            with self.assertRaises(AutoReconnect):
+                client.t.t.find_one({})
+
+        # Disable failpoints on each mongos
+        for client in mongos_clients:
+            fail_command["mode"] = "off"
+            set_fail_point(client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 2)
+        self.assertEqual(len(listener.succeeded_events), 0)
 
 
 if __name__ == "__main__":

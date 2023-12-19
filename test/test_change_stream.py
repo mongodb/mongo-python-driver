@@ -329,8 +329,12 @@ class APITestsMixin:
         with self.change_stream(max_await_time_ms=250) as change_stream:
 
             def iterate_cursor():
-                for _ in change_stream:
-                    pass
+                try:
+                    for _ in change_stream:
+                        pass
+                except OperationFailure as e:
+                    if e.code != 237:  # CursorKilled error code
+                        raise
 
             t = threading.Thread(target=iterate_cursor)
             t.start()

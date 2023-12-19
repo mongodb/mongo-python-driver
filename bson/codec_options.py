@@ -120,14 +120,13 @@ class TypeRegistry:
 
     See :ref:`custom-type-type-registry` documentation for an example.
 
-    :Parameters:
-      - `type_codecs` (optional): iterable of type codec instances. If
+    :param type_codecs: iterable of type codec instances. If
         ``type_codecs`` contains multiple codecs that transform a single
         python or BSON type, the transformation specified by the type codec
         occurring last prevails. A TypeError will be raised if one or more
         type codecs modify the encoding behavior of a built-in :mod:`bson`
         type.
-      - `fallback_encoder` (optional): callable that accepts a single,
+    :param fallback_encoder: callable that accepts a single,
         unencodable python value and transforms it into a type that
         :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
         documentation for an example.
@@ -324,30 +323,29 @@ else:
             See :doc:`/examples/uuid` for examples using the `uuid_representation`
             option.
 
-            :Parameters:
-              - `document_class`: BSON documents returned in queries will be decoded
+            :param document_class: BSON documents returned in queries will be decoded
                 to an instance of this class. Must be a subclass of
                 :class:`~collections.abc.MutableMapping`. Defaults to :class:`dict`.
-              - `tz_aware`: If ``True``, BSON datetimes will be decoded to timezone
+            :param tz_aware: If ``True``, BSON datetimes will be decoded to timezone
                 aware instances of :class:`~datetime.datetime`. Otherwise they will be
                 naive. Defaults to ``False``.
-              - `uuid_representation`: The BSON representation to use when encoding
+            :param uuid_representation: The BSON representation to use when encoding
                 and decoding instances of :class:`~uuid.UUID`. Defaults to
                 :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
                 applications should consider setting this to
                 :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
                 compatibility. See :ref:`handling-uuid-data-example` for details.
-              - `unicode_decode_error_handler`: The error handler to apply when
+            :param unicode_decode_error_handler: The error handler to apply when
                 a Unicode-related error occurs during BSON decoding that would
                 otherwise raise :exc:`UnicodeDecodeError`. Valid options include
                 'strict', 'replace', 'backslashreplace', 'surrogateescape', and
                 'ignore'. Defaults to 'strict'.
-              - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
+            :param tzinfo: A :class:`~datetime.tzinfo` subclass that specifies the
                 timezone to/from which :class:`~datetime.datetime` objects should be
                 encoded/decoded.
-              - `type_registry`: Instance of :class:`TypeRegistry` used to customize
+            :param type_registry: Instance of :class:`TypeRegistry` used to customize
                 encoding and decoding behavior.
-              - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+            :param datetime_conversion: Specifies how UTC datetimes should be decoded
                 within BSON. Valid options include 'datetime_ms' to return as a
                 DatetimeMS, 'datetime' to return as a datetime.datetime and
                 raising a ValueError for out-of-range values, 'datetime_auto' to

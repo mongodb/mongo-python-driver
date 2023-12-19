@@ -85,7 +85,6 @@ class TestSON(unittest.TestCase):
         self.assertEqual(SON, d4["blah"]["foo"].__class__)
 
     def test_pickle(self):
-
         simple_son = SON([])
         complex_son = SON([("son", simple_son), ("list", [simple_son, simple_son])])
 

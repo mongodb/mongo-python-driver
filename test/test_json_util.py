@@ -252,8 +252,8 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_datetime_ms(self):
         # Test ISO8601 in-range
-        dat_min = {"x": DatetimeMS(0)}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms())}
+        dat_min: dict[str, Any] = {"x": DatetimeMS(0)}
+        dat_max: dict[str, Any] = {"x": DatetimeMS(_max_datetime_ms())}
         opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
 
         self.assertEqual(
@@ -450,7 +450,7 @@ class TestJsonUtil(unittest.TestCase):
         )
 
         # Cannot directly encode native UUIDs with UNSPECIFIED.
-        doc = {"uuid": _uuid}
+        doc: dict[str, Any] = {"uuid": _uuid}
         with self.assertRaises(ValueError):
             json_util.dumps(doc, json_options=options)
 

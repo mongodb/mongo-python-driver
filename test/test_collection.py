@@ -20,7 +20,7 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
-from typing import Iterable, no_type_check
+from typing import Any, Iterable, no_type_check
 
 from pymongo.database import Database
 
@@ -691,7 +691,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.test.drop()
 
-        document = {"_id": 1000}
+        document: dict[str, Any] = {"_id": 1000}
         result = db.test.insert_one(document)
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertTrue(isinstance(result.inserted_id, int))

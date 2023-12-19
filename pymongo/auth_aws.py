@@ -16,8 +16,12 @@
 from __future__ import annotations
 
 try:
-    import pymongo_auth_aws
-    from pymongo_auth_aws import AwsCredential, AwsSaslContext, PyMongoAuthAwsError
+    import pymongo_auth_aws  # type:ignore[import]
+    from pymongo_auth_aws import (
+        AwsCredential,
+        AwsSaslContext,
+        PyMongoAuthAwsError,
+    )
 
     _HAVE_MONGODB_AWS = True
 except ImportError:
@@ -29,7 +33,10 @@ except ImportError:
     _HAVE_MONGODB_AWS = False
 
 try:
-    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+    from pymongo_auth_aws.auth import (  # type:ignore[import]
+        set_cached_credentials,
+        set_use_cached_credentials,
+    )
 
     # Enable credential caching.
     set_use_cached_credentials(True)
