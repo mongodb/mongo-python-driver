@@ -847,13 +847,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
             authMechanism="MONGODB-OIDC",
             authMechanismProperties=props,
         )
-        client.test.test.find_one()
-        client.close()
-
-        props["TOKEN_CLIENT_ID"] = os.environ["AZUREOIDC_TOKENCLIENT"]
-        client = MongoClient(
-            self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
-        )
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
