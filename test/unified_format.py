@@ -156,6 +156,8 @@ PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 if PROVIDER_NAME == "aws":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
 elif PROVIDER_NAME == "azure":
+    PLACEHOLDER_MAP["/uriOptions/username"] = ""
+    PLACEHOLDER_MAP["/uriOptions/password"] = ""
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
         "PROVIDER_NAME": "azure",
         "TOKEN_AUDIENCE": f'api://{os.environ["AZUREOIDC_CLIENTID"]}',

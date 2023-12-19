@@ -48,6 +48,7 @@ ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 
+
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
 
