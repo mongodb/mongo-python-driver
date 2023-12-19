@@ -148,14 +148,12 @@ class _OIDCAWSCallback(OIDCMachineCallback):
 
 
 class _OIDCAzureCallback(OIDCMachineCallback):
-    def __init__(self, token_audience: str, token_client_id: Optional[str]) -> None:
+    def __init__(self, token_audience: str, username: Optional[str]) -> None:
         self.token_audience = token_audience
-        self.token_client_id = token_client_id
+        self.username = username
 
     def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
-        resp = _get_azure_response(
-            self.token_audience, self.token_client_id, context.timeout_seconds
-        )
+        resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
         return OIDCMachineCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )

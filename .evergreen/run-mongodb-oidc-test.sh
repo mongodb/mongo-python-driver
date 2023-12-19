@@ -49,8 +49,8 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
 
 elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
-    if [ -z "${AZUREOIDC_CLIENTID}" ]; then
-        echo "Must specify an AZUREOIDC_CLIENTID"
+    if [ -z "${AZUREOIDC_AUDIENCE}" ]; then
+        echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
     fi
     export OIDC_ADMIN_USER=bob
@@ -58,7 +58,7 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
     MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:azure"
-    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:api%3A%2F%2F${AZUREOIDC_CLIENTID}"
+    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${AZUREOIDC_AUDIENCE}"
     export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
 else
     echo "Unrecognized OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME"

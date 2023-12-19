@@ -173,7 +173,6 @@ def _build_credentials_tuple(
         custom_token_callback = properties.get("custom_token_callback")
         provider_name = properties.get("PROVIDER_NAME")
         token_audience = properties.get("TOKEN_AUDIENCE", "")
-        token_client_id = properties.get("TOKEN_CLIENT_ID", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -194,7 +193,7 @@ def _build_credentials_tuple(
             if provider_name == "aws":
                 custom_token_callback = _OIDCAWSCallback()
             elif provider_name == "azure":
-                custom_token_callback = _OIDCAzureCallback(token_audience, token_client_id)
+                custom_token_callback = _OIDCAzureCallback(token_audience, user)
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"

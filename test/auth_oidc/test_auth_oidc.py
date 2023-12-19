@@ -72,8 +72,7 @@ class OIDCTestBase(unittest.TestCase):
         elif PROVIDER_NAME == "azure":
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-            token_client = os.environ["AZUREOIDC_TOKENCLIENT"]
-            return _get_azure_response(token_aud, token_client)["access_token"]
+            return _get_azure_response(token_aud, username)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):
@@ -813,17 +812,32 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client1.close()
         client2.close()
 
-    def test_azure_multiple_client_ids(self):
+    def test_azure_no_username(self):
+        if PROVIDER_NAME != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+        opts = parse_uri(self.uri_single)["options"]
+        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+
+        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
+        client = MongoClient(
+            self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
+        )
+        client.test.test.find_one()
+        client.close()
+
+    def test_azure_bad_username(self):
         if PROVIDER_NAME != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
 
         opts = parse_uri(self.uri_single)["options"]
         token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-        token_client = os.environ["AZUREOIDC_TOKENCLIENT2"]
 
-        props = dict(TOKEN_AUDIENCE=token_aud, TOKEN_CLIENT_ID=token_client, PROVIDER_NAME="azure")
+        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
         client = MongoClient(
-            self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
+            self.uri_admin,
+            username="bad",
+            authMechanism="MONGODB-OIDC",
+            authMechanismProperties=props,
         )
         client.test.test.find_one()
         client.close()
@@ -832,7 +846,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = MongoClient(
             self.uri_admin, authMechanism="MONGODB-OIDC", authMechanismProperties=props
         )
-        client.test.test.find_one()
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
         client.close()
 
 

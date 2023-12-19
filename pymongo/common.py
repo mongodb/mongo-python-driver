@@ -426,7 +426,6 @@ _MECHANISM_PROPS = frozenset(
         "AWS_SESSION_TOKEN",
         "PROVIDER_NAME",
         "TOKEN_AUDIENCE",
-        "TOKEN_CLIENT_ID",
     ]
 )
 
