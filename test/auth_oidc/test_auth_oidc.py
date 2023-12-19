@@ -588,8 +588,15 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def setUp(self):
         self.request_called = 0
+        if PROVIDER_NAME == "aws":
+            self.default_username = "test_user_1"
+        else:
+            self.default_username = None
 
-    def create_request_cb(self, username="test_user1", sleep=0):
+    def create_request_cb(self, username=None, sleep=0):
+        if username is None:
+            username = self.default_username
+
         def request_token(_context):
             token = self.get_token(username)
             time.sleep(sleep)
