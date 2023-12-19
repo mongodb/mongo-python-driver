@@ -156,7 +156,6 @@ PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 if PROVIDER_NAME == "aws":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
 elif PROVIDER_NAME == "azure":
-    PLACEHOLDER_MAP["/uriOptions/username"] = os.environ["AZUREOIDC_USERNAME"]
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
         "PROVIDER_NAME": "azure",
         "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
@@ -480,7 +479,6 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
-            print("HIHIHI", kwargs)
             client = rs_or_single_client(**kwargs)
             self[spec["id"]] = client
             self.test.addCleanup(client.close)

@@ -53,7 +53,7 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
         echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
     fi
-    export OIDC_ADMIN_USER=bob
+    export OIDC_ADMIN_USER=$AZUREOIDC_USERNAME
     export OIDC_ADMIN_PWD=pwd123
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
