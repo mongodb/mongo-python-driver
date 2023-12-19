@@ -35,7 +35,6 @@ from typing import (
     NoReturn,
     Optional,
     Union,
-    cast,
 )
 
 import bson
@@ -394,7 +393,7 @@ class _Query:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(dict[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd)
@@ -544,7 +543,7 @@ class _GetMore:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(dict[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd=None)
@@ -1124,7 +1123,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
     def __batch_command(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
-    ) -> tuple[MutableMapping[str, Any], list[Mapping[str, Any]]]:
+    ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self

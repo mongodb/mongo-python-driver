@@ -803,16 +803,22 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         using:
 
         >>> db.command("buildinfo")
+        OR
+        >>> db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
         >>> db.command("count", collection_name)
+        OR
+        >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
 
         >>> db.command("filemd5", object_id, root=file_root)
+        OR
+        >>> db.command({"filemd5": object_id, "root": file_root})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).

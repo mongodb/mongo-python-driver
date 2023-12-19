@@ -387,7 +387,7 @@ class _Encrypter:
 
     def encrypt(
         self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
-    ) -> MutableMapping[str, Any]:
+    ) -> dict[str, Any]:
         """Encrypt a MongoDB command.
 
         :param database: The database for this command.
