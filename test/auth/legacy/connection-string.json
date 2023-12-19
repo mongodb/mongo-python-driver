@@ -445,10 +445,18 @@
       }
     },
     {
-      "description": "should throw an exception if username and password are specified (MONGODB-OIDC)",
+      "description": "should ignore username and password if specified for aws provider (MONGODB-OIDC)",
       "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:aws",
-      "valid": false,
-      "credential": null
+      "valid": true,
+      "credential": {
+        "username": null,
+        "password": null,
+        "source": "$external",
+        "mechanism": "MONGODB-OIDC",
+        "mechanism_properties": {
+          "PROVIDER_NAME": "aws"
+        }
+      }
     },
     {
       "description": "should throw an exception if username is specified for aws (MONGODB-OIDC)",
@@ -490,11 +498,11 @@
       }
     },
     {
-      "description": "should accept a username with azure provider (MONGODB-OIDC)",
-      "uri": "mongodb://username@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:azure,TOKEN_AUDIENCE:foo",
+      "description": "should accept a username and ignore a password with azure provider (MONGODB-OIDC)",
+      "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:azure,TOKEN_AUDIENCE:foo",
       "valid": true,
       "credential": {
-        "username": "username",
+        "username": "user",
         "password": null,
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
