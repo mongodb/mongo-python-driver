@@ -191,11 +191,11 @@ def _build_credentials_tuple(
             if custom_token_callback is not None:
                 raise ConfigurationError(msg)
             if provider_name == "aws":
-                user = None
-                passwd = None
+                user = None  # type:ignore[assignment]
+                passwd = None  # type:ignore[assignment]
                 custom_token_callback = _OIDCAWSCallback()
             elif provider_name == "azure":
-                passwd = None
+                passwd = None  # type:ignore[assignment]
                 if not token_audience:
                     raise ConfigurationError(
                         "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
