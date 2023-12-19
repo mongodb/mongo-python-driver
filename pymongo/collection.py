@@ -328,7 +328,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         qev2_required: bool = False,
     ) -> None:
         """Sends a create command with the given options."""
-        cmd: SON[str, Any] = SON([("create", name)])
+        cmd: dict[str, Any] = {"create": name}
         if encrypted_fields:
             cmd["encryptedFields"] = encrypted_fields
 
@@ -576,7 +576,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        command = SON([("insert", self.name), ("ordered", ordered), ("documents", [doc])])
+        command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
         if comment is not None:
             command["comment"] = comment
 
@@ -767,9 +767,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        update_doc: SON[str, Any] = SON(
-            [("q", criteria), ("u", document), ("multi", multi), ("upsert", upsert)]
-        )
+        update_doc: dict[str, Any] = {
+            "q": criteria,
+            "u": document,
+            "multi": multi,
+            "upsert": upsert,
+        }
         if collation is not None:
             if not acknowledged:
                 raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
@@ -788,7 +791,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc["hint"] = hint
-        command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
+        command = {"update": self.name, "ordered": ordered, "updates": [update_doc]}
         if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
@@ -1245,7 +1248,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        delete_doc = SON([("q", criteria), ("limit", int(not multi))])
+        delete_doc = {"q": criteria, "limit": int(not multi)}
         collation = validate_collation_or_none(collation)
         if collation is not None:
             if not acknowledged:
@@ -1260,7 +1263,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             delete_doc["hint"] = hint
-        command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
+        command = {"delete": self.name, "ordered": ordered, "deletes": [delete_doc]}
 
         if let is not None:
             common.validate_is_document_type("let", let)
@@ -1708,7 +1711,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: SON[str, Any],
+        cmd: dict[str, Any],
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
@@ -1732,7 +1735,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: Connection,
         read_preference: Optional[_ServerMode],
-        cmd: SON[str, Any],
+        cmd: dict[str, Any],
         collation: Optional[_CollationIn],
         session: Optional[ClientSession],
     ) -> Optional[Mapping[str, Any]]:
@@ -1791,7 +1794,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
-            cmd: SON[str, Any] = SON([("count", self.__name)])
+            cmd: dict[str, Any] = {"count": self.__name}
             cmd.update(kwargs)
             return self._count_cmd(session, conn, read_preference, cmd, collation=None)
 
@@ -1867,7 +1870,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
-        cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
+        cmd = {"aggregate": self.__name, "pipeline": pipeline, "cursor": {}}
         if "hint" in kwargs and not isinstance(kwargs["hint"], str):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop("collation", None))
@@ -1970,7 +1973,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     names.append(document["name"])
                     yield document
 
-            cmd = SON([("createIndexes", self.name), ("indexes", list(gen_indexes()))])
+            cmd = {"createIndexes": self.name, "indexes": list(gen_indexes())}
             cmd.update(kwargs)
             if "commitQuorum" in kwargs and not supports_quorum:
                 raise ConfigurationError(
@@ -2193,7 +2196,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("index_or_name must be an instance of str or list")
 
-        cmd = SON([("dropIndexes", self.__name), ("index", name)])
+        cmd = {"dropIndexes": self.__name, "index": name}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
@@ -2248,7 +2251,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
-            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            cmd = {"listIndexes": self.__name, "cursor": {}}
             if comment is not None:
                 cmd["comment"] = comment
 
@@ -2429,7 +2432,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     )
                 yield index.document
 
-        cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
+        cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
         with self._conn_for_writes(session) as conn:
@@ -2462,7 +2465,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        cmd = SON([("dropSearchIndex", self.__name), ("name", name)])
+        cmd = {"dropSearchIndex": self.__name, "name": name}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
@@ -2498,7 +2501,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        cmd = SON([("updateSearchIndex", self.__name), ("name", name), ("definition", definition)])
+        cmd = {"updateSearchIndex": self.__name, "name": name, "definition": definition}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
@@ -2916,7 +2919,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidName("collection names must not contain '$'")
 
         new_name = f"{self.__database.name}.{new_name}"
-        cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
+        cmd = {"renameCollection": self.__full_name, "to": new_name}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
@@ -2977,7 +2980,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(key, str):
             raise TypeError("key must be an instance of str")
-        cmd = SON([("distinct", self.__name), ("key", key)])
+        cmd = {"distinct": self.__name, "key": key}
         if filter is not None:
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
@@ -3034,7 +3037,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 "return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd = SON([("findAndModify", self.__name), ("query", filter), ("new", return_document)])
+        cmd = {"findAndModify": self.__name, "query": filter, "new": return_document}
         if let is not None:
             common.validate_is_mapping("let", let)
             cmd["let"] = let

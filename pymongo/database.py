@@ -33,7 +33,6 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
-from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
@@ -729,7 +728,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Internal command helper."""
         if isinstance(command, str):
-            command = SON([(command, value)])
+            command = {command: value}
 
         command.update(kwargs)
         with self.__client._tmp_session(session) as s:
@@ -804,16 +803,22 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         using:
 
         >>> db.command("buildinfo")
+        OR
+        >>> db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
         >>> db.command("count", collection_name)
+        OR
+        >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
 
         >>> db.command("filemd5", object_id, root=file_root)
+        OR
+        >>> db.command({"filemd5": object_id, "root": file_root})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).
@@ -821,8 +826,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             .. note:: the order of keys in the `command` document is
                significant (the "verb" must come first), so commands
                which require multiple keys (e.g. `findandmodify`)
-               should use an instance of :class:`~bson.son.SON` or
-               a string and kwargs instead of a Python `dict`.
+               should be done with this in mind.
 
         :param value: value to use for the command verb when
             `command` is passed as a string
@@ -1028,7 +1032,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             Collection[MutableMapping[str, Any]],
             self.get_collection("$cmd", read_preference=read_preference),
         )
-        cmd = SON([("listCollections", 1), ("cursor", {})])
+        cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
         with self.__client._tmp_session(session, close=False) as tmp_session:
             cursor = self._command(conn, cmd, read_preference=read_preference, session=tmp_session)[
@@ -1137,7 +1141,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def _drop_helper(
         self, name: str, session: Optional[ClientSession] = None, comment: Optional[Any] = None
     ) -> dict[str, Any]:
-        command = SON([("drop", name)])
+        command = {"drop": name}
         if comment is not None:
             command["comment"] = comment
 
@@ -1277,7 +1281,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str or Collection")
-        cmd = SON([("validate", name), ("scandata", scandata), ("full", full)])
+        cmd = {"validate": name, "scandata": scandata, "full": full}
         if comment is not None:
             cmd["comment"] = comment
 

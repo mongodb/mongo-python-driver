@@ -11,6 +11,8 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
 - Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
+- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
+  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
 
 Changes in Version 4.6.1
 ------------------------

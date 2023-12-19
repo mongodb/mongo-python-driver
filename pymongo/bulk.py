@@ -34,7 +34,6 @@ from typing import (
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from bson.son import SON
 from pymongo import _csot, common
 from pymongo.client_session import ClientSession, _validate_session_write_concern
 from pymongo.common import (
@@ -215,7 +214,7 @@ class _Bulk:
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -242,11 +241,11 @@ class _Bulk:
         replacement: Mapping[str, Any],
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd = SON([("q", selector), ("u", replacement), ("multi", False), ("upsert", upsert)])
+        cmd = {"q": selector, "u": replacement, "multi": False, "upsert": upsert}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -260,10 +259,10 @@ class _Bulk:
         selector: Mapping[str, Any],
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = SON([("q", selector), ("limit", limit)])
+        cmd = {"q": selector, "limit": limit}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -350,7 +349,7 @@ class _Bulk:
                 if last_run and (len(run.ops) - run.idx_offset) == 1:
                     write_concern = final_write_concern or write_concern
 
-                cmd = SON([(cmd_name, self.collection.name), ("ordered", self.ordered)])
+                cmd = {cmd_name: self.collection.name, "ordered": self.ordered}
                 if self.comment:
                     cmd["comment"] = self.comment
                 _csot.apply_write_concern(cmd, write_concern)
@@ -469,13 +468,11 @@ class _Bulk:
             )
 
             while run.idx_offset < len(run.ops):
-                cmd = SON(
-                    [
-                        (cmd_name, self.collection.name),
-                        ("ordered", False),
-                        ("writeConcern", {"w": 0}),
-                    ]
-                )
+                cmd = {
+                    cmd_name: self.collection.name,
+                    "ordered": False,
+                    "writeConcern": {"w": 0},
+                }
                 conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.

@@ -912,7 +912,8 @@ class TestCursor(IntegrationTest):
         # Ensure hints are cloned as the correct type
         cursor = self.db.test.find().hint([("z", 1), ("a", 1)])
         cursor2 = copy.deepcopy(cursor)
-        self.assertTrue(isinstance(cursor2._Cursor__hint, SON))
+        # Internal types are now dict rather than SON by default
+        self.assertTrue(isinstance(cursor2._Cursor__hint, dict))
         self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
 
     def test_clone_empty(self):
