@@ -480,6 +480,7 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
+            print("HIHIHI", kwargs)
             client = rs_or_single_client(**kwargs)
             self[spec["id"]] = client
             self.test.addCleanup(client.close)
