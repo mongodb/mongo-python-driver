@@ -590,7 +590,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
     def setUp(self):
         self.request_called = 0
         if PROVIDER_NAME == "aws":
-            self.default_username = "test_user_1"
+            self.default_username = "test_user1"
         else:
             self.default_username = None
 
