@@ -54,15 +54,14 @@ cd -
 cpjson () {
     find "$PYMONGO"/test/$2 -type f -delete
     cd "$SPECS"/source/$1
-    ls -ltr
     find . -name '*.json' | cpio -pdm $PYMONGO/test/$2
-    # printf "\nIgnored files for ${PWD}:\n"
-    # IGNORED_FILES="$(printf "\n%s\n" "$(diff <(find . -name '*.json' | sort) \
-    # <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
-    # sed -e '/^[0-9]/d' | sed -e 's|< ./||g' )"
-    # printf "%s\n" $IGNORED_FILES
-    # cd "$PYMONGO"/test/$2
-    # printf "%s\n" $IGNORED_FILES | xargs git checkout master
+    printf "\nIgnored files for ${PWD}:\n"
+    IGNORED_FILES="$(printf "\n%s\n" "$(diff <(find . -name '*.json' | sort) \
+    <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
+    sed -e '/^[0-9]/d' | sed -e 's|< ./||g' )"
+    printf "%s\n" $IGNORED_FILES
+    cd "$PYMONGO"/test/$2
+    printf "%s\n" $IGNORED_FILES | xargs git checkout master
 
 }
 
