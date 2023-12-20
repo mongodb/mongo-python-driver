@@ -54,7 +54,8 @@ cd -
 cpjson () {
     find "$PYMONGO"/test/$2 -type f -delete
     cd "$SPECS"/source/$1
-    find . -name '*.json' | cpio -pdm $PYMONGO/test/$2
+    find . -name '*.json' | grep -Ev "${BLOCKLIST}" | cpio -pdm \
+    $PYMONGO/test/$2
     printf "\nIgnored files for ${PWD}:\n"
     IGNORED_FILES="$(printf "\n%s\n" "$(diff <(find . -name '*.json' | sort) \
     <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
