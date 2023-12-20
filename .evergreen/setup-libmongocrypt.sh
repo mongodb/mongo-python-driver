@@ -14,12 +14,14 @@ fi
 if [ "$(uname -s)" = "Linux" ]; then
     rhel_ver=$(awk -F'=' '/VERSION_ID/{ gsub(/"/,""); print $2}' /etc/os-release)
     arch=$(uname -m)
-    if [[ "$rel_ver" =~ ^7 ]]; then
+    if [[ $rel_ver =~ ^7 ]]; then
         TARGET="rhel-70-64-bit"
-    elif [[ "$rel_ver" =~ ^8 ]] && [ "$arch" == "x86_64" ]; then
-        TARGET="rhel-80-64-bit"
-    elif [[ "$rel_ver" =~ ^8 ]] && [ "$arch" == "arm" ]; then
-        TARGET="rhel-82-arm64"
+    elif [[ $rel_ver =~ ^8 ]]; then
+        if [ "$arch" = "x86_64" ]; then
+            TARGET="rhel-80-64-bit"
+        elif [ "$arch" = "arm" ]; then
+            TARGET="rhel-82-arm64"
+        fi
     fi
 fi
 
