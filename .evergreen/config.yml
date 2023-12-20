@@ -369,7 +369,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        background: true
+        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
@@ -380,13 +380,10 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace
           set +x
           ${PREPARE_SHELL}
-          # Fetch vault secrets if needed
-          bash .evergreen/fetch-aws-vault-secrets.sh
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=true
           fi
