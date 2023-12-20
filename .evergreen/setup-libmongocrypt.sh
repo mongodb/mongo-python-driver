@@ -16,9 +16,9 @@ if [ "$(uname -s)" = "Linux" ]; then
     arch=$(uname -m)
     if [[ "$rel_ver" =~ ^7 ]]; then
         TARGET="rhel-70-64-bit"
-    elif [ "$rel_ver" =~ ^8 ] && [ $arch == "x86_64" ]; then
+    elif [[ "$rel_ver" =~ ^8 ]] && [ "$arch" == "x86_64" ]; then
         TARGET="rhel-80-64-bit"
-    elif [ "$rel_ver" =~ ^8 ] && [ $arch == "arm" ]; then
+    elif [[ "$rel_ver" =~ ^8 ]] && [ "$arch" == "arm" ]; then
         TARGET="rhel-82-arm64"
     fi
 fi
