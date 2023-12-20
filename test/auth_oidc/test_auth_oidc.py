@@ -63,7 +63,7 @@ class OIDCTestBase(unittest.TestCase):
     def setUp(self):
         self.request_called = 0
 
-    def get_token(self, username):
+    def get_token(self, username=None):
         """Get a token for the current provider."""
         if PROVIDER_NAME == "aws":
             token_dir = os.environ["OIDC_TOKEN_DIR"]
@@ -617,7 +617,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def test_01_custom_callback(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
-        # implements the AWS provider logic.
+        # implements the provider logic.
         client = self.create_client()
         # Perform a ``find`` operation that succeeds.
         client.test.test.find_one()
@@ -626,7 +626,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def test_02_callback_is_called_during_reauthentication(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
-        # implements the AWS provider logic.
+        # implements the provider logic.
         client = self.create_client()
 
         # Set a fail point for the find command.s
@@ -648,7 +648,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def test_03_authentication_failures_with_cached_tokens_retry_with_a_new_token(self):
         # create a ``MongoClient`` configured with ``retryReads=false`` and a custom
-        # OIDC callback that implements the AWS provider logic.
+        # OIDC callback that implements the provider logic.
         client = self.create_client(retryReads=False)
 
         # Set a fail point for ``find`` command.
@@ -663,48 +663,49 @@ class TestAuthOIDCMachine(OIDCTestBase):
             with self.assertRaises(AutoReconnect):
                 client.test.test.find_one()
 
-        # Set a fail point for ``saslStart`` command.
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a ``find`` operation that fails.
-            with self.assertRaises(OperationFailure):
-                client.test.test.find_one()
+        # Poison the cache of the client.
+        client.options.pool_options._credentials.cache.data.access_token = "bad"
 
-        # Verify that the callback was called 2 times during connection handshake (once
-        # to get the initial token, and once to refresh the token after the
-        # authentication failure).
-        self.assertEqual(self.request_called, 2)
+        # Reset the request count.
+        self.request_called = 0
+
+        # Verify that a find succeeds.
+        client.test.test.find_one()
+
+        # Verify that the callback was called 1 time.
+        self.assertEqual(self.request_called, 1)
 
         # Close the client.
         client.close()
 
-    def test_04_reauthentication_messages_are_sent(self):
-        # Create a ``MongoClient`` configured with a custom OIDC callback that
-        # implements the AWS provider logic.
-        client = self.create_client()
+    def test_04_authentication_failures_with_no_cached_token_does_not_retry(self):
+        get_token = self.get_token
+        username = self.default_username
+
+        class CustomCallback(OIDCMachineCallback):
+            count = 0
+
+            def fetch(self, a):
+                self.count += 1
+                if self.count == 1:
+                    token = "bad value"
+                else:
+                    token = get_token(username)
+                return OIDCMachineCallbackResult(access_token=token)
+
+        callback = CustomCallback()
+        props: Dict = {"custom_token_callback": callback}
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+
+        # Perform a ``find`` operation that fails.
+        with self.assertRaises(OperationFailure):
+            client.test.test.find_one()
+
+        # Verify that the callback was called 1 time.
+        self.assertEqual(callback.count, 1)
 
         # Perform a ``find`` operation that succeeds.
         client.test.test.find_one()
-
-        # Set fail points for ``find`` and ``saslStart``.
-        with self.fail_point(
-            {
-                "mode": {"times": 1},
-                "data": {"failCommands": ["find"], "errorCode": 391},
-            }
-        ), self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a ``find`` operation that fails.
-            with self.assertRaises(OperationFailure):
-                client.test.test.find_one()
 
         # Close the client.
         client.close()

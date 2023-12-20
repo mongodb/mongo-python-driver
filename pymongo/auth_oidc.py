@@ -166,6 +166,7 @@ class _OIDCAuthenticator:
     refresh_token: Optional[str] = field(default=None)
     access_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
+    access_token_validated: bool = field(default=False)
     token_gen_id: int = field(default=0)
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_call_time: float = field(default=0)
@@ -225,6 +226,7 @@ class _OIDCAuthenticator:
                             "Callback result must be of type OIDCMachineCallbackResult"
                         )
                 self.access_token = resp.access_token
+                self.access_token_validated = False
                 self.token_gen_id += 1
 
         return self.access_token
@@ -284,6 +286,7 @@ class _OIDCAuthenticator:
                 pass
 
         self.access_token = None
+        self.access_token_validated = False
 
         # If we are using machine callbacks, clear the access token and
         # re-authenticate.
@@ -303,6 +306,7 @@ class _OIDCAuthenticator:
         # Handle the case of changed idp info.
         if self.idp_info != prev_idp_info:
             self.access_token = None
+            self.access_token_validated = False
             self.refresh_token = None
 
         # If we have a refresh token, try using that.
@@ -330,6 +334,7 @@ class _OIDCAuthenticator:
 
         assert resp is not None
         if resp["done"]:
+            self.access_token_validated = True
             conn.oidc_token_gen_id = self.token_gen_id
             return None
 
@@ -357,6 +362,7 @@ class _OIDCAuthenticator:
         assert resp is not None
         if not resp["done"]:
             raise OperationFailure("SASL conversation failed to complete.")
+        self.access_token_validated = True
         return resp
 
 
@@ -369,7 +375,7 @@ def _authenticate_oidc(
         return authenticator.reauthenticate(conn)
     else:
         try:
-            had_cache = authenticator.access_token is not None
+            had_cache = authenticator.access_token_validated
             return authenticator.authenticate(conn)
         except Exception as e:
             # Try one more time an an authentication failure and had used a cached value.
