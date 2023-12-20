@@ -115,7 +115,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # Install libmongocrypt if necessary.
     if [ ! -d "libmongocrypt" ]; then
-        bash ./evergreen/setup-libmongocrypt.sh
+        bash ./.evergreen/setup-libmongocrypt.sh
     fi
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
@@ -205,16 +205,6 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3952 is deployed.
-    if [ "$(uname -s)" = "Darwin" ]; then
-        python -m pip install certifi
-        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-        export SSL_CERT_FILE=${CERT_PATH}
-        export REQUESTS_CA_BUNDLE=${CERT_PATH}
-        export AWS_CA_BUNDLE=${CERT_PATH}
-    fi
 
     TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
