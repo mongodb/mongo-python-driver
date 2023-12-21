@@ -14,9 +14,10 @@ fi
 if [ "$(uname -s)" = "Linux" ]; then
     rhel_ver=$(awk -F'=' '/VERSION_ID/{ gsub(/"/,""); print $2}' /etc/os-release)
     arch=$(uname -m)
-    if [[ $rel_ver =~ ^7 ]]; then
+    echo "RHEL $rhel_ver $arch"
+    if [[ $rhel_ver =~ 7 ]]; then
         TARGET="rhel-70-64-bit"
-    elif [[ $rel_ver =~ ^8 ]]; then
+    elif [[ $rhel_ver =~ 8 ]]; then
         if [ "$arch" = "x86_64" ]; then
             TARGET="rhel-80-64-bit"
         elif [ "$arch" = "arm" ]; then
@@ -34,8 +35,9 @@ if [ -z "$LIBMONGOCRYPT_URL" ]; then
     exit 1
 fi
 rm -rf libmongocrypt libmongocrypt.tar.gz
-echo "Fetching $LIBMONGOCRYPT_URL"
+echo "Fetching $LIBMONGOCRYPT_URL..."
 curl -O "$LIBMONGOCRYPT_URL"
+echo "Fetching $LIBMONGOCRYPT_URL...done"
 mkdir libmongocrypt
 tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
 ls -la libmongocrypt
