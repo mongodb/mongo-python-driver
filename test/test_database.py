@@ -383,7 +383,8 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.validate_collection(coll, background=False))
         # The inMemory storage engine does not support background=True.
         if client_context.storage_engine != "inMemory":
-            db.command("fsync")  # background=True requires the collection exist in a checkpoint.
+            # background=True requires the collection exist in a checkpoint.
+            self.client.admin.command("fsync")
             self.assertTrue(db.validate_collection(coll, background=True))
             self.assertTrue(db.validate_collection(coll, scandata=True, background=True))
             # The server does not support background=True with full=True.
