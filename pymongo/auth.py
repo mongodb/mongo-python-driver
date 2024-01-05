@@ -169,8 +169,8 @@ def _build_credentials_tuple(
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
-        request_token_callback = properties.get("request_token_callback")
-        custom_token_callback = properties.get("custom_token_callback")
+        callback = properties.get("callback")
+        callback_type = properties.get("CALLBACK_TYPE")
         provider_name = properties.get("PROVIDER_NAME")
         token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
@@ -183,34 +183,33 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
-        msg = "authentication with MONGODB-OIDC requires providing a request_token_callback, a provider_name, or a custom_token_callback"
-        if request_token_callback is not None:
-            if provider_name is not None or custom_token_callback is not None:
+        msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
+        if callback is not None:
+            if provider_name is not None:
+                raise ConfigurationError(msg)
+            if callback_type is None:
+                msg = "authentication with MONGODB-OIDC requires a callback_type when using a callback"
                 raise ConfigurationError(msg)
         elif provider_name is not None:
-            if custom_token_callback is not None:
-                raise ConfigurationError(msg)
             if provider_name == "aws":
                 user = None  # type:ignore[assignment]
                 passwd = None  # type:ignore[assignment]
-                custom_token_callback = _OIDCAWSCallback()
+                callback = _OIDCAWSCallback()
             elif provider_name == "azure":
                 passwd = None  # type:ignore[assignment]
                 if not token_audience:
                     raise ConfigurationError(
                         "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
                     )
-                custom_token_callback = _OIDCAzureCallback(token_audience, user)
+                callback = _OIDCAzureCallback(token_audience, user)
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
                 )
-        elif custom_token_callback is None:
-            raise ConfigurationError(msg)
 
         oidc_props = _OIDCProperties(
-            request_token_callback=request_token_callback,
-            custom_token_callback=custom_token_callback,
+            callback=callback,
+            callback_type=callback_type,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )

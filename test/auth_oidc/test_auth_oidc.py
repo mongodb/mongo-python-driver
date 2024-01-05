@@ -32,10 +32,8 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth_oidc import (
-    OIDCHumanCallback,
-    OIDCHumanCallbackResult,
-    OIDCMachineCallback,
-    OIDCMachineCallbackResult,
+    OIDCCallback,
+    OIDCCallbackResult,
 )
 from pymongo.azure_helpers import _get_azure_response
 from pymongo.cursor import CursorType
@@ -97,42 +95,42 @@ class TestAuthOIDCHuman(OIDCTestBase):
         super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
-        def request_token(server_info, context):
+        def request_token(context):
             # Validate the info.
-            self.assertIsInstance(server_info.issuer, str)
-            self.assertIsInstance(server_info.clientId, str)
+            self.assertIsInstance(context.idp_info.issuer, str)
+            self.assertIsInstance(context.idp_info.clientId, str)
 
             # Validate the timeout.
             timeout_seconds = context.timeout_seconds
             self.assertEqual(timeout_seconds, 60 * 5)
             token = self.get_token(username)
-            resp = OIDCHumanCallbackResult(access_token=token, refresh_token=token)
+            resp = OIDCCallbackResult(access_token=token, refresh_token=token)
 
             time.sleep(sleep)
             self.request_called += 1
             return resp
 
-        class Inner(OIDCHumanCallback):
-            def fetch(self, idp_info, context):
-                return request_token(idp_info, context)
+        class Inner(OIDCCallback):
+            def fetch(self, context):
+                return request_token(context)
 
         return Inner()
 
     def create_client(self, username="test_user1"):
         request_cb = self.create_request_cb(username)
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         return MongoClient(self.uri_multiple, username=username, authmechanismproperties=props)
 
     def test_connect_request_callback_single_implicit_username(self):
         request_token = self.create_request_cb()
-        props: Dict = {"request_token_callback": request_token}
+        props: Dict = {"callback": request_token, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
     def test_connect_request_callback_single_explicit_username(self):
         request_token = self.create_request_cb()
-        props: Dict = {"request_token_callback": request_token}
+        props: Dict = {"callback": request_token, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, username="test_user1", authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
@@ -149,7 +147,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_connect_request_callback_multiple_no_username(self):
         request_token = self.create_request_cb()
-        props: Dict = {"request_token_callback": request_token}
+        props: Dict = {"callback": request_token, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
@@ -157,13 +155,17 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_allowed_hosts_blocked(self):
         request_token = self.create_request_cb()
-        props: Dict = {"request_token_callback": request_token, "allowed_hosts": []}
+        props: Dict = {"callback": request_token, "allowed_hosts": [], "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         with self.assertRaises(ConfigurationError):
             client.test.test.find_one()
         client.close()
 
-        props: Dict = {"request_token_callback": request_token, "allowed_hosts": ["example.com"]}
+        props: Dict = {
+            "callback": request_token,
+            "allowed_hosts": ["example.com"],
+            "CALLBACK_TYPE": "human",
+        }
         with warnings.catch_warnings():
             warnings.simplefilter("default")
             client = MongoClient(
@@ -178,28 +180,19 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def test_configuration_errors(self):
         request_token = self.create_request_cb()
 
-        class CustomCB(OIDCMachineCallback):
+        class CustomCB(OIDCCallback):
             def fetch(self, ctx):
                 return None
 
-        props: Dict = {"request_token_callback": request_token}
+        props: Dict = {"callback": request_token, "CALLBACK_TYPE": "human"}
 
-        # Assert that providing both a human callback and a provider raises an error.
+        # Assert that providing a callback and a provider raises an error.
         props["PROVIDER_NAME"] = PROVIDER_NAME
         with self.assertRaises(ConfigurationError):
             _ = MongoClient(self.uri_single, authmechanismproperties=props)
-        props["custom_token_callback"] = CustomCB()
+        props["callback"] = CustomCB()
 
-        # Assert that providing both callback types and a provider raises an error.
-        with self.assertRaises(ConfigurationError):
-            _ = MongoClient(self.uri_single, authmechanismproperties=props)
-        del props["PROVIDER_NAME"]
-
-        # Assert that providing both callback types raises an error.
-        with self.assertRaises(ConfigurationError):
-            _ = MongoClient(self.uri_single, authmechanismproperties=props)
-
-    def test_valid_request_token_callback(self):
+    def test_valid_callback(self):
         client = self.create_client()
         client.test.test.find_one()
         client.close()
@@ -209,22 +202,22 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_request_callback_returns_null(self):
-        class RequestTokenNull(OIDCHumanCallback):
-            def fetch(self, a, b):
+        class RequestTokenNull(OIDCCallback):
+            def fetch(self, a):
                 return None
 
-        props: Dict = {"request_token_callback": RequestTokenNull()}
+        props: Dict = {"callback": RequestTokenNull(), "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
 
     def test_request_callback_invalid_result(self):
-        class CallbackInvalidToken(OIDCHumanCallback):
-            def fetch(self, a, b):
+        class CallbackInvalidToken(OIDCCallback):
+            def fetch(self, a):
                 return {}
 
-        props: Dict = {"request_token_callback": CallbackInvalidToken()}
+        props: Dict = {"callback": CallbackInvalidToken(), "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -254,7 +247,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(
             self.uri_single, event_listeners=[listener], authmechanismproperties=props
         )
@@ -305,14 +298,14 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def test_reauthenticate_succeeds_no_refresh(self):
         cb = self.create_request_cb()
 
-        class CustomRequest(OIDCHumanCallback):
+        class CustomRequest(OIDCCallback):
             def fetch(self, *args, **kwargs):
                 result = cb.fetch(*args, **kwargs)
                 result.refresh_token = None
                 return result
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": CustomRequest()}
+        props: Dict = {"callback": CustomRequest(), "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
@@ -339,7 +332,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
@@ -364,7 +357,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
 
         client1 = MongoClient(self.uri_single, authmechanismproperties=props)
         client2 = MongoClient(self.uri_single, authmechanismproperties=props)
@@ -413,7 +406,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
@@ -439,7 +432,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
@@ -469,7 +462,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
@@ -496,7 +489,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
@@ -521,7 +514,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_reauthenticate_succeeds_get_more_exhaust(self):
         # Ensure no mongos
-        props = {"request_token_callback": self.create_request_cb()}
+        props = {"callback": self.create_request_cb(), "CALLBACK_TYPE": "human"}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         hello = client.admin.command(HelloCompat.LEGACY_CMD)
         if hello.get("msg") != "isdbgrid":
@@ -530,7 +523,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
@@ -557,7 +550,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = self.create_request_cb()
 
         # Create a client with the callback.
-        props: Dict = {"request_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "human"}
 
         print("start of test")
         client = MongoClient(self.uri_single, authmechanismproperties=props)
@@ -602,9 +595,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
             token = self.get_token(username)
             time.sleep(sleep)
             self.request_called += 1
-            return OIDCMachineCallbackResult(access_token=token)
+            return OIDCCallbackResult(access_token=token)
 
-        class Inner(OIDCMachineCallback):
+        class Inner(OIDCCallback):
             def fetch(self, context):
                 return request_token(context)
 
@@ -612,7 +605,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def create_client(self, **kwargs):
         request_cb = self.create_request_cb()
-        props: Dict = {"custom_token_callback": request_cb}
+        props: Dict = {"callback": request_cb, "CALLBACK_TYPE": "machine"}
         return MongoClient(self.uri_single, authmechanismproperties=props, **kwargs)
 
     def test_01_custom_callback(self):
@@ -682,7 +675,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         get_token = self.get_token
         username = self.default_username
 
-        class CustomCallback(OIDCMachineCallback):
+        class CustomCallback(OIDCCallback):
             count = 0
 
             def fetch(self, a):
@@ -691,10 +684,10 @@ class TestAuthOIDCMachine(OIDCTestBase):
                     token = "bad value"
                 else:
                     token = get_token(username)
-                return OIDCMachineCallbackResult(access_token=token)
+                return OIDCCallbackResult(access_token=token)
 
         callback = CustomCallback()
-        props: Dict = {"custom_token_callback": callback}
+        props: Dict = {"callback": callback, "CALLBACK_TYPE": "machine"}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
         # Perform a ``find`` operation that fails.
@@ -727,29 +720,29 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 1)
         client.close()
 
-    def test_request_callback_invalid_result(self):
+    def test_invalid_prop_combination(self):
         request_cb = self.create_request_cb()
-        props: Dict = {"custom_token_callback": request_cb, "PROVIDER_NAME": PROVIDER_NAME}
+        props: Dict = {"callback": request_cb, "PROVIDER_NAME": PROVIDER_NAME}
         with self.assertRaises(ConfigurationError):
             _ = MongoClient(self.uri_single, authmechanismproperties=props)
 
     def test_request_callback_returns_null(self):
-        class CallbackNullToken(OIDCMachineCallback):
+        class CallbackNullToken(OIDCCallback):
             def fetch(self, a):
                 return None
 
-        props: Dict = {"custom_token_callback": CallbackNullToken()}
+        props: Dict = {"callback": CallbackNullToken(), "CALLBACK_TYPE": "machine"}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
 
     def test_request_callback_invalid_result(self):
-        class CallbackTokenInvalid(OIDCMachineCallback):
+        class CallbackTokenInvalid(OIDCCallback):
             def fetch(self, a):
                 return {}
 
-        props: Dict = {"custom_token_callback": CallbackTokenInvalid()}
+        props: Dict = {"callback": CallbackTokenInvalid(), "CALLBACK_TYPE": "machine"}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()

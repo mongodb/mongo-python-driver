@@ -41,7 +41,7 @@ from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
-from pymongo.auth_oidc import OIDCHumanCallback, OIDCMachineCallback
+from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -425,6 +425,7 @@ _MECHANISM_PROPS = frozenset(
         "SERVICE_REALM",
         "AWS_SESSION_TOKEN",
         "PROVIDER_NAME",
+        "CALLBACK_TYPE",
         "TOKEN_AUDIENCE",
     ]
 )
@@ -443,13 +444,9 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 props[key] = str(value).lower()
             elif key in ["allowed_hosts"] and isinstance(value, list):
                 props[key] = value
-            elif key == "request_token_callback":
-                if not isinstance(value, OIDCHumanCallback):
-                    raise ValueError("request_token_callback must be a OIDCHumanCallback object")
-                props[key] = value
-            elif key == "custom_token_callback":
-                if not isinstance(value, OIDCMachineCallback):
-                    raise ValueError("custom_token_callback must be a OIDCMachineCallback object")
+            elif key == "callback":
+                if not isinstance(value, OIDCCallback):
+                    raise ValueError("callback must be an OIDCCallback object")
                 props[key] = value
             else:
                 raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")

@@ -42,57 +42,32 @@ class OIDCIdPInfo:
 
 
 @dataclass
-class OIDCHumanCallbackContext:
+class OIDCCallbackContext:
     timeout_seconds: float
     version: int
     refresh_token: Optional[str] = field(default=None)
+    idp_info: Optional[OIDCIdPInfo] = field(default=None)
 
 
 @dataclass
-class OIDCMachineCallbackContext:
-    timeout_seconds: float
-    version: int
-
-
-@dataclass
-class OIDCHumanCallbackResult:
+class OIDCCallbackResult:
     access_token: str
     expires_in_seconds: Optional[float] = field(default=None)
     refresh_token: Optional[str] = field(default=None)
 
 
-@dataclass
-class OIDCMachineCallbackResult:
-    access_token: str
-    expires_in_seconds: Optional[float] = field(default=None)
-
-
-class OIDCMachineCallback(abc.ABC):
-    """A base class for defining OIDC machine (workload federation)
-    callbacks.
-    """
+class OIDCCallback(abc.ABC):
+    """A base class for defining OIDC callbacks."""
 
     @abc.abstractmethod
-    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
-        """Convert the given BSON value into our own type."""
-
-
-class OIDCHumanCallback(abc.ABC):
-    """A base class for defining OIDC human (workforce federation)
-    callbacks.
-    """
-
-    @abc.abstractmethod
-    def fetch(
-        self, idp_info: OIDCIdPInfo, context: OIDCHumanCallbackContext
-    ) -> OIDCHumanCallbackResult:
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         """Convert the given BSON value into our own type."""
 
 
 @dataclass
 class _OIDCProperties:
-    request_token_callback: Optional[OIDCHumanCallback] = field(default=None)
-    custom_token_callback: Optional[OIDCMachineCallback] = field(default=None)
+    callback: Optional[OIDCCallback] = field(default=None)
+    callback_type: Optional[str] = field(default=None)
     provider_name: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
 
@@ -101,9 +76,8 @@ class _OIDCProperties:
 
 TOKEN_BUFFER_MINUTES = 5
 HUMAN_CALLBACK_TIMEOUT_SECONDS = 5 * 60
-HUMAN_CALLBACK_VERSION = 1
+CALLBACK_VERSION = 1
 MACHINE_CALLBACK_TIMEOUT_SECONDS = 60
-MACHINE_CALLBACK_VERSION = 1
 TIME_BETWEEN_CALLS_SECONDS = 0.1
 
 
@@ -136,25 +110,25 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-class _OIDCAWSCallback(OIDCMachineCallback):
-    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+class _OIDCAWSCallback(OIDCCallback):
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
         if not token_file:
             raise RuntimeError(
                 'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
             )
         with open(token_file) as fid:
-            return OIDCMachineCallbackResult(access_token=fid.read().strip())
+            return OIDCCallbackResult(access_token=fid.read().strip())
 
 
-class _OIDCAzureCallback(OIDCMachineCallback):
+class _OIDCAzureCallback(OIDCCallback):
     def __init__(self, token_audience: str, username: Optional[str]) -> None:
         self.token_audience = token_audience
         self.username = username
 
-    def fetch(self, context: OIDCMachineCallbackContext) -> OIDCMachineCallbackResult:
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
-        return OIDCMachineCallbackResult(
+        return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )
 
@@ -173,15 +147,13 @@ class _OIDCAuthenticator:
 
     def get_current_token(self, use_human_callback: bool = True) -> Optional[str]:
         properties = self.properties
-        cb: Union[None, OIDCHumanCallback, OIDCMachineCallback]
-        resp: Union[None, OIDCHumanCallbackResult, OIDCMachineCallbackResult]
+        cb: Union[None, OIDCCallback]
+        resp: Union[None, OIDCCallback]
 
-        if properties.custom_token_callback:
-            cb = properties.custom_token_callback
-        elif not use_human_callback:
+        if properties.callback:
+            cb = properties.callback
+        if not use_human_callback and properties.callback_type == "human":
             cb = None
-        elif properties.request_token_callback:
-            cb = properties.request_token_callback
 
         prev_token = self.access_token
         if prev_token:
@@ -204,27 +176,22 @@ class _OIDCAuthenticator:
                     time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
                 self.last_call_time = time.time()
 
-                if isinstance(cb, OIDCHumanCallback):
-                    human_context = OIDCHumanCallbackContext(
-                        timeout_seconds=HUMAN_CALLBACK_TIMEOUT_SECONDS,
-                        version=HUMAN_CALLBACK_VERSION,
-                        refresh_token=self.refresh_token,
-                    )
+                if properties.callback_type == "human":
+                    timeout = HUMAN_CALLBACK_TIMEOUT_SECONDS
                     assert self.idp_info is not None
-                    resp = cb.fetch(self.idp_info, human_context)
-                    if not isinstance(resp, OIDCHumanCallbackResult):
-                        raise ValueError("Callback result must be of type OIDCHumanCallbackResult")
-                    self.refresh_token = resp.refresh_token
                 else:
-                    machine_context = OIDCMachineCallbackContext(
-                        timeout_seconds=remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS,
-                        version=MACHINE_CALLBACK_VERSION,
-                    )
-                    resp = cb.fetch(machine_context)
-                    if not isinstance(resp, OIDCMachineCallbackResult):
-                        raise ValueError(
-                            "Callback result must be of type OIDCMachineCallbackResult"
-                        )
+                    timeout = (remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS,)
+
+                context = OIDCCallbackContext(
+                    timeout_seconds=timeout,
+                    version=CALLBACK_VERSION,
+                    refresh_token=self.refresh_token,
+                    idp_info=self.idp_info,
+                )
+                resp = cb.fetch(context)
+                if not isinstance(resp, OIDCCallbackResult):
+                    raise ValueError("Callback result must be of type OIDCCallbackResult")
+                self.refresh_token = resp.refresh_token
                 self.access_token = resp.access_token
                 self.access_token_validated = False
                 self.token_gen_id += 1
@@ -250,7 +217,7 @@ class _OIDCAuthenticator:
         )
 
     def auth_start_cmd(self, use_human_callback: bool = True) -> Optional[SON[str, Any]]:
-        if self.properties.request_token_callback is not None and self.idp_info is None:
+        if self.properties.callback_type == "human" and self.idp_info is None:
             return self.principal_step_cmd()
 
         token = self.get_current_token(use_human_callback)
