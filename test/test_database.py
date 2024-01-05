@@ -377,12 +377,13 @@ class TestDatabase(IntegrationTest):
     @client_context.require_version_min(4, 3, 3)
     @client_context.require_no_standalone
     def test_validate_collection_background(self):
-        db = self.client.pymongo_test
+        db = self.client.pymongo_test.with_options(write_concern=WriteConcern(w="majority"))
         db.test.insert_one({"dummy": "object"})
         coll = db.test
         self.assertTrue(db.validate_collection(coll, background=False))
         # The inMemory storage engine does not support background=True.
         if client_context.storage_engine != "inMemory":
+            db.command("fsync")  # background=True requires the collection exist in a checkpoint.
             self.assertTrue(db.validate_collection(coll, background=True))
             self.assertTrue(db.validate_collection(coll, scandata=True, background=True))
             # The server does not support background=True with full=True.
