@@ -148,7 +148,7 @@ class _OIDCAuthenticator:
     def get_current_token(self, use_human_callback: bool = True) -> Optional[str]:
         properties = self.properties
         cb: Union[None, OIDCCallback]
-        resp: Union[None, OIDCCallback]
+        resp: OIDCCallbackResult
 
         if properties.callback:
             cb = properties.callback
@@ -180,7 +180,7 @@ class _OIDCAuthenticator:
                     timeout = HUMAN_CALLBACK_TIMEOUT_SECONDS
                     assert self.idp_info is not None
                 else:
-                    timeout = (remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS,)
+                    timeout = int(remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS)
 
                 context = OIDCCallbackContext(
                     timeout_seconds=timeout,
