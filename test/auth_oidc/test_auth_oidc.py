@@ -639,10 +639,12 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_03_authentication_failures_with_cached_tokens_retry_with_a_new_token(self):
+    def test_03_authentication_failures_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # create a ``MongoClient`` configured with ``retryReads=false`` and a custom
         # OIDC callback that implements the provider logic.
         client = self.create_client(retryReads=False)
+
+        # Poison the cache with an invalid access token.
 
         # Set a fail point for ``find`` command.
         with self.fail_point(
@@ -671,24 +673,20 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_04_authentication_failures_with_no_cached_token_does_not_retry(self):
-        get_token = self.get_token
-        username = self.default_username
+    def test_04_authentication_failures_without_cached_tokens_return_an_error(self):
+        # Create a ``MongoClient`` configured with ``retryReads=false`` and a custom
+        # OIDC callback that always returns invalid access tokens.
 
         class CustomCallback(OIDCCallback):
             count = 0
 
             def fetch(self, a):
                 self.count += 1
-                if self.count == 1:
-                    token = "bad value"
-                else:
-                    token = get_token(username)
-                return OIDCCallbackResult(access_token=token)
+                return OIDCCallbackResult(access_token="bad value")
 
         callback = CustomCallback()
         props: Dict = {"callback": callback, "CALLBACK_TYPE": "machine"}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client = MongoClient(self.uri_single, authMechanismProperties=props, retryReads=False)
 
         # Perform a ``find`` operation that fails.
         with self.assertRaises(OperationFailure):
@@ -696,9 +694,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         # Verify that the callback was called 1 time.
         self.assertEqual(callback.count, 1)
-
-        # Perform a ``find`` operation that succeeds.
-        client.test.test.find_one()
 
         # Close the client.
         client.close()
