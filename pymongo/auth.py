@@ -206,6 +206,8 @@ def _build_credentials_tuple(
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
                 )
+        else:
+            raise ConfigurationError(msg)
 
         oidc_props = _OIDCProperties(
             callback=callback,
