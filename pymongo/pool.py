@@ -739,7 +739,7 @@ class Connection:
         self.pool_gen = pool.gen
         self.generation = self.pool_gen.get_overall()
         self.ready = False
-        self.cancel_context = _CancellationContext()
+        self.cancel_context: _CancellationContext = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come: bool = False
         # For load balancer support.

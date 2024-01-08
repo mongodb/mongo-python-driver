@@ -876,6 +876,7 @@ class PoolClearedEvent(_PoolEvent):
     :param service_id: The service_id this command was sent to, or ``None``.
      - `service_id`: The service_id this command was sent to, or ``None``.
      - '__interrupt_in_use_connections': True if all active connections were interrupted by the Pool during clearing.
+
     .. versionadded:: 3.9
     """
 
