@@ -164,6 +164,7 @@ class BsonEncodingTest(MicroTest):
 
 class BsonDecodingTest(MicroTest):
     def setUp(self):
+        super().setUp()
         self.document = encode(json_util.loads(self.file_data))
         self.data_size = len(self.document) * NUM_DOCS
 
@@ -212,6 +213,7 @@ class JsonEncodingTest(MicroTest):
 
 class JsonDecodingTest(MicroTest):
     def setUp(self):
+        super().setUp()
         self.document = self.file_data
         # Note: use the BSON size as the data size so we can compare BSON vs JSON performance.
         self.data_size = len(encode(json_util.loads(self.file_data))) * NUM_DOCS
