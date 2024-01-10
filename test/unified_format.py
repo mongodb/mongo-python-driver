@@ -1494,7 +1494,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _testOperation_assertNumberConnectionsCheckedOut(self, spec):
         client = self.entity_map[spec["client"]]
         pool = get_pool(client)
-        self.assertEqual(spec["connections"], pool.active_sockets)
+        self.assertEqual(spec["connections"], len(pool.active_conns))
 
     def _event_count(self, client_name, event):
         listener = self.entity_map.get_listener_for_client(client_name)

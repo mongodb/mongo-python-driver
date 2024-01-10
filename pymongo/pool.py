@@ -1376,7 +1376,6 @@ class Pool:
         self.available_conns: collections.deque = collections.deque()
         self.active_conns: list[Connection] = []
         self.lock = _create_lock()
-        self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
         # Track whether the sockets in this pool are writeable or not.
@@ -1455,7 +1454,6 @@ class Pool:
             newpid = os.getpid()
             if self.pid != newpid:
                 self.pid = newpid
-                self.active_sockets = 0
                 self.operation_count = 0
             if service_id is None:
                 sockets, self.available_conns = self.available_conns, collections.deque()
@@ -1549,7 +1547,7 @@ class Pool:
         while True:
             with self.size_cond:
                 # There are enough sockets in the pool.
-                if len(self.available_conns) + self.active_sockets >= self.opts.min_pool_size:
+                if len(self.available_conns) + len(self.active_conns) >= self.opts.min_pool_size:
                     return
                 if self.requests >= self.opts.min_pool_size:
                     return
@@ -1571,6 +1569,8 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
                     self.available_conns.appendleft(conn)
+                    if conn in self.active_conns:
+                        self.active_conns.remove(conn)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1741,13 +1741,8 @@ class Pool:
 
         # We've now acquired the semaphore and must release it on error.
         conn = None
-        incremented = False
         emitted_event = False
         try:
-            with self.lock:
-                self.active_sockets += 1
-                incremented = True
-
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
@@ -1784,8 +1779,6 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.ERROR)
             with self.size_cond:
                 self.requests -= 1
-                if incremented:
-                    self.active_sockets -= 1
                 self.size_cond.notify()
 
             if self.enabled_for_cmap and not emitted_event:
@@ -1810,6 +1803,9 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
+        with self.lock:
+            if conn in self.active_conns:
+                self.active_conns.remove(conn)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
@@ -1834,7 +1830,6 @@ class Pool:
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
-                        self.active_conns.remove(conn)
                         self.available_conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
@@ -1845,7 +1840,6 @@ class Pool:
             elif cursor:
                 self.ncursors -= 1
             self.requests -= 1
-            self.active_sockets -= 1
             self.operation_count -= 1
             self.size_cond.notify()
 
@@ -1894,7 +1888,7 @@ class Pool:
             )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
-            other_ops = self.active_sockets - self.ncursors - self.ntxns
+            other_ops = len(self.active_conns) - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: {}, connections in use by cursors: {}, "

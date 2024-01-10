@@ -56,11 +56,11 @@ class TestLB(IntegrationTest):
         coll = client[self.db.name].test
         with client.start_session() as session:
             with session.start_transaction():
-                self.assertEqual(pool.active_sockets, 0)
+                self.assertEqual(len(pool.active_conns), 0)
                 coll.insert_one({}, session=session)
-                self.assertEqual(pool.active_sockets, 1)  # Pinned.
-            self.assertEqual(pool.active_sockets, 1)  # Still pinned.
-        self.assertEqual(pool.active_sockets, 0)  # Unpinned.
+                self.assertEqual(len(pool.active_conns), 1)  # Pinned.
+            self.assertEqual(len(pool.active_conns), 1)  # Still pinned.
+        self.assertEqual(len(pool.active_conns), 0)  # Unpinned.
 
     @client_context.require_failCommand_fail_point
     def test_cursor_gc(self):
@@ -86,7 +86,7 @@ class TestLB(IntegrationTest):
         pool = get_pool(client)
         coll = client[self.db.name].test
         coll.insert_many([{} for _ in range(10)])
-        self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(len(pool.active_conns), 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
         args = {
             "mode": {"times": 1},
@@ -98,7 +98,7 @@ class TestLB(IntegrationTest):
         with self.fail_point(args):
             resource = create_resource(coll)
             if client_context.load_balancer:
-                self.assertEqual(pool.active_sockets, 1)  # Pinned.
+                self.assertEqual(len(pool.active_conns), 1)  # Pinned.
 
         thread = PoolLocker(pool)
         thread.start()
@@ -114,7 +114,7 @@ class TestLB(IntegrationTest):
         self.assertFalse(thread.is_alive())
         self.assertIsNone(thread.exc)
 
-        wait_until(lambda: pool.active_sockets == 0, "return socket")
+        wait_until(lambda: len(pool.active_conns) == 0, "return socket")
         # Run another operation to ensure the socket still works.
         coll.delete_many({})
 
@@ -131,7 +131,7 @@ class TestLB(IntegrationTest):
         if not client_context.serverless:
             self.addCleanup(self.client.admin.command, "killSessions", [session.session_id])
         if client_context.load_balancer:
-            self.assertEqual(pool.active_sockets, 1)  # Pinned.
+            self.assertEqual(len(pool.active_conns), 1)  # Pinned.
 
         thread = PoolLocker(pool)
         thread.start()
@@ -147,7 +147,7 @@ class TestLB(IntegrationTest):
         self.assertFalse(thread.is_alive())
         self.assertIsNone(thread.exc)
 
-        wait_until(lambda: pool.active_sockets == 0, "return socket")
+        wait_until(lambda: len(pool.active_conns) == 0, "return socket")
         # Run another operation to ensure the socket still works.
         client[self.db.name].test.delete_many({})
 

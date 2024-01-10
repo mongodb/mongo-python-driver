@@ -2060,7 +2060,7 @@ class TestExhaustCursor(IntegrationTest):
         tt.join(10)
 
         # Assert that we got our active_sockets count back
-        self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(len(pool.active_conns), 0)
         # Assert the greenlet is dead
         self.assertTrue(tt.dead)
         # Assert that the Timeout was raised all the way to the try

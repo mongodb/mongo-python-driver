@@ -27,13 +27,13 @@ from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _O
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
-from pymongo.pool import _is_faas
+from pymongo.pool import _CancellationContext, _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
-    from pymongo.pool import Connection, Pool, _CancellationContext
+    from pymongo.pool import Connection, Pool
     from pymongo.settings import TopologySettings
     from pymongo.topology import Topology
 
