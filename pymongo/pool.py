@@ -1374,7 +1374,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.available_conns: collections.deque = collections.deque()
-        self.active_conns: list[Connection] = []
+        self.active_conns_context: set[_CancellationContext] = set()
         self.lock = _create_lock()
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1475,8 +1475,8 @@ class Pool:
             self.size_cond.notify_all()
 
             if interrupt_connections:
-                for conn in self.active_conns:
-                    conn.cancel_context.cancel()
+                for context in self.active_conns_context:
+                    context.cancel()
 
         listeners = self.opts._event_listeners
 
@@ -1547,7 +1547,10 @@ class Pool:
         while True:
             with self.size_cond:
                 # There are enough sockets in the pool.
-                if len(self.available_conns) + len(self.active_conns) >= self.opts.min_pool_size:
+                if (
+                    len(self.available_conns) + len(self.active_conns_context)
+                    >= self.opts.min_pool_size
+                ):
                     return
                 if self.requests >= self.opts.min_pool_size:
                     return
@@ -1569,8 +1572,8 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
                     self.available_conns.appendleft(conn)
-                    if conn in self.active_conns:
-                        self.active_conns.remove(conn)
+                    if conn.cancel_context in self.active_conns_context:
+                        self.active_conns_context.remove(conn.cancel_context)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1615,7 +1618,7 @@ class Pool:
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
-        self.active_conns.append(conn)
+        self.active_conns_context.add(conn.cancel_context)
         try:
             if self.handshake:
                 conn.hello()
@@ -1658,8 +1661,8 @@ class Pool:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
-            if conn not in self.active_conns:
-                self.active_conns.append(conn)
+            if conn.cancel_context not in self.active_conns_context:
+                self.active_conns_context.add(conn.cancel_context)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
@@ -1804,8 +1807,8 @@ class Pool:
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
         with self.lock:
-            if conn in self.active_conns:
-                self.active_conns.remove(conn)
+            if conn.cancel_context in self.active_conns_context:
+                self.active_conns_context.remove(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
@@ -1888,7 +1891,7 @@ class Pool:
             )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
-            other_ops = len(self.active_conns) - self.ncursors - self.ntxns
+            other_ops = len(self.active_conns_context) - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: {}, connections in use by cursors: {}, "

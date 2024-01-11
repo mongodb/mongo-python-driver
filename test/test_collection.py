@@ -1748,7 +1748,7 @@ class TestCollection(IntegrationTest):
             cur.close()
         cur = None
         # Wait until the background thread returns the socket.
-        wait_until(lambda: len(pool.active_conns) == 0, "return socket")
+        wait_until(lambda: len(pool.active_conns_context) == 0, "return socket")
         # The socket should be discarded.
         self.assertEqual(0, len(pool.available_conns))
 
