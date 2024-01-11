@@ -467,6 +467,11 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
+    if "max_length" in kwargs:
+        max_length = kwargs.pop("max_length")
+        truncated_obj = truncate_documents(obj, max_length)[0]
+        return json.dumps(_json_convert(truncated_obj, json_options), *args, **kwargs)
+
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
@@ -954,3 +959,87 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             # original value, when float() is called on it.
             return {"$numberDouble": str(repr(obj))}
     raise TypeError("%r is not JSON serializable" % obj)
+
+
+def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
+    """Recursively finds size of objects"""
+    if current_size >= max_size:
+        return current_size
+    if isinstance(obj, ObjectId):
+        current_size += len("$oid") + 24
+    elif isinstance(obj, Code):
+        if obj.scope:
+            current_size += (
+                len("$code")
+                + get_size(obj.scope, max_size, current_size)
+                + len(obj)
+                - len(obj.scope)
+            )
+        else:
+            current_size += len("$code") + len(obj)
+    elif isinstance(obj, (str, bytes)):
+        current_size += len(obj)
+    elif isinstance(obj, (int, Int64, Decimal128)):
+        current_size += len("$numberInt") + 1
+    elif isinstance(obj, Timestamp):
+        current_size += len({"$timestamp"}) + 4
+    elif isinstance(obj, datetime.datetime):
+        current_size += len({"$date"}) + len(str(obj.time()))
+    elif isinstance(obj, Regex):
+        current_size += len("$regularExpression") + len(obj.pattern)
+    elif isinstance(obj, DBRef):
+        current_size += len("$dbPointer") + len(obj.collection) + 24
+    elif isinstance(obj, (MinKey, MaxKey)):
+        current_size += len("$minKey") + 1
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            current_size += get_size(k, max_size, current_size)
+            current_size += get_size(v, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    elif hasattr(obj, "__iter__"):
+        for i in obj:
+            current_size += get_size(i, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    return current_size
+
+
+def truncate_documents(obj: Any, max_length: int) -> Tuple[Any, int]:
+    """Recursively truncate documents as needed to fit inside max_length characters."""
+    if max_length <= 0:
+        return None, 0
+    remaining = max_length
+    if hasattr(obj, "items"):
+        truncated: Any = {}
+        for k, v in obj.items():
+            truncated_v, remaining = truncate_documents(v, remaining)
+            if truncated_v:
+                truncated[k] = truncated_v
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
+        truncated: Any = []  # type:ignore[no-redef]
+        for v in obj:
+            truncated_v, remaining = truncate_documents(v, remaining)
+            if truncated_v:
+                truncated.append(truncated_v)
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    else:
+        return _truncate(obj, remaining)
+
+
+def _truncate(obj: Any, remaining: int) -> Tuple[Any, int]:
+    size = get_size(obj, remaining)
+
+    if size <= remaining:
+        return obj, remaining - size
+    else:
+        try:
+            truncated = obj[:remaining]
+        except TypeError:
+            truncated = obj
+        return truncated, remaining - size
