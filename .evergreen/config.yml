@@ -369,7 +369,6 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        background: true
         include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
@@ -398,7 +397,6 @@ functions:
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1
             fi
-            bash $DRIVERS_TOOLS/.evergreen/csfle/await_servers.sh
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
@@ -617,8 +615,6 @@ functions:
         script: |
           ${PREPARE_SHELL}
           . .evergreen/tox.sh -m teardown-encryption
-          echo "HERE I AM"
-          cat $DRIVERS_TOOLS/.evergreen/csfle/nohup.out
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
