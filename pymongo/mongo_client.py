@@ -57,7 +57,6 @@ from typing import (
 
 import bson
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
-from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
@@ -1190,7 +1189,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     return
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
-                    spec = SON([("endSessions", session_ids[i : i + common._MAX_END_SESSIONS])])
+                    spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
                     conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
@@ -1699,7 +1698,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
-        spec = SON([("killCursors", coll), ("cursors", cursor_ids)])
+        spec = {"killCursors": coll, "cursors": cursor_ids}
         conn.command(db, spec, session=session, client=self)
 
     def _process_kill_cursors(self) -> None:
@@ -1909,7 +1908,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        cmd = SON([("listDatabases", 1)])
+        cmd = {"listDatabases": 1}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment

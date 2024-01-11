@@ -251,13 +251,11 @@ class _OIDCAuthenticator:
         token = self.get_current_token()
         conn.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
-        cmd = SON(
-            [
-                ("saslContinue", 1),
-                ("conversationId", conversation_id),
-                ("payload", bin_payload),
-            ]
-        )
+        cmd = {
+            "saslContinue": 1,
+            "conversationId": conversation_id,
+            "payload": bin_payload,
+        }
         resp = self.run_command(conn, cmd)
         assert resp is not None
         if not resp["done"]:

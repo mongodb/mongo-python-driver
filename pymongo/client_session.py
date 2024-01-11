@@ -154,7 +154,6 @@ from typing import (
 
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.cursor import _ConnectionManager
@@ -844,7 +843,7 @@ class ClientSession:
         opts = self._transaction.opts
         assert opts
         wc = opts.write_concern
-        cmd = SON([(command_name, 1)])
+        cmd = {command_name: 1}
         if command_name == "commitTransaction":
             if opts.max_commit_time_ms and _csot.get_timeout() is None:
                 cmd["maxTimeMS"] = opts.max_commit_time_ms

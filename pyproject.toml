@@ -83,7 +83,10 @@ zstd = [
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "http://github.com/mongodb/mongo-python-driver"
+Homepage = "https://www.mongodb.org"
+Documentation = "https://pymongo.readthedocs.io"
+Source = "https://github.com/mongodb/pymongo"
+Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.setuptools.dynamic]
 version = {attr = "pymongo._version.__version__"}
