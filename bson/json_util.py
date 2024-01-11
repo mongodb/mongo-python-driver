@@ -453,9 +453,13 @@ _encoders = {
     5: lambda obj, json_options: _encode_binary(obj, obj.subtype, json_options),  # Binary
     7: lambda obj, json_options: {"$oid": str(obj)},  # noqa: ARG005 ObjectId
     9: lambda obj, json_options: _encode_datetimems(obj, json_options),  # DatetimeMS
-    13: lambda obj, json_options: _encode_code(obj, json_options),  # Code
+    13: lambda obj, json_options: {"$code": str(obj)}
+    if obj.scope is None
+    else {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)},  # Code
     17: lambda obj, json_options: {"$timestamp": {"t": obj.time, "i": obj.inc}},  # noqa: ARG005 Timestamp
-    18: lambda obj, json_options: _encode_int64(obj, json_options),  # Int64
+    18: lambda obj, json_options: {"$numberLong": str(obj)}
+    if json_options.strict_number_long
+    else obj,  # Int64
     19: lambda obj, json_options: {"$numberDecimal": str(obj)},  # noqa: ARG005 Decimal128
     100: lambda obj, json_options: _json_convert(obj.as_doc(), json_options=json_options),  # DBRef
     127: lambda obj, json_options: {"$maxKey": 1},  # noqa: ARG005 MaxKey
@@ -838,14 +842,6 @@ def _parse_canonical_maxkey(doc: Any) -> MaxKey:
     return MaxKey()
 
 
-def _encode_bson(obj: Any, json_options: JSONOptions) -> Any:
-    type_marker = obj._type_marker
-    try:
-        return _encoders.get(type_marker)(obj, json_options)  # type: ignore
-    except KeyError:
-        raise TypeError("%r is not JSON serializable" % obj) from None
-
-
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
         return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
@@ -861,20 +857,6 @@ def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
         return {"$date": str(int(obj))}
     return {"$date": {"$numberLong": str(int(obj))}}
-
-
-def _encode_code(obj: Code, json_options: JSONOptions) -> dict:
-    if obj.scope is None:
-        return {"$code": str(obj)}
-    else:
-        return {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)}
-
-
-def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
-    if json_options.strict_number_long:
-        return {"$numberLong": str(obj)}
-    else:
-        return obj
 
 
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
@@ -904,7 +886,11 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             return {"$regex": pattern, "$options": flags}
         return {"$regularExpression": {"pattern": pattern, "options": flags}}
     elif hasattr(obj, "_type_marker"):
-        return _encode_bson(obj, json_options)
+        type_marker = obj._type_marker
+        try:
+            return _encoders.get(type_marker)(obj, json_options)  # type: ignore
+        except KeyError:
+            raise TypeError("%r is not JSON serializable" % obj) from None
     elif isinstance(obj, datetime.datetime):
         if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
             if not obj.tzinfo:
