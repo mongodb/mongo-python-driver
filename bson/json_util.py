@@ -448,24 +448,6 @@ The same as :const:`RELAXED_JSON_OPTIONS`.
 .. versionadded:: 3.4
 """
 
-# Encoders for BSON types
-_encoders = {
-    5: lambda obj, json_options: _encode_binary(obj, obj.subtype, json_options),  # Binary
-    7: lambda obj, json_options: {"$oid": str(obj)},  # noqa: ARG005 ObjectId
-    9: lambda obj, json_options: _encode_datetimems(obj, json_options),  # DatetimeMS
-    13: lambda obj, json_options: {"$code": str(obj)}
-    if obj.scope is None
-    else {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)},  # Code
-    17: lambda obj, json_options: {"$timestamp": {"t": obj.time, "i": obj.inc}},  # noqa: ARG005 Timestamp
-    18: lambda obj, json_options: {"$numberLong": str(obj)}
-    if json_options.strict_number_long
-    else obj,  # Int64
-    19: lambda obj, json_options: {"$numberDecimal": str(obj)},  # noqa: ARG005 Decimal128
-    100: lambda obj, json_options: _json_convert(obj.as_doc(), json_options=json_options),  # DBRef
-    127: lambda obj, json_options: {"$maxKey": 1},  # noqa: ARG005 MaxKey
-    255: lambda obj, json_options: {"$minKey": 1},  # noqa: ARG005 MinKey
-}
-
 
 def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     """Helper function that wraps :func:`json.dumps`.
@@ -859,6 +841,35 @@ def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     return {"$date": {"$numberLong": str(int(obj))}}
 
 
+def _encode_code(obj: Code, json_options: JSONOptions) -> dict:
+    if obj.scope is None:
+        return {"$code": str(obj)}
+    else:
+        return {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)}
+
+
+def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
+    if json_options.strict_number_long:
+        return {"$numberLong": str(obj)}
+    else:
+        return obj
+
+
+# Encoders for BSON types
+_encoders = {
+    5: lambda obj, json_options: _encode_binary(obj, obj.subtype, json_options),  # Binary
+    7: lambda obj, json_options: {"$oid": str(obj)},  # noqa: ARG005 ObjectId
+    9: _encode_datetimems,  # DatetimeMS
+    13: _encode_code,  # Code
+    17: lambda obj, json_options: {"$timestamp": {"t": obj.time, "i": obj.inc}},  # noqa: ARG005 Timestamp
+    18: _encode_int64,  # Int64
+    19: lambda obj, json_options: {"$numberDecimal": str(obj)},  # noqa: ARG005 Decimal128
+    100: lambda obj, json_options: _json_convert(obj.as_doc(), json_options=json_options),  # DBRef
+    127: lambda obj, json_options: {"$maxKey": 1},  # noqa: ARG005 MaxKey
+    255: lambda obj, json_options: {"$minKey": 1},  # noqa: ARG005 MinKey
+}
+
+
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
     # returning a SON for those types instead of a dict.
@@ -888,7 +899,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     elif hasattr(obj, "_type_marker"):
         type_marker = obj._type_marker
         try:
-            return _encoders.get(type_marker)(obj, json_options)  # type: ignore
+            return _encoders[type_marker](obj, json_options)  # type: ignore[no-untyped-call]
         except KeyError:
             raise TypeError("%r is not JSON serializable" % obj) from None
     elif isinstance(obj, datetime.datetime):
