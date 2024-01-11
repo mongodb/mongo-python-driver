@@ -617,6 +617,8 @@ functions:
         script: |
           ${PREPARE_SHELL}
           . .evergreen/tox.sh -m teardown-encryption
+          echo "HERE I AM"
+          cat $DRIVERS_TOOLS/.evergreen/csfle/nohup.out
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
