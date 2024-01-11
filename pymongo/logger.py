@@ -50,7 +50,7 @@ class LogMessage:
 
     def __init__(self, **kwargs: Any):
         self._kwargs = kwargs
-        self._redact()
+        # self._redact()
 
         if "durationMS" in self._kwargs:
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
@@ -58,7 +58,7 @@ class LogMessage:
             del self._kwargs["serviceId"]
 
     def __str__(self) -> str:
-        # self._redact()
+        self._redact()
         return "%s" % (
             json_util.dumps(
                 self._kwargs, json_options=_JSON_OPTIONS, default=lambda o: o.__repr__()
@@ -97,6 +97,7 @@ class LogMessage:
                     doc = json_util.dumps(
                         doc,
                         json_options=_JSON_OPTIONS,
+                        max_length=document_length,
                         default=lambda o: o.__repr__(),
                     )
                 if len(doc) > document_length:
