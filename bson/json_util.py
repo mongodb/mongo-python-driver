@@ -902,6 +902,26 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             return _encoders[type_marker](obj, json_options)  # type: ignore[no-untyped-call]
         except KeyError:
             raise TypeError("%r is not JSON serializable" % obj) from None
+    elif isinstance(obj, int):
+        if json_options.json_mode == JSONMode.CANONICAL:
+            if -(2**31) <= obj < 2**31:
+                return {"$numberInt": str(obj)}
+            return {"$numberLong": str(obj)}
+        return obj
+    elif isinstance(obj, float):
+        if json_options.json_mode != JSONMode.LEGACY:
+            if math.isnan(obj):
+                return {"$numberDouble": "NaN"}
+            elif math.isinf(obj):
+                representation = "Infinity" if obj > 0 else "-Infinity"
+                return {"$numberDouble": representation}
+            elif json_options.json_mode == JSONMode.CANONICAL:
+                # repr() will return the shortest string guaranteed to produce the
+                # original value, when float() is called on it.
+                return {"$numberDouble": str(repr(obj))}
+        return obj
+    elif isinstance(obj, str):
+        return obj
     elif isinstance(obj, datetime.datetime):
         if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
             if not obj.tzinfo:
@@ -931,18 +951,4 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             return _encode_binary(binval, binval.subtype, json_options)
         else:
             return {"$uuid": obj.hex}
-    elif json_options.json_mode == JSONMode.CANONICAL and isinstance(obj, int):
-        if -(2**31) <= obj < 2**31:
-            return {"$numberInt": str(obj)}
-        return {"$numberLong": str(obj)}
-    elif json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
-        if math.isnan(obj):
-            return {"$numberDouble": "NaN"}
-        elif math.isinf(obj):
-            representation = "Infinity" if obj > 0 else "-Infinity"
-            return {"$numberDouble": representation}
-        elif json_options.json_mode == JSONMode.CANONICAL:
-            # repr() will return the shortest string guaranteed to produce the
-            # original value, when float() is called on it.
-            return {"$numberDouble": str(repr(obj))}
     raise TypeError("%r is not JSON serializable" % obj)
