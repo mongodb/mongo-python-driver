@@ -852,7 +852,7 @@ def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
     if json_options.strict_number_long:
         return {"$numberLong": str(obj)}
     else:
-        return obj
+        return int(obj)
 
 
 # Encoders for BSON types
