@@ -268,7 +268,7 @@ class Monitor(MonitorBase):
             # XXX: "awaited" could be incorrectly set to True in the rare case
             # the pool checkout closes and recreates a connection.
             awaited = bool(
-                self._pool.available_conns
+                self._pool.conns
                 and self._stream
                 and sd.is_server_type_known
                 and sd.topology_version

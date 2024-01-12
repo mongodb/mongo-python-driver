@@ -142,7 +142,7 @@ class TestProse(IntegrationTest):
         )
         self.addCleanup(client.close)
         wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
-        wait_until(lambda: len(get_pool(client).available_conns) >= 10, "create 10 connections")
+        wait_until(lambda: len(get_pool(client).conns) >= 10, "create 10 connections")
         # Delay find commands on
         delay_finds = {
             "configureFailPoint": "failCommand",

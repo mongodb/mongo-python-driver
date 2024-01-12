@@ -196,7 +196,7 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.checkout() as new_connection:
             self.assertEqual(conn, new_connection)
 
-        self.assertEqual(1, len(cx_pool.available_conns))
+        self.assertEqual(1, len(cx_pool.conns))
 
     def test_get_socket_and_exception(self):
         # get_socket() returns socket after a non-network error.
@@ -209,7 +209,7 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.checkout() as new_connection:
             self.assertEqual(conn, new_connection)
 
-        self.assertEqual(1, len(cx_pool.available_conns))
+        self.assertEqual(1, len(cx_pool.conns))
 
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
@@ -219,7 +219,7 @@ class TestPooling(_TestPoolingBase):
             # Use Connection's API to close the socket.
             conn.close_conn(None)
 
-        self.assertEqual(0, len(cx_pool.available_conns))
+        self.assertEqual(0, len(cx_pool.conns))
 
     def test_pool_removes_dead_socket(self):
         # Test that Pool removes dead socket and the socket doesn't return
@@ -234,10 +234,10 @@ class TestPooling(_TestPoolingBase):
             self.assertTrue(conn.conn_closed())
 
         with cx_pool.checkout() as new_connection:
-            self.assertEqual(0, len(cx_pool.available_conns))
+            self.assertEqual(0, len(cx_pool.conns))
             self.assertNotEqual(conn, new_connection)
 
-        self.assertEqual(1, len(cx_pool.available_conns))
+        self.assertEqual(1, len(cx_pool.conns))
 
         # Semaphore was released.
         with cx_pool.checkout():
@@ -285,13 +285,13 @@ class TestPooling(_TestPoolingBase):
     def test_return_socket_after_reset(self):
         pool = self.create_pool()
         with pool.checkout() as sock:
-            self.assertEqual(len(pool.active_conns_context), 1)
+            self.assertEqual(len(pool.active_sockets), 1)
             self.assertEqual(pool.operation_count, 1)
             pool.reset()
 
         self.assertTrue(sock.closed)
-        self.assertEqual(0, len(pool.available_conns))
-        self.assertEqual(len(pool.active_conns_context), 0)
+        self.assertEqual(0, len(pool.conns))
+        self.assertEqual(len(pool.active_sockets), 0)
         self.assertEqual(pool.operation_count, 0)
 
     def test_pool_check(self):
@@ -396,14 +396,14 @@ class TestPooling(_TestPoolingBase):
             thread.join(10)
 
         self.assertEqual(len(docs), 50)
-        self.assertLessEqual(len(pool.available_conns), 50)
+        self.assertLessEqual(len(pool.conns), 50)
         # TLS and auth make connection establishment more expensive than
         # the query which leads to more threads hitting maxConnecting.
         # The end result is fewer total connections and better latency.
         if client_context.tls and client_context.auth_enabled:
-            self.assertLessEqual(len(pool.available_conns), 30)
+            self.assertLessEqual(len(pool.conns), 30)
         else:
-            self.assertLessEqual(len(pool.available_conns), 50)
+            self.assertLessEqual(len(pool.conns), 50)
         # MongoDB 4.4.1 with auth + ssl:
         # maxConnecting = 2:         6 connections in ~0.231+ seconds
         # maxConnecting = unbounded: 50 connections in ~0.642+ seconds
@@ -411,7 +411,7 @@ class TestPooling(_TestPoolingBase):
         # MongoDB 4.4.1 with no-auth no-ssl Python 3.8:
         # maxConnecting = 2:         15-22 connections in ~0.108+ seconds
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
-        print(len(pool.available_conns))
+        print(len(pool.conns))
 
     @client_context.require_failCommand_fail_point
     def test_csot_timeout_message(self):
@@ -515,7 +515,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         def f():
             for _ in range(5):
                 collection.find_one({"$where": delay(0.1)})
-                assert len(cx_pool.available_conns) <= max_pool_size
+                assert len(cx_pool.conns) <= max_pool_size
 
             with lock:
                 self.n_passed += 1
@@ -527,7 +527,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
-        self.assertTrue(len(cx_pool.available_conns) > 1)
+        self.assertTrue(len(cx_pool.conns) > 1)
         self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
@@ -559,7 +559,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
-        self.assertTrue(len(cx_pool.available_conns) > 1)
+        self.assertTrue(len(cx_pool.conns) > 1)
         self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):

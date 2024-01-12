@@ -1721,15 +1721,15 @@ class TestCollection(IntegrationTest):
         # Make sure the socket is returned after exhaustion.
         cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         next(cur)
-        self.assertEqual(0, len(pool.available_conns))
+        self.assertEqual(0, len(pool.conns))
         for _ in cur:
             pass
-        self.assertEqual(1, len(pool.available_conns))
+        self.assertEqual(1, len(pool.conns))
 
         # Same as previous but don't call next()
         for _ in client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
             pass
-        self.assertEqual(1, len(pool.available_conns))
+        self.assertEqual(1, len(pool.conns))
 
         # If the Cursor instance is discarded before being completely iterated
         # and the socket has pending data (more_to_come=True) we have to close
@@ -1742,15 +1742,15 @@ class TestCollection(IntegrationTest):
                 next(cur)
         else:
             next(cur)
-        self.assertEqual(0, len(pool.available_conns))
+        self.assertEqual(0, len(pool.conns))
         if sys.platform.startswith("java") or "PyPy" in sys.version:
             # Don't wait for GC or use gc.collect(), it's unreliable.
             cur.close()
         cur = None
         # Wait until the background thread returns the socket.
-        wait_until(lambda: len(pool.active_conns_context) == 0, "return socket")
+        wait_until(lambda: len(pool.active_sockets) == 0, "return socket")
         # The socket should be discarded.
-        self.assertEqual(0, len(pool.available_conns))
+        self.assertEqual(0, len(pool.conns))
 
     def test_distinct(self):
         self.db.drop_collection("test")

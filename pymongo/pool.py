@@ -1373,7 +1373,7 @@ class Pool:
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
-        self.available_conns: collections.deque = collections.deque()
+        self.conns: collections.deque = collections.deque()
         self.active_conns_context: set[_CancellationContext] = set()
         self.lock = _create_lock()
         self.active_sockets = 0
@@ -1458,17 +1458,17 @@ class Pool:
                 self.active_sockets = 0
                 self.operation_count = 0
             if service_id is None:
-                sockets, self.available_conns = self.available_conns, collections.deque()
+                sockets, self.conns = self.conns, collections.deque()
             else:
                 discard: collections.deque = collections.deque()
                 keep: collections.deque = collections.deque()
-                for conn in self.available_conns:
+                for conn in self.conns:
                     if conn.service_id == service_id:
                         discard.append(conn)
                     else:
                         keep.append(conn)
                 sockets = discard
-                self.available_conns = keep
+                self.conns = keep
 
             if close:
                 self.state = PoolState.CLOSED
@@ -1508,7 +1508,7 @@ class Pool:
         """
         self.is_writable = is_writable
         with self.lock:
-            for _socket in self.available_conns:
+            for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)
 
     def reset(
@@ -1539,17 +1539,16 @@ class Pool:
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
                 while (
-                    self.available_conns
-                    and self.available_conns[-1].idle_time_seconds()
-                    > self.opts.max_idle_time_seconds
+                    self.conns
+                    and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
                 ):
-                    conn = self.available_conns.pop()
+                    conn = self.conns.pop()
                     conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
                 # There are enough sockets in the pool.
-                if len(self.available_conns) + self.active_sockets >= self.opts.min_pool_size:
+                if len(self.conns) + self.active_sockets >= self.opts.min_pool_size:
                     return
                 if self.requests >= self.opts.min_pool_size:
                     return
@@ -1570,9 +1569,8 @@ class Pool:
                     if self.gen.get_overall() != reference_generation:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
-                    self.available_conns.appendleft(conn)
-                    if conn.cancel_context in self.active_conns_context:
-                        self.active_conns_context.remove(conn.cancel_context)
+                    self.conns.appendleft(conn)
+                    self.active_conns_context.discard(conn.cancel_context)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1617,7 +1615,8 @@ class Pool:
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
-        self.active_conns_context.add(conn.cancel_context)
+        with self.lock:
+            self.active_conns_context.add(conn.cancel_context)
         try:
             if self.handshake:
                 conn.hello()
@@ -1660,7 +1659,7 @@ class Pool:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
-            if conn.cancel_context not in self.active_conns_context:
+            with self.lock:
                 self.active_conns_context.add(conn.cancel_context)
             yield conn
         except BaseException:
@@ -1754,18 +1753,18 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(emit_event=False)
-                    while not (self.available_conns or self._pending < self._max_connecting):
+                    while not (self.conns or self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.available_conns or self._pending < self._max_connecting:
+                            if self.conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
                         self._raise_if_not_ready(emit_event=False)
 
                     try:
-                        conn = self.available_conns.popleft()
+                        conn = self.conns.popleft()
                     except IndexError:
                         self._pending += 1
                 if conn:  # We got a socket from the pool
@@ -1812,8 +1811,7 @@ class Pool:
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
         with self.lock:
-            if conn.cancel_context in self.active_conns_context:
-                self.active_conns_context.remove(conn.cancel_context)
+            self.active_conns_context.discard(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
@@ -1838,7 +1836,7 @@ class Pool:
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
-                        self.available_conns.appendleft(conn)
+                        self.conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
 
@@ -1919,5 +1917,5 @@ class Pool:
         # Avoid ResourceWarnings in Python 3
         # Close all sockets without calling reset() or close() because it is
         # not safe to acquire a lock in __del__.
-        for conn in self.available_conns:
+        for conn in self.conns:
             conn.close_conn(None)
