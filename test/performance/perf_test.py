@@ -32,8 +32,7 @@ sys.path[0:0] = [""]
 
 from test import client_context, host, port, unittest
 
-from bson import decode, encode
-from bson.json_util import loads
+from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import MongoClient
 
@@ -142,11 +141,20 @@ class PerformanceTest:
 
 
 # BSON MICRO-BENCHMARKS
-class BsonEncodingTest(PerformanceTest):
+
+
+class MicroTest(PerformanceTest):
     def setUp(self):
         # Location of test data.
         with open(os.path.join(TEST_PATH, os.path.join("extended_bson", self.dataset))) as data:
-            self.document = loads(data.read())
+            self.file_data = data.read()
+
+
+class BsonEncodingTest(MicroTest):
+    def setUp(self):
+        super().setUp()
+        # Location of test data.
+        self.document = json_util.loads(self.file_data)
         self.data_size = len(encode(self.document)) * NUM_DOCS
 
     def do_task(self):
@@ -154,12 +162,10 @@ class BsonEncodingTest(PerformanceTest):
             encode(self.document)
 
 
-class BsonDecodingTest(PerformanceTest):
+class BsonDecodingTest(MicroTest):
     def setUp(self):
-        # Location of test data.
-        with open(os.path.join(TEST_PATH, os.path.join("extended_bson", self.dataset))) as data:
-            self.document = encode(json.loads(data.read()))
-
+        super().setUp()
+        self.document = encode(json_util.loads(self.file_data))
         self.data_size = len(self.document) * NUM_DOCS
 
     def do_task(self):
@@ -188,6 +194,56 @@ class TestFullEncoding(BsonEncodingTest, unittest.TestCase):
 
 
 class TestFullDecoding(BsonDecodingTest, unittest.TestCase):
+    dataset = "full_bson.json"
+
+
+# JSON MICRO-BENCHMARKS
+class JsonEncodingTest(MicroTest):
+    def setUp(self):
+        super().setUp()
+        # Location of test data.
+        self.document = json_util.loads(self.file_data)
+        # Note: use the BSON size as the data size so we can compare BSON vs JSON performance.
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            json_util.dumps(self.document)
+
+
+class JsonDecodingTest(MicroTest):
+    def setUp(self):
+        super().setUp()
+        self.document = self.file_data
+        # Note: use the BSON size as the data size so we can compare BSON vs JSON performance.
+        self.data_size = len(encode(json_util.loads(self.file_data))) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            json_util.loads(self.document)
+
+
+class TestJsonFlatEncoding(JsonEncodingTest, unittest.TestCase):
+    dataset = "flat_bson.json"
+
+
+class TestJsonFlatDecoding(JsonDecodingTest, unittest.TestCase):
+    dataset = "flat_bson.json"
+
+
+class TestJsonDeepEncoding(JsonEncodingTest, unittest.TestCase):
+    dataset = "deep_bson.json"
+
+
+class TestJsonDeepDecoding(JsonDecodingTest, unittest.TestCase):
+    dataset = "deep_bson.json"
+
+
+class TestJsonFullEncoding(JsonEncodingTest, unittest.TestCase):
+    dataset = "full_bson.json"
+
+
+class TestJsonFullDecoding(JsonDecodingTest, unittest.TestCase):
     dataset = "full_bson.json"
 
 

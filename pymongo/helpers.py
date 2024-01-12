@@ -83,6 +83,7 @@ _RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
         89,  # NetworkTimeout
         9001,  # SocketException
         262,  # ExceededTimeLimit
+        134,  # ReadConcernMajorityNotAvailableYet
     ]
 )
 
