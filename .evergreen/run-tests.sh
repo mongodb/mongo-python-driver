@@ -273,7 +273,7 @@ PIP_QUIET=0 python -m pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
     .evergreen/check-c-extensions.sh
-    python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
+    python -m pytest -v --durations=5 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
