@@ -904,7 +904,7 @@ def _encode_float(obj: float, json_options: JSONOptions) -> Any:
     return obj
 
 
-def _encode_datetime(obj: datetime, json_options: JSONOptions) -> dict:
+def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
     if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
         if not obj.tzinfo:
             obj = obj.replace(tzinfo=utc)
@@ -935,7 +935,7 @@ def _encode_binary_obj(obj: Binary, json_options: JSONOptions) -> dict:
     return _encode_binary(obj, obj.subtype, json_options)
 
 
-def _encode_uuid(obj: bytes, json_options: JSONOptions) -> dict:
+def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:
     if json_options.strict_uuid:
         binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
         return _encode_binary(binval, binval.subtype, json_options)
@@ -971,7 +971,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS = {
+_ENCODERS: dict[Any, Any] = {
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
@@ -994,7 +994,7 @@ _ENCODERS = {
     Decimal128: _encode_decimal128,
 }
 
-_MARKERS = {
+_MARKERS: dict[Any, Any] = {
     5: _encode_binary_obj,
     7: _encode_objectid,
     9: _encode_datetimems,
@@ -1016,7 +1016,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     # happen once per subtype.
     obj_type = type(obj)
     try:
-        return _ENCODERS[obj_type](obj, json_options)  # type: ignore[no-untyped-call]
+        return _ENCODERS[obj_type](obj, json_options)
     except KeyError:
         pass
 
@@ -1029,7 +1029,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             func = _MARKERS[marker]
             # Cache this type for faster subsequent lookup.
             _ENCODERS[obj_type] = func
-            return func(obj, json_options)  # type: ignore[no-untyped-call]
+            return func(obj, json_options)
 
     # Third, test each base type. This will only happen once for
     # a subtype of a supported base type.
@@ -1038,6 +1038,6 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             func = _ENCODERS[base]
             # Cache this type for faster subsequent lookup.
             _ENCODERS[obj_type] = func
-            return func(obj, json_options)  # type: ignore[no-untyped-call]
+            return func(obj, json_options)
 
     raise TypeError("%r is not JSON serializable" % obj)
