@@ -298,6 +298,9 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     sock = conn.conn
     timed_out = False
+    # Check if the socket is already closed
+    if sock.fileno() == -1:
+        return
     while True:
         # SSLSocket can have buffered data which won't be caught by select.
         if hasattr(sock, "pending") and sock.pending() > 0:
