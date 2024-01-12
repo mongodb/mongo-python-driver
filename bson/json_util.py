@@ -920,6 +920,8 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
                 # original value, when float() is called on it.
                 return {"$numberDouble": str(repr(obj))}
         return obj
+    elif isinstance(obj, str):
+        return obj
     elif isinstance(obj, datetime.datetime):
         if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
             if not obj.tzinfo:
