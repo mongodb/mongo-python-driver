@@ -545,6 +545,13 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(json_util.dumps({"weight": Int64(65535)}), '{"weight": 65535}')
         json_options = JSONOptions(strict_number_long=True, json_mode=JSONMode.LEGACY)
         self.assertEqual(json_util.dumps({"weight": Int64(65535)}, json_options=json_options), jsn)
+        # Ensure json_util.default converts Int64 to int in non-strict mode.
+        converted = json_util.default(Int64(65535))
+        self.assertEqual(converted, 65535)
+        self.assertNotIsInstance(converted, Int64)
+        self.assertEqual(
+            json_util.default(Int64(65535), json_options=json_options), {"$numberLong": "65535"}
+        )
 
     def test_loads_document_class(self):
         # document_class dict should always work
