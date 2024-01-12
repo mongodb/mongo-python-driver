@@ -315,9 +315,9 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
                 timeout = max(min(remaining, _POLL_TIMEOUT), 0)
             else:
                 timeout = _POLL_TIMEOUT
-            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
             if conn.cancel_context.cancelled:
                 raise _OperationCancelled("operation cancelled")
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
         if readable:
             return
         if timed_out:
