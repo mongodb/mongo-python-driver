@@ -48,7 +48,7 @@ from bson import (
     encode,
     is_valid,
 )
-from bson.binary import Binary, UuidRepresentation
+from bson.binary import USER_DEFINED_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -779,6 +779,13 @@ class TestBSON(unittest.TestCase):
 
         expected_bson = encode({"a": MaxKey()})
         self.assertEqual(encode({"a": MyMaxKey()}), expected_bson)
+
+        # Test a class that inherits from two built in types
+        class MyBinary(Binary):
+            pass
+
+        expected_bson = encode({"a": Binary(b"bin", USER_DEFINED_SUBTYPE)})
+        self.assertEqual(encode({"a": MyBinary(b"bin", USER_DEFINED_SUBTYPE)}), expected_bson)
 
     def test_ordered_dict(self):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])

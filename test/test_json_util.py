@@ -610,6 +610,13 @@ class TestJsonUtil(unittest.TestCase):
         expected_json = json_util.dumps(MaxKey())
         self.assertEqual(json_util.dumps(MyMaxKey()), expected_json)
 
+        # Test a class that inherits from two built in types
+        class MyBinary(Binary):
+            pass
+
+        expected_json = json_util.dumps(Binary(b"bin", USER_DEFINED_SUBTYPE))
+        self.assertEqual(json_util.dumps(MyBinary(b"bin", USER_DEFINED_SUBTYPE)), expected_json)
+
 
 class TestJsonUtilRoundtrip(IntegrationTest):
     def test_cursor(self):
