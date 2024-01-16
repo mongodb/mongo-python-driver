@@ -1015,9 +1015,8 @@ _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
-    obj_type = type(obj)
     try:
-        return _ENCODERS[obj_type](obj, json_options)
+        return _ENCODERS[type(obj)](obj, json_options)
     except KeyError:
         pass
 
@@ -1029,7 +1028,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         if marker in _MARKERS:
             func = _MARKERS[marker]
             # Cache this type for faster subsequent lookup.
-            _ENCODERS[obj_type] = func
+            _ENCODERS[type(obj)] = func
             return func(obj, json_options)
 
     # Third, test each base type. This will only happen once for
@@ -1038,7 +1037,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         if isinstance(obj, base):
             func = _ENCODERS[base]
             # Cache this type for faster subsequent lookup.
-            _ENCODERS[obj_type] = func
+            _ENCODERS[type(obj)] = func
             return func(obj, json_options)
 
     raise TypeError("%r is not JSON serializable" % obj)
