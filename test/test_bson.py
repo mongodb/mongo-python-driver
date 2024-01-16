@@ -772,6 +772,14 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(type(value), orig_type)
             self.assertEqual(value, orig_type(value))
 
+    def test_encode_type_marker(self):
+        # Assert that a custom subclass can be BSON encoded based on the _type_marker attribute.
+        class MyMaxKey:
+            _type_marker = 127
+
+        expected_bson = encode({"a": MaxKey()})
+        self.assertEqual(encode({"a": MyMaxKey()}), expected_bson)
+
     def test_ordered_dict(self):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, decode(encode(d), CodecOptions(document_class=OrderedDict)))  # type: ignore[type-var]

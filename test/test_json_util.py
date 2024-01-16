@@ -602,6 +602,14 @@ class TestJsonUtil(unittest.TestCase):
                 expected_json = json_util.dumps(basic_obj, json_options=opts)
                 self.assertEqual(json_util.dumps(my_obj, json_options=opts), expected_json)
 
+    def test_encode_type_marker(self):
+        # Assert that a custom subclass can be JSON encoded based on the _type_marker attribute.
+        class MyMaxKey:
+            _type_marker = 127
+
+        expected_json = json_util.dumps(MaxKey())
+        self.assertEqual(json_util.dumps(MyMaxKey()), expected_json)
+
 
 class TestJsonUtilRoundtrip(IntegrationTest):
     def test_cursor(self):
