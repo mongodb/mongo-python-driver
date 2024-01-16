@@ -1374,7 +1374,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.conns: collections.deque = collections.deque()
-        self.active_conns_context: set[_CancellationContext] = set()
+        self.active_contexts: set[_CancellationContext] = set()
         self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1477,11 +1477,10 @@ class Pool:
             self.size_cond.notify_all()
 
             if interrupt_connections:
-                for context in self.active_conns_context:
+                for context in self.active_contexts:
                     context.cancel()
 
         listeners = self.opts._event_listeners
-
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
@@ -1570,7 +1569,7 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
                     self.conns.appendleft(conn)
-                    self.active_conns_context.discard(conn.cancel_context)
+                    self.active_contexts.discard(conn.cancel_context)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1616,7 +1615,7 @@ class Pool:
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
-            self.active_conns_context.add(conn.cancel_context)
+            self.active_contexts.add(conn.cancel_context)
         try:
             if self.handshake:
                 conn.hello()
@@ -1660,7 +1659,7 @@ class Pool:
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
             with self.lock:
-                self.active_conns_context.add(conn.cancel_context)
+                self.active_contexts.add(conn.cancel_context)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
@@ -1811,7 +1810,7 @@ class Pool:
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
         with self.lock:
-            self.active_conns_context.discard(conn.cancel_context)
+            self.active_contexts.discard(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)

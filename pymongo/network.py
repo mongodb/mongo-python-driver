@@ -298,7 +298,7 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     sock = conn.conn
     timed_out = False
-    # Check if the socket is already closed
+    # Check if the connection's socket has been manually closed
     if sock.fileno() == -1:
         return
     while True:

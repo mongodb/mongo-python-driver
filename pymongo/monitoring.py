@@ -874,8 +874,7 @@ class PoolClearedEvent(_PoolEvent):
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
-     - `service_id`: The service_id this command was sent to, or ``None``.
-     - '__interrupt_in_use_connections': True if all active connections were interrupted by the Pool during clearing.
+    :param interrupt_in_use_connections: True if all active connections were interrupted by the Pool during clearing.
 
     .. versionadded:: 3.9
     """
