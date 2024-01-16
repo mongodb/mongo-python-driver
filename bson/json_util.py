@@ -110,6 +110,7 @@ import uuid
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -971,7 +972,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS: dict[Any, Any] = {
+_ENCODERS: dict[Any, Callable[[Any, JSONOptions], Any]] = {
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,

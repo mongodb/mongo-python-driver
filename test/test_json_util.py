@@ -20,7 +20,7 @@ import json
 import re
 import sys
 import uuid
-from typing import Any, List, MutableMapping
+from typing import Any, List, MutableMapping, Tuple, Type
 
 from bson.codec_options import CodecOptions, DatetimeConversion
 
@@ -567,25 +567,27 @@ class TestJsonUtil(unittest.TestCase):
             json_util.loads('{"foo": "bar", "b": 1}', json_options=JSONOptions(document_class=SON)),
         )
 
-    def test_custom_subclass(self):
-        cases = [
-            [int, (1,)],
-            [float, (1.1,)],
-            [Int64, (64,)],
-            [str, ("str",)],
-            [bytes, (b"bytes",)],
-            [datetime.datetime, (2024, 1, 16)],
-            [DatetimeMS, (1,)],
-            [uuid.UUID, ("f47ac10b-58cc-4372-a567-0e02b2c3d479",)],
-            [Binary, (b"1", USER_DEFINED_SUBTYPE)],
-            [Code, ("code",)],
-            [DBRef, ("coll", ObjectId())],
-            [ObjectId, ("65a6dab5f98bc03906ee3597",)],
-            [MaxKey, ()],
-            [MinKey, ()],
-            [Regex, ("pat",)],
-            [Timestamp, (1, 1)],
-            [Decimal128, ("0.5",)],
+    def test_encode_subclass(self):
+        cases: list[Tuple[Type, Any]] = [
+            (int, (1,)),
+            (int, (2 << 60,)),
+            (float, (1.1,)),
+            (Int64, (64,)),
+            (Int64, (2 << 60,)),
+            (str, ("str",)),
+            (bytes, (b"bytes",)),
+            (datetime.datetime, (2024, 1, 16)),
+            (DatetimeMS, (1,)),
+            (uuid.UUID, ("f47ac10b-58cc-4372-a567-0e02b2c3d479",)),
+            (Binary, (b"1", USER_DEFINED_SUBTYPE)),
+            (Code, ("code",)),
+            (DBRef, ("coll", ObjectId())),
+            (ObjectId, ("65a6dab5f98bc03906ee3597",)),
+            (MaxKey, ()),
+            (MinKey, ()),
+            (Regex, ("pat",)),
+            (Timestamp, (1, 1)),
+            (Decimal128, ("0.5",)),
         ]
         allopts = [
             CANONICAL_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
