@@ -40,9 +40,12 @@ from bson.binary import (
 from bson.code import Code
 from bson.datetime_ms import _max_datetime_ms
 from bson.dbref import DBRef
+from bson.decimal128 import Decimal128
 from bson.int64 import Int64
 from bson.json_util import (
+    CANONICAL_JSON_OPTIONS,
     LEGACY_JSON_OPTIONS,
+    RELAXED_JSON_OPTIONS,
     DatetimeRepresentation,
     JSONMode,
     JSONOptions,
@@ -563,6 +566,39 @@ class TestJsonUtil(unittest.TestCase):
             SON([("foo", "bar"), ("b", 1)]),
             json_util.loads('{"foo": "bar", "b": 1}', json_options=JSONOptions(document_class=SON)),
         )
+
+    def test_custom_subclass(self):
+        cases = [
+            [int, (1,)],
+            [float, (1.1,)],
+            [Int64, (64,)],
+            [str, ("str",)],
+            [bytes, (b"bytes",)],
+            [datetime.datetime, (2024, 1, 16)],
+            [DatetimeMS, (1,)],
+            [uuid.UUID, ("f47ac10b-58cc-4372-a567-0e02b2c3d479",)],
+            [Binary, (b"1", USER_DEFINED_SUBTYPE)],
+            [Code, ("code",)],
+            [DBRef, ("coll", ObjectId())],
+            [ObjectId, ("65a6dab5f98bc03906ee3597",)],
+            [MaxKey, ()],
+            [MinKey, ()],
+            [Regex, ("pat",)],
+            [Timestamp, (1, 1)],
+            [Decimal128, ("0.5",)],
+        ]
+        allopts = [
+            CANONICAL_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+            RELAXED_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+            LEGACY_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+        ]
+        for cls, args in cases:
+            basic_obj = cls(*args)
+            my_cls = type(f"My{cls.__name__}", (cls,), {})
+            my_obj = my_cls(*args)
+            for opts in allopts:
+                expected_json = json_util.dumps(basic_obj, json_options=opts)
+                self.assertEqual(json_util.dumps(my_obj, json_options=opts), expected_json)
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

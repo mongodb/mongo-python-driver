@@ -1004,8 +1004,8 @@ _MARKERS: dict[Any, Any] = {
     18: _encode_int64,
     19: _encode_decimal128,
     100: _encode_dbref,
-    127: _encode_minkey,
-    255: _encode_maxkey,
+    127: _encode_maxkey,
+    255: _encode_minkey,
 }
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
