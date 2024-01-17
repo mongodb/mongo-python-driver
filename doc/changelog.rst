@@ -14,6 +14,14 @@ PyMongo 4.7 brings a number of improvements including:
 - Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
   :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
 - Significantly improved the performance of encoding BSON documents to JSON.
+- Fixed a bug where :class:`~bson.int64.Int64` instances could not always be encoded by `orjson`_. The following now
+  works::
+
+    >>> import orjson
+    >>> from bson import json_util
+    >>> orjson.dumps({'a': Int64(1)}, default=json_util.default, option=orjson.OPT_PASSTHROUGH_SUBCLASS)
+
+.. _orjson: https://github.com/ijl/orjson
 
 Changes in Version 4.6.1
 ------------------------
