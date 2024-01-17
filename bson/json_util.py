@@ -235,7 +235,7 @@ if TYPE_CHECKING:
 else:
     _BASE_CLASS = CodecOptions
 
-INT32_MAX = 2**31
+_INT32_MAX = 2**31
 
 
 class JSONOptions(_BASE_CLASS):
@@ -947,7 +947,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         else:
             return {"$uuid": obj.hex}
     elif json_options.json_mode == JSONMode.CANONICAL and isinstance(obj, int):
-        if -INT32_MAX <= obj < INT32_MAX:
+        if -_INT32_MAX <= obj < _INT32_MAX:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
     elif json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
