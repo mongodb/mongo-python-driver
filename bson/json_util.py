@@ -972,7 +972,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS: dict[Any, Callable[[Any, JSONOptions], Any]] = {
+_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
@@ -995,19 +995,11 @@ _ENCODERS: dict[Any, Callable[[Any, JSONOptions], Any]] = {
     Decimal128: _encode_decimal128,
 }
 
-_MARKERS: dict[Any, Any] = {
-    5: _encode_binary_obj,
-    7: _encode_objectid,
-    9: _encode_datetimems,
-    11: _encode_regex,
-    13: _encode_code,
-    17: _encode_timestamp,
-    18: _encode_int64,
-    19: _encode_decimal128,
-    100: _encode_dbref,
-    127: _encode_maxkey,
-    255: _encode_minkey,
-}
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS: dict[int, Callable[[Any, JSONOptions], Any]] = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 

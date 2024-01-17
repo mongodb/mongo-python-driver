@@ -886,18 +886,11 @@ _ENCODERS = {
     _abc.Mapping: _encode_mapping,
 }
 
-
-_MARKERS = {
-    5: _encode_binary,
-    7: _encode_objectid,
-    11: _encode_regex,
-    13: _encode_code,
-    17: _encode_timestamp,
-    18: _encode_long,
-    100: _encode_dbref,
-    127: _encode_maxkey,
-    255: _encode_minkey,
-}
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
