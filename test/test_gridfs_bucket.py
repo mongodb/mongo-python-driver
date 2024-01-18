@@ -18,9 +18,14 @@ from __future__ import annotations
 
 import datetime
 import itertools
+import sys
 import threading
 import time
 from io import BytesIO
+from unittest.mock import patch
+
+sys.path[0:0] = [""]
+
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
 
@@ -362,6 +367,7 @@ class TestGridfs(IntegrationTest):
         self.assertRaises(NoFile, self.fs.open_download_stream_by_name, "first_name")
         self.assertEqual(b"testing", self.fs.open_download_stream_by_name("second_name").read())
 
+    @patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 5)
     def test_abort(self):
         gin = self.fs.open_upload_stream("test_filename", chunk_size_bytes=5)
         gin.write(b"test1")
