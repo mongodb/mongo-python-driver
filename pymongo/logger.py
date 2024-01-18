@@ -18,7 +18,7 @@ import os
 from typing import Any
 
 from bson import UuidRepresentation, json_util
-from bson.json_util import JSONOptions
+from bson.json_util import JSONOptions, _truncate_documents
 
 
 class _LogMessageStatus(str, enum.Enum):
@@ -50,7 +50,6 @@ class LogMessage:
 
     def __init__(self, **kwargs: Any):
         self._kwargs = kwargs
-        # self._redact()
 
         if "durationMS" in self._kwargs:
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
@@ -94,10 +93,10 @@ class LogMessage:
                 if doc_name != "failure" and self._is_sensitive(doc_name):
                     doc = json_util.dumps({})
                 else:
+                    truncated_doc = _truncate_documents(doc, document_length)[0]
                     doc = json_util.dumps(
-                        doc,
+                        truncated_doc,
                         json_options=_JSON_OPTIONS,
-                        max_length=document_length,
                         default=lambda o: o.__repr__(),
                     )
                 if len(doc) > document_length:
