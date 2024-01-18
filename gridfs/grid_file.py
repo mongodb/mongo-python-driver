@@ -277,7 +277,7 @@ class GridIn:
             if self._closed:
                 self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
-    def __flush_data(self, data: Any, force=False) -> None:
+    def __flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
         self.__ensure_indexes()
         assert len(data) <= self.chunk_size
@@ -292,11 +292,12 @@ class GridIn:
             try:
                 self._chunks.insert_many(self._buffered_docs, session=self._session)
             except BulkWriteError as exc:
-                for err in exc.details["writeErrors"]:
+                write_errors = exc.details["writeErrors"]
+                for err in write_errors:
                     if err.get("code") in (11000, 11001, 12582):
                         self._raise_file_exists(self._file["_id"])
                 # For backwards compat, raise an insert_one style exception.
-                result = exc.details.copy()
+                result = {"writeErrors": write_errors}
                 wces = result["writeConcernErrors"]
                 if wces:
                     result["writeConcernError"] = wces[-1]
@@ -307,7 +308,7 @@ class GridIn:
         self._chunk_number += 1
         self._position += len(data)
 
-    def __flush_buffer(self, force=False) -> None:
+    def __flush_buffer(self, force: bool = False) -> None:
         """Flush the buffer contents out to a chunk."""
         self.__flush_data(self._buffer.getvalue(), force=force)
         self._buffer.close()
