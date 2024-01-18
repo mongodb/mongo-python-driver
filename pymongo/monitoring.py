@@ -874,22 +874,22 @@ class PoolClearedEvent(_PoolEvent):
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
-    :param interrupt_in_use_connections: True if all active connections were interrupted by the Pool during clearing.
+    :param interrupt_connections: True if all active connections were interrupted by the Pool during clearing.
 
     .. versionadded:: 3.9
     """
 
-    __slots__ = ("__service_id", "__interrupt_in_use_connections")
+    __slots__ = ("__service_id", "__interrupt_connections")
 
     def __init__(
         self,
         address: _Address,
         service_id: Optional[ObjectId] = None,
-        interrupt_in_use_connections: bool = False,
+        interrupt_connections: bool = False,
     ) -> None:
         super().__init__(address)
         self.__service_id = service_id
-        self.__interrupt_in_use_connections = interrupt_in_use_connections
+        self.__interrupt_connections = interrupt_connections
 
     @property
     def service_id(self) -> Optional[ObjectId]:
@@ -902,15 +902,15 @@ class PoolClearedEvent(_PoolEvent):
         return self.__service_id
 
     @property
-    def interrupt_in_use_connections(self) -> bool:
+    def interrupt_connections(self) -> bool:
         """If True, active connections are interrupted during clearing.
 
         .. versionadded:: 4.7
         """
-        return self.__interrupt_in_use_connections
+        return self.__interrupt_connections
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r}, {self.__interrupt_in_use_connections!r})"
+        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r}, {self.__interrupt_connections!r})"
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -1794,10 +1794,10 @@ class _EventListeners:
         self,
         address: _Address,
         service_id: Optional[ObjectId],
-        interrupt_in_use_connections: bool = False,
+        interrupt_connections: bool = False,
     ) -> None:
         """Publish a :class:`PoolClearedEvent` to all pool listeners."""
-        event = PoolClearedEvent(address, service_id, interrupt_in_use_connections)
+        event = PoolClearedEvent(address, service_id, interrupt_connections)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_cleared(event)

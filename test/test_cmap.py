@@ -176,6 +176,8 @@ class TestCMAP(IntegrationTest):
             if attr == "type":
                 continue
             c2s = camel_to_snake(attr)
+            if c2s == "interrupt_in_use_connections":
+                c2s = "interrupt_connections"
             actual_val = getattr(actual, c2s)
             if expected_val == 42:
                 self.assertIsNotNone(actual_val)

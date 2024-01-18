@@ -1496,7 +1496,7 @@ class Pool:
                 listeners.publish_pool_cleared(
                     self.address,
                     service_id=service_id,
-                    interrupt_in_use_connections=interrupt_connections,
+                    interrupt_connections=interrupt_connections,
                 )
             for conn in sockets:
                 conn.close_conn(ConnectionClosedReason.STALE)
