@@ -431,13 +431,10 @@ def insert_json_file_with_file_id(filename):
 def read_json_file(filename):
     assert proc_client is not None
     coll = proc_client.perftest.corpus
-    temp = tempfile.TemporaryFile(mode="w")
-    try:
-        temp.writelines(
-            [json.dumps(doc) + "\n" for doc in coll.find({"file": filename}, {"_id": False})]
-        )
-    finally:
-        temp.close()
+    with tempfile.TemporaryFile(mode="w") as temp:
+        for doc in coll.find({"file": filename}, {"_id": False}):
+            temp.write(json.dumps(doc))
+            temp.write("\n")
 
 
 def insert_gridfs_file(filename):
@@ -460,24 +457,22 @@ def read_gridfs_file(filename):
 
 
 class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
-    data_size = 565000000
-
     def setUp(self):
         self.client = client_context.client
         self.client.drop_database("perftest")
+        ldjson_path = os.path.join(TEST_PATH, os.path.join("parallel", "ldjson_multi"))
+        self.files = [os.path.join(ldjson_path, s) for s in os.listdir(ldjson_path)]
+        self.data_size = sum(os.path.getsize(fname) for fname in self.files)
+        self.corpus = self.client.perftest.corpus
 
     def before(self):
         self.client.perftest.command({"create": "corpus"})
-        self.corpus = self.client.perftest.corpus
-
-        ldjson_path = os.path.join(TEST_PATH, os.path.join("parallel", "ldjson_multi"))
-        self.files = [os.path.join(ldjson_path, s) for s in os.listdir(ldjson_path)]
 
     def do_task(self):
         self.mp_map(insert_json_file, self.files)
 
     def after(self):
-        self.client.perftest.drop_collection("corpus")
+        self.corpus.drop()
 
     def tearDown(self):
         super().tearDown()
@@ -485,8 +480,6 @@ class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
 
 
 class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
-    data_size = 565000000
-
     def setUp(self):
         self.client = client_context.client
         self.client.drop_database("perftest")
@@ -494,6 +487,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
 
         ldjson_path = os.path.join(TEST_PATH, os.path.join("parallel", "ldjson_multi"))
         self.files = [os.path.join(ldjson_path, s) for s in os.listdir(ldjson_path)]
+        self.data_size = sum(os.path.getsize(fname) for fname in self.files)
 
         self.mp_map(insert_json_file_with_file_id, self.files)
 
