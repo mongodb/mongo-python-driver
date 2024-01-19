@@ -321,7 +321,6 @@ class TestCommandAndReadPreference(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.c = ReadPrefTester(
-            client_context.pair,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000 * 1000,
         )
