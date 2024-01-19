@@ -2149,6 +2149,18 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-6.0-standalone-ssl"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+            SSL: "ssl"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 axes:
   # Choice of distro
   - id: platform
@@ -3118,6 +3130,7 @@ buildvariants:
   run_on: rhel90-dbx-perf-large
   tasks:
      - name: "perf-6.0-standalone"
+     - name: "perf-6.0-standalone-ssl"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
