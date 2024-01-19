@@ -255,16 +255,20 @@ class _OIDCAuthenticator:
                 else:
                     raise
 
-            conn.oidc_token_gen_id = self.token_gen_id
-            return self.sasl_conversation(conn, {"jwt": access_token})
+        # For machine callback, try again with the new token and raise any errors.
+        # For human callback with a new token, the IdP info may have changed, so continue.
+        if access_token:
+            try:
+                conn.oidc_token_gen_id = self.token_gen_id
+                return self.sasl_conversation(conn, {"jwt": access_token})
+            except Exception as e:
+                if isinstance(e, OperationFailure) and e.code == 18:
+                    if self.properties.callback_type == "machine":
+                        raise
+                else:
+                    raise
 
-        if self.properties.callback_type == "machine":
-            conn.oidc_token_gen_id = self.token_gen_id
-            return self.sasl_conversation(conn, {"jwt": access_token})
-
-        principal_name = self.username
-        if principal_name:
-            return self.sasl_conversation(conn, {"n": principal_name})
+        # Do a full 2-step authentication for human auth.
         return self.sasl_conversation(conn)
 
     def get_spec_auth_cmd(self):
@@ -274,12 +278,15 @@ class _OIDCAuthenticator:
             return self.get_command(payload)
         if self.idp_info is not None:
             return None
-        principal_name = self.username
-        if principal_name:
-            return self.get_command({"n": principal_name})
         return self.get_command()
 
     def get_command(self, payload, step="saslStart") -> Mapping[str, Any]:
+        if payload is None:
+            principal_name = self.username
+            if principal_name:
+                payload = {"n": principal_name}
+            else:
+                payload = {}
         bin_payload = Binary(bson.encode(payload))
         return dict(step=step, mechanism="MONGODB-OIDC", payload=bin_payload)
 
