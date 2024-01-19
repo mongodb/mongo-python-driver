@@ -281,6 +281,15 @@ class TestGridfs(IntegrationTest):
         )
         self.assertEqual(b"custom id", self.fs.open_download_stream(oid).read())
 
+    def test_upload_bulk_write_error(self):
+        # TODO: test BulkWriteError writeErrors/writeConcernErrors handling.
+        with patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 3):
+            oid = self.fs.upload_from_stream(
+                "test_file", BytesIO(b"hello world"), chunk_size_bytes=1
+            )
+            self.assertEqual(11, self.db.fs.chunks.count_documents({}))
+            self.assertEqual(b"hello world", self.fs.open_download_stream(oid).read())
+
     def test_open_upload_stream(self):
         gin = self.fs.open_upload_stream("from_stream")
         gin.write(b"from stream")
