@@ -55,8 +55,8 @@ def create_test(test_case):
             props = {}
             if credential:
                 props = credential["mechanism_properties"] or {}
-                if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["request_token_callback"] = SampleHumanCallback()
+                if props.get("CALLBACK"):
+                    props["callback"] = SampleHumanCallback()
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
@@ -88,10 +88,8 @@ def create_test(test_case):
                             )
                         elif "PROVIDER_NAME" in expected:
                             self.assertEqual(actual.provider_name, expected["PROVIDER_NAME"])
-                        elif "request_token_callback" in expected:
-                            self.assertEqual(
-                                actual.request_token_callback, expected["request_token_callback"]
-                            )
+                        elif "callback" in expected:
+                            self.assertEqual(actual.callback, expected["callback"])
                         else:
                             self.fail(f"Unhandled property: {key}")
                 else:
