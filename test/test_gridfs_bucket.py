@@ -39,6 +39,7 @@ from pymongo.errors import (
     ConfigurationError,
     NotPrimaryError,
     ServerSelectionTimeoutError,
+    WriteConcernError,
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
@@ -281,14 +282,28 @@ class TestGridfs(IntegrationTest):
         )
         self.assertEqual(b"custom id", self.fs.open_download_stream(oid).read())
 
+    @patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 3)
+    @client_context.require_failCommand_fail_point
     def test_upload_bulk_write_error(self):
-        # TODO: test BulkWriteError writeErrors/writeConcernErrors handling.
-        with patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 3):
-            oid = self.fs.upload_from_stream(
-                "test_file", BytesIO(b"hello world"), chunk_size_bytes=1
-            )
-            self.assertEqual(11, self.db.fs.chunks.count_documents({}))
-            self.assertEqual(b"hello world", self.fs.open_download_stream(oid).read())
+        # Test BulkWriteError from insert_many is converted to an insert_one style error.
+        expected_wce = {
+            "code": 100,
+            "codeName": "UnsatisfiableWriteConcern",
+            "errmsg": "Not enough data-bearing nodes",
+        }
+        cause_wce = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 2},
+            "data": {"failCommands": ["insert"], "writeConcernError": expected_wce},
+        }
+        gin = self.fs.open_upload_stream("test_file", chunk_size_bytes=1)
+        with self.fail_point(cause_wce):
+            # Assert we raise WriteConcernError, not BulkWriteError.
+            with self.assertRaises(WriteConcernError):
+                gin.write(b"hello world")
+        # 3 chunks were uploaded.
+        self.assertEqual(3, self.db.fs.chunks.count_documents({"files_id": gin._id}))
+        gin.abort()
 
     def test_open_upload_stream(self):
         gin = self.fs.open_upload_stream("from_stream")

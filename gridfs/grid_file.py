@@ -292,13 +292,13 @@ class GridIn:
             try:
                 self._chunks.insert_many(self._buffered_docs, session=self._session)
             except BulkWriteError as exc:
+                # For backwards compatibility, raise an insert_one style exception.
                 write_errors = exc.details["writeErrors"]
                 for err in write_errors:
-                    if err.get("code") in (11000, 11001, 12582):
+                    if err.get("code") in (11000, 11001, 12582):  # Duplicate key errors
                         self._raise_file_exists(self._file["_id"])
-                # For backwards compat, raise an insert_one style exception.
                 result = {"writeErrors": write_errors}
-                wces = result["writeConcernErrors"]
+                wces = exc.details["writeConcernErrors"]
                 if wces:
                     result["writeConcernError"] = wces[-1]
                 _check_write_command_response(result)
