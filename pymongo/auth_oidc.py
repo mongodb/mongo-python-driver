@@ -278,7 +278,7 @@ class _OIDCAuthenticator:
             return self.get_command(payload)
         if self.idp_info is not None:
             return None
-        return self.get_command()
+        return self.get_command(None)
 
     def get_command(self, payload, step="saslStart") -> Mapping[str, Any]:
         if payload is None:
