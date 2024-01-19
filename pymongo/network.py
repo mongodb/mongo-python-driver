@@ -86,31 +86,30 @@ def command(
 ) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
-    :Parameters:
-      - `conn`: a Connection instance
-      - `dbname`: name of the database on which to run the command
-      - `spec`: a command document as an ordered dict type, eg SON.
-      - `is_mongos`: are we connected to a mongos?
-      - `read_preference`: a read preference
-      - `codec_options`: a CodecOptions instance
-      - `session`: optional ClientSession instance.
-      - `client`: optional MongoClient instance for updating $clusterTime.
-      - `check`: raise OperationFailure if there are errors
-      - `allowable_errors`: errors to ignore if `check` is True
-      - `address`: the (host, port) of `conn`
-      - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
-      - `max_bson_size`: The maximum encoded bson size for this server
-      - `read_concern`: The read concern for this command.
-      - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
+    :param conn: a Connection instance
+    :param dbname: name of the database on which to run the command
+    :param spec: a command document as an ordered dict type, eg SON.
+    :param is_mongos: are we connected to a mongos?
+    :param read_preference: a read preference
+    :param codec_options: a CodecOptions instance
+    :param session: optional ClientSession instance.
+    :param client: optional MongoClient instance for updating $clusterTime.
+    :param check: raise OperationFailure if there are errors
+    :param allowable_errors: errors to ignore if `check` is True
+    :param address: the (host, port) of `conn`
+    :param listeners: An instance of :class:`~pymongo.monitoring.EventListeners`
+    :param max_bson_size: The maximum encoded bson size for this server
+    :param read_concern: The read concern for this command.
+    :param parse_write_concern_error: Whether to parse the ``writeConcernError``
         field in the command response.
-      - `collation`: The collation for this command.
-      - `compression_ctx`: optional compression Context.
-      - `use_op_msg`: True if we should use OP_MSG.
-      - `unacknowledged`: True if this is an unacknowledged command.
-      - `user_fields` (optional): Response fields that should be decoded
+    :param collation: The collation for this command.
+    :param compression_ctx: optional compression Context.
+    :param use_op_msg: True if we should use OP_MSG.
+    :param unacknowledged: True if this is an unacknowledged command.
+    :param user_fields: Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to
         bson._decode_all_selective.
-      - `exhaust_allowed`: True if we should enable OP_MSG exhaustAllowed.
+    :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     """
     name = next(iter(spec))
     ns = dbname + ".$cmd"
@@ -168,7 +167,12 @@ def command(
         assert listeners is not None
         assert address is not None
         listeners.publish_command_start(
-            orig, dbname, request_id, address, service_id=conn.service_id
+            orig,
+            dbname,
+            request_id,
+            address,
+            conn.server_connection_id,
+            service_id=conn.service_id,
         )
         start = datetime.datetime.now()
 
@@ -210,6 +214,7 @@ def command(
                 name,
                 request_id,
                 address,
+                conn.server_connection_id,
                 service_id=conn.service_id,
                 database_name=dbname,
             )
@@ -224,6 +229,7 @@ def command(
             name,
             request_id,
             address,
+            conn.server_connection_id,
             service_id=conn.service_id,
             speculative_hello=speculative_hello,
             database_name=dbname,
@@ -290,35 +296,35 @@ _POLL_TIMEOUT = 0.5
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
-    context = conn.cancel_context
-    # Only Monitor connections can be cancelled.
-    if context:
-        sock = conn.conn
-        timed_out = False
-        while True:
-            # SSLSocket can have buffered data which won't be caught by select.
-            if hasattr(sock, "pending") and sock.pending() > 0:
-                readable = True
+    sock = conn.conn
+    timed_out = False
+    # Check if the connection's socket has been manually closed
+    if sock.fileno() == -1:
+        return
+    while True:
+        # SSLSocket can have buffered data which won't be caught by select.
+        if hasattr(sock, "pending") and sock.pending() > 0:
+            readable = True
+        else:
+            # Wait up to 500ms for the socket to become readable and then
+            # check for cancellation.
+            if deadline:
+                remaining = deadline - time.monotonic()
+                # When the timeout has expired perform one final check to
+                # see if the socket is readable. This helps avoid spurious
+                # timeouts on AWS Lambda and other FaaS environments.
+                if remaining <= 0:
+                    timed_out = True
+                timeout = max(min(remaining, _POLL_TIMEOUT), 0)
             else:
-                # Wait up to 500ms for the socket to become readable and then
-                # check for cancellation.
-                if deadline:
-                    remaining = deadline - time.monotonic()
-                    # When the timeout has expired perform one final check to
-                    # see if the socket is readable. This helps avoid spurious
-                    # timeouts on AWS Lambda and other FaaS environments.
-                    if remaining <= 0:
-                        timed_out = True
-                    timeout = max(min(remaining, _POLL_TIMEOUT), 0)
-                else:
-                    timeout = _POLL_TIMEOUT
-                readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
-            if context.cancelled:
-                raise _OperationCancelled("hello cancelled")
-            if readable:
-                return
-            if timed_out:
-                raise socket.timeout("timed out")
+                timeout = _POLL_TIMEOUT
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+        if conn.cancel_context.cancelled:
+            raise _OperationCancelled("operation cancelled")
+        if readable:
+            return
+        if timed_out:
+            raise socket.timeout("timed out")
 
 
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.

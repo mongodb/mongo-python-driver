@@ -30,11 +30,12 @@ from pymongo.hello import Hello, HelloCompat
 from pymongo.monitor import Monitor
 from pymongo.pool import PoolOptions
 from pymongo.read_preferences import ReadPreference, Secondary
+from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
+from pymongo.topology import Topology, _ErrorContext, _filter_servers
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 
@@ -684,6 +685,23 @@ class TestMultiServerTopology(TopologyTest):
         got_hello(t, ("a", 27017), mock_lb_response)
         self.assertNotIn(("a", 27017), t.description.server_descriptions())
         self.assertEqual(t.description.topology_type_name, "Unknown")
+
+    def test_filtered_server_selection(self):
+        s1 = Server(ServerDescription(("localhost", 27017)), pool=object(), monitor=object())  # type: ignore[arg-type]
+        s2 = Server(ServerDescription(("localhost2", 27017)), pool=object(), monitor=object())  # type: ignore[arg-type]
+        servers = [s1, s2]
+
+        result = _filter_servers(servers, deprioritized_servers=[s2])
+        self.assertEqual(result, [s1])
+
+        result = _filter_servers(servers, deprioritized_servers=[s1, s2])
+        self.assertEqual(result, servers)
+
+        result = _filter_servers(servers, deprioritized_servers=[])
+        self.assertEqual(result, servers)
+
+        result = _filter_servers(servers)
+        self.assertEqual(result, servers)
 
 
 def wait_for_primary(topology):

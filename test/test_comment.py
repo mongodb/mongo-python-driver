@@ -89,7 +89,7 @@ class TestComment(IntegrationTest):
                     self.assertTrue(tested)
                     if h not in [coll.aggregate_raw_batches]:
                         self.assertIn(
-                            "`comment` (optional):",
+                            ":param comment:",
                             h.__doc__,
                         )
                         if h not in already_supported:

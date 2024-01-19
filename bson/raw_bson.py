@@ -52,29 +52,24 @@ overhead of decoding or encoding BSON.
 """
 from __future__ import annotations
 
-from typing import Any, ItemsView, Iterator, Mapping, MutableMapping, Optional
+from typing import Any, ItemsView, Iterator, Mapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER, CodecOptions
 from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
-from bson.son import SON
 
 
 def _inflate_bson(
     bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument], raw_array: bool = False
-) -> MutableMapping[str, Any]:
+) -> dict[str, Any]:
     """Inflates the top level fields of a BSON document.
 
-    :Parameters:
-      - `bson_bytes`: the BSON bytes that compose this document
-      - `codec_options`: An instance of
+    :param bson_bytes: the BSON bytes that compose this document
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions` whose ``document_class``
         must be :class:`RawBSONDocument`.
     """
-    # Use SON to preserve ordering of elements.
-    return _raw_to_dict(
-        bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), raw_array=raw_array
-    )
+    return _raw_to_dict(bson_bytes, 4, len(bson_bytes) - 1, codec_options, {}, raw_array=raw_array)
 
 
 class RawBSONDocument(Mapping[str, Any]):
@@ -110,9 +105,8 @@ class RawBSONDocument(Mapping[str, Any]):
             >>> raw_doc['_id']
             'my_doc'
 
-        :Parameters:
-          - `bson_bytes`: the BSON bytes that compose this document
-          - `codec_options` (optional): An instance of
+        :param bson_bytes: the BSON bytes that compose this document
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` whose ``document_class``
             must be :class:`RawBSONDocument`. The default is
             :attr:`DEFAULT_RAW_BSON_OPTIONS`.
@@ -154,7 +148,6 @@ class RawBSONDocument(Mapping[str, Any]):
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
             # created, so no need to do that again.
-            # Use SON to preserve ordering of elements.
             self.__inflated_doc = self._inflate_bson(self.__raw, self.__codec_options)
         return self.__inflated_doc
 

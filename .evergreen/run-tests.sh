@@ -172,6 +172,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
+    export AWS_SESSION_TOKEN=
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then

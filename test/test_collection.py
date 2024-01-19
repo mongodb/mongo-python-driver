@@ -2124,9 +2124,7 @@ class TestCollection(IntegrationTest):
             None,
             None,
         )
-        self.assertEqual(
-            cmd.to_dict(), SON([("find", "coll"), ("$dumb", 2), ("filter", {"foo": 1})]).to_dict()
-        )
+        self.assertEqual(cmd, {"find": "coll", "$dumb": 2, "filter": {"foo": 1}})
 
     def test_bool(self):
         with self.assertRaises(NotImplementedError):

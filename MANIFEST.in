@@ -1,4 +1,4 @@
-include README.rst
+include README.md
 include LICENSE
 include THIRD-PARTY-NOTICES
 include *.ini
@@ -6,8 +6,8 @@ exclude .coveragerc
 exclude .git-blame-ignore-revs
 exclude .pre-commit-config.yaml
 exclude .readthedocs.yaml
-exclude CONTRIBUTING.rst
-exclude RELEASE.rst
+exclude CONTRIBUTING.md
+exclude RELEASE.md
 recursive-include doc *.rst
 recursive-include doc *.py
 recursive-include doc *.conf

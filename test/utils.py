@@ -319,7 +319,7 @@ class MockPool:
     def ready(self):
         pass
 
-    def reset(self, service_id=None):
+    def reset(self, service_id=None, interrupt_connections=False):
         self._reset()
 
     def reset_without_pause(self):
@@ -1153,3 +1153,9 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                 raise AssertionError(f"Unsupported cursorType: {cursor_type}")
         else:
             arguments[c2s] = arguments.pop(arg_name)
+
+
+def set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    client.admin.command(cmd)

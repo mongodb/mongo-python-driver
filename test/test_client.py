@@ -21,6 +21,7 @@ import copy
 import datetime
 import gc
 import os
+import re
 import signal
 import socket
 import struct
@@ -535,6 +536,14 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIsInstance(c.options.retry_writes, bool)
         self.assertIsInstance(c.options.retry_reads, bool)
 
+    def test_validate_suggestion(self):
+        """Validate kwargs in constructor."""
+        for typo in ["auth", "Auth", "AUTH"]:
+            expected = f"Unknown option: {typo}. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
+            expected = re.escape(expected)
+            with self.assertRaisesRegex(ConfigurationError, expected):
+                MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
+
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):
@@ -614,7 +623,8 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(minPoolSize=10)
             server = client._get_topology().select_server(readable_server_selector)
             wait_until(
-                lambda: len(server._pool.conns) == 10, "pool initialized with 10 connections"
+                lambda: len(server._pool.conns) == 10,
+                "pool initialized with 10 connections",
             )
 
             # Assert that if a socket is closed, a new one takes its place

@@ -24,7 +24,6 @@ from typing import Any, Iterable, Mapping, NoReturn, Optional
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.objectid import ObjectId
-from bson.son import SON
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.client_session import ClientSession
@@ -50,8 +49,8 @@ NEWLN = b"\n"
 # Slightly under a power of 2, to work well with server's record allocations.
 DEFAULT_CHUNK_SIZE = 255 * 1024
 
-_C_INDEX: SON[str, Any] = SON([("files_id", ASCENDING), ("n", ASCENDING)])
-_F_INDEX: SON[str, Any] = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
+_C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
+_F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
 
 
 def _grid_in_property(
@@ -152,12 +151,11 @@ class GridIn:
           - ``"encoding"``: encoding used for this file. Any :class:`str`
             that is written to the file will be converted to :class:`bytes`.
 
-        :Parameters:
-          - `root_collection`: root collection to write to
-          - `session` (optional): a
+        :param root_collection: root collection to write to
+        :param session: a
             :class:`~pymongo.client_session.ClientSession` to use for all
             commands
-          - `**kwargs: Any` (optional): file level options (see above)
+        :param kwargs: Any: file level options (see above)
 
         .. versionchanged:: 4.0
            Removed the `disable_md5` parameter. See
@@ -344,8 +342,7 @@ class GridIn:
         Unicode data is only allowed if the file has an :attr:`encoding`
         attribute.
 
-        :Parameters:
-          - `data`: string of bytes or file-like object to be written
+        :param data: string of bytes or file-like object to be written
             to the file
         """
         if self._closed:
@@ -438,12 +435,11 @@ class GridOut(io.IOBase):
         :class:`TypeError` if `root_collection` is not an instance of
         :class:`~pymongo.collection.Collection`.
 
-        :Parameters:
-          - `root_collection`: root collection to read from
-          - `file_id` (optional): value of ``"_id"`` for the file to read
-          - `file_document` (optional): file document from
+        :param root_collection: root collection to read from
+        :param file_id: value of ``"_id"`` for the file to read
+        :param file_document: file document from
             `root_collection.files`
-          - `session` (optional): a
+        :param session: a
             :class:`~pymongo.client_session.ClientSession` to use for all
             commands
 
@@ -608,8 +604,7 @@ class GridOut(io.IOBase):
         The bytes are returned as an instance of :class:`bytes`
         If `size` is negative or omitted all data is read.
 
-        :Parameters:
-          - `size` (optional): the number of bytes to read
+        :param size: the number of bytes to read
 
         .. versionchanged:: 3.8
            This method now only checks for extra chunks after reading the
@@ -621,8 +616,7 @@ class GridOut(io.IOBase):
     def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
         """Read one line or up to `size` bytes from the file.
 
-        :Parameters:
-         - `size` (optional): the maximum number of bytes to read
+        :param size: the maximum number of bytes to read
         """
         return self._read_size_or_line(size=size, line=True)
 
@@ -633,10 +627,9 @@ class GridOut(io.IOBase):
     def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
         """Set the current position of this file.
 
-        :Parameters:
-         - `pos`: the position (or offset if using relative
+        :param pos: the position (or offset if using relative
            positioning) to seek to
-         - `whence` (optional): where to seek
+        :param whence: where to seek
            from. :attr:`os.SEEK_SET` (``0``) for absolute file
            positioning, :attr:`os.SEEK_CUR` (``1``) to seek relative
            to the current position, :attr:`os.SEEK_END` (``2``) to

@@ -25,8 +25,7 @@ class Int64(int):
     Python 3. Small integral numbers are encoded to BSON int32 by default,
     but Int64 numbers will always be encoded to BSON int64.
 
-    :Parameters:
-      - `value`: the numeric value to represent
+    :param value: the numeric value to represent
     """
 
     __slots__ = ()

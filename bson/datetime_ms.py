@@ -55,8 +55,7 @@ class DatetimeMS:
         'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for
         details.
 
-        :Parameters:
-          - `value`: An instance of :class:`datetime.datetime` to be
+        :param value: An instance of :class:`datetime.datetime` to be
             represented as milliseconds since the Unix epoch, or int of
             milliseconds since the Unix epoch.
         """
@@ -104,8 +103,7 @@ class DatetimeMS:
     ) -> datetime.datetime:
         """Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
 
-        :Parameters:
-          - `codec_options`: A CodecOptions instance for specifying how the
+        :param codec_options: A CodecOptions instance for specifying how the
             resulting DatetimeMS object will be formatted using ``tz_aware``
             and ``tz_info``. Defaults to
             :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.

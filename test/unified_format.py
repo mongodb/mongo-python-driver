@@ -779,6 +779,22 @@ class MatchEvaluatorUtil:
             else:
                 self.test.assertIsNone(actual.service_id)
 
+    def assertHasInterruptInUseConnections(self, spec, actual):
+        if "interruptInUseConnections" in spec:
+            self.test.assertEqual(
+                spec.get("interruptInUseConnections"), actual.interrupt_connections
+            )
+        else:
+            self.test.assertIsInstance(actual.interrupt_connections, bool)
+
+    def assertHasServerConnectionId(self, spec, actual):
+        if "hasServerConnectionId" in spec:
+            if spec.get("hasServerConnectionId"):
+                self.test.assertIsNotNone(actual.server_connection_id)
+                self.test.assertIsInstance(actual.server_connection_id, int)
+            else:
+                self.test.assertIsNone(actual.server_connection_id)
+
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         if "type" in spec:
             self.test.assertEqual(actual.server_type_name, spec["type"])
@@ -807,6 +823,7 @@ class MatchEvaluatorUtil:
                 self.match_result(command, actual.command)
             self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get("reply")
@@ -814,10 +831,12 @@ class MatchEvaluatorUtil:
                 self.match_result(reply, actual.reply)
             self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
             self.assertHasServiceId(spec, actual)
             self.assertHasDatabaseName(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":
@@ -825,6 +844,7 @@ class MatchEvaluatorUtil:
         elif name == "poolClearedEvent":
             self.test.assertIsInstance(actual, PoolClearedEvent)
             self.assertHasServiceId(spec, actual)
+            self.assertHasInterruptInUseConnections(spec, actual)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "connectionCreatedEvent":

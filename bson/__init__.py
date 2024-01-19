@@ -886,18 +886,11 @@ _ENCODERS = {
     _abc.Mapping: _encode_mapping,
 }
 
-
-_MARKERS = {
-    5: _encode_binary,
-    7: _encode_objectid,
-    11: _encode_regex,
-    13: _encode_code,
-    17: _encode_timestamp,
-    18: _encode_long,
-    100: _encode_dbref,
-    127: _encode_maxkey,
-    255: _encode_minkey,
-}
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
@@ -1026,12 +1019,11 @@ def encode(
     :class:`~bson.errors.InvalidDocument` if `document` cannot be
     converted to :class:`BSON`.
 
-    :Parameters:
-      - `document`: mapping type representing a document
-      - `check_keys` (optional): check if keys start with '$' or
+    :param document: mapping type representing a document
+    :param check_keys: check if keys start with '$' or
         contain '.', raising :class:`~bson.errors.InvalidDocument` in
         either case
-      - `codec_options` (optional): An instance of
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionadded:: 3.9
@@ -1072,10 +1064,9 @@ def decode(
         >>> type(decoded_doc)
         <class 'collections.OrderedDict'>
 
-    :Parameters:
-      - `data`: the BSON to decode. Any bytes-like object that implements
+    :param data: the BSON to decode. Any bytes-like object that implements
         the buffer protocol.
-      - `codec_options` (optional): An instance of
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionadded:: 3.9
@@ -1141,9 +1132,8 @@ def decode_all(
     `data` must be a bytes-like object implementing the buffer protocol that
     provides concatenated, valid, BSON-encoded documents.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options` (optional): An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.9
@@ -1238,20 +1228,18 @@ def _decode_all_selective(
 
     `data` must be a string representing a valid, BSON-encoded document.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options`: An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions` with user-specified type
         decoders. If no decoders are found, this method is the same as
         ``decode_all``.
-      - `fields`: Map of document namespaces where data that needs
+    :param fields: Map of document namespaces where data that needs
         to be custom decoded lives or None. For example, to custom decode a
         list of objects in 'field1.subfield1', the specified value should be
         ``{'field1': {'subfield1': 1}}``. If ``fields``  is an empty map or
         None, this method is the same as ``decode_all``.
 
-    :Returns:
-      - `document_list`: Single-member list containing the decoded document.
+    :return: Single-member list containing the decoded document.
 
     .. versionadded:: 3.8
     """
@@ -1298,9 +1286,8 @@ def decode_iter(
     `data` must be a string of concatenated, valid, BSON-encoded
     documents.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options` (optional): An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.0
@@ -1346,9 +1333,8 @@ def decode_file_iter(
     Works similarly to the decode_all function, but reads from the file object
     in chunks and parses bson in chunks, yielding one document at a time.
 
-    :Parameters:
-      - `file_obj`: A file object containing BSON data.
-      - `codec_options` (optional): An instance of
+    :param file_obj: A file object containing BSON data.
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.0
@@ -1377,8 +1363,7 @@ def is_valid(bson: bytes) -> bool:
     :class:`bytes`. Returns ``True``
     if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
-    :Parameters:
-      - `bson`: the data to be validated
+    :param bson: the data to be validated
     """
     if not isinstance(bson, bytes):
         raise TypeError("BSON data must be an instance of a subclass of bytes")
@@ -1414,12 +1399,11 @@ class BSON(bytes):
         :class:`str'. Raises :class:`~bson.errors.InvalidDocument`
         if `document` cannot be converted to :class:`BSON`.
 
-        :Parameters:
-          - `document`: mapping type representing a document
-          - `check_keys` (optional): check if keys start with '$' or
+        :param document: mapping type representing a document
+        :param check_keys: check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
-          - `codec_options` (optional): An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`.
 
         .. versionchanged:: 3.0
@@ -1447,8 +1431,7 @@ class BSON(bytes):
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 
-        :Parameters:
-          - `codec_options` (optional): An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`.
 
         .. versionchanged:: 3.0

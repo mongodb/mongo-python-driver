@@ -40,7 +40,6 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.son import SON
 from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
@@ -180,11 +179,7 @@ else:
         _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
 
 
-_METADATA: SON[str, Any] = SON(
-    [
-        ("driver", SON([("name", "PyMongo"), ("version", __version__)])),
-    ]
-)
+_METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
 
 if sys.platform.startswith("linux"):
     # platform.linux_distribution was deprecated in Python 3.5
@@ -192,61 +187,51 @@ if sys.platform.startswith("linux"):
     # raises DeprecationWarning
     # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
     _name = platform.system()
-    _METADATA["os"] = SON(
-        [
-            ("type", _name),
-            ("name", _name),
-            ("architecture", platform.machine()),
-            # Kernel version (e.g. 4.4.0-17-generic).
-            ("version", platform.release()),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": _name,
+        "name": _name,
+        "architecture": platform.machine(),
+        # Kernel version (e.g. 4.4.0-17-generic).
+        "version": platform.release(),
+    }
 elif sys.platform == "darwin":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", platform.system()),
-            ("architecture", platform.machine()),
-            # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
-            # kernel version.
-            ("version", platform.mac_ver()[0]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": platform.system(),
+        "architecture": platform.machine(),
+        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+        # kernel version.
+        "version": platform.mac_ver()[0],
+    }
 elif sys.platform == "win32":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            # "Windows XP", "Windows 7", "Windows 10", etc.
-            ("name", " ".join((platform.system(), platform.release()))),
-            ("architecture", platform.machine()),
-            # Windows patch level (e.g. 5.1.2600-SP3)
-            ("version", "-".join(platform.win32_ver()[1:3])),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        # "Windows XP", "Windows 7", "Windows 10", etc.
+        "name": " ".join((platform.system(), platform.release())),
+        "architecture": platform.machine(),
+        # Windows patch level (e.g. 5.1.2600-SP3)
+        "version": "-".join(platform.win32_ver()[1:3]),
+    }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA["os"] = SON(
-        [
-            # Linux, Windows 7, Mac OS X, etc.
-            ("type", _name),
-            ("name", _name),
-            # x86, x86_64, AMD64, etc.
-            ("architecture", _arch),
-            # Linux kernel version, OSX version, etc.
-            ("version", _ver),
-        ]
-    )
+    _METADATA["os"] = {
+        # Linux, Windows 7, Mac OS X, etc.
+        "type": _name,
+        "name": _name,
+        # x86, x86_64, AMD64, etc.
+        "architecture": _arch,
+        # Linux kernel version, OSX version, etc.
+        "version": _ver,
+    }
 else:
     # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
     _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", " ".join([part for part in _aliased[:2] if part])),
-            ("architecture", platform.machine()),
-            ("version", _aliased[2]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": " ".join([part for part in _aliased[:2] if part]),
+        "architecture": platform.machine(),
+        "version": _aliased[2],
+    }
 
 if platform.python_implementation().startswith("PyPy"):
     _METADATA["platform"] = " ".join(
@@ -682,7 +667,7 @@ class PoolOptions:
         return self.__compression_settings
 
     @property
-    def metadata(self) -> SON[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """A dict of metadata about the application, driver, os, and platform."""
         return self.__metadata.copy()
 
@@ -714,11 +699,10 @@ class _CancellationContext:
 class Connection:
     """Store a connection with some metadata.
 
-    :Parameters:
-      - `conn`: a raw connection object
-      - `pool`: a Pool instance
-      - `address`: the server's (host, port)
-      - `id`: the id of this socket in it's pool
+    :param conn: a raw connection object
+    :param pool: a Pool instance
+    :param address: the server's (host, port)
+    :param id: the id of this socket in it's pool
     """
 
     def __init__(
@@ -755,14 +739,12 @@ class Connection:
         self.pool_gen = pool.gen
         self.generation = self.pool_gen.get_overall()
         self.ready = False
-        self.cancel_context: Optional[_CancellationContext] = None
-        if not pool.handshake:
-            # This is a Monitor connection.
-            self.cancel_context = _CancellationContext()
+        self.cancel_context: _CancellationContext = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come: bool = False
         # For load balancer support.
         self.service_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
@@ -824,14 +806,14 @@ class Connection:
         else:
             self.close_conn(ConnectionClosedReason.STALE)
 
-    def hello_cmd(self) -> SON[str, Any]:
+    def hello_cmd(self) -> dict[str, Any]:
         # Handshake spec requires us to use OP_MSG+hello command for the
         # initial handshake in load balanced or stable API mode.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             self.op_msg_enabled = True
-            return SON([(HelloCompat.CMD, 1)])
+            return {HelloCompat.CMD: 1}
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
+            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello[dict[str, Any]]:
         return self._hello(None, None, None)
@@ -903,6 +885,7 @@ class Connection:
             self.compression_context = ctx
 
         self.op_msg_enabled = True
+        self.server_connection_id = hello.connection_id
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
         if auth_ctx:
@@ -949,23 +932,22 @@ class Connection:
     ) -> dict[str, Any]:
         """Execute a command or raise an error.
 
-        :Parameters:
-          - `dbname`: name of the database on which to run the command
-          - `spec`: a command document as a dict, SON, or mapping object
-          - `read_preference`: a read preference
-          - `codec_options`: a CodecOptions instance
-          - `check`: raise OperationFailure if there are errors
-          - `allowable_errors`: errors to ignore if `check` is True
-          - `read_concern`: The read concern for this command.
-          - `write_concern`: The write concern for this command.
-          - `parse_write_concern_error`: Whether to parse the
+        :param dbname: name of the database on which to run the command
+        :param spec: a command document as a dict, SON, or mapping object
+        :param read_preference: a read preference
+        :param codec_options: a CodecOptions instance
+        :param check: raise OperationFailure if there are errors
+        :param allowable_errors: errors to ignore if `check` is True
+        :param read_concern: The read concern for this command.
+        :param write_concern: The write concern for this command.
+        :param parse_write_concern_error: Whether to parse the
             ``writeConcernError`` field in the command response.
-          - `collation`: The collation for this command.
-          - `session`: optional ClientSession instance.
-          - `client`: optional MongoClient for gossipping $clusterTime.
-          - `retryable_write`: True if this command is a retryable write.
-          - `publish_events`: Should we publish events for this command?
-          - `user_fields` (optional): Response fields that should be decoded
+        :param collation: The collation for this command.
+        :param session: optional ClientSession instance.
+        :param client: optional MongoClient for gossipping $clusterTime.
+        :param retryable_write: True if this command is a retryable write.
+        :param publish_events: Should we publish events for this command?
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
@@ -974,7 +956,7 @@ class Connection:
 
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
-            spec = SON(spec)
+            spec = dict(spec)
 
         if not (write_concern is None or write_concern.acknowledged or collation is None):
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
@@ -1057,9 +1039,8 @@ class Connection:
 
         Can raise ConnectionFailure or InvalidDocument.
 
-        :Parameters:
-          - `msg`: bytes, an OP_MSG message.
-          - `max_doc_size`: size in bytes of the largest document in `msg`.
+        :param msg: bytes, an OP_MSG message.
+        :param max_doc_size: size in bytes of the largest document in `msg`.
         """
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
@@ -1071,9 +1052,8 @@ class Connection:
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :Parameters:
-          - `request_id`: an int.
-          - `msg`: bytes, the command message.
+        :param request_id: an int.
+        :param msg: bytes, the command message.
         """
         self.send_message(msg, 0)
         reply = self.receive_message(request_id)
@@ -1129,8 +1109,7 @@ class Connection:
         if self.closed:
             return
         self.closed = True
-        if self.cancel_context:
-            self.cancel_context.cancel()
+        self.cancel_context.cancel()
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
         try:
@@ -1380,10 +1359,9 @@ class PoolState:
 class Pool:
     def __init__(self, address: _Address, options: PoolOptions, handshake: bool = True):
         """
-        :Parameters:
-          - `address`: a (hostname, port) tuple
-          - `options`: a PoolOptions instance
-          - `handshake`: whether to call hello for each new Connection
+        :param address: a (hostname, port) tuple
+        :param options: a PoolOptions instance
+        :param handshake: whether to call hello for each new Connection
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -1396,6 +1374,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.conns: collections.deque = collections.deque()
+        self.active_contexts: set[_CancellationContext] = set()
         self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1460,7 +1439,11 @@ class Pool:
         return self.state == PoolState.CLOSED
 
     def _reset(
-        self, close: bool, pause: bool = True, service_id: Optional[ObjectId] = None
+        self,
+        close: bool,
+        pause: bool = True,
+        service_id: Optional[ObjectId] = None,
+        interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
         with self.size_cond:
@@ -1493,6 +1476,10 @@ class Pool:
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
+            if interrupt_connections:
+                for context in self.active_contexts:
+                    context.cancel()
+
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
@@ -1506,7 +1493,11 @@ class Pool:
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
                 assert listeners is not None
-                listeners.publish_pool_cleared(self.address, service_id=service_id)
+                listeners.publish_pool_cleared(
+                    self.address,
+                    service_id=service_id,
+                    interrupt_connections=interrupt_connections,
+                )
             for conn in sockets:
                 conn.close_conn(ConnectionClosedReason.STALE)
 
@@ -1519,8 +1510,10 @@ class Pool:
             for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)
 
-    def reset(self, service_id: Optional[ObjectId] = None) -> None:
-        self._reset(close=False, service_id=service_id)
+    def reset(
+        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
+    ) -> None:
+        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1576,6 +1569,7 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
                     self.conns.appendleft(conn)
+                    self.active_contexts.discard(conn.cancel_context)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1620,6 +1614,8 @@ class Pool:
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        with self.lock:
+            self.active_contexts.add(conn.cancel_context)
         try:
             if self.handshake:
                 conn.hello()
@@ -1649,8 +1645,7 @@ class Pool:
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :Parameters:
-          - `handler` (optional): A _MongoClientErrorHandler.
+        :param handler: A _MongoClientErrorHandler.
         """
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
@@ -1663,6 +1658,8 @@ class Pool:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
         try:
+            with self.lock:
+                self.active_contexts.add(conn.cancel_context)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
@@ -1750,7 +1747,6 @@ class Pool:
             with self.lock:
                 self.active_sockets += 1
                 incremented = True
-
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
@@ -1804,8 +1800,7 @@ class Pool:
     def checkin(self, conn: Connection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
 
-        :Parameters:
-          - `conn`: The connection to check into the pool.
+        :param conn: The connection to check into the pool.
         """
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
@@ -1814,6 +1809,8 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
+        with self.lock:
+            self.active_contexts.discard(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
