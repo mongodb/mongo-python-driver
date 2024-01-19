@@ -18,7 +18,7 @@ import os
 from typing import Any
 
 from bson import UuidRepresentation, json_util
-from bson.json_util import JSONOptions
+from bson.json_util import JSONOptions, _truncate_documents
 
 
 class _LogMessageStatus(str, enum.Enum):
@@ -93,8 +93,9 @@ class LogMessage:
                 if doc_name != "failure" and self._is_sensitive(doc_name):
                     doc = json_util.dumps({})
                 else:
+                    truncated_doc = _truncate_documents(doc, document_length)[0]
                     doc = json_util.dumps(
-                        doc,
+                        truncated_doc,
                         json_options=_JSON_OPTIONS,
                         default=lambda o: o.__repr__(),
                     )
