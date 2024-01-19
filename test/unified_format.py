@@ -629,7 +629,10 @@ class MatchEvaluatorUtil:
             if key_to_compare is None:
                 assert actual is None
             else:
-                self.test.assertNotIn(key_to_compare, actual)
+                if key_to_compare in actual:
+                    assert actual[key_to_compare] is None
+                else:
+                    self.test.assertNotIn(key_to_compare, actual)
         else:
             self.test.fail(f"Expected boolean value for $$exists operator, got {spec}")
 
