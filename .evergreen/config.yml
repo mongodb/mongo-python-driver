@@ -2992,7 +2992,7 @@ buildvariants:
 - matrix_name: "serverless_next"
   matrix_spec:
     platform: rhel8
-    python-version: "*"
+    python-version: ["3.7", "3.10"]
     auth-ssl: auth-ssl
     serverless: "*"
   display_name: "Serverless Next ${python-version} ${platform}"
