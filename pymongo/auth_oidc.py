@@ -143,14 +143,75 @@ class _OIDCAuthenticator:
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_call_time: float = field(default=0)
 
-    def get_access_token(self, use_human_callback: bool = True) -> tuple[Optional[str], bool]:
+    def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+        """Handle a reauthenticate from the server."""
+        self._invalidate(conn.oidc_token_gen_id or 0)
+        return self.authenticate(conn)
+
+    def authenticate(self, conn: Connection) -> None:
+        # If we have completed a successful spec auth, return early.
+        ctx = conn.auth_ctx
+        if ctx and ctx.speculate_succeeded():
+            resp = ctx.speculative_authenticate
+            if resp["done"]:
+                return None
+
+        if self.properties.callback_type == "human":
+            return self._authenticate_human(conn)
+        return self._authenticate_jwt(conn)
+
+    def get_spec_auth_cmd(self):
+        access_token = self._get_access_token(False)
+        if access_token:
+            payload = {"jwt": access_token}
+            return self._get_start_command(payload)
+        if self.properties.callback_type == "machine":
+            return None
+        if self.idp_info is not None:
+            return None
+        return self._get_start_command(None)
+
+    def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+        # Check for IdP Info in the speculative auth.
+        ctx = conn.auth_ctx
+        if ctx and ctx.speculate_succeeded():
+            resp = ctx.speculative_authenticate
+            return self._sasl_continue_jwt(conn, resp)
+
+        # If we have no IdP Info, run a two-step authorization.
+        if self.idp_info is None:
+            return self._sasl_two_step(conn)
+
+        # Try to authenticate using a jwt.
+        try:
+            return self._authenticate_jwt(conn)
+        except Exception:  # noqa: S110
+            pass
+
+        # Run two-step authorization if the jwt auth didn't work.
+        return self._sasl_two_step(conn)
+
+    def _authenticate_jwt(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+        # If there is a cached access token, try to authenticate with it. If
+        # authentication fails, it's possible the cached access token is expired. In
+        # that case, _invalidate the access token, fetch a new access token, and try
+        # to authenticate again.
+        if self.access_token:
+            try:
+                return self._sasl_start_jwt(conn)
+            except Exception:  # noqa: S110
+                pass
+
+        return self._sasl_start_jwt(conn)
+
+    def _get_access_token(self, use_human_callback: bool = True) -> Optional[str]:
         properties = self.properties
         cb: Union[None, OIDCCallback]
         resp: OIDCCallbackResult
 
         callback_type = properties.callback_type
         if callback_type == "human" and self.idp_info is None:
-            return None, False
+            return None
 
         if properties.callback:
             cb = properties.callback
@@ -159,10 +220,10 @@ class _OIDCAuthenticator:
 
         prev_token = self.access_token
         if prev_token:
-            return prev_token, True
+            return prev_token
 
         if cb is None and not prev_token:
-            return None, False
+            return None
 
         if not prev_token and cb is not None:
             with self.lock:
@@ -170,7 +231,7 @@ class _OIDCAuthenticator:
                 # lock.
                 new_token = self.access_token
                 if new_token != prev_token:
-                    return new_token, False
+                    return new_token
 
                 # Ensure that we are waiting a min time between callback invocations.
                 delta = time.time() - self.last_call_time
@@ -197,90 +258,49 @@ class _OIDCAuthenticator:
                 self.access_token = resp.access_token
                 self.token_gen_id += 1
 
-        return self.access_token, False
+        return self.access_token
 
-    def run_command(
+    def _run_command(
         self, conn: Connection, cmd: MutableMapping[str, Any]
     ) -> Optional[Mapping[str, Any]]:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure:
-            self.invalidate()
+            self._invalidate()
             raise
 
-    def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
-        """Handle a reauthenticate from the server."""
-        # First see if we have the a newer token on the authenticator.
-        prev_id = conn.oidc_token_gen_id or 0
-        # If we've already changed tokens, make one optimistic attempt.
-        if (prev_id < self.token_gen_id) and self.access_token:
-            try:
-                return self.authenticate(conn)
-            except OperationFailure:
-                pass
-
-        self.invalidate()
-        return self.authenticate()
-
-    def invalidate(self):
+    def _invalidate(self, token_gen_id=None):
+        # Ignore the invalidation if a token gen id is given and is less than our
+        # current token gen id.
+        if token_gen_id is not None and token_gen_id < self.token_gen_id:
+            return
         self.access_token = None
 
-    def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
-        # Handle the results of successful speculative auth.
-        # If it is "done", we used a "jwt" successfully, otherwise
-        # check if it has the IdP info.
-        ctx = conn.auth_ctx
-        if ctx and ctx.speculate_succeeded():
-            resp = ctx.speculative_authenticate
-            if resp["done"]:
-                return None
-            server_resp: dict = bson.decode(resp["payload"])
-            if "issuer" in server_resp:
-                self.idp_info = OIDCIdPInfo(**server_resp)
+    def _sasl_two_step(self, conn: Connection) -> Mapping[str, Any]:
+        cmd = self._get_start_command(None)
+        start_resp = self._run_command(conn, cmd)
+        return self._sasl_continue_jwt(conn, start_resp)
 
-        access_token, is_cache = self.get_access_token()
-        # If there is a cached access token, try to authenticate with it. If
-        # authentication fails, it's possible the cached access token is expired. In
-        # that case, invalidate the access token, fetch a new access token, and try
-        # to authenticate again.
-        if is_cache:
-            try:
-                conn.oidc_token_gen_id = self.token_gen_id
-                return self.sasl_conversation(conn, {"jwt": access_token})
-            except Exception as e:
-                if isinstance(e, OperationFailure) and e.code == 18:
-                    self.invalidate()
-                    time.sleep(0.1)
-                    access_token, _ = self.get_access_token()
-                else:
-                    raise
+    def _sasl_continue_jwt(
+        self, conn: Connection, start_resp: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        self.access_token = None
+        self.refresh_token = None
+        start_payload: dict = bson.decode(start_resp["payload"])
+        if "issuer" in start_payload:
+            self.idp_info = OIDCIdPInfo(**start_payload)
+        access_token = self._get_access_token()
+        conn.oidc_token_gen_id = self.token_gen_id
+        cmd = self._get_continue_command({"jwt": access_token}, start_resp)
+        return self._run_command(conn, cmd)
 
-        # For machine callback, try again with the new token and raise any errors.
-        # For human callback with a new token, the IdP info may have changed, so continue.
-        if access_token:
-            try:
-                conn.oidc_token_gen_id = self.token_gen_id
-                return self.sasl_conversation(conn, {"jwt": access_token})
-            except Exception as e:
-                if isinstance(e, OperationFailure) and e.code == 18:
-                    if self.properties.callback_type == "machine":
-                        raise
-                else:
-                    raise
+    def _sasl_start_jwt(self, conn: Connection) -> Mapping[str, Any]:
+        access_token = self._get_access_token()
+        conn.oidc_token_gen_id = self.token_gen_id
+        cmd = self._get_start_command({"jwt": access_token})
+        return self._run_command(conn, cmd)
 
-        # Do a full 2-step authentication for human auth.
-        return self.sasl_conversation(conn)
-
-    def get_spec_auth_cmd(self):
-        access_token, _ = self.get_access_token(False)
-        if access_token:
-            payload = {"jwt": access_token}
-            return self.get_command(payload)
-        if self.idp_info is not None:
-            return None
-        return self.get_command(None)
-
-    def get_command(self, payload, step="saslStart") -> Mapping[str, Any]:
+    def _get_start_command(self, payload) -> Mapping[str, Any]:
         if payload is None:
             principal_name = self.username
             if principal_name:
@@ -288,22 +308,15 @@ class _OIDCAuthenticator:
             else:
                 payload = {}
         bin_payload = Binary(bson.encode(payload))
-        return dict(step=step, mechanism="MONGODB-OIDC", payload=bin_payload)
+        return {"saslStart": 1, "mechanism": "MONGODB-OIDC", "payload": bin_payload}
 
-    def sasl_conversation(self, conn, payload=None):
-        cmd = self.get_command(payload)
-        resp = self.run_command(cmd)
-        if resp["done"]:
-            return None
-        if payload and "jwt" in payload:
-            raise OperationFailure("SASL conversation failed to complete.")
-        server_resp: dict = bson.decode(resp["payload"])
-        if "issuer" not in server_resp:
-            raise OperationFailure("SASL conversation failed to complete.")
-        self.idp_info = OIDCIdPInfo(**server_resp)
-        access_token, _ = self.get_access_token()
-        payload = {"jwt": access_token}
-        return self.sasl_conversation(conn, payload)
+    def _get_continue_command(self, payload, start_resp) -> Mapping[str, Any]:
+        bin_payload = Binary(bson.encode(payload))
+        return {
+            "saslContinue": 1,
+            "payload": bin_payload,
+            "conversationId": start_resp["conversationId"],
+        }
 
 
 def _authenticate_oidc(
