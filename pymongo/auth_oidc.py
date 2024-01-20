@@ -158,7 +158,17 @@ class _OIDCAuthenticator:
 
         if self.properties.callback_type == "human":
             return self._authenticate_human(conn)
-        return self._authenticate_jwt(conn)
+
+        # If there is a cached access token, try to authenticate with it. If
+        # authentication fails, it's possible the cached access token is expired. In
+        # that case, _invalidate the access token, fetch a new access token, and try
+        # to authenticate again.
+        if self.access_token:
+            try:
+                return self._sasl_start_jwt(conn)
+            except Exception:  # noqa: S110
+                pass
+        return self._sasl_start_jwt(conn)
 
     def get_spec_auth_cmd(self):
         access_token = self._get_access_token(False)
@@ -176,33 +186,30 @@ class _OIDCAuthenticator:
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
             resp = ctx.speculative_authenticate
+            # If it exists, this is a first time connection,
+            # make one attempt at a JwtStepRequest.
             return self._sasl_continue_jwt(conn, resp)
 
-        # If we have no IdP Info, run a two-step authorization.
-        if self.idp_info is None:
-            return self._sasl_two_step(conn)
-
-        # Try to authenticate using a jwt.
-        try:
-            return self._authenticate_jwt(conn)
-        except Exception:  # noqa: S110
-            pass
-
-        # Run two-step authorization if the jwt auth didn't work.
-        return self._sasl_two_step(conn)
-
-    def _authenticate_jwt(self, conn: Connection) -> Optional[Mapping[str, Any]]:
-        # If there is a cached access token, try to authenticate with it. If
-        # authentication fails, it's possible the cached access token is expired. In
-        # that case, _invalidate the access token, fetch a new access token, and try
-        # to authenticate again.
+        # If we have a cached access token, try a JwtStepRequest.
         if self.access_token:
             try:
                 return self._sasl_start_jwt(conn)
             except Exception:  # noqa: S110
                 pass
 
-        return self._sasl_start_jwt(conn)
+        # If we have a cached refresh token, try a JwtStepRequest with that.
+        if self.refresh_token:
+            try:
+                return self._sasl_start_jwt(conn)
+            except Exception:  # noqa: S110
+                pass
+
+        # Start a new Two-Step SASL conversation.
+        # Run a PrincipalStepRequest to get the IdpInfo.
+        cmd = self._get_start_command(None)
+        start_resp = self._run_command(conn, cmd)
+        # Attempt to authenticate with a JwtStepRequest.
+        return self._sasl_continue_jwt(conn, start_resp)
 
     def _get_access_token(self, use_human_callback: bool = True) -> Optional[str]:
         properties = self.properties
@@ -275,11 +282,6 @@ class _OIDCAuthenticator:
         if token_gen_id is not None and token_gen_id < self.token_gen_id:
             return
         self.access_token = None
-
-    def _sasl_two_step(self, conn: Connection) -> Mapping[str, Any]:
-        cmd = self._get_start_command(None)
-        start_resp = self._run_command(conn, cmd)
-        return self._sasl_continue_jwt(conn, start_resp)
 
     def _sasl_continue_jwt(
         self, conn: Connection, start_resp: Mapping[str, Any]
