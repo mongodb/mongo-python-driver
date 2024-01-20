@@ -282,7 +282,7 @@ class TestGridfs(IntegrationTest):
         )
         self.assertEqual(b"custom id", self.fs.open_download_stream(oid).read())
 
-    @patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 3)
+    @patch("gridfs.grid_file._UPLOAD_BUFFER_CHUNKS", 3)
     @client_context.require_failCommand_fail_point
     def test_upload_bulk_write_error(self):
         # Test BulkWriteError from insert_many is converted to an insert_one style error.
@@ -304,6 +304,16 @@ class TestGridfs(IntegrationTest):
         # 3 chunks were uploaded.
         self.assertEqual(3, self.db.fs.chunks.count_documents({"files_id": gin._id}))
         gin.abort()
+
+    @patch("gridfs.grid_file._UPLOAD_BUFFER_CHUNKS", 10)
+    def test_upload_batching(self):
+        with self.fs.open_upload_stream("test_file", chunk_size_bytes=1) as gin:
+            gin.write(b"s" * (10 - 1))
+            # No chunks were uploaded yet.
+            self.assertEqual(0, self.db.fs.chunks.count_documents({"files_id": gin._id}))
+            gin.write(b"s")
+            # All chunks were uploaded since we hit the _UPLOAD_BUFFER_CHUNKS limit.
+            self.assertEqual(10, self.db.fs.chunks.count_documents({"files_id": gin._id}))
 
     def test_open_upload_stream(self):
         gin = self.fs.open_upload_stream("from_stream")

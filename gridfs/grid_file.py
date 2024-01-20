@@ -21,7 +21,6 @@ import math
 import os
 from typing import Any, Iterable, Mapping, NoReturn, Optional
 
-from bson.binary import Binary
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
@@ -53,6 +52,11 @@ NEWLN = b"\n"
 DEFAULT_CHUNK_SIZE = 255 * 1024
 # The number of chunked bytes to buffer before calling insert_many.
 _UPLOAD_BUFFER_SIZE = MAX_MESSAGE_SIZE
+# The number of chunk documents to buffer before calling insert_many.
+_UPLOAD_BUFFER_CHUNKS = 100000
+# Rough BSON overhead of a chunk document not including the chunk data itself.
+# Essentially len(encode({"_id": ObjectId(), "files_id": ObjectId(), "n": 1, "data": ""}))
+_CHUNK_OVERHEAD = 60
 
 _C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
 _F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
@@ -283,12 +287,17 @@ class GridIn:
         assert len(data) <= self.chunk_size
         if data:
             self._buffered_docs.append(
-                {"files_id": self._file["_id"], "n": self._chunk_number, "data": Binary(data)}
+                {"files_id": self._file["_id"], "n": self._chunk_number, "data": data}
             )
-            self._buffered_docs_size += len(data)
+            self._buffered_docs_size += len(data) + _CHUNK_OVERHEAD
         if not self._buffered_docs:
             return
-        if force or self._buffered_docs_size >= _UPLOAD_BUFFER_SIZE:
+        # Limit to 100,000 chunks or 32MB (+1 chunk) of data.
+        if (
+            force
+            or self._buffered_docs_size >= _UPLOAD_BUFFER_SIZE
+            or len(self._buffered_docs) >= _UPLOAD_BUFFER_CHUNKS
+        ):
             try:
                 self._chunks.insert_many(self._buffered_docs, session=self._session)
             except BulkWriteError as exc:
