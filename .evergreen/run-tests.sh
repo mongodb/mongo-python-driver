@@ -240,7 +240,7 @@ if [ -n "$TEST_AUTH_OIDC" ]; then
         export AWS_CA_BUNDLE=${CERT_PATH}
     fi
 
-    TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
+    TEST_ARGS="test/auth_oidc/test_auth_oidc.py ${TEST_ARGS}"
 fi
 
 if [ -n "$PERF_TEST" ]; then

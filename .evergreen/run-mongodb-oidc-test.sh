@@ -68,4 +68,4 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
-bash ./.evergreen/tox.sh -m test-eg
+bash ./.evergreen/tox.sh -m test-eg -- "${@:1}"

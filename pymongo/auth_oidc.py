@@ -145,32 +145,38 @@ class _OIDCAuthenticator:
 
     def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         """Handle a reauthenticate from the server."""
-        self._invalidate(conn.oidc_token_gen_id or 0)
-        return self.authenticate(conn)
+        # Invalidate the token for the connection.
+        self._invalidate(conn)
+        # Call the appropriate auth logic for the callback type.
+        if self.properties.callback_type == "machine":
+            return self._authenticate_machine(conn)
+        return self._authenticate_human(conn)
 
     def authenticate(self, conn: Connection) -> None:
-        # If we have completed a successful spec auth, return early.
+        """Handle an initial authenticate request."""
+        # First handle speculative auth.
+        # It it succeeded, we are done.
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
             resp = ctx.speculative_authenticate
             if resp["done"]:
+                conn.oidc_token_gen_id = self.token_gen_id
                 return None
+            # If it is not done and we are a human callback, continue the conversation.
+            elif self.properties.callback_type == "human":
+                return self._sasl_continue_jwt(conn, resp)
+        else:
+            # If we did not succeed, then either we haven't called our
+            # human callback yet or we used a token and it was invalid.
+            self._invalidate(conn)
 
+        # If spec auth failed, call the appropriate auth logic for the callback type.
         if self.properties.callback_type == "human":
             return self._authenticate_human(conn)
+        return self._authenticate_machine(conn)
 
-        # If there is a cached access token, try to authenticate with it. If
-        # authentication fails, it's possible the cached access token is expired. In
-        # that case, _invalidate the access token, fetch a new access token, and try
-        # to authenticate again.
-        if self.access_token:
-            try:
-                return self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
-        return self._sasl_start_jwt(conn)
-
-    def get_spec_auth_cmd(self):
+    def get_spec_auth_cmd(self) -> Optional[Mapping[str, Any]]:
+        """Get the appropriate speculative auth command."""
         access_token = self._get_access_token(False)
         if access_token:
             payload = {"jwt": access_token}
@@ -181,15 +187,19 @@ class _OIDCAuthenticator:
             return None
         return self._get_start_command(None)
 
-    def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
-        # Check for IdP Info in the speculative auth.
-        ctx = conn.auth_ctx
-        if ctx and ctx.speculate_succeeded():
-            resp = ctx.speculative_authenticate
-            # If it exists, this is a first time connection,
-            # make one attempt at a JwtStepRequest.
-            return self._sasl_continue_jwt(conn, resp)
+    def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
+        # If there is a cached access token, try to authenticate with it. If
+        # authentication fails, it's possible the cached access token is expired. In
+        # that case, invalidate the access token, fetch a new access token, and try
+        # to authenticate again.
+        if self.access_token:
+            try:
+                return self._sasl_start_jwt(conn)
+            except Exception:  # noqa: S110
+                pass
+        return self._sasl_start_jwt(conn)
 
+    def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         # If we have a cached access token, try a JwtStepRequest.
         if self.access_token:
             try:
@@ -273,12 +283,13 @@ class _OIDCAuthenticator:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure:
-            self._invalidate()
+            self._invalidate(conn)
             raise
 
-    def _invalidate(self, token_gen_id=None):
+    def _invalidate(self, conn: Connection) -> None:
         # Ignore the invalidation if a token gen id is given and is less than our
         # current token gen id.
+        token_gen_id = conn.oidc_token_gen_id or 0
         if token_gen_id is not None and token_gen_id < self.token_gen_id:
             return
         self.access_token = None
