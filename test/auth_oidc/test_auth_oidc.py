@@ -356,7 +356,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         with self.fail_point(
             {
                 "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslContinue"], "errorCode": 391},
+                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
             }
         ):
             # Perform a find operation that succeeds.
@@ -375,7 +375,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.test.test.find_one()
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
-        # Force a reauthenication using a failCommand.
+        # Force a reauthentication using a failCommand.
         with self.fail_point(
             {
                 "mode": {"times": 2},
@@ -385,7 +385,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             # Perform a find operation that fails.
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
-        # Assert that the human callback has been called twice.
+        # Assert that the human callback has been called two times.
         self.assertEqual(self.request_called, 2)
         # Close the client.
         client.close()
@@ -813,8 +813,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Perform a ``find`` operation that fails.
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
-        # Verify that the callback was called 1 time.
-        self.assertEqual(callback.count, 1)
+        # Verify that the callback was called 2 times.
+        self.assertEqual(callback.count, 2)
         # Close the client.
         client.close()
 
