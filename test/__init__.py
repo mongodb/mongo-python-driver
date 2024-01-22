@@ -281,6 +281,8 @@ class ClientContext:
     def client_options(self):
         """Return the MongoClient options for creating a duplicate client."""
         opts = client_context.default_client_options.copy()
+        opts["host"] = host
+        opts["port"] = port
         if client_context.auth_enabled:
             opts["username"] = db_user
             opts["password"] = db_pwd
