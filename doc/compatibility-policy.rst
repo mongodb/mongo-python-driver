@@ -59,4 +59,4 @@ deprecated PyMongo features.
 
 .. _the warnings module: https://docs.python.org/3/library/warnings.html
 
-.. _the -W command line option: https://docs.python.org/3/using/cmdline.html#cmdoption-w
+.. _the -W command line option: https://docs.python.org/3/using/cmdline.html#cmdoption-W
