@@ -44,7 +44,7 @@ MincePy
    workflow as possible.
 
 Ming
-  `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
+  `Ming <https://ming.readthedocs.io/en/latest/>`_ (the Merciless) is a
   library that allows you to enforce schemas on a MongoDB database in
   your Python application. It was developed by `SourceForge
   <http://sourceforge.net/>`_ in the course of their migration to
