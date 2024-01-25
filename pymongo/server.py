@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
-from pymongo.logger import _COMMAND_LOGGER, _debug_log, _LogMessageStatus
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -134,7 +134,7 @@ class Server:
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.STARTED,
+            message=_CommandStatusMessage.STARTED,
             command=cmd,
             commandName=next(iter(cmd)),
             databaseName=dbn,
@@ -195,7 +195,7 @@ class Server:
             _debug_log(
                 _COMMAND_LOGGER,
                 clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.FAILED,
+                message=_CommandStatusMessage.FAILED,
                 durationMS=duration,
                 failure=failure,
                 commandName=next(iter(cmd)),
@@ -238,7 +238,7 @@ class Server:
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.SUCCEEDED,
+            message=_CommandStatusMessage.SUCCEEDED,
             durationMS=duration,
             reply=res,
             commandName=next(iter(cmd)),

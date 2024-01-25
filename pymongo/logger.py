@@ -22,7 +22,7 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
 
 
-class _LogMessageStatus(str, enum.Enum):
+class _CommandStatusMessage(str, enum.Enum):
     STARTED = "Command started"
     SUCCEEDED = "Command succeeded"
     FAILED = "Command failed"

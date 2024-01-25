@@ -41,7 +41,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import _COMMAND_LOGGER, _debug_log, _LogMessageStatus
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -166,7 +166,7 @@ def command(
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.STARTED,
+            message=_CommandStatusMessage.STARTED,
             command=spec,
             commandName=next(iter(spec)),
             databaseName=dbname,
@@ -223,7 +223,7 @@ def command(
             _debug_log(
                 _COMMAND_LOGGER,
                 clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.FAILED,
+                message=_CommandStatusMessage.FAILED,
                 durationMS=duration,
                 failure=failure,
                 commandName=next(iter(spec)),
@@ -256,7 +256,7 @@ def command(
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.SUCCEEDED,
+            message=_CommandStatusMessage.SUCCEEDED,
             durationMS=duration,
             reply=response_doc,
             commandName=next(iter(spec)),

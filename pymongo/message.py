@@ -65,7 +65,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.logger import _COMMAND_LOGGER, _debug_log, _LogMessageStatus
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -1008,7 +1008,7 @@ class _BulkWriteContext:
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.STARTED,
+            message=_CommandStatusMessage.STARTED,
             command=cmd,
             commandName=next(iter(cmd)),
             databaseName=self.db_name,
@@ -1033,7 +1033,7 @@ class _BulkWriteContext:
                 _debug_log(
                     _COMMAND_LOGGER,
                     clientId=client._topology_settings._topology_id,
-                    message=_LogMessageStatus.SUCCEEDED,
+                    message=_CommandStatusMessage.SUCCEEDED,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -1059,7 +1059,7 @@ class _BulkWriteContext:
             _debug_log(
                 _COMMAND_LOGGER,
                 clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.FAILED,
+                message=_CommandStatusMessage.FAILED,
                 durationMS=duration,
                 failure=failure,
                 commandName=next(iter(cmd)),
@@ -1095,7 +1095,7 @@ class _BulkWriteContext:
         _debug_log(
             _COMMAND_LOGGER,
             clientId=client._topology_settings._topology_id,
-            message=_LogMessageStatus.STARTED,
+            message=_CommandStatusMessage.STARTED,
             command=cmd,
             commandName=next(iter(cmd)),
             databaseName=self.db_name,
@@ -1115,7 +1115,7 @@ class _BulkWriteContext:
             _debug_log(
                 _COMMAND_LOGGER,
                 clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.SUCCEEDED,
+                message=_CommandStatusMessage.SUCCEEDED,
                 durationMS=duration,
                 reply=reply,
                 commandName=next(iter(cmd)),
@@ -1139,7 +1139,7 @@ class _BulkWriteContext:
             _debug_log(
                 _COMMAND_LOGGER,
                 clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.FAILED,
+                message=_CommandStatusMessage.FAILED,
                 durationMS=duration,
                 failure=failure,
                 commandName=next(iter(cmd)),
