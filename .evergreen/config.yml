@@ -2961,7 +2961,7 @@ buildvariants:
     serverless: "original"
   display_name: "${serverless} ${python-version} ${platform}"
   tasks:
-    - name: "serverless_task_group"
+    - "serverless_task_group"
 
 - matrix_name: "serverless_next"
   matrix_spec:
@@ -2971,7 +2971,7 @@ buildvariants:
     serverless: "proxy"
   display_name: "${serverless} ${python-version} ${platform}"
   tasks:
-    - name: "serverless_task_group"
+    - "serverless_task_group"
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
