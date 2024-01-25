@@ -91,7 +91,14 @@ class PeriodicExecutor:
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
-            thread.start()
+            try:
+                thread.start()
+            except RuntimeError as e:
+                if str(e) == "can't create new thread at interpreter shutdown":
+                    # Result of change
+                    self._thread = None
+                    return
+                raise
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().
