@@ -47,7 +47,7 @@ _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 
 
-def _debug_log(logger: logging.Logger, **fields):
+def _debug_log(logger: logging.Logger, **fields: Any) -> None:
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug(LogMessage(**fields))
 
