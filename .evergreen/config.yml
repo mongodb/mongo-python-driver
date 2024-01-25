@@ -2959,7 +2959,7 @@ buildvariants:
     python-version: "*"
     auth-ssl: auth-ssl
     serverless: "original"
-  display_name: "Serverless ${python-version} ${platform}"
+  display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
 
@@ -2969,7 +2969,7 @@ buildvariants:
     python-version: ["3.7", "3.10"]
     auth-ssl: auth-ssl
     serverless: "proxy"
-  display_name: "Serverless Proxy ${python-version} ${platform}"
+  display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
 
