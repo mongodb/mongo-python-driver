@@ -2561,7 +2561,7 @@ axes:
         display_name: "Serverless Proxy"
         variables:
           test_serverless: true
-          VAULT_NAME: "serverless-next"
+          VAULT_NAME: "serverless_next"
         batchtime: 10080  # 7 days
 
 buildvariants:
