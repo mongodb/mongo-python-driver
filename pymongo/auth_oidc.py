@@ -152,7 +152,7 @@ class _OIDCAuthenticator:
             return self._authenticate_machine(conn)
         return self._authenticate_human(conn)
 
-    def authenticate(self, conn: Connection) -> None:
+    def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         """Handle an initial authenticate request."""
         # First handle speculative auth.
         # It it succeeded, we are done.
@@ -161,10 +161,7 @@ class _OIDCAuthenticator:
             resp = ctx.speculative_authenticate
             if resp["done"]:
                 conn.oidc_token_gen_id = self.token_gen_id
-                return None
-            # If it is not done and we are a human callback, continue the conversation.
-            elif self.properties.human_callback:
-                return self._sasl_continue_jwt(conn, resp)
+                return resp
 
         # If spec auth failed, call the appropriate auth logic for the callback type.
         # We cannot assume that the token is invalid, because a proxy may have been
@@ -179,11 +176,7 @@ class _OIDCAuthenticator:
         if access_token:
             payload = {"jwt": access_token}
             return self._get_start_command(payload)
-        if self.properties.callback:
-            return None
-        if self.idp_info is not None:
-            return None
-        return self._get_start_command(None)
+        return None
 
     def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If

@@ -377,7 +377,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Force a reauthentication using a failCommand.
         with self.fail_point(
             {
-                "mode": {"times": 2},
+                "mode": {"times": 100},
                 "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
             }
         ):
