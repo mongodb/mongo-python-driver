@@ -920,7 +920,7 @@ task_groups:
           shell: "bash"
           script: |
             ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
@@ -930,34 +930,7 @@ task_groups:
         params:
           script: |
             ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
-      - func: "upload test results"
-    tasks:
-      - ".serverless"
-
-  - name: serverless_next_task_group
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800 # 30 minutes
-    setup_group:
-      - func: "fetch source"
-      - func: "prepare resources"
-      - command: shell.exec
-        params:
-          shell: "bash"
-          script: |
-            ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh serverless_next
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
-      - command: expansions.update
-        params:
-          file: serverless-expansion.yml
-    teardown_task:
-      - command: shell.exec
-        params:
-          script: |
-            ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh serverless_next
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh ${VAULT_NAME}
       - func: "upload test results"
     tasks:
       - ".serverless"
@@ -2992,7 +2965,9 @@ buildvariants:
     serverless: "*"
   display_name: "Serverless Next ${python-version} ${platform}"
   tasks:
-    - name: "serverless_next_task_group"
+    - name: "serverless_task_group"
+      vars:
+        VAULT_NAME: "serverless_next"
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
