@@ -28,6 +28,22 @@ class _CommandStatusMessage(str, enum.Enum):
     FAILED = "Command failed"
 
 
+class _ConnectionStatusMessage(str, enum.Enum):
+    POOL_CREATED = "Connection pool created"
+    POOL_READY = "Connection pool ready"
+    POOL_CLOSED = "Connection pool closed"
+    POOL_CLEARED = "Connection pool cleared"
+
+    CONN_CREATED = "Connection created"
+    CONN_READY = "Connection ready"
+    CONN_CLOSED = "Connection closed"
+
+    CHECKOUT_STARTED = "Connection checkout started"
+    CHECKOUT_SUCCEEDED = "Connection checked out"
+    CHECKOUT_FAILED = "Connection checkout failed"
+    CHECKEDIN = "Connection checked in"
+
+
 _DEFAULT_DOCUMENT_LENGTH = 1000
 _SENSITIVE_COMMANDS = [
     "authenticate",
@@ -45,6 +61,7 @@ _REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
 _DOCUMENT_NAMES = ["command", "reply", "failure"]
 _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
+_CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
 
 
 def _debug_log(logger: logging.Logger, **fields: Any) -> None:
@@ -57,6 +74,7 @@ class LogMessage:
 
     def __init__(self, **kwargs: Any):
         self._kwargs = kwargs
+        self._kwargs = {k: v for k, v in self._kwargs.items() if v is not None}
 
         if "durationMS" in self._kwargs:
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000

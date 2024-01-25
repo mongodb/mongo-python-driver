@@ -296,7 +296,7 @@ class MockConnection:
 
 
 class MockPool:
-    def __init__(self, address, options, handshake=True):
+    def __init__(self, address, options, handshake=True, client_id=None):
         self.gen = _PoolGeneration()
         self._lock = _create_lock()
         self.opts = options

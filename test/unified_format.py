@@ -1704,13 +1704,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             return client_to_log
 
-        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+        # Assumes that tests only verify one logging component at a time
+        component = spec[0]["messages"][0]["component"]
+        with self.assertLogs(f"pymongo.{component}", level="DEBUG") as cm:
             self.run_operations(operations)
             formatted_logs = format_logs(cm.records)
             # FIXME: currently I assume all msgs are coming from client
             for client in spec:
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
+                print(actual_logs)
                 self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")

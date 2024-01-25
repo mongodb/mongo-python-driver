@@ -98,9 +98,16 @@ do
       cpjson client-side-encryption/limits/ client-side-encryption/limits
       cpjson client-side-encryption/etc/data client-side-encryption/etc/data
       ;;
+    connection-monitoring|connection_monitoring)
+      cpjson connection-monitoring-and-pooling/tests/cmap-format connection_monitoring
+      ;;
+    connection-logging|connection_logging)
+      cpjson connection-monitoring-and-pooling/tests/logging connection_logging
+      ;;
     cmap|CMAP|connection-monitoring-and-pooling)
-      cpjson connection-monitoring-and-pooling/tests cmap
-      rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
+      cpjson connection-monitoring-and-pooling/tests/logging connection_logging
+      cpjson connection-monitoring-and-pooling/tests/cmap-format connection_monitoring
+      rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
       ;;
     apm|APM|command-monitoring|command_monitoring)
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
