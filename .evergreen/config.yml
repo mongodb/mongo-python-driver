@@ -2552,12 +2552,12 @@ axes:
   - id: serverless
     display_name: "Serverless"
     values:
-      - id: "enabled"
+      - id: "original"
         display_name: "Serverless"
         variables:
           test_serverless: true
         batchtime: 10080  # 7 days
-      - id: "enabled-proxy"
+      - id: "proxy"
         display_name: "Serverless Proxy"
         variables:
           test_serverless: true
@@ -2958,7 +2958,7 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "enabled"
+    serverless: "original"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
@@ -2968,7 +2968,7 @@ buildvariants:
     platform: rhel8
     python-version: ["3.7", "3.10"]
     auth-ssl: auth-ssl
-    serverless: "enabled-proxy"
+    serverless: "proxy"
   display_name: "Serverless Proxy ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
