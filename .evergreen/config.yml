@@ -2963,7 +2963,7 @@ buildvariants:
   tasks:
     - "serverless_task_group"
 
-- matrix_name: "serverless_next"
+- matrix_name: "serverless_proxy"
   matrix_spec:
     platform: rhel8
     python-version: ["3.7", "3.10"]
