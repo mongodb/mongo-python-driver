@@ -520,6 +520,9 @@ class ClientEncryption(Generic[_DocumentType]):
                 data keys. This key should be generated and stored as securely
                 as possible.
 
+            KMS providers may be specified with an optional name suffix
+            separated by a colon, for example "kmip:name" or "aws:name".
+            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
@@ -674,12 +677,13 @@ class ClientEncryption(Generic[_DocumentType]):
         """Create and insert a new data key into the key vault collection.
 
         :param kms_provider: The KMS provider to use. Supported values are
-            "aws", "azure", "gcp", "kmip", and "local".
+            "aws", "azure", "gcp", "kmip", "local", or a named provider like
+            "kmip:name".
         :param master_key: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
 
-            If the `kms_provider` is "aws" it is required and has the
+            If the `kms_provider` type is "aws" it is required and has the
             following fields::
 
               - `region` (string): Required. The AWS region, e.g. "us-east-1".
@@ -689,7 +693,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 requests to. May include port number, e.g.
                 "kms.us-east-1.amazonaws.com:443".
 
-            If the `kms_provider` is "azure" it is required and has the
+            If the `kms_provider` type is "azure" it is required and has the
             following fields::
 
               - `keyVaultEndpoint` (string): Required. Host with optional
@@ -697,7 +701,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `keyName` (string): Required. Key name in the key vault.
               - `keyVersion` (string): Optional. Version of the key to use.
 
-            If the `kms_provider` is "gcp" it is required and has the
+            If the `kms_provider` type is "gcp" it is required and has the
             following fields::
 
               - `projectId` (string): Required. The Google cloud project ID.
@@ -709,7 +713,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `endpoint` (string): Optional. Host with optional port.
                 Defaults to "cloudkms.googleapis.com".
 
-            If the `kms_provider` is "kmip" it is optional and has the
+            If the `kms_provider` type is "kmip" it is optional and has the
             following fields::
 
               - `keyId` (string): Optional. `keyId` is the KMIP Unique

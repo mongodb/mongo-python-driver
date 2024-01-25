@@ -125,8 +125,8 @@ examples show how to setup automatic client-side field level encryption
 using :class:`~pymongo.encryption.ClientEncryption` to create a new
 encryption data key.
 
-.. note:: Automatic client-side field level encryption requires MongoDB 4.2
-   enterprise or a MongoDB 4.2 Atlas cluster. The community version of the
+.. note:: Automatic client-side field level encryption requires MongoDB >=4.2
+   enterprise or a MongoDB >=4.2 Atlas cluster. The community version of the
    server supports automatic decryption as well as
    :ref:`explicit-client-side-encryption`.
 
@@ -255,7 +255,7 @@ will result in an error.
 Server-Side Field Level Encryption Enforcement
 ``````````````````````````````````````````````
 
-The MongoDB 4.2 server supports using schema validation to enforce encryption
+MongoDB >=4.2 servers supports using schema validation to enforce encryption
 of specific fields in a collection. This schema validation will prevent an
 application from inserting unencrypted values for any fields marked with the
 ``"encrypt"`` JSON schema keyword.
@@ -457,8 +457,8 @@ Explicit encryption is a MongoDB community feature and does not use the
 Explicit Encryption with Automatic Decryption
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Although automatic encryption requires MongoDB 4.2 enterprise or a
-MongoDB 4.2 Atlas cluster, automatic *decryption* is supported for all users.
+Although automatic encryption requires MongoDB >=4.2 enterprise or a
+MongoDB >=4.2 Atlas cluster, automatic *decryption* is supported for all users.
 To configure automatic *decryption* without automatic *encryption* set
 ``bypass_auto_encryption=True`` in
 :class:`~pymongo.encryption_options.AutoEncryptionOpts`:
