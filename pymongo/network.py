@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import datetime
 import errno
-import logging
 import socket
 import struct
 import time
@@ -42,7 +41,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import LogMessage, _LogMessageStatus
+from pymongo.logger import _COMMAND_LOGGER, _debug_log, _LogMessageStatus
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -163,24 +162,21 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    command_logger = logging.getLogger("pymongo.command")
-    # TODO: add serverConnectionId
     if client is not None:
-        command_logger.debug(
-            LogMessage(
-                clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.STARTED,
-                command=spec,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        _debug_log(
+            _COMMAND_LOGGER,
+            clientId=client._topology_settings._topology_id,
+            message=_LogMessageStatus.STARTED,
+            command=spec,
+            commandName=next(iter(spec)),
+            databaseName=dbname,
+            requestId=request_id,
+            operationId=request_id,
+            driverConnectionId=conn.id,
+            serverConnectionId=conn.server_connection_id,
+            serverHost=conn.address[0],
+            serverPort=conn.address[1],
+            serviceId=conn.service_id,
         )
     if publish:
         assert listeners is not None
@@ -224,23 +220,22 @@ def command(
         else:
             failure = message._convert_exception(exc)
         if client is not None:
-            command_logger.debug(
-                LogMessage(
-                    clientId=client._topology_settings._topology_id,
-                    message=_LogMessageStatus.FAILED,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(spec)),
-                    databaseName=dbname,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_LogMessageStatus.FAILED,
+                durationMS=duration,
+                failure=failure,
+                commandName=next(iter(spec)),
+                databaseName=dbname,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
+                serverHost=conn.address[0],
+                serverPort=conn.address[1],
+                serviceId=conn.service_id,
+                isServerSideError=isinstance(exc, OperationFailure),
             )
         if publish:
             assert listeners is not None
@@ -258,23 +253,22 @@ def command(
         raise
     duration = datetime.datetime.now() - start
     if client is not None:
-        command_logger.debug(
-            LogMessage(
-                clientId=client._topology_settings._topology_id,
-                message=_LogMessageStatus.SUCCEEDED,
-                durationMS=duration,
-                reply=response_doc,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                speculative_authenticate="speculativeAuthenticate" in orig,
-            )
+        _debug_log(
+            _COMMAND_LOGGER,
+            clientId=client._topology_settings._topology_id,
+            message=_LogMessageStatus.SUCCEEDED,
+            durationMS=duration,
+            reply=response_doc,
+            commandName=next(iter(spec)),
+            databaseName=dbname,
+            requestId=request_id,
+            operationId=request_id,
+            driverConnectionId=conn.id,
+            serverConnectionId=conn.server_connection_id,
+            serverHost=conn.address[0],
+            serverPort=conn.address[1],
+            serviceId=conn.service_id,
+            speculative_authenticate="speculativeAuthenticate" in orig,
         )
     if publish:
         assert listeners is not None
