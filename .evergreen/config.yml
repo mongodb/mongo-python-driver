@@ -2557,6 +2557,12 @@ axes:
         variables:
           test_serverless: true
         batchtime: 10080  # 7 days
+      - id: "enabled-proxy"
+        display_name: "Serverless Proxy"
+        variables:
+          test_serverless: true
+          VAULT_NAME: "serverless-next"
+        batchtime: 10080  # 7 days
 
 buildvariants:
 - matrix_name: "tests-fips"
@@ -2952,7 +2958,7 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "*"
+    serverless: "enabled"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
@@ -2962,12 +2968,10 @@ buildvariants:
     platform: rhel8
     python-version: ["3.7", "3.10"]
     auth-ssl: auth-ssl
-    serverless: "*"
-  display_name: "Serverless Next ${python-version} ${platform}"
+    serverless: "enabled-proxy"
+  display_name: "Serverless Proxy ${python-version} ${platform}"
   tasks:
     - name: "serverless_task_group"
-      vars:
-        VAULT_NAME: "serverless_next"
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
