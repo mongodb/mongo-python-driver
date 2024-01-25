@@ -88,7 +88,7 @@ class Server:
                 )
             )
         self._monitor.close()
-        self._pool.reset_without_pause()
+        self._pool.close()
 
     def request_check(self) -> None:
         """Check the server's state soon."""
