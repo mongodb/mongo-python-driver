@@ -169,8 +169,8 @@ def _build_credentials_tuple(
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
-        callback = properties.get("callback")
-        callback_type = properties.get("CALLBACK_TYPE")
+        callback = properties.get("oidc_callback")
+        human_callback = properties.get("oidc_human_callback")
         provider_name = properties.get("PROVIDER_NAME")
         token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
@@ -184,16 +184,20 @@ def _build_credentials_tuple(
         ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
         msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
-        if callback is not None:
+        if passwd is not None:
+            msg = "password is not supported by MONGODB-OIDC"
+            raise ConfigurationError(msg)
+        if callback or human_callback:
             if provider_name is not None:
                 raise ConfigurationError(msg)
-            if callback_type is None:
-                msg = "authentication with MONGODB-OIDC requires a callback_type when using a callback"
+            if callback and human_callback:
+                msg = "cannot set both oidc_callback and oidc_human_callback"
                 raise ConfigurationError(msg)
         elif provider_name is not None:
             if provider_name == "aws":
-                user = None  # type:ignore[assignment]
-                passwd = None  # type:ignore[assignment]
+                if user is not None:
+                    msg = "AWS provider for MONGODB-OIDC does not support username"
+                    raise ConfigurationError(msg)
                 callback = _OIDCAWSCallback()
             elif provider_name == "azure":
                 passwd = None  # type:ignore[assignment]
@@ -211,7 +215,7 @@ def _build_credentials_tuple(
 
         oidc_props = _OIDCProperties(
             callback=callback,
-            callback_type=callback_type,
+            human_callback=human_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )

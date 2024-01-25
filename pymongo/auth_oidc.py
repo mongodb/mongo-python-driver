@@ -66,7 +66,7 @@ class OIDCCallback(abc.ABC):
 @dataclass
 class _OIDCProperties:
     callback: Optional[OIDCCallback] = field(default=None)
-    callback_type: Optional[str] = field(default=None)
+    human_callback: Optional[OIDCCallback] = field(default=None)
     provider_name: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
 
@@ -148,7 +148,7 @@ class _OIDCAuthenticator:
         # Invalidate the token for the connection.
         self._invalidate(conn)
         # Call the appropriate auth logic for the callback type.
-        if self.properties.callback_type == "machine":
+        if self.properties.callback:
             return self._authenticate_machine(conn)
         return self._authenticate_human(conn)
 
@@ -163,15 +163,13 @@ class _OIDCAuthenticator:
                 conn.oidc_token_gen_id = self.token_gen_id
                 return None
             # If it is not done and we are a human callback, continue the conversation.
-            elif self.properties.callback_type == "human":
+            elif self.properties.human_callback:
                 return self._sasl_continue_jwt(conn, resp)
-        else:
-            # If we did not succeed, then either we haven't called our
-            # human callback yet or we used a token and it was invalid.
-            self._invalidate(conn)
 
         # If spec auth failed, call the appropriate auth logic for the callback type.
-        if self.properties.callback_type == "human":
+        # We cannot assume that the token is invalid, because a proxy may have been
+        # involved that stripped the speculative auth information.
+        if self.properties.human_callback:
             return self._authenticate_human(conn)
         return self._authenticate_machine(conn)
 
@@ -181,7 +179,7 @@ class _OIDCAuthenticator:
         if access_token:
             payload = {"jwt": access_token}
             return self._get_start_command(payload)
-        if self.properties.callback_type == "machine":
+        if self.properties.callback:
             return None
         if self.idp_info is not None:
             return None
@@ -226,13 +224,13 @@ class _OIDCAuthenticator:
         cb: Union[None, OIDCCallback]
         resp: OIDCCallbackResult
 
-        callback_type = properties.callback_type
-        if callback_type == "human" and self.idp_info is None:
+        is_human = properties.human_callback is not None
+        if is_human and self.idp_info is None:
             return None
 
         if properties.callback:
             cb = properties.callback
-        if not use_human_callback and callback_type == "human":
+        if not use_human_callback and is_human:
             cb = None
 
         prev_token = self.access_token
@@ -256,7 +254,7 @@ class _OIDCAuthenticator:
                     time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
                 self.last_call_time = time.time()
 
-                if properties.callback_type == "human":
+                if is_human:
                     timeout = HUMAN_CALLBACK_TIMEOUT_SECONDS
                     assert self.idp_info is not None
                 else:
