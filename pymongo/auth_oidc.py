@@ -230,6 +230,8 @@ class _OIDCAuthenticator:
 
         if properties.callback:
             cb = properties.callback
+        if properties.human_callback:
+            cb = properties.human_callback
         if not use_human_callback and is_human:
             cb = None
 

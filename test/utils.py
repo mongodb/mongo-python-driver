@@ -558,7 +558,7 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
     client_options.update(kwargs)
 
     uri = _connection_string(host)
-    if client_context.auth_enabled and authenticate:
+    if client_context.auth_enabled and authenticate and "authMechanism" not in kwargs:
         # Only add the default username or password if one is not provided.
         res = parse_uri(uri)
         if (

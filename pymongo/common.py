@@ -426,6 +426,7 @@ _MECHANISM_PROPS = frozenset(
         "AWS_SESSION_TOKEN",
         "PROVIDER_NAME",
         "TOKEN_AUDIENCE",
+        "ALLOWED_HOSTS",
     ]
 )
 
@@ -441,7 +442,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
-            elif key in ["allowed_hosts"] and isinstance(value, list):
+            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
             elif key in ["oidc_callback", "oidc_human_callback"]:
                 if not isinstance(value, OIDCCallback):
