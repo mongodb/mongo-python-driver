@@ -1056,8 +1056,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
         if error_response:
-            for k in error_response.keys():
-                self.assertEqual(error_response[k], exception.details[k])
+            self.match_evaluator.match_result(error_response, exception.details)
 
         if is_error:
             # already satisfied because exception was raised
