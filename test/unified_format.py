@@ -527,12 +527,18 @@ class EntityMapUtil:
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
             if isinstance(opts["key_vault_client"], str):
                 opts["key_vault_client"] = self[opts["key_vault_client"]]
+            # Set TLS options for providers like "kmip:name1".
+            kms_tls_options = {}
+            for provider in opts["kms_providers"]:
+                provider_type = provider.split(":")[0]
+                if provider_type in KMS_TLS_OPTS:
+                    kms_tls_options[provider] = KMS_TLS_OPTS[provider_type]
             self[spec["id"]] = ClientEncryption(
                 opts["kms_providers"],
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
-                opts.get("kms_tls_options", KMS_TLS_OPTS),
+                opts.get("kms_tls_options", kms_tls_options),
             )
             return
         elif entity_type == "thread":
