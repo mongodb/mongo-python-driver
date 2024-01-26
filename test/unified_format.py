@@ -140,17 +140,7 @@ KMS_TLS_OPTS = {
 
 
 # Build up a placeholder map.
-PLACEHOLDER_MAP = {}
-for provider_name, provider_data in [
-    ("local", {"key": LOCAL_MASTER_KEY}),
-    ("aws", AWS_CREDS),
-    ("azure", AZURE_CREDS),
-    ("gcp", GCP_CREDS),
-    ("kmip", KMIP_CREDS),
-]:
-    for key, value in provider_data.items():
-        placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
-        PLACEHOLDER_MAP[placeholder] = value
+PLACEHOLDER_MAP = {"key": LOCAL_MASTER_KEY, **AWS_CREDS, **AZURE_CREDS, **GCP_CREDS, **KMIP_CREDS}
 
 
 def interrupt_loop():
@@ -419,17 +409,16 @@ class EntityMapUtil:
 
         self._entities[key] = value
 
-    def _handle_placeholders(self, spec: dict, current: dict, path: str) -> Any:
+    def _handle_placeholders(self, spec: dict, current: dict, key: str) -> Any:
         if "$$placeholder" in current:
-            if path not in PLACEHOLDER_MAP:
-                raise ValueError(f"Could not find a placeholder value for {path}")
-            return PLACEHOLDER_MAP[path]
+            if key not in PLACEHOLDER_MAP:
+                raise ValueError(f"Could not find a placeholder value for {key}")
+            return PLACEHOLDER_MAP[key]
 
         for key in list(current):
             value = current[key]
             if isinstance(value, dict):
-                subpath = f"{path}/{key}"
-                current[key] = self._handle_placeholders(spec, value, subpath)
+                current[key] = self._handle_placeholders(spec, value, key)
         return current
 
     def _create_entity(self, entity_spec, uri=None):
@@ -920,7 +909,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.17")
+    SCHEMA_VERSION = Version.from_string("1.18")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1260,10 +1249,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["master_key"] = opts.get("masterKey")
-            kwargs["key_alt_names"] = opts.get("keyAltNames")
-            kwargs["key_material"] = opts.get("keyMaterial")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
@@ -1277,13 +1264,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["provider"] = opts.get("provider")
-            kwargs["master_key"] = opts.get("masterKey")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
             return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
         return {}
+
+    def _clientEncryptionOperation_encrypt(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+        return target.encrypt(*args, **kwargs)
 
     def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
         with target.open_download_stream(*args, **kwargs) as gout:
