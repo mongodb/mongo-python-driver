@@ -2007,7 +2007,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "mongodb://127.0.0.1:9000",
+            "endpoint": "mongodb://127.0.0.1:8000",
         }
         # Some examples:
         # certificate verify failed: certificate has expired (_ssl.c:1129)
@@ -2019,7 +2019,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "mongodb://127.0.0.1:9001",
+            "endpoint": "mongodb://127.0.0.1:8001",
         }
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
@@ -2037,8 +2037,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         super().setUp()
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9002"
-        providers["gcp"]["endpoint"] = "127.0.0.1:9002"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8002"
+        providers["gcp"]["endpoint"] = "127.0.0.1:8002"
         kms_tls_opts_ca_only = {
             "aws": {"tlsCAFile": CA_PEM},
             "azure": {"tlsCAFile": CA_PEM},
@@ -2059,18 +2059,18 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(self.client_encryption_with_tls.close)
         # 3, update endpoints to expired host.
         providers: dict = copy.deepcopy(providers)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9000"
-        providers["gcp"]["endpoint"] = "127.0.0.1:9000"
-        providers["kmip"]["endpoint"] = "127.0.0.1:9000"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8000"
+        providers["gcp"]["endpoint"] = "127.0.0.1:8000"
+        providers["kmip"]["endpoint"] = "127.0.0.1:8000"
         self.client_encryption_expired = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
         self.addCleanup(self.client_encryption_expired.close)
         # 3, update endpoints to invalid host.
         providers: dict = copy.deepcopy(providers)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9001"
-        providers["gcp"]["endpoint"] = "127.0.0.1:9001"
-        providers["kmip"]["endpoint"] = "127.0.0.1:9001"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8001"
+        providers["gcp"]["endpoint"] = "127.0.0.1:8001"
+        providers["kmip"]["endpoint"] = "127.0.0.1:8001"
         self.client_encryption_invalid_hostname = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
@@ -2094,7 +2094,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "127.0.0.1:9002",
+            "endpoint": "127.0.0.1:8002",
         }
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key("aws", key)
@@ -2104,13 +2104,13 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: certificate has expired (_ssl.c:1129)
         # amazon1-2018 Python 3.6: certificate verify failed (_ssl.c:852)
-        key["endpoint"] = "127.0.0.1:9000"
+        key["endpoint"] = "127.0.0.1:8000"
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("aws", key)
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        key["endpoint"] = "127.0.0.1:9001"
+        key["endpoint"] = "127.0.0.1:8001"
         with self.assertRaisesRegex(
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
         ):
