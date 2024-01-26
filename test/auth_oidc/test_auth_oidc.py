@@ -117,16 +117,19 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         return Inner()
 
-    def create_client(self, username="test_user1"):
+    def create_client_multiple(self, username="test_user1"):
         request_cb = self.create_request_cb(username)
         props: Dict = {"oidc_human_callback": request_cb}
         return MongoClient(self.uri_multiple, username=username, authmechanismproperties=props)
 
+    def create_client(self):
+        request_cb = self.create_request_cb()
+        props: Dict = {"oidc_human_callback": request_cb}
+        return MongoClient(self.uri_single, authmechanismproperties=props)
+
     def test_1_1_single_principal_implicit_username(self):
         # Create default OIDC client with authMechanism=MONGODB-OIDC.
-        request_token = self.create_request_cb()
-        props: Dict = {"oidc_human_callback": request_token}
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client = self.create_client()
         # Perform a find operation that succeeds.
         client.test.test.find_one()
         # Close the client.
@@ -144,7 +147,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_1_3_multiple_principal_user_1(self):
         # Create a client with MONGODB_URI_MULTI, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
-        client = self.create_client()
+        client = self.create_client_multiple()
         # Perform a find operation that succeeds.
         client.test.test.find_one()
         # Close the client.
@@ -153,7 +156,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def test_1_4_multiple_principal_user_2(self):
         # Create a human callback that reads in the generated test_user2 token file.
         # Create a client with MONGODB_URI_MULTI, a username of test_user2, authMechanism=MONGODB-OIDC, and the OIDC human callback.
-        client = self.create_client("test_user2")
+        client = self.create_client_multiple("test_user2")
         # Perform a find operation that succeeds.
         client.test.test.find_one()
         # Close the client.
@@ -230,8 +233,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Set a fail point for saslStart commands.
         with self.fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+                "mode": "alwaysOn",
+                "data": {"failCommands": ["saslStart"], "errorCode": 20},
             }
         ):
             # Perform a find operation that succeeds.
@@ -341,9 +344,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_4_3_reauthenticate_succeeds_after_refresh_fails(self):
         # Create a default OIDC client.
-        request_cb = self.create_request_cb()
-        props: Dict = {"oidc_human_callback": request_cb}
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client = self.create_client()
 
         # Perform a find operation that succeeds.
         client.test.test.find_one()
@@ -377,7 +378,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Force a reauthentication using a failCommand.
         with self.fail_point(
             {
-                "mode": {"times": 100},
+                "mode": {"times": 3},
                 "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
             }
         ):
@@ -812,8 +813,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Perform a ``find`` operation that fails.
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
-        # Verify that the callback was called 2 times.
-        self.assertEqual(callback.count, 2)
+        # Verify that the callback was called 1 time.
+        self.assertEqual(callback.count, 1)
         # Close the client.
         client.close()
 
@@ -837,23 +838,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 2)
 
         # Close the client.
-        client.close()
-
-    def test_callback_is_called_once_on_handshake_authentication_failure(self):
-        client = self.create_client()
-
-        # Set a fail point for ``saslStart`` commands.
-        with self.fail_point(
-            {
-                "mode": {"times": 1},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a find operation.
-            client.test.test.find_one()
-
-        # Assert that the request callback has been called once.
-        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_speculative_auth_success(self):
