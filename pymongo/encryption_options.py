@@ -97,6 +97,14 @@ class AutoEncryptionOpts:
             KMS providers may be specified with an optional name suffix
             separated by a colon, for example "kmip:name" or "aws:name".
             Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers enables more than one of each KMS provider type to be configured.
+            For example, to configure multiple local KMS providers::
+
+              kms_providers = {
+                  "local": {"key": local_kek1},        # Unnamed KMS provider.
+                  "local:myname": {"key": local_kek2}, # Named KMS provider with name "myname".
+              }
+
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
