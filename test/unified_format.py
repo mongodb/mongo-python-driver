@@ -32,6 +32,7 @@ import types
 from collections import abc
 from test import (
     AWS_CREDS,
+    AWS_CREDS_2,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -140,13 +141,23 @@ KMS_TLS_OPTS = {
 
 
 # Build up a placeholder map.
-PLACEHOLDER_MAP: Dict[str, Any] = {
-    "key": LOCAL_MASTER_KEY,
-    **AWS_CREDS,
-    **AZURE_CREDS,
-    **GCP_CREDS,
-    **KMIP_CREDS,
-}
+PLACEHOLDER_MAP = {}
+for provider_name, provider_data in [
+    ("local", {"key": LOCAL_MASTER_KEY}),
+    ("local:name1", {"key": LOCAL_MASTER_KEY}),
+    ("aws", AWS_CREDS),
+    ("aws:name1", AWS_CREDS),
+    ("aws:name2", AWS_CREDS_2),
+    ("azure", AZURE_CREDS),
+    ("azure:name1", AZURE_CREDS),
+    ("gcp", GCP_CREDS),
+    ("gcp:name1", GCP_CREDS),
+    ("kmip", KMIP_CREDS),
+    ("kmip:name1", KMIP_CREDS),
+]:
+    for key, value in provider_data.items():
+        placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
+        PLACEHOLDER_MAP[placeholder] = value
 
 
 def interrupt_loop():
@@ -415,16 +426,17 @@ class EntityMapUtil:
 
         self._entities[key] = value
 
-    def _handle_placeholders(self, spec: dict, current: dict, key: str) -> Any:
+    def _handle_placeholders(self, spec: dict, current: dict, path: str) -> Any:
         if "$$placeholder" in current:
-            if key not in PLACEHOLDER_MAP:
-                raise ValueError(f"Could not find a placeholder value for {key}")
-            return PLACEHOLDER_MAP[key]
+            if path not in PLACEHOLDER_MAP:
+                raise ValueError(f"Could not find a placeholder value for {path}")
+            return PLACEHOLDER_MAP[path]
 
         for key in list(current):
             value = current[key]
             if isinstance(value, dict):
-                current[key] = self._handle_placeholders(spec, value, key)
+                subpath = f"{path}/{key}"
+                current[key] = self._handle_placeholders(spec, value, subpath)
         return current
 
     def _create_entity(self, entity_spec, uri=None):

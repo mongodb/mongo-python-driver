@@ -113,6 +113,10 @@ AWS_CREDS = {
     "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
     "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
 }
+AWS_CREDS_2 = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY2", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET2", ""),
+}
 AZURE_CREDS = {
     "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
     "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
