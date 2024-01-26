@@ -101,7 +101,7 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # we should propagate them unchanged.
         raise
     except Exception as exc:
-        raise EncryptionError(exc) from None
+        raise EncryptionError(exc) from exc
 
 
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
