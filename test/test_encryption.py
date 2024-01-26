@@ -2024,8 +2024,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
@@ -2110,9 +2111,10 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2129,7 +2131,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2146,7 +2148,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2160,7 +2162,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
 
