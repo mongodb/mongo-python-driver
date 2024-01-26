@@ -140,7 +140,13 @@ KMS_TLS_OPTS = {
 
 
 # Build up a placeholder map.
-PLACEHOLDER_MAP = {"key": LOCAL_MASTER_KEY, **AWS_CREDS, **AZURE_CREDS, **GCP_CREDS, **KMIP_CREDS}
+PLACEHOLDER_MAP: Dict[str, Any] = {
+    "key": LOCAL_MASTER_KEY,
+    **AWS_CREDS,
+    **AZURE_CREDS,
+    **GCP_CREDS,
+    **KMIP_CREDS,
+}
 
 
 def interrupt_loop():
