@@ -915,26 +915,17 @@ task_groups:
           shell: "bash"
           script: |
             ${PREPARE_SHELL}
-            set +o xtrace
-            LOADBALANCED=ON \
-              SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
-              SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
-              SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
-              bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
           file: serverless-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: shell.exec
         params:
           script: |
             ${PREPARE_SHELL}
-            set +o xtrace
-            SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
-              SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
-              SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
-              SERVERLESS_INSTANCE_NAME=${SERVERLESS_INSTANCE_NAME} \
-              bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh ${VAULT_NAME}
       - func: "upload test results"
     tasks:
       - ".serverless"
@@ -962,7 +953,7 @@ task_groups:
       - command: expansions.update
         params:
           file: testgcpkms-expansions.yml
-    teardown_group:
+    teardown_task:
       - command: shell.exec
         params:
           shell: "bash"
@@ -1033,7 +1024,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
@@ -1073,7 +1064,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
@@ -2144,6 +2135,18 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-6.0-standalone-ssl"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+            SSL: "ssl"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 axes:
   # Choice of distro
   - id: platform
@@ -2545,10 +2548,16 @@ axes:
   - id: serverless
     display_name: "Serverless"
     values:
-      - id: "enabled"
+      - id: "original"
         display_name: "Serverless"
         variables:
           test_serverless: true
+        batchtime: 10080  # 7 days
+      - id: "proxy"
+        display_name: "Serverless Proxy"
+        variables:
+          test_serverless: true
+          VAULT_NAME: "serverless_next"
         batchtime: 10080  # 7 days
 
 buildvariants:
@@ -2945,8 +2954,18 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "*"
-  display_name: "Serverless ${python-version} ${platform}"
+    serverless: "original"
+  display_name: "${serverless} ${python-version} ${platform}"
+  tasks:
+    - "serverless_task_group"
+
+- matrix_name: "serverless_proxy"
+  matrix_spec:
+    platform: rhel8
+    python-version: ["3.7", "3.10"]
+    auth-ssl: auth-ssl
+    serverless: "proxy"
+  display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
 
@@ -3102,6 +3121,7 @@ buildvariants:
   run_on: rhel90-dbx-perf-large
   tasks:
      - name: "perf-6.0-standalone"
+     - name: "perf-6.0-standalone-ssl"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

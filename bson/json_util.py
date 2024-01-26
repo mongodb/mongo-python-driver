@@ -110,6 +110,7 @@ import uuid
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -835,7 +836,7 @@ def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
         json_options.datetime_representation == DatetimeRepresentation.ISO8601
         and 0 <= int(obj) <= _max_datetime_ms()
     ):
-        return default(obj.as_datetime(), json_options)
+        return _encode_datetime(obj.as_datetime(), json_options)
     elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
         return {"$date": str(int(obj))}
     return {"$date": {"$numberLong": str(int(obj))}}
@@ -855,100 +856,180 @@ def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
         return int(obj)
 
 
+def _encode_noop(obj: Any, dummy0: Any) -> Any:
+    return obj
+
+
+def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:
+    flags = ""
+    if obj.flags & re.IGNORECASE:
+        flags += "i"
+    if obj.flags & re.LOCALE:
+        flags += "l"
+    if obj.flags & re.MULTILINE:
+        flags += "m"
+    if obj.flags & re.DOTALL:
+        flags += "s"
+    if obj.flags & re.UNICODE:
+        flags += "u"
+    if obj.flags & re.VERBOSE:
+        flags += "x"
+    if isinstance(obj.pattern, str):
+        pattern = obj.pattern
+    else:
+        pattern = obj.pattern.decode("utf-8")
+    if json_options.json_mode == JSONMode.LEGACY:
+        return {"$regex": pattern, "$options": flags}
+    return {"$regularExpression": {"pattern": pattern, "options": flags}}
+
+
+def _encode_int(obj: int, json_options: JSONOptions) -> Any:
+    if json_options.json_mode == JSONMode.CANONICAL:
+        if -(2**31) <= obj < 2**31:
+            return {"$numberInt": str(obj)}
+        return {"$numberLong": str(obj)}
+    return obj
+
+
+def _encode_float(obj: float, json_options: JSONOptions) -> Any:
+    if json_options.json_mode != JSONMode.LEGACY:
+        if math.isnan(obj):
+            return {"$numberDouble": "NaN"}
+        elif math.isinf(obj):
+            representation = "Infinity" if obj > 0 else "-Infinity"
+            return {"$numberDouble": representation}
+        elif json_options.json_mode == JSONMode.CANONICAL:
+            # repr() will return the shortest string guaranteed to produce the
+            # original value, when float() is called on it.
+            return {"$numberDouble": str(repr(obj))}
+    return obj
+
+
+def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
+    if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
+        if not obj.tzinfo:
+            obj = obj.replace(tzinfo=utc)
+            assert obj.tzinfo is not None
+        if obj >= EPOCH_AWARE:
+            off = obj.tzinfo.utcoffset(obj)
+            if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
+                tz_string = "Z"
+            else:
+                tz_string = obj.strftime("%z")
+            millis = int(obj.microsecond / 1000)
+            fracsecs = ".%03d" % (millis,) if millis else ""
+            return {
+                "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
+            }
+
+    millis = _datetime_to_millis(obj)
+    if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+        return {"$date": millis}
+    return {"$date": {"$numberLong": str(millis)}}
+
+
+def _encode_bytes(obj: bytes, json_options: JSONOptions) -> dict:
+    return _encode_binary(obj, 0, json_options)
+
+
+def _encode_binary_obj(obj: Binary, json_options: JSONOptions) -> dict:
+    return _encode_binary(obj, obj.subtype, json_options)
+
+
+def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:
+    if json_options.strict_uuid:
+        binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
+        return _encode_binary(binval, binval.subtype, json_options)
+    else:
+        return {"$uuid": obj.hex}
+
+
+def _encode_objectid(obj: ObjectId, dummy0: Any) -> dict:
+    return {"$oid": str(obj)}
+
+
+def _encode_timestamp(obj: Timestamp, dummy0: Any) -> dict:
+    return {"$timestamp": {"t": obj.time, "i": obj.inc}}
+
+
+def _encode_decimal128(obj: Timestamp, dummy0: Any) -> dict:
+    return {"$numberDecimal": str(obj)}
+
+
+def _encode_dbref(obj: DBRef, json_options: JSONOptions) -> dict:
+    return _json_convert(obj.as_doc(), json_options=json_options)
+
+
+def _encode_minkey(dummy0: Any, dummy1: Any) -> dict:
+    return {"$minKey": 1}
+
+
+def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
+    return {"$maxKey": 1}
+
+
 # Encoders for BSON types
-_encoders = {
-    5: lambda obj, json_options: _encode_binary(obj, obj.subtype, json_options),  # Binary
-    7: lambda obj, json_options: {"$oid": str(obj)},  # noqa: ARG005 ObjectId
-    9: _encode_datetimems,  # DatetimeMS
-    13: _encode_code,  # Code
-    17: lambda obj, json_options: {"$timestamp": {"t": obj.time, "i": obj.inc}},  # noqa: ARG005 Timestamp
-    18: _encode_int64,  # Int64
-    19: lambda obj, json_options: {"$numberDecimal": str(obj)},  # noqa: ARG005 Decimal128
-    100: lambda obj, json_options: _json_convert(obj.as_doc(), json_options=json_options),  # DBRef
-    127: lambda obj, json_options: {"$maxKey": 1},  # noqa: ARG005 MaxKey
-    255: lambda obj, json_options: {"$minKey": 1},  # noqa: ARG005 MinKey
+# Each encoder function's signature is:
+#   - obj: a Python data type, e.g. a Python int for _encode_int
+#   - json_options: a JSONOptions
+_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {
+    bool: _encode_noop,
+    bytes: _encode_bytes,
+    datetime.datetime: _encode_datetime,
+    DatetimeMS: _encode_datetimems,
+    float: _encode_float,
+    int: _encode_int,
+    str: _encode_noop,
+    type(None): _encode_noop,
+    uuid.UUID: _encode_uuid,
+    Binary: _encode_binary_obj,
+    Int64: _encode_int64,
+    Code: _encode_code,
+    DBRef: _encode_dbref,
+    MaxKey: _encode_maxkey,
+    MinKey: _encode_minkey,
+    ObjectId: _encode_objectid,
+    Regex: _encode_regex,
+    RE_TYPE: _encode_regex,
+    Timestamp: _encode_timestamp,
+    Decimal128: _encode_decimal128,
 }
+
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS: dict[int, Callable[[Any, JSONOptions], Any]] = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
+
+_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
 
 def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    # We preserve key order when rendering SON, DBRef, etc. as JSON by
-    # returning a SON for those types instead of a dict.
-    if isinstance(obj, bool):
-        return obj
-    elif isinstance(obj, (RE_TYPE, Regex)):
-        flags = ""
-        if obj.flags & re.IGNORECASE:
-            flags += "i"
-        if obj.flags & re.LOCALE:
-            flags += "l"
-        if obj.flags & re.MULTILINE:
-            flags += "m"
-        if obj.flags & re.DOTALL:
-            flags += "s"
-        if obj.flags & re.UNICODE:
-            flags += "u"
-        if obj.flags & re.VERBOSE:
-            flags += "x"
-        if isinstance(obj.pattern, str):
-            pattern = obj.pattern
-        else:
-            pattern = obj.pattern.decode("utf-8")
-        if json_options.json_mode == JSONMode.LEGACY:
-            return {"$regex": pattern, "$options": flags}
-        return {"$regularExpression": {"pattern": pattern, "options": flags}}
-    elif hasattr(obj, "_type_marker"):
-        type_marker = obj._type_marker
-        try:
-            return _encoders[type_marker](obj, json_options)  # type: ignore[no-untyped-call]
-        except KeyError:
-            raise TypeError("%r is not JSON serializable" % obj) from None
-    elif isinstance(obj, int):
-        if json_options.json_mode == JSONMode.CANONICAL:
-            if -(2**31) <= obj < 2**31:
-                return {"$numberInt": str(obj)}
-            return {"$numberLong": str(obj)}
-        return obj
-    elif isinstance(obj, float):
-        if json_options.json_mode != JSONMode.LEGACY:
-            if math.isnan(obj):
-                return {"$numberDouble": "NaN"}
-            elif math.isinf(obj):
-                representation = "Infinity" if obj > 0 else "-Infinity"
-                return {"$numberDouble": representation}
-            elif json_options.json_mode == JSONMode.CANONICAL:
-                # repr() will return the shortest string guaranteed to produce the
-                # original value, when float() is called on it.
-                return {"$numberDouble": str(repr(obj))}
-        return obj
-    elif isinstance(obj, str):
-        return obj
-    elif isinstance(obj, datetime.datetime):
-        if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
-            if not obj.tzinfo:
-                obj = obj.replace(tzinfo=utc)
-                assert obj.tzinfo is not None
-            if obj >= EPOCH_AWARE:
-                off = obj.tzinfo.utcoffset(obj)
-                if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
-                    tz_string = "Z"
-                else:
-                    tz_string = obj.strftime("%z")
-                millis = int(obj.microsecond / 1000)
-                fracsecs = ".%03d" % (millis,) if millis else ""
-                return {
-                    "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
-                }
+    # First see if the type is already cached. KeyError will only ever
+    # happen once per subtype.
+    try:
+        return _ENCODERS[type(obj)](obj, json_options)
+    except KeyError:
+        pass
 
-        millis = _datetime_to_millis(obj)
-        if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": millis}
-        return {"$date": {"$numberLong": str(millis)}}
-    elif isinstance(obj, bytes):
-        return _encode_binary(obj, 0, json_options)
-    elif isinstance(obj, uuid.UUID):
-        if json_options.strict_uuid:
-            binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
-            return _encode_binary(binval, binval.subtype, json_options)
-        else:
-            return {"$uuid": obj.hex}
+    # Second, fall back to trying _type_marker. This has to be done
+    # before the loop below since users could subclass one of our
+    # custom types that subclasses a python built-in (e.g. Binary)
+    if hasattr(obj, "_type_marker"):
+        marker = obj._type_marker
+        if marker in _MARKERS:
+            func = _MARKERS[marker]
+            # Cache this type for faster subsequent lookup.
+            _ENCODERS[type(obj)] = func
+            return func(obj, json_options)
+
+    # Third, test each base type. This will only happen once for
+    # a subtype of a supported base type.
+    for base in _BUILT_IN_TYPES:
+        if isinstance(obj, base):
+            func = _ENCODERS[base]
+            # Cache this type for faster subsequent lookup.
+            _ENCODERS[type(obj)] = func
+            return func(obj, json_options)
+
     raise TypeError("%r is not JSON serializable" % obj)

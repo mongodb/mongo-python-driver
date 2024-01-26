@@ -21,21 +21,23 @@ import math
 import os
 from typing import Any, Iterable, Mapping, NoReturn, Optional
 
-from bson.binary import Binary
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.cursor import Cursor
 from pymongo.errors import (
+    BulkWriteError,
     ConfigurationError,
     CursorNotFound,
     DuplicateKeyError,
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.helpers import _check_write_command_response
 from pymongo.read_preferences import ReadPreference
 
 _SEEK_SET = os.SEEK_SET
@@ -48,6 +50,13 @@ NEWLN = b"\n"
 """Default chunk size, in bytes."""
 # Slightly under a power of 2, to work well with server's record allocations.
 DEFAULT_CHUNK_SIZE = 255 * 1024
+# The number of chunked bytes to buffer before calling insert_many.
+_UPLOAD_BUFFER_SIZE = MAX_MESSAGE_SIZE
+# The number of chunk documents to buffer before calling insert_many.
+_UPLOAD_BUFFER_CHUNKS = 100000
+# Rough BSON overhead of a chunk document not including the chunk data itself.
+# Essentially len(encode({"_id": ObjectId(), "files_id": ObjectId(), "n": 1, "data": ""}))
+_CHUNK_OVERHEAD = 60
 
 _C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
 _F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
@@ -198,6 +207,8 @@ class GridIn:
         object.__setattr__(self, "_chunk_number", 0)
         object.__setattr__(self, "_closed", False)
         object.__setattr__(self, "_ensured_index", False)
+        object.__setattr__(self, "_buffered_docs", [])
+        object.__setattr__(self, "_buffered_docs_size", 0)
 
     def __create_index(self, collection: Collection, index_key: Any, unique: bool) -> None:
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
@@ -249,6 +260,8 @@ class GridIn:
 
     _buffer: io.BytesIO
     _closed: bool
+    _buffered_docs: list[dict[str, Any]]
+    _buffered_docs_size: int
 
     def __getattr__(self, name: str) -> Any:
         if name in self._file:
@@ -268,32 +281,52 @@ class GridIn:
             if self._closed:
                 self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
-    def __flush_data(self, data: Any) -> None:
+    def __flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
         self.__ensure_indexes()
-        if not data:
-            return
         assert len(data) <= self.chunk_size
-
-        chunk = {"files_id": self._file["_id"], "n": self._chunk_number, "data": Binary(data)}
-
-        try:
-            self._chunks.insert_one(chunk, session=self._session)
-        except DuplicateKeyError:
-            self._raise_file_exists(self._file["_id"])
+        if data:
+            self._buffered_docs.append(
+                {"files_id": self._file["_id"], "n": self._chunk_number, "data": data}
+            )
+            self._buffered_docs_size += len(data) + _CHUNK_OVERHEAD
+        if not self._buffered_docs:
+            return
+        # Limit to 100,000 chunks or 32MB (+1 chunk) of data.
+        if (
+            force
+            or self._buffered_docs_size >= _UPLOAD_BUFFER_SIZE
+            or len(self._buffered_docs) >= _UPLOAD_BUFFER_CHUNKS
+        ):
+            try:
+                self._chunks.insert_many(self._buffered_docs, session=self._session)
+            except BulkWriteError as exc:
+                # For backwards compatibility, raise an insert_one style exception.
+                write_errors = exc.details["writeErrors"]
+                for err in write_errors:
+                    if err.get("code") in (11000, 11001, 12582):  # Duplicate key errors
+                        self._raise_file_exists(self._file["_id"])
+                result = {"writeErrors": write_errors}
+                wces = exc.details["writeConcernErrors"]
+                if wces:
+                    result["writeConcernError"] = wces[-1]
+                _check_write_command_response(result)
+                raise
+            self._buffered_docs = []
+            self._buffered_docs_size = 0
         self._chunk_number += 1
         self._position += len(data)
 
-    def __flush_buffer(self) -> None:
+    def __flush_buffer(self, force: bool = False) -> None:
         """Flush the buffer contents out to a chunk."""
-        self.__flush_data(self._buffer.getvalue())
+        self.__flush_data(self._buffer.getvalue(), force=force)
         self._buffer.close()
         self._buffer = io.BytesIO()
 
     def __flush(self) -> Any:
         """Flush the file to the database."""
         try:
-            self.__flush_buffer()
+            self.__flush_buffer(force=True)
             # The GridFS spec says length SHOULD be an Int64.
             self._file["length"] = Int64(self._position)
             self._file["uploadDate"] = datetime.datetime.now(tz=datetime.timezone.utc)
