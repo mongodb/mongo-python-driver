@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import enum
+import logging
 import os
 from typing import Any
 
@@ -21,7 +22,7 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
 
 
-class _LogMessageStatus(str, enum.Enum):
+class _CommandStatusMessage(str, enum.Enum):
     STARTED = "Command started"
     SUCCEEDED = "Command succeeded"
     FAILED = "Command failed"
@@ -43,6 +44,12 @@ _HELLO_COMMANDS = ["hello", "ismaster", "isMaster"]
 _REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
 _DOCUMENT_NAMES = ["command", "reply", "failure"]
 _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
+_COMMAND_LOGGER = logging.getLogger("pymongo.command")
+
+
+def _debug_log(logger: logging.Logger, **fields: Any) -> None:
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(LogMessage(**fields))
 
 
 class LogMessage:
