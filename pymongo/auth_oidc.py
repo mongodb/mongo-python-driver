@@ -172,11 +172,9 @@ class _OIDCAuthenticator:
 
     def get_spec_auth_cmd(self) -> Optional[Mapping[str, Any]]:
         """Get the appropriate speculative auth command."""
-        access_token = self._get_access_token(False)
-        if access_token:
-            payload = {"jwt": access_token}
-            return self._get_start_command(payload)
-        return None
+        if not self.access_token:
+            return None
+        return self._get_start_command({"jwt": self.access_token})
 
     def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If
@@ -212,7 +210,7 @@ class _OIDCAuthenticator:
         # Attempt to authenticate with a JwtStepRequest.
         return self._sasl_continue_jwt(conn, start_resp)
 
-    def _get_access_token(self, use_human_callback: bool = True) -> Optional[str]:
+    def _get_access_token(self) -> Optional[str]:
         properties = self.properties
         cb: Union[None, OIDCCallback]
         resp: OIDCCallbackResult
@@ -225,8 +223,6 @@ class _OIDCAuthenticator:
             cb = properties.callback
         if properties.human_callback:
             cb = properties.human_callback
-        if not use_human_callback and is_human:
-            cb = None
 
         prev_token = self.access_token
         if prev_token:
@@ -254,7 +250,6 @@ class _OIDCAuthenticator:
                     assert self.idp_info is not None
                 else:
                     timeout = int(remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS)
-
                 context = OIDCCallbackContext(
                     timeout_seconds=timeout,
                     version=CALLBACK_VERSION,

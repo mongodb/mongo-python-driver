@@ -182,7 +182,7 @@ def _build_credentials_tuple(
             "127.0.0.1",
             "::1",
         ]
-        allowed_hosts = properties.get("allowed_hosts", default_allowed)
+        allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
         msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
         if passwd is not None:
             msg = "password is not supported by MONGODB-OIDC"
