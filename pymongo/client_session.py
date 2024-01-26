@@ -979,6 +979,10 @@ class ClientSession:
         read_preference: _ServerMode,
         conn: Connection,
     ) -> None:
+        if not conn.supports_sessions:
+            if not self._implicit:
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
+            return
         self._check_ended()
         self._materialize()
         if self.options.snapshot:
@@ -1097,19 +1101,12 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self, session_timeout_minutes: float) -> _ServerSession:
-        # Although the Driver Sessions Spec says we only clear stale sessions
-        # in return_server_session, PyMongo can't take a lock when returning
-        # sessions from a __del__ method (like in Cursor.__die), so it can't
-        # clear stale sessions there. In case many sessions were returned via
-        # __del__, check for stale sessions here too.
-        self._clear_stale(session_timeout_minutes)
-
+    def get_server_session(self) -> _ServerSession:
         # The most recently used sessions are on the left.
         while self:
-            s = self.popleft()
-            if not s.timed_out(session_timeout_minutes):
-                return s
+            # s = self.popleft()
+            # # if not s.timed_out(session_timeout_minutes):
+            return self.popleft()
 
         return _ServerSession(self.generation)
 

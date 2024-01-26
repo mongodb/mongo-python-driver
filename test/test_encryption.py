@@ -22,6 +22,7 @@ import re
 import socket
 import socketserver
 import ssl
+import subprocess
 import sys
 import textwrap
 import traceback
@@ -30,6 +31,7 @@ from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
+from pymongo.daemon import _spawn_daemon
 
 sys.path[0:0] = [""]
 
@@ -2995,6 +2997,60 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 kms_provider="local",
             )
         self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
+
+
+def start_mongocryptd(port) -> None:
+    args = ["mongocryptd", f"--port={port}", "--idleShutdownTimeoutSecs=60"]
+    _spawn_daemon(args)
+
+
+class TestNoSessionsSupport(IntegrationTest):
+    mongocryptd_client: MongoClient
+    MONGOCRYPTD_PORT = 27020
+
+    @classmethod
+    @client_context.require_sessions
+    def setUpClass(cls):
+        super().setUpClass()
+        start_mongocryptd(cls.MONGOCRYPTD_PORT)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
+    def setUp(self) -> None:
+        self.listener = OvertCommandListener()
+        self.listener.reset()
+        self.mongocryptd_client = MongoClient(
+            f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]
+        )
+
+        hello = self.mongocryptd_client.db.command("hello")
+        self.assertNotIn("logicalSessionTimeoutMinutes", hello)
+
+    @client_context.require_sessions
+    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
+    def test_implicit_session_ignored_when_unsupported(self):
+        self.listener.reset()
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.find_one()
+
+        self.assertNotIn("lsid", self.listener.started_events[0].command)
+
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.insert_one({"x": 1})
+
+        self.assertNotIn("lsid", self.listener.started_events[1].command)
+
+    @client_context.require_sessions
+    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
+    def test_explicit_session_errors_when_unsupported(self):
+        self.listener.reset()
+        with self.mongocryptd_client.start_session() as s:
+            with self.assertRaises(ConfigurationError):
+                self.mongocryptd_client.db.test.find_one(session=s)
+            with self.assertRaises(ConfigurationError):
+                self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
 
 
 if __name__ == "__main__":

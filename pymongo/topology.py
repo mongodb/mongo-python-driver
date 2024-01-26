@@ -609,8 +609,7 @@ class Topology:
     def get_server_session(self) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
-            session_timeout = self._check_session_support()
-            return self._session_pool.get_server_session(session_timeout)
+            return self._session_pool.get_server_session()
 
     def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:

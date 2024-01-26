@@ -1750,9 +1750,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 helpers._handle_exception()
 
     def __start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
-        # Raises ConfigurationError if sessions are not supported.
         if implicit:
-            self._topology._check_implicit_session_support()
             server_session: Union[_EmptyServerSession, _ServerSession] = _EmptyServerSession()
         else:
             server_session = self._get_server_session()
@@ -2393,12 +2391,15 @@ class _ClientConnectionRetryable(Generic[T]):
         try:
             max_wire_version = 0
             self._server = self._get_server()
-            supports_session = (
-                self._session is not None and self._server.description.retryable_writes_supported
-            )
             with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
-                if self._retryable and not supports_session:
+                sessions_supported = (
+                    self._retryable
+                    and self._server.description.retryable_writes_supported
+                    and self._session
+                    and conn.supports_sessions
+                )
+                if not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
                     self._check_last_error()
