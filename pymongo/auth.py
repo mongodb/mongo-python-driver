@@ -169,8 +169,8 @@ def _build_credentials_tuple(
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
-        callback = properties.get("oidc_callback")
-        human_callback = properties.get("oidc_human_callback")
+        callback = properties.get("OIDC_CALLBACK")
+        human_callback = properties.get("OIDC_HUMAN_CALLBACK")
         provider_name = properties.get("PROVIDER_NAME")
         token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
@@ -191,7 +191,7 @@ def _build_credentials_tuple(
             if provider_name is not None:
                 raise ConfigurationError(msg)
             if callback and human_callback:
-                msg = "cannot set both oidc_callback and oidc_human_callback"
+                msg = "cannot set both OIDC_CALLBACK and OIDC_HUMAN_CALLBACK"
                 raise ConfigurationError(msg)
         elif provider_name is not None:
             if provider_name == "aws":
