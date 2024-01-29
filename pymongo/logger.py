@@ -65,12 +65,12 @@ _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 _CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
 _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
-    ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed during checkout",
+    ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionClosedReason.STALE: "Connection pool was stale",
     ConnectionClosedReason.ERROR: "Connection experienced an error",
-    ConnectionCheckOutFailedReason.CONN_ERROR: "Connection checkout experienced an error",
+    ConnectionCheckOutFailedReason.CONN_ERROR: "Connection experienced an error",
     ConnectionClosedReason.IDLE: "Connection was idle too long",
-    ConnectionCheckOutFailedReason.TIMEOUT: "Connection checkout exceeded the specified timeout",
+    ConnectionCheckOutFailedReason.TIMEOUT: "Connection exceeded the specified timeout",
 }
 
 
