@@ -136,12 +136,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         exit 1
     fi
     export PYMONGOCRYPT_LIB
-
-    # TODO: Test with 'pip install pymongocrypt'
-    if [ ! -d "libmongocrypt_git" ]; then
-        git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    fi
-    python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
