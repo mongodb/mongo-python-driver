@@ -83,6 +83,7 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
+    WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.monitoring import ConnectionClosedReason
@@ -2141,7 +2142,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     return None
 
 
-def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int) -> None:
+def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mongos: bool) -> None:
     doc = _retryable_error_doc(exc)
     if doc:
         code = doc.get("code", 0)
@@ -2158,7 +2159,10 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int) -> None
             for label in doc.get("errorLabels", []):
                 exc._add_error_label(label)
         else:
-            if code in helpers._RETRYABLE_ERROR_CODES:
+            # Do not consult writeConcernError for pre-4.4 mongos.
+            if isinstance(exc, WriteConcernError) and is_mongos:
+                pass
+            elif code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
     # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
@@ -2392,12 +2396,14 @@ class _ClientConnectionRetryable(Generic[T]):
         """
         try:
             max_wire_version = 0
+            is_mongos = False
             self._server = self._get_server()
             supports_session = (
                 self._session is not None and self._server.description.retryable_writes_supported
             )
             with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
+                is_mongos = conn.is_mongos
                 if self._retryable and not supports_session:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
@@ -2408,7 +2414,7 @@ class _ClientConnectionRetryable(Generic[T]):
             if not self._retryable:
                 raise
             # Add the RetryableWriteError label, if applicable.
-            _add_retryable_write_error(exc, max_wire_version)
+            _add_retryable_write_error(exc, max_wire_version, is_mongos)
             raise
 
     def _read(self) -> T:
