@@ -111,32 +111,13 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3952 is deployed.
-    if [ "$(uname -s)" = "Darwin" ]; then
-        python -m pip install certifi
-        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-        export SSL_CERT_FILE=${CERT_PATH}
-        export REQUESTS_CA_BUNDLE=${CERT_PATH}
-        export AWS_CA_BUNDLE=${CERT_PATH}
-    fi
-
     python -m pip install '.[encryption]'
 
-    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
-        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
+    # Install libmongocrypt if necessary.
+    if [ ! -d "libmongocrypt" ]; then
+        bash ./.evergreen/setup-libmongocrypt.sh
     fi
 
-    if [ -z "$LIBMONGOCRYPT_URL" ]; then
-        echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
-        exit 1
-    fi
-    curl -O "$LIBMONGOCRYPT_URL"
-    mkdir libmongocrypt
-    tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
-    ls -la libmongocrypt
-    ls -la libmongocrypt/nocrypto
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
     if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
@@ -155,11 +136,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         exit 1
     fi
     export PYMONGOCRYPT_LIB
-
-    # TODO: Test with 'pip install pymongocrypt'
-    git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
-    python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
@@ -169,11 +145,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
         python -m pip install '.[ocsp]'
     fi
-
-    # Get access to the AWS temporary credentials:
-    # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
-    export AWS_SESSION_TOKEN=
-    . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
         CRYPT_SHARED_DIR=`dirname $CRYPT_SHARED_LIB_PATH`
@@ -228,16 +199,6 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3952 is deployed.
-    if [ "$(uname -s)" = "Darwin" ]; then
-        python -m pip install certifi
-        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-        export SSL_CERT_FILE=${CERT_PATH}
-        export REQUESTS_CA_BUNDLE=${CERT_PATH}
-        export AWS_CA_BUNDLE=${CERT_PATH}
-    fi
 
     TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
