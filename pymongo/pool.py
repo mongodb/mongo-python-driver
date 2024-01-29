@@ -1456,7 +1456,7 @@ class Pool:
                 **self.opts.non_default_options,
             )
         # Similar to active_sockets but includes threads in the wait queue.
-        self.operation_count = 0
+        self.operation_count: int = 0
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
