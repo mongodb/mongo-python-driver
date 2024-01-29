@@ -20,6 +20,7 @@ from typing import Any
 
 from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
+from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 
 
 class _CommandStatusMessage(str, enum.Enum):
@@ -62,11 +63,24 @@ _DOCUMENT_NAMES = ["command", "reply", "failure"]
 _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 _CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
+_VERBOSE_CONNECTION_ERROR_REASONS = {
+    ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
+    ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed during checkout",
+    ConnectionClosedReason.STALE: "Connection pool was stale",
+    ConnectionClosedReason.ERROR: "Connection experienced an error",
+    ConnectionCheckOutFailedReason.CONN_ERROR: "Connection checkout experienced an error",
+    ConnectionClosedReason.IDLE: "Connection was idle too long",
+    ConnectionCheckOutFailedReason.TIMEOUT: "Connection checkout exceeded the specified timeout",
+}
 
 
 def _debug_log(logger: logging.Logger, **fields: Any) -> None:
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug(LogMessage(**fields))
+
+
+def _verbose_connection_error_reason(reason: str) -> str:
+    return _VERBOSE_CONNECTION_ERROR_REASONS.get(reason, reason)
 
 
 class LogMessage:

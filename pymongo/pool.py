@@ -71,7 +71,12 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
 from pymongo.lock import _create_lock
-from pymongo.logger import _CONNECTION_LOGGER, _ConnectionStatusMessage, _debug_log
+from pymongo.logger import (
+    _CONNECTION_LOGGER,
+    _ConnectionStatusMessage,
+    _debug_log,
+    _verbose_connection_error_reason,
+)
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -1120,7 +1125,7 @@ class Connection:
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=self.id,
-                reason=reason,
+                reason=_verbose_connection_error_reason(reason),
             )
 
     def _close_conn(self) -> None:

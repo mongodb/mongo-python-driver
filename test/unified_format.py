@@ -1713,7 +1713,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for client in spec:
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
-                print(actual_logs)
                 self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
