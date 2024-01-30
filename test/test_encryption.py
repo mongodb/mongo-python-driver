@@ -2090,6 +2090,32 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == "win32":
             self.cert_error += "|forcibly closed"
+        # 4, Test named KMS providers.
+        providers = {
+            "aws:no_client_cert": AWS_CREDS,
+            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
+            "gcp:no_client_cert": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "kmip:no_client_cert": KMIP_CREDS,
+            "aws:with_tls": AWS_CREDS,
+            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
+            "gcp:with_tls": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "kmip:with_tls": KMIP_CREDS,
+        }
+        no_cert = {"tlsCAFile": CA_PEM}
+        with_cert = {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}
+        kms_tls_opts_4 = {
+            "aws:no_client_cert": no_cert,
+            "azure:no_client_cert": no_cert,
+            "gcp:no_client_cert": no_cert,
+            "kmip:no_client_cert": no_cert,
+            "aws:with_tls": with_cert,
+            "azure:with_tls": with_cert,
+            "gcp:with_tls": with_cert,
+            "kmip:with_tls": with_cert,
+        }
+        self.client_encryption_with_names = ClientEncryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_4
+        )
 
     def test_01_aws(self):
         key = {
@@ -2177,6 +2203,43 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         if not hasattr(ctx, "check_ocsp_endpoint"):
             raise self.skipTest("OCSP not enabled")
         self.assertFalse(ctx.check_ocsp_endpoint)
+
+    def test_06_named_kms_providers_apply_tls_options_aws(self):
+        key = {
+            "region": "us-east-1",
+            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+            "endpoint": "127.0.0.1:8002",
+        }
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("aws:no_client_cert", key)
+        # "parse error" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "parse error"):
+            self.client_encryption_with_names.create_data_key("aws:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_azure(self):
+        key = {"keyVaultEndpoint": "doesnotexist.local", "keyName": "foo"}
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("azure:no_client_cert", key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "HTTP status=404"):
+            self.client_encryption_with_names.create_data_key("azure:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_gcp(self):
+        key = {"projectId": "foo", "location": "bar", "keyRing": "baz", "keyName": "foo"}
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("gcp:no_client_cert", key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "HTTP status=404"):
+            self.client_encryption_with_names.create_data_key("gcp:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_kmip(self):
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("kmip:no_client_cert")
+        self.client_encryption_with_names.create_data_key("kmip:with_tls")
 
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
