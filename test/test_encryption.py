@@ -3004,14 +3004,13 @@ def start_mongocryptd(port) -> None:
     _spawn_daemon(args)
 
 
-class TestNoSessionsSupport(IntegrationTest):
+class TestNoSessionsSupport(EncryptionIntegrationTest):
     mongocryptd_client: MongoClient
     MONGOCRYPTD_PORT = 27020
 
     @classmethod
     @client_context.require_sessions
     @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
-    @client_context.require_version_min(4, 2, -1)
     def setUpClass(cls):
         super().setUpClass()
         start_mongocryptd(cls.MONGOCRYPTD_PORT)
