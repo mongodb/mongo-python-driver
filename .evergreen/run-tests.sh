@@ -157,7 +157,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
-    git clone https://github.com/ShaneHarvey/libmongocrypt.git --branch PYTHON-4112 libmongocrypt_git
+    git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
