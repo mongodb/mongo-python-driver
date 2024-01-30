@@ -23,6 +23,8 @@ from typing import Any, Callable, Optional
 
 from pymongo.lock import _create_lock
 
+_THREAD_START_ON_SHUTDOWN_ERR = "can't create new thread at interpreter shutdown"
+
 
 class PeriodicExecutor:
     def __init__(
@@ -91,11 +93,12 @@ class PeriodicExecutor:
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
+            # Mitigation to RuntimeError firing when thread starts on shutdown
+            # https://github.com/python/cpython/issues/114570
             try:
                 thread.start()
             except RuntimeError as e:
-                if str(e) == "can't create new thread at interpreter shutdown":
-                    # Result of change
+                if str(e) == _THREAD_START_ON_SHUTDOWN_ERR:
                     self._thread = None
                     return
                 raise
