@@ -3010,6 +3010,8 @@ class TestNoSessionsSupport(IntegrationTest):
 
     @classmethod
     @client_context.require_sessions
+    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
+    @client_context.require_version_min(4, 2, -1)
     def setUpClass(cls):
         super().setUpClass()
         start_mongocryptd(cls.MONGOCRYPTD_PORT)
@@ -3028,8 +3030,6 @@ class TestNoSessionsSupport(IntegrationTest):
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
-    @client_context.require_sessions
-    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
     def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
@@ -3041,9 +3041,8 @@ class TestNoSessionsSupport(IntegrationTest):
             self.mongocryptd_client.db.test.insert_one({"x": 1})
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
+        self.mongocryptd_client.close()
 
-    @client_context.require_sessions
-    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
     def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         with self.mongocryptd_client.start_session() as s:
@@ -3051,6 +3050,7 @@ class TestNoSessionsSupport(IntegrationTest):
                 self.mongocryptd_client.db.test.find_one(session=s)
             with self.assertRaises(ConfigurationError):
                 self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+        self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":
