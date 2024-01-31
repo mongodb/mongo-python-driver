@@ -1707,7 +1707,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         with self.assertLogs("pymongo", level="DEBUG") as cm:
             self.run_operations(operations)
             formatted_logs = format_logs(cm.records)
-            # FIXME: currently I assume all msgs are coming from client
             for client in spec:
                 components = set()
                 for message in client["messages"]:
