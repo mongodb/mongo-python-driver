@@ -1682,7 +1682,7 @@ class Pool:
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=conn_id,
-                    reason="An error occurred while using the connection",
+                    reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
             if isinstance(error, (IOError, OSError, SSLError)):
