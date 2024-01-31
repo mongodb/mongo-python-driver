@@ -2024,7 +2024,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         with self.assertRaisesRegex(
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
@@ -2093,12 +2093,12 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # 4, Test named KMS providers.
         providers = {
             "aws:no_client_cert": AWS_CREDS,
-            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
-            "gcp:no_client_cert": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:no_client_cert": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
             "kmip:no_client_cert": KMIP_CREDS,
             "aws:with_tls": AWS_CREDS,
-            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
-            "gcp:with_tls": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:with_tls": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
             "kmip:with_tls": KMIP_CREDS,
         }
         no_cert = {"tlsCAFile": CA_PEM}
@@ -2137,7 +2137,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
@@ -2208,7 +2208,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "127.0.0.1:8002",
+            "endpoint": "127.0.0.1:9002",
         }
         # Missing client cert error.
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
