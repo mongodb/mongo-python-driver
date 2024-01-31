@@ -24,8 +24,6 @@ from typing import Any, Callable, Optional
 
 from pymongo.lock import _create_lock
 
-_THREAD_START_ON_SHUTDOWN_ERR = "can't create new thread at interpreter shutdown"
-
 
 class PeriodicExecutor:
     def __init__(
@@ -99,7 +97,7 @@ class PeriodicExecutor:
             try:
                 thread.start()
             except RuntimeError as e:
-                if _THREAD_START_ON_SHUTDOWN_ERR in str(e) or sys.is_finalizing():
+                if "interpreter shutdown" in str(e) or sys.is_finalizing():
                     self._thread = None
                     return
                 raise
