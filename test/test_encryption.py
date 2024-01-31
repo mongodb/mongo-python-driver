@@ -461,6 +461,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         self.assertEqual(encrypted_ssn, encrypted_ssn2)
 
+        # Test encryption via UUID
         encrypted_ssn3 = client_encryption.encrypt(
             doc["ssn"],
             Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
