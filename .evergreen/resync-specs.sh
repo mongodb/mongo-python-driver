@@ -71,8 +71,7 @@ do
   # Match the spec dir name, the python test dir name, and/or common abbreviations.
   case "$spec" in
     auth)
-      cpjson auth/tests/legacy auth/legacy
-      cpjson auth/tests/unified auth/unified
+      cpjson auth/tests/ auth
       ;;
     atlas-data-lake-testing|data_lake)
       cpjson atlas-data-lake-testing/tests/ data_lake
