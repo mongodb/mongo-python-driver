@@ -118,7 +118,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         return Inner()
 
     def create_client(self, *args, **kwargs):
-        request_cb = kwargs.pop("request_cb", self.create_request_cb())
+        username = kwargs.get("username", "test_user1")
+        request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
         kwargs["retryReads"] = False
         if not len(args):
