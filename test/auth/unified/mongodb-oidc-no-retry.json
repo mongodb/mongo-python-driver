@@ -1,6 +1,6 @@
 {
     "description": "MONGODB-OIDC authentication with retry disabled",
-    "schemaVersion": "1.18",
+    "schemaVersion": "1.19",
     "runOnRequirements": [
       {
         "minServerVersion": "7.0",
