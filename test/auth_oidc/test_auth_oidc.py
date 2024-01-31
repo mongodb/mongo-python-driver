@@ -488,7 +488,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a bulk write operation.
-            client.test.test.bulk_write([InsertOne({})])
+            client.test.test.bulk_write([InsertOne({})])  # type:ignore[type-var]
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -502,7 +502,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.test.test.find_one()
 
         # Perform a bulk write operation.
-        client.test.test.bulk_write([InsertOne({})])
+        client.test.test.bulk_write([InsertOne({})])  # type:ignore[type-var]
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)

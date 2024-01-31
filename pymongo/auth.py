@@ -199,7 +199,7 @@ def _build_credentials_tuple(
                     raise ConfigurationError(msg)
                 callback = _OIDCAWSCallback()
             elif provider_name == "azure":
-                passwd = None  # type:ignore[assignment]
+                passwd = None
                 if not token_audience:
                     raise ConfigurationError(
                         "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"

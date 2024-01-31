@@ -159,7 +159,7 @@ class _OIDCAuthenticator:
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
             resp = ctx.speculative_authenticate
-            if resp["done"]:
+            if resp and resp["done"]:
                 conn.oidc_token_gen_id = self.token_gen_id
                 return resp
 
@@ -170,7 +170,7 @@ class _OIDCAuthenticator:
             return self._authenticate_human(conn)
         return self._authenticate_machine(conn)
 
-    def get_spec_auth_cmd(self) -> Optional[Mapping[str, Any]]:
+    def get_spec_auth_cmd(self) -> Optional[MutableMapping[str, Any]]:
         """Get the appropriate speculative auth command."""
         if not self.access_token:
             return None
@@ -265,9 +265,7 @@ class _OIDCAuthenticator:
 
         return self.access_token
 
-    def _run_command(
-        self, conn: Connection, cmd: MutableMapping[str, Any]
-    ) -> Optional[Mapping[str, Any]]:
+    def _run_command(self, conn: Connection, cmd: MutableMapping[str, Any]) -> Mapping[str, Any]:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure:
@@ -301,7 +299,7 @@ class _OIDCAuthenticator:
         cmd = self._get_start_command({"jwt": access_token})
         return self._run_command(conn, cmd)
 
-    def _get_start_command(self, payload) -> Mapping[str, Any]:
+    def _get_start_command(self, payload: Optional[Mapping[str, Any]]) -> MutableMapping[str, Any]:
         if payload is None:
             principal_name = self.username
             if principal_name:
@@ -311,7 +309,9 @@ class _OIDCAuthenticator:
         bin_payload = Binary(bson.encode(payload))
         return {"saslStart": 1, "mechanism": "MONGODB-OIDC", "payload": bin_payload}
 
-    def _get_continue_command(self, payload, start_resp) -> Mapping[str, Any]:
+    def _get_continue_command(
+        self, payload: Mapping[str, Any], start_resp: Mapping[str, Any]
+    ) -> MutableMapping[str, Any]:
         bin_payload = Binary(bson.encode(payload))
         return {
             "saslContinue": 1,
