@@ -68,7 +68,7 @@ ocsp = [
     "pyopenssl>=17.2.0",
     "requests<3.0.0",
     "cryptography>=2.5",
-    "service_identity>=18.1.0,<24.1",
+    "service_identity>=18.1.0",
 ]
 snappy = [
     "python-snappy",
