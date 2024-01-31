@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 import weakref
@@ -98,7 +99,7 @@ class PeriodicExecutor:
             try:
                 thread.start()
             except RuntimeError as e:
-                if str(e) == _THREAD_START_ON_SHUTDOWN_ERR:
+                if _THREAD_START_ON_SHUTDOWN_ERR in str(e) or sys.is_finalizing():
                     self._thread = None
                     return
                 raise

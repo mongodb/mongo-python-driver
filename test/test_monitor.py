@@ -80,16 +80,16 @@ class TestMonitor(IntegrationTest):
         for executor in executors:
             wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
-    @unittest.skipIf(sys.version_info[:2] >= (3, 12), reason="Python version must be (>=3.12)")
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
         on process shutdown."""
-        command = ["python", "-c", "'from pymongo import MongoClient; c = MongoClient()'"]
+        command = [sys.executable, "-c", "'from pymongo import MongoClient; c = MongoClient()'"]
         completed_process: subprocess.CompletedProcess = subprocess.run(
             " ".join(command), shell=True, capture_output=True
         )
 
-        assert not completed_process.stderr
+        self.assertFalse(completed_process.stderr)
+        self.assertFalse(completed_process.stdout)
 
 
 if __name__ == "__main__":
