@@ -1750,10 +1750,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 helpers._handle_exception()
 
     def __start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
-        if implicit:
-            server_session: Union[_EmptyServerSession, _ServerSession] = _EmptyServerSession()
-        else:
-            server_session = self._get_server_session()
+        server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
@@ -1785,10 +1782,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
         )
-
-    def _get_server_session(self) -> _ServerSession:
-        """Internal: start or resume a _ServerSession."""
-        return self._topology.get_server_session()
 
     def _return_server_session(
         self, server_session: Union[_ServerSession, _EmptyServerSession], lock: bool

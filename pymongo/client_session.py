@@ -965,10 +965,12 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self) -> None:
+    def _materialize(self, logical_session_timeout_minutes: float) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = self._client._topology.get_server_session()
+            self._server_session = self._client._topology.get_server_session(
+                logical_session_timeout_minutes, old
+            )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
@@ -984,7 +986,7 @@ class ClientSession:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
             return
         self._check_ended()
-        self._materialize()
+        self._materialize(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1036,11 +1038,12 @@ class ClientSession:
 
 
 class _EmptyServerSession:
-    __slots__ = "dirty", "started_retryable_write"
+    __slots__ = "dirty", "started_retryable_write", "session_id"
 
     def __init__(self) -> None:
         self.dirty = False
         self.started_retryable_write = False
+        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
 
     def mark_dirty(self) -> None:
         self.dirty = True
@@ -1050,9 +1053,9 @@ class _EmptyServerSession:
 
 
 class _ServerSession:
-    def __init__(self, generation: int):
+    def __init__(self, generation: int, session_id: Optional[dict[str, Binary]] = None):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
-        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
+        self.session_id = session_id or {"id": Binary(uuid.uuid4().bytes, 4)}
         self.last_use = time.monotonic()
         self._transaction_id = 0
         self.dirty = False
@@ -1101,14 +1104,23 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self) -> _ServerSession:
+    def get_server_session(
+        self, session_timeout_minutes: float, old: _EmptyServerSession
+    ) -> _ServerSession:
+        # Although the Driver Sessions Spec says we only clear stale sessions
+        # in return_server_session, PyMongo can't take a lock when returning
+        # sessions from a __del__ method (like in Cursor.__die), so it can't
+        # clear stale sessions there. In case many sessions were returned via
+        # __del__, check for stale sessions here too.
+        self._clear_stale(session_timeout_minutes)
+
         # The most recently used sessions are on the left.
         while self:
-            # s = self.popleft()
-            # # if not s.timed_out(session_timeout_minutes):
-            return self.popleft()
+            s = self.popleft()
+            if not s.timed_out(session_timeout_minutes):
+                return s
 
-        return _ServerSession(self.generation)
+        return _ServerSession(self.generation, old.session_id)
 
     def return_server_session(
         self, server_session: _ServerSession, session_timeout_minutes: Optional[float]

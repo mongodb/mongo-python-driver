@@ -22,7 +22,6 @@ import re
 import socket
 import socketserver
 import ssl
-import subprocess
 import sys
 import textwrap
 import traceback
@@ -3009,7 +3008,6 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
     MONGOCRYPTD_PORT = 27020
 
     @classmethod
-    @client_context.require_sessions
     @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
     def setUpClass(cls):
         super().setUpClass()
@@ -3021,10 +3019,10 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
 
     def setUp(self) -> None:
         self.listener = OvertCommandListener()
-        self.listener.reset()
         self.mongocryptd_client = MongoClient(
             f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]
         )
+        self.addCleanup(self.mongocryptd_client.close)
 
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
@@ -3040,16 +3038,18 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
             self.mongocryptd_client.db.test.insert_one({"x": 1})
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
-        self.mongocryptd_client.close()
 
     def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         with self.mongocryptd_client.start_session() as s:
-            with self.assertRaises(ConfigurationError):
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
                 self.mongocryptd_client.db.test.find_one(session=s)
-            with self.assertRaises(ConfigurationError):
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
                 self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
-        self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":

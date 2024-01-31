@@ -116,16 +116,12 @@ class TestSession(IntegrationTest):
 
         for f, args, kw in ops:
             with client.start_session() as s:
-                last_use = s._server_session.last_use
-                start = time.monotonic()
-                self.assertLessEqual(last_use, start)
                 listener.reset()
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
                 kw = copy.copy(kw)
                 kw["session"] = s
                 f(*args, **kw)
-                self.assertGreaterEqual(s._server_session.last_use, start)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
                     self.assertTrue(
@@ -239,16 +235,20 @@ class TestSession(IntegrationTest):
         # "Pool is LIFO" test from Driver Sessions Spec.
         a = self.client.start_session()
         b = self.client.start_session()
+        self.client.admin.command("ping", session=a)
+        self.client.admin.command("ping", session=b)
         a_id = a.session_id
         b_id = b.session_id
         a.end_session()
         b.end_session()
 
         s = self.client.start_session()
+        self.client.admin.command("ping", session=s)
         self.assertEqual(b_id, s.session_id)
         self.assertNotEqual(a_id, s.session_id)
 
         s2 = self.client.start_session()
+        self.client.admin.command("ping", session=s2)
         self.assertEqual(a_id, s2.session_id)
         self.assertNotEqual(b_id, s2.session_id)
 
@@ -274,6 +274,8 @@ class TestSession(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
+        for s in sessions:
+            client.admin.command("ping", session=s)
         for s in sessions:
             s.end_session()
 
