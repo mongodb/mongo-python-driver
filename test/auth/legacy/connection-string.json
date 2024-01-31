@@ -79,6 +79,35 @@
       }
     },
     {
+      "description": "should accept generic mechanism property (GSSAPI)",
+      "uri": "mongodb://user%40DOMAIN.COM@localhost/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true",
+      "valid": true,
+      "credential": {
+        "username": "user@DOMAIN.COM",
+        "password": null,
+        "source": "$external",
+        "mechanism": "GSSAPI",
+        "mechanism_properties": {
+          "SERVICE_NAME": "other",
+          "CANONICALIZE_HOST_NAME": true
+        }
+      }
+    },
+    {
+      "description": "should accept the password (GSSAPI)",
+      "uri": "mongodb://user%40DOMAIN.COM:password@localhost/?authMechanism=GSSAPI&authSource=$external",
+      "valid": true,
+      "credential": {
+        "username": "user@DOMAIN.COM",
+        "password": "password",
+        "source": "$external",
+        "mechanism": "GSSAPI",
+        "mechanism_properties": {
+          "SERVICE_NAME": "mongodb"
+        }
+      }
+    },
+    {
       "description": "must raise an error when the authSource is empty",
       "uri": "mongodb://user:password@localhost/foo?authSource=",
       "valid": false
