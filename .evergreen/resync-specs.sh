@@ -39,7 +39,7 @@ while getopts 'b:c:s:' flag; do
 done
 shift $((OPTIND-1))
 
-if [ -z $BRANCH ]
+if [ -n "$BRANCH" ]
 then
   git -C $SPECS checkout $BRANCH
 fi

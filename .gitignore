@@ -20,6 +20,9 @@ mongocryptd.pid
 .nova/
 venv/
 secrets-export.sh
+libmongocrypt.tar.gz
+libmongocrypt/
+libmongocrypt_git/
 
 # Lambda temp files
 test/lambda/.aws-sam

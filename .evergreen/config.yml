@@ -12,7 +12,7 @@ stepback: true
 # Actual testing tasks are marked with `type: test`
 command_type: system
 
-# Protect ourself against rogue test case, or curl gone wild, that runs forever
+# Protect ourselves against rogue test case, or curl gone wild, that runs forever
 # Good rule of thumb: the averageish length a task takes, times 5
 # That roughly accounts for variable system performance for various buildvariants
 exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
@@ -369,24 +369,21 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        background: true
+        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
-            bash ./.evergreen/start-kmip-server.sh
+            . .evergreen/tox.sh -m setup-encryption
           fi
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace
           set +x
           ${PREPARE_SHELL}
-          # Fetch vault secrets if needed
-          bash .evergreen/fetch-aws-vault-secrets.sh
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=true
           fi
@@ -396,9 +393,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
-            export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
-            . .evergreen/setup-encryption-variables.sh
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1
             fi
@@ -619,7 +614,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          . .evergreen/stop-kmip-server.sh
+          . .evergreen/tox.sh -m teardown-encryption
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
@@ -920,26 +915,17 @@ task_groups:
           shell: "bash"
           script: |
             ${PREPARE_SHELL}
-            set +o xtrace
-            LOADBALANCED=ON \
-              SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
-              SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
-              SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
-              bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
           file: serverless-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: shell.exec
         params:
           script: |
             ${PREPARE_SHELL}
-            set +o xtrace
-            SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
-              SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
-              SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
-              SERVERLESS_INSTANCE_NAME=${SERVERLESS_INSTANCE_NAME} \
-              bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh ${VAULT_NAME}
       - func: "upload test results"
     tasks:
       - ".serverless"
@@ -967,7 +953,7 @@ task_groups:
       - command: expansions.update
         params:
           file: testgcpkms-expansions.yml
-    teardown_group:
+    teardown_task:
       - command: shell.exec
         params:
           shell: "bash"
@@ -1064,7 +1050,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
@@ -1104,7 +1090,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
@@ -1180,6 +1166,7 @@ tasks:
         - func: "build release"
           vars:
               VERSION: "3.7"
+        - func: "upload release"
 
     - name: "release-windows"
       tags: ["release_tag"]
@@ -2190,6 +2177,18 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-6.0-standalone-ssl"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+            SSL: "ssl"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 axes:
   # Choice of distro
   - id: platform
@@ -2202,7 +2201,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
         display_name: "macOS 11.00"
         run_on: macos-1100
@@ -2210,7 +2208,6 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100-arm64
         display_name: "macOS 11.00 Arm64"
         run_on: macos-1100-arm64
@@ -2218,25 +2215,18 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
         batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel8
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel80-fips
         display_name: "RHEL 8.0 FIPS"
         run_on: rhel80-fips
         batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: ubuntu-22.04
         display_name: "Ubuntu 22.04"
         run_on: ubuntu2204-small
@@ -2258,7 +2248,6 @@ axes:
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-82-arm64/master/latest/libmongocrypt.tar.gz
       - id: windows-64-vsMulti-small
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
@@ -2268,7 +2257,6 @@ axes:
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
           venv_bin_dir: "Scripts"
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
   # Test with authentication?
   - id: auth
@@ -2602,10 +2590,16 @@ axes:
   - id: serverless
     display_name: "Serverless"
     values:
-      - id: "enabled"
+      - id: "original"
         display_name: "Serverless"
         variables:
           test_serverless: true
+        batchtime: 10080  # 7 days
+      - id: "proxy"
+        display_name: "Serverless Proxy"
+        variables:
+          test_serverless: true
+          VAULT_NAME: "serverless_next"
         batchtime: 10080  # 7 days
 
 buildvariants:
@@ -3002,8 +2996,18 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "*"
-  display_name: "Serverless ${python-version} ${platform}"
+    serverless: "original"
+  display_name: "${serverless} ${python-version} ${platform}"
+  tasks:
+    - "serverless_task_group"
+
+- matrix_name: "serverless_proxy"
+  matrix_spec:
+    platform: rhel8
+    python-version: ["3.7", "3.10"]
+    auth-ssl: auth-ssl
+    serverless: "proxy"
+  display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
 
@@ -3166,6 +3170,7 @@ buildvariants:
   run_on: rhel90-dbx-perf-large
   tasks:
      - name: "perf-6.0-standalone"
+     - name: "perf-6.0-standalone-ssl"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

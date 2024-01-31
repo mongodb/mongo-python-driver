@@ -319,7 +319,7 @@ class MockPool:
     def ready(self):
         pass
 
-    def reset(self, service_id=None):
+    def reset(self, service_id=None, interrupt_connections=False):
         self._reset()
 
     def reset_without_pause(self):

@@ -272,14 +272,14 @@ class Cursor(Generic[_DocumentType]):
         self.__comment = comment
         self.__max_time_ms = max_time_ms
         self.__max_await_time_ms: Optional[int] = None
-        self.__max: Optional[Union[SON[Any, Any], _Sort]] = max
-        self.__min: Optional[Union[SON[Any, Any], _Sort]] = min
+        self.__max: Optional[Union[dict[Any, Any], _Sort]] = max
+        self.__min: Optional[Union[dict[Any, Any], _Sort]] = min
         self.__collation = validate_collation_or_none(collation)
         self.__return_key = return_key
         self.__show_record_id = show_record_id
         self.__allow_disk_use = allow_disk_use
         self.__snapshot = snapshot
-        self.__hint: Union[str, SON[str, Any], None]
+        self.__hint: Union[str, dict[str, Any], None]
         self.__set_hint(hint)
 
         # Exhaust cursor support
@@ -473,17 +473,12 @@ class Cursor(Generic[_DocumentType]):
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
-            spec = copy.copy(self.__spec)
+            spec = dict(self.__spec)
 
             # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:
                 # $query has to come first
-                spec = SON([("$query", spec)])
-
-            if not isinstance(spec, SON):
-                # Ensure the spec is SON. As order is important this will
-                # ensure its set before merging in any extra operators.
-                spec = SON(spec)
+                spec = {"$query": spec}
 
             spec.update(operators)
             return spec
@@ -495,7 +490,7 @@ class Cursor(Generic[_DocumentType]):
         elif "query" in self.__spec and (
             len(self.__spec) == 1 or next(iter(self.__spec)) == "query"
         ):
-            return SON({"$query": self.__spec})
+            return {"$query": self.__spec}
 
         return self.__spec
 
@@ -800,7 +795,7 @@ class Cursor(Generic[_DocumentType]):
             raise TypeError("spec must be an instance of list or tuple")
 
         self.__check_okay_to_chain()
-        self.__max = SON(spec)
+        self.__max = dict(spec)
         return self
 
     def min(self, spec: _Sort) -> Cursor[_DocumentType]:
@@ -822,7 +817,7 @@ class Cursor(Generic[_DocumentType]):
             raise TypeError("spec must be an instance of list or tuple")
 
         self.__check_okay_to_chain()
-        self.__min = SON(spec)
+        self.__min = dict(spec)
         return self
 
     def sort(

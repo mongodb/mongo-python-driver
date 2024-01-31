@@ -32,6 +32,7 @@ import types
 from collections import abc
 from test import (
     AWS_CREDS,
+    AWS_CREDS_2,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -143,10 +144,16 @@ KMS_TLS_OPTS = {
 PLACEHOLDER_MAP = {}
 for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
+    ("local:name1", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
+    ("aws:name1", AWS_CREDS),
+    ("aws:name2", AWS_CREDS_2),
     ("azure", AZURE_CREDS),
+    ("azure:name1", AZURE_CREDS),
     ("gcp", GCP_CREDS),
+    ("gcp:name1", GCP_CREDS),
     ("kmip", KMIP_CREDS),
+    ("kmip:name1", KMIP_CREDS),
 ]:
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
@@ -543,12 +550,18 @@ class EntityMapUtil:
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
             if isinstance(opts["key_vault_client"], str):
                 opts["key_vault_client"] = self[opts["key_vault_client"]]
+            # Set TLS options for providers like "kmip:name1".
+            kms_tls_options = {}
+            for provider in opts["kms_providers"]:
+                provider_type = provider.split(":")[0]
+                if provider_type in KMS_TLS_OPTS:
+                    kms_tls_options[provider] = KMS_TLS_OPTS[provider_type]
             self[spec["id"]] = ClientEncryption(
                 opts["kms_providers"],
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
-                opts.get("kms_tls_options", KMS_TLS_OPTS),
+                opts.get("kms_tls_options", kms_tls_options),
             )
             return
         elif entity_type == "thread":
@@ -790,6 +803,14 @@ class MatchEvaluatorUtil:
             else:
                 self.test.assertIsNone(actual.service_id)
 
+    def assertHasInterruptInUseConnections(self, spec, actual):
+        if "interruptInUseConnections" in spec:
+            self.test.assertEqual(
+                spec.get("interruptInUseConnections"), actual.interrupt_connections
+            )
+        else:
+            self.test.assertIsInstance(actual.interrupt_connections, bool)
+
     def assertHasServerConnectionId(self, spec, actual):
         if "hasServerConnectionId" in spec:
             if spec.get("hasServerConnectionId"):
@@ -847,6 +868,7 @@ class MatchEvaluatorUtil:
         elif name == "poolClearedEvent":
             self.test.assertIsInstance(actual, PoolClearedEvent)
             self.assertHasServiceId(spec, actual)
+            self.assertHasInterruptInUseConnections(spec, actual)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "connectionCreatedEvent":
@@ -1058,8 +1080,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
         if error_response:
-            for k in error_response.keys():
-                self.assertEqual(error_response[k], exception.details[k])
+            self.match_evaluator.match_result(error_response, exception.details)
 
         if is_error:
             # already satisfied because exception was raised
@@ -1263,10 +1284,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["master_key"] = opts.get("masterKey")
-            kwargs["key_alt_names"] = opts.get("keyAltNames")
-            kwargs["key_material"] = opts.get("keyMaterial")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
@@ -1280,13 +1299,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["provider"] = opts.get("provider")
-            kwargs["master_key"] = opts.get("masterKey")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
             return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
         return {}
+
+    def _clientEncryptionOperation_encrypt(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+        return target.encrypt(*args, **kwargs)
 
     def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
         with target.open_download_stream(*args, **kwargs) as gout:

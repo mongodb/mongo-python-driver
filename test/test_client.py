@@ -623,7 +623,8 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(minPoolSize=10)
             server = client._get_topology().select_server(readable_server_selector)
             wait_until(
-                lambda: len(server._pool.conns) == 10, "pool initialized with 10 connections"
+                lambda: len(server._pool.conns) == 10,
+                "pool initialized with 10 connections",
             )
 
             # Assert that if a socket is closed, a new one takes its place

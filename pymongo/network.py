@@ -296,35 +296,35 @@ _POLL_TIMEOUT = 0.5
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
-    context = conn.cancel_context
-    # Only Monitor connections can be cancelled.
-    if context:
-        sock = conn.conn
-        timed_out = False
-        while True:
-            # SSLSocket can have buffered data which won't be caught by select.
-            if hasattr(sock, "pending") and sock.pending() > 0:
-                readable = True
+    sock = conn.conn
+    timed_out = False
+    # Check if the connection's socket has been manually closed
+    if sock.fileno() == -1:
+        return
+    while True:
+        # SSLSocket can have buffered data which won't be caught by select.
+        if hasattr(sock, "pending") and sock.pending() > 0:
+            readable = True
+        else:
+            # Wait up to 500ms for the socket to become readable and then
+            # check for cancellation.
+            if deadline:
+                remaining = deadline - time.monotonic()
+                # When the timeout has expired perform one final check to
+                # see if the socket is readable. This helps avoid spurious
+                # timeouts on AWS Lambda and other FaaS environments.
+                if remaining <= 0:
+                    timed_out = True
+                timeout = max(min(remaining, _POLL_TIMEOUT), 0)
             else:
-                # Wait up to 500ms for the socket to become readable and then
-                # check for cancellation.
-                if deadline:
-                    remaining = deadline - time.monotonic()
-                    # When the timeout has expired perform one final check to
-                    # see if the socket is readable. This helps avoid spurious
-                    # timeouts on AWS Lambda and other FaaS environments.
-                    if remaining <= 0:
-                        timed_out = True
-                    timeout = max(min(remaining, _POLL_TIMEOUT), 0)
-                else:
-                    timeout = _POLL_TIMEOUT
-                readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
-            if context.cancelled:
-                raise _OperationCancelled("hello cancelled")
-            if readable:
-                return
-            if timed_out:
-                raise socket.timeout("timed out")
+                timeout = _POLL_TIMEOUT
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+        if conn.cancel_context.cancelled:
+            raise _OperationCancelled("operation cancelled")
+        if readable:
+            return
+        if timed_out:
+            raise socket.timeout("timed out")
 
 
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.

@@ -114,6 +114,10 @@ AWS_CREDS = {
     "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
     "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
 }
+AWS_CREDS_2 = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY2", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET2", ""),
+}
 AZURE_CREDS = {
     "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
     "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
@@ -282,6 +286,8 @@ class ClientContext:
     def client_options(self):
         """Return the MongoClient options for creating a duplicate client."""
         opts = client_context.default_client_options.copy()
+        opts["host"] = host
+        opts["port"] = port
         if client_context.auth_enabled:
             opts["username"] = db_user
             opts["password"] = db_pwd

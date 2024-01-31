@@ -10,6 +10,24 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
+- Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
+- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
+  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
+- Significantly improved the performance of encoding BSON documents to JSON.
+- Support for named KMS providers for client side field level encryption.
+  Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
+  The KMS provider is now expanded to support name suffixes (e.g. local:myname).
+  Named KMS providers enables more than one of each KMS provider type to be configured.
+  See the docstring for :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
+  Note that named KMS providers requires pymongocrypt >=1.9 and libmongocrypt >=1.9.
+- Fixed a bug where :class:`~bson.int64.Int64` instances could not always be encoded by `orjson`_. The following now
+  works::
+
+    >>> import orjson
+    >>> from bson import json_util
+    >>> orjson.dumps({'a': Int64(1)}, default=json_util.default, option=orjson.OPT_PASSTHROUGH_SUBCLASS)
+
+.. _orjson: https://github.com/ijl/orjson
 
 Changes in Version 4.6.1
 ------------------------

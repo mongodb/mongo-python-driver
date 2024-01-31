@@ -23,6 +23,7 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generic,
     Iterator,
     Mapping,
@@ -49,7 +50,6 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
-from bson.son import SON
 from pymongo import _csot
 from pymongo.collection import Collection
 from pymongo.common import CONNECT_TIMEOUT
@@ -83,9 +83,8 @@ _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
-
-_DATA_KEY_OPTS: CodecOptions[SON[str, Any]] = CodecOptions(
-    document_class=SON[str, Any], uuid_representation=STANDARD
+_DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
+    document_class=Dict[str, Any], uuid_representation=STANDARD
 )
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
@@ -102,7 +101,7 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # we should propagate them unchanged.
         raise
     except Exception as exc:
-        raise EncryptionError(exc) from None
+        raise EncryptionError(exc) from exc
 
 
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
@@ -388,7 +387,7 @@ class _Encrypter:
 
     def encrypt(
         self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
-    ) -> MutableMapping[str, Any]:
+    ) -> dict[str, Any]:
         """Encrypt a MongoDB command.
 
         :param database: The database for this command.
@@ -521,6 +520,9 @@ class ClientEncryption(Generic[_DocumentType]):
                 data keys. This key should be generated and stored as securely
                 as possible.
 
+            KMS providers may be specified with an optional name suffix
+            separated by a colon, for example "kmip:name" or "aws:name".
+            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
@@ -675,12 +677,13 @@ class ClientEncryption(Generic[_DocumentType]):
         """Create and insert a new data key into the key vault collection.
 
         :param kms_provider: The KMS provider to use. Supported values are
-            "aws", "azure", "gcp", "kmip", and "local".
+            "aws", "azure", "gcp", "kmip", "local", or a named provider like
+            "kmip:name".
         :param master_key: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
 
-            If the `kms_provider` is "aws" it is required and has the
+            If the `kms_provider` type is "aws" it is required and has the
             following fields::
 
               - `region` (string): Required. The AWS region, e.g. "us-east-1".
@@ -690,7 +693,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 requests to. May include port number, e.g.
                 "kms.us-east-1.amazonaws.com:443".
 
-            If the `kms_provider` is "azure" it is required and has the
+            If the `kms_provider` type is "azure" it is required and has the
             following fields::
 
               - `keyVaultEndpoint` (string): Required. Host with optional
@@ -698,7 +701,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `keyName` (string): Required. Key name in the key vault.
               - `keyVersion` (string): Optional. Version of the key to use.
 
-            If the `kms_provider` is "gcp" it is required and has the
+            If the `kms_provider` type is "gcp" it is required and has the
             following fields::
 
               - `projectId` (string): Required. The Google cloud project ID.
@@ -710,7 +713,7 @@ class ClientEncryption(Generic[_DocumentType]):
               - `endpoint` (string): Optional. Host with optional port.
                 Defaults to "cloudkms.googleapis.com".
 
-            If the `kms_provider` is "kmip" it is optional and has the
+            If the `kms_provider` type is "kmip" it is optional and has the
             following fields::
 
               - `keyId` (string): Optional. `keyId` is the KMIP Unique

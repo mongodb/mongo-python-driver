@@ -33,7 +33,6 @@ from typing import (
     cast,
 )
 
-from bson.son import SON
 from pymongo import ASCENDING
 from pymongo.errors import (
     CursorNotFound,
@@ -84,6 +83,7 @@ _RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
         89,  # NetworkTimeout
         9001,  # SocketException
         262,  # ExceededTimeLimit
+        134,  # ReadConcernMajorityNotAvailableYet
     ]
 )
 
@@ -124,7 +124,7 @@ def _index_list(
         return values
 
 
-def _index_document(index_list: _IndexList) -> SON[str, Any]:
+def _index_document(index_list: _IndexList) -> dict[str, Any]:
     """Helper to generate an index specifying document.
 
     Takes a list of (key, direction) pairs.
@@ -136,7 +136,7 @@ def _index_document(index_list: _IndexList) -> SON[str, Any]:
     if not len(index_list):
         raise ValueError("key_or_list must not be empty")
 
-    index: SON[str, Any] = SON()
+    index: dict[str, Any] = {}
 
     if isinstance(index_list, abc.Mapping):
         for key in index_list:

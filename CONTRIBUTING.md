@@ -216,10 +216,9 @@ the pages will re-render and the browser will automatically refresh.
     `TEST_LOADBALANCER=1 tox -m test-eg`.
 
 ## Running Encryption Tests Locally
-- Run `AWS_PROFILE=<profile> tox -e setup-encryption` after setting up your AWS profile with `aws configure sso`
-- Run the tests with `TEST_ENCRYPTION=1 LIBMONGOCRYPT_URL=<url> tox -e test-eg`.
-  Look in `.evergreen/config.yml` for the correct `LIBMONGOCRYPT_URL` for your platform.
-- When done, run `tox -e teardown-encryption` to clean up.
+- Run `AWS_PROFILE=<profile> tox -m setup-encryption` after setting up your AWS profile with `aws configure sso`.
+- Run the tests with `TEST_ENCRYPTION=1 tox -e test-eg`.
+- When done, run `tox -m teardown-encryption` to clean up.
 
 ## Re-sync Spec Tests
 
