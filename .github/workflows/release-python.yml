@@ -94,7 +94,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: wheel-${{ matrix.python }}-${{ matrix.buildplat[1] }}
+          name: wheel-${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
           if-no-files-found: error
 
