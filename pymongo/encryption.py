@@ -766,7 +766,7 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
-            key_id = Binary(key_id.bytes, UUID_SUBTYPE)
+            key_id = Binary.from_uuid(key_id)
         if key_id is not None and not (
             isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
         ):
