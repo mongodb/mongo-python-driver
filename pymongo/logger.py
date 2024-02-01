@@ -20,12 +20,29 @@ from typing import Any
 
 from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
+from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 
 
 class _CommandStatusMessage(str, enum.Enum):
     STARTED = "Command started"
     SUCCEEDED = "Command succeeded"
     FAILED = "Command failed"
+
+
+class _ConnectionStatusMessage(str, enum.Enum):
+    POOL_CREATED = "Connection pool created"
+    POOL_READY = "Connection pool ready"
+    POOL_CLOSED = "Connection pool closed"
+    POOL_CLEARED = "Connection pool cleared"
+
+    CONN_CREATED = "Connection created"
+    CONN_READY = "Connection ready"
+    CONN_CLOSED = "Connection closed"
+
+    CHECKOUT_STARTED = "Connection checkout started"
+    CHECKOUT_SUCCEEDED = "Connection checked out"
+    CHECKOUT_FAILED = "Connection checkout failed"
+    CHECKEDIN = "Connection checked in"
 
 
 _DEFAULT_DOCUMENT_LENGTH = 1000
@@ -45,6 +62,16 @@ _REDACTED_FAILURE_FIELDS = ["code", "codeName", "errorLabels"]
 _DOCUMENT_NAMES = ["command", "reply", "failure"]
 _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
+_CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
+_VERBOSE_CONNECTION_ERROR_REASONS = {
+    ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
+    ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
+    ConnectionClosedReason.STALE: "Connection pool was stale",
+    ConnectionClosedReason.ERROR: "Connection experienced an error",
+    ConnectionCheckOutFailedReason.CONN_ERROR: "Connection experienced an error",
+    ConnectionClosedReason.IDLE: "Connection was idle too long",
+    ConnectionCheckOutFailedReason.TIMEOUT: "Connection exceeded the specified timeout",
+}
 
 
 def _debug_log(logger: logging.Logger, **fields: Any) -> None:
@@ -52,11 +79,15 @@ def _debug_log(logger: logging.Logger, **fields: Any) -> None:
         logger.debug(LogMessage(**fields))
 
 
+def _verbose_connection_error_reason(reason: str) -> str:
+    return _VERBOSE_CONNECTION_ERROR_REASONS.get(reason, reason)
+
+
 class LogMessage:
     __slots__ = ["_kwargs"]
 
     def __init__(self, **kwargs: Any):
-        self._kwargs = kwargs
+        self._kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
         if "durationMS" in self._kwargs:
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000

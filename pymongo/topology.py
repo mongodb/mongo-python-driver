@@ -805,7 +805,9 @@ class Topology:
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address: _Address) -> Pool:
-        return self._settings.pool_class(address, self._settings.pool_options)
+        return self._settings.pool_class(
+            address, self._settings.pool_options, client_id=self._topology_id
+        )
 
     def _create_pool_for_monitor(self, address: _Address) -> Pool:
         options = self._settings.pool_options
@@ -825,7 +827,9 @@ class Topology:
             server_api=options.server_api,
         )
 
-        return self._settings.pool_class(address, monitor_pool_options, handshake=False)
+        return self._settings.pool_class(
+            address, monitor_pool_options, handshake=False, client_id=self._topology_id
+        )
 
     def _error_message(self, selector: Callable[[Selection], Selection]) -> str:
         """Format an error message if server selection fails.
