@@ -752,7 +752,7 @@ class Connection:
         self.active = False
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
-        self.logical_session_timeout_minutes: float = 0.0
+        self.logical_session_timeout_minutes: int = 0
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -871,7 +871,7 @@ class Connection:
         self.max_message_size = hello.max_message_size
         self.max_write_batch_size = hello.max_write_batch_size
         self.supports_sessions = hello.logical_session_timeout_minutes is not None
-        self.logical_session_timeout_minutes = hello.logical_session_timeout_minutes or 0.0
+        self.logical_session_timeout_minutes = hello.logical_session_timeout_minutes or 0
         self.hello_ok = hello.hello_ok
         self.is_repl = hello.server_type in (
             SERVER_TYPE.RSPrimary,

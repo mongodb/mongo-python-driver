@@ -965,7 +965,7 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self, logical_session_timeout_minutes: float) -> None:
+    def _materialize(self, logical_session_timeout_minutes: int) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session(
@@ -1069,7 +1069,7 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes: float) -> bool:
+    def timed_out(self, session_timeout_minutes: int) -> bool:
         idle_seconds = time.monotonic() - self.last_use
 
         # Timed out if we have less than a minute to live.
@@ -1105,7 +1105,7 @@ class _ServerSessionPool(collections.deque):
         return ids
 
     def get_server_session(
-        self, session_timeout_minutes: float, old: _EmptyServerSession
+        self, session_timeout_minutes: int, old: _EmptyServerSession
     ) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
@@ -1123,7 +1123,7 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession(self.generation, old.session_id)
 
     def return_server_session(
-        self, server_session: _ServerSession, session_timeout_minutes: Optional[float]
+        self, server_session: _ServerSession, session_timeout_minutes: Optional[int]
     ) -> None:
         if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
@@ -1137,7 +1137,7 @@ class _ServerSessionPool(collections.deque):
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes: float) -> None:
+    def _clear_stale(self, session_timeout_minutes: int) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):
