@@ -11,8 +11,6 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
 - Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
-- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
-  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
 - Significantly improved the performance of encoding BSON documents to JSON.
 - Support for named KMS providers for client side field level encryption.
   Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
@@ -28,6 +26,15 @@ PyMongo 4.7 brings a number of improvements including:
     >>> orjson.dumps({'a': Int64(1)}, default=json_util.default, option=orjson.OPT_PASSTHROUGH_SUBCLASS)
 
 .. _orjson: https://github.com/ijl/orjson
+
+Unavoidable breaking changes
+............................
+
+- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
+  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
+  Here's an example of how this changes expected output::
+
+    >>> ...
 
 Changes in Version 4.6.1
 ------------------------
