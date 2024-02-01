@@ -970,7 +970,7 @@ class ClientSession:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session(
-                logical_session_timeout_minutes, old
+                logical_session_timeout_minutes
             )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
@@ -1039,12 +1039,11 @@ class ClientSession:
 
 
 class _EmptyServerSession:
-    __slots__ = "dirty", "started_retryable_write", "session_id"
+    __slots__ = "dirty", "started_retryable_write"
 
     def __init__(self) -> None:
         self.dirty = False
         self.started_retryable_write = False
-        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
 
     def mark_dirty(self) -> None:
         self.dirty = True
@@ -1105,9 +1104,7 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(
-        self, session_timeout_minutes: Optional[int], old: _EmptyServerSession
-    ) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't

@@ -25,7 +25,7 @@ import weakref
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
-from pymongo.client_session import _EmptyServerSession, _ServerSession, _ServerSessionPool
+from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -577,12 +577,10 @@ class Topology:
         with self._lock:
             return self._session_pool.pop_all()
 
-    def get_server_session(
-        self, session_timeout_minutes: Optional[int], old: _EmptyServerSession
-    ) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
-            return self._session_pool.get_server_session(session_timeout_minutes, old)
+            return self._session_pool.get_server_session(session_timeout_minutes)
 
     def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
