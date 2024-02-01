@@ -29,7 +29,7 @@ PyMongo 4.7 brings a number of improvements including:
 
 .. _orjson: https://github.com/ijl/orjson
 - Fixed a bug appearing in Python 3.12 where :attr:`RuntimeError: can't create new thread at interpreter shutdown`
-  fires when a MongoClient's :class:`PeriodicExecutor` thread starts as the python interpreter is shutting down.
+  could be written to stderr when a MongoClient's :class:`PeriodicExecutor` thread starts as the python interpreter is shutting down.
 
 Changes in Version 4.6.1
 ------------------------
