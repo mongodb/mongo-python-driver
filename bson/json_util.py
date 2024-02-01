@@ -499,7 +499,7 @@ def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
     # Execution time optimization if json_options.document_class is dict
     if json_options.document_class is dict:
-        kwargs["object_hook"] = lambda pairs: object_hook(pairs, json_options)
+        kwargs["object_hook"] = lambda obj: object_hook(obj, json_options)
     else:
         kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs, json_options)
     return json.loads(s, *args, **kwargs)
