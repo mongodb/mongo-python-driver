@@ -357,7 +357,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_4_3_reauthenticate_succeeds_after_refresh_fails(self):
-        # Create a default OIDC client.
+        # Create a client with a human callback that returns a valid token.
         client = self.create_client()
 
         # Perform a find operation that succeeds.
