@@ -32,18 +32,25 @@ Unavoidable breaking changes
 
 - Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
   :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
-  Here's an example of how this changes expected output::
+  Here's some examples of how this changes expected output as well as how to convert from :class:`dict` to :class:`bson.son.SON`::
 
     # Before
+    >>> from pymongo import MongoClient
+    >>> client = MongoClient()
     >>> client.options.pool_options.metadata
     SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
     # After
+    >>> from pymongo import MongoClient
+    >>> client = MongoClient()
     >>> client.options.pool_options.metadata
     {'driver': {'name': 'PyMongo', 'version': '4.7.0.dev0'}, 'os': {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}, 'platform': 'CPython 3.11.6.final.0'}
 
     # To convert from dict to SON
     # This will only convert the first layer of the dictionary
+    >>> from pymongo import MongoClient
+    >>> from bson import SON
+    >>> client = MongoClient()
     >>> data_as_dict = client.options.pool_options.metadata
     >>> SON(data_as_dict)
     SON([('driver', {'name': 'PyMongo', 'version': '4.7.0.dev0'}), ('os', {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}), ('platform', 'CPython 3.11.6.final.0')])
@@ -56,6 +63,7 @@ Unavoidable breaking changes
     ...     return data_as_SON
     >>>
     >>> dict_to_SON(data_as_dict)
+    SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
 Changes in Version 4.6.1
 ------------------------
