@@ -235,8 +235,6 @@ class TestSession(IntegrationTest):
         # "Pool is LIFO" test from Driver Sessions Spec.
         a = self.client.start_session()
         b = self.client.start_session()
-        self.client.admin.command("ping", session=a)
-        self.client.admin.command("ping", session=b)
         a_id = a.session_id
         b_id = b.session_id
         a.end_session()

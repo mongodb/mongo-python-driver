@@ -578,7 +578,7 @@ class Topology:
             return self._session_pool.pop_all()
 
     def get_server_session(
-        self, session_timeout_minutes: int, old: _EmptyServerSession
+        self, session_timeout_minutes: Optional[int], old: _EmptyServerSession
     ) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
