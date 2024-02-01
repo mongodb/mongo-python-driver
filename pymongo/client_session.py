@@ -558,6 +558,12 @@ class ClientSession:
         return self._server_session.session_id
 
     @property
+    def _transaction_id(self) -> Int64:
+        """The current transaction id for the underlying server session."""
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        return self._server_session.transaction_id
+
+    @property
     def cluster_time(self) -> Optional[ClusterTime]:
         """The cluster time returned by the last operation executed
         in this session.
@@ -995,7 +1001,7 @@ class ClientSession:
         command["lsid"] = self._server_session.session_id
 
         if is_retryable:
-            command["txnNumber"] = self._server_session.transaction_id
+            command["txnNumber"] = self._transaction_id
             return
 
         if self.in_transaction:
@@ -1016,7 +1022,7 @@ class ClientSession:
                         command["readConcern"] = rc
                 self._update_read_concern(command, conn)
 
-            command["txnNumber"] = self._server_session.transaction_id
+            command["txnNumber"] = self._transaction_id
             command["autocommit"] = False
 
     def _start_retryable_write(self) -> None:
