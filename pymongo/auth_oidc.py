@@ -155,7 +155,7 @@ class _OIDCAuthenticator:
     def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         """Handle an initial authenticate request."""
         # First handle speculative auth.
-        # It it succeeded, we are done.
+        # If it succeeded, we are done.
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
             resp = ctx.speculative_authenticate
