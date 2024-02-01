@@ -561,7 +561,7 @@ class TestWriteConcernError(IntegrationTest):
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],
-                    txnNumber=s.transaction_id,
+                    txnNumber=s._transaction_id,
                     session=s,
                     codec_options=DEFAULT_CODEC_OPTIONS.with_options(
                         document_class=RawBSONDocument
