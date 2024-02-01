@@ -53,8 +53,10 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
         echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
     fi
+    set +x   # turn off xtrace for this portion
     export OIDC_ADMIN_USER=$AZUREOIDC_USERNAME
     export OIDC_ADMIN_PWD=pwd123
+    set -x
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
     MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:azure"

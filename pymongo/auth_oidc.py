@@ -24,8 +24,8 @@ from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
 
 import bson
 from bson.binary import Binary
+from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
-from pymongo.azure_helpers import _get_azure_response
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -166,9 +166,9 @@ class _OIDCAuthenticator:
         # If spec auth failed, call the appropriate auth logic for the callback type.
         # We cannot assume that the token is invalid, because a proxy may have been
         # involved that stripped the speculative auth information.
-        if self.properties.human_callback:
-            return self._authenticate_human(conn)
-        return self._authenticate_machine(conn)
+        if self.properties.callback:
+            return self._authenticate_machine(conn)
+        return self._authenticate_human(conn)
 
     def get_spec_auth_cmd(self) -> Optional[MutableMapping[str, Any]]:
         """Get the appropriate speculative auth command."""
