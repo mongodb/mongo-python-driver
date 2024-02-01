@@ -296,7 +296,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         self.assertEqual(self.request_called, 2)
 
         # Assert that the ordering of list started events is [find], , find.
-        # Note that if the listener stat could not be cleared then there will and be extra find command.
+        # Note that if the listener stat could not be cleared then there will be an extra find command.
         started_events = [
             i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
         ]
