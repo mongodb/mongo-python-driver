@@ -1,89 +1,73 @@
 {
   "runOn": [
     {
-      "minServerVersion": "7.0.0",
-      "topology": [
-        "replicaset",
-        "sharded",
-        "load-balanced"
-      ]
+      "minServerVersion": "4.1.10"
     }
   ],
   "database_name": "default",
   "collection_name": "default",
   "data": [],
-  "encrypted_fields": {
-    "fields": [
-      {
-        "keyId": {
-          "$binary": {
-            "base64": "EjRWeBI0mHYSNBI0VniQEg==",
-            "subType": "04"
-          }
-        },
-        "path": "encryptedIndexed",
-        "bsonType": "string",
-        "queries": {
-          "queryType": "equality",
-          "contention": {
-            "$numberLong": "0"
-          }
+  "json_schema": {
+    "properties": {
+      "encrypted_string": {
+        "encrypt": {
+          "keyId": [
+            {
+              "$binary": {
+                "base64": "local+name2+AAAAAAAAAA==",
+                "subType": "04"
+              }
+            }
+          ],
+          "bsonType": "string",
+          "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
         }
-      },
-      {
-        "keyId": {
-          "$binary": {
-            "base64": "q83vqxI0mHYSNBI0VniQEg==",
-            "subType": "04"
-          }
-        },
-        "path": "encryptedUnindexed",
-        "bsonType": "string"
       }
-    ]
+    },
+    "bsonType": "object"
   },
   "key_vault_data": [
     {
       "_id": {
         "$binary": {
-          "base64": "q83vqxI0mHYSNBI0VniQEg==",
+          "base64": "local+name2+AAAAAAAAAA==",
           "subType": "04"
         }
       },
       "keyMaterial": {
         "$binary": {
-          "base64": "HBk9BWihXExNDvTp1lUxOuxuZK2Pe2ZdVdlsxPEBkiO1bS4mG5NNDsQ7zVxJAH8BtdOYp72Ku4Y3nwc0BUpIKsvAKX4eYXtlhv5zUQxWdeNFhg9qK7qb8nqhnnLeT0f25jFSqzWJoT379hfwDeu0bebJHr35QrJ8myZdPMTEDYF08QYQ48ShRBli0S+QzBHHAQiM2iJNr4svg2WR8JSeWQ==",
+          "base64": "DX3iUuOlBsx6wBX9UZ3v/qXk1HNeBace2J+h/JwsDdF/vmSXLZ1l1VmZYIcpVFy6ODhdbzLjd4pNgg9wcm4etYig62KNkmtZ0/s1tAL5VsuW/s7/3PYnYGznZTFhLjIVcOH/RNoRj2eQb/sRTyivL85wePEpAU/JzuBj6qO9Y5txQgs1k0J3aNy10R9aQ8kC1NuSSpLAIXwE6DlNDDJXhw==",
           "subType": "00"
         }
       },
       "creationDate": {
         "$date": {
-          "$numberLong": "1648914851981"
+          "$numberLong": "1552949630483"
         }
       },
       "updateDate": {
         "$date": {
-          "$numberLong": "1648914851981"
+          "$numberLong": "1552949630483"
         }
       },
       "status": {
         "$numberInt": "0"
       },
       "masterKey": {
-        "provider": "local"
+        "provider": "local:name2"
       }
     }
   ],
   "tests": [
     {
-      "description": "Insert and find FLE2 unindexed field",
+      "description": "Automatically encrypt and decrypt with a named KMS provider",
       "clientOptions": {
         "autoEncryptOpts": {
           "kmsProviders": {
-            "local": {
+            "local:name2": {
               "key": {
                 "$binary": {
-                  "base64": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk",
+                  "base64": "local+name2+YUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk",
                   "subType": "00"
                 }
               }
@@ -97,7 +81,7 @@
           "arguments": {
             "document": {
               "_id": 1,
-              "encryptedUnindexed": "value123"
+              "encrypted_string": "string0"
             }
           }
         },
@@ -111,7 +95,7 @@
           "result": [
             {
               "_id": 1,
-              "encryptedUnindexed": "value123"
+              "encrypted_string": "string0"
             }
           ]
         }
@@ -139,7 +123,7 @@
                       "$in": [
                         {
                           "$binary": {
-                            "base64": "q83vqxI0mHYSNBI0VniQEg==",
+                            "base64": "local+name2+AAAAAAAAAA==",
                             "subType": "04"
                           }
                         }
@@ -168,8 +152,11 @@
               "documents": [
                 {
                   "_id": 1,
-                  "encryptedUnindexed": {
-                    "$$type": "binData"
+                  "encrypted_string": {
+                    "$binary": {
+                      "base64": "AZaHGpfp2pntvgAAAAAAAAAC07sFvTQ0I4O2U49hpr4HezaK44Ivluzv5ntQBTYHDlAJMLyRMyB6Dl+UGHBgqhHe/Xw+pcT9XdiUoOJYAx9g+w==",
+                      "subType": "06"
+                    }
                   }
                 }
               ],
@@ -183,9 +170,7 @@
             "command": {
               "find": "default",
               "filter": {
-                "_id": {
-                  "$eq": 1
-                }
+                "_id": 1
               }
             },
             "command_name": "find"
@@ -197,52 +182,16 @@
           "data": [
             {
               "_id": 1,
-              "encryptedUnindexed": {
-                "$$type": "binData"
+              "encrypted_string": {
+                "$binary": {
+                  "base64": "AZaHGpfp2pntvgAAAAAAAAAC07sFvTQ0I4O2U49hpr4HezaK44Ivluzv5ntQBTYHDlAJMLyRMyB6Dl+UGHBgqhHe/Xw+pcT9XdiUoOJYAx9g+w==",
+                  "subType": "06"
+                }
               }
             }
           ]
         }
       }
-    },
-    {
-      "description": "Query with an unindexed field fails",
-      "clientOptions": {
-        "autoEncryptOpts": {
-          "kmsProviders": {
-            "local": {
-              "key": {
-                "$binary": {
-                  "base64": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk",
-                  "subType": "00"
-                }
-              }
-            }
-          }
-        }
-      },
-      "operations": [
-        {
-          "name": "insertOne",
-          "arguments": {
-            "document": {
-              "_id": 1,
-              "encryptedUnindexed": "value123"
-            }
-          }
-        },
-        {
-          "name": "find",
-          "arguments": {
-            "filter": {
-              "encryptedUnindexed": "value123"
-            }
-          },
-          "result": {
-            "errorContains": "encrypt"
-          }
-        }
-      ]
     }
   ]
 }

@@ -55,13 +55,13 @@ class AutoEncryptionOpts:
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
-        Automatic client-side field level encryption requires MongoDB 4.2
-        enterprise or a MongoDB 4.2 Atlas cluster. Automatic encryption is not
+        Automatic client-side field level encryption requires MongoDB >=4.2
+        enterprise or a MongoDB >=4.2 Atlas cluster. Automatic encryption is not
         supported for operations on a database or view and will result in
         error.
 
-        Although automatic encryption requires MongoDB 4.2 enterprise or a
-        MongoDB 4.2 Atlas cluster, automatic *decryption* is supported for all
+        Although automatic encryption requires MongoDB >=4.2 enterprise or a
+        MongoDB >=4.2 Atlas cluster, automatic *decryption* is supported for all
         users. To configure automatic *decryption* without automatic
         *encryption* set ``bypass_auto_encryption=True``. Explicit
         encryption and explicit decryption is also supported for all users
@@ -94,12 +94,23 @@ class AutoEncryptionOpts:
                 data keys. This key should be generated and stored as securely
                 as possible.
 
+            KMS providers may be specified with an optional name suffix
+            separated by a colon, for example "kmip:name" or "aws:name".
+            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers enables more than one of each KMS provider type to be configured.
+            For example, to configure multiple local KMS providers::
+
+              kms_providers = {
+                  "local": {"key": local_kek1},        # Unnamed KMS provider.
+                  "local:myname": {"key": local_kek2}, # Named KMS provider with name "myname".
+              }
+
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB
             collection. Data keys are protected with encryption by a KMS
             provider.
-        :param key_vault_client: By default the key vault collection
+        :param key_vault_client: By default, the key vault collection
             is assumed to reside in the same MongoDB cluster as the encrypted
             MongoClient. Use this option to route data key queries to a
             separate MongoDB cluster.

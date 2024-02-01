@@ -366,7 +366,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(listener.event_count(ConnectionCheckedInEvent), 2)
 
         client.close()
-        self.assertEqual(listener.event_count(PoolClearedEvent), 1)
+        self.assertEqual(listener.event_count(PoolClosedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 1)
 
     def test_5_check_out_fails_connection_error(self):
@@ -440,18 +440,17 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(PoolClosedEvent(host))
 
     def test_close_leaves_pool_unpaused(self):
-        # Needed until we implement PYTHON-2463. This test is related to
-        # test_threads.TestThreads.test_client_disconnect
         listener = CMAPListener()
         client = single_client(event_listeners=[listener])
         client.admin.command("ping")
         pool = get_pool(client)
         client.close()
-        self.assertEqual(1, listener.event_count(PoolClearedEvent))
-        self.assertEqual(PoolState.READY, pool.state)
-        # Checking out a connection should succeed
-        with pool.checkout():
-            pass
+        self.assertEqual(1, listener.event_count(PoolClosedEvent))
+        self.assertEqual(PoolState.CLOSED, pool.state)
+        # Checking out a connection should fail
+        with self.assertRaises(_PoolClosedError):
+            with pool.checkout():
+                pass
 
 
 def create_test(scenario_def, test, name):
