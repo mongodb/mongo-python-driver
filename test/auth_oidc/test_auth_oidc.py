@@ -383,7 +383,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_4_4_reauthenticate_fails(self):
-        # Create a default OIDC client.
+        # Create a client with a human callback that returns a valid token.
         client = self.create_client()
         # Perform a find operation that succeeds (to force a speculative auth).
         client.test.test.find_one()
