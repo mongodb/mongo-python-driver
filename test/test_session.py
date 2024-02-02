@@ -277,8 +277,7 @@ class TestSession(IntegrationTest):
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
         for s in sessions:
-            client.admin.command("ping", session=s)
-        for s in sessions:
+            s._materialize()
             s.end_session()
 
         # Closing the client should end all sessions and clear the pool.
