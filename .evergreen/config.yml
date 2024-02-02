@@ -445,15 +445,12 @@ functions:
       type: test
       params:
         working_dir: "src"
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
 
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
@@ -468,19 +465,13 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
-
+          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
