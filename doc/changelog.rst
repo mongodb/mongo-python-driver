@@ -28,8 +28,9 @@ PyMongo 4.7 brings a number of improvements including:
     >>> orjson.dumps({'a': Int64(1)}, default=json_util.default, option=orjson.OPT_PASSTHROUGH_SUBCLASS)
 
 .. _orjson: https://github.com/ijl/orjson
-- Fixed a bug appearing in Python 3.12 where :attr:`RuntimeError: can't create new thread at interpreter shutdown`
-  fires when a MongoClient's :class:`PeriodicExecutor` thread starts as the python interpreter is shutting down.
+
+- Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
+  fires when a MongoClient's thread starts as the python interpreter is shutting down.
 
 Changes in Version 4.6.1
 ------------------------
