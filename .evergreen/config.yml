@@ -1010,6 +1010,32 @@ task_groups:
     tasks:
     - testazurekms-task
 
+  - name: testazureoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            export AZUREOIDC_VMNAME_PREFIX="PYTHON_DRIVER"
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+    teardown_task:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-azure-latest
+
   - name: test_aws_lambda_task_group
     setup_group:
       - func: fetch source
@@ -1977,6 +2003,22 @@ tasks:
             LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
+
+    - name: "oidc-auth-test-azure-latest"
+      commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            cd src
+            git add .
+            git commit -m "add files"
+            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
+            git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
+            export AZUREOIDC_TEST_CMD="source ./env.sh && export OIDC_PROVIDER_NAME=azure && ./.evergreen/run-mongodb-oidc-test.sh"
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -3035,6 +3077,13 @@ buildvariants:
   display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
+
+- name: testazureoidc-variant
+  display_name: "Azure OIDC"
+  run_on: ubuntu2004-small
+  tasks:
+    - name: testazureoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"
   matrix_spec:

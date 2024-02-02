@@ -140,7 +140,7 @@ KMS_TLS_OPTS = {
 }
 
 
-# Build up a placeholder map.
+# Build up a placeholder maps.
 PLACEHOLDER_MAP = {}
 for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
@@ -158,6 +158,15 @@ for provider_name, provider_data in [
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
+
+PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+if PROVIDER_NAME == "aws":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
+elif PROVIDER_NAME == "azure":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "PROVIDER_NAME": "azure",
+        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+    }
 
 
 def interrupt_loop():
@@ -233,6 +242,8 @@ def is_run_on_requirement_satisfied(requirement):
     if req_auth is not None:
         if req_auth:
             auth_satisfied = client_context.auth_enabled
+            if auth_satisfied and "authMechanism" in requirement:
+                auth_satisfied = client_context.check_auth_type(requirement["authMechanism"])
         else:
             auth_satisfied = not client_context.auth_enabled
 
@@ -933,7 +944,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.18")
+    SCHEMA_VERSION = Version.from_string("1.19")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any

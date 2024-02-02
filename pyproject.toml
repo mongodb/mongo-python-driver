@@ -222,6 +222,7 @@ exclude_lines = [
     "return NotImplemented",
     "_use_c = true",
     "if __name__ == '__main__':",
+    "if TYPE_CHECKING:"
     ]
 partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 
