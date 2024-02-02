@@ -25,8 +25,9 @@ set -o xtrace
 #  TEST_AUTH_OIDC       If non-empty, test OIDC Auth Mechanism
 #  TEST_PERF            If non-empty, run performance tests
 #  TEST_OCSP            If non-empty, run OCSP tests
+#  TEST_ATLAS           If non-empty, test Atlas connections
+#  TEST_INDEX_MANAGEMENT        If non-empty, run index management tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
-#  TEST_ATLAS   If non-empty, test Atlas connections
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
@@ -53,6 +54,9 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
+    elif [ ! -z "$TEST_INDEX_MANAGEMENT" ]; then
+        export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+        export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
