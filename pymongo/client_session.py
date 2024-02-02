@@ -1075,11 +1075,14 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes: int) -> bool:
-        idle_seconds = time.monotonic() - self.last_use
+    def timed_out(self, session_timeout_minutes: Optional[int]) -> bool:
+        if session_timeout_minutes is None:
+            return False
+        else:
+            idle_seconds = time.monotonic() - self.last_use
 
-        # Timed out if we have less than a minute to live.
-        return idle_seconds > (session_timeout_minutes - 1) * 60
+            # Timed out if we have less than a minute to live.
+            return idle_seconds > (session_timeout_minutes - 1) * 60
 
     @property
     def transaction_id(self) -> Int64:
@@ -1116,14 +1119,13 @@ class _ServerSessionPool(collections.deque):
         # sessions from a __del__ method (like in Cursor.__die), so it can't
         # clear stale sessions there. In case many sessions were returned via
         # __del__, check for stale sessions here too.
-        if session_timeout_minutes is not None:
-            self._clear_stale(session_timeout_minutes)
+        self._clear_stale(session_timeout_minutes)
 
-            # The most recently used sessions are on the left.
-            while self:
-                s = self.popleft()
-                if not s.timed_out(session_timeout_minutes):
-                    return s
+        # The most recently used sessions are on the left.
+        while self:
+            s = self.popleft()
+            if not s.timed_out(session_timeout_minutes):
+                return s
 
         return _ServerSession(self.generation)
 
@@ -1142,7 +1144,7 @@ class _ServerSessionPool(collections.deque):
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes: int) -> None:
+    def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):

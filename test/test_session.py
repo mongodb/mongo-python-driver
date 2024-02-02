@@ -245,12 +245,10 @@ class TestSession(IntegrationTest):
         b.end_session()
 
         s = self.client.start_session()
-        self.client.admin.command("ping", session=s)
         self.assertEqual(b_id, s.session_id)
         self.assertNotEqual(a_id, s.session_id)
 
         s2 = self.client.start_session()
-        self.client.admin.command("ping", session=s2)
         self.assertEqual(a_id, s2.session_id)
         self.assertNotEqual(b_id, s2.session_id)
 
@@ -278,6 +276,7 @@ class TestSession(IntegrationTest):
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
         for s in sessions:
             s._materialize()
+        for s in sessions:
             s.end_session()
 
         # Closing the client should end all sessions and clear the pool.
