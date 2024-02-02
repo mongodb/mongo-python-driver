@@ -430,7 +430,7 @@ functions:
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             PYTHON_BINARY=${PYTHON_BINARY} \
-            C_EXTENSIONS=${C_EXTENSIONS} \
+            NO_EXT=${NO_EXT} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
@@ -455,7 +455,7 @@ functions:
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
             AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
             AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
+            bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
@@ -481,7 +481,7 @@ functions:
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
             AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
             AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
+            bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
 
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
@@ -2439,11 +2439,11 @@ axes:
       - id: "without-c-extensions"
         display_name: "Without C Extensions"
         variables:
-          C_EXTENSIONS: "--no_ext"
+          NO_EXT: "1"
       - id: "with-c-extensions"
         display_name: "With C Extensions"
         variables:
-          C_EXTENSIONS: ""
+          NO_EXT: ""
 
   # Choice of MongoDB storage engine
   - id: storage-engine
