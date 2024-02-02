@@ -41,16 +41,11 @@ Unavoidable breaking changes
     SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
     # After
-    >>> from pymongo import MongoClient
-    >>> client = MongoClient()
     >>> client.options.pool_options.metadata
     {'driver': {'name': 'PyMongo', 'version': '4.7.0.dev0'}, 'os': {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}, 'platform': 'CPython 3.11.6.final.0'}
 
     # To convert from dict to SON
     # This will only convert the first layer of the dictionary
-    >>> from pymongo import MongoClient
-    >>> from bson import SON
-    >>> client = MongoClient()
     >>> data_as_dict = client.options.pool_options.metadata
     >>> SON(data_as_dict)
     SON([('driver', {'name': 'PyMongo', 'version': '4.7.0.dev0'}), ('os', {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}), ('platform', 'CPython 3.11.6.final.0')])
