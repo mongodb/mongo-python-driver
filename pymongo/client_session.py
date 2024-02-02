@@ -1078,11 +1078,11 @@ class _ServerSession:
     def timed_out(self, session_timeout_minutes: Optional[int]) -> bool:
         if session_timeout_minutes is None:
             return False
-        else:
-            idle_seconds = time.monotonic() - self.last_use
 
-            # Timed out if we have less than a minute to live.
-            return idle_seconds > (session_timeout_minutes - 1) * 60
+        idle_seconds = time.monotonic() - self.last_use
+
+        # Timed out if we have less than a minute to live.
+        return idle_seconds > (session_timeout_minutes - 1) * 60
 
     @property
     def transaction_id(self) -> Int64:
