@@ -117,6 +117,10 @@ class TestSession(IntegrationTest):
         for f, args, kw in ops:
             with client.start_session() as s:
                 listener.reset()
+                s._materialize()
+                last_use = s._server_session.last_use
+                start = time.monotonic()
+                self.assertLessEqual(last_use, start)
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
                 kw = copy.copy(kw)

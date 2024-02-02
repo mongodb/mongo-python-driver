@@ -2387,10 +2387,7 @@ class _ClientConnectionRetryable(Generic[T]):
             with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
                 sessions_supported = (
-                    self._retryable
-                    and self._server.description.retryable_writes_supported
-                    and self._session
-                    and conn.supports_sessions
+                    self._server.description.retryable_writes_supported and conn.supports_sessions
                 )
                 if not sessions_supported:
                     # A retry is not possible because this server does

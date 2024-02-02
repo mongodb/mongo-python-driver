@@ -972,7 +972,7 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self, logical_session_timeout_minutes: Optional[int]) -> None:
+    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session(
@@ -1001,7 +1001,7 @@ class ClientSession:
         command["lsid"] = self._server_session.session_id
 
         if is_retryable:
-            command["txnNumber"] = self._transaction_id
+            command["txnNumber"] = self._server_session.transaction_id
             return
 
         if self.in_transaction:
@@ -1022,7 +1022,7 @@ class ClientSession:
                         command["readConcern"] = rc
                 self._update_read_concern(command, conn)
 
-            command["txnNumber"] = self._transaction_id
+            command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
 
     def _start_retryable_write(self) -> None:
@@ -1116,7 +1116,7 @@ class _ServerSessionPool(collections.deque):
         # sessions from a __del__ method (like in Cursor.__die), so it can't
         # clear stale sessions there. In case many sessions were returned via
         # __del__, check for stale sessions here too.
-        if session_timeout_minutes:
+        if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
 
             # The most recently used sessions are on the left.
