@@ -418,13 +418,11 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export AUTH=1
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
-            export AUTH=1
             export TEST_INDEX_MANAGEMENT=1
             export MONGODB_URI="${TEST_INDEX_URI}"
           fi
@@ -2931,6 +2929,7 @@ buildvariants:
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
     platform: rhel8
+    auth-ssl: auth-ssl
     python-version: "3.8"
   display_name: "Search Index Helpers ${platform}"
   tasks:

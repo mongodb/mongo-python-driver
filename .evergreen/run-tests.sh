@@ -39,20 +39,15 @@ python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not in
 
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
-  echo "GOT SECRETS file!"
   source ./secrets-export.sh
-else
-  echo "NO SECRETS file!"
 fi
 
 if [ "$AUTH" != "noauth" ]; then
     set +x
-    echo "getting login info"
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
     elif [ ! -z "$TEST_SERVERLESS" ]; then
-        echo "**USER $SERVERLESS_ATLAS_USER"
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
     elif [ ! -z "$TEST_AUTH_OIDC" ]; then
@@ -60,7 +55,6 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
     elif [ ! -z "$TEST_INDEX_MANAGEMENT" ]; then
-        echo "**USER $DRIVERS_ATLAS_LAMBDA_USER"
         export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
         export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     else
