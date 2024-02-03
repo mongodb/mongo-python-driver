@@ -39,7 +39,10 @@ python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not in
 
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
+  echo "Sourcing secrets"
   source ./secrets-export.sh
+else
+  echo "Not sourcing secrets"
 fi
 
 if [ "$AUTH" != "noauth" ]; then
@@ -61,6 +64,7 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
     fi
+    echo "Added auth, DB_USER: $DB_USER"
     set -x
 fi
 
