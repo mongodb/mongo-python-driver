@@ -39,7 +39,10 @@ python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not in
 
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
+  echo "GOT SECRETS file!"
   source ./secrets-export.sh
+else
+  echo "NO SECRETS file!"
 fi
 
 if [ "$AUTH" != "noauth" ]; then
