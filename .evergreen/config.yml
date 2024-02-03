@@ -380,7 +380,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: true
+        add_expansions_to_env: true
         script: |
           # Disable xtrace
           set +x
