@@ -375,14 +375,12 @@ functions:
           if [ -n "${test_encryption}" ]; then
             . .evergreen/tox.sh -m setup-encryption
           fi
-          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
-            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/lambda
-          fi
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x
@@ -1037,13 +1035,7 @@ task_groups:
         params:
           working_dir: src
           binary: bash
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh
-            - drivers/lambda
-      - command: subprocess.exec
-        params:
-          working_dir: src
-          binary: bash
+          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
       - command: expansions.update
@@ -1054,6 +1046,7 @@ task_groups:
         params:
           working_dir: src
           binary: bash
+          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
     setup_group_can_fail_task: true
@@ -1071,13 +1064,7 @@ task_groups:
         params:
           working_dir: src
           binary: bash
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh
-            - drivers/lambda
-      - command: subprocess.exec
-        params:
-          working_dir: src
-          binary: bash
+          add_expansions_to_env: true
           env:
             MONGODB_VERSION: "7.0"
           args:
@@ -1099,6 +1086,7 @@ task_groups:
         params:
           working_dir: src
           binary: bash
+          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
     setup_group_can_fail_task: true
