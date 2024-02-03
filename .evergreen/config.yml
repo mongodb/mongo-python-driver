@@ -369,18 +369,20 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
             . .evergreen/tox.sh -m setup-encryption
+          fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/lambda
           fi
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         shell: bash
-        add_expansions_to_env: true
         script: |
           # Disable xtrace
           set +x
