@@ -908,10 +908,8 @@ task_groups:
           working_dir: src
           script: |
             ${PREPARE_SHELL}
-            echo "GETTING secrets $(pwd)"
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
-            ls
-            exit 1
+            cp ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh .
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
