@@ -424,6 +424,7 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export AUTH=1
             export TEST_INDEX_MANAGEMENT=1
             export MONGODB_URI="${TEST_INDEX_URI}"
           fi
