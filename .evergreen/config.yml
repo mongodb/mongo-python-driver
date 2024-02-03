@@ -419,7 +419,6 @@ functions:
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
             export AUTH=1
-            export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"

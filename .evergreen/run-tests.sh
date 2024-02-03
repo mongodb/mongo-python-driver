@@ -44,10 +44,12 @@ fi
 
 if [ "$AUTH" != "noauth" ]; then
     set +x
+    echo "getting login info"
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
     elif [ ! -z "$TEST_SERVERLESS" ]; then
+        echo "**USER $SERVERLESS_ATLAS_USER"
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
     elif [ ! -z "$TEST_AUTH_OIDC" ]; then
