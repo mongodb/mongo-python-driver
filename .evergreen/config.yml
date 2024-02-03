@@ -1038,7 +1038,8 @@ task_groups:
           working_dir: src
           binary: bash
           args:
-            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/lambda
+            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh
+            - drivers/lambda
       - command: subprocess.exec
         params:
           working_dir: src
@@ -1071,7 +1072,8 @@ task_groups:
           working_dir: src
           binary: bash
           args:
-            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/lambda
+            - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh
+            - drivers/lambda
       - command: subprocess.exec
         params:
           working_dir: src
