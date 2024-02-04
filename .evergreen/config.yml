@@ -2927,7 +2927,6 @@ buildvariants:
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
     platform: rhel8
-    auth-ssl: auth-ssl
     python-version: "3.8"
   display_name: "Search Index Helpers ${platform}"
   tasks:

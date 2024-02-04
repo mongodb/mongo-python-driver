@@ -57,10 +57,6 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
-    elif [ ! -z "$TEST_INDEX_MANAGEMENT" ]; then
-        export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
-        export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
-        export DB_IP="$MONGODB_URI"
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
@@ -192,6 +188,8 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+    export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+    export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     TEST_ARGS="test/test_index_management.py"
 fi
 
