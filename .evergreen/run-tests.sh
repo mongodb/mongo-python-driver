@@ -60,6 +60,7 @@ if [ "$AUTH" != "noauth" ]; then
     elif [ ! -z "$TEST_INDEX_MANAGEMENT" ]; then
         export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
         export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
+        export DB_IP="$MONGODB_URI"
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
