@@ -439,7 +439,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         )
         self.listener.reset()
         with self.client.start_session() as session:
-            initial_txn = session._server_session._transaction_id
+            initial_txn = session._transaction_id
             try:
                 coll.bulk_write(
                     [
@@ -467,7 +467,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             started[1].command.pop("$clusterTime")
             started[2].command.pop("$clusterTime")
             self.assertEqual(started[1].command, started[2].command)
-            final_txn = session._server_session._transaction_id
+            final_txn = session._transaction_id
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={"_id": True}), {"_id": 1})
 
@@ -561,7 +561,7 @@ class TestWriteConcernError(IntegrationTest):
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],
-                    txnNumber=s._server_session.transaction_id,
+                    txnNumber=s._transaction_id,
                     session=s,
                     codec_options=DEFAULT_CODEC_OPTIONS.with_options(
                         document_class=RawBSONDocument
@@ -712,7 +712,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
                 kwargs = copy.deepcopy(kwargs)
                 kwargs["session"] = session
                 msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
-                initial_txn_id = session._server_session.transaction_id
+                initial_txn_id = session._transaction_id
 
                 # Each operation should fail on the first attempt and succeed
                 # on the second.
@@ -720,7 +720,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
                 self.assertEqual(len(listener.started_events), 1, msg)
                 retry_cmd = listener.started_events[0].command
                 sent_txn_id = retry_cmd["txnNumber"]
-                final_txn_id = session._server_session.transaction_id
+                final_txn_id = session._transaction_id
                 self.assertEqual(Int64(initial_txn_id + 1), sent_txn_id, msg)
                 self.assertEqual(sent_txn_id, final_txn_id, msg)
 
