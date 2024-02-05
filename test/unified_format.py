@@ -1027,7 +1027,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
 
         if "unpin after TransientTransactionError error on abort" in spec["description"]:
-            if os.environ.get("MONGODB_VERSION", "") == "latest":
+            if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
 
         class_name = self.__class__.__name__.lower()
