@@ -540,7 +540,6 @@ functions:
             .evergreen/run-mongodb-aws-test.sh web-identity
 
   "run oidc auth test with aws credentials":
-    - func: "assume ec2 role"
     - command: subprocess.exec
       type: test
       params:
@@ -1964,6 +1963,7 @@ tasks:
 
     - name: "oidc-auth-test-latest"
       commands:
+        - func: "assume ec2 role"
         - func: "run oidc auth test with aws credentials"
 
     - name: load-balancer-test
