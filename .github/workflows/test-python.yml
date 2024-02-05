@@ -162,5 +162,7 @@ jobs:
           shell: bash
           run: |
             cd sdist/test
+            ls
+            which python
             pip install -e ".[test]"
             pytest -v
