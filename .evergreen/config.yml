@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch setup-secrets-scripts https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -423,9 +423,6 @@ functions:
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
-            export MONGODB_URI="${TEST_INDEX_URI}"
-            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
-            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -1042,20 +1039,16 @@ task_groups:
       - func: prepare resources
       - command: subprocess.exec
         params:
-          working_dir: src
           binary: bash
-          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
       - command: expansions.update
         params:
-          file: src/atlas-expansion.yml
+          file: atlas-expansion.yml
     teardown_task:
       - command: subprocess.exec
         params:
-          working_dir: src
           binary: bash
-          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
     setup_group_can_fail_task: true
@@ -1071,31 +1064,18 @@ task_groups:
       - func: make files executable
       - command: subprocess.exec
         params:
-          working_dir: src
           binary: bash
-          add_expansions_to_env: true
           env:
             MONGODB_VERSION: "7.0"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
       - command: expansions.update
         params:
-          file: src/atlas-expansion.yml
-      - command: shell.exec
-        params:
-          working_dir: src
-          shell: bash
-          script: |-
-            echo "TEST_INDEX_URI: ${MONGODB_URI}" > atlas-expansion.yml
-      - command: expansions.update
-        params:
-          file: src/atlas-expansion.yml
+          file: atlas-expansion.yml
     teardown_task:
       - command: subprocess.exec
         params:
-          working_dir: src
           binary: bash
-          add_expansions_to_env: true
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
     setup_group_can_fail_task: true
