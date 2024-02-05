@@ -437,7 +437,6 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run enterprise auth tests":
-    - func: "assume ec2 role"
     - command: shell.exec
       type: test
       params:
@@ -459,7 +458,6 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "run atlas tests":
-    - func: "assume ec2 role"
     - command: shell.exec
       type: test
       params:
@@ -1444,6 +1442,7 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
+        - func: "assume ec2 role"
         - func: "run enterprise auth tests"
 
     - name: "test-search-index-helpers"
@@ -1504,6 +1503,7 @@ tasks:
     - name: "atlas-connect"
       tags: ["atlas-connect"]
       commands:
+        - func: "assume ec2 role"
         - func: "run atlas tests"
 
     - name: atlas-data-lake-tests
