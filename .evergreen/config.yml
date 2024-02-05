@@ -908,7 +908,7 @@ task_groups:
     setup_group:
       - func: "fetch source"
       - func: "prepare resources"
-      - command: subprocess.exec.exec
+      - command: subprocess.exec
         params:
           binary: bash
           env:
