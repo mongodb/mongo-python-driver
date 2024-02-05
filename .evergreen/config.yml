@@ -1037,6 +1037,7 @@ task_groups:
       - command: subprocess.exec
         params:
           binary: bash
+          include_expansions_in_env: ["task_id", "execution"]
           args:
             - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
       - command: expansions.update
@@ -1062,6 +1063,7 @@ task_groups:
       - command: subprocess.exec
         params:
           binary: bash
+          include_expansions_in_env: ["task_id", "execution"]
           env:
             MONGODB_VERSION: "7.0"
           args:
