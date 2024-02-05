@@ -933,32 +933,17 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: "bash"
-          script: |
-            ${PREPARE_SHELL}
-            echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
-            export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
-            export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
-            export GCPKMS_SERVICEACCOUNT="${testgcpkms_service_account}"
-            export GCPKMS_MACHINETYPE="e2-standard-4"
-            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
-      # Load the GCPKMS_GCLOUD, GCPKMS_INSTANCE, GCPKMS_REGION, and GCPKMS_ZONE expansions.
-      - command: expansions.update
-        params:
-          file: testgcpkms-expansions.yml
+          binary: "bash"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec.exec
         params:
-          shell: "bash"
-          script: |
-            ${PREPARE_SHELL}
-            export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
-            export GCPKMS_PROJECT=${GCPKMS_PROJECT}
-            export GCPKMS_ZONE=${GCPKMS_ZONE}
-            export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+          binary: "bash"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/delete-instance.sh
       - func: "upload test results"
     tasks:
       - testgcpkms-task
@@ -2000,36 +1985,14 @@ tasks:
 
     - name: "testgcpkms-task"
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
           type: setup
           params:
             working_dir: "src"
-            shell: "bash"
-            script: |
-              ${PREPARE_SHELL}
-              echo "Copying files ... begin"
-              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
-              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
-              export GCPKMS_ZONE=${GCPKMS_ZONE}
-              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              tar czf /tmp/mongo-python-driver.tgz .
-              GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
-              echo "Copying files ... end"
-              echo "Untarring file ... begin"
-              GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
-              echo "Untarring file ... end"
-        - command: shell.exec
-          type: test
-          params:
-            working_dir: "src"
-            shell: "bash"
-            script: |
-              ${PREPARE_SHELL}
-              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
-              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
-              export GCPKMS_ZONE=${GCPKMS_ZONE}
-              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+            binary: "bash"
+            include_expansions_in_env: ["DRIVERS_TOOLS"]
+            args:
+              - .evergreen/run-gcpkms-test.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
