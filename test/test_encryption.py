@@ -30,6 +30,7 @@ from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
+from pymongo.daemon import _spawn_daemon
 
 sys.path[0:0] = [""]
 
@@ -461,6 +462,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         self.assertEqual(encrypted_ssn, encrypted_ssn2)
 
+        # Test encryption via UUID
+        encrypted_ssn3 = client_encryption.encrypt(
+            doc["ssn"],
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id.as_uuid(),
+        )
+        self.assertEqual(encrypted_ssn, encrypted_ssn3)
+
         # Test decryption.
         decrypted_ssn = client_encryption.decrypt(encrypted_ssn)
         self.assertEqual(decrypted_ssn, doc["ssn"])
@@ -479,9 +488,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = "key_id must be a bson.binary.Binary with subtype 4"
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
-        uid = uuid.uuid4()
-        with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, key_id=uid)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
 
@@ -2024,7 +2030,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         with self.assertRaisesRegex(
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
@@ -2093,12 +2099,12 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # 4, Test named KMS providers.
         providers = {
             "aws:no_client_cert": AWS_CREDS,
-            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
-            "gcp:no_client_cert": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:no_client_cert": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
             "kmip:no_client_cert": KMIP_CREDS,
             "aws:with_tls": AWS_CREDS,
-            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:8002", **AZURE_CREDS},
-            "gcp:with_tls": {"endpoint": "127.0.0.1:8002", **GCP_CREDS},
+            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:with_tls": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
             "kmip:with_tls": KMIP_CREDS,
         }
         no_cert = {"tlsCAFile": CA_PEM}
@@ -2137,7 +2143,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        # 127.0.0.1:8001: ('Certificate does not contain any `subjectAltName`s.',)
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
@@ -2208,7 +2214,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "127.0.0.1:8002",
+            "endpoint": "127.0.0.1:9002",
         }
         # Missing client cert error.
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
@@ -2995,6 +3001,60 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 kms_provider="local",
             )
         self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
+
+
+def start_mongocryptd(port) -> None:
+    args = ["mongocryptd", f"--port={port}", "--idleShutdownTimeoutSecs=60"]
+    _spawn_daemon(args)
+
+
+class TestNoSessionsSupport(EncryptionIntegrationTest):
+    mongocryptd_client: MongoClient
+    MONGOCRYPTD_PORT = 27020
+
+    @classmethod
+    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
+    def setUpClass(cls):
+        super().setUpClass()
+        start_mongocryptd(cls.MONGOCRYPTD_PORT)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
+    def setUp(self) -> None:
+        self.listener = OvertCommandListener()
+        self.mongocryptd_client = MongoClient(
+            f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]
+        )
+        self.addCleanup(self.mongocryptd_client.close)
+
+        hello = self.mongocryptd_client.db.command("hello")
+        self.assertNotIn("logicalSessionTimeoutMinutes", hello)
+
+    def test_implicit_session_ignored_when_unsupported(self):
+        self.listener.reset()
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.find_one()
+
+        self.assertNotIn("lsid", self.listener.started_events[0].command)
+
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.insert_one({"x": 1})
+
+        self.assertNotIn("lsid", self.listener.started_events[1].command)
+
+    def test_explicit_session_errors_when_unsupported(self):
+        self.listener.reset()
+        with self.mongocryptd_client.start_session() as s:
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
+                self.mongocryptd_client.db.test.find_one(session=s)
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
+                self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
 
 
 if __name__ == "__main__":

@@ -37,7 +37,13 @@ from urllib.parse import quote
 
 from bson.binary import Binary
 from pymongo.auth_aws import _authenticate_aws
-from pymongo.auth_oidc import _authenticate_oidc, _get_authenticator, _OIDCProperties
+from pymongo.auth_oidc import (
+    _authenticate_oidc,
+    _get_authenticator,
+    _OIDCAWSCallback,
+    _OIDCAzureCallback,
+    _OIDCProperties,
+)
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -162,8 +168,10 @@ def _build_credentials_tuple(
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
         properties = extra.get("authmechanismproperties", {})
-        request_token_callback = properties.get("request_token_callback")
-        provider_name = properties.get("PROVIDER_NAME", "")
+        callback = properties.get("OIDC_CALLBACK")
+        human_callback = properties.get("OIDC_HUMAN_CALLBACK")
+        provider_name = properties.get("PROVIDER_NAME")
+        token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -173,13 +181,40 @@ def _build_credentials_tuple(
             "127.0.0.1",
             "::1",
         ]
-        allowed_hosts = properties.get("allowed_hosts", default_allowed)
-        if not request_token_callback and provider_name != "aws":
-            raise ConfigurationError(
-                "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name of 'aws'"
-            )
+        allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
+        msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
+        if passwd is not None:
+            msg = "password is not supported by MONGODB-OIDC"
+            raise ConfigurationError(msg)
+        if callback or human_callback:
+            if provider_name is not None:
+                raise ConfigurationError(msg)
+            if callback and human_callback:
+                msg = "cannot set both OIDC_CALLBACK and OIDC_HUMAN_CALLBACK"
+                raise ConfigurationError(msg)
+        elif provider_name is not None:
+            if provider_name == "aws":
+                if user is not None:
+                    msg = "AWS provider for MONGODB-OIDC does not support username"
+                    raise ConfigurationError(msg)
+                callback = _OIDCAWSCallback()
+            elif provider_name == "azure":
+                passwd = None
+                if not token_audience:
+                    raise ConfigurationError(
+                        "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
+                    )
+                callback = _OIDCAzureCallback(token_audience, user)
+            else:
+                raise ConfigurationError(
+                    f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
+                )
+        else:
+            raise ConfigurationError(msg)
+
         oidc_props = _OIDCProperties(
-            request_token_callback=request_token_callback,
+            callback=callback,
+            human_callback=human_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
         )
@@ -522,6 +557,7 @@ _AUTH_MAP: Mapping[str, Callable[..., None]] = {
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
+    "MONGODB-OIDC": _authenticate_oidc,  # type:ignore[dict-item]
     "PLAIN": _authenticate_plain,
     "SCRAM-SHA-1": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-256"),
@@ -582,7 +618,7 @@ class _X509Context(_AuthContext):
 class _OIDCContext(_AuthContext):
     def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
         authenticator = _get_authenticator(self.credentials, self.address)
-        cmd = authenticator.auth_start_cmd(False)
+        cmd = authenticator.get_spec_auth_cmd()
         if cmd is None:
             return None
         cmd["db"] = self.credentials.source

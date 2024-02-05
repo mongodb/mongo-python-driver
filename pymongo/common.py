@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import datetime
-import inspect
 import warnings
 from collections import OrderedDict, abc
 from difflib import get_close_matches
@@ -42,6 +41,7 @@ from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
+from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -425,6 +425,8 @@ _MECHANISM_PROPS = frozenset(
         "SERVICE_REALM",
         "AWS_SESSION_TOKEN",
         "PROVIDER_NAME",
+        "TOKEN_AUDIENCE",
+        "ALLOWED_HOSTS",
     ]
 )
 
@@ -440,22 +442,14 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
-            elif key in ["allowed_hosts"] and isinstance(value, list):
+            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
-            elif inspect.isfunction(value):
-                signature = inspect.signature(value)
-                if key == "request_token_callback":
-                    expected_params = 2
-                else:
-                    raise ValueError(f"Unrecognized Auth mechanism function {key}")
-                if len(signature.parameters) != expected_params:
-                    msg = f"{key} must accept {expected_params} parameters"
-                    raise ValueError(msg)
+            elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
+                if not isinstance(value, OIDCCallback):
+                    raise ValueError("callback must be an OIDCCallback object")
                 props[key] = value
             else:
-                raise ValueError(
-                    "Auth mechanism property values must be strings or callback functions"
-                )
+                raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")
         return props
 
     value = validate_string(option, value)

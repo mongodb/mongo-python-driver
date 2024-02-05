@@ -554,7 +554,14 @@ class ClientSession:
     def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
+
+    @property
+    def _transaction_id(self) -> Int64:
+        """The current transaction id for the underlying server session."""
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        return self._server_session.transaction_id
 
     @property
     def cluster_time(self) -> Optional[ClusterTime]:
@@ -965,10 +972,12 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self) -> None:
+    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = self._client._topology.get_server_session()
+            self._server_session = self._client._topology.get_server_session(
+                logical_session_timeout_minutes
+            )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
@@ -979,8 +988,12 @@ class ClientSession:
         read_preference: _ServerMode,
         conn: Connection,
     ) -> None:
+        if not conn.supports_sessions:
+            if not self._implicit:
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
+            return
         self._check_ended()
-        self._materialize()
+        self._materialize(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1062,7 +1075,10 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes: float) -> bool:
+    def timed_out(self, session_timeout_minutes: Optional[int]) -> bool:
+        if session_timeout_minutes is None:
+            return False
+
         idle_seconds = time.monotonic() - self.last_use
 
         # Timed out if we have less than a minute to live.
@@ -1097,7 +1113,7 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self, session_timeout_minutes: float) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -1114,7 +1130,7 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession(self.generation)
 
     def return_server_session(
-        self, server_session: _ServerSession, session_timeout_minutes: Optional[float]
+        self, server_session: _ServerSession, session_timeout_minutes: Optional[int]
     ) -> None:
         if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
@@ -1128,7 +1144,7 @@ class _ServerSessionPool(collections.deque):
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes: float) -> None:
+    def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):

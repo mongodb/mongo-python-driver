@@ -18,8 +18,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.8
           cache: 'pip'
@@ -41,9 +41,9 @@ jobs:
         python-version: ["3.7", "3.11", "pypy-3.8"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -52,7 +52,7 @@ jobs:
         run: |
           pip install -q tox
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 4.4
       - name: Run tests
@@ -63,9 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: "3.8"
           cache: 'pip'
@@ -74,7 +74,7 @@ jobs:
         run: |
           pip install -q tox
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 4.4
       - name: Run tests
@@ -85,8 +85,8 @@ jobs:
     name: Typing Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
@@ -102,11 +102,13 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          # Build docs on lowest supported Python for furo
+          python-version: '3.8'
       - name: Install dependencies
         run: |
           pip install -q tox
@@ -121,17 +123,19 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          # Build sdist on lowest supported Python
+          python-version: '3.7'
       - name: Build SDist
         shell: bash
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -143,22 +147,28 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v3
+          uses: actions/download-artifact@v4
         - name: Unpack SDist
           shell: bash
           run: |
             cd sdist
+            ls
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
-        - uses: actions/setup-python@v2
+            ls test
+        - uses: actions/setup-python@v5
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
+            # Test sdist on lowest supported Python
+            python-version: '3.7'
         - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@1.7.0
+          uses: supercharge/mongodb-github-action@1.10.0
         - name: Run Test
           shell: bash
           run: |
             cd sdist/test
+            ls
+            which python
             pip install -e ".[test]"
             pytest -v
