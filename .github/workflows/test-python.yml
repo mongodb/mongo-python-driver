@@ -128,6 +128,8 @@ jobs:
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          # Build sdist on lowest supported Python
+          python-version: '3.7'
       - name: Build SDist
         shell: bash
         run: |
@@ -158,7 +160,7 @@ jobs:
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
-            # Build sdist on lowest supported Python
+            # Test sdist on lowest supported Python
             python-version: '3.7'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
