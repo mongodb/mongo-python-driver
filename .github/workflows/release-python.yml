@@ -188,7 +188,7 @@ jobs:
           find . -type d -empty -delete
       - uses: actions/upload-artifact@v4
         with:
-          name: all-dist-${{ github.head_ref || github.ref_name }}
+          name: all-dist-${{ github.job }}
           path: "./*"
 
   publish:

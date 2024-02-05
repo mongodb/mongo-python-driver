@@ -148,8 +148,10 @@ jobs:
           shell: bash
           run: |
             cd sdist
+            ls
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
+            ls test
         - uses: actions/setup-python@v5
           with:
             cache: 'pip'
