@@ -50,6 +50,7 @@ if [ "$AUTH" != "noauth" ]; then
         source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+        export MONGODB_URI="$SERVERLESS_URI"
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
