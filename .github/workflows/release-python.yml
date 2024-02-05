@@ -54,7 +54,7 @@ jobs:
               python: "cp311"
             - buildplat: [macos-14, macosx_arm64]
               python: "cp311"
-           - buildplat: [macos-11, macosx_x86_64]
+            - buildplat: [macos-11, macosx_x86_64]
               python: "cp312"
             - buildplat: [macos-14, macosx_arm64]
               python: "cp312"
