@@ -15,15 +15,10 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     fi
 
     # Get the drivers secrets.  Use an existing secrets file first.
-    if [ ! -f "./secrets-export.sh" ]; then
-        bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup-secrets.sh
-    fi
-    source ./secrets-export.sh
-
-    # # If the file did not have our creds, get them from the vault.
-    if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
-        bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup-secrets.sh
-        source ./secrets-export.sh
+    if [ ! -f "${DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh" ]; then
+        . ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup-secrets.sh
+    else
+        source "${DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh"
     fi
 
     # Make the OIDC tokens.
