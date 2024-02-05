@@ -461,6 +461,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         self.assertEqual(encrypted_ssn, encrypted_ssn2)
 
+        # Test encryption via UUID
+        encrypted_ssn3 = client_encryption.encrypt(
+            doc["ssn"],
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id.as_uuid(),
+        )
+        self.assertEqual(encrypted_ssn, encrypted_ssn3)
+
         # Test decryption.
         decrypted_ssn = client_encryption.decrypt(encrypted_ssn)
         self.assertEqual(decrypted_ssn, doc["ssn"])
@@ -479,9 +487,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = "key_id must be a bson.binary.Binary with subtype 4"
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
-        uid = uuid.uuid4()
-        with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, key_id=uid)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
 

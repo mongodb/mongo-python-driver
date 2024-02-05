@@ -369,7 +369,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
@@ -380,6 +380,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x
@@ -415,8 +416,6 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
-            export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
@@ -424,8 +423,6 @@ functions:
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
             export MONGODB_URI="${TEST_INDEX_URI}"
-            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
-            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -447,16 +444,11 @@ functions:
       type: test
       params:
         working_dir: "src"
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
-
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
@@ -470,19 +462,13 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
-
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
@@ -913,15 +899,18 @@ task_groups:
       - command: shell.exec
         params:
           shell: "bash"
+          working_dir: src
           script: |
             ${PREPARE_SHELL}
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
+            cp ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh .
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
-          file: serverless-expansion.yml
+          file: src/serverless-expansion.yml
     teardown_task:
       - command: shell.exec
+        working_dir: src
         params:
           script: |
             ${PREPARE_SHELL}
@@ -1009,6 +998,32 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
+
+  - name: testazureoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            export AZUREOIDC_VMNAME_PREFIX="PYTHON_DRIVER"
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+    teardown_task:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            ${PREPARE_SHELL}
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-azure-latest
 
   - name: test_aws_lambda_task_group
     setup_group:
@@ -1977,6 +1992,22 @@ tasks:
             LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
+
+    - name: "oidc-auth-test-azure-latest"
+      commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            cd src
+            git add .
+            git commit -m "add files"
+            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
+            git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
+            export AZUREOIDC_TEST_CMD="source ./env.sh && export OIDC_PROVIDER_NAME=azure && ./.evergreen/run-mongodb-oidc-test.sh"
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -3035,6 +3066,13 @@ buildvariants:
   display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
     - name: "oidc-auth-test-latest"
+
+- name: testazureoidc-variant
+  display_name: "Azure OIDC"
+  run_on: ubuntu2004-small
+  tasks:
+    - name: testazureoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"
   matrix_spec:

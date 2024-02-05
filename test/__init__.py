@@ -67,6 +67,7 @@ if hasattr(gc, "set_debug"):
 # for a replica set.
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
+IS_SRV = "mongodb+srv" in host
 
 db_user = os.environ.get("DB_USER", "user")
 db_pwd = os.environ.get("DB_PASSWORD", "password")
@@ -384,7 +385,7 @@ class ClientContext:
                     self.auth_enabled = self._server_started_with_auth()
 
             if self.auth_enabled:
-                if not self.serverless:
+                if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
@@ -452,7 +453,7 @@ class ClientContext:
             else:
                 self.server_parameters = self.client.admin.command("getParameter", "*")
                 assert self.cmd_line is not None
-                if "enableTestCommands=1" in self.cmd_line["argv"]:
+                if self.server_parameters["enableTestCommands"]:
                     self.test_commands_enabled = True
                 elif "parsed" in self.cmd_line:
                     params = self.cmd_line["parsed"].get("setParameter", [])
@@ -488,14 +489,14 @@ class ClientContext:
 
     @property
     def host(self):
-        if self.is_rs:
+        if self.is_rs and not IS_SRV:
             primary = self.client.primary
             return str(primary[0]) if primary is not None else host
         return host
 
     @property
     def port(self):
-        if self.is_rs:
+        if self.is_rs and not IS_SRV:
             primary = self.client.primary
             return primary[1] if primary is not None else port
         return port
@@ -519,6 +520,10 @@ class ClientContext:
         except AttributeError:
             # Raised if self.server_status is None.
             return None
+
+    def check_auth_type(self, auth_type):
+        auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
+        return auth_type in auth_mechs
 
     def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""

@@ -11,8 +11,6 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
 - Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
-- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
-  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
 - Significantly improved the performance of encoding BSON documents to JSON.
 - Support for named KMS providers for client side field level encryption.
   Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
@@ -28,6 +26,42 @@ PyMongo 4.7 brings a number of improvements including:
     >>> orjson.dumps({'a': Int64(1)}, default=json_util.default, option=orjson.OPT_PASSTHROUGH_SUBCLASS)
 
 .. _orjson: https://github.com/ijl/orjson
+
+- Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
+  could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
+
+Unavoidable breaking changes
+............................
+
+- Replaced usage of :class:`bson.son.SON` on all internal classes and commands to dict,
+  :attr:`options.pool_options.metadata` is now of type ``dict`` as opposed to :class:`bson.son.SON`.
+  Here's some examples of how this changes expected output as well as how to convert from :class:`dict` to :class:`bson.son.SON`::
+
+    # Before
+    >>> from pymongo import MongoClient
+    >>> client = MongoClient()
+    >>> client.options.pool_options.metadata
+    SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
+
+    # After
+    >>> client.options.pool_options.metadata
+    {'driver': {'name': 'PyMongo', 'version': '4.7.0.dev0'}, 'os': {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}, 'platform': 'CPython 3.11.6.final.0'}
+
+    # To convert from dict to SON
+    # This will only convert the first layer of the dictionary
+    >>> data_as_dict = client.options.pool_options.metadata
+    >>> SON(data_as_dict)
+    SON([('driver', {'name': 'PyMongo', 'version': '4.7.0.dev0'}), ('os', {'type': 'Darwin', 'name': 'Darwin', 'architecture': 'arm64', 'version': '14.3'}), ('platform', 'CPython 3.11.6.final.0')])
+
+    # To convert from dict to SON on a nested dictionary
+    >>> def dict_to_SON(data_as_dict: dict[Any, Any]):
+    ...     data_as_SON = SON()
+    ...     for key, value in data_as_dict.items():
+    ...         data_as_SON[key] = dict_to_SON(value) if isinstance(value, dict) else value
+    ...     return data_as_SON
+    >>>
+    >>> dict_to_SON(data_as_dict)
+    SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
 Changes in Version 4.6.1
 ------------------------
