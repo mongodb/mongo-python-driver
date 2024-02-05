@@ -482,7 +482,6 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
 
   "get aws auth secrets":
-    - func: "assume ec2 role"
     - command: subprocess.exec
       type: test
       params:
@@ -1863,6 +1862,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "4.4"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1880,6 +1880,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "5.0"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1897,6 +1898,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "6.0"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1914,6 +1916,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "7.0"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1931,6 +1934,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "rapid"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1948,6 +1952,7 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "latest"
+        - func: "assume ec2 role"
         - func: "get aws auth secrets"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
