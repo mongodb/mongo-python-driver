@@ -107,8 +107,8 @@ jobs:
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
-          # Build docs on lowest supported Python
-          python-version: '3.7'
+          # Build docs on lowest supported Python for furo
+          python-version: '3.8'
       - name: Install dependencies
         run: |
           pip install -q tox
@@ -158,8 +158,8 @@ jobs:
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
-            # Build sdist on lowest supported Python for furo
-            python-version: '3.8'
+            # Build sdist on lowest supported Python
+            python-version: '3.7'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
         - name: Run Test
