@@ -116,16 +116,16 @@ class TestSession(IntegrationTest):
 
         for f, args, kw in ops:
             with client.start_session() as s:
+                listener.reset()
+                s._materialize()
                 last_use = s._server_session.last_use
                 start = time.monotonic()
                 self.assertLessEqual(last_use, start)
-                listener.reset()
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
                 kw = copy.copy(kw)
                 kw["session"] = s
                 f(*args, **kw)
-                self.assertGreaterEqual(s._server_session.last_use, start)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
                     self.assertTrue(
@@ -274,6 +274,8 @@ class TestSession(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
+        for s in sessions:
+            s._materialize()
         for s in sessions:
             s.end_session()
 

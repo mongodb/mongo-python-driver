@@ -19,6 +19,7 @@ import glob
 import json
 import os
 import sys
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -26,12 +27,18 @@ from test import unittest
 from test.unified_format import generate_test_classes
 
 from pymongo import MongoClient
+from pymongo.auth_oidc import OIDCCallback
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 
 class TestAuthSpec(unittest.TestCase):
     pass
+
+
+class SampleHumanCallback(OIDCCallback):
+    def fetch(self, context):
+        pass
 
 
 def create_test(test_case):
@@ -41,14 +48,15 @@ def create_test(test_case):
         credential = test_case.get("credential")
 
         if not valid:
-            self.assertRaises(Exception, MongoClient, uri, connect=False)
+            with warnings.catch_warnings():
+                warnings.simplefilter("default")
+                self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
             props = {}
             if credential:
                 props = credential["mechanism_properties"] or {}
-                if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["request_token_callback"] = lambda x, y: 1
-                    del props["REQUEST_TOKEN_CALLBACK"]
+                if props.get("CALLBACK"):
+                    props["callback"] = SampleHumanCallback()
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
@@ -80,10 +88,8 @@ def create_test(test_case):
                             )
                         elif "PROVIDER_NAME" in expected:
                             self.assertEqual(actual.provider_name, expected["PROVIDER_NAME"])
-                        elif "request_token_callback" in expected:
-                            self.assertEqual(
-                                actual.request_token_callback, expected["request_token_callback"]
-                            )
+                        elif "callback" in expected:
+                            self.assertEqual(actual.callback, expected["callback"])
                         else:
                             self.fail(f"Unhandled property: {key}")
                 else:
