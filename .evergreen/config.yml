@@ -489,15 +489,13 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
-        add_expansions_to_env: true
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          cd $DRIVERS_TOOLS/.evergreen/auth_aws
-          ./setup_secrets.sh drivers/aws_auth
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        binary: bash
+        args:
+          $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
