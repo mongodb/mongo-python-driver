@@ -2017,7 +2017,7 @@ tasks:
       commands:
       - command: subprocess.exec
         params:
-          shell: bash
+          binary: bash
           working_dir: src
           include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
