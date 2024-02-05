@@ -40,15 +40,23 @@ jobs:
         include:
             - buildplat: [macos-11, macosx_x86_64]
               python: "cp37"
-            - buildplat: [macos-11, macosx_*]
+            - buildplat: [macos-11, macosx_universal2]
               python: "cp38"
-            - buildplat: [macos-11, macosx_*]
+            - buildplat: [macos-11, macosx_universal2]
               python: "cp39"
-            - buildplat: [macos-14, "macosx_*"]
+            - buildplat: [macos-11, macosx_universal2]
+              python: "cp39"
+            - buildplat: [macos-11, macosx_x86_64]
               python: "cp310"
-            - buildplat: [macos-14, "macosx_*"]
+            - buildplat: [macos-14, macosx_arm64]
+              python: "cp310"
+            - buildplat: [macos-11, macosx_x86_64]
               python: "cp311"
-            - buildplat: [macos-14, "macosx_*"]
+            - buildplat: [macos-14, macosx_arm64]
+              python: "cp311"
+           - buildplat: [macos-11, macosx_x86_64]
+              python: "cp312"
+            - buildplat: [macos-14, macosx_arm64]
               python: "cp312"
 
     steps:
@@ -82,21 +90,13 @@ jobs:
           python -m pip install "cibuildwheel>=2.4,<3"
 
       - name: Build wheel
-        if: ${{ matrix.buildplat[0] != 'macos-14' }}
         env:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
-          MACOS_TEST_SKIP: "*arm64"
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build wheel on M1
-        if: ${{ matrix.buildplat[0] == 'macos-14' }}
-        env:
-          CIBW_BUILD: "${{ matrix.python }}-macosx_x86_64 ${{ matrix.python }}-macosx_arm64"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
+          name: wheel-${{ matrix.python }}-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
           if-no-files-found: error
 
