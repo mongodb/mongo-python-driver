@@ -109,7 +109,9 @@ from pymongo.monitoring import (
     ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
+    TopologyDescriptionChangedEvent,
     TopologyEvent,
+    TopologyListener,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
@@ -313,7 +315,9 @@ class NonLazyCursor:
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener):
+class EventListenerUtil(
+    CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener, TopologyListener
+):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -399,6 +403,9 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHea
         self.add_event(event)
 
     def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+        self.add_event(event)
+
+    def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         self.add_event(event)
 
     def closed(self, event: ServerClosedEvent) -> None:
@@ -915,6 +922,8 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
             if "awaited" in spec:
                 self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "topologyDescriptionChangedEvent":
+            self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 

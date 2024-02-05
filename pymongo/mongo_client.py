@@ -86,6 +86,7 @@ from pymongo.errors import (
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.monitoring import ConnectionClosedReason
+from pymongo.operations import _Operations
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -1181,7 +1182,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             # Use Connection.command directly to avoid implicitly creating
             # another session.
-            with self._conn_for_reads(ReadPreference.PRIMARY_PREFERRED, None) as (
+            with self._conn_for_reads(
+                ReadPreference.PRIMARY_PREFERRED, None, operation=_Operations.END_SESSIONS_OP
+            ) as (
                 conn,
                 read_pref,
             ):
@@ -1272,6 +1275,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ) -> Server:
         """Select a server to run an operation on this client.
 
@@ -1290,12 +1295,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 address = session._pinned_address
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
-                server = topology.select_server_by_address(address)
+                server = topology.select_server_by_address(
+                    address, operation=operation, operation_id=operation_id
+                )
                 if not server:
                     raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
                 server = topology.select_server(
-                    server_selector, deprioritized_servers=deprioritized_servers
+                    server_selector,
+                    deprioritized_servers=deprioritized_servers,
+                    operation=operation,
+                    operation_id=operation_id,
                 )
             return server
         except PyMongoError as exc:
@@ -1305,8 +1315,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
-    def _conn_for_writes(self, session: Optional[ClientSession]) -> ContextManager[Connection]:
-        server = self._select_server(writable_server_selector, session)
+    def _conn_for_writes(
+        self, session: Optional[ClientSession], operation: Optional[str] = "TEST_OPERATION"
+    ) -> ContextManager[Connection]:
+        server = self._select_server(writable_server_selector, session, operation=operation)
         return self._checkout(server, session)
 
     @contextlib.contextmanager
@@ -1335,11 +1347,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             yield conn, read_preference
 
     def _conn_for_reads(
-        self, read_preference: _ServerMode, session: Optional[ClientSession]
+        self,
+        read_preference: _ServerMode,
+        session: Optional[ClientSession],
+        operation: Optional[str] = "TEST_OPERATION",
     ) -> ContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
-        server = self._select_server(read_preference, session)
+        server = self._select_server(read_preference, session, operation=operation)
         return self._conn_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
@@ -1361,7 +1376,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if operation.conn_mgr:
             server = self._select_server(
-                operation.read_preference, operation.session, address=address
+                operation.read_preference,
+                operation.session,
+                address=address,
+                operation=operation.name,
             )
 
             with operation.conn_mgr.lock:
@@ -1398,6 +1416,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             operation.session,
             address=address,
             retryable=isinstance(operation, message._Query),
+            operation=operation.name,
         )
 
     def _retry_with_session(
@@ -1406,6 +1425,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with at most one consecutive retries
 
@@ -1424,6 +1445,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             session=session,
             bulk=bulk,
             retryable=retryable,
+            operation=operation,
+            operation_id=operation_id,
         )
 
     @_csot.apply
@@ -1436,6 +1459,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         read_pref: Optional[_ServerMode] = None,
         retryable: bool = False,
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -1458,6 +1483,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             read_pref=read_pref,
             address=address,
             retryable=retryable,
+            operation=operation,
+            operation_id=operation_id,
         ).run()
 
     def _retryable_read(
@@ -1467,6 +1494,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
         address: Optional[_Address] = None,
         retryable: bool = True,
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -1496,6 +1525,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             read_pref=read_pref,
             retryable=retryable,
+            operation=operation,
+            operation_id=operation_id,
         )
 
     def _retryable_write(
@@ -1504,6 +1535,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk] = None,
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -1518,7 +1551,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(retryable, func, s, bulk)
+            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
@@ -1680,10 +1713,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = topology.select_server_by_address(tuple(address))  # type: ignore[arg-type]
+            server = topology.select_server_by_address(tuple(address), operation="killCursors")  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
-            server = topology.select_server(writable_server_selector)
+            server = topology.select_server(writable_server_selector, operation="killCursors")
 
         with self._checkout(server, session) as conn:
             assert address is not None
@@ -1904,7 +1937,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = admin._retryable_read_command(cmd, session=session)
+        res = admin._retryable_read_command(
+            cmd, session=session, operation=_Operations.LIST_DATABASES_OP
+        )
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,
@@ -1973,7 +2008,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        with self._conn_for_writes(session) as conn:
+        with self._conn_for_writes(session, operation=_Operations.DROP_DATABASE_OP) as conn:
             self[name]._command(
                 conn,
                 {"dropDatabase": 1, "comment": comment},
@@ -2252,6 +2287,8 @@ class _ClientConnectionRetryable(Generic[T]):
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
         retryable: bool = False,
+        operation: Optional[str] = "TEST_OPERATION",
+        operation_id: Optional[int] = None,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2270,6 +2307,8 @@ class _ClientConnectionRetryable(Generic[T]):
         self._address = address
         self._server: Server = None  # type: ignore
         self._deprioritized_servers: list[Server] = []
+        self._operation = operation
+        self._operation_id = operation_id
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2380,6 +2419,8 @@ class _ClientConnectionRetryable(Generic[T]):
             self._session,
             address=self._address,
             deprioritized_servers=self._deprioritized_servers,
+            operation=self._operation,
+            operation_id=self._operation_id,
         )
 
     def _write(self) -> T:

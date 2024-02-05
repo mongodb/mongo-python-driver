@@ -41,6 +41,7 @@ from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
+from pymongo.operations import _Operations
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -546,6 +547,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
                 retryable=not cmd._performs_write,
+                operation=_Operations.AGGREGATE_OP,
             )
 
     def watch(
@@ -756,6 +758,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: None = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
+        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         ...
@@ -771,6 +774,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: CodecOptions[_CodecDocumentType] = ...,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
+        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
         ...
@@ -786,6 +790,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
+        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Issue a MongoDB command.
@@ -881,9 +886,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
+        if operation is None and isinstance(command, str):
+            command_name = command
+        else:
+            command_name = next(iter(command))
+
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._conn_for_reads(read_preference, session) as (
+        with self.__client._conn_for_reads(read_preference, session, operation=command_name) as (
             connection,
             read_preference,
         ):
@@ -1001,6 +1011,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         command: Union[str, MutableMapping[str, Any]],
         session: Optional[ClientSession] = None,
+        operation: Optional[str] = None,
     ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -1018,7 +1029,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.__client._retryable_read(_cmd, read_preference, session)
+        return self.__client._retryable_read(_cmd, read_preference, session, operation=operation)
 
     def _list_collections(
         self,
@@ -1089,7 +1100,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
-        return self.__client._retryable_read(_cmd, read_pref, session)
+        return self.__client._retryable_read(
+            _cmd, read_pref, session, operation=_Operations.LIST_COLLECTIONS_OP
+        )
 
     def list_collection_names(
         self,
@@ -1145,7 +1158,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._conn_for_writes(session) as connection:
+        with self.__client._conn_for_writes(session, operation=_Operations.DROP_OP) as connection:
             return self._command(
                 connection,
                 command,
