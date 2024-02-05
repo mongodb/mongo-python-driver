@@ -38,7 +38,7 @@ jobs:
         - [windows-2019, win32]
         python: ["cp37", "cp38", "cp39", "cp310", "cp311", "cp312"]
         include:
-            - buildplat: [macos-11, macosx_x86_64]
+            - buildplat: [macos-11, macosx_*]
               python: "cp37"
             - buildplat: [macos-11, macosx_*]
               python: "cp38"

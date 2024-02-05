@@ -236,3 +236,6 @@ test-command = "python {project}/tools/fail_if_no_c.py"
 
 [tool.cibuildwheel.linux]
 archs = "x86_64 aarch64 ppc64le s390x i686"
+
+[tool.cibuildwheel.macos]
+archs = "x86_64 arm64"
