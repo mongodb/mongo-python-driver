@@ -559,7 +559,7 @@ functions:
         binary: bash
         include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args: |
-          .evergreen/run-mongodb-oidc-test.sh
+          - .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
