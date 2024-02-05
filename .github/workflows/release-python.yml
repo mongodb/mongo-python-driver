@@ -78,7 +78,7 @@ jobs:
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
         run: |
-          python -m install -U pip
+          python -m pip install -U pip
           python -m pip install "cibuildwheel>=2.4,<3"
 
       - name: Build wheel
@@ -127,7 +127,7 @@ jobs:
 
     - name: Install cibuildwheel
       run: |
-        python -m install -U pip
+        python -m pip install -U pip
         python -m pip install "cibuildwheel>=2.4,<3"
 
     - name: Build manylinux_x86_64
