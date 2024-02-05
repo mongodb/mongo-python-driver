@@ -831,7 +831,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.7
-            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
+           ``key_id`` can now be passed in as a :class:`uuid.UUID`.
 
         .. versionchanged:: 4.2
            Added the `query_type` and `contention_factor` parameters.
@@ -883,7 +883,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
         .. versionchanged:: 4.7
-            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
+           ``key_id`` can now be passed in as a :class:`uuid.UUID`.
 
         .. versionadded:: 4.4
         """
