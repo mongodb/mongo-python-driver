@@ -51,6 +51,7 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
         export MONGODB_URI="${SERVERLESS_URI}"
+        echo "SERVERLESS_URI=$SERVERLESS_URI"
         export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
         export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
     elif [ ! -z "$TEST_AUTH_OIDC" ]; then
