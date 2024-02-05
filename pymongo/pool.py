@@ -870,7 +870,9 @@ class Connection:
         self.max_bson_size = hello.max_bson_size
         self.max_message_size = hello.max_message_size
         self.max_write_batch_size = hello.max_write_batch_size
-        self.supports_sessions = hello.logical_session_timeout_minutes is not None
+        self.supports_sessions = (
+            hello.logical_session_timeout_minutes is not None and hello.is_readable
+        )
         self.logical_session_timeout_minutes = hello.logical_session_timeout_minutes or 0
         self.hello_ok = hello.hello_ok
         self.is_repl = hello.server_type in (
