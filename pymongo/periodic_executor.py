@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 import weakref
@@ -91,7 +92,15 @@ class PeriodicExecutor:
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
-            thread.start()
+            # Mitigation to RuntimeError firing when thread starts on shutdown
+            # https://github.com/python/cpython/issues/114570
+            try:
+                thread.start()
+            except RuntimeError as e:
+                if "interpreter shutdown" in str(e) or sys.is_finalizing():
+                    self._thread = None
+                    return
+                raise
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().
