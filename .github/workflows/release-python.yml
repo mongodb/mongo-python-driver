@@ -44,11 +44,11 @@ jobs:
               python: "cp38"
             - buildplat: [macos-11, macosx_*]
               python: "cp39"
-            - buildplat: [macos-14, macosx_*]
+            - buildplat: [macos-14, "macosx_x86_64 macosx_arm64"]
               python: "cp310"
-            - buildplat: [macos-14, macosx_*]
+            - buildplat: [macos-14, "macosx_x86_64 macosx_arm64"]
               python: "cp311"
-            - buildplat: [macos-14, macosx_*]
+            - buildplat: [macos-14, "macosx_x86_64 macosx_arm64"]
               python: "cp312"
 
     steps:
@@ -91,7 +91,7 @@ jobs:
       - name: Build wheel on M1
         if: ${{ matrix.buildplat[0] == 'macos-14' }}
         env:
-          CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
+          CIBW_BUILD: ${{ matrix.python }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v4
