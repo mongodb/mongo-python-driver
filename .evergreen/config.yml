@@ -415,11 +415,6 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
-            export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
-            export MONGODB_URI="${SERVERLESS_URI}"
-            export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
-            export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
@@ -913,22 +908,19 @@ task_groups:
     setup_group:
       - func: "fetch source"
       - func: "prepare resources"
-      - command: shell.exec
+      - command: subprocess.exec.exec
         params:
-          shell: "bash"
-          script: |
-            ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
-      - command: expansions.update
-        params:
-          file: serverless-expansion.yml
+          binary: bash
+          env:
+            VAULT_NAME: ${VAULT_NAME}
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          script: |
-            ${PREPARE_SHELL}
-            bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh ${VAULT_NAME}
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
       - func: "upload test results"
     tasks:
       - ".serverless"
