@@ -639,7 +639,7 @@
         }
       ]
     },
-        {
+    {
       "description": "A successful distinct operation",
       "operations": [
         {
@@ -689,6 +689,313 @@
                   "$$exists": true
                 },
                 "operation": "distinct",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Successful collection management operations",
+      "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
+          "name": "createCollection",
+          "object": "database",
+          "arguments": {
+            "collection": "foo"
+          }
+        },
+        {
+          "name": "listCollections",
+          "object": "database"
+        },
+        {
+          "name": "dropCollection",
+          "object": "database",
+            "arguments": {
+            "collection": "foo"
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "create",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "create",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "listCollections",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "listCollections",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "drop",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "drop",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Successful index operations",
+      "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
+          "name": "createIndex",
+          "object": "collection",
+          "arguments": {
+            "keys": {
+              "x": 1
+            },
+            "name": "x_1"
+          }
+        },
+        {
+          "name": "listIndexes",
+          "object": "collection"
+        },
+        {
+          "name": "dropIndex",
+          "object": "collection",
+          "arguments": {
+            "name": "x_1"
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "createIndexes",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "createIndexes",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "listIndexes",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "listIndexes",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "dropIndexes",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "dropIndexes",
                 "topologyDescription": {
                   "$$exists": true
                 },
