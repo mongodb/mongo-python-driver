@@ -526,15 +526,12 @@ def object_pairs_hook(
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    matches = set(dct) & _PARSERS_SET
-    if matches:
-        return _PARSERS[matches.pop()](dct, json_options)
-    if (
-        isinstance(dct.get("$ref"), str)
-        and "$id" in dct
-        and isinstance(dct.get("$db"), (str, type(None)))
-    ):
-        return _parse_canonical_dbref(dct, json_options)
+    match = None
+    for k in dct:
+        if k in _PARSERS_SET:
+            match = k
+    if match:
+        return _PARSERS[match](dct, json_options)
     return dct
 
 
@@ -714,9 +711,15 @@ def _parse_canonical_regex(doc: Any, dummy0: Any) -> Regex[str]:
     return Regex(regex["pattern"], opts)
 
 
-def _parse_canonical_dbref(doc: Any, dummy0: Any) -> DBRef:
+def _parse_canonical_dbref(doc: Any, dummy0: Any) -> Any:
     """Decode a JSON DBRef to bson.dbref.DBRef."""
-    return DBRef(doc.pop("$ref"), doc.pop("$id"), database=doc.pop("$db", None), **doc)
+    if (
+        isinstance(doc.get("$ref"), str)
+        and "$id" in doc
+        and isinstance(doc.get("$db"), (str, type(None)))
+    ):
+        return DBRef(doc.pop("$ref"), doc.pop("$id"), database=doc.pop("$db", None), **doc)
+    return doc
 
 
 def _parse_canonical_dbpointer(doc: Any, dummy0: Any) -> Any:
@@ -808,22 +811,23 @@ def _parse_timestamp(doc: Any, dummy0: Any) -> Timestamp:
 
 _PARSERS: dict[str, Callable[[Any, JSONOptions], Any]] = {
     "$oid": _parse_canonical_oid,
-    "$binary": _parse_binary,
+    "$ref": _parse_canonical_dbref,
+    "$date": _parse_canonical_datetime,
     "$regex": _parse_legacy_regex,
     "$minKey": _parse_canonical_minkey,
     "$maxKey": _parse_canonical_maxkey,
+    "$binary": _parse_binary,
     "$code": _parse_canonical_code,
+    "$uuid": _parse_legacy_uuid,
     "$undefined": lambda _, _1: None,
     "$numberLong": _parse_canonical_int64,
+    "$timestamp": _parse_timestamp,
     "$numberDecimal": _parse_canonical_decimal128,
     "$dbPointer": _parse_canonical_dbpointer,
     "$regularExpression": _parse_canonical_regex,
     "$symbol": _parse_canonical_symbol,
     "$numberInt": _parse_canonical_int32,
     "$numberDouble": _parse_canonical_double,
-    "$timestamp": _parse_timestamp,
-    "$date": _parse_canonical_datetime,
-    "$uuid": _parse_legacy_uuid,
 }
 _PARSERS_SET = set(_PARSERS)
 
