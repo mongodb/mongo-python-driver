@@ -970,21 +970,19 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec.exec
         params:
-          shell: bash
-          script: |-
-            set -o errexit
-            ${PREPARE_SHELL}
-            export AZUREOIDC_VMNAME_PREFIX="PYTHON_DRIVER"
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+          binary: bash
+          env:
+            AZUREOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
-          script: |-
-            ${PREPARE_SHELL}
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/delete-vm.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
