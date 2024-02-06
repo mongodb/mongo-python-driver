@@ -20,6 +20,7 @@ import json
 import re
 import sys
 import uuid
+from collections import OrderedDict
 from typing import Any, List, MutableMapping, Tuple, Type
 
 from bson.codec_options import CodecOptions, DatetimeConversion
@@ -557,15 +558,13 @@ class TestJsonUtil(unittest.TestCase):
         )
 
     def test_loads_document_class(self):
-        # document_class dict should always work
-        self.assertEqual(
-            {"foo": "bar"},
-            json_util.loads('{"foo": "bar"}', json_options=JSONOptions(document_class=dict)),
-        )
-        self.assertEqual(
-            SON([("foo", "bar"), ("b", 1)]),
-            json_util.loads('{"foo": "bar", "b": 1}', json_options=JSONOptions(document_class=SON)),
-        )
+        json_doc = '{"foo": "bar", "b": 1, "d": {"a": 1}}'
+        expected_doc = {"foo": "bar", "b": 1, "d": {"a": 1}}
+        for cls in (dict, SON, OrderedDict):
+            doc = json_util.loads(json_doc, json_options=JSONOptions(document_class=cls))
+            self.assertEqual(doc, expected_doc)
+            self.assertIsInstance(doc, cls)
+            self.assertIsInstance(doc["d"], cls)
 
     def test_encode_subclass(self):
         cases: list[Tuple[Type, Any]] = [
