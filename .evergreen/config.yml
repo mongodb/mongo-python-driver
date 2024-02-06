@@ -929,7 +929,7 @@ task_groups:
           args:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
-      - command: subprocess.exec.exec
+      - command: subprocess.exec
         params:
           binary: "bash"
           args:
@@ -970,7 +970,7 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: subprocess.exec.exec
+      - command: subprocess.exec
         params:
           binary: bash
           env:
