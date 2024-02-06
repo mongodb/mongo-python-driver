@@ -526,8 +526,7 @@ def object_pairs_hook(
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    keys = {k for k in dct if k.startswith("$")}
-    matches = keys.intersection(_PARSERS)
+    matches = set(dct).intersection(_PARSERS)
     if matches:
         return _PARSERS[matches.pop()](dct, json_options)
     if (
