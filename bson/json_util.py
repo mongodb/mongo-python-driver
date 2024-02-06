@@ -526,7 +526,7 @@ def object_pairs_hook(
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    matches = set(dct).intersection(_PARSERS_SET)
+    matches = set(dct) & _PARSERS_SET
     if matches:
         return _PARSERS[matches.pop()](dct, json_options)
     if (
