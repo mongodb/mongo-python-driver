@@ -251,7 +251,7 @@ class Topology:
         self,
         selector: Callable[[Selection], Selection],
         timeout: float,
-        operation: str,
+        operation: Optional[str],
         operation_id: Optional[int],
         address: Optional[_Address],
     ) -> list[ServerDescription]:

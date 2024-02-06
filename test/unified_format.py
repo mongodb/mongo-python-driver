@@ -109,9 +109,11 @@ from pymongo.monitoring import (
     ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
+    TopologyClosedEvent,
     TopologyDescriptionChangedEvent,
     TopologyEvent,
     TopologyListener,
+    TopologyOpenedEvent,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
@@ -399,16 +401,18 @@ class EventListenerUtil(
         else:
             self.add_event(event)
 
-    def opened(self, event: ServerOpeningEvent) -> None:
+    def opened(self, event: ServerOpeningEvent | TopologyOpenedEvent) -> None:
         self.add_event(event)
 
-    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+    def description_changed(
+        self, event: ServerDescriptionChangedEvent | TopologyDescriptionChangedEvent
+    ) -> None:
         self.add_event(event)
 
     def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         self.add_event(event)
 
-    def closed(self, event: ServerClosedEvent) -> None:
+    def closed(self, event: ServerClosedEvent | TopologyClosedEvent) -> None:
         self.add_event(event)
 
 
