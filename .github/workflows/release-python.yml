@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Checkout pymongo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
           export PYTHON_VERSION=$(sed 's/^cp3/3./' <<< ${{ matrix.python }} )
           echo "PYTHON_VERSION=$PYTHON_VERSION" >> $GITHUB_ENV
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{env.PYTHON_VERSION}}
           cache: 'pip'
@@ -71,13 +71,15 @@ jobs:
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: all
 
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
-        run: python -m pip install "cibuildwheel>=2.4,<3"
+        run: |
+          python -m pip install -U pip
+          python -m pip install "cibuildwheel>=2.4,<3"
 
       - name: Build wheel
         if: ${{ matrix.buildplat[0] != 'macos-14' }}
@@ -92,7 +94,7 @@ jobs:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.python }}-${{ startsWith(matrix.buildplat[1], 'macosx') && 'macosx' || matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
@@ -107,7 +109,7 @@ jobs:
         python: ["cp37", "cp38", "cp39"]
     steps:
     - name: Checkout pymongo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -116,7 +118,7 @@ jobs:
         export PYTHON_VERSION=$(sed 's/^cp3/3./' <<< ${{ matrix.python }} )
         echo "PYTHON_VERSION=$PYTHON_VERSION" >> $GITHUB_ENV
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{env.PYTHON_VERSION}}
         cache: 'pip'
@@ -124,7 +126,9 @@ jobs:
         allow-prereleases: true
 
     - name: Install cibuildwheel
-      run: python -m pip install "cibuildwheel>=2.4,<3"
+      run: |
+        python -m pip install -U pip
+        python -m pip install "cibuildwheel>=2.4,<3"
 
     - name: Build manylinux_x86_64
       env:
@@ -138,7 +142,7 @@ jobs:
         CIBW_MANYLINUX_I686_IMAGE: manylinux1
       run: python -m cibuildwheel --output-dir wheelhouse
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: wheel-${{ matrix.python }}-manylinux1
         path: ./wheelhouse/*.whl
@@ -152,7 +156,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           # Build sdist on lowest supported Python
           python-version: '3.7'
@@ -169,7 +173,7 @@ jobs:
           cd ..
           python -c "from pymongo import has_c; assert has_c()"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: "sdist"
           path: ./dist/*.tar.gz
@@ -180,15 +184,15 @@ jobs:
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Flatten directory
         working-directory: .
         run: |
           find . -mindepth 2 -type f -exec mv {} . \;
           find . -type d -empty -delete
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: all-dist-${{ github.head_ref || github.ref_name }}
+          name: all-dist-${{ github.job }}
           path: "./*"
 
   publish:
@@ -201,7 +205,7 @@ jobs:
       id-token: write
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: all-dist-${{ github.head_ref || github.ref_name }}
         path: dist/

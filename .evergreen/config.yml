@@ -369,7 +369,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["test_encryption", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
@@ -380,6 +380,7 @@ functions:
       params:
         working_dir: "src"
         shell: bash
+        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x
@@ -415,8 +416,6 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
-            export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
             export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
@@ -424,13 +423,11 @@ functions:
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
             export MONGODB_URI="${TEST_INDEX_URI}"
-            export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
-            export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             PYTHON_BINARY=${PYTHON_BINARY} \
-            C_EXTENSIONS=${C_EXTENSIONS} \
+            NO_EXT=${NO_EXT} \
             COVERAGE=${COVERAGE} \
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
@@ -447,16 +444,11 @@ functions:
       type: test
       params:
         working_dir: "src"
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/enterprise_auth
-
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
@@ -470,19 +462,13 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" \
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}" \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m aws-secrets -- drivers/atlas_connect
-
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
@@ -913,15 +899,18 @@ task_groups:
       - command: shell.exec
         params:
           shell: "bash"
+          working_dir: src
           script: |
             ${PREPARE_SHELL}
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/setup-secrets.sh ${VAULT_NAME}
+            cp ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh .
             bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
       - command: expansions.update
         params:
-          file: serverless-expansion.yml
+          file: src/serverless-expansion.yml
     teardown_task:
       - command: shell.exec
+        working_dir: src
         params:
           script: |
             ${PREPARE_SHELL}
@@ -2481,11 +2470,11 @@ axes:
       - id: "without-c-extensions"
         display_name: "Without C Extensions"
         variables:
-          C_EXTENSIONS: "--no_ext"
+          NO_EXT: "1"
       - id: "with-c-extensions"
         display_name: "With C Extensions"
         variables:
-          C_EXTENSIONS: ""
+          NO_EXT: ""
 
   # Choice of MongoDB storage engine
   - id: storage-engine
