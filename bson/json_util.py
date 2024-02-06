@@ -526,7 +526,7 @@ def object_pairs_hook(
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    matches = set(dct).intersection(_PARSERS)
+    matches = set(dct).intersection(_PARSERS_SET)
     if matches:
         return _PARSERS[matches.pop()](dct, json_options)
     if (
@@ -825,6 +825,7 @@ _PARSERS: dict[str, Callable[[Any, JSONOptions], Any]] = {
     "$date": _parse_canonical_datetime,
     "$uuid": _parse_legacy_uuid,
 }
+_PARSERS_SET = set(_PARSERS)
 
 
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
