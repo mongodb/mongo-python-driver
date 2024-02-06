@@ -530,6 +530,7 @@ def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON
     for k in dct:
         if k in _PARSERS_SET:
             match = k
+            break
     if match:
         return _PARSERS[match](dct, json_options)
     return dct
