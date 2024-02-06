@@ -207,7 +207,7 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
-        name: all-dist-${{ github.head_ref || github.ref_name }}
+        name: all-dist-${{ github.job }}
         path: dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
