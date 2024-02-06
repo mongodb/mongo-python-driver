@@ -246,7 +246,9 @@ fi
 PIP_QUIET=0 python -m pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
+    # Use --capture=tee-sys so pytest prints test output inline:
+    # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
+    python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
