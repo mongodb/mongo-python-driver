@@ -38,7 +38,7 @@ jobs:
         - [windows-2019, win32]
         python: ["cp37", "cp38", "cp39", "cp310", "cp311", "cp312"]
         include:
-            - buildplat: [macos-11, macosx_x86_64]
+            - buildplat: [macos-11, macosx_*]
               python: "cp37"
             - buildplat: [macos-11, macosx_*]
               python: "cp38"
@@ -207,7 +207,7 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
-        name: all-dist-${{ github.head_ref || github.ref_name }}
+        name: all-dist-${{ github.job }}
         path: dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
