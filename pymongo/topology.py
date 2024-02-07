@@ -214,15 +214,16 @@ class Topology:
     def select_servers(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
         :param selector: function that takes a list of Servers and returns
             a subset of them.
+        :param operation: The name of the operation that the server is being selected for.
         :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value common.SERVER_SELECTION_TIMEOUT
             is used.
@@ -251,7 +252,7 @@ class Topology:
         self,
         selector: Callable[[Selection], Selection],
         timeout: float,
-        operation: Optional[str],
+        operation: str,
         operation_id: Optional[int],
         address: Optional[_Address],
     ) -> list[ServerDescription]:
@@ -324,14 +325,14 @@ class Topology:
     def _select_server(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> Server:
         servers = self.select_servers(
-            selector, server_selection_timeout, address, operation, operation_id
+            selector, operation, server_selection_timeout, address, operation_id
         )
         servers = _filter_servers(servers, deprioritized_servers)
         if len(servers) == 1:
@@ -345,19 +346,19 @@ class Topology:
     def select_server(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
         server = self._select_server(
             selector,
+            operation,
             server_selection_timeout,
             address,
             deprioritized_servers,
-            operation=operation,
             operation_id=operation_id,
         )
         if _csot.get_timeout():
@@ -378,8 +379,8 @@ class Topology:
     def select_server_by_address(
         self,
         address: _Address,
+        operation: str,
         server_selection_timeout: Optional[int] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> Server:
         """Return a Server for "address", reconnecting if necessary.
@@ -389,9 +390,11 @@ class Topology:
         cannot be reached.
 
         :param address: A (host, port) pair.
+        :param operation: The name of the operation that the server is being selected for.
         :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value
             common.SERVER_SELECTION_TIMEOUT is used.
+        :param operation_id: The unique id of the current operation being performed. Defaults to None if not provided.
 
         Calls self.open() if needed.
 
@@ -399,7 +402,11 @@ class Topology:
         `server_selection_timeout` if no matching servers are found.
         """
         return self.select_server(
-            any_server_selector, server_selection_timeout, address, operation=operation
+            any_server_selector,
+            operation,
+            server_selection_timeout,
+            address,
+            operation_id=operation_id,
         )
 
     def _process_change(

@@ -33,6 +33,8 @@ from typing import Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -560,7 +562,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -571,7 +573,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket, two
@@ -585,7 +587,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket,
@@ -599,7 +601,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn_one:
                 pass
             # Assert that the pool does not close connections prematurely.
@@ -616,12 +618,12 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "pool initialized with 10 connections",
@@ -640,7 +642,7 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -654,7 +656,7 @@ class TestClient(IntegrationTest):
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -2180,7 +2182,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        c._get_topology().select_servers(writable_server_selector)
+        c._get_topology().select_servers(writable_server_selector, _Op.TEST)
         self.assertEqual(c.address, ("a", 1))
 
     def _test_network_error(self, operation_callback):
@@ -2203,7 +2205,7 @@ class TestMongoClientFailover(MockClientTest):
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, 6)
             c.set_wire_version_range("b:2", 2, 7)
-            c._get_topology().select_servers(writable_server_selector)
+            c._get_topology().select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
             c.kill_host("a:1")

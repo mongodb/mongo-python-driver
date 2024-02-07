@@ -758,7 +758,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: None = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         ...
@@ -774,7 +773,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: CodecOptions[_CodecDocumentType] = ...,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
         ...
@@ -790,7 +788,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        operation: Optional[str] = None,
         **kwargs: Any,
     ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Issue a MongoDB command.
@@ -886,7 +883,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        if operation is None and isinstance(command, str):
+        if isinstance(command, str):
             command_name = command
         else:
             command_name = next(iter(command))
@@ -969,6 +966,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        if isinstance(command, str):
+            command_name = command
+        else:
+            command_name = next(iter(command))
+
         with self.__client._tmp_session(session, close=False) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
@@ -976,7 +978,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self.__client._conn_for_reads(read_preference, tmp_session) as (
+            with self.__client._conn_for_reads(read_preference, tmp_session, command_name) as (
                 conn,
                 read_preference,
             ):
@@ -1010,8 +1012,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def _retryable_read_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
+        operation: str,
         session: Optional[ClientSession] = None,
-        operation: Optional[str] = None,
     ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -1029,7 +1031,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.__client._retryable_read(_cmd, read_preference, session, operation=operation)
+        return self.__client._retryable_read(_cmd, read_preference, session, operation)
 
     def _list_collections(
         self,

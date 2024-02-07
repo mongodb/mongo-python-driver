@@ -913,7 +913,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = self._topology.select_server(writable_server_selector)
+        server = self._topology.select_server(writable_server_selector, _Op.TEST)
 
         return getattr(server.description, attr_name)
 
@@ -1273,9 +1273,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         server_selector: Callable[[Selection], Selection],
         session: Optional[ClientSession],
+        operation: str,
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> Server:
         """Select a server to run an operation on this client.
@@ -1284,6 +1284,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             not pinned and no address is given.
         :param session: The ClientSession for the next operation, or None. May
             be pinned to a mongos server address.
+        :param operation: The name of the operation that the server is being selected for.
         :param address: Address when sending a message
             to a specific server, used for getMore.
         """
@@ -1296,15 +1297,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
                 server = topology.select_server_by_address(
-                    address, operation=operation, operation_id=operation_id
+                    address, operation, operation_id=operation_id
                 )
                 if not server:
                     raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
                 server = topology.select_server(
                     server_selector,
+                    operation,
                     deprioritized_servers=deprioritized_servers,
-                    operation=operation,
                     operation_id=operation_id,
                 )
             return server
@@ -1316,9 +1317,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             raise
 
     def _conn_for_writes(
-        self, session: Optional[ClientSession], operation: Optional[str] = "TEST_OPERATION"
+        self, session: Optional[ClientSession], operation: str
     ) -> ContextManager[Connection]:
-        server = self._select_server(writable_server_selector, session, operation=operation)
+        server = self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
     @contextlib.contextmanager
@@ -1350,11 +1351,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         read_preference: _ServerMode,
         session: Optional[ClientSession],
-        operation: Optional[str] = "TEST_OPERATION",
+        operation: str,
     ) -> ContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
-        server = self._select_server(read_preference, session, operation=operation)
+        server = self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
@@ -1378,8 +1379,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server = self._select_server(
                 operation.read_preference,
                 operation.session,
+                operation.name,
                 address=address,
-                operation=operation.name,
             )
 
             with operation.conn_mgr.lock:
@@ -1425,7 +1426,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
-        operation: Optional[str] = "TEST_OPERATION",
+        operation: str,
         operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with at most one consecutive retries
@@ -1444,8 +1445,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             func=func,
             session=session,
             bulk=bulk,
-            retryable=retryable,
             operation=operation,
+            retryable=retryable,
             operation_id=operation_id,
         )
 
@@ -1455,11 +1456,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T] | _ReadCall[T],
         session: Optional[ClientSession],
         bulk: Optional[_Bulk],
+        operation: str,
         is_read: bool = False,
         address: Optional[_Address] = None,
         read_pref: Optional[_ServerMode] = None,
         retryable: bool = False,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
@@ -1467,6 +1468,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param func: Callback function we want to retry
         :param session: Client Session on which the transaction should occur
         :param bulk: Abstraction to handle bulk write operations
+        :param operation: The name of the operation that the server is being selected for
         :param is_read: If this is an exclusive read transaction, defaults to False
         :param address: Server Address, defaults to None
         :param read_pref: Topology of read operation, defaults to None
@@ -1478,12 +1480,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             mongo_client=self,
             func=func,
             bulk=bulk,
+            operation=operation,
             is_read=is_read,
             session=session,
             read_pref=read_pref,
             address=address,
             retryable=retryable,
-            operation=operation,
             operation_id=operation_id,
         ).run()
 
@@ -1492,9 +1494,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _ReadCall[T],
         read_pref: _ServerMode,
         session: Optional[ClientSession],
+        operation: str,
         address: Optional[_Address] = None,
         retryable: bool = True,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
@@ -1507,6 +1509,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param func: Read call we want to execute
         :param read_pref: Desired topology of read operation
         :param session: Client session we should use to execute operation
+        :param operation: The name of the operation that the server is being selected for
         :param address: Optional address when sending a message, defaults to None
         :param retryable: if we should attempt retries
             (may not always be supported even if supplied), defaults to False
@@ -1521,11 +1524,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             func,
             session,
             None,
+            operation,
             is_read=True,
             address=address,
             read_pref=read_pref,
             retryable=retryable,
-            operation=operation,
             operation_id=operation_id,
         )
 
@@ -1534,8 +1537,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool,
         func: _WriteCall[T],
         session: Optional[ClientSession],
+        operation: str,
         bulk: Optional[_Bulk] = None,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
@@ -1548,6 +1551,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param retryable: if we should attempt retries (may not always be supported)
         :param func: write call we want to execute during a session
         :param session: Client session we will use to execute write operation
+        :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
         with self._tmp_session(session) as s:
@@ -1713,10 +1717,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = topology.select_server_by_address(tuple(address), operation=_Op.KILL_CURSORS)  # type: ignore[arg-type]
+            server = topology.select_server_by_address(tuple(address), _Op.KILL_CURSORS)  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
-            server = topology.select_server(writable_server_selector, operation=_Op.KILL_CURSORS)
+            server = topology.select_server(writable_server_selector, _Op.KILL_CURSORS)
 
         with self._checkout(server, session) as conn:
             assert address is not None
@@ -2280,12 +2284,12 @@ class _ClientConnectionRetryable(Generic[T]):
         mongo_client: MongoClient,
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[_Bulk],
+        operation: str,
         is_read: bool = False,
         session: Optional[ClientSession] = None,
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
         retryable: bool = False,
-        operation: Optional[str] = "TEST_OPERATION",
         operation_id: Optional[int] = None,
     ):
         self._last_error: Optional[Exception] = None
@@ -2415,9 +2419,9 @@ class _ClientConnectionRetryable(Generic[T]):
         return self._client._select_server(
             self._server_selector,
             self._session,
+            self._operation,
             address=self._address,
             deprioritized_servers=self._deprioritized_servers,
-            operation=self._operation,
             operation_id=self._operation_id,
         )
 

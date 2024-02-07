@@ -58,7 +58,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -401,18 +401,18 @@ class EventListenerUtil(
         else:
             self.add_event(event)
 
-    def opened(self, event: ServerOpeningEvent | TopologyOpenedEvent) -> None:
+    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
         self.add_event(event)
 
     def description_changed(
-        self, event: ServerDescriptionChangedEvent | TopologyDescriptionChangedEvent
+        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
     ) -> None:
         self.add_event(event)
 
     def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         self.add_event(event)
 
-    def closed(self, event: ServerClosedEvent | TopologyClosedEvent) -> None:
+    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
         self.add_event(event)
 
 

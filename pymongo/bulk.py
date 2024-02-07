@@ -408,7 +408,7 @@ class _Bulk:
         generator: Iterator[Any],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
-        operation: Optional[str] = "TEST_OPERATION",
+        operation: str,
     ) -> dict[str, Any]:
         """Execute using write commands."""
         # nModified is only reported for write commands, not legacy ops.
@@ -442,8 +442,8 @@ class _Bulk:
             self.is_retryable,
             retryable_bulk,
             session,
+            operation,
             bulk=self,
-            operation=operation,
             operation_id=op_id,
         )
 
@@ -559,7 +559,7 @@ class _Bulk:
         self,
         write_concern: WriteConcern,
         session: Optional[ClientSession],
-        operation: Optional[str] = "TEST_OPERATION",
+        operation: str,
     ) -> Any:
         """Execute operations."""
         if not self.ops:
@@ -577,7 +577,7 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._conn_for_writes(session) as connection:
+            with client._conn_for_writes(session, operation) as connection:
                 self.execute_no_results(connection, generator, write_concern)
                 return None
         else:

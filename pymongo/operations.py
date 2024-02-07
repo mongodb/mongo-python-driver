@@ -73,6 +73,7 @@ class _Op(str, enum.Enum):
     RENAME = "rename"
     GETMORE = "getMore"
     KILL_CURSORS = "killCursors"
+    TEST = "testOperation"
 
 
 class InsertOne(Generic[_DocumentType]):

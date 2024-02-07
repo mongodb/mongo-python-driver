@@ -253,15 +253,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 self.__create(name, kwargs, collation, session)
 
-    def _conn_for_reads(
-        self, session: ClientSession
-    ) -> ContextManager[tuple[Connection, _ServerMode]]:
-        return self.__database.client._conn_for_reads(self._read_preference_for(session), session)
-
     def _conn_for_writes(
-        self, session: Optional[ClientSession], operation: Optional[str] = None
+        self, session: Optional[ClientSession], operation: str
     ) -> ContextManager[Connection]:
-        return self.__database.client._conn_for_writes(session, operation=operation)
+        return self.__database.client._conn_for_writes(session, operation)
 
     def _command(
         self,
@@ -745,7 +740,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         blk.ops = list(gen())
-        blk.execute(write_concern, session=session)
+        blk.execute(write_concern, session, _Op.INSERT)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(
@@ -837,6 +832,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         criteria: Mapping[str, Any],
         document: Union[Mapping[str, Any], _Pipeline],
+        operation: str,
         upsert: bool = False,
         multi: bool = False,
         write_concern: Optional[WriteConcern] = None,
@@ -849,7 +845,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
-        operation: Optional[str] = _Op.UPDATE,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
@@ -879,7 +874,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             (write_concern or self.write_concern).acknowledged and not multi,
             _update,
             session,
-            operation=operation,
+            operation,
         )
 
     def replace_one(
@@ -971,6 +966,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._update_retryable(
                 filter,
                 replacement,
+                _Op.UPDATE,
                 upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
@@ -979,7 +975,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1083,6 +1078,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._update_retryable(
                 filter,
                 update,
+                _Op.UPDATE,
                 upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
@@ -1092,7 +1088,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1183,6 +1178,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._update_retryable(
                 filter,
                 update,
+                _Op.UPDATE,
                 upsert,
                 multi=True,
                 write_concern=write_concern,
@@ -1193,7 +1189,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1908,14 +1903,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
         session: Optional[ClientSession],
-        operation: Optional[str] = "TEST_OPERATION",
+        operation: str,
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
         client = self.__database.client
         with client._tmp_session(session) as s:
-            return client._retryable_read(
-                func, self._read_preference_for(s), s, operation=operation
-            )
+            return client._retryable_read(func, self._read_preference_for(s), s, operation)
 
     def create_indexes(
         self,
