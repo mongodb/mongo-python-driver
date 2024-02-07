@@ -70,7 +70,7 @@ from pymongo.operations import (
     UpdateOne,
     _IndexKeyHint,
     _IndexList,
-    _Operations,
+    _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
@@ -339,7 +339,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._conn_for_writes(session, operation=_Operations.CREATE_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.CREATE) as conn:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -561,7 +561,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 raise TypeError(f"{request!r} is not a valid request") from None
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = blk.execute(write_concern, session, _Operations.INSERT_OP)
+        bulk_api_result = blk.execute(write_concern, session, _Op.INSERT)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -602,7 +602,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _check_write_command_response(result)
 
         self.__database.client._retryable_write(
-            acknowledged, _insert_command, session, operation=_Operations.INSERT_OP
+            acknowledged, _insert_command, session, operation=_Op.INSERT
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -849,7 +849,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
-        operation: Optional[str] = _Operations.UPDATE_OP,
+        operation: Optional[str] = _Op.UPDATE,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
@@ -979,7 +979,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation="replace",
+                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1092,7 +1092,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation=_Operations.UPDATE_OP,
+                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1193,7 +1193,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 let=let,
                 comment=comment,
-                operation=_Operations.UPDATE_OP,
+                operation=_Op.UPDATE,
             ),
             write_concern.acknowledged,
         )
@@ -1334,7 +1334,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete,
             session,
-            operation=_Operations.DELETE_OP,
+            operation=_Op.DELETE,
         )
 
     def delete_one(
@@ -1813,7 +1813,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.update(kwargs)
             return self._count_cmd(session, conn, read_preference, cmd, collation=None)
 
-        return self._retryable_non_cursor_read(_cmd, None, operation=_Operations.COUNT_OP)
+        return self._retryable_non_cursor_read(_cmd, None, operation=_Op.COUNT)
 
     def count_documents(
         self,
@@ -1902,7 +1902,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 return 0
             return result["n"]
 
-        return self._retryable_non_cursor_read(_cmd, session, _Operations.COUNT_OP)
+        return self._retryable_non_cursor_read(_cmd, session, _Op.COUNT)
 
     def _retryable_non_cursor_read(
         self,
@@ -1978,7 +1978,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        with self._conn_for_writes(session, operation=_Operations.CREATE_INDEXES_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.CREATE_INDEXES) as conn:
             supports_quorum = conn.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
@@ -2218,7 +2218,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Operations.DROP_INDEXES_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.DROP_INDEXES) as conn:
             self._command(
                 conn,
                 cmd,
@@ -2296,7 +2296,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         with self.__database.client._tmp_session(session, False) as s:
             return self.__database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Operations.LIST_INDEXES_OP
+                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
 
     def index_information(
@@ -2387,7 +2387,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
-            operation=_Operations.LIST_SEARCH_INDEX_OP,
+            operation=_Op.LIST_SEARCH_INDEX,
         )
 
     def create_search_index(
@@ -2456,7 +2456,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
-        with self._conn_for_writes(session, operation=_Operations.CREATE_SEARCH_INDEXES_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.CREATE_SEARCH_INDEXES) as conn:
             resp = self._command(
                 conn,
                 cmd,
@@ -2490,7 +2490,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Operations.DROP_SEARCH_INDEXES_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.DROP_SEARCH_INDEXES) as conn:
             self._command(
                 conn,
                 cmd,
@@ -2526,7 +2526,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Operations.UPDATE_SEARCH_INDEX_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.UPDATE_SEARCH_INDEX) as conn:
             self._command(
                 conn,
                 cmd,
@@ -2610,7 +2610,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
-            operation=_Operations.AGGREGATE_OP,
+            operation=_Op.AGGREGATE,
         )
 
     def aggregate(
@@ -2947,7 +2947,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        with self._conn_for_writes(session, operation=_Operations.RENAME_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.RENAME) as conn:
             with self.__database.client._tmp_session(session) as s:
                 return conn.command(
                     "admin",
@@ -3028,7 +3028,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields={"values": 1},
             )["values"]
 
-        return self._retryable_non_cursor_read(_cmd, session, operation=_Operations.DISTINCT_OP)
+        return self._retryable_non_cursor_read(_cmd, session, operation=_Op.DISTINCT)
 
     def _write_concern_for_cmd(
         self, cmd: Mapping[str, Any], session: Optional[ClientSession]
@@ -3115,7 +3115,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
             _find_and_modify,
             session,
-            operation=_Operations.FIND_AND_MODIFY_OP,
+            operation=_Op.FIND_AND_MODIFY,
         )
 
     def find_one_and_delete(

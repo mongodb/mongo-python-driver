@@ -41,7 +41,7 @@ from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
-from pymongo.operations import _Operations
+from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -547,7 +547,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
                 retryable=not cmd._performs_write,
-                operation=_Operations.AGGREGATE_OP,
+                operation=_Op.AGGREGATE,
             )
 
     def watch(
@@ -1101,7 +1101,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self.__client._retryable_read(
-            _cmd, read_pref, session, operation=_Operations.LIST_COLLECTIONS_OP
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
         )
 
     def list_collection_names(
@@ -1158,7 +1158,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._conn_for_writes(session, operation=_Operations.DROP_OP) as connection:
+        with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
             return self._command(
                 connection,
                 command,

@@ -86,7 +86,7 @@ from pymongo.errors import (
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.monitoring import ConnectionClosedReason
-from pymongo.operations import _Operations
+from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -1183,7 +1183,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Use Connection.command directly to avoid implicitly creating
             # another session.
             with self._conn_for_reads(
-                ReadPreference.PRIMARY_PREFERRED, None, operation=_Operations.END_SESSIONS_OP
+                ReadPreference.PRIMARY_PREFERRED, None, operation=_Op.END_SESSIONS
             ) as (
                 conn,
                 read_pref,
@@ -1713,10 +1713,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = topology.select_server_by_address(tuple(address), operation="killCursors")  # type: ignore[arg-type]
+            server = topology.select_server_by_address(tuple(address), operation=_Op.KILL_CURSORS)  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
-            server = topology.select_server(writable_server_selector, operation="killCursors")
+            server = topology.select_server(writable_server_selector, operation=_Op.KILL_CURSORS)
 
         with self._checkout(server, session) as conn:
             assert address is not None
@@ -1937,9 +1937,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = admin._retryable_read_command(
-            cmd, session=session, operation=_Operations.LIST_DATABASES_OP
-        )
+        res = admin._retryable_read_command(cmd, session=session, operation=_Op.LIST_DATABASES)
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,
@@ -2008,7 +2006,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        with self._conn_for_writes(session, operation=_Operations.DROP_DATABASE_OP) as conn:
+        with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
             self[name]._command(
                 conn,
                 {"dropDatabase": 1, "comment": comment},
