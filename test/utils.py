@@ -54,6 +54,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.operations import _Op
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -867,13 +868,16 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology.select_server(writable_server_selector)
+    server = topology.select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
 def get_pools(client):
     """Get all pools."""
-    return [server.pool for server in client._get_topology().select_servers(any_server_selector)]
+    return [
+        server.pool
+        for server in client._get_topology().select_servers(any_server_selector, _Op.TEST)
+    ]
 
 
 # Constants for run_threads and lazy_client_trial.

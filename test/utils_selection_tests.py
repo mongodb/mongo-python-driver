@@ -19,6 +19,8 @@ import datetime
 import os
 import sys
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import unittest
@@ -178,7 +180,7 @@ def create_test(scenario_def):
                 with self.assertRaises((ConfigurationError, ValueError)):
                     # Error can be raised when making Read Pref or selecting.
                     pref = parse_read_preference(pref_def)
-                    top_latency.select_server(pref)
+                    top_latency.select_server(pref, _Op.TEST)
                 return
 
             pref = parse_read_preference(pref_def)
@@ -186,18 +188,18 @@ def create_test(scenario_def):
         # Select servers.
         if not scenario_def.get("suitable_servers"):
             with self.assertRaises(AutoReconnect):
-                top_suitable.select_server(pref, server_selection_timeout=0)
+                top_suitable.select_server(pref, _Op.TEST, server_selection_timeout=0)
 
             return
 
         if not scenario_def["in_latency_window"]:
             with self.assertRaises(AutoReconnect):
-                top_latency.select_server(pref, server_selection_timeout=0)
+                top_latency.select_server(pref, _Op.TEST, server_selection_timeout=0)
 
             return
 
-        actual_suitable_s = top_suitable.select_servers(pref, server_selection_timeout=0)
-        actual_latency_s = top_latency.select_servers(pref, server_selection_timeout=0)
+        actual_suitable_s = top_suitable.select_servers(pref, _Op.TEST, server_selection_timeout=0)
+        actual_latency_s = top_latency.select_servers(pref, _Op.TEST, server_selection_timeout=0)
 
         expected_suitable_servers = {}
         for server in scenario_def["suitable_servers"]:

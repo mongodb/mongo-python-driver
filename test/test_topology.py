@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import sys
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import client_knobs, unittest
@@ -170,7 +172,7 @@ class TestSingleServerTopology(TopologyTest):
 
             # Can't select a server while the only server is of type Unknown.
             with self.assertRaisesRegex(ConnectionFailure, "No servers found yet"):
-                t.select_servers(any_server_selector, server_selection_timeout=0)
+                t.select_servers(any_server_selector, _Op.TEST, server_selection_timeout=0)
 
             got_hello(t, address, hello_response)
 
@@ -179,7 +181,7 @@ class TestSingleServerTopology(TopologyTest):
 
             # No matter whether the server is writable,
             # select_servers() returns it.
-            s = t.select_server(writable_server_selector)
+            s = t.select_server(writable_server_selector, _Op.TEST)
             self.assertEqual(server_type, s.description.server_type)
 
             # Topology type single is always readable and writable regardless
@@ -217,7 +219,7 @@ class TestSingleServerTopology(TopologyTest):
 
         t = create_mock_topology(monitor_class=TestMonitor)
         self.addCleanup(t.close)
-        s = t.select_server(writable_server_selector)
+        s = t.select_server(writable_server_selector, _Op.TEST)
         self.assertEqual(125, s.description.round_trip_time)
 
         round_trip_time = 25
@@ -232,7 +234,7 @@ class TestSingleServerTopology(TopologyTest):
 
         def raises_err():
             try:
-                t.select_server(writable_server_selector, server_selection_timeout=0.1)
+                t.select_server(writable_server_selector, _Op.TEST, server_selection_timeout=0.1)
             except ConnectionFailure:
                 return True
             else:
@@ -535,7 +537,7 @@ class TestMultiServerTopology(TopologyTest):
 
         self.assertEqual(server.description.min_wire_version, 1)
         self.assertEqual(server.description.max_wire_version, 6)
-        t.select_servers(any_server_selector)
+        t.select_servers(any_server_selector, _Op.TEST)
 
         # Incompatible.
         got_hello(
@@ -552,7 +554,7 @@ class TestMultiServerTopology(TopologyTest):
         )
 
         try:
-            t.select_servers(any_server_selector)
+            t.select_servers(any_server_selector, _Op.TEST)
         except ConfigurationError as e:
             # Error message should say which server failed and why.
             self.assertEqual(
@@ -578,7 +580,7 @@ class TestMultiServerTopology(TopologyTest):
         )
 
         try:
-            t.select_servers(any_server_selector)
+            t.select_servers(any_server_selector, _Op.TEST)
         except ConfigurationError as e:
             # Error message should say which server failed and why.
             self.assertEqual(
@@ -594,7 +596,7 @@ class TestMultiServerTopology(TopologyTest):
         t = create_mock_topology(seeds=["a", "b"], replica_set_name="rs")
 
         def write_batch_size():
-            s = t.select_server(writable_server_selector)
+            s = t.select_server(writable_server_selector, _Op.TEST)
             return s.description.max_write_batch_size
 
         got_hello(
@@ -715,7 +717,7 @@ def wait_for_primary(topology):
 
     def get_primary():
         try:
-            return topology.select_server(writable_server_selector, 0)
+            return topology.select_server(writable_server_selector, _Op.TEST, 0)
         except ConnectionFailure:
             return None
 
@@ -771,7 +773,7 @@ class TestTopologyErrors(TopologyTest):
         # The third hello call (the immediate retry) happens sometime soon
         # after the failed check triggered by request_check_all. Wait until
         # the server becomes known again.
-        server = t.select_server(writable_server_selector, 0.250)
+        server = t.select_server(writable_server_selector, _Op.TEST, 0.250)
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
         self.assertEqual(3, hello_count[0])
 
@@ -785,13 +787,13 @@ class TestTopologyErrors(TopologyTest):
         t = create_mock_topology(monitor_class=TestMonitor)
         self.addCleanup(t.close)
         with self.assertRaisesRegex(ConnectionFailure, "internal error"):
-            t.select_server(any_server_selector, server_selection_timeout=0.5)
+            t.select_server(any_server_selector, _Op.TEST, server_selection_timeout=0.5)
 
 
 class TestServerSelectionErrors(TopologyTest):
     def assertMessage(self, message, topology, selector=any_server_selector):
         with self.assertRaises(ConnectionFailure) as context:
-            topology.select_server(selector, server_selection_timeout=0)
+            topology.select_server(selector, _Op.TEST, server_selection_timeout=0)
 
         self.assertIn(message, str(context.exception))
 
