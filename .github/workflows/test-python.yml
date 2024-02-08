@@ -42,12 +42,6 @@ jobs:
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 5
-        with:
-          detached: true
-          limit-access-to-actor: true
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
