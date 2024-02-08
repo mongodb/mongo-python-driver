@@ -78,15 +78,17 @@ class PerformanceTest:
         client_context.init()
 
     def setUp(self):
-        pass
+        self.setup_time = time.monotonic()
 
     def tearDown(self):
+        duration = time.monotonic() - self.setup_time
         # Remove "Test" so that TestFlatEncoding is reported as "FlatEncoding".
         name = self.__class__.__name__[4:]
         median = self.percentile(50)
         megabytes_per_sec = self.data_size / median / 1000000
         print(
-            f"Running {self.__class__.__name__}. MB/s={megabytes_per_sec}, MEDIAN={self.percentile(50)}"
+            f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
+            f"total time={duration:.3f}s"
         )
         result_data.append(
             {
@@ -149,6 +151,7 @@ class PerformanceTest:
 
 class MicroTest(PerformanceTest):
     def setUp(self):
+        super().setUp()
         # Location of test data.
         with open(os.path.join(TEST_PATH, os.path.join("extended_bson", self.dataset))) as data:
             self.file_data = data.read()
@@ -256,6 +259,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
     data_size = len(encode({"hello": True})) * NUM_DOCS
 
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.drop_database("perftest")
 
@@ -267,6 +271,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
 
 class TestDocument(PerformanceTest):
     def setUp(self):
+        super().setUp()
         # Location of test data.
         with open(
             os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset))
@@ -458,6 +463,7 @@ def read_gridfs_file(filename):
 
 class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.drop_database("perftest")
         ldjson_path = os.path.join(TEST_PATH, os.path.join("parallel", "ldjson_multi"))
@@ -481,6 +487,7 @@ class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
 
 class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.drop_database("perftest")
         self.client.perfest.corpus.create_index("file")
@@ -501,6 +508,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
 
 class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.drop_database("perftest")
         gridfs_path = os.path.join(TEST_PATH, os.path.join("parallel", "gridfs_multi"))
@@ -525,6 +533,7 @@ class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
 
 class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.drop_database("perftest")
 
