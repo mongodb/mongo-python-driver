@@ -27,7 +27,6 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
-    ConfigurationError,
     ConnectionFailure,
     InvalidOperation,
     NetworkTimeout,
@@ -47,7 +46,6 @@ from pymongo.server_selectors import (
     Selection,
     any_server_selector,
     arbiter_server_selector,
-    readable_server_selector,
     secondary_server_selector,
     writable_server_selector,
 )
@@ -579,38 +577,10 @@ class Topology:
         with self._lock:
             return self._session_pool.pop_all()
 
-    def _check_implicit_session_support(self) -> None:
-        with self._lock:
-            self._check_session_support()
-
-    def _check_session_support(self) -> float:
-        """Internal check for session support on clusters."""
-        if self._settings.load_balanced:
-            # Sessions never time out in load balanced mode.
-            return float("inf")
-        session_timeout = self._description.logical_session_timeout_minutes
-        if session_timeout is None:
-            # Maybe we need an initial scan? Can raise ServerSelectionError.
-            if self._description.topology_type == TOPOLOGY_TYPE.Single:
-                if not self._description.has_known_servers:
-                    self._select_servers_loop(
-                        any_server_selector, self.get_server_selection_timeout(), None
-                    )
-            elif not self._description.readable_servers:
-                self._select_servers_loop(
-                    readable_server_selector, self.get_server_selection_timeout(), None
-                )
-
-            session_timeout = self._description.logical_session_timeout_minutes
-            if session_timeout is None:
-                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
-        return session_timeout
-
-    def get_server_session(self) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
-            session_timeout = self._check_session_support()
-            return self._session_pool.get_server_session(session_timeout)
+            return self._session_pool.get_server_session(session_timeout_minutes)
 
     def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:

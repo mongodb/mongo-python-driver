@@ -1750,12 +1750,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 helpers._handle_exception()
 
     def __start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
-        # Raises ConfigurationError if sessions are not supported.
-        if implicit:
-            self._topology._check_implicit_session_support()
-            server_session: Union[_EmptyServerSession, _ServerSession] = _EmptyServerSession()
-        else:
-            server_session = self._get_server_session()
+        server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
@@ -1787,10 +1782,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
         )
-
-    def _get_server_session(self) -> _ServerSession:
-        """Internal: start or resume a _ServerSession."""
-        return self._topology.get_server_session()
 
     def _return_server_session(
         self, server_session: Union[_ServerSession, _EmptyServerSession], lock: bool
@@ -2393,12 +2384,14 @@ class _ClientConnectionRetryable(Generic[T]):
         try:
             max_wire_version = 0
             self._server = self._get_server()
-            supports_session = (
-                self._session is not None and self._server.description.retryable_writes_supported
-            )
             with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
-                if self._retryable and not supports_session:
+                sessions_supported = (
+                    self._session
+                    and self._server.description.retryable_writes_supported
+                    and conn.supports_sessions
+                )
+                if not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
                     self._check_last_error()

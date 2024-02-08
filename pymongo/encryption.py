@@ -18,6 +18,7 @@ from __future__ import annotations
 import contextlib
 import enum
 import socket
+import uuid
 import weakref
 from copy import deepcopy
 from typing import (
@@ -30,6 +31,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
+    Union,
     cast,
 )
 
@@ -759,7 +761,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Binary] = None,
+        key_id: Optional[Union[Binary, uuid.UUID]] = None,
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
@@ -767,6 +769,8 @@ class ClientEncryption(Generic[_DocumentType]):
         is_expression: bool = False,
     ) -> Any:
         self._check_closed()
+        if isinstance(key_id, uuid.UUID):
+            key_id = Binary.from_uuid(key_id)
         if key_id is not None and not (
             isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
         ):
@@ -799,7 +803,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Binary] = None,
+        key_id: Optional[Union[Binary, uuid.UUID]] = None,
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
@@ -826,6 +830,9 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
+        .. versionchanged:: 4.7
+           ``key_id`` can now be passed in as a :class:`uuid.UUID`.
+
         .. versionchanged:: 4.2
            Added the `query_type` and `contention_factor` parameters.
         """
@@ -847,7 +854,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         expression: Mapping[str, Any],
         algorithm: str,
-        key_id: Optional[Binary] = None,
+        key_id: Optional[Union[Binary, uuid.UUID]] = None,
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
@@ -874,6 +881,9 @@ class ClientEncryption(Generic[_DocumentType]):
         :param range_opts: Experimental only, not intended for public use.
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
+
+        .. versionchanged:: 4.7
+           ``key_id`` can now be passed in as a :class:`uuid.UUID`.
 
         .. versionadded:: 4.4
         """
