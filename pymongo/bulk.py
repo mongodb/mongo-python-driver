@@ -408,6 +408,7 @@ class _Bulk:
         generator: Iterator[Any],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
+        operation: str,
     ) -> dict[str, Any]:
         """Execute using write commands."""
         # nModified is only reported for write commands, not legacy ops.
@@ -437,7 +438,14 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        client._retryable_write(self.is_retryable, retryable_bulk, session, bulk=self)
+        client._retryable_write(
+            self.is_retryable,
+            retryable_bulk,
+            session,
+            operation,
+            bulk=self,
+            operation_id=op_id,
+        )
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)
@@ -547,7 +555,12 @@ class _Bulk:
             return self.execute_command_no_results(conn, generator, write_concern)
         return self.execute_op_msg_no_results(conn, generator)
 
-    def execute(self, write_concern: WriteConcern, session: Optional[ClientSession]) -> Any:
+    def execute(
+        self,
+        write_concern: WriteConcern,
+        session: Optional[ClientSession],
+        operation: str,
+    ) -> Any:
         """Execute operations."""
         if not self.ops:
             raise InvalidOperation("No operations to execute")
@@ -564,8 +577,8 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._conn_for_writes(session) as connection:
+            with client._conn_for_writes(session, operation) as connection:
                 self.execute_no_results(connection, generator, write_concern)
                 return None
         else:
-            return self.execute_command(generator, write_concern, session)
+            return self.execute_command(generator, write_concern, session, operation)

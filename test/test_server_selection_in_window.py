@@ -28,6 +28,7 @@ from test.utils import (
 from test.utils_selection_tests import create_topology
 
 from pymongo.common import clean_node
+from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 
 # Location of JSON test specifications.
@@ -52,7 +53,7 @@ class TestAllScenarios(unittest.TestCase):
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
         for _ in range(iterations):
-            server = topology.select_server(pref, server_selection_timeout=0)
+            server = topology.select_server(pref, _Op.TEST, server_selection_timeout=0)
             counts[server.description.address] += 1
 
         # Verify expected_frequencies

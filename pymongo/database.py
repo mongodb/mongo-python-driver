@@ -41,6 +41,7 @@ from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
+from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -546,6 +547,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
                 retryable=not cmd._performs_write,
+                operation=_Op.AGGREGATE,
             )
 
     def watch(
@@ -881,9 +883,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
+        if isinstance(command, str):
+            command_name = command
+        else:
+            command_name = next(iter(command))
+
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._conn_for_reads(read_preference, session) as (
+        with self.__client._conn_for_reads(read_preference, session, operation=command_name) as (
             connection,
             read_preference,
         ):
@@ -959,6 +966,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        if isinstance(command, str):
+            command_name = command
+        else:
+            command_name = next(iter(command))
+
         with self.__client._tmp_session(session, close=False) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
@@ -966,7 +978,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self.__client._conn_for_reads(read_preference, tmp_session) as (
+            with self.__client._conn_for_reads(read_preference, tmp_session, command_name) as (
                 conn,
                 read_preference,
             ):
@@ -1000,6 +1012,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def _retryable_read_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
+        operation: str,
         session: Optional[ClientSession] = None,
     ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
@@ -1018,7 +1031,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.__client._retryable_read(_cmd, read_preference, session)
+        return self.__client._retryable_read(_cmd, read_preference, session, operation)
 
     def _list_collections(
         self,
@@ -1089,7 +1102,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
-        return self.__client._retryable_read(_cmd, read_pref, session)
+        return self.__client._retryable_read(
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+        )
 
     def list_collection_names(
         self,
@@ -1145,7 +1160,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._conn_for_writes(session) as connection:
+        with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
             return self._command(
                 connection,
                 command,

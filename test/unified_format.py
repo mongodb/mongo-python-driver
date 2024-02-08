@@ -58,7 +58,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -109,7 +109,11 @@ from pymongo.monitoring import (
     ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
+    TopologyClosedEvent,
+    TopologyDescriptionChangedEvent,
     TopologyEvent,
+    TopologyListener,
+    TopologyOpenedEvent,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
@@ -313,7 +317,9 @@ class NonLazyCursor:
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener):
+class EventListenerUtil(
+    CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener, TopologyListener
+):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -395,13 +401,18 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHea
         else:
             self.add_event(event)
 
-    def opened(self, event: ServerOpeningEvent) -> None:
+    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
         self.add_event(event)
 
-    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+    def description_changed(
+        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
+    ) -> None:
         self.add_event(event)
 
-    def closed(self, event: ServerClosedEvent) -> None:
+    def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
+        self.add_event(event)
+
+    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
         self.add_event(event)
 
 
@@ -915,6 +926,8 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
             if "awaited" in spec:
                 self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "topologyDescriptionChangedEvent":
+            self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 
