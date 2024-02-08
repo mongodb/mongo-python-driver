@@ -18,6 +18,9 @@ PyMongo 4.7 brings a number of improvements including:
   Named KMS providers enables more than one of each KMS provider type to be configured.
   See the docstring for :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
   Note that named KMS providers requires pymongocrypt >=1.9 and libmongocrypt >=1.9.
+- :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
+  :meth:`~pymongo.encryption.ClientEncryption.encrypt_expression` now allow ``key_id``
+  to be passed in as a :class:`uuid.UUID`.
 - Fixed a bug where :class:`~bson.int64.Int64` instances could not always be encoded by `orjson`_. The following now
   works::
 

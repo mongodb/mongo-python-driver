@@ -2623,10 +2623,12 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.db = self.encrypted_client.db
         self.addCleanup(self.encrypted_client.close)
 
-    def run_expression_find(self, name, expression, expected_elems, range_opts, use_expr=False):
+    def run_expression_find(
+        self, name, expression, expected_elems, range_opts, use_expr=False, key_id=None
+    ):
         find_payload = self.client_encryption.encrypt_expression(
             expression=expression,
-            key_id=self.key1_id,
+            key_id=key_id or self.key1_id,
             algorithm=Algorithm.RANGEPREVIEW,
             query_type=QueryType.RANGEPREVIEW,
             contention_factor=0,
@@ -2668,16 +2670,20 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.assertEqual(self.client_encryption.decrypt(insert_payload), cast_func(6))
 
         # Case 2.
+        expression = {
+            "$and": [
+                {f"encrypted{name}": {"$gte": cast_func(6)}},
+                {f"encrypted{name}": {"$lte": cast_func(200)}},
+            ]
+        }
+        self.run_expression_find(name, expression, [cast_func(i) for i in [6, 30, 200]], range_opts)
+        # Case 2, with UUID key_id
         self.run_expression_find(
             name,
-            {
-                "$and": [
-                    {f"encrypted{name}": {"$gte": cast_func(6)}},
-                    {f"encrypted{name}": {"$lte": cast_func(200)}},
-                ]
-            },
+            expression,
             [cast_func(i) for i in [6, 30, 200]],
             range_opts,
+            key_id=self.key1_id.as_uuid(),
         )
 
         # Case 3.
