@@ -116,7 +116,7 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
-    python -m pip install '.[encryption]'
+    python -m pip install --prefer-binary '.[encryption]'
 
     # Install libmongocrypt if necessary.
     if [ ! -d "libmongocrypt" ]; then
