@@ -22,6 +22,7 @@ MongoDB.
 from __future__ import annotations
 
 import datetime
+import logging
 import random
 import struct
 from io import BytesIO as _BytesIO
@@ -1005,21 +1006,22 @@ class _BulkWriteContext:
         client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
-        _debug_log(
-            _COMMAND_LOGGER,
-            clientId=client._topology_settings._topology_id,
-            message=_CommandStatusMessage.STARTED,
-            command=cmd,
-            commandName=next(iter(cmd)),
-            databaseName=self.db_name,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=self.conn.id,
-            serverConnectionId=self.conn.server_connection_id,
-            serverHost=self.conn.address[0],
-            serverPort=self.conn.address[1],
-            serviceId=self.conn.service_id,
-        )
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
         if self.publish:
             cmd = self._start(cmd, request_id, docs)
         try:
@@ -1030,6 +1032,92 @@ class _BulkWriteContext:
             else:
                 # Comply with APM spec.
                 reply = {"ok": 1}
+                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _COMMAND_LOGGER,
+                        clientId=client._topology_settings._topology_id,
+                        message=_CommandStatusMessage.SUCCEEDED,
+                        durationMS=duration,
+                        reply=reply,
+                        commandName=next(iter(cmd)),
+                        databaseName=self.db_name,
+                        requestId=request_id,
+                        operationId=request_id,
+                        driverConnectionId=self.conn.id,
+                        serverConnectionId=self.conn.server_connection_id,
+                        serverHost=self.conn.address[0],
+                        serverPort=self.conn.address[1],
+                        serviceId=self.conn.service_id,
+                    )
+            if self.publish:
+                self._succeed(request_id, reply, duration)
+        except Exception as exc:
+            duration = datetime.datetime.now() - self.start_time
+            if isinstance(exc, OperationFailure):
+                failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
+            elif isinstance(exc, NotPrimaryError):
+                failure = exc.details  # type: ignore[assignment]
+            else:
+                failure = _convert_exception(exc)
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
+            if self.publish:
+                assert self.start_time is not None
+                self._fail(request_id, failure, duration)
+            raise
+        finally:
+            self.start_time = datetime.datetime.now()
+        return result
+
+    @_handle_reauth
+    def write_command(
+        self,
+        cmd: MutableMapping[str, Any],
+        request_id: int,
+        msg: bytes,
+        docs: list[Mapping[str, Any]],
+        client: MongoClient,
+    ) -> dict[str, Any]:
+        """A proxy for SocketInfo.write_command that handles event publishing."""
+        cmd[self.field] = docs
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
+        if self.publish:
+            self._start(cmd, request_id, docs)
+        try:
+            reply = self.conn.write_command(request_id, msg, self.codec)
+            duration = datetime.datetime.now() - self.start_time
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
                     clientId=client._topology_settings._topology_id,
@@ -1050,109 +1138,28 @@ class _BulkWriteContext:
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
             duration = datetime.datetime.now() - self.start_time
-            if isinstance(exc, OperationFailure):
-                failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
-            elif isinstance(exc, NotPrimaryError):
-                failure = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            _debug_log(
-                _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
-                message=_CommandStatusMessage.FAILED,
-                durationMS=duration,
-                failure=failure,
-                commandName=next(iter(cmd)),
-                databaseName=self.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=self.conn.id,
-                serverConnectionId=self.conn.server_connection_id,
-                serverHost=self.conn.address[0],
-                serverPort=self.conn.address[1],
-                serviceId=self.conn.service_id,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
-            if self.publish:
-                assert self.start_time is not None
-                self._fail(request_id, failure, duration)
-            raise
-        finally:
-            self.start_time = datetime.datetime.now()
-        return result
-
-    @_handle_reauth
-    def write_command(
-        self,
-        cmd: MutableMapping[str, Any],
-        request_id: int,
-        msg: bytes,
-        docs: list[Mapping[str, Any]],
-        client: MongoClient,
-    ) -> dict[str, Any]:
-        """A proxy for SocketInfo.write_command that handles event publishing."""
-        cmd[self.field] = docs
-        _debug_log(
-            _COMMAND_LOGGER,
-            clientId=client._topology_settings._topology_id,
-            message=_CommandStatusMessage.STARTED,
-            command=cmd,
-            commandName=next(iter(cmd)),
-            databaseName=self.db_name,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=self.conn.id,
-            serverConnectionId=self.conn.server_connection_id,
-            serverHost=self.conn.address[0],
-            serverPort=self.conn.address[1],
-            serviceId=self.conn.service_id,
-        )
-        if self.publish:
-            self._start(cmd, request_id, docs)
-        try:
-            reply = self.conn.write_command(request_id, msg, self.codec)
-            duration = datetime.datetime.now() - self.start_time
-            _debug_log(
-                _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
-                message=_CommandStatusMessage.SUCCEEDED,
-                durationMS=duration,
-                reply=reply,
-                commandName=next(iter(cmd)),
-                databaseName=self.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=self.conn.id,
-                serverConnectionId=self.conn.server_connection_id,
-                serverHost=self.conn.address[0],
-                serverPort=self.conn.address[1],
-                serviceId=self.conn.service_id,
-            )
-            if self.publish:
-                self._succeed(request_id, reply, duration)
-        except Exception as exc:
-            duration = datetime.datetime.now() - self.start_time
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = _convert_exception(exc)
-            _debug_log(
-                _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
-                message=_CommandStatusMessage.FAILED,
-                durationMS=duration,
-                failure=failure,
-                commandName=next(iter(cmd)),
-                databaseName=self.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=self.conn.id,
-                serverConnectionId=self.conn.server_connection_id,
-                serverHost=self.conn.address[0],
-                serverPort=self.conn.address[1],
-                serviceId=self.conn.service_id,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
 
             if self.publish:
                 self._fail(request_id, failure, duration)

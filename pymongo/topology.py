@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import queue
 import random
@@ -261,15 +262,16 @@ class Topology:
         end_time = now + timeout
         logged_waiting = False
 
-        _debug_log(
-            _SERVER_SELECTION_LOGGER,
-            message=_ServerSelectionStatusMessage.STARTED,
-            selector=selector,
-            operation=operation,
-            operationId=operation_id,
-            topologyDescription=self.description,
-            clientId=self.description._topology_settings._topology_id,
-        )
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SERVER_SELECTION_LOGGER,
+                message=_ServerSelectionStatusMessage.STARTED,
+                selector=selector,
+                operation=operation,
+                operationId=operation_id,
+                topologyDescription=self.description,
+                clientId=self.description._topology_settings._topology_id,
+            )
 
         server_descriptions = self._description.apply_selector(
             selector, address, custom_selector=self._settings.server_selector
@@ -278,16 +280,17 @@ class Topology:
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
-                _debug_log(
-                    _SERVER_SELECTION_LOGGER,
-                    message=_ServerSelectionStatusMessage.FAILED,
-                    selector=selector,
-                    operation=operation,
-                    operationId=operation_id,
-                    topologyDescription=self.description,
-                    clientId=self.description._topology_settings._topology_id,
-                    failure=self._error_message(selector),
-                )
+                if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _SERVER_SELECTION_LOGGER,
+                        message=_ServerSelectionStatusMessage.FAILED,
+                        selector=selector,
+                        operation=operation,
+                        operationId=operation_id,
+                        topologyDescription=self.description,
+                        clientId=self.description._topology_settings._topology_id,
+                        failure=self._error_message(selector),
+                    )
                 raise ServerSelectionTimeoutError(
                     f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
@@ -363,17 +366,18 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        _debug_log(
-            _SERVER_SELECTION_LOGGER,
-            message=_ServerSelectionStatusMessage.SUCCEEDED,
-            selector=selector,
-            operation=operation,
-            operationId=operation_id,
-            topologyDescription=self.description,
-            clientId=self.description._topology_settings._topology_id,
-            serverHost=server.description.address[0],
-            serverPort=server.description.address[1],
-        )
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SERVER_SELECTION_LOGGER,
+                message=_ServerSelectionStatusMessage.SUCCEEDED,
+                selector=selector,
+                operation=operation,
+                operationId=operation_id,
+                topologyDescription=self.description,
+                clientId=self.description._topology_settings._topology_id,
+                serverHost=server.description.address[0],
+                serverPort=server.description.address[1],
+            )
         return server
 
     def select_server_by_address(
