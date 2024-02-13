@@ -31,6 +31,9 @@ everything you need to know to use **PyMongo**.
 :doc:`examples/type_hints`
   Using PyMongo with type hints.
 
+:doc:`examples/logging`
+  Using PyMongo's logging capabilities.
+
 :doc:`faq`
   Some questions that come up often.
 
