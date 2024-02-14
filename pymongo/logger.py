@@ -83,8 +83,7 @@ _VERBOSE_CONNECTION_ERROR_REASONS = {
 
 
 def _debug_log(logger: logging.Logger, **fields: Any) -> None:
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug(LogMessage(**fields))
+    logger.debug(LogMessage(**fields))
 
 
 def _verbose_connection_error_reason(reason: str) -> str:

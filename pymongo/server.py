@@ -15,6 +15,7 @@
 """Communicate with one MongoDB server in a topology."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
 
@@ -131,21 +132,22 @@ class Server:
             request_id, data, max_doc_size = self._split_message(message)
 
         cmd, dbn = operation.as_command(conn)
-        _debug_log(
-            _COMMAND_LOGGER,
-            clientId=client._topology_settings._topology_id,
-            message=_CommandStatusMessage.STARTED,
-            command=cmd,
-            commandName=next(iter(cmd)),
-            databaseName=dbn,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
-        )
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=dbn,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
+                serverHost=conn.address[0],
+                serverPort=conn.address[1],
+                serviceId=conn.service_id,
+            )
 
         if publish:
             cmd, dbn = operation.as_command(conn)
@@ -192,23 +194,24 @@ class Server:
                 failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = _convert_exception(exc)
-            _debug_log(
-                _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
-                message=_CommandStatusMessage.FAILED,
-                durationMS=duration,
-                failure=failure,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=dbn,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
+                    serverHost=conn.address[0],
+                    serverPort=conn.address[1],
+                    serviceId=conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
             if publish:
                 assert listeners is not None
                 listeners.publish_command_failure(
@@ -235,22 +238,23 @@ class Server:
                 res["cursor"]["firstBatch"] = docs
             else:
                 res["cursor"]["nextBatch"] = docs
-        _debug_log(
-            _COMMAND_LOGGER,
-            clientId=client._topology_settings._topology_id,
-            message=_CommandStatusMessage.SUCCEEDED,
-            durationMS=duration,
-            reply=res,
-            commandName=next(iter(cmd)),
-            databaseName=dbn,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
-        )
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.SUCCEEDED,
+                durationMS=duration,
+                reply=res,
+                commandName=next(iter(cmd)),
+                databaseName=dbn,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
+                serverHost=conn.address[0],
+                serverPort=conn.address[1],
+                serviceId=conn.service_id,
+            )
         if publish:
             assert listeners is not None
             listeners.publish_command_success(

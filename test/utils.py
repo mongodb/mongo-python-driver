@@ -995,7 +995,7 @@ def parse_read_preference(pref):
     mode_string = mode_string[:1].lower() + mode_string[1:]
     mode = read_preferences.read_pref_mode_from_name(mode_string)
     max_staleness = pref.get("maxStalenessSeconds", -1)
-    tag_sets = pref.get("tag_sets")
+    tag_sets = pref.get("tagSets") or pref.get("tag_sets")
     return read_preferences.make_read_preference(
         mode, tag_sets=tag_sets, max_staleness=max_staleness
     )
