@@ -927,26 +927,28 @@ static PyMethodDef _CMessageMethods[] = {
 
 #define INITERROR return -1;
 static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
-    if (!GETSTATE(m)) {
+    struct module_state *state = GETSTATE(m);
+    if (!state) {
         return 0;
     }
-    Py_VISIT(GETSTATE(m)->_cbson);
-    Py_VISIT(GETSTATE(m)->_max_bson_size_str);
-    Py_VISIT(GETSTATE(m)->_max_message_size_str);
-    Py_VISIT(GETSTATE(m)->_max_split_size_str);
-    Py_VISIT(GETSTATE(m)->_max_write_batch_size_str);
+    Py_VISIT(state->_cbson);
+    Py_VISIT(state->_max_bson_size_str);
+    Py_VISIT(state->_max_message_size_str);
+    Py_VISIT(state->_max_split_size_str);
+    Py_VISIT(state->_max_write_batch_size_str);
     return 0;
 }
 
 static int _cmessage_clear(PyObject *m) {
-    if (!GETSTATE(m)) {
+    struct module_state *state = GETSTATE(m);
+    if (!state) {
         return 0;
     }
-    Py_CLEAR(GETSTATE(m)->_cbson);
-    Py_CLEAR(GETSTATE(m)->_max_bson_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_message_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_split_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_write_batch_size_str);
+    Py_CLEAR(state->_cbson);
+    Py_CLEAR(state->_max_bson_size_str);
+    Py_CLEAR(state->_max_message_size_str);
+    Py_CLEAR(state->_max_split_size_str);
+    Py_CLEAR(state->_max_write_batch_size_str);
     return 0;
 }
 
