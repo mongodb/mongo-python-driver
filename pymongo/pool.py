@@ -1132,6 +1132,7 @@ class Connection:
                     serverPort=self.address[1],
                     driverConnectionId=self.id,
                     reason=_verbose_connection_error_reason(reason),
+                    error=reason,
                 )
 
     def _close_conn(self) -> None:
@@ -1981,7 +1982,7 @@ class Pool:
                             serverHost=self.address[0],
                             serverPort=self.address[1],
                             driverConnectionId=conn.id,
-                            reason="An error occurred while using the connection",
+                            reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                             error=ConnectionClosedReason.ERROR,
                         )
             else:

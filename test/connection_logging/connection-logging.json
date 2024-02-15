@@ -429,22 +429,6 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool cleared",
-                "serverHost": {
-                  "$$type": "string"
-                },
-                "serverPort": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
-                }
-              }
-            },
-            {
-              "level": "debug",
-              "component": "connection",
-              "data": {
                 "message": "Connection closed",
                 "driverConnectionId": {
                   "$$type": [
@@ -484,6 +468,22 @@
                 "reason": "An error occurred while trying to establish a new connection",
                 "error": {
                   "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool cleared",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
                 }
               }
             }
