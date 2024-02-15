@@ -177,11 +177,24 @@ jobs:
             python-version: '3.7'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
+        - name: Set cores to get stored in /cores
+          run: |
+            sudo mkdir /cores
+            sudo chmod 777 /cores
+            # Core filenames will be of the form executable.pid.timestamp:
+            sudo bash -c 'echo "/cores/%e.%p.%t" > /proc/sys/kernel/core_pattern'
         - name: Run Test
           shell: bash
           run: |
+            # Allow core dumps
+            ulimit -c unlimited
             cd sdist/test
             ls
             which python
             pip install -e ".[test]"
             pytest -v
+        - uses: actions/upload-artifact@v3
+          if: ${{ failure() }}
+          with:
+            name: cores
+            path: /cores
