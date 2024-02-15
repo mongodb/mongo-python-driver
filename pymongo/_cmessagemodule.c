@@ -927,6 +927,9 @@ static PyMethodDef _CMessageMethods[] = {
 
 #define INITERROR return -1;
 static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
+    if (!GETSTATE(m)) {
+        return 0;
+    }
     Py_VISIT(GETSTATE(m)->_cbson);
     Py_VISIT(GETSTATE(m)->_max_bson_size_str);
     Py_VISIT(GETSTATE(m)->_max_message_size_str);
@@ -936,6 +939,9 @@ static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
 }
 
 static int _cmessage_clear(PyObject *m) {
+    if (!GETSTATE(m)) {
+        return 0;
+    }
     Py_CLEAR(GETSTATE(m)->_cbson);
     Py_CLEAR(GETSTATE(m)->_max_bson_size_str);
     Py_CLEAR(GETSTATE(m)->_max_message_size_str);

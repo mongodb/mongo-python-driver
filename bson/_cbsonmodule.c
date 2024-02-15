@@ -3136,6 +3136,9 @@ static PyMethodDef _CBSONMethods[] = {
 
 #define INITERROR return -1;
 static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
+    if (!GETSTATE(m)) {
+        return 0;
+    }
     Py_VISIT(GETSTATE(m)->Binary);
     Py_VISIT(GETSTATE(m)->Code);
     Py_VISIT(GETSTATE(m)->ObjectId);
@@ -3176,6 +3179,9 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
 }
 
 static int _cbson_clear(PyObject *m) {
+    if (!GETSTATE(m)) {
+        return 0;
+    }
     Py_CLEAR(GETSTATE(m)->Binary);
     Py_CLEAR(GETSTATE(m)->Code);
     Py_CLEAR(GETSTATE(m)->ObjectId);
