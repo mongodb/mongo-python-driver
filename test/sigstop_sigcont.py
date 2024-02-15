@@ -57,6 +57,7 @@ class HeartbeatLogger(monitoring.ServerHeartbeatListener):
 
 
 def main(uri: str) -> None:
+    logging.info("TEST STARTED")
     heartbeat_logger = HeartbeatLogger()
     client = MongoClient(
         uri,
@@ -66,7 +67,6 @@ def main(uri: str) -> None:
         server_api=SERVER_API,
     )
     client.admin.command("ping")
-    logging.info("TEST STARTED")
     # test_sigstop_sigcont will SIGSTOP and SIGCONT this process in this loop.
     while True:
         try:

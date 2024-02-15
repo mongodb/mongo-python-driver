@@ -1764,6 +1764,7 @@ class TestClient(IntegrationTest):
         time.sleep(0.5)
         # Tell the script to exit gracefully.
         outs, _ = p.communicate(input=b"q\n", timeout=10)
+        print(f"ret: {p.wait()}")
         self.assertTrue(outs)
         log_output = outs.decode("utf-8")
         self.assertIn("TEST STARTED", log_output)
