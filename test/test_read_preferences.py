@@ -22,6 +22,8 @@ import random
 import sys
 from typing import Any
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
@@ -267,7 +269,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         not_used = data_members.difference(used)
         latencies = ", ".join(
             "%s: %sms" % (server.description.address, server.description.round_trip_time)
-            for server in c._get_topology().select_servers(readable_server_selector)
+            for server in c._get_topology().select_servers(readable_server_selector, _Op.TEST)
         )
 
         self.assertFalse(
@@ -285,8 +287,8 @@ class ReadPrefTester(MongoClient):
         super().__init__(*args, **client_options)
 
     @contextlib.contextmanager
-    def _conn_for_reads(self, read_preference, session):
-        context = super()._conn_for_reads(read_preference, session)
+    def _conn_for_reads(self, read_preference, session, operation):
+        context = super()._conn_for_reads(read_preference, session, operation)
         with context as (conn, read_preference):
             self.record_a_read(conn.address)
             yield conn, read_preference
@@ -299,7 +301,7 @@ class ReadPrefTester(MongoClient):
             yield conn, read_preference
 
     def record_a_read(self, address):
-        server = self._get_topology().select_server_by_address(address, 0)
+        server = self._get_topology().select_server_by_address(address, _Op.TEST, 0)
         self.has_read_from.add(server)
 
 

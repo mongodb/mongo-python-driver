@@ -36,6 +36,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
+from pymongo.operations import _Op
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 # The change streams spec considers the following server errors from the
@@ -244,7 +245,10 @@ class ChangeStream(Generic[_DocumentType]):
             comment=self._comment,
         )
         return self._client._retryable_read(
-            cmd.get_cursor, self._target._read_preference_for(session), session
+            cmd.get_cursor,
+            self._target._read_preference_for(session),
+            session,
+            operation=_Op.AGGREGATE,
         )
 
     def _create_cursor(self) -> CommandCursor:

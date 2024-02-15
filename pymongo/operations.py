@@ -15,6 +15,7 @@
 """Operation class definitions."""
 from __future__ import annotations
 
+import enum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -42,6 +43,37 @@ _IndexList = Union[
     Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
 ]
 _IndexKeyHint = Union[str, _IndexList]
+
+
+class _Op(str, enum.Enum):
+    ABORT = "abortTransaction"
+    AGGREGATE = "aggregate"
+    COMMIT = "commitTransaction"
+    COUNT = "count"
+    CREATE = "create"
+    CREATE_INDEXES = "createIndexes"
+    CREATE_SEARCH_INDEXES = "createSearchIndexes"
+    DELETE = "delete"
+    DISTINCT = "distinct"
+    DROP = "drop"
+    DROP_DATABASE = "dropDatabase"
+    DROP_INDEXES = "dropIndexes"
+    DROP_SEARCH_INDEXES = "dropSearchIndexes"
+    END_SESSIONS = "endSessions"
+    FIND_AND_MODIFY = "findAndModify"
+    FIND = "find"
+    INSERT = "insert"
+    LIST_COLLECTIONS = "listCollections"
+    LIST_INDEXES = "listIndexes"
+    LIST_SEARCH_INDEX = "listSearchIndexes"
+    LIST_DATABASES = "listDatabases"
+    UPDATE = "update"
+    UPDATE_INDEX = "updateIndex"
+    UPDATE_SEARCH_INDEX = "updateSearchIndex"
+    RENAME = "rename"
+    GETMORE = "getMore"
+    KILL_CURSORS = "killCursors"
+    TEST = "testOperation"
 
 
 class InsertOne(Generic[_DocumentType]):

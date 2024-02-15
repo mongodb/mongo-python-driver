@@ -54,6 +54,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.operations import _Op
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -296,7 +297,7 @@ class MockConnection:
 
 
 class MockPool:
-    def __init__(self, address, options, handshake=True):
+    def __init__(self, address, options, handshake=True, client_id=None):
         self.gen = _PoolGeneration()
         self._lock = _create_lock()
         self.opts = options
@@ -867,13 +868,16 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology.select_server(writable_server_selector)
+    server = topology.select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
 def get_pools(client):
     """Get all pools."""
-    return [server.pool for server in client._get_topology().select_servers(any_server_selector)]
+    return [
+        server.pool
+        for server in client._get_topology().select_servers(any_server_selector, _Op.TEST)
+    ]
 
 
 # Constants for run_threads and lazy_client_trial.
@@ -991,7 +995,7 @@ def parse_read_preference(pref):
     mode_string = mode_string[:1].lower() + mode_string[1:]
     mode = read_preferences.read_pref_mode_from_name(mode_string)
     max_staleness = pref.get("maxStalenessSeconds", -1)
-    tag_sets = pref.get("tag_sets")
+    tag_sets = pref.get("tagSets") or pref.get("tag_sets")
     return read_preferences.make_read_preference(
         mode, tag_sets=tag_sets, max_staleness=max_staleness
     )

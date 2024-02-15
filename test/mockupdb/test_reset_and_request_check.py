@@ -22,6 +22,7 @@ from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+from pymongo.operations import _Op
 from pymongo.server_type import SERVER_TYPE
 
 
@@ -68,7 +69,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         # Server is Unknown.
         topology = self.client._topology
         with self.assertRaises(ConnectionFailure):
-            topology.select_server_by_address(self.server.address, 0)
+            topology.select_server_by_address(self.server.address, _Op.TEST, 0)
 
         time.sleep(0.5)
         after = time.time()
@@ -95,7 +96,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
 
         # Server is *not* Unknown.
         topology = self.client._topology
-        server = topology.select_server_by_address(self.server.address, 0)
+        server = topology.select_server_by_address(self.server.address, _Op.TEST, 0)
         assert server is not None
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 
@@ -117,7 +118,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
 
         # Server is rediscovered.
         topology = self.client._topology
-        server = topology.select_server_by_address(self.server.address, 0)
+        server = topology.select_server_by_address(self.server.address, _Op.TEST, 0)
         assert server is not None
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 

@@ -21,6 +21,7 @@ import sys
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
+from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology
@@ -158,7 +159,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         # Invoke server selection and assert no filtering based on latency
         # prior to custom server selection logic kicking in.
-        server = topology.select_server(ReadPreference.NEAREST)
+        server = topology.select_server(ReadPreference.NEAREST, _Op.TEST)
         assert selector.selection is not None
         self.assertEqual(len(selector.selection), len(topology.description.server_descriptions()))
 
@@ -193,7 +194,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         # Invoke server selection and assert no calls to our custom selector.
         with self.assertRaisesRegex(ServerSelectionTimeoutError, "No primary available for writes"):
-            topology.select_server(writable_server_selector, server_selection_timeout=0.1)
+            topology.select_server(writable_server_selector, _Op.TEST, server_selection_timeout=0.1)
         self.assertEqual(selector.call_count, 0)
 
 
