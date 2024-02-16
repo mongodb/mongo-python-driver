@@ -987,6 +987,16 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x07;
             return 1;
         }
+    case 9:
+        {
+            /* DatetimeMS */
+            long long millis;
+            if (!millis_from_datetime_ms(value, &millis)) {
+                return 0;
+            }
+            *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
+            return buffer_write_int64(buffer, (int64_t)millis);
+        }
     case 11:
         {
             /* Regex */
@@ -1279,13 +1289,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             Py_DECREF(result);
         } else {
             millis = millis_from_datetime(value);
-        }
-        *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
-        return buffer_write_int64(buffer, (int64_t)millis);
-    } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMS)) {
-        long long millis;
-        if (!millis_from_datetime_ms(value, &millis)) {
-            return 0;
         }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
