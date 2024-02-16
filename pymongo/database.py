@@ -666,7 +666,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
 
         .. _change streams specification:
-            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
         return DatabaseChangeStream(
             self,
