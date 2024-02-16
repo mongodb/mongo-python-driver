@@ -858,9 +858,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     int retval;
     int is_list;
     /*
-     * Don't use PyObject_IsInstance for our custom types. It causes
-     * problems with python sub interpreters. Our custom types should
-     * have a _type_marker attribute, which we can switch on instead.
+     * Use _type_marker attribute instead of PyObject_IsInstance for better perf.
      */
     long type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
@@ -1246,22 +1244,14 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, state->REType)) {
         return _write_regex_to_buffer(buffer, type_byte, value, state->_flags_str, state->_pattern_str);
-    }
-
-    /*
-     * Try Mapping and UUID last since we have to import
-     * them if we're in a sub-interpreter.
-     */
-    if (PyObject_IsInstance(value, state->Mapping)) {
+    } else if (PyObject_IsInstance(value, state->Mapping)) {
         /* PyObject_IsInstance returns -1 on error */
         if (PyErr_Occurred()) {
             return 0;
         }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x03;
         return write_dict(self, buffer, value, check_keys, options, 0);
-    }
-
-    if (PyObject_IsInstance(value, state->UUID)) {
+    } else if (PyObject_IsInstance(value, state->UUID)) {
         PyObject* binary_value = NULL;
         PyObject *uuid_rep_obj = NULL;
         int result;
