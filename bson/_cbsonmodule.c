@@ -455,49 +455,6 @@ static int write_string(buffer_t buffer, PyObject* py_string) {
     return 1;
 }
 
-/*
- * Are we in the main interpreter or a sub-interpreter?
- * Useful for deciding if we can use cached pure python
- * types in mod_wsgi.
- */
-static int
-_in_main_interpreter(void) {
-    static PyInterpreterState* main_interpreter = NULL;
-    PyInterpreterState* interpreter;
-
-    if (main_interpreter == NULL) {
-        interpreter = PyInterpreterState_Head();
-
-        while (PyInterpreterState_Next(interpreter))
-            interpreter = PyInterpreterState_Next(interpreter);
-
-        main_interpreter = interpreter;
-    }
-
-    return (main_interpreter == PyThreadState_Get()->interp);
-}
-
-/*
- * Get a reference to a pure python type. If we are in the
- * main interpreter return the cached object, otherwise import
- * the object we need and return it instead.
- */
-static PyObject*
-_get_object(PyObject* object, char* module_name, char* object_name) {
-    if (_in_main_interpreter()) {
-        Py_XINCREF(object);
-        return object;
-    } else {
-        PyObject* imported = NULL;
-        PyObject* module = PyImport_ImportModule(module_name);
-        if (!module)
-            return NULL;
-        imported = PyObject_GetAttrString(module, object_name);
-        Py_DECREF(module);
-        return imported;
-    }
-}
-
 /* Load a Python object to cache.
  *
  * Returns non-zero on failure. */
@@ -897,10 +854,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     unsigned char in_custom_call,
                                     unsigned char in_fallback_call) {
     struct module_state *state = GETSTATE(self);
-    PyObject* mapping_type;
     PyObject* new_value = NULL;
     int retval;
-    PyObject* uuid_type;
     int is_list;
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
@@ -1297,9 +1252,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      * Try Mapping and UUID last since we have to import
      * them if we're in a sub-interpreter.
      */
-    mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
-    if (mapping_type && PyObject_IsInstance(value, mapping_type)) {
-        Py_DECREF(mapping_type);
+    if (PyObject_IsInstance(value, state->Mapping)) {
         /* PyObject_IsInstance returns -1 on error */
         if (PyErr_Occurred()) {
             return 0;
@@ -1308,32 +1261,23 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         return write_dict(self, buffer, value, check_keys, options, 0);
     }
 
-    uuid_type = _get_object(state->UUID, "uuid", "UUID");
-    if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
-        PyObject* binary_type = NULL;
+    if (PyObject_IsInstance(value, state->UUID)) {
         PyObject* binary_value = NULL;
         PyObject *uuid_rep_obj = NULL;
         int result;
 
-        Py_DECREF(uuid_type);
         /* PyObject_IsInstance returns -1 on error */
         if (PyErr_Occurred()) {
-            return 0;
-        }
-
-        binary_type = _get_object(state->Binary, "bson", "Binary");
-        if (binary_type == NULL) {
             return 0;
         }
 
         if (!(uuid_rep_obj = PyLong_FromLong(options->uuid_rep))) {
             return 0;
         }
-        binary_value = PyObject_CallMethodObjArgs(binary_type, state->_from_uuid_str, value, uuid_rep_obj, NULL);
+        binary_value = PyObject_CallMethodObjArgs(state->Binary, state->_from_uuid_str, value, uuid_rep_obj, NULL);
         Py_DECREF(uuid_rep_obj);
 
         if (binary_value == NULL) {
-            Py_DECREF(binary_type);
             return 0;
         }
 
@@ -1342,12 +1286,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                           check_keys, options,
                                           in_custom_call,
                                           in_fallback_call);
-        Py_DECREF(binary_type);
         Py_DECREF(binary_value);
         return result;
     }
-    Py_XDECREF(mapping_type);
-    Py_XDECREF(uuid_type);
 
     /* Try a custom encoder if one is provided and we have not already
      * attempted to use a type encoder. */
@@ -1565,7 +1506,6 @@ int write_dict(PyObject* self, buffer_t buffer,
     int length;
     int length_location;
     struct module_state *state = GETSTATE(self);
-    PyObject* mapping_type;
     long type_marker;
     int is_dict = PyDict_Check(dict);
 
@@ -1580,39 +1520,33 @@ int write_dict(PyObject* self, buffer_t buffer,
             return write_raw_doc(buffer, dict, state->_raw_str);
         }
 
-        mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
-
-        if (mapping_type) {
-            if (!PyObject_IsInstance(dict, mapping_type)) {
-                PyObject* repr;
-                Py_DECREF(mapping_type);
-                if ((repr = PyObject_Repr(dict))) {
-                    PyObject* errmsg = PyUnicode_FromString(
-                        "encoder expected a mapping type but got: ");
-                    if (errmsg) {
-                        PyObject* error = PyUnicode_Concat(errmsg, repr);
-                        if (error) {
-                            PyErr_SetObject(PyExc_TypeError, error);
-                            Py_DECREF(error);
-                        }
-                        Py_DECREF(errmsg);
-                        Py_DECREF(repr);
+        if (!PyObject_IsInstance(dict, state->Mapping)) {
+            PyObject* repr;
+            if ((repr = PyObject_Repr(dict))) {
+                PyObject* errmsg = PyUnicode_FromString(
+                    "encoder expected a mapping type but got: ");
+                if (errmsg) {
+                    PyObject* error = PyUnicode_Concat(errmsg, repr);
+                    if (error) {
+                        PyErr_SetObject(PyExc_TypeError, error);
+                        Py_DECREF(error);
                     }
-                    else {
-                        Py_DECREF(repr);
-                    }
-                } else {
-                    PyErr_SetString(PyExc_TypeError,
-                                    "encoder expected a mapping type");
+                    Py_DECREF(errmsg);
+                    Py_DECREF(repr);
                 }
+                else {
+                    Py_DECREF(repr);
+                }
+            } else {
+                PyErr_SetString(PyExc_TypeError,
+                                "encoder expected a mapping type");
+            }
 
-                return 0;
-            }
-            Py_DECREF(mapping_type);
-            /* PyObject_IsInstance returns -1 on error */
-            if (PyErr_Occurred()) {
-                return 0;
-            }
+            return 0;
+        }
+        /* PyObject_IsInstance returns -1 on error */
+        if (PyErr_Occurred()) {
+            return 0;
         }
     }
 
@@ -1757,8 +1691,6 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
  */
 static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     struct module_state *state = GETSTATE(self);
-    PyObject* dbref = NULL;
-    PyObject* dbref_type = NULL;
     PyObject* ref = NULL;
     PyObject* id = NULL;
     PyObject* database = NULL;
@@ -1801,16 +1733,12 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
             PyMapping_DelItem(value, state->_dollar_db_str);
         }
 
-        if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
-            dbref = PyObject_CallFunctionObjArgs(dbref_type, ref, id, database, value, NULL);
-            Py_DECREF(value);
-            ret = dbref;
-        }
+        ret = PyObject_CallFunctionObjArgs(state->DBRef, ref, id, database, value, NULL);
+        Py_DECREF(value);
     } else {
         ret = value;
     }
 invalid:
-    Py_XDECREF(dbref_type);
     Py_XDECREF(ref);
     Py_XDECREF(id);
     Py_XDECREF(database);
@@ -1970,7 +1898,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         {
             PyObject* data;
             PyObject* st;
-            PyObject* type_to_create;
             uint32_t length, length2;
             unsigned char subtype;
 
@@ -2011,7 +1938,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             /* Encode as UUID or Binary based on options->uuid_rep */
             if (subtype == 3 || subtype == 4) {
-                PyObject* binary_type = NULL;
                 PyObject* binary_value = NULL;
                 char uuid_rep = options->uuid_rep;
 
@@ -2020,12 +1946,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto uuiderror;
                 }
 
-                binary_type = _get_object(state->Binary, "bson", "Binary");
-                if (binary_type == NULL) {
-                    goto uuiderror;
-                }
-
-                binary_value = PyObject_CallFunction(binary_type, "(Oi)", data, subtype);
+                binary_value = PyObject_CallFunction(state->Binary, "(Oi)", data, subtype);
                 if (binary_value == NULL) {
                     goto uuiderror;
                 }
@@ -2045,7 +1966,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 }
 
             uuiderror:
-                Py_XDECREF(binary_type);
                 Py_XDECREF(binary_value);
                 Py_DECREF(data);
                 if (!value) {
@@ -2060,10 +1980,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 Py_DECREF(data);
                 goto invalid;
             }
-            if ((type_to_create = _get_object(state->Binary, "bson.binary", "Binary"))) {
-                value = PyObject_CallFunctionObjArgs(type_to_create, data, st, NULL);
-                Py_DECREF(type_to_create);
-            }
+            value = PyObject_CallFunctionObjArgs(state->Binary, data, st, NULL);
             Py_DECREF(st);
             Py_DECREF(data);
             if (!value) {
@@ -2081,15 +1998,10 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 7:
         {
-            PyObject* objectid_type;
             if (max < 12) {
                 goto invalid;
             }
-            if ((objectid_type = _get_object(state->ObjectId, "bson.objectid", "ObjectId"))) {
-                value = PyObject_CallFunction(objectid_type, "y#",
-                                              buffer + *position, (Py_ssize_t)12);
-                Py_DECREF(objectid_type);
-            }
+            value = PyObject_CallFunction(state->ObjectId, "y#", buffer + *position, (Py_ssize_t)12);
             *position += 12;
             break;
         }
@@ -2113,7 +2025,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 9:
         {
-            PyObject* utc_type;
             PyObject* naive;
             PyObject* replace;
             PyObject* args;
@@ -2137,35 +2048,23 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
 
             if (dt_clamp || dt_auto){
-                PyObject *min_millis_fn = _get_object(state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms");
-                PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms");
                 PyObject *min_millis_fn_res;
                 PyObject *max_millis_fn_res;
                 int64_t min_millis;
                 int64_t max_millis;
 
-                if (min_millis_fn == NULL || max_millis_fn == NULL) {
-                    Py_XDECREF(min_millis_fn);
-                    Py_XDECREF(max_millis_fn);
-                    goto invalid;
-                }
-
                 if (options->tz_aware){
                     PyObject* tzinfo = options->tzinfo;
                     if (tzinfo == Py_None) {
                         // Default to UTC.
-                        utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
-                        tzinfo = utc_type;
+                        tzinfo = state->UTC;
                     }
-                    min_millis_fn_res = PyObject_CallFunctionObjArgs(min_millis_fn, tzinfo, NULL);
-                    max_millis_fn_res = PyObject_CallFunctionObjArgs(max_millis_fn, tzinfo, NULL);
+                    min_millis_fn_res = PyObject_CallFunctionObjArgs(state->_min_datetime_ms, tzinfo, NULL);
+                    max_millis_fn_res = PyObject_CallFunctionObjArgs(state->_max_datetime_ms, tzinfo, NULL);
                 } else {
-                    min_millis_fn_res = PyObject_CallObject(min_millis_fn, NULL);
-                    max_millis_fn_res = PyObject_CallObject(max_millis_fn, NULL);
+                    min_millis_fn_res = PyObject_CallObject(state->_min_datetime_ms, NULL);
+                    max_millis_fn_res = PyObject_CallObject(state->_max_datetime_ms, NULL);
                 }
-
-                Py_DECREF(min_millis_fn);
-                Py_DECREF(max_millis_fn);
 
                 if (!min_millis_fn_res || !max_millis_fn_res){
                     Py_XDECREF(min_millis_fn_res);
@@ -2222,15 +2121,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 Py_DECREF(args);
                 goto invalid;
             }
-            utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
-            if (!utc_type || PyDict_SetItem(kwargs, state->_tzinfo_str, utc_type) == -1) {
+            if (PyDict_SetItem(kwargs, state->_tzinfo_str, state->UTC) == -1) {
                 Py_DECREF(replace);
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
-                Py_XDECREF(utc_type);
                 goto invalid;
             }
-            Py_XDECREF(utc_type);
             value = PyObject_Call(replace, args, kwargs);
             if (!value) {
                 Py_DECREF(replace);
@@ -2260,7 +2156,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 11:
         {
-            PyObject* regex_class;
             PyObject* pattern;
             int flags;
             size_t flags_length, i;
@@ -2303,12 +2198,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             *position += (unsigned)flags_length + 1;
 
-            regex_class = _get_object(state->Regex, "bson.regex", "Regex");
-            if (regex_class) {
-                value = PyObject_CallFunction(regex_class,
-                                              "Oi", pattern, flags);
-                Py_DECREF(regex_class);
-            }
+            value = PyObject_CallFunction(state->Regex, "Oi", pattern, flags);
             Py_DECREF(pattern);
             break;
         }
@@ -2317,8 +2207,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             uint32_t coll_length;
             PyObject* collection;
             PyObject* id = NULL;
-            PyObject* objectid_type;
-            PyObject* dbref_type;
 
             if (max < 4) {
                 goto invalid;
@@ -2343,20 +2231,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             *position += coll_length;
 
-            if ((objectid_type = _get_object(state->ObjectId, "bson.objectid", "ObjectId"))) {
-                id = PyObject_CallFunction(objectid_type, "y#",
-                                           buffer + *position, (Py_ssize_t)12);
-                Py_DECREF(objectid_type);
-            }
+            id = PyObject_CallFunction(state->ObjectId, "y#", buffer + *position, (Py_ssize_t)12);
             if (!id) {
                 Py_DECREF(collection);
                 goto invalid;
             }
             *position += 12;
-            if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
-                value = PyObject_CallFunctionObjArgs(dbref_type, collection, id, NULL);
-                Py_DECREF(dbref_type);
-            }
+            value = PyObject_CallFunctionObjArgs(state->DBRef, collection, id, NULL);
             Py_DECREF(collection);
             Py_DECREF(id);
             break;
@@ -2364,7 +2245,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     case 13:
         {
             PyObject* code;
-            PyObject* code_type;
             uint32_t value_length;
             if (max < 4) {
                 goto invalid;
@@ -2387,10 +2267,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
             *position += value_length;
-            if ((code_type = _get_object(state->Code, "bson.code", "Code"))) {
-                value = PyObject_CallFunctionObjArgs(code_type, code, NULL, NULL);
-                Py_DECREF(code_type);
-            }
+            value = PyObject_CallFunctionObjArgs(state->Code, code, NULL, NULL);
             Py_DECREF(code);
             break;
         }
@@ -2401,7 +2278,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             uint32_t scope_size;
             PyObject* code;
             PyObject* scope;
-            PyObject* code_type;
 
             if (max < 8) {
                 goto invalid;
@@ -2458,10 +2334,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             *position += scope_size;
 
-            if ((code_type = _get_object(state->Code, "bson.code", "Code"))) {
-                value = PyObject_CallFunctionObjArgs(code_type, code, scope, NULL);
-                Py_DECREF(code_type);
-            }
+            value = PyObject_CallFunctionObjArgs(state->Code, code, scope, NULL);
             Py_DECREF(code);
             Py_DECREF(scope);
             break;
@@ -2484,7 +2357,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     case 17:
         {
             uint32_t time, inc;
-            PyObject* timestamp_type;
             if (max < 8) {
                 goto invalid;
             }
@@ -2492,68 +2364,44 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             memcpy(&time, buffer + *position + 4, 4);
             inc = BSON_UINT32_FROM_LE(inc);
             time = BSON_UINT32_FROM_LE(time);
-            if ((timestamp_type = _get_object(state->Timestamp, "bson.timestamp", "Timestamp"))) {
-                value = PyObject_CallFunction(timestamp_type, "II", time, inc);
-                Py_DECREF(timestamp_type);
-            }
+            value = PyObject_CallFunction(state->Timestamp, "II", time, inc);
             *position += 8;
             break;
         }
     case 18:
         {
             int64_t ll;
-            PyObject* bson_int64_type = _get_object(state->BSONInt64,
-                                                    "bson.int64", "Int64");
-            if (!bson_int64_type)
-                goto invalid;
             if (max < 8) {
-                Py_DECREF(bson_int64_type);
                 goto invalid;
             }
             memcpy(&ll, buffer + *position, 8);
             ll = (int64_t)BSON_UINT64_FROM_LE(ll);
-            value = PyObject_CallFunction(bson_int64_type, "L", ll);
+            value = PyObject_CallFunction(state->BSONInt64, "L", ll);
             *position += 8;
-            Py_DECREF(bson_int64_type);
             break;
         }
     case 19:
         {
-            PyObject* dec128;
             if (max < 16) {
                 goto invalid;
             }
-            if ((dec128 = _get_object(state->Decimal128,
-                                      "bson.decimal128",
-                                      "Decimal128"))) {
-                PyObject *_bytes_obj = PyBytes_FromStringAndSize(buffer + *position, (Py_ssize_t)16);
-                if (!_bytes_obj) {
-                    Py_DECREF(dec128);
-                    goto invalid;
-                }
-                value = PyObject_CallMethodObjArgs(dec128, state->_from_bid_str, _bytes_obj, NULL);
-                Py_DECREF(dec128);
-                Py_DECREF(_bytes_obj);
+            PyObject *_bytes_obj = PyBytes_FromStringAndSize(buffer + *position, (Py_ssize_t)16);
+            if (!_bytes_obj) {
+                goto invalid;
             }
+            value = PyObject_CallMethodObjArgs(state->Decimal128, state->_from_bid_str, _bytes_obj, NULL);
+            Py_DECREF(_bytes_obj);
             *position += 16;
             break;
         }
     case 255:
         {
-            PyObject* minkey_type = _get_object(state->MinKey, "bson.min_key", "MinKey");
-            if (!minkey_type)
-                goto invalid;
-            value = PyObject_CallFunctionObjArgs(minkey_type, NULL);
-            Py_DECREF(minkey_type);
+            value = PyObject_CallFunctionObjArgs(state->MinKey, NULL);
             break;
         }
     case 127:
         {
-            PyObject* maxkey_type = _get_object(state->MaxKey, "bson.max_key", "MaxKey");
-            if (!maxkey_type)
-                goto invalid;
-            value = PyObject_CallFunctionObjArgs(maxkey_type, NULL);
-            Py_DECREF(maxkey_type);
+            value = PyObject_CallFunctionObjArgs(state->MaxKey, NULL);
             break;
         }
     default:
