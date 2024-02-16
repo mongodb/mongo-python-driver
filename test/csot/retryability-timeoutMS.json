@@ -11,8 +11,7 @@
     {
       "minServerVersion": "4.2",
       "topologies": [
-        "replicaset",
-        "sharded-replicaset"
+        "sharded"
       ]
     }
   ],
@@ -109,6 +108,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - insertOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -199,6 +203,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - insertOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -328,6 +337,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - insertMany on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -420,6 +434,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - insertMany on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -547,6 +566,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - deleteOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -635,6 +659,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - deleteOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -761,6 +790,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - replaceOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -852,6 +886,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - replaceOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -983,6 +1022,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - updateOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1076,6 +1120,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - updateOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1204,6 +1253,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - findOneAndDelete on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1292,6 +1346,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - findOneAndDelete on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1418,6 +1477,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - findOneAndReplace on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1509,6 +1573,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - findOneAndReplace on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1640,6 +1709,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - findOneAndUpdate on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1733,6 +1807,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - findOneAndUpdate on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1869,6 +1948,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - bulkWrite on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -1965,6 +2049,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - bulkWrite on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2096,6 +2185,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - listDatabases on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2184,6 +2278,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - listDatabases on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2304,6 +2403,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - listDatabaseNames on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2391,6 +2495,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - listDatabaseNames on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2513,6 +2622,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - createChangeStream on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2601,6 +2715,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - createChangeStream on client",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2731,6 +2850,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - aggregate on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2826,6 +2950,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - aggregate on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -2956,6 +3085,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - listCollections on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3044,6 +3178,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - listCollections on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3167,6 +3306,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - listCollectionNames on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3255,6 +3399,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - listCollectionNames on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3378,6 +3527,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - createChangeStream on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3466,6 +3620,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - createChangeStream on database",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3589,6 +3748,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - aggregate on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3677,6 +3841,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - aggregate on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3800,6 +3969,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - count on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -3888,6 +4062,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - count on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4011,6 +4190,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - countDocuments on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4099,6 +4283,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - countDocuments on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4219,6 +4408,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - estimatedDocumentCount on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4306,6 +4500,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - estimatedDocumentCount on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4429,6 +4628,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - distinct on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4518,6 +4722,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - distinct on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4642,6 +4851,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - find on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4730,6 +4944,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - find on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4853,6 +5072,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - findOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -4941,6 +5165,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - findOne on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -5061,6 +5290,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - listIndexes on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -5148,6 +5382,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - listIndexes on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -5270,6 +5509,11 @@
     },
     {
       "description": "operation is retried multiple times for non-zero timeoutMS - createChangeStream on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
@@ -5358,6 +5602,11 @@
     },
     {
       "description": "operation is retried multiple times if timeoutMS is zero - createChangeStream on collection",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.3.1"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",
