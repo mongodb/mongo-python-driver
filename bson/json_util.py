@@ -110,6 +110,7 @@ import uuid
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -137,7 +138,7 @@ from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
-from bson.son import RE_TYPE, SON
+from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
@@ -235,6 +236,8 @@ if TYPE_CHECKING:
 else:
     _BASE_CLASS = CodecOptions
 
+_INT32_MAX = 2**31
+
 
 class JSONOptions(_BASE_CLASS):
     json_mode: int
@@ -246,33 +249,32 @@ class JSONOptions(_BASE_CLASS):
     def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
-        :Parameters:
-          - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
+        :param strict_number_long: If ``True``, :class:`~bson.int64.Int64` objects
             are encoded to MongoDB Extended JSON's *Strict mode* type
             `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
             will be encoded as an `int`. Defaults to ``False``.
-          - `datetime_representation`: The representation to use when encoding
+        :param datetime_representation: The representation to use when encoding
             instances of :class:`datetime.datetime`. Defaults to
             :const:`~DatetimeRepresentation.LEGACY`.
-          - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
+        :param strict_uuid: If ``True``, :class:`uuid.UUID` object are encoded to
             MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
             will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
-          - `json_mode`: The :class:`JSONMode` to use when encoding BSON types to
+        :param json_mode: The :class:`JSONMode` to use when encoding BSON types to
             Extended JSON. Defaults to :const:`~JSONMode.LEGACY`.
-          - `document_class`: BSON documents returned by :func:`loads` will be
+        :param document_class: BSON documents returned by :func:`loads` will be
             decoded to an instance of this class. Must be a subclass of
             :class:`collections.MutableMapping`. Defaults to :class:`dict`.
-          - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
+        :param uuid_representation: The :class:`~bson.binary.UuidRepresentation`
             to use when encoding and decoding instances of :class:`uuid.UUID`.
             Defaults to :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
-          - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
+        :param tz_aware: If ``True``, MongoDB Extended JSON's *Strict mode* type
             `Date` will be decoded to timezone aware instances of
             :class:`datetime.datetime`. Otherwise they will be naive. Defaults
             to ``False``.
-          - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
+        :param tzinfo: A :class:`datetime.tzinfo` subclass that specifies the
             timezone from which :class:`~datetime.datetime` objects should be
             decoded. Defaults to :const:`~bson.tz_util.utc`.
-          - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        :param datetime_conversion: Specifies how UTC datetimes should be decoded
             within BSON. Valid options include 'datetime_ms' to return as a
             DatetimeMS, 'datetime' to return as a datetime.datetime and
             raising a ValueError for out-of-range values, 'datetime_auto' to
@@ -280,8 +282,8 @@ class JSONOptions(_BASE_CLASS):
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
             :ref:`handling-out-of-range-datetimes` for details.
-          - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
-          - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
+        :param args: arguments to :class:`~bson.codec_options.CodecOptions`
+        :param kwargs: arguments to :class:`~bson.codec_options.CodecOptions`
 
         .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
 
@@ -456,8 +458,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
 
-    :Parameters:
-      - `json_options`: A :class:`JSONOptions` instance used to modify the
+    :param json_options: A :class:`JSONOptions` instance used to modify the
         encoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
 
@@ -480,8 +481,7 @@ def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     Raises ``TypeError``, ``ValueError``, ``KeyError``, or
     :exc:`~bson.errors.InvalidId` on invalid MongoDB Extended JSON.
 
-    :Parameters:
-      - `json_options`: A :class:`JSONOptions` instance used to modify the
+    :param json_options: A :class:`JSONOptions` instance used to modify the
         decoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
 
@@ -499,7 +499,11 @@ def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs, json_options)
+    # Execution time optimization if json_options.document_class is dict
+    if json_options.document_class is dict:
+        kwargs["object_hook"] = lambda obj: object_hook(obj, json_options)
+    else:
+        kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs, json_options)
     return json.loads(s, *args, **kwargs)
 
 
@@ -508,7 +512,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
     converted into json.
     """
     if hasattr(obj, "items"):
-        return SON(((k, _json_convert(v, json_options)) for k, v in obj.items()))
+        return {k: _json_convert(v, json_options) for k, v in obj.items()}
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
         return [_json_convert(v, json_options) for v in obj]
     try:
@@ -524,54 +528,17 @@ def object_pairs_hook(
 
 
 def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    if "$oid" in dct:
-        return _parse_canonical_oid(dct)
-    if (
-        isinstance(dct.get("$ref"), str)
-        and "$id" in dct
-        and isinstance(dct.get("$db"), (str, type(None)))
-    ):
-        return _parse_canonical_dbref(dct)
-    if "$date" in dct:
-        return _parse_canonical_datetime(dct, json_options)
-    if "$regex" in dct:
-        return _parse_legacy_regex(dct)
-    if "$minKey" in dct:
-        return _parse_canonical_minkey(dct)
-    if "$maxKey" in dct:
-        return _parse_canonical_maxkey(dct)
-    if "$binary" in dct:
-        if "$type" in dct:
-            return _parse_legacy_binary(dct, json_options)
-        else:
-            return _parse_canonical_binary(dct, json_options)
-    if "$code" in dct:
-        return _parse_canonical_code(dct)
-    if "$uuid" in dct:
-        return _parse_legacy_uuid(dct, json_options)
-    if "$undefined" in dct:
-        return None
-    if "$numberLong" in dct:
-        return _parse_canonical_int64(dct)
-    if "$timestamp" in dct:
-        tsp = dct["$timestamp"]
-        return Timestamp(tsp["t"], tsp["i"])
-    if "$numberDecimal" in dct:
-        return _parse_canonical_decimal128(dct)
-    if "$dbPointer" in dct:
-        return _parse_canonical_dbpointer(dct)
-    if "$regularExpression" in dct:
-        return _parse_canonical_regex(dct)
-    if "$symbol" in dct:
-        return _parse_canonical_symbol(dct)
-    if "$numberInt" in dct:
-        return _parse_canonical_int32(dct)
-    if "$numberDouble" in dct:
-        return _parse_canonical_double(dct)
+    match = None
+    for k in dct:
+        if k in _PARSERS_SET:
+            match = k
+            break
+    if match:
+        return _PARSERS[match](dct, json_options)
     return dct
 
 
-def _parse_legacy_regex(doc: Any) -> Any:
+def _parse_legacy_regex(doc: Any, dummy0: Any) -> Any:
     pattern = doc["$regex"]
     # Check if this is the $regex query operator.
     if not isinstance(pattern, (str, bytes)):
@@ -707,14 +674,14 @@ def _parse_canonical_datetime(
     return _millis_to_datetime(int(dtm), cast("CodecOptions[Any]", json_options))
 
 
-def _parse_canonical_oid(doc: Any) -> ObjectId:
+def _parse_canonical_oid(doc: Any, dummy0: Any) -> ObjectId:
     """Decode a JSON ObjectId to bson.objectid.ObjectId."""
     if len(doc) != 1:
         raise TypeError(f"Bad $oid, extra field(s): {doc}")
     return ObjectId(doc["$oid"])
 
 
-def _parse_canonical_symbol(doc: Any) -> str:
+def _parse_canonical_symbol(doc: Any, dummy0: Any) -> str:
     """Decode a JSON symbol to Python string."""
     symbol = doc["$symbol"]
     if len(doc) != 1:
@@ -722,7 +689,7 @@ def _parse_canonical_symbol(doc: Any) -> str:
     return str(symbol)
 
 
-def _parse_canonical_code(doc: Any) -> Code:
+def _parse_canonical_code(doc: Any, dummy0: Any) -> Code:
     """Decode a JSON code to bson.code.Code."""
     for key in doc:
         if key not in ("$code", "$scope"):
@@ -730,15 +697,14 @@ def _parse_canonical_code(doc: Any) -> Code:
     return Code(doc["$code"], scope=doc.get("$scope"))
 
 
-def _parse_canonical_regex(doc: Any) -> Regex[str]:
+def _parse_canonical_regex(doc: Any, dummy0: Any) -> Regex[str]:
     """Decode a JSON regex to bson.regex.Regex."""
     regex = doc["$regularExpression"]
     if len(doc) != 1:
         raise TypeError(f"Bad $regularExpression, extra field(s): {doc}")
     if len(regex) != 2:
         raise TypeError(
-            'Bad $regularExpression must include only "pattern"'
-            'and "options" components: {}'.format(doc)
+            f'Bad $regularExpression must include only "pattern and "options" components: {doc}'
         )
     opts = regex["options"]
     if not isinstance(opts, str):
@@ -748,12 +714,18 @@ def _parse_canonical_regex(doc: Any) -> Regex[str]:
     return Regex(regex["pattern"], opts)
 
 
-def _parse_canonical_dbref(doc: Any) -> DBRef:
+def _parse_canonical_dbref(doc: Any, dummy0: Any) -> Any:
     """Decode a JSON DBRef to bson.dbref.DBRef."""
-    return DBRef(doc.pop("$ref"), doc.pop("$id"), database=doc.pop("$db", None), **doc)
+    if (
+        isinstance(doc.get("$ref"), str)
+        and "$id" in doc
+        and isinstance(doc.get("$db"), (str, type(None)))
+    ):
+        return DBRef(doc.pop("$ref"), doc.pop("$id"), database=doc.pop("$db", None), **doc)
+    return doc
 
 
-def _parse_canonical_dbpointer(doc: Any) -> Any:
+def _parse_canonical_dbpointer(doc: Any, dummy0: Any) -> Any:
     """Decode a JSON (deprecated) DBPointer to bson.dbref.DBRef."""
     dbref = doc["$dbPointer"]
     if len(doc) != 1:
@@ -772,7 +744,7 @@ def _parse_canonical_dbpointer(doc: Any) -> Any:
         raise TypeError(f"Bad $dbPointer, expected a DBRef: {doc}")
 
 
-def _parse_canonical_int32(doc: Any) -> int:
+def _parse_canonical_int32(doc: Any, dummy0: Any) -> int:
     """Decode a JSON int32 to python int."""
     i_str = doc["$numberInt"]
     if len(doc) != 1:
@@ -782,7 +754,7 @@ def _parse_canonical_int32(doc: Any) -> int:
     return int(i_str)
 
 
-def _parse_canonical_int64(doc: Any) -> Int64:
+def _parse_canonical_int64(doc: Any, dummy0: Any) -> Int64:
     """Decode a JSON int64 to bson.int64.Int64."""
     l_str = doc["$numberLong"]
     if len(doc) != 1:
@@ -790,7 +762,7 @@ def _parse_canonical_int64(doc: Any) -> Int64:
     return Int64(l_str)
 
 
-def _parse_canonical_double(doc: Any) -> float:
+def _parse_canonical_double(doc: Any, dummy0: Any) -> float:
     """Decode a JSON double to python float."""
     d_str = doc["$numberDouble"]
     if len(doc) != 1:
@@ -800,7 +772,7 @@ def _parse_canonical_double(doc: Any) -> float:
     return float(d_str)
 
 
-def _parse_canonical_decimal128(doc: Any) -> Decimal128:
+def _parse_canonical_decimal128(doc: Any, dummy0: Any) -> Decimal128:
     """Decode a JSON decimal128 to bson.decimal128.Decimal128."""
     d_str = doc["$numberDecimal"]
     if len(doc) != 1:
@@ -810,121 +782,127 @@ def _parse_canonical_decimal128(doc: Any) -> Decimal128:
     return Decimal128(d_str)
 
 
-def _parse_canonical_minkey(doc: Any) -> MinKey:
+def _parse_canonical_minkey(doc: Any, dummy0: Any) -> MinKey:
     """Decode a JSON MinKey to bson.min_key.MinKey."""
-    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:
+    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:  # noqa: E721
         raise TypeError(f"$minKey value must be 1: {doc}")
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")
     return MinKey()
 
 
-def _parse_canonical_maxkey(doc: Any) -> MaxKey:
+def _parse_canonical_maxkey(doc: Any, dummy0: Any) -> MaxKey:
     """Decode a JSON MaxKey to bson.max_key.MaxKey."""
-    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:
+    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:  # noqa: E721
         raise TypeError("$maxKey value must be 1: %s", (doc,))
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")
     return MaxKey()
 
 
+def _parse_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+    if "$type" in doc:
+        return _parse_legacy_binary(doc, json_options)
+    else:
+        return _parse_canonical_binary(doc, json_options)
+
+
+def _parse_timestamp(doc: Any, dummy0: Any) -> Timestamp:
+    tsp = doc["$timestamp"]
+    return Timestamp(tsp["t"], tsp["i"])
+
+
+_PARSERS: dict[str, Callable[[Any, JSONOptions], Any]] = {
+    "$oid": _parse_canonical_oid,
+    "$ref": _parse_canonical_dbref,
+    "$date": _parse_canonical_datetime,
+    "$regex": _parse_legacy_regex,
+    "$minKey": _parse_canonical_minkey,
+    "$maxKey": _parse_canonical_maxkey,
+    "$binary": _parse_binary,
+    "$code": _parse_canonical_code,
+    "$uuid": _parse_legacy_uuid,
+    "$undefined": lambda _, _1: None,
+    "$numberLong": _parse_canonical_int64,
+    "$timestamp": _parse_timestamp,
+    "$numberDecimal": _parse_canonical_decimal128,
+    "$dbPointer": _parse_canonical_dbpointer,
+    "$regularExpression": _parse_canonical_regex,
+    "$symbol": _parse_canonical_symbol,
+    "$numberInt": _parse_canonical_int32,
+    "$numberDouble": _parse_canonical_double,
+}
+_PARSERS_SET = set(_PARSERS)
+
+
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
-        return SON([("$binary", base64.b64encode(data).decode()), ("$type", "%02x" % subtype)])
-    return {
-        "$binary": SON([("base64", base64.b64encode(data).decode()), ("subType", "%02x" % subtype)])
-    }
+        return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
+    return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
 
 
-def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    # We preserve key order when rendering SON, DBRef, etc. as JSON by
-    # returning a SON for those types instead of a dict.
-    if isinstance(obj, ObjectId):
-        return {"$oid": str(obj)}
-    if isinstance(obj, DBRef):
-        return _json_convert(obj.as_doc(), json_options=json_options)
-    if isinstance(obj, datetime.datetime):
-        if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
-            if not obj.tzinfo:
-                obj = obj.replace(tzinfo=utc)
-                assert obj.tzinfo is not None
-            if obj >= EPOCH_AWARE:
-                off = obj.tzinfo.utcoffset(obj)
-                if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
-                    tz_string = "Z"
-                else:
-                    tz_string = obj.strftime("%z")
-                millis = int(obj.microsecond / 1000)
-                fracsecs = ".%03d" % (millis,) if millis else ""
-                return {
-                    "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
-                }
+def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
+    if (
+        json_options.datetime_representation == DatetimeRepresentation.ISO8601
+        and 0 <= int(obj) <= _max_datetime_ms()
+    ):
+        return _encode_datetime(obj.as_datetime(), json_options)
+    elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+        return {"$date": str(int(obj))}
+    return {"$date": {"$numberLong": str(int(obj))}}
 
-        millis = _datetime_to_millis(obj)
-        if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": millis}
-        return {"$date": {"$numberLong": str(millis)}}
-    if isinstance(obj, DatetimeMS):
-        if (
-            json_options.datetime_representation == DatetimeRepresentation.ISO8601
-            and 0 <= int(obj) <= _max_datetime_ms()
-        ):
-            return default(obj.as_datetime(), json_options)
-        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": str(int(obj))}
-        return {"$date": {"$numberLong": str(int(obj))}}
-    if json_options.strict_number_long and isinstance(obj, Int64):
+
+def _encode_code(obj: Code, json_options: JSONOptions) -> dict:
+    if obj.scope is None:
+        return {"$code": str(obj)}
+    else:
+        return {"$code": str(obj), "$scope": _json_convert(obj.scope, json_options)}
+
+
+def _encode_int64(obj: Int64, json_options: JSONOptions) -> Any:
+    if json_options.strict_number_long:
         return {"$numberLong": str(obj)}
-    if isinstance(obj, (RE_TYPE, Regex)):
-        flags = ""
-        if obj.flags & re.IGNORECASE:
-            flags += "i"
-        if obj.flags & re.LOCALE:
-            flags += "l"
-        if obj.flags & re.MULTILINE:
-            flags += "m"
-        if obj.flags & re.DOTALL:
-            flags += "s"
-        if obj.flags & re.UNICODE:
-            flags += "u"
-        if obj.flags & re.VERBOSE:
-            flags += "x"
-        if isinstance(obj.pattern, str):
-            pattern = obj.pattern
-        else:
-            pattern = obj.pattern.decode("utf-8")
-        if json_options.json_mode == JSONMode.LEGACY:
-            return SON([("$regex", pattern), ("$options", flags)])
-        return {"$regularExpression": SON([("pattern", pattern), ("options", flags)])}
-    if isinstance(obj, MinKey):
-        return {"$minKey": 1}
-    if isinstance(obj, MaxKey):
-        return {"$maxKey": 1}
-    if isinstance(obj, Timestamp):
-        return {"$timestamp": SON([("t", obj.time), ("i", obj.inc)])}
-    if isinstance(obj, Code):
-        if obj.scope is None:
-            return {"$code": str(obj)}
-        return SON([("$code", str(obj)), ("$scope", _json_convert(obj.scope, json_options))])
-    if isinstance(obj, Binary):
-        return _encode_binary(obj, obj.subtype, json_options)
-    if isinstance(obj, bytes):
-        return _encode_binary(obj, 0, json_options)
-    if isinstance(obj, uuid.UUID):
-        if json_options.strict_uuid:
-            binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
-            return _encode_binary(binval, binval.subtype, json_options)
-        else:
-            return {"$uuid": obj.hex}
-    if isinstance(obj, Decimal128):
-        return {"$numberDecimal": str(obj)}
-    if isinstance(obj, bool):
-        return obj
-    if json_options.json_mode == JSONMode.CANONICAL and isinstance(obj, int):
-        if -(2**31) <= obj < 2**31:
+    else:
+        return int(obj)
+
+
+def _encode_noop(obj: Any, dummy0: Any) -> Any:
+    return obj
+
+
+def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:
+    flags = ""
+    if obj.flags & re.IGNORECASE:
+        flags += "i"
+    if obj.flags & re.LOCALE:
+        flags += "l"
+    if obj.flags & re.MULTILINE:
+        flags += "m"
+    if obj.flags & re.DOTALL:
+        flags += "s"
+    if obj.flags & re.UNICODE:
+        flags += "u"
+    if obj.flags & re.VERBOSE:
+        flags += "x"
+    if isinstance(obj.pattern, str):
+        pattern = obj.pattern
+    else:
+        pattern = obj.pattern.decode("utf-8")
+    if json_options.json_mode == JSONMode.LEGACY:
+        return {"$regex": pattern, "$options": flags}
+    return {"$regularExpression": {"pattern": pattern, "options": flags}}
+
+
+def _encode_int(obj: int, json_options: JSONOptions) -> Any:
+    if json_options.json_mode == JSONMode.CANONICAL:
+        if -_INT32_MAX <= obj < _INT32_MAX:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
-    if json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
+    return obj
+
+
+def _encode_float(obj: float, json_options: JSONOptions) -> Any:
+    if json_options.json_mode != JSONMode.LEGACY:
         if math.isnan(obj):
             return {"$numberDouble": "NaN"}
         elif math.isinf(obj):
@@ -934,4 +912,250 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             # repr() will return the shortest string guaranteed to produce the
             # original value, when float() is called on it.
             return {"$numberDouble": str(repr(obj))}
+    return obj
+
+
+def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
+    if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
+        if not obj.tzinfo:
+            obj = obj.replace(tzinfo=utc)
+            assert obj.tzinfo is not None
+        if obj >= EPOCH_AWARE:
+            off = obj.tzinfo.utcoffset(obj)
+            if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
+                tz_string = "Z"
+            else:
+                tz_string = obj.strftime("%z")
+            millis = int(obj.microsecond / 1000)
+            fracsecs = ".%03d" % (millis,) if millis else ""
+            return {
+                "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
+            }
+
+    millis = _datetime_to_millis(obj)
+    if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+        return {"$date": millis}
+    return {"$date": {"$numberLong": str(millis)}}
+
+
+def _encode_bytes(obj: bytes, json_options: JSONOptions) -> dict:
+    return _encode_binary(obj, 0, json_options)
+
+
+def _encode_binary_obj(obj: Binary, json_options: JSONOptions) -> dict:
+    return _encode_binary(obj, obj.subtype, json_options)
+
+
+def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:
+    if json_options.strict_uuid:
+        binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
+        return _encode_binary(binval, binval.subtype, json_options)
+    else:
+        return {"$uuid": obj.hex}
+
+
+def _encode_objectid(obj: ObjectId, dummy0: Any) -> dict:
+    return {"$oid": str(obj)}
+
+
+def _encode_timestamp(obj: Timestamp, dummy0: Any) -> dict:
+    return {"$timestamp": {"t": obj.time, "i": obj.inc}}
+
+
+def _encode_decimal128(obj: Timestamp, dummy0: Any) -> dict:
+    return {"$numberDecimal": str(obj)}
+
+
+def _encode_dbref(obj: DBRef, json_options: JSONOptions) -> dict:
+    return _json_convert(obj.as_doc(), json_options=json_options)
+
+
+def _encode_minkey(dummy0: Any, dummy1: Any) -> dict:
+    return {"$minKey": 1}
+
+
+def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
+    return {"$maxKey": 1}
+
+
+# Encoders for BSON types
+# Each encoder function's signature is:
+#   - obj: a Python data type, e.g. a Python int for _encode_int
+#   - json_options: a JSONOptions
+_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {
+    bool: _encode_noop,
+    bytes: _encode_bytes,
+    datetime.datetime: _encode_datetime,
+    DatetimeMS: _encode_datetimems,
+    float: _encode_float,
+    int: _encode_int,
+    str: _encode_noop,
+    type(None): _encode_noop,
+    uuid.UUID: _encode_uuid,
+    Binary: _encode_binary_obj,
+    Int64: _encode_int64,
+    Code: _encode_code,
+    DBRef: _encode_dbref,
+    MaxKey: _encode_maxkey,
+    MinKey: _encode_minkey,
+    ObjectId: _encode_objectid,
+    Regex: _encode_regex,
+    RE_TYPE: _encode_regex,
+    Timestamp: _encode_timestamp,
+    Decimal128: _encode_decimal128,
+}
+
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS: dict[int, Callable[[Any, JSONOptions], Any]] = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
+
+_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
+
+
+def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
+    # First see if the type is already cached. KeyError will only ever
+    # happen once per subtype.
+    try:
+        return _ENCODERS[type(obj)](obj, json_options)
+    except KeyError:
+        pass
+
+    # Second, fall back to trying _type_marker. This has to be done
+    # before the loop below since users could subclass one of our
+    # custom types that subclasses a python built-in (e.g. Binary)
+    if hasattr(obj, "_type_marker"):
+        marker = obj._type_marker
+        if marker in _MARKERS:
+            func = _MARKERS[marker]
+            # Cache this type for faster subsequent lookup.
+            _ENCODERS[type(obj)] = func
+            return func(obj, json_options)
+
+    # Third, test each base type. This will only happen once for
+    # a subtype of a supported base type.
+    for base in _BUILT_IN_TYPES:
+        if isinstance(obj, base):
+            func = _ENCODERS[base]
+            # Cache this type for faster subsequent lookup.
+            _ENCODERS[type(obj)] = func
+            return func(obj, json_options)
+
     raise TypeError("%r is not JSON serializable" % obj)
+
+
+def _get_str_size(obj: Any) -> int:
+    return len(obj)
+
+
+def _get_datetime_size(obj: datetime.datetime) -> int:
+    return 5 + len(str(obj.time()))
+
+
+def _get_regex_size(obj: Regex) -> int:
+    return 18 + len(obj.pattern)
+
+
+def _get_dbref_size(obj: DBRef) -> int:
+    return 34 + len(obj.collection)
+
+
+_CONSTANT_SIZE_TABLE: dict[Any, int] = {
+    ObjectId: 28,
+    int: 11,
+    Int64: 11,
+    Decimal128: 11,
+    Timestamp: 14,
+    MinKey: 8,
+    MaxKey: 8,
+}
+
+_VARIABLE_SIZE_TABLE: dict[Any, Callable[[Any], int]] = {
+    str: _get_str_size,
+    bytes: _get_str_size,
+    datetime.datetime: _get_datetime_size,
+    Regex: _get_regex_size,
+    DBRef: _get_dbref_size,
+}
+
+
+def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
+    """Recursively finds size of objects"""
+    if current_size >= max_size:
+        return current_size
+
+    obj_type = type(obj)
+
+    # Check to see if the obj has a constant size estimate
+    try:
+        return _CONSTANT_SIZE_TABLE[obj_type]
+    except KeyError:
+        pass
+
+    # Check to see if the obj has a variable but simple size estimate
+    try:
+        return _VARIABLE_SIZE_TABLE[obj_type](obj)
+    except KeyError:
+        pass
+
+    # Special cases that require recursion
+    if obj_type == Code:
+        if obj.scope:
+            current_size += (
+                5 + get_size(obj.scope, max_size, current_size) + len(obj) - len(obj.scope)
+            )
+        else:
+            current_size += 5 + len(obj)
+    elif obj_type == dict:
+        for k, v in obj.items():
+            current_size += get_size(k, max_size, current_size)
+            current_size += get_size(v, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    elif hasattr(obj, "__iter__"):
+        for i in obj:
+            current_size += get_size(i, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    return current_size
+
+
+def _truncate_documents(obj: Any, max_length: int) -> Tuple[Any, int]:
+    """Recursively truncate documents as needed to fit inside max_length characters."""
+    if max_length <= 0:
+        return None, 0
+    remaining = max_length
+    if hasattr(obj, "items"):
+        truncated: Any = {}
+        for k, v in obj.items():
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            if truncated_v:
+                truncated[k] = truncated_v
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
+        truncated: Any = []  # type:ignore[no-redef]
+        for v in obj:
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            if truncated_v:
+                truncated.append(truncated_v)
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    else:
+        return _truncate(obj, remaining)
+
+
+def _truncate(obj: Any, remaining: int) -> Tuple[Any, int]:
+    size = get_size(obj, remaining)
+
+    if size <= remaining:
+        return obj, remaining - size
+    else:
+        try:
+            truncated = obj[:remaining]
+        except TypeError:
+            truncated = obj
+        return truncated, remaining - size

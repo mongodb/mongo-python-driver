@@ -139,7 +139,7 @@ class SON(Dict[_Key, _Value]):
         try:
             k, v = next(iter(self.items()))
         except StopIteration:
-            raise KeyError("container is empty")
+            raise KeyError("container is empty") from None
         del self[k]
         return (k, v)
 
@@ -151,7 +151,7 @@ class SON(Dict[_Key, _Value]):
             for k, v in other.items():
                 self[k] = v
         elif hasattr(other, "keys"):
-            for k in other.keys():
+            for k in other:
                 self[k] = other[k]
         else:
             for k, v in other:
@@ -159,7 +159,9 @@ class SON(Dict[_Key, _Value]):
         if kwargs:
             self.update(kwargs)
 
-    def get(self, key: _Key, default: Optional[Union[_Value, _T]] = None) -> Union[_Value, _T, None]:  # type: ignore[override]
+    def get(  # type: ignore[override]
+        self, key: _Key, default: Optional[Union[_Value, _T]] = None
+    ) -> Union[_Value, _T, None]:
         try:
             return self[key]
         except KeyError:
@@ -204,6 +206,6 @@ class SON(Dict[_Key, _Value]):
         memo[val_id] = out
         for k, v in self.items():
             if not isinstance(v, RE_TYPE):
-                v = copy.deepcopy(v, memo)
+                v = copy.deepcopy(v, memo)  # noqa: PLW2901
             out[k] = v
         return out

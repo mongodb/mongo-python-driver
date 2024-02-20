@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 from bson.codec_options import _parse_codec_options
 from pymongo import common
 from pymongo.auth import MongoCredential, _build_credentials_tuple
-from pymongo.common import validate_boolean
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
@@ -33,11 +32,11 @@ from pymongo.read_preferences import (
 )
 from pymongo.server_selectors import any_server_selector
 from pymongo.ssl_support import get_ssl_context
-from pymongo.write_concern import WriteConcern
+from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
-    from pymongo.encryption import AutoEncryptionOpts
+    from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
 
@@ -215,6 +214,9 @@ class ClientOptions:
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
         self.__load_balanced = options.get("loadbalanced")
         self.__timeout = options.get("timeoutms")
+        self.__server_monitoring_mode = options.get(
+            "servermonitoringmode", common.SERVER_MONITORING_MODE
+        )
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -284,7 +286,7 @@ class ClientOptions:
     def timeout(self) -> Optional[float]:
         """The configured timeoutMS converted to seconds, or None.
 
-        .. versionadded: 4.2
+        .. versionadded:: 4.2
         """
         return self.__timeout
 
@@ -318,3 +320,11 @@ class ClientOptions:
         """
         assert self.__pool_options._event_listeners is not None
         return self.__pool_options._event_listeners.event_listeners()
+
+    @property
+    def server_monitoring_mode(self) -> str:
+        """The configured serverMonitoringMode option.
+
+        .. versionadded:: 4.5
+        """
+        return self.__server_monitoring_mode

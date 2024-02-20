@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import queue
 import random
@@ -27,7 +28,6 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
-    ConfigurationError,
     ConnectionFailure,
     InvalidOperation,
     NetworkTimeout,
@@ -39,6 +39,12 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
+from pymongo.logger import (
+    _SERVER_SELECTION_LOGGER,
+    _debug_log,
+    _info_log,
+    _ServerSelectionStatusMessage,
+)
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import Pool, PoolOptions
 from pymongo.server import Server
@@ -47,7 +53,6 @@ from pymongo.server_selectors import (
     Selection,
     any_server_selector,
     arbiter_server_selector,
-    readable_server_selector,
     secondary_server_selector,
     writable_server_selector,
 )
@@ -186,7 +191,8 @@ class Topology:
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe"
+                "is-pymongo-fork-safe",
+                stacklevel=2,
             )
             with self._lock:
                 # Close servers and clear the pools.
@@ -209,18 +215,20 @@ class Topology:
     def select_servers(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        operation_id: Optional[int] = None,
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
-        :Parameters:
-          - `selector`: function that takes a list of Servers and returns
+        :param selector: function that takes a list of Servers and returns
             a subset of them.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param operation: The name of the operation that the server is being selected for.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value common.SERVER_SELECTION_TIMEOUT
             is used.
-          - `address`: optional server address to select.
+        :param address: optional server address to select.
 
         Calls self.open() if needed.
 
@@ -233,7 +241,9 @@ class Topology:
             server_timeout = server_selection_timeout
 
         with self._lock:
-            server_descriptions = self._select_servers_loop(selector, server_timeout, address)
+            server_descriptions = self._select_servers_loop(
+                selector, server_timeout, operation, operation_id, address
+            )
 
             return [
                 cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
@@ -243,11 +253,26 @@ class Topology:
         self,
         selector: Callable[[Selection], Selection],
         timeout: float,
+        operation: str,
+        operation_id: Optional[int],
         address: Optional[_Address],
     ) -> list[ServerDescription]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
+        logged_waiting = False
+
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SERVER_SELECTION_LOGGER,
+                message=_ServerSelectionStatusMessage.STARTED,
+                selector=selector,
+                operation=operation,
+                operationId=operation_id,
+                topologyDescription=self.description,
+                clientId=self.description._topology_settings._topology_id,
+            )
+
         server_descriptions = self._description.apply_selector(
             selector, address, custom_selector=self._settings.server_selector
         )
@@ -255,9 +280,33 @@ class Topology:
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
+                if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _SERVER_SELECTION_LOGGER,
+                        message=_ServerSelectionStatusMessage.FAILED,
+                        selector=selector,
+                        operation=operation,
+                        operationId=operation_id,
+                        topologyDescription=self.description,
+                        clientId=self.description._topology_settings._topology_id,
+                        failure=self._error_message(selector),
+                    )
                 raise ServerSelectionTimeoutError(
                     f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
+
+            if not logged_waiting:
+                _info_log(
+                    _SERVER_SELECTION_LOGGER,
+                    message=_ServerSelectionStatusMessage.WAITING,
+                    selector=selector,
+                    operation=operation,
+                    operationId=operation_id,
+                    topologyDescription=self.description,
+                    clientId=self.description._topology_settings._topology_id,
+                    remainingTimeMS=int(end_time - time.monotonic()),
+                )
+                logged_waiting = True
 
             self._ensure_opened()
             self._request_check_all()
@@ -279,10 +328,16 @@ class Topology:
     def _select_server(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
+        operation_id: Optional[int] = None,
     ) -> Server:
-        servers = self.select_servers(selector, server_selection_timeout, address)
+        servers = self.select_servers(
+            selector, operation, server_selection_timeout, address, operation_id
+        )
+        servers = _filter_servers(servers, deprioritized_servers)
         if len(servers) == 1:
             return servers[0]
         server1, server2 = random.sample(servers, 2)
@@ -294,17 +349,43 @@ class Topology:
     def select_server(
         self,
         selector: Callable[[Selection], Selection],
+        operation: str,
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
+        operation_id: Optional[int] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server = self._select_server(selector, server_selection_timeout, address)
+        server = self._select_server(
+            selector,
+            operation,
+            server_selection_timeout,
+            address,
+            deprioritized_servers,
+            operation_id=operation_id,
+        )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SERVER_SELECTION_LOGGER,
+                message=_ServerSelectionStatusMessage.SUCCEEDED,
+                selector=selector,
+                operation=operation,
+                operationId=operation_id,
+                topologyDescription=self.description,
+                clientId=self.description._topology_settings._topology_id,
+                serverHost=server.description.address[0],
+                serverPort=server.description.address[1],
+            )
         return server
 
     def select_server_by_address(
-        self, address: _Address, server_selection_timeout: Optional[int] = None
+        self,
+        address: _Address,
+        operation: str,
+        server_selection_timeout: Optional[int] = None,
+        operation_id: Optional[int] = None,
     ) -> Server:
         """Return a Server for "address", reconnecting if necessary.
 
@@ -312,21 +393,31 @@ class Topology:
         servers. Time out after "server_selection_timeout" if the server
         cannot be reached.
 
-        :Parameters:
-          - `address`: A (host, port) pair.
-          - `server_selection_timeout` (optional): maximum seconds to wait.
+        :param address: A (host, port) pair.
+        :param operation: The name of the operation that the server is being selected for.
+        :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value
             common.SERVER_SELECTION_TIMEOUT is used.
+        :param operation_id: The unique id of the current operation being performed. Defaults to None if not provided.
 
         Calls self.open() if needed.
 
         Raises exc:`ServerSelectionTimeoutError` after
         `server_selection_timeout` if no matching servers are found.
         """
-        return self.select_server(any_server_selector, server_selection_timeout, address)
+        return self.select_server(
+            any_server_selector,
+            operation,
+            server_selection_timeout,
+            address,
+            operation_id=operation_id,
+        )
 
     def _process_change(
-        self, server_description: ServerDescription, reset_pool: bool = False
+        self,
+        server_description: ServerDescription,
+        reset_pool: bool = False,
+        interrupt_connections: bool = False,
     ) -> None:
         """Process a new ServerDescription on an opened topology.
 
@@ -383,12 +474,17 @@ class Topology:
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
-                server.pool.reset()
+                server.pool.reset(interrupt_connections=interrupt_connections)
 
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
-    def on_change(self, server_description: ServerDescription, reset_pool: bool = False) -> None:
+    def on_change(
+        self,
+        server_description: ServerDescription,
+        reset_pool: bool = False,
+        interrupt_connections: bool = False,
+    ) -> None:
         """Process a new ServerDescription after an hello call completes."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -401,7 +497,7 @@ class Topology:
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
-                self._process_change(server_description, reset_pool)
+                self._process_change(server_description, reset_pool, interrupt_connections)
 
     def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
@@ -567,38 +663,10 @@ class Topology:
         with self._lock:
             return self._session_pool.pop_all()
 
-    def _check_implicit_session_support(self) -> None:
-        with self._lock:
-            self._check_session_support()
-
-    def _check_session_support(self) -> float:
-        """Internal check for session support on clusters."""
-        if self._settings.load_balanced:
-            # Sessions never time out in load balanced mode.
-            return float("inf")
-        session_timeout = self._description.logical_session_timeout_minutes
-        if session_timeout is None:
-            # Maybe we need an initial scan? Can raise ServerSelectionError.
-            if self._description.topology_type == TOPOLOGY_TYPE.Single:
-                if not self._description.has_known_servers:
-                    self._select_servers_loop(
-                        any_server_selector, self.get_server_selection_timeout(), None
-                    )
-            elif not self._description.readable_servers:
-                self._select_servers_loop(
-                    readable_server_selector, self.get_server_selection_timeout(), None
-                )
-
-            session_timeout = self._description.logical_session_timeout_minutes
-            if session_timeout is None:
-                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
-        return session_timeout
-
-    def get_server_session(self) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
-            session_timeout = self._check_session_support()
-            return self._session_pool.get_server_session(session_timeout)
+            return self._session_pool.get_server_session(session_timeout_minutes)
 
     def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
@@ -793,7 +861,9 @@ class Topology:
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address: _Address) -> Pool:
-        return self._settings.pool_class(address, self._settings.pool_options)
+        return self._settings.pool_class(
+            address, self._settings.pool_options, client_id=self._topology_id
+        )
 
     def _create_pool_for_monitor(self, address: _Address) -> Pool:
         options = self._settings.pool_options
@@ -813,7 +883,9 @@ class Topology:
             server_api=options.server_api,
         )
 
-        return self._settings.pool_class(address, monitor_pool_options, handshake=False)
+        return self._settings.pool_class(
+            address, monitor_pool_options, handshake=False, client_id=self._topology_id
+        )
 
     def _error_message(self, selector: Callable[[Selection], Selection]) -> str:
         """Format an error message if server selection fails.
@@ -930,3 +1002,16 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
     if current_tv["processId"] != new_tv["processId"]:
         return False
     return current_tv["counter"] > new_tv["counter"]
+
+
+def _filter_servers(
+    candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None
+) -> list[Server]:
+    """Filter out deprioritized servers from a list of server candidates."""
+    if not deprioritized_servers:
+        return candidates
+
+    filtered = [server for server in candidates if server not in deprioritized_servers]
+
+    # If not possible to pick a prioritized server, return the original list
+    return filtered or candidates

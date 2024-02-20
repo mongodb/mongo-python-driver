@@ -15,11 +15,24 @@
 """Test that each file in mypy_fails/ actually fails mypy, and test some
 sample client code that uses PyMongo typings.
 """
+from __future__ import annotations
+
 import os
 import sys
 import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    TypeVar,
+    Union,
+    cast,
+)
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -36,7 +49,7 @@ try:
         year: int
 
     class ImplicitMovie(TypedDict):
-        _id: NotRequired[ObjectId]
+        _id: NotRequired[ObjectId]  # pyright: ignore[reportGeneralTypeIssues]
         name: str
         year: int
 
@@ -75,13 +88,16 @@ def get_tests() -> Iterable[str]:
             yield os.path.join(dirpath, filename)
 
 
-def only_type_check(func):
+FuncT = TypeVar("FuncT", bound=Callable[..., None])
+
+
+def only_type_check(func: FuncT) -> FuncT:
     def inner(*args, **kwargs):
         if not TYPE_CHECKING:
             raise unittest.SkipTest("Used for Type Checking Only")
         func(*args, **kwargs)
 
-    return inner
+    return cast(FuncT, inner)
 
 
 class TestMypyFails(unittest.TestCase):

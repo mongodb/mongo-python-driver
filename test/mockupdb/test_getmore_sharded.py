@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test PyMongo cursor with a sharded cluster."""
+from __future__ import annotations
+
 import unittest
 from queue import Queue
 

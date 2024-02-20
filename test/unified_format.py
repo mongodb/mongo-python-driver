@@ -16,6 +16,8 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
+from __future__ import annotations
+
 import binascii
 import collections
 import copy
@@ -27,9 +29,10 @@ import sys
 import time
 import traceback
 import types
-from collections import abc
+from collections import abc, defaultdict
 from test import (
     AWS_CREDS,
+    AWS_CREDS_2,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -55,7 +58,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -100,13 +103,22 @@ from pymongo.monitoring import (
     PoolReadyEvent,
     ServerClosedEvent,
     ServerDescriptionChangedEvent,
+    ServerHeartbeatFailedEvent,
+    ServerHeartbeatListener,
+    ServerHeartbeatStartedEvent,
+    ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
+    TopologyClosedEvent,
+    TopologyDescriptionChangedEvent,
     TopologyEvent,
+    TopologyListener,
+    TopologyOpenedEvent,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
     _ServerEvent,
+    _ServerHeartbeatEvent,
 )
 from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
@@ -132,18 +144,33 @@ KMS_TLS_OPTS = {
 }
 
 
-# Build up a placeholder map.
+# Build up a placeholder maps.
 PLACEHOLDER_MAP = {}
-for (provider_name, provider_data) in [
+for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
+    ("local:name1", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
+    ("aws:name1", AWS_CREDS),
+    ("aws:name2", AWS_CREDS_2),
     ("azure", AZURE_CREDS),
+    ("azure:name1", AZURE_CREDS),
     ("gcp", GCP_CREDS),
+    ("gcp:name1", GCP_CREDS),
     ("kmip", KMIP_CREDS),
+    ("kmip:name1", KMIP_CREDS),
 ]:
-    for (key, value) in provider_data.items():
+    for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
+
+PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+if PROVIDER_NAME == "aws":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
+elif PROVIDER_NAME == "azure":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "PROVIDER_NAME": "azure",
+        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+    }
 
 
 def interrupt_loop():
@@ -156,12 +183,13 @@ def with_metaclass(meta, *bases):
 
     Vendored from six: https://github.com/benjaminp/six/blob/master/six.py
     """
+
     # This requires a bit of explanation: the basic idea is to make a dummy
     # metaclass for one level of class instantiation that replaces itself with
     # the actual metaclass.
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if sys.version_info[:2] >= (3, 7):
+            if sys.version_info[:2] >= (3, 7):  # noqa: UP036
                 # This version introduced PEP 560 that requires a bit
                 # of extra care (we mimic what is done by __build_class__).
                 resolved_bases = types.resolve_bases(bases)
@@ -218,6 +246,8 @@ def is_run_on_requirement_satisfied(requirement):
     if req_auth is not None:
         if req_auth:
             auth_satisfied = client_context.auth_enabled
+            if auth_satisfied and "authMechanism" in requirement:
+                auth_satisfied = client_context.check_auth_type(requirement["authMechanism"])
         else:
             auth_satisfied = not client_context.auth_enabled
 
@@ -287,7 +317,9 @@ class NonLazyCursor:
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
+class EventListenerUtil(
+    CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener, TopologyListener
+):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -318,7 +350,11 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             return [e for e in self.events if isinstance(e, _CommandEvent)]
         if event_type == "cmap":
             return [e for e in self.events if isinstance(e, (_ConnectionEvent, _PoolEvent))]
-        return [e for e in self.events if isinstance(e, (_ServerEvent, TopologyEvent))]
+        return [
+            e
+            for e in self.events
+            if isinstance(e, (_ServerEvent, TopologyEvent, _ServerHeartbeatEvent))
+        ]
 
     def add_event(self, event):
         event_name = type(event).__name__.lower()
@@ -338,31 +374,45 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             self.add_event(event)
 
     def started(self, event):
-        if event.command == {}:
-            # Command is redacted. Observe only if flag is set.
-            if self._observe_sensitive_commands:
+        if isinstance(event, CommandStartedEvent):
+            if event.command == {}:
+                # Command is redacted. Observe only if flag is set.
+                if self._observe_sensitive_commands:
+                    self._command_event(event)
+            else:
                 self._command_event(event)
         else:
-            self._command_event(event)
+            self.add_event(event)
 
     def succeeded(self, event):
-        if event.reply == {}:
-            # Command is redacted. Observe only if flag is set.
-            if self._observe_sensitive_commands:
+        if isinstance(event, CommandSucceededEvent):
+            if event.reply == {}:
+                # Command is redacted. Observe only if flag is set.
+                if self._observe_sensitive_commands:
+                    self._command_event(event)
+            else:
                 self._command_event(event)
         else:
-            self._command_event(event)
+            self.add_event(event)
 
     def failed(self, event):
-        self._command_event(event)
+        if isinstance(event, CommandFailedEvent):
+            self._command_event(event)
+        else:
+            self.add_event(event)
 
-    def opened(self, event: ServerOpeningEvent) -> None:
+    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
         self.add_event(event)
 
-    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+    def description_changed(
+        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
+    ) -> None:
         self.add_event(event)
 
-    def closed(self, event: ServerClosedEvent) -> None:
+    def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
+        self.add_event(event)
+
+    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
         self.add_event(event)
 
 
@@ -511,12 +561,18 @@ class EntityMapUtil:
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
             if isinstance(opts["key_vault_client"], str):
                 opts["key_vault_client"] = self[opts["key_vault_client"]]
+            # Set TLS options for providers like "kmip:name1".
+            kms_tls_options = {}
+            for provider in opts["kms_providers"]:
+                provider_type = provider.split(":")[0]
+                if provider_type in KMS_TLS_OPTS:
+                    kms_tls_options[provider] = KMS_TLS_OPTS[provider_type]
             self[spec["id"]] = ClientEncryption(
                 opts["kms_providers"],
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
-                opts.get("kms_tls_options", KMS_TLS_OPTS),
+                opts.get("kms_tls_options", kms_tls_options),
             )
             return
         elif entity_type == "thread":
@@ -656,6 +712,12 @@ class MatchEvaluatorUtil:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
+    def _operation_matchAsDocument(self, spec, actual, key_to_compare):
+        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
+
+    def _operation_matchAsRoot(self, spec, actual, key_to_compare):
+        self._match_document(spec, actual, True)
+
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_{}".format(opname.strip("$"))
         try:
@@ -746,6 +808,10 @@ class MatchEvaluatorUtil:
             self.test.assertEqual(expectation, actual)
             return None
 
+    def assertHasDatabaseName(self, spec, actual):
+        if "databaseName" in spec:
+            self.test.assertEqual(spec["databaseName"], actual.database_name)
+
     def assertHasServiceId(self, spec, actual):
         if "hasServiceId" in spec:
             if spec.get("hasServiceId"):
@@ -753,6 +819,22 @@ class MatchEvaluatorUtil:
                 self.test.assertIsInstance(actual.service_id, ObjectId)
             else:
                 self.test.assertIsNone(actual.service_id)
+
+    def assertHasInterruptInUseConnections(self, spec, actual):
+        if "interruptInUseConnections" in spec:
+            self.test.assertEqual(
+                spec.get("interruptInUseConnections"), actual.interrupt_connections
+            )
+        else:
+            self.test.assertIsInstance(actual.interrupt_connections, bool)
+
+    def assertHasServerConnectionId(self, spec, actual):
+        if "hasServerConnectionId" in spec:
+            if spec.get("hasServerConnectionId"):
+                self.test.assertIsNotNone(actual.server_connection_id)
+                self.test.assertIsInstance(actual.server_connection_id, int)
+            else:
+                self.test.assertIsNone(actual.server_connection_id)
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         if "type" in spec:
@@ -778,21 +860,24 @@ class MatchEvaluatorUtil:
         if name == "commandStartedEvent":
             self.test.assertIsInstance(actual, CommandStartedEvent)
             command = spec.get("command")
-            database_name = spec.get("databaseName")
             if command:
                 self.match_result(command, actual.command)
-            if database_name:
-                self.test.assertEqual(database_name, actual.database_name)
+            self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get("reply")
             if reply:
                 self.match_result(reply, actual.reply)
+            self.assertHasDatabaseName(spec, actual)
             self.assertHasServiceId(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
             self.assertHasServiceId(spec, actual)
+            self.assertHasDatabaseName(spec, actual)
+            self.assertHasServerConnectionId(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":
@@ -800,6 +885,7 @@ class MatchEvaluatorUtil:
         elif name == "poolClearedEvent":
             self.test.assertIsInstance(actual, PoolClearedEvent)
             self.assertHasServiceId(spec, actual)
+            self.assertHasInterruptInUseConnections(spec, actual)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "connectionCreatedEvent":
@@ -828,6 +914,20 @@ class MatchEvaluatorUtil:
                 )
             if "newDescription" in spec:
                 self.match_server_description(actual.new_description, spec["newDescription"])
+        elif name == "serverHeartbeatStartedEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "serverHeartbeatSucceededEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatSucceededEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "serverHeartbeatFailedEvent":
+            self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
+            if "awaited" in spec:
+                self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "topologyDescriptionChangedEvent":
+            self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 
@@ -863,7 +963,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.12")
+    SCHEMA_VERSION = Version.from_string("1.19")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -945,6 +1045,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
 
+        if "unpin after TransientTransactionError error on abort" in spec["description"]:
+            if client_context.version[0] == 8:
+                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
@@ -999,8 +1103,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
         if error_response:
-            for k in error_response.keys():
-                self.assertEqual(error_response[k], exception.details[k])
+            self.match_evaluator.match_result(error_response, exception.details)
 
         if is_error:
             # already satisfied because exception was raised
@@ -1204,10 +1307,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["master_key"] = opts.get("masterKey")
-            kwargs["key_alt_names"] = opts.get("keyAltNames")
-            kwargs["key_material"] = opts.get("keyMaterial")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
@@ -1221,13 +1322,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            opts = kwargs.pop("opts")
-            kwargs["provider"] = opts.get("provider")
-            kwargs["master_key"] = opts.get("masterKey")
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
             return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
         return {}
+
+    def _clientEncryptionOperation_encrypt(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
+        return target.encrypt(*args, **kwargs)
 
     def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
         with target.open_download_stream(*args, **kwargs) as gout:
@@ -1367,8 +1471,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned "
-                "session {}".format(spec["session"])
+                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
+                    spec["session"]
+                )
             )
 
         client = single_client("{}:{}".format(*session._pinned_address))
@@ -1612,6 +1717,48 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def check_log_messages(self, operations, spec):
+        def format_logs(log_list):
+            client_to_log = defaultdict(list)
+            for log in log_list:
+                data = json_util.loads(log.message)
+                client = data.pop("clientId")
+                client_to_log[client].append(
+                    {
+                        "level": log.levelname.lower(),
+                        "component": log.name.replace("pymongo.", "", 1),
+                        "data": data,
+                    }
+                )
+            return client_to_log
+
+        with self.assertLogs("pymongo", level="DEBUG") as cm:
+            self.run_operations(operations)
+            formatted_logs = format_logs(cm.records)
+            for client in spec:
+                components = set()
+                for message in client["messages"]:
+                    components.add(message["component"])
+
+                clientid = self.entity_map[client["client"]]._topology_settings._topology_id
+                actual_logs = formatted_logs[clientid]
+                actual_logs = [log for log in actual_logs if log["component"] in components]
+                self.assertEqual(len(client["messages"]), len(actual_logs))
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                    expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+
+                    if "failureIsRedacted" in expected_msg:
+                        self.assertIn("failure", actual_data)
+                        should_redact = expected_msg.pop("failureIsRedacted")
+                        if should_redact:
+                            actual_fields = set(json_util.loads(actual_data["failure"]).keys())
+                            self.assertTrue(
+                                {"code", "codeName", "errorLabels"}.issuperset(actual_fields)
+                            )
+
+                    self.match_evaluator.match_result(expected_data, actual_data)
+                    self.match_evaluator.match_result(expected_msg, actual_msg)
+
     def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1672,8 +1819,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
 
-        # process operations
-        self.run_operations(spec["operations"])
+        if "expectLogMessages" in spec:
+            expect_log_messages = spec["expectLogMessages"]
+            self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
+            self.check_log_messages(spec["operations"], expect_log_messages)
+        else:
+            # process operations
+            self.run_operations(spec["operations"])
 
         # process expectEvents
         if "expectEvents" in spec:

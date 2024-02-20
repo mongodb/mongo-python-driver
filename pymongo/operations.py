@@ -15,6 +15,7 @@
 """Operation class definitions."""
 from __future__ import annotations
 
+import enum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -29,17 +30,50 @@ from typing import (
 from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import validate_boolean, validate_is_mapping, validate_list
+from pymongo.common import validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
-    from bson.son import SON
     from pymongo.bulk import _Bulk
 
-# Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
-_IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
+# Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
+_IndexList = Union[
+    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
+]
 _IndexKeyHint = Union[str, _IndexList]
+
+
+class _Op(str, enum.Enum):
+    ABORT = "abortTransaction"
+    AGGREGATE = "aggregate"
+    COMMIT = "commitTransaction"
+    COUNT = "count"
+    CREATE = "create"
+    CREATE_INDEXES = "createIndexes"
+    CREATE_SEARCH_INDEXES = "createSearchIndexes"
+    DELETE = "delete"
+    DISTINCT = "distinct"
+    DROP = "drop"
+    DROP_DATABASE = "dropDatabase"
+    DROP_INDEXES = "dropIndexes"
+    DROP_SEARCH_INDEXES = "dropSearchIndexes"
+    END_SESSIONS = "endSessions"
+    FIND_AND_MODIFY = "findAndModify"
+    FIND = "find"
+    INSERT = "insert"
+    LIST_COLLECTIONS = "listCollections"
+    LIST_INDEXES = "listIndexes"
+    LIST_SEARCH_INDEX = "listSearchIndexes"
+    LIST_DATABASES = "listDatabases"
+    UPDATE = "update"
+    UPDATE_INDEX = "updateIndex"
+    UPDATE_SEARCH_INDEX = "updateSearchIndex"
+    RENAME = "rename"
+    GETMORE = "getMore"
+    KILL_CURSORS = "killCursors"
+    TEST = "testOperation"
 
 
 class InsertOne(Generic[_DocumentType]):
@@ -52,8 +86,7 @@ class InsertOne(Generic[_DocumentType]):
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `document`: The document to insert. If the document is missing an
+        :param document: The document to insert. If the document is missing an
             _id field one will be added.
         """
         self._doc = document
@@ -89,11 +122,10 @@ class DeleteOne:
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `filter`: A query that matches the document to delete.
-          - `collation` (optional): An instance of
+        :param filter: A query that matches the document to delete.
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `hint` (optional): An index to use to support the query
+        :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
@@ -108,7 +140,7 @@ class DeleteOne:
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -124,11 +156,15 @@ class DeleteOne:
         )
 
     def __repr__(self) -> str:
-        return f"DeleteOne({self._filter!r}, {self._collation!r})"
+        return f"DeleteOne({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._collation) == (self._filter, self._collation)
+            return (other._filter, other._collation, other._hint) == (
+                self._filter,
+                self._collation,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -150,11 +186,10 @@ class DeleteMany:
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `filter`: A query that matches the documents to delete.
-          - `collation` (optional): An instance of
+        :param filter: A query that matches the documents to delete.
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `hint` (optional): An index to use to support the query
+        :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
@@ -169,7 +204,7 @@ class DeleteMany:
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -185,11 +220,15 @@ class DeleteMany:
         )
 
     def __repr__(self) -> str:
-        return f"DeleteMany({self._filter!r}, {self._collation!r})"
+        return f"DeleteMany({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._collation) == (self._filter, self._collation)
+            return (other._filter, other._collation, other._hint) == (
+                self._filter,
+                self._collation,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -213,14 +252,13 @@ class ReplaceOne(Generic[_DocumentType]):
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `filter`: A query that matches the document to replace.
-          - `replacement`: The new document.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
+        :param filter: A query that matches the document to replace.
+        :param replacement: The new document.
+        :param upsert: If ``True``, perform an insert if no documents
             match the filter.
-          - `collation` (optional): An instance of
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `hint` (optional): An index to use to support the query
+        :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
@@ -237,7 +275,7 @@ class ReplaceOne(Generic[_DocumentType]):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -257,7 +295,13 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (other._filter, other._doc, other._upsert, other._collation, other._hint,) == (
+            return (
+                other._filter,
+                other._doc,
+                other._upsert,
+                other._collation,
+                other._hint,
+            ) == (
                 self._filter,
                 self._doc,
                 self._upsert,
@@ -301,7 +345,7 @@ class _UpdateOp:
         if array_filters is not None:
             validate_list("array_filters", array_filters)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, SON[str, Any], None] = helpers._index_document(hint)
+            self._hint: Union[str, dict[str, Any], None] = helpers._index_document(hint)
         else:
             self._hint = hint
 
@@ -360,16 +404,15 @@ class UpdateOne(_UpdateOp):
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `filter`: A query that matches the document to update.
-          - `update`: The modifications to apply.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
+        :param filter: A query that matches the document to update.
+        :param update: The modifications to apply.
+        :param upsert: If ``True``, perform an insert if no documents
             match the filter.
-          - `collation` (optional): An instance of
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `array_filters` (optional): A list of filters specifying which
+        :param array_filters: A list of filters specifying which
             array elements an update should apply.
-          - `hint` (optional): An index to use to support the query
+        :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
@@ -418,16 +461,15 @@ class UpdateMany(_UpdateOp):
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
-        :Parameters:
-          - `filter`: A query that matches the documents to update.
-          - `update`: The modifications to apply.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
+        :param filter: A query that matches the documents to update.
+        :param update: The modifications to apply.
+        :param upsert: If ``True``, perform an insert if no documents
             match the filter.
-          - `collation` (optional): An instance of
+        :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
-          - `array_filters` (optional): A list of filters specifying which
+        :param array_filters: A list of filters specifying which
             array elements an update should apply.
-          - `hint` (optional): An index to use to support the query
+        :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
@@ -510,10 +552,9 @@ class IndexModel:
         See the MongoDB documentation for a full list of supported options by
         server version.
 
-        :Parameters:
-          - `keys`: a single key or a list containing (key, direction) pairs
+        :param keys: a single key or a list containing (key, direction) pairs
              or keys specifying the index to create.
-          - `**kwargs` (optional): any additional index creation
+        :param kwargs: any additional index creation
             options (see the above list) should be passed as keyword
             arguments.
 
@@ -545,16 +586,15 @@ class IndexModel:
 class SearchIndexModel:
     """Represents a search index to create."""
 
-    __slots__ = "__document"
+    __slots__ = ("__document",)
 
     def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
         """Create a Search Index instance.
 
         For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
 
-        :Parameters:
-          - `definition` - The definition for this index.
-          - `name` (optional) - The name for this index, if present.
+        :param definition: - The definition for this index.
+        :param name: - The name for this index, if present.
 
         .. versionadded:: 4.5
 

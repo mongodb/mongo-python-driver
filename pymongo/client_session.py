@@ -154,7 +154,6 @@ from typing import (
 
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.cursor import _ConnectionManager
@@ -167,6 +166,7 @@ from pymongo.errors import (
     WTimeoutError,
 )
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
+from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
@@ -183,13 +183,12 @@ if TYPE_CHECKING:
 class SessionOptions:
     """Options for a new :class:`ClientSession`.
 
-    :Parameters:
-      - `causal_consistency` (optional): If True, read operations are causally
+    :param causal_consistency: If True, read operations are causally
         ordered within the session. Defaults to True when the ``snapshot``
         option is ``False``.
-      - `default_transaction_options` (optional): The default
+    :param default_transaction_options: The default
         TransactionOptions to use for transactions started on this session.
-      - `snapshot` (optional): If True, then all reads performed using this
+    :param snapshot: If True, then all reads performed using this
         session will read from the same snapshot. This option is incompatible
         with ``causal_consistency=True``. Defaults to ``False``.
 
@@ -200,7 +199,7 @@ class SessionOptions:
     def __init__(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional["TransactionOptions"] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> None:
         if snapshot:
@@ -227,7 +226,7 @@ class SessionOptions:
         return self._causal_consistency
 
     @property
-    def default_transaction_options(self) -> Optional["TransactionOptions"]:
+    def default_transaction_options(self) -> Optional[TransactionOptions]:
         """The default TransactionOptions to use for transactions started on
         this session.
 
@@ -247,21 +246,20 @@ class SessionOptions:
 class TransactionOptions:
     """Options for :meth:`ClientSession.start_transaction`.
 
-    :Parameters:
-      - `read_concern` (optional): The
+    :param read_concern: The
         :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
         If ``None`` (the default) the :attr:`read_preference` of
         the :class:`MongoClient` is used.
-      - `write_concern` (optional): The
+    :param write_concern: The
         :class:`~pymongo.write_concern.WriteConcern` to use for this
         transaction. If ``None`` (the default) the :attr:`read_preference` of
         the :class:`MongoClient` is used.
-      - `read_preference` (optional): The read preference to use. If
+    :param read_preference: The read preference to use. If
         ``None`` (the default) the :attr:`read_preference` of this
         :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
         for options. Transactions which read must use
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-      - `max_commit_time_ms` (optional): The maximum amount of time to allow a
+    :param max_commit_time_ms: The maximum amount of time to allow a
         single commitTransaction command to run. This option is an alias for
         maxTimeMS option on the commitTransaction command. If ``None`` (the
         default) maxTimeMS is not used.
@@ -287,25 +285,25 @@ class TransactionOptions:
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError(
                     "read_concern must be an instance of "
-                    "pymongo.read_concern.ReadConcern, not: {!r}".format(read_concern)
+                    f"pymongo.read_concern.ReadConcern, not: {read_concern!r}"
                 )
         if write_concern is not None:
             if not isinstance(write_concern, WriteConcern):
                 raise TypeError(
                     "write_concern must be an instance of "
-                    "pymongo.write_concern.WriteConcern, not: {!r}".format(write_concern)
+                    f"pymongo.write_concern.WriteConcern, not: {write_concern!r}"
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
                     "transactions do not support unacknowledged write concern"
-                    ": {!r}".format(write_concern)
+                    f": {write_concern!r}"
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
                 raise TypeError(
-                    "{!r} is not valid for read_preference. See "
+                    f"{read_preference!r} is not valid for read_preference. See "
                     "pymongo.read_preferences for valid "
-                    "options.".format(read_preference)
+                    "options."
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
@@ -354,7 +352,7 @@ def _validate_session_write_concern(
             else:
                 raise ConfigurationError(
                     "Explicit sessions are incompatible with "
-                    "unacknowledged write concern: {!r}".format(write_concern)
+                    f"unacknowledged write concern: {write_concern!r}"
                 )
     return session
 
@@ -535,7 +533,7 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def __enter__(self) -> "ClientSession":
+    def __enter__(self) -> ClientSession:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -557,7 +555,14 @@ class ClientSession:
     def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
+
+    @property
+    def _transaction_id(self) -> Int64:
+        """The current transaction id for the underlying server session."""
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        return self._server_session.transaction_id
 
     @property
     def cluster_time(self) -> Optional[ClusterTime]:
@@ -585,7 +590,7 @@ class ClientSession:
 
     def with_transaction(
         self,
-        callback: Callable[["ClientSession"], _T],
+        callback: Callable[[ClientSession], _T],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -655,24 +660,22 @@ class ClientSession:
         timeout is reached will be re-raised. Applications that desire a
         different timeout duration should not use this method.
 
-        :Parameters:
-          - `callback`: The callable ``callback`` to run inside a transaction.
+        :param callback: The callable ``callback`` to run inside a transaction.
             The callable must accept a single argument, this session. Note,
             under certain error conditions the callback may be run multiple
             times.
-          - `read_concern` (optional): The
+        :param read_concern: The
             :class:`~pymongo.read_concern.ReadConcern` to use for this
             transaction.
-          - `write_concern` (optional): The
+        :param write_concern: The
             :class:`~pymongo.write_concern.WriteConcern` to use for this
             transaction.
-          - `read_preference` (optional): The read preference to use for this
+        :param read_preference: The read preference to use for this
             transaction. If ``None`` (the default) the :attr:`read_preference`
             of this :class:`Database` is used. See
             :mod:`~pymongo.read_preferences` for options.
 
-        :Returns:
-          The return value of the ``callback``.
+        :return: The return value of the ``callback``.
 
         .. versionadded:: 3.9
         """
@@ -833,23 +836,22 @@ class ClientSession:
     def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
 
-        :Parameters:
-          - `command_name`: Either "commitTransaction" or "abortTransaction".
+        :param command_name: Either "commitTransaction" or "abortTransaction".
         """
 
         def func(
-            session: Optional[ClientSession], conn: Connection, retryable: bool
+            _session: Optional[ClientSession], conn: Connection, _retryable: bool
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(func, self, None, retryable=True)
+        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
         wc = opts.write_concern
-        cmd = SON([(command_name, 1)])
+        cmd = {command_name: 1}
         if command_name == "commitTransaction":
             if opts.max_commit_time_ms and _csot.get_timeout() is None:
                 cmd["maxTimeMS"] = opts.max_commit_time_ms
@@ -882,8 +884,7 @@ class ClientSession:
     def advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
         """Update the cluster time for this session.
 
-        :Parameters:
-          - `cluster_time`: The
+        :param cluster_time: The
             :data:`~pymongo.client_session.ClientSession.cluster_time` from
             another `ClientSession` instance.
         """
@@ -904,8 +905,7 @@ class ClientSession:
     def advance_operation_time(self, operation_time: Timestamp) -> None:
         """Update the operation time for this session.
 
-        :Parameters:
-          - `operation_time`: The
+        :param operation_time: The
             :data:`~pymongo.client_session.ClientSession.operation_time` from
             another `ClientSession` instance.
         """
@@ -973,10 +973,12 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self) -> None:
+    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = self._client._topology.get_server_session()
+            self._server_session = self._client._topology.get_server_session(
+                logical_session_timeout_minutes
+            )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
@@ -987,8 +989,12 @@ class ClientSession:
         read_preference: _ServerMode,
         conn: Connection,
     ) -> None:
+        if not conn.supports_sessions:
+            if not self._implicit:
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
+            return
         self._check_ended()
-        self._materialize()
+        self._materialize(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1002,8 +1008,7 @@ class ClientSession:
         if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
-                    "read preference in a transaction must be primary, not: "
-                    "{!r}".format(read_preference)
+                    f"read preference in a transaction must be primary, not: {read_preference!r}"
                 )
 
             if self._transaction.state == _TxnState.STARTING:
@@ -1071,7 +1076,10 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes: float) -> bool:
+    def timed_out(self, session_timeout_minutes: Optional[int]) -> bool:
+        if session_timeout_minutes is None:
+            return False
+
         idle_seconds = time.monotonic() - self.last_use
 
         # Timed out if we have less than a minute to live.
@@ -1106,7 +1114,7 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self, session_timeout_minutes: float) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -1123,7 +1131,7 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession(self.generation)
 
     def return_server_session(
-        self, server_session: _ServerSession, session_timeout_minutes: Optional[float]
+        self, server_session: _ServerSession, session_timeout_minutes: Optional[int]
     ) -> None:
         if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
@@ -1137,7 +1145,7 @@ class _ServerSessionPool(collections.deque):
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes: float) -> None:
+    def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):

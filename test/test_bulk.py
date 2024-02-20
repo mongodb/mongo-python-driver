@@ -13,9 +13,11 @@
 # limitations under the License.
 
 """Test the bulk API."""
+from __future__ import annotations
 
 import sys
 import uuid
+from typing import Any, Optional
 
 from pymongo.mongo_client import MongoClient
 
@@ -154,7 +156,6 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, self.coll.count_documents({}))
 
     def _test_update_many(self, update):
-
         expected = {
             "nMatched": 2,
             "nModified": 2,
@@ -217,7 +218,6 @@ class TestBulk(BulkTestBase):
         self._test_update_one([{"$set": {"foo": "bar"}}])
 
     def test_replace_one(self):
-
         expected = {
             "nMatched": 1,
             "nModified": 1,
@@ -274,7 +274,6 @@ class TestBulk(BulkTestBase):
         self.assertEqual(self.coll.count_documents({}), 1)
 
     def test_upsert(self):
-
         expected = {
             "nMatched": 0,
             "nModified": 0,
@@ -830,7 +829,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_ordered_failure(self):
@@ -845,7 +844,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 3 == self.coll.count_documents({}), "insert 3 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 3, "insert 3 documents")
         self.assertEqual({"_id": 1}, self.coll.find_one({"_id": 1}))
 
     def test_no_results_unordered_success(self):
@@ -857,7 +856,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_unordered_failure(self):
@@ -872,7 +871,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         ]
         result = self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
-        wait_until(lambda: 2 == self.coll.count_documents({}), "insert 2 documents")
+        wait_until(lambda: self.coll.count_documents({}) == 2, "insert 2 documents")
         wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
 
@@ -947,7 +946,7 @@ class TestBulkWriteConcern(BulkTestBase):
         result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
         self.assertTrue(result.acknowledged)
 
-        requests = [InsertOne({"a": 1}), InsertOne({"a": 2})]
+        requests: list[Any] = [InsertOne({"a": 1}), InsertOne({"a": 2})]
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:

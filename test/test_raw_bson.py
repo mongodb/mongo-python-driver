@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import datetime
 import sys
@@ -21,7 +22,7 @@ sys.path[0:0] = [""]
 from test import client_context, unittest
 from test.test_client import IntegrationTest
 
-from bson import decode, encode
+from bson import Code, DBRef, decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
@@ -30,7 +31,6 @@ from bson.son import SON
 
 
 class TestRawBSONDocument(IntegrationTest):
-
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
     #  'name': 'Sherlock',
     #  'addresses': [{'street': 'Baker Street'}]}
@@ -198,6 +198,20 @@ class TestRawBSONDocument(IntegrationTest):
 
         for rkey, elt in zip(rawdoc, keyvaluepairs):
             self.assertEqual(rkey, elt[0])
+
+    def test_contains_code_with_scope(self):
+        doc = RawBSONDocument(encode({"value": Code("x=1", scope={})}))
+
+        self.assertEqual(decode(encode(doc)), {"value": Code("x=1", {})})
+        self.assertEqual(doc["value"].scope, RawBSONDocument(encode({})))
+
+    def test_contains_dbref(self):
+        doc = RawBSONDocument(encode({"value": DBRef("test", "id")}))
+        raw = {"$ref": "test", "$id": "id"}
+        raw_encoded = encode(decode(encode(raw)))
+
+        self.assertEqual(decode(encode(doc)), {"value": DBRef("test", "id")})
+        self.assertEqual(doc["value"].raw, raw_encoded)
 
 
 if __name__ == "__main__":

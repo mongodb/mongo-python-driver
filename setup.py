@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import warnings
@@ -66,7 +68,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
         try:
             build_ext.run(self)
         except Exception:
-            if "TOX_ENV_NAME" in os.environ:
+            if os.environ.get("PYMONGO_C_EXT_MUST_BUILD"):
                 raise
             e = sys.exc_info()[1]
             sys.stdout.write("%s\n" % str(e))
@@ -75,7 +77,8 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
                 % (
                     "Extension modules",
                     "There was an issue with your platform configuration - see above.",
-                )
+                ),
+                stacklevel=2,
             )
 
     def build_extension(self, ext):
@@ -83,16 +86,17 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
         try:
             build_ext.build_extension(self, ext)
         except Exception:
-            if "TOX_ENV_NAME" in os.environ:
+            if os.environ.get("PYMONGO_C_EXT_MUST_BUILD"):
                 raise
             e = sys.exc_info()[1]
             sys.stdout.write("%s\n" % str(e))
             warnings.warn(
                 self.warning_message
                 % (
-                    "The %s extension module" % (name,),
+                    "The %s extension module" % (name,),  # noqa: UP031
                     "The output above this warning shows how the compilation failed.",
-                )
+                ),
+                stacklevel=2,
             )
 
 
@@ -116,7 +120,10 @@ ext_modules = [
 
 
 if "--no_ext" in sys.argv or os.environ.get("NO_EXT"):
-    sys.argv.remove("--no_ext")
+    try:
+        sys.argv.remove("--no_ext")
+    except ValueError:
+        pass
     ext_modules = []
 elif sys.platform.startswith("java") or sys.platform == "cli" or "PyPy" in sys.version:
     sys.stdout.write(

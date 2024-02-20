@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for mocking parts of PyMongo to test other parts."""
+from __future__ import annotations
 
 import contextlib
 import weakref
@@ -46,7 +47,7 @@ class MockPool(Pool):
 
         assert host_and_port in (
             client.mock_standalones + client.mock_members + client.mock_mongoses
-        ), ("bad host: %s" % host_and_port)
+        ), "bad host: %s" % host_and_port
 
         with Pool.checkout(self, handler) as conn:
             conn.mock_host = self.mock_host

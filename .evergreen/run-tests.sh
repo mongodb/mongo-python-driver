@@ -8,7 +8,6 @@ set -o xtrace
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
 #  SSL                  Set to enable SSL. Defaults to "nossl"
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
-#  C_EXTENSIONS         If non-empty, c extensions are enabled.
 #  COVERAGE             If non-empty, run the test suite with coverage.
 #  COMPRESSORS          If non-empty, install appropriate compressor.
 #  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
@@ -25,12 +24,13 @@ set -o xtrace
 #  TEST_AUTH_OIDC       If non-empty, test OIDC Auth Mechanism
 #  TEST_PERF            If non-empty, run performance tests
 #  TEST_OCSP            If non-empty, run OCSP tests
+#  TEST_ATLAS           If non-empty, test Atlas connections
+#  TEST_INDEX_MANAGEMENT        If non-empty, run index management tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
-#  TEST_ATLAS   If non-empty, test Atlas connections
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_ARGS="$1"
+TEST_ARGS="${*:1}"
 PYTHON=$(which python)
 export PIP_QUIET=1  # Quiet by default
 
@@ -38,7 +38,10 @@ python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not in
 
 # Try to source exported AWS Secrets
 if [ -f ./secrets-export.sh ]; then
+  echo "Sourcing secrets"
   source ./secrets-export.sh
+else
+  echo "Not sourcing secrets"
 fi
 
 if [ "$AUTH" != "noauth" ]; then
@@ -49,10 +52,15 @@ if [ "$AUTH" != "noauth" ]; then
     elif [ ! -z "$TEST_SERVERLESS" ]; then
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+        export DB_USER=$OIDC_ADMIN_USER
+        export DB_PASSWORD=$OIDC_ADMIN_PWD
+        export DB_IP="$MONGODB_URI"
     else
         export DB_USER="bob"
         export DB_PASSWORD="pwd123"
     fi
+    echo "Added auth, DB_USER: $DB_USER"
     set -x
 fi
 
@@ -108,32 +116,13 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
-    # Work around for root certifi not being installed.
-    # TODO: Remove after PYTHON-3827
-    if [ "$(uname -s)" = "Darwin" ]; then
-        python -m pip install certifi
-        CERT_PATH=$(python -c "import certifi; print(certifi.where())")
-        export SSL_CERT_FILE=${CERT_PATH}
-        export REQUESTS_CA_BUNDLE=${CERT_PATH}
-        export AWS_CA_BUNDLE=${CERT_PATH}
+    python -m pip install --prefer-binary '.[encryption]'
+
+    # Install libmongocrypt if necessary.
+    if [ ! -d "libmongocrypt" ]; then
+        bash ./.evergreen/setup-libmongocrypt.sh
     fi
 
-    python -m pip install '.[encryption]'
-
-    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
-        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
-    fi
-
-    if [ -z "$LIBMONGOCRYPT_URL" ]; then
-        echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
-        exit 1
-    fi
-    curl -O "$LIBMONGOCRYPT_URL"
-    mkdir libmongocrypt
-    tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
-    ls -la libmongocrypt
-    ls -la libmongocrypt/nocrypto
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
     if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
@@ -154,8 +143,9 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
-    git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
+    if [ ! -d "libmongocrypt_git" ]; then
+      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    fi
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
@@ -166,10 +156,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
         python -m pip install '.[ocsp]'
     fi
-
-    # Get access to the AWS temporary credentials:
-    # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
-    . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
         CRYPT_SHARED_DIR=`dirname $CRYPT_SHARED_LIB_PATH`
@@ -201,6 +187,8 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+    export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+    export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     TEST_ARGS="test/test_index_management.py"
 fi
 
@@ -224,7 +212,7 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_aws/test_auth_oidc.py"
+    TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
 
 if [ -n "$PERF_TEST" ]; then
@@ -244,8 +232,10 @@ python -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    python -m pip install pytest-cov
-    TEST_ARGS="$TEST_ARGS --cov pymongo --cov-branch --cov-report term-missing:skip-covered"
+    # coverage 7.3 dropped support for Python 3.7, keep in sync with combine-coverage.sh.
+    # coverage >=5 is needed for relative_files=true.
+    python -m pip install pytest-cov "coverage>=5,<7.3"
+    TEST_ARGS="$TEST_ARGS --cov"
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
@@ -256,13 +246,9 @@ fi
 PIP_QUIET=0 python -m pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-        python setup.py build_ext -i
-        # This will set a non-zero exit status if either import fails,
-        # causing this script to exit.
-        python -c "from bson import _cbson; from pymongo import _cmessage"
-    fi
-    python -m pytest -v --durations=5 --maxfail=10 $TEST_ARGS
+    # Use --capture=tee-sys so pytest prints test output inline:
+    # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
+    python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
@@ -277,4 +263,9 @@ if [ -n "$PERF_TEST" ]; then
     echo "{\"failures\": 0, \"results\": [{\"status\": \"pass\", \"exit_code\": 0, \"test_file\": \"BenchMarkTests\", \"start\": $start_time, \"end\": $end_time, \"elapsed\": $elapsed_secs}]}" > report.json
 
     cat report.json
+fi
+
+# Handle coverage post actions.
+if [ -n "$COVERAGE" ]; then
+    rm -rf .pytest_cache
 fi

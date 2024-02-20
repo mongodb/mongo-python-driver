@@ -13,9 +13,10 @@
 # limitations under the License.
 
 """Test the Retryable Reads unified spec tests."""
+from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -23,7 +24,7 @@ from test import unittest
 from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "unified")
+TEST_PATH = Path(__file__).parent / "retryable_reads/unified"
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))

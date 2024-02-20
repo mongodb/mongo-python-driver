@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the SRV support tests."""
+from __future__ import annotations
 
 import sys
 from time import sleep
@@ -86,7 +87,6 @@ class SrvPollingKnobs:
 
 
 class TestSrvPolling(unittest.TestCase):
-
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
         ("localhost.test.build.10gen.cc", 27018),

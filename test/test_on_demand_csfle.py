@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test client side encryption with on demand credentials."""
+from __future__ import annotations
+
 import os
 import sys
 import unittest
@@ -77,8 +79,8 @@ class TestonDemandAzureCredentials(IntegrationTest):
     def setUp(self):
         super().setUp()
         self.master_key = {
-            "keyVaultEndpoint": "https://keyvault-drivers-2411.vault.azure.net/keys/",
-            "keyName": "KEY-NAME",
+            "keyVaultEndpoint": os.environ["KEY_VAULT_ENDPOINT"],
+            "keyName": os.environ["KEY_NAME"],
         }
 
     @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")

@@ -15,6 +15,7 @@
 """Test that the pymongo.uri_parser module is compliant with the connection
 string and uri options specifications.
 """
+from __future__ import annotations
 
 import json
 import os
@@ -82,7 +83,9 @@ def run_scenario_in_dir(target_workdir):
         def modified_test_scenario(*args, **kwargs):
             original_workdir = os.getcwd()
             os.chdir(target_workdir)
-            func(*args, **kwargs)
+            with warnings.catch_warnings():
+                warnings.simplefilter("default")
+                func(*args, **kwargs)
             os.chdir(original_workdir)
 
         return modified_test_scenario

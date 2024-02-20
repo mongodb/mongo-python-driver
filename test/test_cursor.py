@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test the cursor module."""
+from __future__ import annotations
+
 import copy
 import gc
 import itertools
@@ -21,6 +23,9 @@ import re
 import sys
 import threading
 import time
+from typing import Any
+
+import pymongo
 
 sys.path[0:0] = [""]
 
@@ -31,6 +36,7 @@ from test.utils import (
     OvertCommandListener,
     ignore_deprecations,
     rs_or_single_client,
+    wait_until,
 )
 
 from bson import decode_all
@@ -349,7 +355,7 @@ class TestCursor(IntegrationTest):
             db.test.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain,
         )
 
-        spec = [("num", DESCENDING)]
+        spec: list[Any] = [("num", DESCENDING)]
         _ = db.test.create_index(spec)
 
         first = next(db.test.find())
@@ -724,7 +730,7 @@ class TestCursor(IntegrationTest):
         random.shuffle(shuffled)
 
         db.test.drop()
-        for (a, b) in shuffled:
+        for a, b in shuffled:
             db.test.insert_one({"a": a, "b": b})
 
         result = [
@@ -906,7 +912,8 @@ class TestCursor(IntegrationTest):
         # Ensure hints are cloned as the correct type
         cursor = self.db.test.find().hint([("z", 1), ("a", 1)])
         cursor2 = copy.deepcopy(cursor)
-        self.assertTrue(isinstance(cursor2._Cursor__hint, SON))
+        # Internal types are now dict rather than SON by default
+        self.assertTrue(isinstance(cursor2._Cursor__hint, dict))
         self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
 
     def test_clone_empty(self):
@@ -1079,8 +1086,12 @@ class TestCursor(IntegrationTest):
 
         def iterate_cursor():
             while cursor.alive:
-                for _doc in cursor:
-                    pass
+                try:
+                    for _doc in cursor:
+                        pass
+                except OperationFailure as e:
+                    if e.code != 237:  # CursorKilled error code
+                        raise
 
         t = threading.Thread(target=iterate_cursor)
         t.start()
@@ -1174,7 +1185,7 @@ class TestCursor(IntegrationTest):
         while True:
             cursor.next()
             n += 1
-            if 3 == n:
+            if n == 3:
                 self.assertFalse(cursor.alive)
                 break
 
@@ -1221,6 +1232,59 @@ class TestCursor(IntegrationTest):
             assertCursorKilled()
         else:
             self.assertEqual(0, len(listener.started_events))
+
+    @client_context.require_failCommand_appName
+    def test_timeout_kills_cursor_asynchronously(self):
+        listener = AllowListEventListener("killCursors")
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client[self.db.name].test_timeout_kills_cursor
+
+        # Add some test data.
+        docs_inserted = 10
+        coll.insert_many([{"i": i} for i in range(docs_inserted)])
+
+        listener.reset()
+
+        cursor = coll.find({}, batch_size=1)
+        cursor.next()
+
+        # Mock getMore commands timing out.
+        mock_timeout_errors = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "errorCode": 50,
+                "failCommands": ["getMore"],
+            },
+        }
+
+        with self.fail_point(mock_timeout_errors):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        def assertCursorKilled():
+            wait_until(
+                lambda: len(listener.succeeded_events),
+                "find successful killCursors command",
+            )
+
+            self.assertEqual(1, len(listener.started_events))
+            self.assertEqual("killCursors", listener.started_events[0].command_name)
+            self.assertEqual(1, len(listener.succeeded_events))
+            self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
+
+        assertCursorKilled()
+        listener.reset()
+
+        cursor = coll.aggregate([], batchSize=1)
+        cursor.next()
+
+        with self.fail_point(mock_timeout_errors):
+            with self.assertRaises(ExecutionTimeout):
+                cursor.next()
+
+        assertCursorKilled()
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__
@@ -1405,7 +1469,7 @@ class TestRawBatchCursor(IntegrationTest):
 
         # The batch is a list of one raw bytes object.
         self.assertEqual(len(csr["firstBatch"]), 1)
-        self.assertEqual(decode_all(csr["firstBatch"][0]), [{"_id": i} for i in range(0, 4)])
+        self.assertEqual(decode_all(csr["firstBatch"][0]), [{"_id": i} for i in range(4)])
 
         listener.reset()
 
@@ -1585,6 +1649,28 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
             n += 4
             listener.reset()
+
+    @client_context.require_version_min(5, 0, -1)
+    @client_context.require_no_mongos
+    def test_exhaust_cursor_db_set(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        c = client.pymongo_test.test
+        c.delete_many({})
+        c.insert_many([{"_id": i} for i in range(3)])
+
+        listener.reset()
+
+        result = list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
+
+        self.assertEqual(len(result), 3)
+
+        self.assertEqual(
+            listener.started_command_names(), ["find", "getMore", "getMore", "getMore"]
+        )
+        for cmd in listener.started_events:
+            self.assertEqual(cmd.command["$db"], "pymongo_test")
 
 
 if __name__ == "__main__":

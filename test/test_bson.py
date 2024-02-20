@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Test the bson module."""
+from __future__ import annotations
 
 import array
 import collections
@@ -47,7 +48,7 @@ from bson import (
     encode,
     is_valid,
 )
-from bson.binary import Binary, UuidRepresentation
+from bson.binary import USER_DEFINED_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -771,6 +772,21 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(type(value), orig_type)
             self.assertEqual(value, orig_type(value))
 
+    def test_encode_type_marker(self):
+        # Assert that a custom subclass can be BSON encoded based on the _type_marker attribute.
+        class MyMaxKey:
+            _type_marker = 127
+
+        expected_bson = encode({"a": MaxKey()})
+        self.assertEqual(encode({"a": MyMaxKey()}), expected_bson)
+
+        # Test a class that inherits from two built in types
+        class MyBinary(Binary):
+            pass
+
+        expected_bson = encode({"a": Binary(b"bin", USER_DEFINED_SUBTYPE)})
+        self.assertEqual(encode({"a": MyBinary(b"bin", USER_DEFINED_SUBTYPE)}), expected_bson)
+
     def test_ordered_dict(self):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, decode(encode(d), CodecOptions(document_class=OrderedDict)))  # type: ignore[type-var]
@@ -782,7 +798,9 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(0, bson_re1.flags)
 
         doc1 = {"r": bson_re1}
-        doc1_bson = b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"  # document length  # r: regex  # document terminator
+        doc1_bson = (
+            b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"
+        )  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc1_bson, encode(doc1))
         self.assertEqual(doc1, decode(doc1_bson))
@@ -793,7 +811,9 @@ class TestBSON(unittest.TestCase):
 
         doc2_with_re = {"r": re2}
         doc2_with_bson_re = {"r": bson_re2}
-        doc2_bson = b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"  # document length  # r: regex  # document terminator
+        doc2_bson = (
+            b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"
+        )  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc2_bson, encode(doc2_with_re))
         self.assertEqual(doc2_bson, encode(doc2_with_bson_re))

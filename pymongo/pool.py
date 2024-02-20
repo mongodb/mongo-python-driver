@@ -17,6 +17,7 @@ from __future__ import annotations
 import collections
 import contextlib
 import copy
+import logging
 import os
 import platform
 import socket
@@ -25,6 +26,7 @@ import sys
 import threading
 import time
 import weakref
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -39,7 +41,6 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.son import SON
 from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
@@ -54,7 +55,7 @@ from pymongo.common import (
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
 )
-from pymongo.errors import (
+from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
     ConnectionFailure,
@@ -71,6 +72,12 @@ from pymongo.errors import (
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
 from pymongo.lock import _create_lock
+from pymongo.logger import (
+    _CONNECTION_LOGGER,
+    _ConnectionStatusMessage,
+    _debug_log,
+    _verbose_connection_error_reason,
+)
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -114,9 +121,9 @@ try:
 
 except ImportError:
     # Windows, various platforms we don't claim to support
-    # (Jython, IronPython, ...), systems that don't provide
+    # (Jython, IronPython, ..), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:
+    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
         """Dummy function for platforms that don't provide fcntl."""
 
 
@@ -179,11 +186,7 @@ else:
         _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
 
 
-_METADATA: SON[str, Any] = SON(
-    [
-        ("driver", SON([("name", "PyMongo"), ("version", __version__)])),
-    ]
-)
+_METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
 
 if sys.platform.startswith("linux"):
     # platform.linux_distribution was deprecated in Python 3.5
@@ -191,61 +194,51 @@ if sys.platform.startswith("linux"):
     # raises DeprecationWarning
     # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
     _name = platform.system()
-    _METADATA["os"] = SON(
-        [
-            ("type", _name),
-            ("name", _name),
-            ("architecture", platform.machine()),
-            # Kernel version (e.g. 4.4.0-17-generic).
-            ("version", platform.release()),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": _name,
+        "name": _name,
+        "architecture": platform.machine(),
+        # Kernel version (e.g. 4.4.0-17-generic).
+        "version": platform.release(),
+    }
 elif sys.platform == "darwin":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", platform.system()),
-            ("architecture", platform.machine()),
-            # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
-            # kernel version.
-            ("version", platform.mac_ver()[0]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": platform.system(),
+        "architecture": platform.machine(),
+        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+        # kernel version.
+        "version": platform.mac_ver()[0],
+    }
 elif sys.platform == "win32":
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            # "Windows XP", "Windows 7", "Windows 10", etc.
-            ("name", " ".join((platform.system(), platform.release()))),
-            ("architecture", platform.machine()),
-            # Windows patch level (e.g. 5.1.2600-SP3)
-            ("version", "-".join(platform.win32_ver()[1:3])),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        # "Windows XP", "Windows 7", "Windows 10", etc.
+        "name": " ".join((platform.system(), platform.release())),
+        "architecture": platform.machine(),
+        # Windows patch level (e.g. 5.1.2600-SP3)
+        "version": "-".join(platform.win32_ver()[1:3]),
+    }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA["os"] = SON(
-        [
-            # Linux, Windows 7, Mac OS X, etc.
-            ("type", _name),
-            ("name", _name),
-            # x86, x86_64, AMD64, etc.
-            ("architecture", _arch),
-            # Linux kernel version, OSX version, etc.
-            ("version", _ver),
-        ]
-    )
+    _METADATA["os"] = {
+        # Linux, Windows 7, Mac OS X, etc.
+        "type": _name,
+        "name": _name,
+        # x86, x86_64, AMD64, etc.
+        "architecture": _arch,
+        # Linux kernel version, OSX version, etc.
+        "version": _ver,
+    }
 else:
     # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
     _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
-    _METADATA["os"] = SON(
-        [
-            ("type", platform.system()),
-            ("name", " ".join([part for part in _aliased[:2] if part])),
-            ("architecture", platform.machine()),
-            ("version", _aliased[2]),
-        ]
-    )
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": " ".join([part for part in _aliased[:2] if part]),
+        "architecture": platform.machine(),
+        "version": _aliased[2],
+    }
 
 if platform.python_implementation().startswith("PyPy"):
     _METADATA["platform"] = " ".join(
@@ -267,6 +260,25 @@ else:
     _METADATA["platform"] = " ".join(
         (platform.python_implementation(), ".".join(map(str, sys.version_info)))
     )
+
+DOCKER_ENV_PATH = "/.dockerenv"
+ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
+
+RUNTIME_NAME_DOCKER = "docker"
+ORCHESTRATOR_NAME_K8S = "kubernetes"
+
+
+def get_container_env_info() -> dict[str, str]:
+    """Returns the runtime and orchestrator of a container.
+    If neither value is present, the metadata client.env.container field will be omitted."""
+    container = {}
+
+    if Path(DOCKER_ENV_PATH).exists():
+        container["runtime"] = RUNTIME_NAME_DOCKER
+    if os.getenv(ENV_VAR_K8S):
+        container["orchestrator"] = ORCHESTRATOR_NAME_K8S
+
+    return container
 
 
 def _is_lambda() -> bool:
@@ -290,6 +302,10 @@ def _is_vercel() -> bool:
     return bool(os.getenv("VERCEL"))
 
 
+def _is_faas() -> bool:
+    return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
+
+
 def _getenv_int(key: str) -> Optional[int]:
     """Like os.getenv but returns an int, or None if the value is missing/malformed."""
     val = os.getenv(key)
@@ -303,6 +319,9 @@ def _getenv_int(key: str) -> Optional[int]:
 
 def _metadata_env() -> dict[str, Any]:
     env: dict[str, Any] = {}
+    container = get_container_env_info()
+    if container:
+        env["container"] = container
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
@@ -379,7 +398,10 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
 
 
 def _raise_connection_failure(
-    address: Any, error: Exception, msg_prefix: Optional[str] = None
+    address: Any,
+    error: Exception,
+    msg_prefix: Optional[str] = None,
+    timeout_details: Optional[dict[str, float]] = None,
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
@@ -390,6 +412,8 @@ def _raise_connection_failure(
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
+    if "configured timeouts" not in msg:
+        msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
@@ -405,6 +429,32 @@ def _raise_connection_failure(
 def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
     timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
+
+
+def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
+    details = {}
+    timeout = _csot.get_timeout()
+    socket_timeout = options.socket_timeout
+    connect_timeout = options.connect_timeout
+    if timeout:
+        details["timeoutMS"] = timeout * 1000
+    if socket_timeout and not timeout:
+        details["socketTimeoutMS"] = socket_timeout * 1000
+    if connect_timeout:
+        details["connectTimeoutMS"] = connect_timeout * 1000
+    return details
+
+
+def format_timeout_details(details: Optional[dict[str, float]]) -> str:
+    result = ""
+    if details:
+        result += " (configured timeouts:"
+        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
+            if timeout in details:
+                result += f" {timeout}: {details[timeout]}ms,"
+        result = result[:-1]
+        result += ")"
+    return result
 
 
 class PoolOptions:
@@ -624,7 +674,7 @@ class PoolOptions:
         return self.__compression_settings
 
     @property
-    def metadata(self) -> SON[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """A dict of metadata about the application, driver, os, and platform."""
         return self.__metadata.copy()
 
@@ -656,11 +706,10 @@ class _CancellationContext:
 class Connection:
     """Store a connection with some metadata.
 
-    :Parameters:
-      - `conn`: a raw connection object
-      - `pool`: a Pool instance
-      - `address`: the server's (host, port)
-      - `id`: the id of this socket in it's pool
+    :param conn: a raw connection object
+    :param pool: a Pool instance
+    :param address: the server's (host, port)
+    :param id: the id of this socket in it's pool
     """
 
     def __init__(
@@ -697,14 +746,12 @@ class Connection:
         self.pool_gen = pool.gen
         self.generation = self.pool_gen.get_overall()
         self.ready = False
-        self.cancel_context: Optional[_CancellationContext] = None
-        if not pool.handshake:
-            # This is a Monitor connection.
-            self.cancel_context = _CancellationContext()
+        self.cancel_context: _CancellationContext = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come: bool = False
         # For load balancer support.
         self.service_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
@@ -712,6 +759,7 @@ class Connection:
         self.active = False
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
+        self._client_id = pool._client_id
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -736,10 +784,15 @@ class Connection:
             rtt = self.connect_rtt
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
+            timeout_details = _get_timeout_details(self.opts)
+            formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
-            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
+            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
             raise ExecutionTimeout(
-                errmsg, 50, {"ok": 0, "errmsg": errmsg, "code": 50}, self.max_wire_version
+                errmsg,
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
@@ -761,14 +814,14 @@ class Connection:
         else:
             self.close_conn(ConnectionClosedReason.STALE)
 
-    def hello_cmd(self) -> SON[str, Any]:
+    def hello_cmd(self) -> dict[str, Any]:
         # Handshake spec requires us to use OP_MSG+hello command for the
         # initial handshake in load balanced or stable API mode.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             self.op_msg_enabled = True
-            return SON([(HelloCompat.CMD, 1)])
+            return {HelloCompat.CMD: 1}
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
+            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello[dict[str, Any]]:
         return self._hello(None, None, None)
@@ -824,7 +877,10 @@ class Connection:
         self.max_bson_size = hello.max_bson_size
         self.max_message_size = hello.max_message_size
         self.max_write_batch_size = hello.max_write_batch_size
-        self.supports_sessions = hello.logical_session_timeout_minutes is not None
+        self.supports_sessions = (
+            hello.logical_session_timeout_minutes is not None and hello.is_readable
+        )
+        self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
         self.hello_ok = hello.hello_ok
         self.is_repl = hello.server_type in (
             SERVER_TYPE.RSPrimary,
@@ -840,10 +896,11 @@ class Connection:
             self.compression_context = ctx
 
         self.op_msg_enabled = True
+        self.server_connection_id = hello.connection_id
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
         if auth_ctx:
-            auth_ctx.parse_response(hello)
+            auth_ctx.parse_response(hello)  # type:ignore[arg-type]
             if auth_ctx.speculate_succeeded():
                 self.auth_ctx = auth_ctx
         if self.opts.load_balanced:
@@ -886,23 +943,22 @@ class Connection:
     ) -> dict[str, Any]:
         """Execute a command or raise an error.
 
-        :Parameters:
-          - `dbname`: name of the database on which to run the command
-          - `spec`: a command document as a dict, SON, or mapping object
-          - `read_preference`: a read preference
-          - `codec_options`: a CodecOptions instance
-          - `check`: raise OperationFailure if there are errors
-          - `allowable_errors`: errors to ignore if `check` is True
-          - `read_concern`: The read concern for this command.
-          - `write_concern`: The write concern for this command.
-          - `parse_write_concern_error`: Whether to parse the
+        :param dbname: name of the database on which to run the command
+        :param spec: a command document as a dict, SON, or mapping object
+        :param read_preference: a read preference
+        :param codec_options: a CodecOptions instance
+        :param check: raise OperationFailure if there are errors
+        :param allowable_errors: errors to ignore if `check` is True
+        :param read_concern: The read concern for this command.
+        :param write_concern: The write concern for this command.
+        :param parse_write_concern_error: Whether to parse the
             ``writeConcernError`` field in the command response.
-          - `collation`: The collation for this command.
-          - `session`: optional ClientSession instance.
-          - `client`: optional MongoClient for gossipping $clusterTime.
-          - `retryable_write`: True if this command is a retryable write.
-          - `publish_events`: Should we publish events for this command?
-          - `user_fields` (optional): Response fields that should be decoded
+        :param collation: The collation for this command.
+        :param session: optional ClientSession instance.
+        :param client: optional MongoClient for gossipping $clusterTime.
+        :param retryable_write: True if this command is a retryable write.
+        :param publish_events: Should we publish events for this command?
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
@@ -911,7 +967,7 @@ class Connection:
 
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
-            spec = SON(spec)
+            spec = dict(spec)
 
         if not (write_concern is None or write_concern.acknowledged or collation is None):
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
@@ -994,9 +1050,8 @@ class Connection:
 
         Can raise ConnectionFailure or InvalidDocument.
 
-        :Parameters:
-          - `msg`: bytes, an OP_MSG message.
-          - `max_doc_size`: size in bytes of the largest document in `msg`.
+        :param msg: bytes, an OP_MSG message.
+        :param max_doc_size: size in bytes of the largest document in `msg`.
         """
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
@@ -1008,9 +1063,8 @@ class Connection:
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :Parameters:
-          - `request_id`: an int.
-          - `msg`: bytes, the command message.
+        :param request_id: an int.
+        :param msg: bytes, the command message.
         """
         self.send_message(msg, 0)
         reply = self.receive_message(request_id)
@@ -1040,6 +1094,15 @@ class Connection:
             if self.enabled_for_cmap:
                 assert self.listeners is not None
                 self.listeners.publish_connection_ready(self.address, self.id)
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.CONN_READY,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        driverConnectionId=self.id,
+                    )
 
     def validate_session(
         self, client: Optional[MongoClient], session: Optional[ClientSession]
@@ -1060,19 +1123,29 @@ class Connection:
         if reason and self.enabled_for_cmap:
             assert self.listeners is not None
             self.listeners.publish_connection_closed(self.address, self.id, reason)
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CONN_CLOSED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=self.id,
+                    reason=_verbose_connection_error_reason(reason),
+                    error=reason,
+                )
 
     def _close_conn(self) -> None:
         """Close this connection."""
         if self.closed:
             return
         self.closed = True
-        if self.cancel_context:
-            self.cancel_context.cancel()
+        self.cancel_context.cancel()
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
         try:
             self.conn.close()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     def conn_closed(self) -> bool:
@@ -1115,7 +1188,7 @@ class Connection:
         # main thread.
         #
         # But in Gevent and Eventlet, the polling mechanism (epoll, kqueue,
-        # ...) is called in Python code, which experiences the signal as a
+        # ..) is called in Python code, which experiences the signal as a
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
         #
@@ -1127,7 +1200,8 @@ class Connection:
         self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, SSLError)):
-            _raise_connection_failure(self.address, error)
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(self.address, error, timeout_details=details)
         else:
             raise
 
@@ -1246,12 +1320,13 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError) as exc:  # noqa: B014
+    except (OSError, SSLError) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        _raise_connection_failure(address, exc, "SSL handshake failed: ")
+        details = _get_timeout_details(options)
+        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
     if (
         ssl_context.verify_mode
         and not ssl_context.check_hostname
@@ -1313,12 +1388,17 @@ class PoolState:
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, address: _Address, options: PoolOptions, handshake: bool = True):
+    def __init__(
+        self,
+        address: _Address,
+        options: PoolOptions,
+        handshake: bool = True,
+        client_id: Optional[ObjectId] = None,
+    ):
         """
-        :Parameters:
-          - `address`: a (hostname, port) tuple
-          - `options`: a PoolOptions instance
-          - `handshake`: whether to call hello for each new Connection
+        :param address: a (hostname, port) tuple
+        :param options: a PoolOptions instance
+        :param handshake: whether to call hello for each new Connection
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -1331,6 +1411,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.conns: collections.deque = collections.deque()
+        self.active_contexts: set[_CancellationContext] = set()
         self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1367,13 +1448,23 @@ class Pool:
         self._max_connecting_cond = threading.Condition(self.lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
+        self._client_id = client_id
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
                 self.address, self.opts.non_default_options
             )
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.POOL_CREATED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    **self.opts.non_default_options,
+                )
         # Similar to active_sockets but includes threads in the wait queue.
-        self.operation_count = 0
+        self.operation_count: int = 0
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
@@ -1389,13 +1480,25 @@ class Pool:
                 if self.enabled_for_cmap:
                     assert self.opts._event_listeners is not None
                     self.opts._event_listeners.publish_pool_ready(self.address)
+                    if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                        _debug_log(
+                            _CONNECTION_LOGGER,
+                            clientId=self._client_id,
+                            message=_ConnectionStatusMessage.POOL_READY,
+                            serverHost=self.address[0],
+                            serverPort=self.address[1],
+                        )
 
     @property
     def closed(self) -> bool:
         return self.state == PoolState.CLOSED
 
     def _reset(
-        self, close: bool, pause: bool = True, service_id: Optional[ObjectId] = None
+        self,
+        close: bool,
+        pause: bool = True,
+        service_id: Optional[ObjectId] = None,
+        interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
         with self.size_cond:
@@ -1428,6 +1531,10 @@ class Pool:
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
+            if interrupt_connections:
+                for context in self.active_contexts:
+                    context.cancel()
+
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
@@ -1438,10 +1545,31 @@ class Pool:
             if self.enabled_for_cmap:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.POOL_CLOSED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                    )
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
                 assert listeners is not None
-                listeners.publish_pool_cleared(self.address, service_id=service_id)
+                listeners.publish_pool_cleared(
+                    self.address,
+                    service_id=service_id,
+                    interrupt_connections=interrupt_connections,
+                )
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.POOL_CLEARED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        serviceId=service_id,
+                    )
             for conn in sockets:
                 conn.close_conn(ConnectionClosedReason.STALE)
 
@@ -1454,8 +1582,10 @@ class Pool:
             for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)
 
-    def reset(self, service_id: Optional[ObjectId] = None) -> None:
-        self._reset(close=False, service_id=service_id)
+    def reset(
+        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
+    ) -> None:
+        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1511,6 +1641,7 @@ class Pool:
                         conn.close_conn(ConnectionClosedReason.STALE)
                         return
                     self.conns.appendleft(conn)
+                    self.active_contexts.discard(conn.cancel_context)
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1538,6 +1669,15 @@ class Pool:
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_created(self.address, conn_id)
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CONN_CREATED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=conn_id,
+                )
 
         try:
             sock = _configured_socket(self.address, self.opts)
@@ -1547,13 +1687,26 @@ class Pool:
                 listeners.publish_connection_closed(
                     self.address, conn_id, ConnectionClosedReason.ERROR
                 )
-
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.CONN_CLOSED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        driverConnectionId=conn_id,
+                        reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
+                        error=ConnectionClosedReason.ERROR,
+                    )
             if isinstance(error, (IOError, OSError, SSLError)):
-                _raise_connection_failure(self.address, error)
+                details = _get_timeout_details(self.opts)
+                _raise_connection_failure(self.address, error, timeout_details=details)
 
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        with self.lock:
+            self.active_contexts.add(conn.cancel_context)
         try:
             if self.handshake:
                 conn.hello()
@@ -1583,20 +1736,38 @@ class Pool:
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :Parameters:
-          - `handler` (optional): A _MongoClientErrorHandler.
+        :param handler: A _MongoClientErrorHandler.
         """
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_check_out_started(self.address)
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CHECKOUT_STARTED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                )
 
         conn = self._get_conn(handler=handler)
 
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_out(self.address, conn.id)
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=conn.id,
+                )
         try:
+            with self.lock:
+                self.active_contexts.add(conn.cancel_context)
             yield conn
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
@@ -1630,7 +1801,21 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR
                 )
-            _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        reason="An error occurred while trying to establish a new connection",
+                        error=ConnectionCheckOutFailedReason.CONN_ERROR,
+                    )
+
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(
+                self.address, AutoReconnect("connection pool paused"), timeout_details=details
+            )
 
     def _get_conn(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
@@ -1646,6 +1831,16 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.POOL_CLOSED
                 )
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        reason="Connection pool was closed",
+                        error=ConnectionCheckOutFailedReason.POOL_CLOSED,
+                    )
             raise _PoolClosedError(
                 "Attempted to check out a connection from closed connection pool"
             )
@@ -1681,7 +1876,6 @@ class Pool:
             with self.lock:
                 self.active_sockets += 1
                 incremented = True
-
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
@@ -1727,6 +1921,16 @@ class Pool:
                 self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR
                 )
+                if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        clientId=self._client_id,
+                        message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        reason="An error occurred while trying to establish a new connection",
+                        error=ConnectionCheckOutFailedReason.CONN_ERROR,
+                    )
             raise
 
         conn.active = True
@@ -1735,8 +1939,7 @@ class Pool:
     def checkin(self, conn: Connection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
 
-        :Parameters:
-          - `conn`: The connection to check into the pool.
+        :param conn: The connection to check into the pool.
         """
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
@@ -1745,9 +1948,20 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
+        with self.lock:
+            self.active_contexts.discard(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_checked_in(self.address, conn.id)
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CHECKEDIN,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=conn.id,
+                )
         if self.pid != os.getpid():
             self.reset_without_pause()
         else:
@@ -1760,6 +1974,17 @@ class Pool:
                     listeners.publish_connection_closed(
                         self.address, conn.id, ConnectionClosedReason.ERROR
                     )
+                    if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                        _debug_log(
+                            _CONNECTION_LOGGER,
+                            clientId=self._client_id,
+                            message=_ConnectionStatusMessage.CONN_CLOSED,
+                            serverHost=self.address[0],
+                            serverPort=self.address[1],
+                            driverConnectionId=conn.id,
+                            reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
+                            error=ConnectionClosedReason.ERROR,
+                        )
             else:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
@@ -1807,7 +2032,7 @@ class Pool:
             return True
 
         if self._check_interval_seconds is not None and (
-            0 == self._check_interval_seconds or idle_time_seconds > self._check_interval_seconds
+            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
         ):
             if conn.conn_closed():
                 conn.close_conn(ConnectionClosedReason.ERROR)
@@ -1826,6 +2051,16 @@ class Pool:
             listeners.publish_connection_check_out_failed(
                 self.address, ConnectionCheckOutFailedReason.TIMEOUT
             )
+            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    reason="Wait queue timeout elapsed without a connection becoming available",
+                    error=ConnectionCheckOutFailedReason.TIMEOUT,
+                )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
@@ -1843,7 +2078,7 @@ class Pool:
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
-            "maxPoolSize: {}, timeout: {}".format(self.opts.max_pool_size, timeout)
+            f"maxPoolSize: {self.opts.max_pool_size}, timeout: {timeout}"
         )
 
     def __del__(self) -> None:

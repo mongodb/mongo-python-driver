@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test retryable writes."""
+from __future__ import annotations
 
 import copy
 import os
@@ -30,6 +31,7 @@ from test.utils import (
     OvertCommandListener,
     SpecTestCreator,
     rs_or_single_client,
+    set_fail_point,
 )
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -39,6 +41,7 @@ from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.errors import (
+    AutoReconnect,
     ConnectionFailure,
     OperationFailure,
     ServerSelectionTimeoutError,
@@ -436,7 +439,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         )
         self.listener.reset()
         with self.client.start_session() as session:
-            initial_txn = session._server_session._transaction_id
+            initial_txn = session._transaction_id
             try:
                 coll.bulk_write(
                     [
@@ -464,9 +467,49 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             started[1].command.pop("$clusterTime")
             started[2].command.pop("$clusterTime")
             self.assertEqual(started[1].command, started[2].command)
-            final_txn = session._server_session._transaction_id
+            final_txn = session._transaction_id
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={"_id": True}), {"_id": 1})
+
+    @client_context.require_multiple_mongoses
+    @client_context.require_failCommand_fail_point
+    def test_retryable_writes_in_sharded_cluster_multiple_available(self):
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "closeConnection": True,
+                "appName": "retryableWriteTest",
+            },
+        }
+
+        mongos_clients = []
+
+        for mongos in client_context.mongos_seeds().split(","):
+            client = rs_or_single_client(mongos)
+            set_fail_point(client, fail_command)
+            self.addCleanup(client.close)
+            mongos_clients.append(client)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            client_context.mongos_seeds(),
+            appName="retryableWriteTest",
+            event_listeners=[listener],
+            retryWrites=True,
+        )
+
+        with self.assertRaises(AutoReconnect):
+            client.t.t.insert_one({"x": 1})
+
+        # Disable failpoints on each mongos
+        for client in mongos_clients:
+            fail_command["mode"] = "off"
+            set_fail_point(client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 2)
+        self.assertEqual(len(listener.succeeded_events), 0)
 
 
 class TestWriteConcernError(IntegrationTest):
@@ -518,7 +561,7 @@ class TestWriteConcernError(IntegrationTest):
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],
-                    txnNumber=s._server_session.transaction_id,
+                    txnNumber=s._transaction_id,
                     session=s,
                     codec_options=DEFAULT_CODEC_OPTIONS.with_options(
                         document_class=RawBSONDocument
@@ -669,7 +712,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
                 kwargs = copy.deepcopy(kwargs)
                 kwargs["session"] = session
                 msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
-                initial_txn_id = session._server_session.transaction_id
+                initial_txn_id = session._transaction_id
 
                 # Each operation should fail on the first attempt and succeed
                 # on the second.
@@ -677,7 +720,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
                 self.assertEqual(len(listener.started_events), 1, msg)
                 retry_cmd = listener.started_events[0].command
                 sent_txn_id = retry_cmd["txnNumber"]
-                final_txn_id = session._server_session.transaction_id
+                final_txn_id = session._transaction_id
                 self.assertEqual(Int64(initial_txn_id + 1), sent_txn_id, msg)
                 self.assertEqual(sent_txn_id, final_txn_id, msg)
 

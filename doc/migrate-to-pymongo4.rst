@@ -870,7 +870,7 @@ GridFS changes
 disable_md5 parameter is removed
 ................................
 
-Removed the `disable_md5` option for :class:`~gridfs.GridFSBucket` and
+Removed the ``disable_md5`` option for :class:`~gridfs.GridFSBucket` and
 :class:`~gridfs.GridFS`. GridFS no longer generates checksums.
 Applications that desire a file digest should implement it outside GridFS
 and store it with other file metadata. For example::

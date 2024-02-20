@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import errno
+import logging
 import socket
 import struct
 import time
@@ -41,6 +42,7 @@ from pymongo.errors import (
     ProtocolError,
     _OperationCancelled,
 )
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
@@ -86,31 +88,30 @@ def command(
 ) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
-    :Parameters:
-      - `conn`: a Connection instance
-      - `dbname`: name of the database on which to run the command
-      - `spec`: a command document as an ordered dict type, eg SON.
-      - `is_mongos`: are we connected to a mongos?
-      - `read_preference`: a read preference
-      - `codec_options`: a CodecOptions instance
-      - `session`: optional ClientSession instance.
-      - `client`: optional MongoClient instance for updating $clusterTime.
-      - `check`: raise OperationFailure if there are errors
-      - `allowable_errors`: errors to ignore if `check` is True
-      - `address`: the (host, port) of `conn`
-      - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
-      - `max_bson_size`: The maximum encoded bson size for this server
-      - `read_concern`: The read concern for this command.
-      - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
+    :param conn: a Connection instance
+    :param dbname: name of the database on which to run the command
+    :param spec: a command document as an ordered dict type, eg SON.
+    :param is_mongos: are we connected to a mongos?
+    :param read_preference: a read preference
+    :param codec_options: a CodecOptions instance
+    :param session: optional ClientSession instance.
+    :param client: optional MongoClient instance for updating $clusterTime.
+    :param check: raise OperationFailure if there are errors
+    :param allowable_errors: errors to ignore if `check` is True
+    :param address: the (host, port) of `conn`
+    :param listeners: An instance of :class:`~pymongo.monitoring.EventListeners`
+    :param max_bson_size: The maximum encoded bson size for this server
+    :param read_concern: The read concern for this command.
+    :param parse_write_concern_error: Whether to parse the ``writeConcernError``
         field in the command response.
-      - `collation`: The collation for this command.
-      - `compression_ctx`: optional compression Context.
-      - `use_op_msg`: True if we should use OP_MSG.
-      - `unacknowledged`: True if this is an unacknowledged command.
-      - `user_fields` (optional): Response fields that should be decoded
+    :param collation: The collation for this command.
+    :param compression_ctx: optional compression Context.
+    :param use_op_msg: True if we should use OP_MSG.
+    :param unacknowledged: True if this is an unacknowledged command.
+    :param user_fields: Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to
         bson._decode_all_selective.
-      - `exhaust_allowed`: True if we should enable OP_MSG exhaustAllowed.
+    :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     """
     name = next(iter(spec))
     ns = dbname + ".$cmd"
@@ -130,8 +131,8 @@ def command(
         spec["collation"] = collation
 
     publish = listeners is not None and listeners.enabled_for_commands
+    start = datetime.datetime.now()
     if publish:
-        start = datetime.datetime.now()
         speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
@@ -162,15 +163,34 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-
+    if client is not None:
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=spec,
+                commandName=next(iter(spec)),
+                databaseName=dbname,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
+                serverHost=conn.address[0],
+                serverPort=conn.address[1],
+                serviceId=conn.service_id,
+            )
     if publish:
-        encoding_duration = datetime.datetime.now() - start
         assert listeners is not None
         assert address is not None
         listeners.publish_command_start(
-            orig, dbname, request_id, address, service_id=conn.service_id
+            orig,
+            dbname,
+            request_id,
+            address,
+            conn.server_connection_id,
+            service_id=conn.service_id,
         )
-        start = datetime.datetime.now()
 
     try:
         conn.conn.sendall(msg)
@@ -196,20 +216,65 @@ def command(
                     parse_write_concern_error=parse_write_concern_error,
                 )
     except Exception as exc:
+        duration = datetime.datetime.now() - start
+        if isinstance(exc, (NotPrimaryError, OperationFailure)):
+            failure: _DocumentOut = exc.details  # type: ignore[assignment]
+        else:
+            failure = message._convert_exception(exc)
+        if client is not None:
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(spec)),
+                    databaseName=dbname,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
+                    serverHost=conn.address[0],
+                    serverPort=conn.address[1],
+                    serviceId=conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
         if publish:
-            duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
-            else:
-                failure = message._convert_exception(exc)
             assert listeners is not None
             assert address is not None
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address, service_id=conn.service_id
+                duration,
+                failure,
+                name,
+                request_id,
+                address,
+                conn.server_connection_id,
+                service_id=conn.service_id,
+                database_name=dbname,
             )
         raise
+    duration = datetime.datetime.now() - start
+    if client is not None:
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.SUCCEEDED,
+                durationMS=duration,
+                reply=response_doc,
+                commandName=next(iter(spec)),
+                databaseName=dbname,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=conn.id,
+                serverConnectionId=conn.server_connection_id,
+                serverHost=conn.address[0],
+                serverPort=conn.address[1],
+                serviceId=conn.service_id,
+                speculative_authenticate="speculativeAuthenticate" in orig,
+            )
     if publish:
-        duration = (datetime.datetime.now() - start) + encoding_duration
         assert listeners is not None
         assert address is not None
         listeners.publish_command_success(
@@ -218,8 +283,10 @@ def command(
             name,
             request_id,
             address,
+            conn.server_connection_id,
             service_id=conn.service_id,
             speculative_hello=speculative_hello,
+            database_name=dbname,
         )
 
     if client and client._encrypter and reply:
@@ -258,8 +325,8 @@ def receive_message(
         )
     if length > max_message_size:
         raise ProtocolError(
-            "Message length ({!r}) is larger than server max "
-            "message size ({!r})".format(length, max_message_size)
+            f"Message length ({length!r}) is larger than server max "
+            f"message size ({max_message_size!r})"
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
@@ -272,7 +339,9 @@ def receive_message(
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
-        raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
+        raise ProtocolError(
+            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
+        ) from None
     return unpack_reply(data)
 
 
@@ -281,35 +350,35 @@ _POLL_TIMEOUT = 0.5
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
-    context = conn.cancel_context
-    # Only Monitor connections can be cancelled.
-    if context:
-        sock = conn.conn
-        timed_out = False
-        while True:
-            # SSLSocket can have buffered data which won't be caught by select.
-            if hasattr(sock, "pending") and sock.pending() > 0:
-                readable = True
+    sock = conn.conn
+    timed_out = False
+    # Check if the connection's socket has been manually closed
+    if sock.fileno() == -1:
+        return
+    while True:
+        # SSLSocket can have buffered data which won't be caught by select.
+        if hasattr(sock, "pending") and sock.pending() > 0:
+            readable = True
+        else:
+            # Wait up to 500ms for the socket to become readable and then
+            # check for cancellation.
+            if deadline:
+                remaining = deadline - time.monotonic()
+                # When the timeout has expired perform one final check to
+                # see if the socket is readable. This helps avoid spurious
+                # timeouts on AWS Lambda and other FaaS environments.
+                if remaining <= 0:
+                    timed_out = True
+                timeout = max(min(remaining, _POLL_TIMEOUT), 0)
             else:
-                # Wait up to 500ms for the socket to become readable and then
-                # check for cancellation.
-                if deadline:
-                    remaining = deadline - time.monotonic()
-                    # When the timeout has expired perform one final check to
-                    # see if the socket is readable. This helps avoid spurious
-                    # timeouts on AWS Lambda and other FaaS environments.
-                    if remaining <= 0:
-                        timed_out = True
-                    timeout = max(min(remaining, _POLL_TIMEOUT), 0)
-                else:
-                    timeout = _POLL_TIMEOUT
-                readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
-            if context.cancelled:
-                raise _OperationCancelled("hello cancelled")
-            if readable:
-                return
-            if timed_out:
-                raise socket.timeout("timed out")
+                timeout = _POLL_TIMEOUT
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+        if conn.cancel_context.cancelled:
+            raise _OperationCancelled("operation cancelled")
+        if readable:
+            return
+        if timed_out:
+            raise socket.timeout("timed out")
 
 
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
@@ -330,8 +399,8 @@ def _receive_data_on_socket(conn: Connection, length: int, deadline: Optional[fl
                 conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
             chunk_length = conn.conn.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
-            raise socket.timeout("timed out")
-        except OSError as exc:  # noqa: B014
+            raise socket.timeout("timed out") from None
+        except OSError as exc:
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
             raise

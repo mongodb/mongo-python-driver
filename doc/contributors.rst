@@ -98,3 +98,5 @@ The following is a list of people who have contributed to
 - Dainis Gorbunovs (DainisGorbunovs)
 - Iris Ho (sleepyStick)
 - Stephan Hof (stephan-hof)
+- Casey Clements (caseyclements)
+- Ivan Lukyanchikov (ilukyanchikov)

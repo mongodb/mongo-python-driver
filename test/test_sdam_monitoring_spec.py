@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the sdam monitoring spec tests."""
+from __future__ import annotations
 
 import json
 import os
@@ -44,8 +45,8 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sdam_mon
 
 
 def compare_server_descriptions(expected, actual):
-    if (not expected["address"] == "{}:{}".format(*actual.address)) or (
-        not server_name_to_type(expected["type"]) == actual.server_type
+    if (expected["address"] != "{}:{}".format(*actual.address)) or (
+        server_name_to_type(expected["type"]) != actual.server_type
     ):
         return False
     expected_hosts = set(expected["arbiters"] + expected["passives"] + expected["hosts"])
@@ -53,7 +54,7 @@ def compare_server_descriptions(expected, actual):
 
 
 def compare_topology_descriptions(expected, actual):
-    if not (TOPOLOGY_TYPE.__getattribute__(expected["topologyType"]) == actual.topology_type):
+    if TOPOLOGY_TYPE.__getattribute__(expected["topologyType"]) != actual.topology_type:
         return False
     expected = expected["servers"]
     actual = actual.server_descriptions()
@@ -79,22 +80,23 @@ def compare_events(expected_dict, actual):
     if expected_type == "server_opening_event":
         if not isinstance(actual, monitoring.ServerOpeningEvent):
             return False, "Expected ServerOpeningEvent, got %s" % (actual.__class__)
-        if not expected["address"] == "{}:{}".format(*actual.server_address):
+        if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerOpeningEvent published with wrong address (expected"
-                " {}, got {}".format(expected["address"], actual.server_address),
+                "ServerOpeningEvent published with wrong address (expected" " {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "server_description_changed_event":
-
         if not isinstance(actual, monitoring.ServerDescriptionChangedEvent):
             return (False, "Expected ServerDescriptionChangedEvent, got %s" % (actual.__class__))
-        if not expected["address"] == "{}:{}".format(*actual.server_address):
+        if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerDescriptionChangedEvent has wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerDescriptionChangedEvent has wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
         if not compare_server_descriptions(expected["newDescription"], actual.new_description):
@@ -110,11 +112,12 @@ def compare_events(expected_dict, actual):
     elif expected_type == "server_closed_event":
         if not isinstance(actual, monitoring.ServerClosedEvent):
             return False, "Expected ServerClosedEvent, got %s" % (actual.__class__)
-        if not expected["address"] == "{}:{}".format(*actual.server_address):
+        if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerClosedEvent published with wrong address"
-                " (expected {}, got {}".format(expected["address"], actual.server_address),
+                "ServerClosedEvent published with wrong address" " (expected {}, got {}".format(
+                    expected["address"], actual.server_address
+                ),
             )
 
     elif expected_type == "topology_opening_event":
@@ -196,7 +199,7 @@ def create_test(scenario_def):
 
         try:
             for phase in scenario_def["phases"]:
-                for (source, response) in phase.get("responses", []):
+                for source, response in phase.get("responses", []):
                     source_address = clean_node(source)
                     topology.on_change(
                         ServerDescription(

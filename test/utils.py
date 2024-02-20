@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utilities for testing pymongo"""
+from __future__ import annotations
 
 import contextlib
 import copy
@@ -53,6 +54,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.operations import _Op
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -295,11 +297,12 @@ class MockConnection:
 
 
 class MockPool:
-    def __init__(self, address, options, handshake=True):
+    def __init__(self, address, options, handshake=True, client_id=None):
         self.gen = _PoolGeneration()
         self._lock = _create_lock()
         self.opts = options
         self.operation_count = 0
+        self.conns = []
 
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
@@ -317,7 +320,7 @@ class MockPool:
     def ready(self):
         pass
 
-    def reset(self, service_id=None):
+    def reset(self, service_id=None, interrupt_connections=False):
         self._reset()
 
     def reset_without_pause(self):
@@ -541,7 +544,7 @@ class SpecTestCreator:
 def _connection_string(h):
     if h.startswith(("mongodb://", "mongodb+srv://")):
         return h
-    return f"mongodb://{str(h)}"
+    return f"mongodb://{h!s}"
 
 
 def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
@@ -556,7 +559,8 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
     client_options.update(kwargs)
 
     uri = _connection_string(host)
-    if client_context.auth_enabled and authenticate:
+    auth_mech = kwargs.get("authMechanism", "")
+    if client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
         # Only add the default username or password if one is not provided.
         res = parse_uri(uri)
         if (
@@ -567,7 +571,6 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
         ):
             client_options["username"] = db_user
             client_options["password"] = db_pwd
-
     return MongoClient(uri, port, **client_options)
 
 
@@ -865,13 +868,16 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology.select_server(writable_server_selector)
+    server = topology.select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
 def get_pools(client):
     """Get all pools."""
-    return [server.pool for server in client._get_topology().select_servers(any_server_selector)]
+    return [
+        server.pool
+        for server in client._get_topology().select_servers(any_server_selector, _Op.TEST)
+    ]
 
 
 # Constants for run_threads and lazy_client_trial.
@@ -936,7 +942,7 @@ def gevent_monkey_patched():
     try:
         import socket
 
-        import gevent.socket
+        import gevent.socket  # type:ignore[import]
 
         return socket.socket is gevent.socket.socket
     except ImportError:
@@ -989,7 +995,7 @@ def parse_read_preference(pref):
     mode_string = mode_string[:1].lower() + mode_string[1:]
     mode = read_preferences.read_pref_mode_from_name(mode_string)
     max_staleness = pref.get("maxStalenessSeconds", -1)
-    tag_sets = pref.get("tag_sets")
+    tag_sets = pref.get("tagSets") or pref.get("tag_sets")
     return read_preferences.make_read_preference(
         mode, tag_sets=tag_sets, max_staleness=max_staleness
     )
@@ -1151,3 +1157,9 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                 raise AssertionError(f"Unsupported cursorType: {cursor_type}")
         else:
             arguments[c2s] = arguments.pop(arg_name)
+
+
+def set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    client.admin.command(cmd)

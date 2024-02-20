@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test support for callbacks to encode/decode custom types."""
+from __future__ import annotations
 
 import datetime
 import sys
@@ -355,7 +356,6 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
 
 
 class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
-
     TypeA: Any
     TypeB: Any
     fallback_encoder_A2B: Any

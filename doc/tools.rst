@@ -44,7 +44,7 @@ MincePy
    workflow as possible.
 
 Ming
-  `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
+  `Ming <https://ming.readthedocs.io/en/latest/>`_ is a
   library that allows you to enforce schemas on a MongoDB database in
   your Python application. It was developed by `SourceForge
   <http://sourceforge.net/>`_ in the course of their migration to
@@ -84,12 +84,6 @@ MongoKit
   The `MongoKit <http://github.com/namlook/mongokit>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
-
-MongoAlchemy
-  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
-  PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available `on GitHub <http://github.com/jeffjenkins/MongoAlchemy>`_;
-  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 Minimongo
   `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,

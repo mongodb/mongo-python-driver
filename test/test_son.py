@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the son module."""
+from __future__ import annotations
 
 import copy
 import pickle
@@ -84,7 +85,6 @@ class TestSON(unittest.TestCase):
         self.assertEqual(SON, d4["blah"]["foo"].__class__)
 
     def test_pickle(self):
-
         simple_son = SON([])
         complex_son = SON([("son", simple_son), ("list", [simple_son, simple_son])])
 
@@ -150,8 +150,8 @@ class TestSON(unittest.TestCase):
         self.assertIn(1, test_son)
         self.assertTrue(2 in test_son, "in failed")
         self.assertFalse(22 in test_son, "in succeeded when it shouldn't")
-        self.assertTrue(test_son.has_key(2), "has_key failed")  # noqa
-        self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")  # noqa
+        self.assertTrue(test_son.has_key(2), "has_key failed")
+        self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")
 
     def test_clears(self):
         """Test clear()"""

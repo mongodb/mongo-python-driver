@@ -117,7 +117,7 @@ These methods automatically add an "_id" field.
 
 This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`,
 :meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`).
-For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymongo.operations.ReplaceOne` operators are generic.
+For ``bulk_write`` both :class:`~pymongo.operations.InsertOne` and :class:`~pymongo.operations.ReplaceOne` operators are generic.
 
 .. doctest::
   :pyversion: >= 3.8
@@ -139,16 +139,16 @@ Modeling Document Types with TypedDict
 --------------------------------------
 
 You can use :py:class:`~typing.TypedDict` (Python 3.8+) to model structured data.
-As noted above, PyMongo will automatically add an `_id` field if it is not present. This also applies to TypedDict.
+As noted above, PyMongo will automatically add an ``_id`` field if it is not present. This also applies to TypedDict.
 There are three approaches to this:
 
-  1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but will yield a type-checking error unless explicitly ignored.
+  1. Do not specify ``_id`` at all. It will be inserted automatically, and can be retrieved at run-time, but will yield a type-checking error unless explicitly ignored.
 
-  2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to pass a value for `_id`.
+  2. Specify ``_id`` explicitly. This will mean that every instance of your custom TypedDict class will have to pass a value for ``_id``.
 
-  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of option 1, but with the ability to access the `_id` field without causing a type-checking error.
+  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of option 1, but with the ability to access the ``_id`` field without causing a type-checking error.
 
-Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` in earlier versions of Python (<3.8, <3.11), use the `typing_extensions` package.
+Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` in earlier versions of Python (<3.8, <3.11), use the ``typing_extensions`` package.
 
 .. doctest:: typed-dict-example
   :pyversion: >= 3.11

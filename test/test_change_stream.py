@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the change_stream module."""
+from __future__ import annotations
 
 import os
 import random
@@ -26,7 +27,7 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, Version, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
@@ -328,8 +329,12 @@ class APITestsMixin:
         with self.change_stream(max_await_time_ms=250) as change_stream:
 
             def iterate_cursor():
-                for _ in change_stream:
-                    pass
+                try:
+                    for _ in change_stream:
+                        pass
+                except OperationFailure as e:
+                    if e.code != 237:  # CursorKilled error code
+                        raise
 
             t = threading.Thread(target=iterate_cursor)
             t.start()
@@ -764,8 +769,12 @@ class ProseSpecTestsMixin:
 
     # Prose test no. 19
     @no_type_check
-    @client_context.require_version_min(7, 0, -1)
     def test_split_large_change(self):
+        server_version = client_context.version
+        if not server_version.at_least(6, 0, 9):
+            self.skipTest("$changeStreamSplitLargeEvent requires MongoDB 6.0.9+")
+        if server_version.at_least(6, 1, 0) and server_version < Version(7, 0, 0):
+            self.skipTest("$changeStreamSplitLargeEvent is not available in 6.x rapid releases")
         self.db.drop_collection("test_split_large_change")
         coll = self.db.create_collection(
             "test_split_large_change", changeStreamPreAndPostImages={"enabled": True}

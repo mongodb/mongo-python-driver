@@ -29,12 +29,11 @@ from pymongo.typings import ClusterTime, _Address
 class ServerDescription:
     """Immutable representation of one server.
 
-    :Parameters:
-      - `address`: A (host, port) pair
-      - `hello`: Optional Hello instance
-      - `round_trip_time`: Optional float
-      - `error`: Optional, the last error attempting to connect to the server
-      - `round_trip_time`: Optional float, the min latency from the most recent samples
+    :param address: A (host, port) pair
+    :param hello: Optional Hello instance
+    :param round_trip_time: Optional float
+    :param error: Optional, the last error attempting to connect to the server
+    :param round_trip_time: Optional float, the min latency from the most recent samples
     """
 
     __slots__ = (
@@ -244,8 +243,7 @@ class ServerDescription:
     def retryable_writes_supported(self) -> bool:
         """Checks if this server supports retryable writes."""
         return (
-            self._ls_timeout_minutes is not None
-            and self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary)
+            self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary)
         ) or self._server_type == SERVER_TYPE.LoadBalancer
 
     @property
@@ -257,7 +255,7 @@ class ServerDescription:
     def topology_version(self) -> Optional[Mapping[str, Any]]:
         return self._topology_version
 
-    def to_unknown(self, error: Optional[Exception] = None) -> "ServerDescription":
+    def to_unknown(self, error: Optional[Exception] = None) -> ServerDescription:
         unknown = ServerDescription(self.address, error=error)
         unknown._topology_version = self.topology_version
         return unknown

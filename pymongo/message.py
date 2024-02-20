@@ -22,6 +22,7 @@ MongoDB.
 from __future__ import annotations
 
 import datetime
+import logging
 import random
 import struct
 from io import BytesIO as _BytesIO
@@ -35,7 +36,6 @@ from typing import (
     NoReturn,
     Optional,
     Union,
-    cast,
 )
 
 import bson
@@ -47,7 +47,6 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
-from bson.son import SON
 
 try:
     from pymongo import _cmessage  # type: ignore[attr-defined]
@@ -67,6 +66,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -106,14 +106,14 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Mapping[str, Any]] = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 
 
 def _randint() -> int:
     """Generate a pseudo random 32 bit integer."""
-    return random.randint(MIN_INT32, MAX_INT32)
+    return random.randint(MIN_INT32, MAX_INT32)  # noqa: S311
 
 
 def _maybe_add_read_preference(
@@ -129,7 +129,7 @@ def _maybe_add_read_preference(
     # the secondaryOkay bit has the same effect).
     if mode and (mode != ReadPreference.SECONDARY_PREFERRED.mode or len(document) > 1):
         if "$query" not in spec:
-            spec = SON([("$query", spec)])
+            spec = {"$query": spec}
         spec["$readPreference"] = document
     return spec
 
@@ -175,33 +175,29 @@ def _convert_write_result(
     return res
 
 
-_OPTIONS = SON(
-    [
-        ("tailable", 2),
-        ("oplogReplay", 8),
-        ("noCursorTimeout", 16),
-        ("awaitData", 32),
-        ("allowPartialResults", 128),
-    ]
-)
+_OPTIONS = {
+    "tailable": 2,
+    "oplogReplay": 8,
+    "noCursorTimeout": 16,
+    "awaitData": 32,
+    "allowPartialResults": 128,
+}
 
 
-_MODIFIERS = SON(
-    [
-        ("$query", "filter"),
-        ("$orderby", "sort"),
-        ("$hint", "hint"),
-        ("$comment", "comment"),
-        ("$maxScan", "maxScan"),
-        ("$maxTimeMS", "maxTimeMS"),
-        ("$max", "max"),
-        ("$min", "min"),
-        ("$returnKey", "returnKey"),
-        ("$showRecordId", "showRecordId"),
-        ("$showDiskLoc", "showRecordId"),  # <= MongoDb 3.0
-        ("$snapshot", "snapshot"),
-    ]
-)
+_MODIFIERS = {
+    "$query": "filter",
+    "$orderby": "sort",
+    "$hint": "hint",
+    "$comment": "comment",
+    "$maxScan": "maxScan",
+    "$maxTimeMS": "maxTimeMS",
+    "$max": "max",
+    "$min": "min",
+    "$returnKey": "returnKey",
+    "$showRecordId": "showRecordId",
+    "$showDiskLoc": "showRecordId",  # <= MongoDb 3.0
+    "$snapshot": "snapshot",
+}
 
 
 def _gen_find_command(
@@ -216,9 +212,9 @@ def _gen_find_command(
     collation: Optional[Mapping[str, Any]] = None,
     session: Optional[ClientSession] = None,
     allow_disk_use: Optional[bool] = None,
-) -> SON[str, Any]:
+) -> dict[str, Any]:
     """Generate a find command document."""
-    cmd: SON[str, Any] = SON([("find", coll)])
+    cmd: dict[str, Any] = {"find": coll}
     if "$query" in spec:
         cmd.update(
             [
@@ -262,9 +258,9 @@ def _gen_get_more_command(
     max_await_time_ms: Optional[int],
     comment: Optional[Any],
     conn: Connection,
-) -> SON[str, Any]:
+) -> dict[str, Any]:
     """Generate a getMore command document."""
-    cmd: SON[str, Any] = SON([("getMore", cursor_id), ("collection", coll)])
+    cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
     if batch_size:
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
@@ -337,7 +333,7 @@ class _Query:
         self.client = client
         self.allow_disk_use = allow_disk_use
         self.name = "find"
-        self._as_command: Optional[tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
 
     def reset(self) -> None:
@@ -364,7 +360,7 @@ class _Query:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> tuple[SON[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
         # Generate it once, for speed and to avoid repeating side-effects.
@@ -372,7 +368,7 @@ class _Query:
             return self._as_command
 
         explain = "$explain" in self.spec
-        cmd: SON[str, Any] = _gen_find_command(
+        cmd: dict[str, Any] = _gen_find_command(
             self.coll,
             self.spec,
             self.fields,
@@ -387,7 +383,7 @@ class _Query:
         )
         if explain:
             self.name = "explain"
-            cmd = SON([("explain", cmd)])
+            cmd = {"explain": cmd}
         session = self.session
         conn.add_server_api(cmd)
         if session:
@@ -399,7 +395,7 @@ class _Query:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(SON[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd)
@@ -505,7 +501,7 @@ class _GetMore:
         self.client = client
         self.max_await_time_ms = max_await_time_ms
         self.conn_mgr = conn_mgr
-        self._as_command: Optional[tuple[SON[str, Any], str]] = None
+        self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
         self.comment = comment
 
@@ -528,13 +524,13 @@ class _GetMore:
 
     def as_command(
         self, conn: Connection, apply_timeout: bool = False
-    ) -> tuple[SON[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
         if self._as_command is not None:
             return self._as_command
 
-        cmd: SON[str, Any] = _gen_get_more_command(
+        cmd: dict[str, Any] = _gen_get_more_command(
             self.cursor_id,
             self.coll,
             self.ntoreturn,
@@ -549,7 +545,7 @@ class _GetMore:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = cast(SON[str, Any], client._encrypter.encrypt(self.db, cmd, self.codec_options))
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd=None)
@@ -565,7 +561,7 @@ class _GetMore:
 
         if use_cmd:
             spec = self.as_command(conn, apply_timeout=True)[0]
-            if self.conn_mgr:
+            if self.conn_mgr and self.exhaust:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
                 flags = 0
@@ -731,7 +727,7 @@ def _op_msg_uncompressed(
 
 
 if _use_c:
-    _op_msg_uncompressed = _cmessage._op_msg  # noqa: F811
+    _op_msg_uncompressed = _cmessage._op_msg
 
 
 def _op_msg(
@@ -833,7 +829,7 @@ def _query_uncompressed(
 
 
 if _use_c:
-    _query_uncompressed = _cmessage._query_message  # noqa: F811
+    _query_uncompressed = _cmessage._query_message
 
 
 def _query(
@@ -889,7 +885,7 @@ def _get_more_uncompressed(
 
 
 if _use_c:
-    _get_more_uncompressed = _cmessage._get_more_message  # noqa: F811
+    _get_more_uncompressed = _cmessage._get_more_message
 
 
 def _get_more(
@@ -940,9 +936,9 @@ class _BulkWriteContext:
         self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-        self.start_time = datetime.datetime.now() if self.publish else None
+        self.start_time = datetime.datetime.now()
         self.session = session
-        self.compress = True if conn.compression_context else False
+        self.compress = bool(conn.compression_context)
         self.op_type = op_type
         self.codec = codec
 
@@ -961,7 +957,7 @@ class _BulkWriteContext:
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
-        result = self.write_command(cmd, request_id, msg, to_send)
+        result = self.write_command(cmd, request_id, msg, to_send, client)
         client._process_response(result, self.session)
         return result, to_send
 
@@ -974,7 +970,7 @@ class _BulkWriteContext:
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.unack_write(cmd, request_id, msg, 0, to_send)
+        self.unack_write(cmd, request_id, msg, 0, to_send, client)
         return to_send
 
     @property
@@ -1007,33 +1003,82 @@ class _BulkWriteContext:
         msg: bytes,
         max_doc_size: int,
         docs: list[Mapping[str, Any]],
+        client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
         try:
             result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
+            duration = datetime.datetime.now() - self.start_time
+            if result is not None:
+                reply = _convert_write_result(self.name, cmd, result)
+            else:
+                # Comply with APM spec.
+                reply = {"ok": 1}
+                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _COMMAND_LOGGER,
+                        clientId=client._topology_settings._topology_id,
+                        message=_CommandStatusMessage.SUCCEEDED,
+                        durationMS=duration,
+                        reply=reply,
+                        commandName=next(iter(cmd)),
+                        databaseName=self.db_name,
+                        requestId=request_id,
+                        operationId=request_id,
+                        driverConnectionId=self.conn.id,
+                        serverConnectionId=self.conn.server_connection_id,
+                        serverHost=self.conn.address[0],
+                        serverPort=self.conn.address[1],
+                        serviceId=self.conn.service_id,
+                    )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if result is not None:
-                    reply = _convert_write_result(self.name, cmd, result)
-                else:
-                    # Comply with APM spec.
-                    reply = {"ok": 1}
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = datetime.datetime.now() - self.start_time
+            if isinstance(exc, OperationFailure):
+                failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
+            elif isinstance(exc, NotPrimaryError):
+                failure = exc.details  # type: ignore[assignment]
+            else:
+                failure = _convert_exception(exc)
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
             if self.publish:
                 assert self.start_time is not None
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, OperationFailure):
-                    failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
-                elif isinstance(exc, NotPrimaryError):
-                    failure = exc.details  # type: ignore[assignment]
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:
@@ -1047,25 +1092,76 @@ class _BulkWriteContext:
         request_id: int,
         msg: bytes,
         docs: list[Mapping[str, Any]],
+        client: MongoClient,
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
+        cmd[self.field] = docs
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
         try:
             reply = self.conn.write_command(request_id, msg, self.codec)
+            duration = datetime.datetime.now() - self.start_time
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.SUCCEEDED,
+                    durationMS=duration,
+                    reply=reply,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = datetime.datetime.now() - self.start_time
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                failure: _DocumentOut = exc.details  # type: ignore[assignment]
+            else:
+                failure = _convert_exception(exc)
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
+
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:
@@ -1082,6 +1178,7 @@ class _BulkWriteContext:
             self.db_name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
         )
@@ -1095,8 +1192,10 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
     def _fail(self, request_id: int, failure: _DocumentOut, duration: timedelta) -> None:
@@ -1107,8 +1206,10 @@ class _BulkWriteContext:
             self.name,
             request_id,
             self.conn.address,
+            self.conn.server_connection_id,
             self.op_id,
             self.conn.service_id,
+            database_name=self.db_name,
         )
 
 
@@ -1124,7 +1225,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
     def __batch_command(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
-    ) -> tuple[MutableMapping[str, Any], list[Mapping[str, Any]]]:
+    ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -1220,7 +1321,7 @@ def _batched_op_msg_impl(
     try:
         buf.write(_OP_MSG_MAP[operation])
     except KeyError:
-        raise InvalidOperation("Unknown command")
+        raise InvalidOperation("Unknown command") from None
 
     to_send = []
     idx = 0
@@ -1276,7 +1377,7 @@ def _encode_batched_op_msg(
 
 
 if _use_c:
-    _encode_batched_op_msg = _cmessage._encode_batched_op_msg  # noqa: F811
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
 
 def _batched_op_msg_compressed(
@@ -1326,7 +1427,7 @@ def _batched_op_msg(
 
 
 if _use_c:
-    _batched_op_msg = _cmessage._batched_op_msg  # noqa: F811
+    _batched_op_msg = _cmessage._batched_op_msg
 
 
 def _do_batched_op_msg(
@@ -1369,7 +1470,7 @@ def _encode_batched_write_command(
 
 
 if _use_c:
-    _encode_batched_write_command = _cmessage._encode_batched_write_command  # noqa: F811
+    _encode_batched_write_command = _cmessage._encode_batched_write_command
 
 
 def _batched_write_command_impl(
@@ -1408,7 +1509,7 @@ def _batched_write_command_impl(
     try:
         buf.write(_OP_MAP[operation])
     except KeyError:
-        raise InvalidOperation("Unknown command")
+        raise InvalidOperation("Unknown command") from None
 
     # Where to write list document length
     list_start = buf.tell() - 4
@@ -1473,8 +1574,7 @@ class _OpReply:
         Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
-        :Parameters:
-          - `cursor_id` (optional): cursor_id we sent to get this response -
+        :param cursor_id: cursor_id we sent to get this response -
             used for raising an informative exception when we get cursor id not
             valid at server response.
         """
@@ -1523,13 +1623,12 @@ class _OpReply:
         Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
-        :Parameters:
-          - `cursor_id` (optional): cursor_id we sent to get this response -
+        :param cursor_id: cursor_id we sent to get this response -
             used for raising an informative exception when we get cursor id not
             valid at server response
-          - `codec_options` (optional): an instance of
+        :param codec_options: an instance of
             :class:`~bson.codec_options.CodecOptions`
-          - `user_fields` (optional): Response fields that should be decoded
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
@@ -1584,7 +1683,7 @@ class _OpMsg:
     def raw_response(
         self,
         cursor_id: Optional[int] = None,
-        user_fields: Optional[Mapping[str, Any]] = {},  # noqa: B006
+        user_fields: Optional[Mapping[str, Any]] = {},
     ) -> list[Mapping[str, Any]]:
         """
         cursor_id is ignored
@@ -1604,11 +1703,10 @@ class _OpMsg:
     ) -> list[dict[str, Any]]:
         """Unpack a OP_MSG command response.
 
-        :Parameters:
-          - `cursor_id` (optional): Ignored, for compatibility with _OpReply.
-          - `codec_options` (optional): an instance of
+        :param cursor_id: Ignored, for compatibility with _OpReply.
+        :param codec_options: an instance of
             :class:`~bson.codec_options.CodecOptions`
-          - `user_fields` (optional): Response fields that should be decoded
+        :param user_fields: Response fields that should be decoded
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """

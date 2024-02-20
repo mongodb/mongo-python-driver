@@ -23,7 +23,7 @@ timeout for an :meth:`~pymongo.collection.Collection.insert_one` operation::
       coll.insert_one({"name": "Nunu"})
 
 The :meth:`~pymongo.timeout` applies to all pymongo operations within the block.
-The following example ensures that both the `insert` and the `find` complete
+The following example ensures that both the ``insert`` and the ``find`` complete
 within 10 seconds total, or raise a timeout error::
 
   with pymongo.timeout(10):

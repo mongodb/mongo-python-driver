@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test typings in strict mode."""
+from __future__ import annotations
+
 import unittest
 from typing import TYPE_CHECKING, Any, Dict
 

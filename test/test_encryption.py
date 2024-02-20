@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+from __future__ import annotations
 
 import base64
 import copy
@@ -29,6 +30,7 @@ from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
+from pymongo.daemon import _spawn_daemon
 
 sys.path[0:0] = [""]
 
@@ -460,6 +462,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         self.assertEqual(encrypted_ssn, encrypted_ssn2)
 
+        # Test encryption via UUID
+        encrypted_ssn3 = client_encryption.encrypt(
+            doc["ssn"],
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id.as_uuid(),
+        )
+        self.assertEqual(encrypted_ssn, encrypted_ssn3)
+
         # Test decryption.
         decrypted_ssn = client_encryption.decrypt(encrypted_ssn)
         self.assertEqual(decrypted_ssn, doc["ssn"])
@@ -478,9 +488,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = "key_id must be a bson.binary.Binary with subtype 4"
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
-        uid = uuid.uuid4()
-        with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, key_id=uid)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
 
@@ -502,7 +509,10 @@ class TestExplicitSimple(EncryptionIntegrationTest):
     def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, "codec_options must be"):
             ClientEncryption(
-                KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None  # type: ignore[arg-type]
+                KMS_PROVIDERS,
+                "keyvault.datakeys",
+                client_context.client,
+                None,  # type: ignore[arg-type]
             )
 
         opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
@@ -1071,7 +1081,9 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value["value"], algo, **kwargs  # type: ignore[arg-type]
+                        value["value"],
+                        algo,
+                        **kwargs,  # type: ignore[arg-type]
                     )
                     if not value["allowed"]:
                         self.fail(f"encrypt should have failed: {key!r}: {value!r}")
@@ -2001,7 +2013,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "mongodb://127.0.0.1:8000",
+            "endpoint": "mongodb://127.0.0.1:9000",
         }
         # Some examples:
         # certificate verify failed: certificate has expired (_ssl.c:1129)
@@ -2013,13 +2025,14 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "mongodb://127.0.0.1:8001",
+            "endpoint": "mongodb://127.0.0.1:9001",
         }
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
@@ -2031,8 +2044,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         super().setUp()
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8002"
-        providers["gcp"]["endpoint"] = "127.0.0.1:8002"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9002"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9002"
         kms_tls_opts_ca_only = {
             "aws": {"tlsCAFile": CA_PEM},
             "azure": {"tlsCAFile": CA_PEM},
@@ -2053,18 +2066,18 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(self.client_encryption_with_tls.close)
         # 3, update endpoints to expired host.
         providers: dict = copy.deepcopy(providers)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8000"
-        providers["gcp"]["endpoint"] = "127.0.0.1:8000"
-        providers["kmip"]["endpoint"] = "127.0.0.1:8000"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9000"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9000"
+        providers["kmip"]["endpoint"] = "127.0.0.1:9000"
         self.client_encryption_expired = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
         self.addCleanup(self.client_encryption_expired.close)
         # 3, update endpoints to invalid host.
         providers: dict = copy.deepcopy(providers)
-        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8001"
-        providers["gcp"]["endpoint"] = "127.0.0.1:8001"
-        providers["kmip"]["endpoint"] = "127.0.0.1:8001"
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9001"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9001"
+        providers["kmip"]["endpoint"] = "127.0.0.1:9001"
         self.client_encryption_invalid_hostname = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
@@ -2083,12 +2096,38 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == "win32":
             self.cert_error += "|forcibly closed"
+        # 4, Test named KMS providers.
+        providers = {
+            "aws:no_client_cert": AWS_CREDS,
+            "azure:no_client_cert": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:no_client_cert": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
+            "kmip:no_client_cert": KMIP_CREDS,
+            "aws:with_tls": AWS_CREDS,
+            "azure:with_tls": {"identityPlatformEndpoint": "127.0.0.1:9002", **AZURE_CREDS},
+            "gcp:with_tls": {"endpoint": "127.0.0.1:9002", **GCP_CREDS},
+            "kmip:with_tls": KMIP_CREDS,
+        }
+        no_cert = {"tlsCAFile": CA_PEM}
+        with_cert = {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}
+        kms_tls_opts_4 = {
+            "aws:no_client_cert": no_cert,
+            "azure:no_client_cert": no_cert,
+            "gcp:no_client_cert": no_cert,
+            "kmip:no_client_cert": no_cert,
+            "aws:with_tls": with_cert,
+            "azure:with_tls": with_cert,
+            "gcp:with_tls": with_cert,
+            "kmip:with_tls": with_cert,
+        }
+        self.client_encryption_with_names = ClientEncryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_4
+        )
 
     def test_01_aws(self):
         key = {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-            "endpoint": "127.0.0.1:8002",
+            "endpoint": "127.0.0.1:9002",
         }
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key("aws", key)
@@ -2098,15 +2137,16 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: certificate has expired (_ssl.c:1129)
         # amazon1-2018 Python 3.6: certificate verify failed (_ssl.c:852)
-        key["endpoint"] = "127.0.0.1:8000"
+        key["endpoint"] = "127.0.0.1:9000"
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("aws", key)
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        key["endpoint"] = "127.0.0.1:8001"
+        # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
+        key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2123,7 +2163,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2140,7 +2180,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2154,7 +2194,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
 
@@ -2169,6 +2209,43 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         if not hasattr(ctx, "check_ocsp_endpoint"):
             raise self.skipTest("OCSP not enabled")
         self.assertFalse(ctx.check_ocsp_endpoint)
+
+    def test_06_named_kms_providers_apply_tls_options_aws(self):
+        key = {
+            "region": "us-east-1",
+            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+            "endpoint": "127.0.0.1:9002",
+        }
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("aws:no_client_cert", key)
+        # "parse error" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "parse error"):
+            self.client_encryption_with_names.create_data_key("aws:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_azure(self):
+        key = {"keyVaultEndpoint": "doesnotexist.local", "keyName": "foo"}
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("azure:no_client_cert", key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "HTTP status=404"):
+            self.client_encryption_with_names.create_data_key("azure:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_gcp(self):
+        key = {"projectId": "foo", "location": "bar", "keyRing": "baz", "keyName": "foo"}
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("gcp:no_client_cert", key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, "HTTP status=404"):
+            self.client_encryption_with_names.create_data_key("gcp:with_tls", key)
+
+    def test_06_named_kms_providers_apply_tls_options_kmip(self):
+        # Missing client cert error.
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
+            self.client_encryption_with_names.create_data_key("kmip:no_client_cert")
+        self.client_encryption_with_names.create_data_key("kmip:with_tls")
 
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
@@ -2315,7 +2392,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
-
     MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
             "region": "us-east-1",
@@ -2547,10 +2623,12 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.db = self.encrypted_client.db
         self.addCleanup(self.encrypted_client.close)
 
-    def run_expression_find(self, name, expression, expected_elems, range_opts, use_expr=False):
+    def run_expression_find(
+        self, name, expression, expected_elems, range_opts, use_expr=False, key_id=None
+    ):
         find_payload = self.client_encryption.encrypt_expression(
             expression=expression,
-            key_id=self.key1_id,
+            key_id=key_id or self.key1_id,
             algorithm=Algorithm.RANGEPREVIEW,
             query_type=QueryType.RANGEPREVIEW,
             contention_factor=0,
@@ -2592,16 +2670,20 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.assertEqual(self.client_encryption.decrypt(insert_payload), cast_func(6))
 
         # Case 2.
+        expression = {
+            "$and": [
+                {f"encrypted{name}": {"$gte": cast_func(6)}},
+                {f"encrypted{name}": {"$lte": cast_func(200)}},
+            ]
+        }
+        self.run_expression_find(name, expression, [cast_func(i) for i in [6, 30, 200]], range_opts)
+        # Case 2, with UUID key_id
         self.run_expression_find(
             name,
-            {
-                "$and": [
-                    {f"encrypted{name}": {"$gte": cast_func(6)}},
-                    {f"encrypted{name}": {"$lte": cast_func(200)}},
-                ]
-            },
+            expression,
             [cast_func(i) for i in [6, 30, 200]],
             range_opts,
+            key_id=self.key1_id.as_uuid(),
         )
 
         # Case 3.
@@ -2658,7 +2740,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 EncryptionError, "expected matching 'min' and value type. Got range option"
             ):
                 self.client_encryption.encrypt(
-                    int(6) if cast_func != int else float(6),
+                    6 if cast_func != int else float(6),
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGEPREVIEW,
                     contention_factor=0,
@@ -2925,6 +3007,60 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 kms_provider="local",
             )
         self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
+
+
+def start_mongocryptd(port) -> None:
+    args = ["mongocryptd", f"--port={port}", "--idleShutdownTimeoutSecs=60"]
+    _spawn_daemon(args)
+
+
+class TestNoSessionsSupport(EncryptionIntegrationTest):
+    mongocryptd_client: MongoClient
+    MONGOCRYPTD_PORT = 27020
+
+    @classmethod
+    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
+    def setUpClass(cls):
+        super().setUpClass()
+        start_mongocryptd(cls.MONGOCRYPTD_PORT)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
+    def setUp(self) -> None:
+        self.listener = OvertCommandListener()
+        self.mongocryptd_client = MongoClient(
+            f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]
+        )
+        self.addCleanup(self.mongocryptd_client.close)
+
+        hello = self.mongocryptd_client.db.command("hello")
+        self.assertNotIn("logicalSessionTimeoutMinutes", hello)
+
+    def test_implicit_session_ignored_when_unsupported(self):
+        self.listener.reset()
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.find_one()
+
+        self.assertNotIn("lsid", self.listener.started_events[0].command)
+
+        with self.assertRaises(OperationFailure):
+            self.mongocryptd_client.db.test.insert_one({"x": 1})
+
+        self.assertNotIn("lsid", self.listener.started_events[1].command)
+
+    def test_explicit_session_errors_when_unsupported(self):
+        self.listener.reset()
+        with self.mongocryptd_client.start_session() as s:
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
+                self.mongocryptd_client.db.test.find_one(session=s)
+            with self.assertRaisesRegex(
+                ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
+            ):
+                self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
 
 
 if __name__ == "__main__":

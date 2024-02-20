@@ -16,8 +16,12 @@
 from __future__ import annotations
 
 try:
-    import pymongo_auth_aws
-    from pymongo_auth_aws import AwsCredential, AwsSaslContext, PyMongoAuthAwsError
+    import pymongo_auth_aws  # type:ignore[import]
+    from pymongo_auth_aws import (
+        AwsCredential,
+        AwsSaslContext,
+        PyMongoAuthAwsError,
+    )
 
     _HAVE_MONGODB_AWS = True
 except ImportError:
@@ -29,13 +33,16 @@ except ImportError:
     _HAVE_MONGODB_AWS = False
 
 try:
-    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+    from pymongo_auth_aws.auth import (  # type:ignore[import]
+        set_cached_credentials,
+        set_use_cached_credentials,
+    )
 
     # Enable credential caching.
     set_use_cached_credentials(True)
 except ImportError:
 
-    def set_cached_credentials(creds: Optional[AwsCredential]) -> None:
+    def set_cached_credentials(_creds: Optional[AwsCredential]) -> None:
         pass
 
 
@@ -43,7 +50,6 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Type
 
 import bson
 from bson.binary import Binary
-from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -87,21 +93,17 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
             )
         )
         client_payload = ctx.step(None)
-        client_first = SON(
-            [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
-        )
+        client_first = {"saslStart": 1, "mechanism": "MONGODB-AWS", "payload": client_payload}
         server_first = conn.command("$external", client_first)
         res = server_first
         # Limit how many times we loop to catch protocol / library issues
         for _ in range(10):
             client_payload = ctx.step(res["payload"])
-            cmd = SON(
-                [
-                    ("saslContinue", 1),
-                    ("conversationId", server_first["conversationId"]),
-                    ("payload", client_payload),
-                ]
-            )
+            cmd = {
+                "saslContinue": 1,
+                "conversationId": server_first["conversationId"],
+                "payload": client_payload,
+            }
             res = conn.command("$external", cmd)
             if res["done"]:
                 # SASL complete.
@@ -110,7 +112,9 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
-        raise OperationFailure(f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})")
+        raise OperationFailure(
+            f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})"
+        ) from None
     except Exception:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)

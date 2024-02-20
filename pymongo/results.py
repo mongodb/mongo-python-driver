@@ -28,14 +28,17 @@ class _WriteResult:
     def __init__(self, acknowledged: bool) -> None:
         self.__acknowledged = acknowledged
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__acknowledged})"
+
     def _raise_if_unacknowledged(self, property_name: str) -> None:
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
             raise InvalidOperation(
-                "A value for {} is not available when "
+                f"A value for {property_name} is not available when "
                 "the write is unacknowledged. Check the "
                 "acknowledged attribute to avoid this "
-                "error.".format(property_name)
+                "error."
             )
 
     @property
@@ -67,6 +70,11 @@ class InsertOneResult(_WriteResult):
         self.__inserted_id = inserted_id
         super().__init__(acknowledged)
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.__inserted_id!r}, acknowledged={self.acknowledged})"
+        )
+
     @property
     def inserted_id(self) -> Any:
         """The inserted document's _id."""
@@ -82,8 +90,13 @@ class InsertManyResult(_WriteResult):
         self.__inserted_ids = inserted_ids
         super().__init__(acknowledged)
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.__inserted_ids!r}, acknowledged={self.acknowledged})"
+        )
+
     @property
-    def inserted_ids(self) -> list:
+    def inserted_ids(self) -> list[Any]:
         """A list of _ids of the inserted documents, in the order provided.
 
         .. note:: If ``False`` is passed for the `ordered` parameter to
@@ -105,6 +118,9 @@ class UpdateResult(_WriteResult):
     def __init__(self, raw_result: Optional[Mapping[str, Any]], acknowledged: bool):
         self.__raw_result = raw_result
         super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def raw_result(self) -> Optional[Mapping[str, Any]]:
@@ -148,6 +164,9 @@ class DeleteResult(_WriteResult):
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
+
     @property
     def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
@@ -168,14 +187,16 @@ class BulkWriteResult(_WriteResult):
     def __init__(self, bulk_api_result: dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
-        :Parameters:
-          - `bulk_api_result`: A result dict from the bulk API
-          - `acknowledged`: Was this write result acknowledged? If ``False``
+        :param bulk_api_result: A result dict from the bulk API
+        :param acknowledged: Was this write result acknowledged? If ``False``
             then all properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         """
         self.__bulk_api_result = bulk_api_result
         super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged})"
 
     @property
     def bulk_api_result(self) -> dict[str, Any]:

@@ -18,7 +18,7 @@ from __future__ import annotations
 import errno
 import select
 import sys
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
@@ -28,9 +28,9 @@ _SelectError = getattr(select, "error", OSError)
 
 def _errno_from_exception(exc: BaseException) -> Optional[int]:
     if hasattr(exc, "errno"):
-        return exc.errno
+        return cast(int, exc.errno)
     if exc.args:
-        return exc.args[0]
+        return cast(int, exc.args[0])
     return None
 
 

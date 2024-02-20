@@ -244,7 +244,7 @@ def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
 
 
 def _get_int(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[int, int]:
     """Decode a BSON int32 to python int."""
     return _UNPACK_INT_FROM(data, position)[0], position + 4
@@ -257,7 +257,7 @@ def _get_c_string(data: Any, view: Any, position: int, opts: CodecOptions[Any]) 
 
 
 def _get_float(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[float, int]:
     """Decode a BSON double to python float."""
     return _UNPACK_FLOAT_FROM(data, position)[0], position + 8
@@ -282,7 +282,7 @@ def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
     try:
         obj_size = _UNPACK_INT_FROM(data, position)[0]
     except struct.error as exc:
-        raise InvalidBSON(str(exc))
+        raise InvalidBSON(str(exc)) from None
     end = position + obj_size - 1
     if data[end] != 0:
         raise InvalidBSON("bad eoo")
@@ -358,7 +358,7 @@ def _get_array(
 
 
 def _get_binary(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy1: Any
+    data: Any, _view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy1: Any
 ) -> Tuple[Union[Binary, uuid.UUID], int]:
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
@@ -395,7 +395,7 @@ def _get_binary(
 
 
 def _get_oid(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[ObjectId, int]:
     """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     end = position + 12
@@ -403,7 +403,7 @@ def _get_oid(
 
 
 def _get_boolean(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[bool, int]:
     """Decode a BSON true/false to python True/False."""
     end = position + 1
@@ -416,7 +416,7 @@ def _get_boolean(
 
 
 def _get_date(
-    data: Any, view: Any, position: int, dummy0: int, opts: CodecOptions[Any], dummy1: Any
+    data: Any, _view: Any, position: int, dummy0: int, opts: CodecOptions[Any], dummy1: Any
 ) -> Tuple[Union[datetime.datetime, DatetimeMS], int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
@@ -431,7 +431,7 @@ def _get_code(
 
 
 def _get_code_w_scope(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], element_name: str
+    data: Any, view: Any, position: int, _obj_end: int, opts: CodecOptions[Any], element_name: str
 ) -> Tuple[Code, int]:
     """Decode a BSON code_w_scope to bson.code.Code."""
     code_end = position + _UNPACK_INT_FROM(data, position)[0]
@@ -462,7 +462,7 @@ def _get_ref(
 
 
 def _get_timestamp(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[Timestamp, int]:
     """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     inc, timestamp = _UNPACK_TIMESTAMP_FROM(data, position)
@@ -470,14 +470,14 @@ def _get_timestamp(
 
 
 def _get_int64(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[Int64, int]:
     """Decode a BSON int64 to bson.int64.Int64."""
     return Int64(_UNPACK_LONG_FROM(data, position)[0]), position + 8
 
 
 def _get_decimal128(
-    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+    data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
 ) -> Tuple[Decimal128, int]:
     """Decode a BSON decimal128 to bson.decimal128.Decimal128."""
     end = position + 16
@@ -496,11 +496,11 @@ _ELEMENT_GETTER: dict[int, Callable[..., Tuple[Any, int]]] = {
     ord(BSONOBJ): _get_object,
     ord(BSONARR): _get_array,
     ord(BSONBIN): _get_binary,
-    ord(BSONUND): lambda u, v, w, x, y, z: (None, w),  # Deprecated undefined
+    ord(BSONUND): lambda u, v, w, x, y, z: (None, w),  # noqa: ARG005 # Deprecated undefined
     ord(BSONOID): _get_oid,
     ord(BSONBOO): _get_boolean,
     ord(BSONDAT): _get_date,
-    ord(BSONNUL): lambda u, v, w, x, y, z: (None, w),
+    ord(BSONNUL): lambda u, v, w, x, y, z: (None, w),  # noqa: ARG005
     ord(BSONRGX): _get_regex,
     ord(BSONREF): _get_ref,  # Deprecated DBPointer
     ord(BSONCOD): _get_code,
@@ -510,8 +510,8 @@ _ELEMENT_GETTER: dict[int, Callable[..., Tuple[Any, int]]] = {
     ord(BSONTIM): _get_timestamp,
     ord(BSONLON): _get_int64,
     ord(BSONDEC): _get_decimal128,
-    ord(BSONMIN): lambda u, v, w, x, y, z: (MinKey(), w),
-    ord(BSONMAX): lambda u, v, w, x, y, z: (MaxKey(), w),
+    ord(BSONMIN): lambda u, v, w, x, y, z: (MinKey(), w),  # noqa: ARG005
+    ord(BSONMAX): lambda u, v, w, x, y, z: (MaxKey(), w),  # noqa: ARG005
 }
 
 
@@ -519,7 +519,7 @@ if _USE_C:
 
     def _element_to_dict(
         data: Any,
-        view: Any,
+        view: Any,  # noqa: ARG001
         position: int,
         obj_end: int,
         opts: CodecOptions[Any],
@@ -615,11 +615,11 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
     except Exception:
         # Change exception type to InvalidBSON but preserve traceback.
         _, exc_value, exc_tb = sys.exc_info()
-        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb)
+        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb) from None
 
 
 if _USE_C:
-    _bson_to_dict = _cbson._bson_to_dict  # noqa: F811
+    _bson_to_dict = _cbson._bson_to_dict
 
 
 _PACK_FLOAT = struct.Struct("<d").pack
@@ -653,7 +653,9 @@ def _make_c_string_check(string: Union[str, bytes]) -> bytes:
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid UTF-8: %r" % string)
+            raise InvalidStringData(
+                "strings in documents must be valid UTF-8: %r" % string
+            ) from None
     else:
         if "\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
@@ -667,7 +669,9 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid UTF-8: %r" % string)
+            raise InvalidStringData(
+                "strings in documents must be valid UTF-8: %r" % string
+            ) from None
     else:
         return _utf_8_encode(string)[0] + b"\x00"
 
@@ -817,7 +821,7 @@ def _encode_int(name: bytes, value: int, dummy0: Any, dummy1: Any) -> bytes:
         try:
             return b"\x12" + name + _PACK_LONG(value)
         except struct.error:
-            raise OverflowError("BSON can only handle up to 8-byte ints")
+            raise OverflowError("BSON can only handle up to 8-byte ints") from None
 
 
 def _encode_timestamp(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
@@ -830,7 +834,7 @@ def _encode_long(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
     try:
         return b"\x12" + name + _PACK_LONG(value)
     except struct.error:
-        raise OverflowError("BSON can only handle up to 8-byte ints")
+        raise OverflowError("BSON can only handle up to 8-byte ints") from None
 
 
 def _encode_decimal128(name: bytes, value: Decimal128, dummy0: Any, dummy1: Any) -> bytes:
@@ -882,18 +886,11 @@ _ENCODERS = {
     _abc.Mapping: _encode_mapping,
 }
 
-
-_MARKERS = {
-    5: _encode_binary,
-    7: _encode_objectid,
-    11: _encode_regex,
-    13: _encode_code,
-    17: _encode_timestamp,
-    18: _encode_long,
-    100: _encode_dbref,
-    127: _encode_maxkey,
-    255: _encode_minkey,
-}
+# Map each _type_marker to its encoder for faster lookup.
+_MARKERS = {}
+for _typ in _ENCODERS:
+    if hasattr(_typ, "_type_marker"):
+        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
@@ -995,14 +992,14 @@ def _dict_to_bson(
             if not top_level or key != "_id":
                 elements.append(_element_to_bson(key, value, check_keys, opts))
     except AttributeError:
-        raise TypeError(f"encoder expected a mapping type but got: {doc!r}")
+        raise TypeError(f"encoder expected a mapping type but got: {doc!r}") from None
 
     encoded = b"".join(elements)
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 
 
 if _USE_C:
-    _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
+    _dict_to_bson = _cbson._dict_to_bson
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
@@ -1022,12 +1019,11 @@ def encode(
     :class:`~bson.errors.InvalidDocument` if `document` cannot be
     converted to :class:`BSON`.
 
-    :Parameters:
-      - `document`: mapping type representing a document
-      - `check_keys` (optional): check if keys start with '$' or
+    :param document: mapping type representing a document
+    :param check_keys: check if keys start with '$' or
         contain '.', raising :class:`~bson.errors.InvalidDocument` in
         either case
-      - `codec_options` (optional): An instance of
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionadded:: 3.9
@@ -1068,10 +1064,9 @@ def decode(
         >>> type(decoded_doc)
         <class 'collections.OrderedDict'>
 
-    :Parameters:
-      - `data`: the BSON to decode. Any bytes-like object that implements
+    :param data: the BSON to decode. Any bytes-like object that implements
         the buffer protocol.
-      - `codec_options` (optional): An instance of
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionadded:: 3.9
@@ -1110,11 +1105,11 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
     except Exception:
         # Change exception type to InvalidBSON but preserve traceback.
         _, exc_value, exc_tb = sys.exc_info()
-        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb)
+        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb) from None
 
 
 if _USE_C:
-    _decode_all = _cbson._decode_all  # noqa: F811
+    _decode_all = _cbson._decode_all
 
 
 @overload
@@ -1137,9 +1132,8 @@ def decode_all(
     `data` must be a bytes-like object implementing the buffer protocol that
     provides concatenated, valid, BSON-encoded documents.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options` (optional): An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.9
@@ -1207,7 +1201,7 @@ def _array_of_documents_to_buffer(view: memoryview) -> bytes:
 
 
 if _USE_C:
-    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer  # noqa: F811
+    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer
 
 
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
@@ -1234,20 +1228,18 @@ def _decode_all_selective(
 
     `data` must be a string representing a valid, BSON-encoded document.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options`: An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions` with user-specified type
         decoders. If no decoders are found, this method is the same as
         ``decode_all``.
-      - `fields`: Map of document namespaces where data that needs
+    :param fields: Map of document namespaces where data that needs
         to be custom decoded lives or None. For example, to custom decode a
         list of objects in 'field1.subfield1', the specified value should be
         ``{'field1': {'subfield1': 1}}``. If ``fields``  is an empty map or
         None, this method is the same as ``decode_all``.
 
-    :Returns:
-      - `document_list`: Single-member list containing the decoded document.
+    :return: Single-member list containing the decoded document.
 
     .. versionadded:: 3.8
     """
@@ -1294,9 +1286,8 @@ def decode_iter(
     `data` must be a string of concatenated, valid, BSON-encoded
     documents.
 
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options` (optional): An instance of
+    :param data: BSON data
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.0
@@ -1342,9 +1333,8 @@ def decode_file_iter(
     Works similarly to the decode_all function, but reads from the file object
     in chunks and parses bson in chunks, yielding one document at a time.
 
-    :Parameters:
-      - `file_obj`: A file object containing BSON data.
-      - `codec_options` (optional): An instance of
+    :param file_obj: A file object containing BSON data.
+    :param codec_options: An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.0
@@ -1373,8 +1363,7 @@ def is_valid(bson: bytes) -> bool:
     :class:`bytes`. Returns ``True``
     if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
-    :Parameters:
-      - `bson`: the data to be validated
+    :param bson: the data to be validated
     """
     if not isinstance(bson, bytes):
         raise TypeError("BSON data must be an instance of a subclass of bytes")
@@ -1410,12 +1399,11 @@ class BSON(bytes):
         :class:`str'. Raises :class:`~bson.errors.InvalidDocument`
         if `document` cannot be converted to :class:`BSON`.
 
-        :Parameters:
-          - `document`: mapping type representing a document
-          - `check_keys` (optional): check if keys start with '$' or
+        :param document: mapping type representing a document
+        :param check_keys: check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
-          - `codec_options` (optional): An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`.
 
         .. versionchanged:: 3.0
@@ -1443,8 +1431,7 @@ class BSON(bytes):
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 
-        :Parameters:
-          - `codec_options` (optional): An instance of
+        :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`.
 
         .. versionchanged:: 3.0

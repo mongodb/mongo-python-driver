@@ -13,12 +13,16 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+from __future__ import annotations
 
 import contextlib
 import copy
 import pickle
 import random
 import sys
+from typing import Any
+
+from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -119,8 +123,8 @@ class TestReadPreferencesBase(IntegrationTest):
             return "secondary"
         else:
             self.fail(
-                "Cursor used address {}, expected either primary "
-                "{} or secondaries {}".format(address, client.primary, client.secondaries)
+                f"Cursor used address {address}, expected either primary "
+                f"{client.primary} or secondaries {client.secondaries}"
             )
             return None
 
@@ -134,7 +138,6 @@ class TestReadPreferencesBase(IntegrationTest):
 
 class TestSingleSecondaryOk(TestReadPreferencesBase):
     def test_reads_from_secondary(self):
-
         host, port = next(iter(self.client.secondaries))
         # Direct connection to a secondary.
         client = single_client(host, port)
@@ -266,13 +269,13 @@ class TestReadPreferences(TestReadPreferencesBase):
         not_used = data_members.difference(used)
         latencies = ", ".join(
             "%s: %sms" % (server.description.address, server.description.round_trip_time)
-            for server in c._get_topology().select_servers(readable_server_selector)
+            for server in c._get_topology().select_servers(readable_server_selector, _Op.TEST)
         )
 
         self.assertFalse(
             not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
-            " but didn't use {}\nlatencies: {}".format(not_used, latencies),
+            f" but didn't use {not_used}\nlatencies: {latencies}",
         )
 
 
@@ -284,8 +287,8 @@ class ReadPrefTester(MongoClient):
         super().__init__(*args, **client_options)
 
     @contextlib.contextmanager
-    def _conn_for_reads(self, read_preference, session):
-        context = super()._conn_for_reads(read_preference, session)
+    def _conn_for_reads(self, read_preference, session, operation):
+        context = super()._conn_for_reads(read_preference, session, operation)
         with context as (conn, read_preference):
             self.record_a_read(conn.address)
             yield conn, read_preference
@@ -298,7 +301,7 @@ class ReadPrefTester(MongoClient):
             yield conn, read_preference
 
     def record_a_read(self, address):
-        server = self._get_topology().select_server_by_address(address, 0)
+        server = self._get_topology().select_server_by_address(address, _Op.TEST, 0)
         self.has_read_from.add(server)
 
 
@@ -320,7 +323,6 @@ class TestCommandAndReadPreference(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.c = ReadPrefTester(
-            client_context.pair,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000 * 1000,
         )
@@ -441,7 +443,6 @@ class TestMovingAverage(unittest.TestCase):
 
 class TestMongosAndReadPreference(IntegrationTest):
     def test_read_preference_document(self):
-
         pref = Primary()
         self.assertEqual(pref.document, {"mode": "primary"})
 
@@ -513,7 +514,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             else:
                 self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            hedge = {"enabled": True}
+            hedge: dict[str, Any] = {"enabled": True}
             pref = cls(hedge=hedge)
             self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
             out = _maybe_add_read_preference({}, pref)
@@ -558,7 +559,6 @@ class TestMongosAndReadPreference(IntegrationTest):
                 self.assertNotIn("$readPreference", cmd)
 
     def test_maybe_add_read_preference(self):
-
         # Primary doesn't add $readPreference
         out = _maybe_add_read_preference({}, Primary())
         self.assertEqual(out, {})

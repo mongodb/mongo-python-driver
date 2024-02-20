@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import itertools
 import unittest
@@ -46,7 +47,6 @@ class TestMongosCommandReadMode(unittest.TestCase):
         secondary_collection = collection.with_options(read_preference=ReadPreference.SECONDARY)
 
         with going(secondary_collection.aggregate, []):
-
             command = server.receives(
                 OpMsg(
                     {

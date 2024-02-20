@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for Decimal128."""
+from __future__ import annotations
 
 import pickle
 import sys

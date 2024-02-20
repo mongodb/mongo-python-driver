@@ -34,7 +34,6 @@ from typing import (
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from bson.son import SON
 from pymongo import _csot, common
 from pymongo.client_session import ClientSession, _validate_session_write_concern
 from pymongo.common import (
@@ -89,18 +88,16 @@ class _Run:
     def index(self, idx: int) -> int:
         """Get the original index of an operation in this run.
 
-        :Parameters:
-          - `idx`: The Run index that maps to the original index.
+        :param idx: The Run index that maps to the original index.
         """
         return self.index_map[idx]
 
     def add(self, original_index: int, operation: Any) -> None:
         """Add an operation to this Run instance.
 
-        :Parameters:
-          - `original_index`: The original index of this operation
+        :param original_index: The original index of this operation
             within a larger bulk operation.
-          - `operation`: The operation document.
+        :param operation: The operation document.
         """
         self.index_map.append(original_index)
         self.ops.append(operation)
@@ -217,11 +214,11 @@ class _Bulk:
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = dict(
+        cmd: dict[str, Any] = dict(  # noqa: C406
             [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
         )
         if collation is not None:
@@ -244,11 +241,11 @@ class _Bulk:
         replacement: Mapping[str, Any],
         upsert: bool = False,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd = SON([("q", selector), ("u", replacement), ("multi", False), ("upsert", upsert)])
+        cmd = {"q": selector, "u": replacement, "multi": False, "upsert": upsert}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -262,10 +259,10 @@ class _Bulk:
         selector: Mapping[str, Any],
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, SON[str, Any], None] = None,
+        hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = SON([("q", selector), ("limit", limit)])
+        cmd = {"q": selector, "limit": limit}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -352,7 +349,7 @@ class _Bulk:
                 if last_run and (len(run.ops) - run.idx_offset) == 1:
                     write_concern = final_write_concern or write_concern
 
-                cmd = SON([(cmd_name, self.collection.name), ("ordered", self.ordered)])
+                cmd = {cmd_name: self.collection.name, "ordered": self.ordered}
                 if self.comment:
                     cmd["comment"] = self.comment
                 _csot.apply_write_concern(cmd, write_concern)
@@ -411,6 +408,7 @@ class _Bulk:
         generator: Iterator[Any],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
+        operation: str,
     ) -> dict[str, Any]:
         """Execute using write commands."""
         # nModified is only reported for write commands, not legacy ops.
@@ -440,7 +438,14 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        client._retryable_write(self.is_retryable, retryable_bulk, session, bulk=self)
+        client._retryable_write(
+            self.is_retryable,
+            retryable_bulk,
+            session,
+            operation,
+            bulk=self,
+            operation_id=op_id,
+        )
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)
@@ -471,13 +476,11 @@ class _Bulk:
             )
 
             while run.idx_offset < len(run.ops):
-                cmd = SON(
-                    [
-                        (cmd_name, self.collection.name),
-                        ("ordered", False),
-                        ("writeConcern", {"w": 0}),
-                    ]
-                )
+                cmd = {
+                    cmd_name: self.collection.name,
+                    "ordered": False,
+                    "writeConcern": {"w": 0},
+                }
                 conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
@@ -552,7 +555,12 @@ class _Bulk:
             return self.execute_command_no_results(conn, generator, write_concern)
         return self.execute_op_msg_no_results(conn, generator)
 
-    def execute(self, write_concern: WriteConcern, session: Optional[ClientSession]) -> Any:
+    def execute(
+        self,
+        write_concern: WriteConcern,
+        session: Optional[ClientSession],
+        operation: str,
+    ) -> Any:
         """Execute operations."""
         if not self.ops:
             raise InvalidOperation("No operations to execute")
@@ -569,8 +577,8 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._conn_for_writes(session) as connection:
+            with client._conn_for_writes(session, operation) as connection:
                 self.execute_no_results(connection, generator, write_concern)
                 return None
         else:
-            return self.execute_command(generator, write_concern, session)
+            return self.execute_command(generator, write_concern, session, operation)

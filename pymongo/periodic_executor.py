@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 import weakref
@@ -36,12 +37,11 @@ class PeriodicExecutor:
 
         If the target's return value is false, the executor stops.
 
-        :Parameters:
-          - `interval`: Seconds between calls to `target`.
-          - `min_interval`: Minimum seconds between calls if `wake` is
+        :param interval: Seconds between calls to `target`.
+        :param min_interval: Minimum seconds between calls if `wake` is
             called very often.
-          - `target`: A function.
-          - `name`: A name to give the underlying thread.
+        :param target: A function.
+        :param name: A name to give the underlying thread.
         """
         # threading.Event and its internal condition variable are expensive
         # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
@@ -92,7 +92,15 @@ class PeriodicExecutor:
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
-            thread.start()
+            # Mitigation to RuntimeError firing when thread starts on shutdown
+            # https://github.com/python/cpython/issues/114570
+            try:
+                thread.start()
+            except RuntimeError as e:
+                if "interpreter shutdown" in str(e) or sys.is_finalizing():
+                    self._thread = None
+                    return
+                raise
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().

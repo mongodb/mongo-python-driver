@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test suite for pymongo, bson, and gridfs."""
+from __future__ import annotations
 
 import base64
 import gc
@@ -29,7 +30,7 @@ import unittest
 import warnings
 
 try:
-    import ipaddress  # noqa
+    import ipaddress
 
     HAVE_IPADDRESS = True
 except ImportError:
@@ -50,7 +51,7 @@ from pymongo.database import Database
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-from pymongo.ssl_support import HAVE_SSL, _ssl
+from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.uri_parser import parse_uri
 
 if HAVE_SSL:
@@ -66,6 +67,7 @@ if hasattr(gc, "set_debug"):
 # for a replica set.
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
+IS_SRV = "mongodb+srv" in host
 
 db_user = os.environ.get("DB_USER", "user")
 db_pwd = os.environ.get("DB_PASSWORD", "password")
@@ -111,6 +113,10 @@ LOCAL_MASTER_KEY = base64.b64decode(
 AWS_CREDS = {
     "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
     "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
+}
+AWS_CREDS_2 = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY2", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET2", ""),
 }
 AZURE_CREDS = {
     "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
@@ -280,6 +286,8 @@ class ClientContext:
     def client_options(self):
         """Return the MongoClient options for creating a duplicate client."""
         opts = client_context.default_client_options.copy()
+        opts["host"] = host
+        opts["port"] = port
         if client_context.auth_enabled:
             opts["username"] = db_user
             opts["password"] = db_pwd
@@ -307,7 +315,10 @@ class ClientContext:
     @property
     def hello(self):
         if not self._hello:
-            self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
+            if self.serverless or self.load_balancer:
+                self._hello = self.client.admin.command(HelloCompat.CMD)
+            else:
+                self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
         return self._hello
 
     def _connect(self, host, port, **kwargs):
@@ -317,7 +328,7 @@ class ClientContext:
         )
         try:
             try:
-                client.admin.command(HelloCompat.LEGACY_CMD)  # Can we connect?
+                client.admin.command("ping")  # Can we connect?
             except pymongo.errors.OperationFailure as exc:
                 # SERVER-32063
                 self.connection_attempts.append(
@@ -374,7 +385,7 @@ class ClientContext:
                     self.auth_enabled = self._server_started_with_auth()
 
             if self.auth_enabled:
-                if not self.serverless:
+                if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
@@ -442,7 +453,7 @@ class ClientContext:
             else:
                 self.server_parameters = self.client.admin.command("getParameter", "*")
                 assert self.cmd_line is not None
-                if "enableTestCommands=1" in self.cmd_line["argv"]:
+                if self.server_parameters["enableTestCommands"]:
                     self.test_commands_enabled = True
                 elif "parsed" in self.cmd_line:
                     params = self.cmd_line["parsed"].get("setParameter", [])
@@ -478,14 +489,14 @@ class ClientContext:
 
     @property
     def host(self):
-        if self.is_rs:
+        if self.is_rs and not IS_SRV:
             primary = self.client.primary
             return str(primary[0]) if primary is not None else host
         return host
 
     @property
     def port(self):
-        if self.is_rs:
+        if self.is_rs and not IS_SRV:
             primary = self.client.primary
             return primary[1] if primary is not None else port
         return port
@@ -509,6 +520,10 @@ class ClientContext:
         except AttributeError:
             # Raised if self.server_status is None.
             return None
+
+    def check_auth_type(self, auth_type):
+        auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
+        return auth_type in auth_mechs
 
     def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""
@@ -792,11 +807,12 @@ class ClientContext:
             return True
         return False
 
-    def require_cluster_type(self, topologies=[]):  # noqa
+    def require_cluster_type(self, topologies=None):
         """Run a test only if the client is connected to a cluster that
         conforms to one of the specified topologies. Acceptable topologies
         are 'single', 'replicaset', and 'sharded'.
         """
+        topologies = topologies or []
 
         def _is_valid_topology():
             return self.is_topology_type(topologies)
@@ -1166,9 +1182,9 @@ def print_running_topology(topology):
     if running:
         print(
             "WARNING: found Topology with running threads:\n"
-            "  Threads: {}\n"
-            "  Topology: {}\n"
-            "  Creation traceback:\n{}".format(running, topology, topology._settings._stack)
+            f"  Threads: {running}\n"
+            f"  Topology: {topology}\n"
+            f"  Creation traceback:\n{topology._settings._stack}"
         )
 
 
@@ -1235,7 +1251,7 @@ def clear_warning_registry():
     """Clear the __warningregistry__ for all modules."""
     for _, module in list(sys.modules.items()):
         if hasattr(module, "__warningregistry__"):
-            setattr(module, "__warningregistry__", {})  # noqa
+            module.__warningregistry__ = {}  # type:ignore[attr-defined]
 
 
 class SystemCertsPatcher:

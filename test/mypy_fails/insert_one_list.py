@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pymongo import MongoClient
 
 client: MongoClient = MongoClient()

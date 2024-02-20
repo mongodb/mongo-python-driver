@@ -13,13 +13,15 @@
 # limitations under the License.
 
 """Test some utilities for working with JSON and PyMongo."""
+from __future__ import annotations
 
 import datetime
 import json
 import re
 import sys
 import uuid
-from typing import Any, List, MutableMapping
+from collections import OrderedDict
+from typing import Any, List, MutableMapping, Tuple, Type
 
 from bson.codec_options import CodecOptions, DatetimeConversion
 
@@ -39,9 +41,12 @@ from bson.binary import (
 from bson.code import Code
 from bson.datetime_ms import _max_datetime_ms
 from bson.dbref import DBRef
+from bson.decimal128 import Decimal128
 from bson.int64 import Int64
 from bson.json_util import (
+    CANONICAL_JSON_OPTIONS,
     LEGACY_JSON_OPTIONS,
+    RELAXED_JSON_OPTIONS,
     DatetimeRepresentation,
     JSONMode,
     JSONOptions,
@@ -251,8 +256,8 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_datetime_ms(self):
         # Test ISO8601 in-range
-        dat_min = {"x": DatetimeMS(0)}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms())}
+        dat_min: dict[str, Any] = {"x": DatetimeMS(0)}
+        dat_max: dict[str, Any] = {"x": DatetimeMS(_max_datetime_ms())}
         opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
 
         self.assertEqual(
@@ -449,7 +454,7 @@ class TestJsonUtil(unittest.TestCase):
         )
 
         # Cannot directly encode native UUIDs with UNSPECIFIED.
-        doc = {"uuid": _uuid}
+        doc: dict[str, Any] = {"uuid": _uuid}
         with self.assertRaises(ValueError):
             json_util.dumps(doc, json_options=options)
 
@@ -544,17 +549,72 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(json_util.dumps({"weight": Int64(65535)}), '{"weight": 65535}')
         json_options = JSONOptions(strict_number_long=True, json_mode=JSONMode.LEGACY)
         self.assertEqual(json_util.dumps({"weight": Int64(65535)}, json_options=json_options), jsn)
+        # Ensure json_util.default converts Int64 to int in non-strict mode.
+        converted = json_util.default(Int64(65535))
+        self.assertEqual(converted, 65535)
+        self.assertNotIsInstance(converted, Int64)
+        self.assertEqual(
+            json_util.default(Int64(65535), json_options=json_options), {"$numberLong": "65535"}
+        )
 
     def test_loads_document_class(self):
-        # document_class dict should always work
-        self.assertEqual(
-            {"foo": "bar"},
-            json_util.loads('{"foo": "bar"}', json_options=JSONOptions(document_class=dict)),
-        )
-        self.assertEqual(
-            SON([("foo", "bar"), ("b", 1)]),
-            json_util.loads('{"foo": "bar", "b": 1}', json_options=JSONOptions(document_class=SON)),
-        )
+        json_doc = '{"foo": "bar", "b": 1, "d": {"a": 1}}'
+        expected_doc = {"foo": "bar", "b": 1, "d": {"a": 1}}
+        for cls in (dict, SON, OrderedDict):
+            doc = json_util.loads(json_doc, json_options=JSONOptions(document_class=cls))
+            self.assertEqual(doc, expected_doc)
+            self.assertIsInstance(doc, cls)
+            self.assertIsInstance(doc["d"], cls)
+
+    def test_encode_subclass(self):
+        cases: list[Tuple[Type, Any]] = [
+            (int, (1,)),
+            (int, (2 << 60,)),
+            (float, (1.1,)),
+            (Int64, (64,)),
+            (Int64, (2 << 60,)),
+            (str, ("str",)),
+            (bytes, (b"bytes",)),
+            (datetime.datetime, (2024, 1, 16)),
+            (DatetimeMS, (1,)),
+            (uuid.UUID, ("f47ac10b-58cc-4372-a567-0e02b2c3d479",)),
+            (Binary, (b"1", USER_DEFINED_SUBTYPE)),
+            (Code, ("code",)),
+            (DBRef, ("coll", ObjectId())),
+            (ObjectId, ("65a6dab5f98bc03906ee3597",)),
+            (MaxKey, ()),
+            (MinKey, ()),
+            (Regex, ("pat",)),
+            (Timestamp, (1, 1)),
+            (Decimal128, ("0.5",)),
+        ]
+        allopts = [
+            CANONICAL_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+            RELAXED_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+            LEGACY_JSON_OPTIONS.with_options(uuid_representation=STANDARD),
+        ]
+        for cls, args in cases:
+            basic_obj = cls(*args)
+            my_cls = type(f"My{cls.__name__}", (cls,), {})
+            my_obj = my_cls(*args)
+            for opts in allopts:
+                expected_json = json_util.dumps(basic_obj, json_options=opts)
+                self.assertEqual(json_util.dumps(my_obj, json_options=opts), expected_json)
+
+    def test_encode_type_marker(self):
+        # Assert that a custom subclass can be JSON encoded based on the _type_marker attribute.
+        class MyMaxKey:
+            _type_marker = 127
+
+        expected_json = json_util.dumps(MaxKey())
+        self.assertEqual(json_util.dumps(MyMaxKey()), expected_json)
+
+        # Test a class that inherits from two built in types
+        class MyBinary(Binary):
+            pass
+
+        expected_json = json_util.dumps(Binary(b"bin", USER_DEFINED_SUBTYPE))
+        self.assertEqual(json_util.dumps(MyBinary(b"bin", USER_DEFINED_SUBTYPE)), expected_json)
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

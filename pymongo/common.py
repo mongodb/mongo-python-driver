@@ -17,9 +17,9 @@
 from __future__ import annotations
 
 import datetime
-import inspect
 import warnings
 from collections import OrderedDict, abc
+from difflib import get_close_matches
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -41,6 +41,7 @@ from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
+from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -55,7 +56,6 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
-
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -136,6 +136,9 @@ _MAX_END_SESSIONS = 10000
 # Default value for srvServiceName
 SRV_SERVICE_NAME = "mongodb"
 
+# Default value for serverMonitoringMode
+SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -160,9 +163,12 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, dummy: Any) -> NoReturn:
+def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
-    raise ConfigurationError(f"Unknown option {key}")
+    msg = f"Unknown option: {key}."
+    if suggestions:
+        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
+    raise ConfigurationError(msg)
 
 
 # Mapping of URI uuid representation options to valid subtypes.
@@ -192,7 +198,7 @@ def validate_integer(option: str, value: Any) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError(f"The value of {option} must be an integer")
+            raise ValueError(f"The value of {option} must be an integer") from None
     raise TypeError(f"Wrong type for {option}, value must be an integer")
 
 
@@ -284,9 +290,9 @@ def validate_positive_float(option: str, value: Any) -> float:
     try:
         value = float(value)
     except ValueError:
-        raise ValueError(errmsg)
+        raise ValueError(errmsg) from None
     except TypeError:
-        raise TypeError(errmsg)
+        raise TypeError(errmsg) from None
 
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
@@ -385,10 +391,10 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
         raise ValueError(
-            "{} is an invalid UUID representation. "
+            f"{value} is an invalid UUID representation. "
             "Must be one of "
-            "{}".format(value, tuple(_UUID_REPRESENTATIONS))
-        )
+            f"{tuple(_UUID_REPRESENTATIONS)}"
+        ) from None
 
 
 def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]:
@@ -408,7 +414,7 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
-            raise ValueError(f"{tag_set!r} not a valid value for {name}")
+            raise ValueError(f"{tag_set!r} not a valid value for {name}") from None
     return tag_sets
 
 
@@ -419,6 +425,8 @@ _MECHANISM_PROPS = frozenset(
         "SERVICE_REALM",
         "AWS_SESSION_TOKEN",
         "PROVIDER_NAME",
+        "TOKEN_AUDIENCE",
+        "ALLOWED_HOSTS",
     ]
 )
 
@@ -429,29 +437,19 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError("Auth mechanism properties must be given as a string or a dictionary")
-        for key, value in value.items():
+        for key, value in value.items():  # noqa: B020
             if isinstance(value, str):
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
-            elif key in ["allowed_hosts"] and isinstance(value, list):
+            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
-            elif inspect.isfunction(value):
-                signature = inspect.signature(value)
-                if key == "request_token_callback":
-                    expected_params = 2
-                elif key == "refresh_token_callback":
-                    expected_params = 2
-                else:
-                    raise ValueError(f"Unrecognized Auth mechanism function {key}")
-                if len(signature.parameters) != expected_params:
-                    msg = f"{key} must accept {expected_params} parameters"
-                    raise ValueError(msg)
+            elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
+                if not isinstance(value, OIDCCallback):
+                    raise ValueError("callback must be an OIDCCallback object")
                 props[key] = value
             else:
-                raise ValueError(
-                    "Auth mechanism property values must be strings or callback functions"
-                )
+                raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")
         return props
 
     value = validate_string(option, value)
@@ -461,20 +459,20 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         except ValueError:
             # Try not to leak the token.
             if "AWS_SESSION_TOKEN" in opt:
-                opt = (
+                opt = (  # noqa: PLW2901
                     "AWS_SESSION_TOKEN:<redacted token>, did you forget "
                     "to percent-escape the token with quote_plus?"
                 )
             raise ValueError(
                 "auth mechanism properties must be "
                 "key:value pairs like SERVICE_NAME:"
-                "mongodb, not {}.".format(opt)
-            )
+                f"mongodb, not {opt}."
+            ) from None
         if key not in _MECHANISM_PROPS:
             raise ValueError(
-                "{} is not a supported auth "
+                f"{key} is not a supported auth "
                 "mechanism property. Must be one of "
-                "{}.".format(key, tuple(_MECHANISM_PROPS))
+                f"{tuple(_MECHANISM_PROPS)}."
             )
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
@@ -498,9 +496,9 @@ def validate_document_class(
             is_mapping = issubclass(value.__origin__, abc.MutableMapping)
     if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
-            "{} must be dict, bson.son.SON, "
+            f"{option} must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "subclass of collections.MutableMapping".format(option)
+            "subclass of collections.MutableMapping"
         )
     return value
 
@@ -530,9 +528,9 @@ def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
-            "{} must either be a list or an instance of dict, "
+            f"{option} must either be a list or an instance of dict, "
             "bson.son.SON, or any other type that inherits from "
-            "collections.Mapping".format(option)
+            "collections.Mapping"
         )
 
 
@@ -540,9 +538,9 @@ def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError(
-            "{} must be an instance of dict, bson.son.SON, or "
+            f"{option} must be an instance of dict, bson.son.SON, or "
             "any other type that inherits from "
-            "collections.Mapping".format(option)
+            "collections.Mapping"
         )
 
 
@@ -550,10 +548,10 @@ def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError(
-            "{} must be an instance of dict, bson.son.SON, "
+            f"{option} must be an instance of dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or "
             "a type that inherits from "
-            "collections.MutableMapping".format(option)
+            "collections.MutableMapping"
         )
 
 
@@ -625,9 +623,9 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            "{} is an invalid Unicode decode error handler. "
+            f"{value} is an invalid Unicode decode error handler. "
             "Must be one of "
-            "{}".format(value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
+            f"{tuple(_UNICODE_DECODE_ERROR_HANDLERS)}"
         )
     return value
 
@@ -664,6 +662,15 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
         return DatetimeConversion(value)
 
     raise TypeError(f"{option} must be a str or int representing DatetimeConversion")
+
+
+def validate_server_monitoring_mode(option: str, value: str) -> str:
+    """Validate the serverMonitoringMode option."""
+    if value not in {"auto", "stream", "poll"}:
+        raise ValueError(
+            f'{option}={value!r} is invalid. Must be one of "auto", "stream", or "poll"'
+        )
+    return value
 
 
 # Dictionary where keys are the names of public URI options, and values
@@ -714,6 +721,7 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
     "timeoutms": validate_timeoutms,
+    "servermonitoringmode": validate_server_monitoring_mode,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
@@ -793,7 +801,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "waitqueuetimeoutms",
 ]
 
-
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
 
@@ -801,14 +808,24 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
     """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError(f"Unknown authentication option: {option}")
+        raise ConfigurationError(f"Unknown option: {option}. Must be in {_AUTH_OPTIONS}")
     return option, value
+
+
+def _get_validator(
+    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
+) -> Callable:
+    normed_key = normed_key or key
+    try:
+        return validators[normed_key]
+    except KeyError:
+        suggestions = get_close_matches(normed_key, validators, cutoff=0.2)
+        raise_config_error(key, suggestions)
 
 
 def validate(option: str, value: Any) -> tuple[str, Any]:
     """Generic validation function."""
-    lower = option.lower()
-    validator = VALIDATORS.get(lower, raise_config_error)
+    validator = _get_validator(option, VALIDATORS, normed_key=option.lower())
     value = validator(option, value)
     return option, value
 
@@ -819,9 +836,8 @@ def get_validated_options(
     """Validate each entry in options and raise a warning if it is not valid.
     Returns a copy of options with invalid entries removed.
 
-    :Parameters:
-        - `opts`: A dict containing MongoDB URI options.
-        - `warn` (optional): If ``True`` then warnings will be logged and
+    :param opts: A dict containing MongoDB URI options.
+    :param warn: If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
@@ -830,32 +846,32 @@ def get_validated_options(
         validated_options = _CaseInsensitiveDictionary()
 
         def get_normed_key(x: str) -> str:
-            return x  # noqa: E731
+            return x
 
         def get_setter_key(x: str) -> str:
-            return options.cased_key(x)  # type: ignore[attr-defined] # noqa: E731
+            return options.cased_key(x)  # type: ignore[attr-defined]
 
     else:
         validated_options = {}
 
         def get_normed_key(x: str) -> str:
-            return x.lower()  # noqa: E731
+            return x.lower()
 
         def get_setter_key(x: str) -> str:
-            return x  # noqa: E731
+            return x
 
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            validator = URI_OPTIONS_VALIDATOR_MAP.get(normed_key, raise_config_error)
-            value = validator(opt, value)
+            validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
+            validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
-                warnings.warn(str(exc))
+                warnings.warn(str(exc), stacklevel=2)
             else:
                 raise
         else:
-            validated_options[get_setter_key(normed_key)] = value
+            validated_options[get_setter_key(normed_key)] = validated
     return validated_options
 
 
@@ -891,9 +907,9 @@ class BaseObject:
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
-                "{!r} is not valid for read_preference. See "
+                f"{read_preference!r} is not valid for read_preference. See "
                 "pymongo.read_preferences for valid "
-                "options.".format(read_preference)
+                "options."
             )
         self.__read_preference = read_preference
 
@@ -993,7 +1009,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
             return NotImplemented
         if len(self) != len(other):
             return False
-        for key in other:
+        for key in other:  # noqa: SIM110
             if self[key] != other[key]:
                 return False
 

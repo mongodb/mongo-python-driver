@@ -3,19 +3,34 @@ name: Python Tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -eux {0}
 
 jobs:
 
-  pre-commit:
-    name: pre-commit
+  lint:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: pre-commit/action@v2.0.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          extra_args: --all-files --hook-stage=manual
+          python-version: 3.8
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -U pip tox
+      - name: Run linters
+        run: |
+          tox -m lint-manual
+          tox -m manifest
 
   build:
     # supercharge/mongodb-github-action requires containers so we don't test other platforms
@@ -26,9 +41,9 @@ jobs:
         python-version: ["3.7", "3.11", "pypy-3.8"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -37,7 +52,7 @@ jobs:
         run: |
           pip install -q tox
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 4.4
       - name: Run tests
@@ -48,9 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: "3.8"
           cache: 'pip'
@@ -59,7 +74,7 @@ jobs:
         run: |
           pip install -q tox
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 4.4
       - name: Run tests
@@ -69,16 +84,11 @@ jobs:
   typing:
     name: Typing Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.7', '3.11']
-      fail-fast: false
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
@@ -92,11 +102,13 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          # Build docs on lowest supported Python for furo
+          python-version: '3.8'
       - name: Install dependencies
         run: |
           pip install -q tox
@@ -106,3 +118,57 @@ jobs:
       - name: Build docs
         run: |
           tox -m doc
+
+  make_sdist:
+    runs-on: ubuntu-latest
+    name: "Make an sdist"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+          # Build sdist on lowest supported Python
+          python-version: '3.7'
+      - name: Build SDist
+        shell: bash
+        run: |
+          pip install build
+          python -m build --sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "sdist"
+          path: dist/*.tar.gz
+
+  test_sdist:
+      runs-on: ubuntu-latest
+      needs: [make_sdist]
+      name: Install from SDist and Test
+      timeout-minutes: 20
+      steps:
+        - name: Download sdist
+          uses: actions/download-artifact@v4
+        - name: Unpack SDist
+          shell: bash
+          run: |
+            cd sdist
+            ls
+            mkdir test
+            tar --strip-components=1 -zxf *.tar.gz -C ./test
+            ls test
+        - uses: actions/setup-python@v5
+          with:
+            cache: 'pip'
+            cache-dependency-path: 'sdist/test/pyproject.toml'
+            # Test sdist on lowest supported Python
+            python-version: '3.7'
+        - name: Start MongoDB
+          uses: supercharge/mongodb-github-action@1.10.0
+        - name: Run Test
+          shell: bash
+          run: |
+            cd sdist/test
+            ls
+            which python
+            pip install -e ".[test]"
+            pytest -v

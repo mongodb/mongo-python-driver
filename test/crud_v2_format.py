@@ -16,6 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/crud/tests/README.rst
 """
+from __future__ import annotations
 
 from test.utils_spec_runner import SpecRunner
 

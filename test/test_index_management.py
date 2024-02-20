@@ -67,8 +67,12 @@ class TestSearchIndexProse(unittest.TestCase):
         password = os.environ["DB_PASSWORD"]
         cls.client = MongoClient(url, username=username, password=password)
         cls.client.drop_database(_NAME)
-        cls.addClassCleanup(cls.client.close)
         cls.db = cls.client.test_search_index_prose
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.drop_database(_NAME)
+        cls.client.close()
 
     def wait_for_ready(self, coll, name=_NAME, predicate=None):
         """Wait for a search index to be ready."""

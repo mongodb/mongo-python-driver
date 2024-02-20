@@ -925,43 +925,41 @@ static PyMethodDef _CMessageMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-#define INITERROR return NULL
+#define INITERROR return -1;
 static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
-    Py_VISIT(GETSTATE(m)->_cbson);
-    Py_VISIT(GETSTATE(m)->_max_bson_size_str);
-    Py_VISIT(GETSTATE(m)->_max_message_size_str);
-    Py_VISIT(GETSTATE(m)->_max_split_size_str);
-    Py_VISIT(GETSTATE(m)->_max_write_batch_size_str);
+    struct module_state *state = GETSTATE(m);
+    if (!state) {
+        return 0;
+    }
+    Py_VISIT(state->_cbson);
+    Py_VISIT(state->_max_bson_size_str);
+    Py_VISIT(state->_max_message_size_str);
+    Py_VISIT(state->_max_split_size_str);
+    Py_VISIT(state->_max_write_batch_size_str);
     return 0;
 }
 
 static int _cmessage_clear(PyObject *m) {
-    Py_CLEAR(GETSTATE(m)->_cbson);
-    Py_CLEAR(GETSTATE(m)->_max_bson_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_message_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_split_size_str);
-    Py_CLEAR(GETSTATE(m)->_max_write_batch_size_str);
+    struct module_state *state = GETSTATE(m);
+    if (!state) {
+        return 0;
+    }
+    Py_CLEAR(state->_cbson);
+    Py_CLEAR(state->_max_bson_size_str);
+    Py_CLEAR(state->_max_message_size_str);
+    Py_CLEAR(state->_max_split_size_str);
+    Py_CLEAR(state->_max_write_batch_size_str);
     return 0;
 }
 
-static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "_cmessage",
-        NULL,
-        sizeof(struct module_state),
-        _CMessageMethods,
-        NULL,
-        _cmessage_traverse,
-        _cmessage_clear,
-        NULL
-};
-
-PyMODINIT_FUNC
-PyInit__cmessage(void)
+/* Multi-phase extension module initialization code.
+ * See https://peps.python.org/pep-0489/.
+*/
+static int
+_cmessage_exec(PyObject *m)
 {
     PyObject *_cbson = NULL;
     PyObject *c_api_object = NULL;
-    PyObject *m = NULL;
     struct module_state* state = NULL;
 
     /* Store a reference to the _cbson module since it's needed to call some
@@ -984,12 +982,6 @@ PyInit__cmessage(void)
         goto fail;
     }
 
-    /* Returns a new reference. */
-    m = PyModule_Create(&moduledef);
-    if (m == NULL) {
-        goto fail;
-    }
-
     state = GETSTATE(m);
     state->_cbson = _cbson;
     if (!((state->_max_bson_size_str = PyUnicode_FromString("max_bson_size")) &&
@@ -1000,12 +992,39 @@ PyInit__cmessage(void)
         }
 
     Py_DECREF(c_api_object);
-
-    return m;
+    return 0;
 
 fail:
     Py_XDECREF(m);
     Py_XDECREF(c_api_object);
     Py_XDECREF(_cbson);
     INITERROR;
+}
+
+
+static PyModuleDef_Slot _cmessage_slots[] = {
+    {Py_mod_exec, _cmessage_exec},
+#ifdef Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED
+    {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
+#endif
+    {0, NULL},
+};
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "_cmessage",
+        NULL,
+        sizeof(struct module_state),
+        _CMessageMethods,
+        _cmessage_slots,
+        _cmessage_traverse,
+        _cmessage_clear,
+        NULL
+};
+
+PyMODINIT_FUNC
+PyInit__cmessage(void)
+{
+    return PyModuleDef_Init(&moduledef);
 }

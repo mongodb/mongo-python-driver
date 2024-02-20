@@ -32,7 +32,7 @@ MongoDB.
 
   You can read more about TLS versions and their security implications here:
 
-  `<https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html#only-support-strong-protocols>`_
+  `<https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html#only-support-strong-protocols>`_
 
 .. _python.org: https://www.python.org/downloads/
 .. _homebrew: https://brew.sh/

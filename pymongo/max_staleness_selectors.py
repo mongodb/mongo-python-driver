@@ -67,7 +67,7 @@ def _with_primary(max_staleness: int, selection: Selection) -> Selection:
     for s in selection.server_descriptions:
         if s.server_type == SERVER_TYPE.RSSecondary:
             # See max-staleness.rst for explanation of this formula.
-            assert s.last_write_date and primary.last_write_date
+            assert s.last_write_date and primary.last_write_date  # noqa: PT018
             staleness = (
                 (s.last_update_time - s.last_write_date)
                 - (primary.last_update_time - primary.last_write_date)
@@ -95,7 +95,7 @@ def _no_primary(max_staleness: int, selection: Selection) -> Selection:
     for s in selection.server_descriptions:
         if s.server_type == SERVER_TYPE.RSSecondary:
             # See max-staleness.rst for explanation of this formula.
-            assert smax.last_write_date and s.last_write_date
+            assert smax.last_write_date and s.last_write_date  # noqa: PT018
             staleness = smax.last_write_date - s.last_write_date + selection.heartbeat_frequency
 
             if staleness <= max_staleness:

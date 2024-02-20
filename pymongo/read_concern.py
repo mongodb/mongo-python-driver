@@ -21,8 +21,7 @@ from typing import Any, Optional
 class ReadConcern:
     """ReadConcern
 
-    :Parameters:
-        - `level`: (string) The read concern level specifies the level of
+    :param level: (string) The read concern level specifies the level of
           isolation for read operations.  For example, a read operation using a
           read concern level of ``majority`` will only return data that has been
           written to a majority of nodes. If the level is left unspecified, the

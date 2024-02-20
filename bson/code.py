@@ -31,15 +31,14 @@ class Code(str):
     keyword argument it will override any setting for that variable in
     the `scope` dictionary.
 
-    :Parameters:
-      - `code`: A string containing JavaScript code to be evaluated or another
+    :param code: A string containing JavaScript code to be evaluated or another
         instance of Code. In the latter case, the scope of `code` becomes this
         Code's :attr:`scope`.
-      - `scope` (optional): dictionary representing the scope in which
+    :param scope: dictionary representing the scope in which
         `code` should be evaluated - a mapping from identifiers (as
         strings) to values. Defaults to ``None``. This is applied after any
         scope associated with a given `code` above.
-      - `**kwargs` (optional): scope variables can also be passed as
+    :param kwargs: scope variables can also be passed as
         keyword arguments. These are applied after `scope` and `code`.
 
     .. versionchanged:: 3.4

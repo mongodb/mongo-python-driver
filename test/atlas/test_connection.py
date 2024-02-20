@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test connections to various Atlas cluster types."""
+from __future__ import annotations
 
 import os
 import sys
