@@ -1048,6 +1048,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "unpin after TransientTransactionError error on" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+        if "unpin after non-transient error on abort" in spec["description"]:
+            if client_context.version[0] == 8:
+                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
