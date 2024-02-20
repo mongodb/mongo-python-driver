@@ -6,7 +6,8 @@ Changes in Version 4.6.2
 
 PyMongo 4.6.2 fixes the following bug:
 
-- Python 3.12 thread error while using ``MongoClient()`` function.
+- Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
+  could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
 
 Changes in Version 4.6.1
 ------------------------
