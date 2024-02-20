@@ -254,6 +254,8 @@ def _get_wce_doc(result: Mapping[str, Any]) -> Optional[Mapping[str, Any]]:
         # convenient to attach it to the writeConcernError doc itself.
         error_labels = result.get("errorLabels")
         if error_labels:
+            # Copy to avoid changing the original document.
+            wce = wce.copy()
             wce["errorLabels"] = error_labels
     return wce
 
