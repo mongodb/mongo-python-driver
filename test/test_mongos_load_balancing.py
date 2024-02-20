@@ -18,6 +18,8 @@ from __future__ import annotations
 import sys
 import threading
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import MockClientTest, client_context, unittest
@@ -60,7 +62,8 @@ def do_simple_op(client, nthreads):
 
 def writable_addresses(topology):
     return {
-        server.description.address for server in topology.select_servers(writable_server_selector)
+        server.description.address
+        for server in topology.select_servers(writable_server_selector, _Op.TEST)
     }
 
 

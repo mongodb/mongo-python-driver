@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 import types
-from collections import abc
+from collections import abc, defaultdict
 from test import (
     AWS_CREDS,
     AWS_CREDS_2,
@@ -58,7 +58,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -109,7 +109,11 @@ from pymongo.monitoring import (
     ServerHeartbeatSucceededEvent,
     ServerListener,
     ServerOpeningEvent,
+    TopologyClosedEvent,
+    TopologyDescriptionChangedEvent,
     TopologyEvent,
+    TopologyListener,
+    TopologyOpenedEvent,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
@@ -313,7 +317,9 @@ class NonLazyCursor:
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener):
+class EventListenerUtil(
+    CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener, TopologyListener
+):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -395,13 +401,18 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener, ServerHea
         else:
             self.add_event(event)
 
-    def opened(self, event: ServerOpeningEvent) -> None:
+    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
         self.add_event(event)
 
-    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+    def description_changed(
+        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
+    ) -> None:
         self.add_event(event)
 
-    def closed(self, event: ServerClosedEvent) -> None:
+    def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
+        self.add_event(event)
+
+    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
         self.add_event(event)
 
 
@@ -701,6 +712,12 @@ class MatchEvaluatorUtil:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
+    def _operation_matchAsDocument(self, spec, actual, key_to_compare):
+        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
+
+    def _operation_matchAsRoot(self, spec, actual, key_to_compare):
+        self._match_document(spec, actual, True)
+
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_{}".format(opname.strip("$"))
         try:
@@ -909,6 +926,8 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
             if "awaited" in spec:
                 self.test.assertEqual(actual.awaited, spec["awaited"])
+        elif name == "topologyDescriptionChangedEvent":
+            self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 
@@ -1698,6 +1717,48 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def check_log_messages(self, operations, spec):
+        def format_logs(log_list):
+            client_to_log = defaultdict(list)
+            for log in log_list:
+                data = json_util.loads(log.message)
+                client = data.pop("clientId")
+                client_to_log[client].append(
+                    {
+                        "level": log.levelname.lower(),
+                        "component": log.name.replace("pymongo.", "", 1),
+                        "data": data,
+                    }
+                )
+            return client_to_log
+
+        with self.assertLogs("pymongo", level="DEBUG") as cm:
+            self.run_operations(operations)
+            formatted_logs = format_logs(cm.records)
+            for client in spec:
+                components = set()
+                for message in client["messages"]:
+                    components.add(message["component"])
+
+                clientid = self.entity_map[client["client"]]._topology_settings._topology_id
+                actual_logs = formatted_logs[clientid]
+                actual_logs = [log for log in actual_logs if log["component"] in components]
+                self.assertEqual(len(client["messages"]), len(actual_logs))
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                    expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+
+                    if "failureIsRedacted" in expected_msg:
+                        self.assertIn("failure", actual_data)
+                        should_redact = expected_msg.pop("failureIsRedacted")
+                        if should_redact:
+                            actual_fields = set(json_util.loads(actual_data["failure"]).keys())
+                            self.assertTrue(
+                                {"code", "codeName", "errorLabels"}.issuperset(actual_fields)
+                            )
+
+                    self.match_evaluator.match_result(expected_data, actual_data)
+                    self.match_evaluator.match_result(expected_msg, actual_msg)
+
     def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1758,8 +1819,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
 
-        # process operations
-        self.run_operations(spec["operations"])
+        if "expectLogMessages" in spec:
+            expect_log_messages = spec["expectLogMessages"]
+            self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
+            self.check_log_messages(spec["operations"], expect_log_messages)
+        else:
+            # process operations
+            self.run_operations(spec["operations"])
 
         # process expectEvents
         if "expectEvents" in spec:

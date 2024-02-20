@@ -20,6 +20,8 @@ import sys
 import time
 import warnings
 
+from pymongo.operations import _Op
+
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
@@ -113,7 +115,7 @@ class TestMaxStaleness(unittest.TestCase):
         client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
         time.sleep(1)
-        server = client._topology.select_server(writable_server_selector)
+        server = client._topology.select_server(writable_server_selector, _Op.TEST)
         first = server.description.last_write_date
         self.assertTrue(first)
         # The first last_write_date may correspond to a internal server write,
@@ -122,7 +124,7 @@ class TestMaxStaleness(unittest.TestCase):
         client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
         time.sleep(1)
-        server = client._topology.select_server(writable_server_selector)
+        server = client._topology.select_server(writable_server_selector, _Op.TEST)
         second = server.description.last_write_date
         assert first is not None
 

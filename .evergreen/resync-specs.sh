@@ -98,11 +98,25 @@ do
       cpjson client-side-encryption/limits/ client-side-encryption/limits
       cpjson client-side-encryption/etc/data client-side-encryption/etc/data
       ;;
+    connection-monitoring|connection_monitoring)
+      cpjson connection-monitoring-and-pooling/tests/cmap-format connection_monitoring
+      ;;
+    connection-logging|connection_logging)
+      cpjson connection-monitoring-and-pooling/tests/logging connection_logging
+      ;;
     cmap|CMAP|connection-monitoring-and-pooling)
-      cpjson connection-monitoring-and-pooling/tests cmap
-      rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
+      cpjson connection-monitoring-and-pooling/tests/logging connection_logging
+      cpjson connection-monitoring-and-pooling/tests/cmap-format connection_monitoring
+      rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
       ;;
     apm|APM|command-monitoring|command_monitoring)
+      cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
+      ;;
+    command-logging|command_logging)
+      cpjson command-logging-and-monitoring/tests/logging command_logging
+      ;;
+    clam|CLAM|command-logging-and-monitoring|command_logging_and_monitoring)
+      cpjson command-logging-and-monitoring/tests/logging command_logging
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
       ;;
     crud|CRUD)
@@ -151,6 +165,11 @@ do
       ;;
     server-selection|server_selection)
       cpjson server-selection/tests/ server_selection
+      rm -rf $PYMONGO/test/server_selection/logging
+      cpjson server-selection/tests/logging server_selection_logging
+      ;;
+    server-selection-logging|server_selection_logging)
+      cpjson server-selection/tests/logging server_selection_logging
       ;;
     sessions)
       cpjson sessions/tests/ sessions

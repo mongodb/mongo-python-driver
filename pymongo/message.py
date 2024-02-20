@@ -22,6 +22,7 @@ MongoDB.
 from __future__ import annotations
 
 import datetime
+import logging
 import random
 import struct
 from io import BytesIO as _BytesIO
@@ -65,6 +66,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -934,7 +936,7 @@ class _BulkWriteContext:
         self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-        self.start_time = datetime.datetime.now() if self.publish else None
+        self.start_time = datetime.datetime.now()
         self.session = session
         self.compress = bool(conn.compression_context)
         self.op_type = op_type
@@ -955,7 +957,7 @@ class _BulkWriteContext:
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
-        result = self.write_command(cmd, request_id, msg, to_send)
+        result = self.write_command(cmd, request_id, msg, to_send, client)
         client._process_response(result, self.session)
         return result, to_send
 
@@ -968,7 +970,7 @@ class _BulkWriteContext:
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.unack_write(cmd, request_id, msg, 0, to_send)
+        self.unack_write(cmd, request_id, msg, 0, to_send, client)
         return to_send
 
     @property
@@ -1001,33 +1003,82 @@ class _BulkWriteContext:
         msg: bytes,
         max_doc_size: int,
         docs: list[Mapping[str, Any]],
+        client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
         try:
             result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
+            duration = datetime.datetime.now() - self.start_time
+            if result is not None:
+                reply = _convert_write_result(self.name, cmd, result)
+            else:
+                # Comply with APM spec.
+                reply = {"ok": 1}
+                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _COMMAND_LOGGER,
+                        clientId=client._topology_settings._topology_id,
+                        message=_CommandStatusMessage.SUCCEEDED,
+                        durationMS=duration,
+                        reply=reply,
+                        commandName=next(iter(cmd)),
+                        databaseName=self.db_name,
+                        requestId=request_id,
+                        operationId=request_id,
+                        driverConnectionId=self.conn.id,
+                        serverConnectionId=self.conn.server_connection_id,
+                        serverHost=self.conn.address[0],
+                        serverPort=self.conn.address[1],
+                        serviceId=self.conn.service_id,
+                    )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if result is not None:
-                    reply = _convert_write_result(self.name, cmd, result)
-                else:
-                    # Comply with APM spec.
-                    reply = {"ok": 1}
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = datetime.datetime.now() - self.start_time
+            if isinstance(exc, OperationFailure):
+                failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
+            elif isinstance(exc, NotPrimaryError):
+                failure = exc.details  # type: ignore[assignment]
+            else:
+                failure = _convert_exception(exc)
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
             if self.publish:
                 assert self.start_time is not None
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, OperationFailure):
-                    failure: _DocumentOut = _convert_write_result(self.name, cmd, exc.details)  # type: ignore[arg-type]
-                elif isinstance(exc, NotPrimaryError):
-                    failure = exc.details  # type: ignore[assignment]
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:
@@ -1041,25 +1092,76 @@ class _BulkWriteContext:
         request_id: int,
         msg: bytes,
         docs: list[Mapping[str, Any]],
+        client: MongoClient,
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
+        cmd[self.field] = docs
+        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _COMMAND_LOGGER,
+                clientId=client._topology_settings._topology_id,
+                message=_CommandStatusMessage.STARTED,
+                command=cmd,
+                commandName=next(iter(cmd)),
+                databaseName=self.db_name,
+                requestId=request_id,
+                operationId=request_id,
+                driverConnectionId=self.conn.id,
+                serverConnectionId=self.conn.server_connection_id,
+                serverHost=self.conn.address[0],
+                serverPort=self.conn.address[1],
+                serviceId=self.conn.service_id,
+            )
         if self.publish:
-            assert self.start_time is not None
-            duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
-            start = datetime.datetime.now()
         try:
             reply = self.conn.write_command(request_id, msg, self.codec)
+            duration = datetime.datetime.now() - self.start_time
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.SUCCEEDED,
+                    durationMS=duration,
+                    reply=reply,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                )
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
+            duration = datetime.datetime.now() - self.start_time
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                failure: _DocumentOut = exc.details  # type: ignore[assignment]
+            else:
+                failure = _convert_exception(exc)
+            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    clientId=client._topology_settings._topology_id,
+                    message=_CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    commandName=next(iter(cmd)),
+                    databaseName=self.db_name,
+                    requestId=request_id,
+                    operationId=request_id,
+                    driverConnectionId=self.conn.id,
+                    serverConnectionId=self.conn.server_connection_id,
+                    serverHost=self.conn.address[0],
+                    serverPort=self.conn.address[1],
+                    serviceId=self.conn.service_id,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
+
             if self.publish:
-                duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                    failure: _DocumentOut = exc.details  # type: ignore[assignment]
-                else:
-                    failure = _convert_exception(exc)
                 self._fail(request_id, failure, duration)
             raise
         finally:

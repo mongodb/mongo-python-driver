@@ -236,6 +236,8 @@ if TYPE_CHECKING:
 else:
     _BASE_CLASS = CodecOptions
 
+_INT32_MAX = 2**31
+
 
 class JSONOptions(_BASE_CLASS):
     json_mode: int
@@ -893,7 +895,7 @@ def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:
 
 def _encode_int(obj: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.CANONICAL:
-        if -(2**31) <= obj < 2**31:
+        if -_INT32_MAX <= obj < _INT32_MAX:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
     return obj
@@ -1041,3 +1043,119 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             return func(obj, json_options)
 
     raise TypeError("%r is not JSON serializable" % obj)
+
+
+def _get_str_size(obj: Any) -> int:
+    return len(obj)
+
+
+def _get_datetime_size(obj: datetime.datetime) -> int:
+    return 5 + len(str(obj.time()))
+
+
+def _get_regex_size(obj: Regex) -> int:
+    return 18 + len(obj.pattern)
+
+
+def _get_dbref_size(obj: DBRef) -> int:
+    return 34 + len(obj.collection)
+
+
+_CONSTANT_SIZE_TABLE: dict[Any, int] = {
+    ObjectId: 28,
+    int: 11,
+    Int64: 11,
+    Decimal128: 11,
+    Timestamp: 14,
+    MinKey: 8,
+    MaxKey: 8,
+}
+
+_VARIABLE_SIZE_TABLE: dict[Any, Callable[[Any], int]] = {
+    str: _get_str_size,
+    bytes: _get_str_size,
+    datetime.datetime: _get_datetime_size,
+    Regex: _get_regex_size,
+    DBRef: _get_dbref_size,
+}
+
+
+def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
+    """Recursively finds size of objects"""
+    if current_size >= max_size:
+        return current_size
+
+    obj_type = type(obj)
+
+    # Check to see if the obj has a constant size estimate
+    try:
+        return _CONSTANT_SIZE_TABLE[obj_type]
+    except KeyError:
+        pass
+
+    # Check to see if the obj has a variable but simple size estimate
+    try:
+        return _VARIABLE_SIZE_TABLE[obj_type](obj)
+    except KeyError:
+        pass
+
+    # Special cases that require recursion
+    if obj_type == Code:
+        if obj.scope:
+            current_size += (
+                5 + get_size(obj.scope, max_size, current_size) + len(obj) - len(obj.scope)
+            )
+        else:
+            current_size += 5 + len(obj)
+    elif obj_type == dict:
+        for k, v in obj.items():
+            current_size += get_size(k, max_size, current_size)
+            current_size += get_size(v, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    elif hasattr(obj, "__iter__"):
+        for i in obj:
+            current_size += get_size(i, max_size, current_size)
+            if current_size >= max_size:
+                return current_size
+    return current_size
+
+
+def _truncate_documents(obj: Any, max_length: int) -> Tuple[Any, int]:
+    """Recursively truncate documents as needed to fit inside max_length characters."""
+    if max_length <= 0:
+        return None, 0
+    remaining = max_length
+    if hasattr(obj, "items"):
+        truncated: Any = {}
+        for k, v in obj.items():
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            if truncated_v:
+                truncated[k] = truncated_v
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
+        truncated: Any = []  # type:ignore[no-redef]
+        for v in obj:
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            if truncated_v:
+                truncated.append(truncated_v)
+            if remaining <= 0:
+                break
+        return truncated, remaining
+    else:
+        return _truncate(obj, remaining)
+
+
+def _truncate(obj: Any, remaining: int) -> Tuple[Any, int]:
+    size = get_size(obj, remaining)
+
+    if size <= remaining:
+        return obj, remaining - size
+    else:
+        try:
+            truncated = obj[:remaining]
+        except TypeError:
+            truncated = obj
+        return truncated, remaining - size
