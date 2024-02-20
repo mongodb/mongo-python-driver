@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Version 4.6.2
+------------------------
+
+PyMongo 4.6.2 fixes the following bug:
+
+- Python 3.12 thread error while using ``MongoClient()`` function.
+
 Changes in Version 4.6.1
 ------------------------
 
