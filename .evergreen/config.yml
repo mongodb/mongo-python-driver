@@ -1058,7 +1058,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
@@ -1098,7 +1098,7 @@ task_groups:
       - command: expansions.update
         params:
           file: src/atlas-expansion.yml
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           working_dir: src
