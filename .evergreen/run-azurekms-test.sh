@@ -8,7 +8,7 @@ export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
 export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
 tar czf /tmp/mongo-python-driver.tgz .
 AZUREKMS_SRC="/tmp/mongo-python-driver.tgz" \
-AZUREKMS_DST="$HOME/" \
+AZUREKMS_DST="~/" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
 echo "Copying files ... end"
 echo "Untarring file ... begin"
