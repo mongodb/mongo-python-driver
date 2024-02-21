@@ -218,23 +218,12 @@ class TestSearchIndexProse(unittest.TestCase):
         coll0.drop_search_index("foo")
 
 
-if os.environ.get("TEST_INDEX_MANAGEMENT"):
-    globals().update(
-        generate_test_classes(
-            _TEST_PATH,
-            module=__name__,
-        )
+globals().update(
+    generate_test_classes(
+        _TEST_PATH,
+        module=__name__,
     )
-else:
-
-    class TestIndexManagementUnifiedTests(unittest.TestCase):
-        @classmethod
-        def setUpClass(cls) -> None:
-            raise unittest.SkipTest("Skipping index management pending PYTHON-3951")
-
-        def test_placeholder(self):
-            pass
-
+)
 
 if __name__ == "__main__":
     unittest.main()
