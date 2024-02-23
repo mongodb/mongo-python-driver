@@ -15,15 +15,10 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     fi
 
     # Get the drivers secrets.  Use an existing secrets file first.
-    if [ ! -f "./secrets-export.sh" ]; then
-        bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
-    fi
-    source ./secrets-export.sh
-
-    # # If the file did not have our creds, get them from the vault.
-    if [ -z "$OIDC_ATLAS_URI_SINGLE" ]; then
-        bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/oidc
-        source ./secrets-export.sh
+    if [ ! -f "${DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh" ]; then
+        . ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup-secrets.sh
+    else
+        source "${DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh"
     fi
 
     # Make the OIDC tokens.
@@ -33,7 +28,7 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     popd
 
     # Set up variables and run the test.
-    if [ -n "$LOCAL_OIDC_SERVER" ]; then
+    if [ -n "${LOCAL_OIDC_SERVER:-}" ]; then
         export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
         export MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
         export MONGODB_URI_MULTI="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
@@ -49,7 +44,7 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
 
 elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
-    if [ -z "${AZUREOIDC_AUDIENCE}" ]; then
+    if [ -z "${AZUREOIDC_AUDIENCE:-}" ]; then
         echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
     fi

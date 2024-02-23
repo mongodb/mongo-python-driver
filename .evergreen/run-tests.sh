@@ -36,7 +36,7 @@ export PIP_QUIET=1  # Quiet by default
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
-# Try to source exported AWS Secrets
+# Try to source local Drivers Secrets
 if [ -f ./secrets-export.sh ]; then
   echo "Sourcing secrets"
   source ./secrets-export.sh
@@ -50,8 +50,13 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
     elif [ ! -z "$TEST_SERVERLESS" ]; then
+        source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+        export MONGODB_URI="$SERVERLESS_URI"
+        echo "MONGODB_URI=$MONGODB_URI"
+        export SINGLE_MONGOS_LB_URI=$MONGODB_URI
+        export MULTI_MONGOS_LB_URI=$MONGODB_URI
     elif [ ! -z "$TEST_AUTH_OIDC" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
@@ -187,8 +192,11 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+    source $DRIVERS_TOOLS/.evergreen/atlas/secrets-export.sh
     export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
+    set +x
     export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
+    set -x
     TEST_ARGS="test/test_index_management.py"
 fi
 
