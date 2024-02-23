@@ -95,15 +95,11 @@ def _info_log(logger: logging.Logger, **fields: Any) -> None:
 
 
 class LogMessage:
-    __slots__ = ["_kwargs"]
+    __slots__ = ("_kwargs", "_redacted")
 
     def __init__(self, **kwargs: Any):
-        self._kwargs = {k: v for k, v in kwargs.items() if v is not None}
-
-        if "durationMS" in self._kwargs:
-            self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
-        if "serviceId" in self._kwargs and self._kwargs["serviceId"] is None:
-            del self._kwargs["serviceId"]
+        self._kwargs = kwargs
+        self._redacted = False
 
     def __str__(self) -> str:
         self._redact()
@@ -129,6 +125,13 @@ class LogMessage:
         return is_sensitive_command or is_sensitive_hello
 
     def _redact(self) -> None:
+        if self._redacted:
+            return
+        self._kwargs = {k: v for k, v in self._kwargs.items() if v is not None}
+        if "durationMS" in self._kwargs:
+            self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
+        if "serviceId" in self._kwargs:
+            self._kwargs["serviceId"] = str(self._kwargs["serviceId"])
         document_length = int(os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", _DEFAULT_DOCUMENT_LENGTH))
         if document_length < 0:
             document_length = _DEFAULT_DOCUMENT_LENGTH
@@ -153,3 +156,4 @@ class LogMessage:
                         doc.encode()[:document_length].decode("unicode-escape", "ignore")
                     ) + "..."
                 self._kwargs[doc_name] = doc
+        self._redacted = True
