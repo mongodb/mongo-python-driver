@@ -353,19 +353,19 @@ def _password_digest(username: str, password: str) -> str:
     if not isinstance(username, str):
         raise TypeError("username must be an instance of str")
 
-    md5hash = hashlib.md5()  # noqa: S324
+    sha256hash = hashlib.sha256()
     data = f"{username}:mongo:{password}"
-    md5hash.update(data.encode("utf-8"))
-    return md5hash.hexdigest()
+    sha256hash.update(data.encode("utf-8"))
+    return sha256hash.hexdigest()
 
 
 def _auth_key(nonce: str, username: str, password: str) -> str:
     """Get an auth key to use for authentication."""
     digest = _password_digest(username, password)
-    md5hash = hashlib.md5()  # noqa: S324
+    sha256hash = hashlib.sha256()
     data = f"{nonce}{username}{digest}"
-    md5hash.update(data.encode("utf-8"))
-    return md5hash.hexdigest()
+    sha256hash.update(data.encode("utf-8"))
+    return sha256hash.hexdigest()
 
 
 def _canonicalize_hostname(hostname: str) -> str:
