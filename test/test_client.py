@@ -546,6 +546,28 @@ class ClientUnitTest(unittest.TestCase):
             with self.assertRaisesRegex(ConfigurationError, expected):
                 MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
+    def test_dectected_environment_logging(self):
+        normal_hosts = [
+            "normalhost.com",
+            "host.cosmos.azure.com",
+            "host.docdb.amazonaws.com",
+            "host.docdb-elastic.amazonaws.com",
+        ]
+        srv_hosts = [
+            "mongodb+srv://<test>:<test>@normalhost.com",
+            "mongodb+srv://<test>:<test>@host.cosmos.azure.com",
+            "mongodb+srv://<test>:<test>@host.docdb.amazonaws.com",
+            "mongodb+srv://<test>:<test>@host.docdb-elastic.amazonaws.com",
+        ]
+        with self.assertLogs("pymongo", level="INFO") as cm:
+            for host in normal_hosts:
+                MongoClient(host)
+            for host in srv_hosts:
+                with self.assertRaises(ConfigurationError):
+                    MongoClient(host)
+            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
+            self.assertEqual(len(logs), 6)
+
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):

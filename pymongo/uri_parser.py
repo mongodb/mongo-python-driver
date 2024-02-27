@@ -40,6 +40,7 @@ from pymongo.common import (
     get_validated_options,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.logger import _CLIENT_LOGGER
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.typings import _Address
 
@@ -539,7 +540,9 @@ def parse_uri(
         fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI(f"{SRV_SCHEME} URIs must not include a port number")
-
+        for host in [node[0] for node in nodes]:
+            if _detect_external_db(host):
+                break
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
@@ -616,6 +619,28 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
                 raise ConfigurationError(f"Insecure TLS options prohibited: {n}")
             contexts[provider] = ssl_context
     return contexts
+
+
+def _detect_external_db(entity: str) -> bool:
+    entity = entity.lower()
+    cosmos_db_hosts = [".cosmos.azure.com"]
+    document_db_hosts = [".docdb.amazonaws.com", ".docdb-elastic.amazonaws.com"]
+
+    for host in cosmos_db_hosts:
+        if entity.endswith(host):
+            _CLIENT_LOGGER.info(
+                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
+                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
+            )
+            return True
+    for host in document_db_hosts:
+        if entity.endswith(host):
+            _CLIENT_LOGGER.info(
+                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
+                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
+            )
+            return True
+    return False
 
 
 if __name__ == "__main__":

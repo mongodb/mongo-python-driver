@@ -71,6 +71,7 @@ _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 _CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
 _SERVER_SELECTION_LOGGER = logging.getLogger("pymongo.serverSelection")
+_CLIENT_LOGGER = logging.getLogger("pymongo.client")
 _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
