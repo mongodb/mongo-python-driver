@@ -128,7 +128,7 @@ class LogMessage:
         if self._redacted:
             return
         self._kwargs = {k: v for k, v in self._kwargs.items() if v is not None}
-        if "durationMS" in self._kwargs:
+        if "durationMS" in self._kwargs and hasattr(self._kwargs["durationMS"], "total_seconds"):
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
         if "serviceId" in self._kwargs:
             self._kwargs["serviceId"] = str(self._kwargs["serviceId"])
