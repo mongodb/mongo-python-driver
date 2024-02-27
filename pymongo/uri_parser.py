@@ -40,7 +40,7 @@ from pymongo.common import (
     get_validated_options,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.logger import _CLIENT_LOGGER
+from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.typings import _Address
 
@@ -622,20 +622,23 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
 
 
 def _detect_external_db(entity: str) -> bool:
+    """Detects external database hosts and logs an informational message at the INFO level."""
     entity = entity.lower()
     cosmos_db_hosts = [".cosmos.azure.com"]
     document_db_hosts = [".docdb.amazonaws.com", ".docdb-elastic.amazonaws.com"]
 
     for host in cosmos_db_hosts:
         if entity.endswith(host):
-            _CLIENT_LOGGER.info(
+            _log_or_warn(
+                _CLIENT_LOGGER,
                 "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
                 "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
             )
             return True
     for host in document_db_hosts:
         if entity.endswith(host):
-            _CLIENT_LOGGER.info(
+            _log_or_warn(
+                _CLIENT_LOGGER,
                 "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
                 "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
             )

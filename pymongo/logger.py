@@ -16,6 +16,7 @@ from __future__ import annotations
 import enum
 import logging
 import os
+import warnings
 from typing import Any
 
 from bson import UuidRepresentation, json_util
@@ -93,6 +94,13 @@ def _verbose_connection_error_reason(reason: str) -> str:
 
 def _info_log(logger: logging.Logger, **fields: Any) -> None:
     logger.info(LogMessage(**fields))
+
+
+def _log_or_warn(logger: logging.Logger, message: str) -> None:
+    if logger.isEnabledFor(logging.INFO):
+        logger.info(message)
+    else:
+        warnings.warn(message, stacklevel=2)
 
 
 class LogMessage:
