@@ -2051,6 +2051,19 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "assign PR reviewer"
+      tags: ["pr"]
+      commands:
+        - command: subprocess.exec
+          type: test
+          params:
+            binary: bash
+            working_dir: src
+            script: |
+              CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
+              SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
+              bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
+
 axes:
   # Choice of distro
   - id: platform
@@ -3018,6 +3031,12 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: test_aws_lambda_task_group
+
+- name: rhel8-pr-assign-reviewer
+  display_name: Assign PR Reviewer
+  run_on: rhel87-small
+  tasks:
+    - name: "assign PR reviewer"
 
 - name: Release
   display_name: Release
