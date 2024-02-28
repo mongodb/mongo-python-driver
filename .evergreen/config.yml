@@ -2051,7 +2051,7 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
-    - name: "assign PR reviewer"
+    - name: "assign-pr-reviewer"
       tags: ["pr"]
       commands:
         - command: subprocess.exec
@@ -3036,7 +3036,7 @@ buildvariants:
   display_name: Assign PR Reviewer
   run_on: rhel87-small
   tasks:
-    - name: "assign PR reviewer"
+    - name: "assign-pr-reviewer"
 
 - name: Release
   display_name: Release
