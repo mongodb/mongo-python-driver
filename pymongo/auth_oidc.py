@@ -26,6 +26,7 @@ import bson
 from bson.binary import Binary
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
+from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -127,6 +128,17 @@ class _OIDCAzureCallback(OIDCCallback):
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
+        return OIDCCallbackResult(
+            access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
+        )
+
+
+class _OIDCGCPCallback(OIDCCallback):
+    def __init__(self, token_audience: str) -> None:
+        self.token_audience = token_audience
+
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+        resp = _get_gcp_response(self.token_audience, context.timeout_seconds)
         return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )

@@ -42,6 +42,7 @@ from pymongo.auth_oidc import (
     _get_authenticator,
     _OIDCAWSCallback,
     _OIDCAzureCallback,
+    _OIDCGCPCallback,
     _OIDCProperties,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -205,6 +206,13 @@ def _build_credentials_tuple(
                         "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
                     )
                 callback = _OIDCAzureCallback(token_audience, user)
+            elif provider_name == "gcp":
+                passwd = None
+                if not token_audience:
+                    raise ConfigurationError(
+                        "GCP provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
+                    )
+                callback = _OIDCGCPCallback(token_audience, user)
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"

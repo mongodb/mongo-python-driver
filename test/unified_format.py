@@ -169,7 +169,12 @@ if PROVIDER_NAME == "aws":
 elif PROVIDER_NAME == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
         "PROVIDER_NAME": "azure",
-        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+        "TOKEN_AUDIENCE": os.environ["OIDC_AUDIENCE"],
+    }
+elif PROVIDER_NAME == "gcp":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "PROVIDER_NAME": "gcp",
+        "TOKEN_AUDIENCE": os.environ["OIDC_AUDIENCE"],
     }
 
 

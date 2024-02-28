@@ -43,20 +43,21 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
 
-elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
-    if [ -z "${AZUREOIDC_AUDIENCE:-}" ]; then
-        echo "Must specify an AZUREOIDC_AUDIENCE"
+elif [ $OIDC_PROVIDER_NAME == "azure" ] || [ $OIDC_PROVIDER_NAME == "gcp" ]; then
+    if [ -z "${OIDC_AUDIENCE:-}" ]; then
+        echo "Must specify an OIDC_AUDIENCE"
         exit 1
     fi
     set +x   # turn off xtrace for this portion
-    export OIDC_ADMIN_USER=$AZUREOIDC_USERNAME
+    export OIDC_ADMIN_USER=$OIDC_USERNAME
     export OIDC_ADMIN_PWD=pwd123
     set -x
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:azure"
-    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${AZUREOIDC_AUDIENCE}"
+    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:${OIDC_PROVIDER_NAME}"
+    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${OIDC_AUDIENCE}"
     export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
+
 else
     echo "Unrecognized OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME"
     exit 1

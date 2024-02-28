@@ -33,6 +33,7 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
+from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
@@ -73,6 +74,10 @@ class OIDCTestBase(unittest.TestCase):
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud, username)["access_token"]
+        elif PROVIDER_NAME == "gcp":
+            opts = parse_uri(self.uri_single)["options"]
+            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+            return _get_gcp_response(token_aud, username)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):
