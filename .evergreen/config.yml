@@ -2054,10 +2054,10 @@ tasks:
     - name: "assign-pr-reviewer"
       tags: ["pr"]
       commands:
-        - command: subprocess.exec
+        - command: shell.exec
           type: test
           params:
-            binary: bash
+            shell: "bash"
             working_dir: src
             script: |
               ${PREPARE_SHELL}
