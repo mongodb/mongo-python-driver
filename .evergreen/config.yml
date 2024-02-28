@@ -2060,8 +2060,9 @@ tasks:
             binary: bash
             working_dir: src
             script: |
-              CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
-              SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
+              ${PREPARE_SHELL}
+              export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
+              export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
 
 axes:
