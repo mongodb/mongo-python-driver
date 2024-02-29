@@ -11,7 +11,6 @@ set -u
 #  GREEN_FRAMEWORK      The green framework to test with, if any.
 #  COVERAGE             If non-empty, run the test suite with coverage.
 #  COMPRESSORS          If non-empty, install appropriate compressor.
-#  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
 #  TEST_DATA_LAKE       If non-empty, run data lake tests.
 #  TEST_ENCRYPTION      If non-empty, run encryption tests.
 #  TEST_CRYPT_SHARED    If non-empty, install crypt_shared lib.
@@ -31,6 +30,9 @@ set -u
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
+GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
+COMPRESSORS=${COMPRESSORS:-}
+COVERAGE=${COVERAGE:-}
 TEST_ARGS="${*:1}"
 PYTHON=$(which python)
 export PIP_QUIET=1  # Quiet by default
@@ -47,10 +49,10 @@ fi
 
 if [ "$AUTH" != "noauth" ]; then
     set +x
-    if [ ! -z "$TEST_DATA_LAKE" ]; then
+    if [ ! -z "${TEST_DATA_LAKE:-}" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
-    elif [ ! -z "$TEST_SERVERLESS" ]; then
+    elif [ ! -z "${TEST_SERVERLESS:-}" ]; then
         source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
@@ -58,7 +60,7 @@ if [ "$AUTH" != "noauth" ]; then
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
-    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+    elif [ ! -z "${TEST_AUTH_OIDC:}" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
@@ -70,7 +72,7 @@ if [ "$AUTH" != "noauth" ]; then
     set -x
 fi
 
-if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
+if [ -n "${TEST_ENTERPRISE_AUTH:-}" ]; then
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
@@ -91,7 +93,7 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
 fi
 
-if [ -n "$TEST_LOADBALANCER" ]; then
+if [ -n "${TEST_LOADBALANCER:-}" ]; then
     export LOAD_BALANCER=1
     export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI:-mongodb://127.0.0.1:8000/?loadBalanced=true}"
     export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI:-mongodb://127.0.0.1:8001/?loadBalanced=true}"
@@ -116,11 +118,11 @@ elif [ "$COMPRESSORS" = "zstd" ]; then
 fi
 
 # PyOpenSSL test setup.
-if [ -n "$TEST_PYOPENSSL" ]; then
+if [ -n "${TEST_PYOPENSSL:-}" ]; then
     python -m pip install '.[ocsp]'
 fi
 
-if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+if [ -n "${TEST_ENCRYPTION:-}" ] || [ -n "${TEST_FLE_AZURE_AUTO:-}" ] || [ -n "${TEST_FLE_GCP_AUTO:-}" ]; then
 
     python -m pip install --prefer-binary '.[encryption]'
 
@@ -158,8 +160,8 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
 fi
 
-if [ -n "$TEST_ENCRYPTION" ]; then
-    if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
+if [ -n "${TEST_ENCRYPTION:-}" ]; then
+    if [ -n "${TEST_ENCRYPTION_PYOPENSSL:-}" ]; then
         python -m pip install '.[ocsp]'
     fi
 
@@ -176,7 +178,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     fi
 fi
 
-if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+if [ -n "${TEST_FLE_AZURE_AUTO:-}" ] || [ -n "${TEST_FLE_GCP_AUTO:-}" ]; then
     if [[ -z "$SUCCESS" ]]; then
         echo "Must define SUCCESS"
         exit 1
@@ -192,7 +194,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
     fi
 fi
 
-if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
+if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
     source $DRIVERS_TOOLS/.evergreen/atlas/secrets-export.sh
     export DB_USER="${DRIVERS_ATLAS_LAMBDA_USER}"
     set +x
@@ -201,30 +203,30 @@ if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
     TEST_ARGS="test/test_index_management.py"
 fi
 
-if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
+if [ -n "${TEST_DATA_LAKE:-}" ] && [ -z "$TEST_ARGS" ]; then
     TEST_ARGS="test/test_data_lake.py"
 fi
 
-if [ -n "$TEST_ATLAS" ]; then
+if [ -n "${TEST_ATLAS:-}" ]; then
     TEST_ARGS="test/atlas/test_connection.py"
 fi
 
-if [ -n "$TEST_OCSP" ]; then
+if [ -n "${TEST_OCSP:-}" ]; then
     python -m pip install ".[ocsp]"
     TEST_ARGS="test/ocsp/test_ocsp.py"
 fi
 
-if [ -n "$TEST_AUTH_AWS" ]; then
+if [ -n "${TEST_AUTH_AWS:-}" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_aws/test_auth_aws.py"
 fi
 
-if [ -n "$TEST_AUTH_OIDC" ]; then
+if [ -n "${TEST_AUTH_OIDC:-}" ]; then
     python -m pip install ".[aws]"
     TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
 fi
 
-if [ -n "$PERF_TEST" ]; then
+if [ -n "${PERF_TEST:-}" ]; then
     python -m pip install simplejson
     start_time=$(date +%s)
     TEST_ARGS="test/performance/perf_test.py"
@@ -263,7 +265,7 @@ else
 fi
 
 # Handle perf test post actions.
-if [ -n "$PERF_TEST" ]; then
+if [ -n "${PERF_TEST:-}" ]; then
     end_time=$(date +%s)
     elapsed_secs=$((end_time-start_time))
 
