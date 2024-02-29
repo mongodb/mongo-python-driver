@@ -1,6 +1,7 @@
 #!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
 set -o xtrace
+set -u
 
 # Note: It is assumed that you have already set up a virtual environment before running this file.
 
