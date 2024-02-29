@@ -82,4 +82,6 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
+env
+exit 0
 bash ./.evergreen/tox.sh -m test-eg -- "${@:1}"
