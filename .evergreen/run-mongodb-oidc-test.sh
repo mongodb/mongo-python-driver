@@ -71,7 +71,7 @@ else
     exit 1
 fi
 
-if [ $OIDC_PROVIDER_NAME == "azure" ] || [ $OIDC_PROVIDER_NAME == "gcp" ]; then
+if [[ $OIDC_PROVIDER_NAME == "azure" ]] || [[ $OIDC_PROVIDER_NAME == "gcp" ]]; then
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
     MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:${OIDC_PROVIDER_NAME}"
