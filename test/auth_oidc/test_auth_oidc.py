@@ -27,6 +27,7 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
+import pprint
 from test.unified_format import generate_test_classes
 from test.utils import EventListener
 
@@ -49,9 +50,9 @@ TEST_PATH = ROOT / "auth" / "unified"
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 
 
-print(os.environ)
+pprint.pprint(os.environ)  # noqa: T203
 c = MongoClient(
-    url=os.environ["MONGODB_URI"],
+    os.environ["MONGODB_URI"],
     username=os.environ["DB_USER"],
     password=os.environ["DB_PASSWORD"],
 )
