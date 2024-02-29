@@ -60,7 +60,7 @@ if [ "$AUTH" != "noauth" ]; then
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
-    elif [ ! -z "${TEST_AUTH_OIDC:}" ]; then
+    elif [ ! -z "${TEST_AUTH_OIDC:-}" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
