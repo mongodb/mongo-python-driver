@@ -139,9 +139,7 @@ class _OIDCGCPCallback(OIDCCallback):
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         resp = _get_gcp_response(self.token_audience, context.timeout_seconds)
-        return OIDCCallbackResult(
-            access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
-        )
+        return OIDCCallbackResult(access_token=resp["access_token"])
 
 
 @dataclass
