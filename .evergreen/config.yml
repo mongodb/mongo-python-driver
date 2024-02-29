@@ -1980,7 +1980,7 @@ tasks:
             # Define the command to run on the VM.
             # Ensure that we source the environment file created for us, set up any other variables we need,
             # and then run our test suite on the vm.
-            export GCPOIDC_TEST_CMD="source ./env.sh && OIDC_PROVIDER_NAME=gcp ./.evergreen/run-mongodb-oidc-test.sh"
+            export GCPOIDC_TEST_CMD="source ./secrets-export.sh && OIDC_PROVIDER_NAME=gcp ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
     - name: "test-fips-standalone"
