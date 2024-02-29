@@ -791,8 +791,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
-        for host in [node[0] for node in seeds]:
-            if _detect_external_db(host):
+        for hostname in [node[0] for node in seeds]:
+            if _detect_external_db(hostname):
                 break
 
         # Add options with named keyword arguments to the parsed kwarg options.
