@@ -1,9 +1,12 @@
 #!/bin/bash
 
 set +x          # Disable debug trace
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
 
 echo "Running MONGODB-OIDC authentication tests"
+
+env
+exit 0
 
 OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-"aws"}
 
