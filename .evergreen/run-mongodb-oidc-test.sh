@@ -62,6 +62,7 @@ elif [ $OIDC_PROVIDER_NAME == "gcp" ]; then
     set +x   # turn off xtrace for this portion
     export OIDC_ADMIN_USER=$GCPOIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$GCPOIDC_ATLAS_PASSWORD
+    export MONGOBD_URI=$GCPOIDC_ATLAS_URI
     set -x
 else
     echo "Unrecognized OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME"
