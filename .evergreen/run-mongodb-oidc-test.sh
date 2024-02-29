@@ -5,9 +5,6 @@ set -eu
 
 echo "Running MONGODB-OIDC authentication tests"
 
-env
-exit 0
-
 OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-"aws"}
 
 if [ $OIDC_PROVIDER_NAME == "aws" ]; then
