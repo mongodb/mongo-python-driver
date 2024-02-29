@@ -53,7 +53,7 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
     export OIDC_ADMIN_USER=$AZUREOIDC_USERNAME
     export OIDC_ADMIN_PWD=pwd123
     set -x
-elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
+elif [ $OIDC_PROVIDER_NAME == "gcp" ]; then
     if [ -z "${GCPOIDC_AUDIENCE:-}" ]; then
         echo "Must specify an GCPOIDC_AUDIENCE"
         exit 1
