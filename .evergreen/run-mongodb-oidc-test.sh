@@ -80,6 +80,7 @@ if [[ $OIDC_PROVIDER_NAME == "azure" ]] || [[ $OIDC_PROVIDER_NAME == "gcp" ]]; t
     export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
 else
     echo "NOPE"
+    exit 1
 fi
 
 export TEST_AUTH_OIDC=1
