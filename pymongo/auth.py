@@ -212,7 +212,7 @@ def _build_credentials_tuple(
                     raise ConfigurationError(
                         "GCP provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
                     )
-                callback = _OIDCGCPCallback(token_audience, user)
+                callback = _OIDCGCPCallback(token_audience)
             else:
                 raise ConfigurationError(
                     f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
