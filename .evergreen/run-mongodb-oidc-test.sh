@@ -60,7 +60,7 @@ elif [ $OIDC_PROVIDER_NAME == "gcp" ]; then
     fi
     export OIDC_AUDIENCE=$GCPOIDC_AUDIENCE
     set +x   # turn off xtrace for this portion
-    export OIDC_ADMIN_USER=$GCPOIDC_ALTAS_USER
+    export OIDC_ADMIN_USER=$GCPOIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$GPDCOIDC_ATLAS_PASSWORD
     set -x
 else
