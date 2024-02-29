@@ -15,7 +15,6 @@
 """GCP helpers."""
 from __future__ import annotations
 
-import json
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -37,15 +36,5 @@ def _get_gcp_response(audience: str, timeout: float = 5) -> dict[str, Any]:
     if status != 200:
         msg = "Failed to acquire IMDS access token."
         raise ValueError(msg)
-    try:
-        data = json.loads(body)
-    except Exception:
-        raise ValueError("GCP IMDS response must be in JSON format.") from None
 
-    for key in ["access_token", "expires_in"]:
-        if not data.get(key):
-            msg = "GCP IMDS response must contain %s, but was %s."
-            msg = msg % (key, body)
-            raise ValueError(msg)
-
-    return data
+    return dict(access_token=body)
