@@ -49,7 +49,7 @@ TEST_PATH = ROOT / "auth" / "unified"
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
 
 
-print(os.env)
+print(os.environ)
 c = MongoClient(
     url=os.environ["MONGODB_URI"],
     username=os.environ["DB_USER"],
