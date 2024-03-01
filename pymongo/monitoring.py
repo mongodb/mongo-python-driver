@@ -1109,7 +1109,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionDurationEvent):
     __slots__ = ("__reason",)
 
     def __init__(self, address: _Address, reason: str, duration: float) -> None:
-        super().__init__(address, 0, duration)
+        super().__init__(address=address, connection_id=0, duration=duration)
         self.__reason = reason
 
     @property
