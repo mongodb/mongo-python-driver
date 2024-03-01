@@ -1007,12 +1007,12 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
 
     __slots__ = ("__duration",)
 
-    def __init__(self, address: _Address, connection_id: int, duration: float) -> None:
+    def __init__(self, address: _Address, connection_id: int, duration: Optional[float]) -> None:
         super().__init__(address, connection_id)
         self.__duration = duration
 
     @property
-    def duration(self) -> float:
+    def duration(self) -> Optional[float]:
         """The duration of the connection event."""
         return self.__duration
 
@@ -1108,7 +1108,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionDurationEvent):
 
     __slots__ = ("__reason",)
 
-    def __init__(self, address: _Address, reason: str, duration: float) -> None:
+    def __init__(self, address: _Address, reason: str, duration: Optional[float]) -> None:
         super().__init__(address=address, connection_id=0, duration=duration)
         self.__reason = reason
 
