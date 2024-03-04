@@ -426,13 +426,15 @@ class TestCMAP(IntegrationTest):
     def test_events_repr(self):
         host = ("localhost", 27017)
         self.assertRepr(ConnectionCheckedInEvent(host, 1))
-        self.assertRepr(ConnectionCheckedOutEvent(host, 1))
+        self.assertRepr(ConnectionCheckedOutEvent(host, 1, time.monotonic()))
         self.assertRepr(
-            ConnectionCheckOutFailedEvent(host, ConnectionCheckOutFailedReason.POOL_CLOSED)
+            ConnectionCheckOutFailedEvent(
+                host, ConnectionCheckOutFailedReason.POOL_CLOSED, time.monotonic()
+            )
         )
         self.assertRepr(ConnectionClosedEvent(host, 1, ConnectionClosedReason.POOL_CLOSED))
         self.assertRepr(ConnectionCreatedEvent(host, 1))
-        self.assertRepr(ConnectionReadyEvent(host, 1))
+        self.assertRepr(ConnectionReadyEvent(host, 1, time.monotonic()))
         self.assertRepr(ConnectionCheckOutStartedEvent(host))
         self.assertRepr(PoolCreatedEvent(host, {}))
         self.assertRepr(PoolClearedEvent(host))
