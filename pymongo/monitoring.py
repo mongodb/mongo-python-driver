@@ -1013,7 +1013,10 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
 
     @property
     def duration(self) -> Optional[float]:
-        """The duration of the connection event."""
+        """The duration of the connection event.
+
+        .. versionadded:: 4.7
+        """
         return self.__duration
 
     def __repr__(self) -> str:
