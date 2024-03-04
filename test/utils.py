@@ -281,6 +281,26 @@ class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
         self.add_event(event)
 
 
+class HeartbeatEventsListListener(HeartbeatEventListener):
+    """Listens to only server heartbeat events and publishes them to a provided list."""
+
+    def __init__(self, events):
+        super().__init__()
+        self.event_list = events
+
+    def started(self, event):
+        self.add_event(event)
+        self.event_list.append("serverHeartbeatStartedEvent")
+
+    def succeeded(self, event):
+        self.add_event(event)
+        self.event_list.append("serverHeartbeatSucceededEvent")
+
+    def failed(self, event):
+        self.add_event(event)
+        self.event_list.append("serverHeartbeatFailedEvent")
+
+
 class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
