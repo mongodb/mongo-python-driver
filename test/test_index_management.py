@@ -60,12 +60,12 @@ class TestSearchIndexProse(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        if not os.environ.get("TEST_INDEX_MANAGEMENT"):
-            raise unittest.SkipTest("Skipping index management tests")
+        # if not os.environ.get("TEST_INDEX_MANAGEMENT"):
+        #     raise unittest.SkipTest("Skipping index management tests")
         url = os.environ.get("MONGODB_URI")
-        username = os.environ["DB_USER"]
-        password = os.environ["DB_PASSWORD"]
-        cls.client = MongoClient(url, username=username, password=password)
+        # username = os.environ["DB_USER"]
+        # password = os.environ["DB_PASSWORD"]
+        cls.client = MongoClient(url)
         cls.client.drop_database(_NAME)
         cls.db = cls.client.test_search_index_prose
 
@@ -216,6 +216,70 @@ class TestSearchIndexProse(unittest.TestCase):
 
         # Run a ``dropSearchIndex`` command and assert that no error is thrown.
         coll0.drop_search_index("foo")
+
+    def test_case_7(self):
+        """Driver handles index types."""
+
+        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
+        coll0 = self.db[f"col{uuid.uuid4()}"]
+        coll0.insert_one({})
+
+        # Use these search and vector search definitions for indexes.
+        search_definition = {"mappings": {"dynamic": False}}
+        vector_search_definition = {
+            "fields": [
+                {
+                    "type": "vector",
+                    "path": "plot_embedding",
+                    "numDimensions": 1536,
+                    "similarity": "euclidean",
+                },
+            ]
+        }
+
+        # Create a new search index on ``coll0`` that implicitly passes its type.
+        implicit_search_resp = coll0.create_search_index(
+            model={"name": _NAME + "-implicit", "definition": search_definition}
+        )
+
+        # Get the index definition.
+        resp = coll0.list_search_indexes(name=implicit_search_resp).next()
+
+        # Assert that the index model contains the correct index type: ``"search"``.
+        self.assertEqual(resp["type"], "search")
+
+        # Create a new search index on ``coll0`` that explicitly passes its type.
+        explicit_search_resp = coll0.create_search_index(
+            model={"name": _NAME + "-explicit", "type": "search", "definition": search_definition}
+        )
+
+        # Get the index definition.
+        resp = coll0.list_search_indexes(name=explicit_search_resp).next()
+
+        # Assert that the index model contains the correct index type: ``"search"``.
+        self.assertEqual(resp["type"], "search")
+
+        # Create a new vector search index on ``coll0`` that explicitly passes its type.
+        explicit_vector_resp = coll0.create_search_index(
+            model={
+                "name": _NAME + "-vector",
+                "type": "vectorSearch",
+                "definition": vector_search_definition,
+            }
+        )
+
+        # Get the index definition.
+        resp = coll0.list_search_indexes(name=explicit_vector_resp).next()
+
+        # Assert that the index model contains the correct index type: ``"vectorSearch"``.
+        self.assertEqual(resp["type"], "vectorSearch")
+
+        # Catch the error raised when trying to create a vector search index without specifying the type
+        with self.assertRaises(OperationFailure) as e:
+            coll0.create_search_index(
+                model={"name": _NAME + "-error", "definition": vector_search_definition}
+            )
+        self.assertIn("Attribute mappings missing.", e.exception.details["errmsg"])
 
 
 globals().update(
