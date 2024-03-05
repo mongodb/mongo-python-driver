@@ -539,6 +539,7 @@ def parse_uri(
         fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI(f"{SRV_SCHEME} URIs must not include a port number")
+
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")

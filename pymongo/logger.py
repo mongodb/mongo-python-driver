@@ -100,7 +100,7 @@ def _log_or_warn(logger: logging.Logger, message: str) -> None:
     if logger.isEnabledFor(logging.INFO):
         logger.info(message)
     else:
-        warnings.warn(message, stacklevel=2)
+        warnings.warn(message, UserWarning, stacklevel=2)
 
 
 class LogMessage:

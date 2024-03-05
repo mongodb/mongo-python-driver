@@ -786,8 +786,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                nodes = uri_parser.split_hosts(entity, port)
-                seeds.update(nodes)
+                seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
