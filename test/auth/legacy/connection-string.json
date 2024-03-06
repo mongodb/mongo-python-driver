@@ -528,7 +528,8 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-          "PROVIDER_NAME": "azure"
+          "PROVIDER_NAME": "azure",
+          "TOKEN_AUDIENCE": "foo"
         }
       }
     },
@@ -538,7 +539,6 @@
       "valid": false,
       "credential": null
     },
-    ,
     {
       "description": "should recognise the mechanism with gcp provider (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:gcp,TOKEN_AUDIENCE:foo",
