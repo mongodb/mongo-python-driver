@@ -32,6 +32,7 @@ PyMongo 4.7 brings a number of improvements including:
 
 - Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
   could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
+- Added a warning when connecting to DocumentDB and CosmosDB clusters.
 
 Unavoidable breaking changes
 ............................
