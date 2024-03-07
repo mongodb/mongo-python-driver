@@ -29,5 +29,13 @@ TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transacti
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
+# Location of JSON test specifications for transactions-convenient-api.
+TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "transactions-convenient-api", "unified"
+)
+
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
+
 if __name__ == "__main__":
     unittest.main()
