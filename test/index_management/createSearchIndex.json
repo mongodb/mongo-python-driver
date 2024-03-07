@@ -135,6 +135,66 @@
           ]
         }
       ]
+    },
+        {
+      "description": "create a vector search index",
+      "operations": [
+        {
+          "name": "createSearchIndex",
+          "object": "collection0",
+          "arguments": {
+            "model": {
+              "definition": {
+                "fields": [
+                  {
+                    "type": "vector",
+                    "path": "plot_embedding",
+                    "numDimensions": 1536,
+                    "similarity": "euclidean"
+                  }
+                ]
+              },
+              "name": "test index",
+              "type": "vectorSearch"
+            }
+          },
+          "expectError": {
+            "isError": true,
+            "errorContains": "Atlas"
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "createSearchIndexes": "collection0",
+                  "indexes": [
+                    {
+                      "definition": {
+                        "fields": [
+                          {
+                            "type": "vector",
+                            "path": "plot_embedding",
+                            "numDimensions": 1536,
+                            "similarity": "euclidean"
+                          }
+                        ]
+                      },
+                      "name": "test index",
+                      "type": "vectorSearch"
+                    }
+                  ],
+                  "$db": "database0"
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
