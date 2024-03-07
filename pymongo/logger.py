@@ -16,6 +16,7 @@ from __future__ import annotations
 import enum
 import logging
 import os
+import warnings
 from typing import Any
 
 from bson import UuidRepresentation, json_util
@@ -71,6 +72,7 @@ _JSON_OPTIONS = JSONOptions(uuid_representation=UuidRepresentation.STANDARD)
 _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 _CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
 _SERVER_SELECTION_LOGGER = logging.getLogger("pymongo.serverSelection")
+_CLIENT_LOGGER = logging.getLogger("pymongo.client")
 _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
@@ -92,6 +94,14 @@ def _verbose_connection_error_reason(reason: str) -> str:
 
 def _info_log(logger: logging.Logger, **fields: Any) -> None:
     logger.info(LogMessage(**fields))
+
+
+def _log_or_warn(logger: logging.Logger, message: str) -> None:
+    if logger.isEnabledFor(logging.INFO):
+        logger.info(message)
+    else:
+        # stacklevel=4 ensures that the warning is for the user's code.
+        warnings.warn(message, UserWarning, stacklevel=4)
 
 
 class LogMessage:

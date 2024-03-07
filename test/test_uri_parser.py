@@ -28,7 +28,12 @@ from test import unittest
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.uri_parser import parse_uri, parse_userinfo, split_hosts, split_options
+from pymongo.uri_parser import (
+    parse_uri,
+    parse_userinfo,
+    split_hosts,
+    split_options,
+)
 
 
 class TestURI(unittest.TestCase):
