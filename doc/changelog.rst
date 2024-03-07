@@ -6,7 +6,7 @@ Changes in Version 4.7
 
 PyMongo 4.7 brings a number of improvements including:
 
-- Added the :class:`~pymongo.hello.Hello.server_connection_id`,
+- Added the :class:`pymongo.hello.Hello.connection_id`,
   :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
   :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
   :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
@@ -36,10 +36,9 @@ PyMongo 4.7 brings a number of improvements including:
   For more information regarding feature compatibility and support please visit
   `mongodb.com/supportability/documentdb <https://mongodb.com/supportability/documentdb>`_ and
   `mongodb.com/supportability/cosmosdb <https://mongodb.com/supportability/cosmosdb>`_.
-
-.. _cosmosdb: https://mongodb.com/supportability/cosmosdb
-
-
+- Added the :attr:`pymongo.monitoring.ConnectionCheckedOutEvent.duration`,
+  :attr:`pymongo.monitoring.ConnectionCheckOutFailedEvent.duration`, and
+  :attr:`pymongo.monitoring.ConnectionReadyEvent.duration` properties.
 
 
 Unavoidable breaking changes

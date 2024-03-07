@@ -760,6 +760,7 @@ class Connection:
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
         self._client_id = pool._client_id
+        self.creation_time = time.monotonic()
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -1093,7 +1094,8 @@ class Connection:
             self.ready = True
             if self.enabled_for_cmap:
                 assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id)
+                duration = time.monotonic() - self.creation_time
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
                 if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
@@ -1102,6 +1104,7 @@ class Connection:
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         driverConnectionId=self.id,
+                        durationMS=duration,
                     )
 
     def validate_session(
@@ -1739,6 +1742,7 @@ class Pool:
         :param handler: A _MongoClientErrorHandler.
         """
         listeners = self.opts._event_listeners
+        checkout_started_time = time.monotonic()
         if self.enabled_for_cmap:
             assert listeners is not None
             listeners.publish_connection_check_out_started(self.address)
@@ -1751,11 +1755,12 @@ class Pool:
                     serverPort=self.address[1],
                 )
 
-        conn = self._get_conn(handler=handler)
+        conn = self._get_conn(checkout_started_time, handler=handler)
 
         if self.enabled_for_cmap:
             assert listeners is not None
-            listeners.publish_connection_checked_out(self.address, conn.id)
+            duration = time.monotonic() - checkout_started_time
+            listeners.publish_connection_checked_out(self.address, conn.id, duration)
             if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
@@ -1764,6 +1769,7 @@ class Pool:
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=conn.id,
+                    durationMS=duration,
                 )
         try:
             with self.lock:
@@ -1794,12 +1800,13 @@ class Pool:
         elif conn.active:
             self.checkin(conn)
 
-    def _raise_if_not_ready(self, emit_event: bool) -> None:
+    def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
         if self.state != PoolState.READY:
             if self.enabled_for_cmap and emit_event:
                 assert self.opts._event_listeners is not None
+                duration = time.monotonic() - checkout_started_time
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR, duration
                 )
                 if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
@@ -1810,6 +1817,7 @@ class Pool:
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
                         error=ConnectionCheckOutFailedReason.CONN_ERROR,
+                        durationMS=duration,
                     )
 
             details = _get_timeout_details(self.opts)
@@ -1817,7 +1825,9 @@ class Pool:
                 self.address, AutoReconnect("connection pool paused"), timeout_details=details
             )
 
-    def _get_conn(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
+    def _get_conn(
+        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -1828,8 +1838,9 @@ class Pool:
         if self.closed:
             if self.enabled_for_cmap:
                 assert self.opts._event_listeners is not None
+                duration = time.monotonic() - checkout_started_time
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED
+                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED, duration
                 )
                 if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
@@ -1840,6 +1851,7 @@ class Pool:
                         serverPort=self.address[1],
                         reason="Connection pool was closed",
                         error=ConnectionCheckOutFailedReason.POOL_CLOSED,
+                        durationMS=duration,
                     )
             raise _PoolClosedError(
                 "Attempted to check out a connection from closed connection pool"
@@ -1857,15 +1869,15 @@ class Pool:
             deadline = None
 
         with self.size_cond:
-            self._raise_if_not_ready(emit_event=True)
+            self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
                 if not _cond_wait(self.size_cond, deadline):
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
                         self.size_cond.notify()
-                    self._raise_wait_queue_timeout()
-                self._raise_if_not_ready(emit_event=True)
+                    self._raise_wait_queue_timeout(checkout_started_time)
+                self._raise_if_not_ready(checkout_started_time, emit_event=True)
             self.requests += 1
 
         # We've now acquired the semaphore and must release it on error.
@@ -1880,7 +1892,7 @@ class Pool:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
-                    self._raise_if_not_ready(emit_event=False)
+                    self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
@@ -1888,8 +1900,8 @@ class Pool:
                             if self.conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
-                            self._raise_wait_queue_timeout()
-                        self._raise_if_not_ready(emit_event=False)
+                            self._raise_wait_queue_timeout(checkout_started_time)
+                        self._raise_if_not_ready(checkout_started_time, emit_event=False)
 
                     try:
                         conn = self.conns.popleft()
@@ -1918,8 +1930,9 @@ class Pool:
 
             if self.enabled_for_cmap and not emitted_event:
                 assert self.opts._event_listeners is not None
+                duration = time.monotonic() - checkout_started_time
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR, duration
                 )
                 if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
@@ -1930,6 +1943,7 @@ class Pool:
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
                         error=ConnectionCheckOutFailedReason.CONN_ERROR,
+                        durationMS=duration,
                     )
             raise
 
@@ -2044,12 +2058,13 @@ class Pool:
 
         return False
 
-    def _raise_wait_queue_timeout(self) -> NoReturn:
+    def _raise_wait_queue_timeout(self, checkout_started_time: float) -> NoReturn:
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             assert listeners is not None
+            duration = time.monotonic() - checkout_started_time
             listeners.publish_connection_check_out_failed(
-                self.address, ConnectionCheckOutFailedReason.TIMEOUT
+                self.address, ConnectionCheckOutFailedReason.TIMEOUT, duration
             )
             if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -2060,6 +2075,7 @@ class Pool:
                     serverPort=self.address[1],
                     reason="Wait queue timeout elapsed without a connection becoming available",
                     error=ConnectionCheckOutFailedReason.TIMEOUT,
+                    durationMS=duration,
                 )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:

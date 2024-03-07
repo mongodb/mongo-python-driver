@@ -1002,6 +1002,27 @@ class _ConnectionIdEvent(_ConnectionEvent):
         return f"{self.__class__.__name__}({self.address!r}, {self.__connection_id!r})"
 
 
+class _ConnectionDurationEvent(_ConnectionIdEvent):
+    """Private base class for connection events with a duration."""
+
+    __slots__ = ("__duration",)
+
+    def __init__(self, address: _Address, connection_id: int, duration: Optional[float]) -> None:
+        super().__init__(address, connection_id)
+        self.__duration = duration
+
+    @property
+    def duration(self) -> Optional[float]:
+        """The duration of the connection event.
+
+        .. versionadded:: 4.7
+        """
+        return self.__duration
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__duration!r})"
+
+
 class ConnectionCreatedEvent(_ConnectionIdEvent):
     """Published when a Connection Pool creates a Connection object.
 
@@ -1018,7 +1039,7 @@ class ConnectionCreatedEvent(_ConnectionIdEvent):
     __slots__ = ()
 
 
-class ConnectionReadyEvent(_ConnectionIdEvent):
+class ConnectionReadyEvent(_ConnectionDurationEvent):
     """Published when a Connection has finished its setup, and is ready to use.
 
     :param address: The address (host, port) pair of the server this
@@ -1078,7 +1099,7 @@ class ConnectionCheckOutStartedEvent(_ConnectionEvent):
     __slots__ = ()
 
 
-class ConnectionCheckOutFailedEvent(_ConnectionEvent):
+class ConnectionCheckOutFailedEvent(_ConnectionDurationEvent):
     """Published when the driver's attempt to check out a connection fails.
 
     :param address: The address (host, port) pair of the server this
@@ -1090,8 +1111,8 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
 
     __slots__ = ("__reason",)
 
-    def __init__(self, address: _Address, reason: str) -> None:
-        super().__init__(address)
+    def __init__(self, address: _Address, reason: str, duration: Optional[float]) -> None:
+        super().__init__(address=address, connection_id=0, duration=duration)
         self.__reason = reason
 
     @property
@@ -1104,10 +1125,10 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
         return self.__reason
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.__reason!r})"
+        return f"{self.__class__.__name__}({self.address!r}, {self.__reason!r}, {self.duration!r})"
 
 
-class ConnectionCheckedOutEvent(_ConnectionIdEvent):
+class ConnectionCheckedOutEvent(_ConnectionDurationEvent):
     """Published when the driver successfully checks out a connection.
 
     :param address: The address (host, port) pair of the server this
@@ -1824,9 +1845,11 @@ class _EventListeners:
             except Exception:
                 _handle_exception()
 
-    def publish_connection_ready(self, address: _Address, connection_id: int) -> None:
+    def publish_connection_ready(
+        self, address: _Address, connection_id: int, duration: float
+    ) -> None:
         """Publish a :class:`ConnectionReadyEvent` to all connection listeners."""
-        event = ConnectionReadyEvent(address, connection_id)
+        event = ConnectionReadyEvent(address, connection_id, duration)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.connection_ready(event)
@@ -1855,22 +1878,26 @@ class _EventListeners:
             except Exception:
                 _handle_exception()
 
-    def publish_connection_check_out_failed(self, address: _Address, reason: str) -> None:
+    def publish_connection_check_out_failed(
+        self, address: _Address, reason: str, duration: float
+    ) -> None:
         """Publish a :class:`ConnectionCheckOutFailedEvent` to all connection
         listeners.
         """
-        event = ConnectionCheckOutFailedEvent(address, reason)
+        event = ConnectionCheckOutFailedEvent(address, reason, duration)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.connection_check_out_failed(event)
             except Exception:
                 _handle_exception()
 
-    def publish_connection_checked_out(self, address: _Address, connection_id: int) -> None:
+    def publish_connection_checked_out(
+        self, address: _Address, connection_id: int, duration: float
+    ) -> None:
         """Publish a :class:`ConnectionCheckedOutEvent` to all connection
         listeners.
         """
-        event = ConnectionCheckedOutEvent(address, connection_id)
+        event = ConnectionCheckedOutEvent(address, connection_id, duration)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.connection_checked_out(event)
