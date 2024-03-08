@@ -39,6 +39,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncContextManager,
     AsyncIterator,
     Callable,
     ContextManager,
@@ -53,7 +54,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast, AsyncContextManager,
+    cast,
 )
 
 import bson
@@ -86,7 +87,7 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
@@ -832,6 +833,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
+        self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -1298,7 +1300,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
-            async with server.checkout_aysnc(handler=err_handler) as conn:
+            async with await server.checkout_async(handler=err_handler) as conn:
                 # Pin this session to the selected server or connection.
                 if (
                     in_txn
@@ -1368,7 +1370,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
-    async def _select_server_async(self, server_selector, session, address=None):
+    async def _select_server_async(
+        self,
+        server_selector: Callable[[Selection], Selection],
+        session: Optional[ClientSession],
+        operation: str,
+        address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
+        operation_id: Optional[int] = None,
+    ):
         """Select a server to run an operation on this client.
 
         :Parameters:
@@ -1386,11 +1396,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
-                server = topology.select_server_by_address(address)
+                server = topology.select_server_by_address(
+                    address, operation, operation_id=operation_id
+                )
                 if not server:
                     raise AutoReconnect("server %s:%d no longer available" % address)
             else:
-                server = topology.select_server(server_selector)
+                server = topology.select_server(
+                    server_selector,
+                    operation,
+                    deprioritized_servers=deprioritized_servers,
+                    operation_id=operation_id,
+                )
             return server
         except PyMongoError as exc:
             # Server selection errors in a transaction are transient.
@@ -1481,7 +1498,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         assert read_preference is not None, "read_preference must not be None"
         _ = await self._get_topology_async()
         server = await self._select_server_async(read_preference, session, operation)
-        return await self._conn_from_server_async(read_preference, server, session)
+        return self._conn_from_server_async(read_preference, server, session)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self.__options.load_balanced and not (session and session.in_transaction)
@@ -2022,7 +2039,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             yield session
             return
 
-        s = await self._ensure_session_async(session)
+        s = self._ensure_session(session)
         if s:
             try:
                 yield s

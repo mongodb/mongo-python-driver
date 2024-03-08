@@ -33,7 +33,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
-    Callable,
     Iterator,
     Mapping,
     MutableMapping,
@@ -75,7 +74,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.lock import _create_lock
+from pymongo.lock import _ACondition, _ALock, _create_lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -464,88 +463,6 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
         result = result[:-1]
         result += ")"
     return result
-
-
-class _ALock:
-    def __init__(self, lock: threading.Lock) -> None:
-        self._lock = lock
-
-    async def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
-        if timeout > 0:
-            tstart = time.monotonic()
-        while True:
-            acquired = self._lock.acquire(blocking=False)
-            if acquired:
-                return True
-            if timeout > 0 and (time.monotonic() - tstart) > timeout:
-                return False
-            if not blocking:
-                return False
-            await asyncio.sleep(0)
-
-    def release(self) -> None:
-        self._lock.release()
-
-    async def __aenter__(self) -> _ALock:
-        await self.acquire()
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        self.release()
-
-
-class _ACondition:
-    def __init__(self, condition: threading.Condition) -> None:
-        self._condition = condition
-
-    async def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
-        if timeout > 0:
-            tstart = time.monotonic()
-        while True:
-            acquired = self._condition.acquire(blocking=False)
-            if acquired:
-                return True
-            if timeout > 0 and (time.monotonic() - tstart) > timeout:
-                return False
-            if not blocking:
-                return False
-            await asyncio.sleep(0)
-
-    async def wait(self, timeout: Optional[float] = None) -> bool:
-        if timeout is not None:
-            tstart = time.monotonic()
-        while True:
-            notified = self._condition.wait(0.001)
-            if notified:
-                return True
-            if timeout is not None and (time.monotonic() - tstart) > timeout:
-                return False
-
-    async def wait_for(self, predicate: Callable, timeout: Optional[float] = None) -> bool:
-        if timeout is not None:
-            tstart = time.monotonic()
-        while True:
-            notified = self._condition.wait_for(predicate, 0.001)
-            if notified:
-                return True
-            if timeout is not None and (time.monotonic() - tstart) > timeout:
-                return False
-
-    def notify(self, n: int = 1) -> None:
-        self._condition.notify(n)
-
-    def notify_all(self) -> None:
-        self._condition.notify_all()
-
-    def release(self) -> None:
-        self._condition.release()
-
-    async def __aenter__(self) -> _ACondition:
-        await self.acquire()
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        self.release()
 
 
 class PoolOptions:
@@ -2342,7 +2259,7 @@ class Pool:
                     durationMS=duration,
                 )
         try:
-            with self._alock:
+            async with self._alock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
         except BaseException:

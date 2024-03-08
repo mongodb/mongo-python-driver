@@ -66,7 +66,11 @@ from pymongo.errors import (
 )
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.logger import (
+    _COMMAND_LOGGER,
+    _CommandStatusMessage,
+    _debug_log,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 

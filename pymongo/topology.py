@@ -38,7 +38,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import _create_lock
+from pymongo.lock import _ALock, _create_lock
 from pymongo.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
@@ -46,7 +46,7 @@ from pymongo.logger import (
     _ServerSelectionStatusMessage,
 )
 from pymongo.monitor import SrvMonitor
-from pymongo.pool import Pool, PoolOptions, _ALock
+from pymongo.pool import Pool, PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (

@@ -291,8 +291,8 @@ class TestIgnoreStaleErrors(IntegrationTest):
                 await asyncio.sleep(0)
             raise AutoReconnect("mock SocketInfo.command error")
 
-        for sock in pool.sockets:
-            sock.command_async = mock_command
+        for conn in pool.conns:
+            conn.command_async = mock_command
 
         def insert_command(i):
             try:
