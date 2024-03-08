@@ -41,7 +41,7 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
     fi
     export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
     set +x   # turn off xtrace for this portion
-    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
     set -x
 
