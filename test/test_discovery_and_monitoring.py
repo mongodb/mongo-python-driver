@@ -15,6 +15,7 @@
 """Test the topology module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import socketserver
 import sys
@@ -282,13 +283,16 @@ class TestIgnoreStaleErrors(IntegrationTest):
         starting_generation = pool.gen.get_overall()
         wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
 
-        def mock_command(*args, **kwargs):
+        async def mock_command(*args, **kwargs):
             # Synchronize all threads to ensure they use the same generation.
-            barrier.wait()
-            raise AutoReconnect("mock Connection.command error")
+            while 1:
+                if barrier.n_waiting == 0:
+                    break
+                await asyncio.sleep(0)
+            raise AutoReconnect("mock SocketInfo.command error")
 
-        for sock in pool.conns:
-            sock.command = mock_command
+        for sock in pool.sockets:
+            sock.command_async = mock_command
 
         def insert_command(i):
             try:

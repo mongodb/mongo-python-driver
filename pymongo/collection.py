@@ -604,6 +604,49 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return doc.get("_id")
         return None
 
+    async def _insert_one_async(
+        self,
+        doc: Mapping[str, Any],
+        ordered: bool,
+        write_concern: WriteConcern,
+        op_id: Optional[int],
+        bypass_doc_val: bool,
+        session: Optional[ClientSession],
+        comment: Optional[Any] = None,
+    ) -> Any:
+        """Internal helper for inserting a single document."""
+        write_concern = write_concern or self.write_concern
+        acknowledged = write_concern.acknowledged
+        command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
+        if comment is not None:
+            command["comment"] = comment
+
+        async def _insert_command(
+            session: Optional[ClientSession], conn: Connection, retryable_write: bool
+        ) -> None:
+            if bypass_doc_val:
+                command["bypassDocumentValidation"] = True
+
+            result = await conn.command_async(
+                self.__database.name,
+                command,
+                write_concern=write_concern,
+                codec_options=self.__write_response_codec_options,
+                session=session,
+                client=self.__database.client,
+                retryable_write=retryable_write,
+            )
+
+            _check_write_command_response(result)
+
+        await self.__database.client._retryable_write_async(
+            acknowledged, _insert_command, session, operation=_Op.INSERT
+        )
+
+        if not isinstance(doc, RawBSONDocument):
+            return doc.get("_id")
+        return None
+
     def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
@@ -657,6 +700,70 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
             self._insert_one(
+                document,
+                ordered=True,
+                write_concern=write_concern,
+                op_id=None,
+                bypass_doc_val=bypass_document_validation,
+                session=session,
+                comment=comment,
+            ),
+            write_concern.acknowledged,
+        )
+
+    async def insert_one_async(
+        self,
+        document: Union[_DocumentType, RawBSONDocument],
+        bypass_document_validation: bool = False,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> InsertOneResult:
+        """Insert a single document.
+
+          >>> db.test.count_documents({'x': 1})
+          0
+          >>> result = db.test.insert_one({'x': 1})
+          >>> result.inserted_id
+          ObjectId('54f112defba522406c9cc208')
+          >>> db.test.find_one({'x': 1})
+          {'x': 1, '_id': ObjectId('54f112defba522406c9cc208')}
+
+        :param document: The document to insert. Must be a mutable mapping
+            type. If the document does not have an _id field one will be
+            added automatically.
+        :param bypass_document_validation: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param comment: A user-provided comment to attach to this
+            command.
+
+        :return: - An instance of :class:`~pymongo.results.InsertOneResult`.
+
+        .. seealso:: :ref:`writes-and-ids`
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
+
+        .. versionadded:: 3.0
+        """
+        common.validate_is_document_type("document", document)
+        if not (isinstance(document, RawBSONDocument) or "_id" in document):
+            document["_id"] = ObjectId()  # type: ignore[index]
+
+        write_concern = self._write_concern_for(session)
+        return InsertOneResult(
+            await self._insert_one_async(
                 document,
                 ordered=True,
                 write_concern=write_concern,

@@ -25,6 +25,7 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
+import _asyncio
 from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
@@ -401,6 +402,53 @@ class SSLContext:
             # of this call to do_handshake() since the handshake
             # will happen automatically later.
             ssl_conn.do_handshake()
+            # XXX: Do this in a callback registered with
+            # SSLContext.set_info_callback? See Twisted for an example.
+            if self.check_hostname and server_hostname is not None:
+                try:
+                    if _is_ip_address(server_hostname):
+                        _verify_ip_address(ssl_conn, server_hostname)
+                    else:
+                        _verify_hostname(ssl_conn, server_hostname)
+                except (_SICertificateError, _SIVerificationError) as exc:
+                    raise _CertificateError(str(exc)) from None
+        return ssl_conn
+
+    async def wrap_socket_async(
+        self,
+        sock: _socket.socket,
+        server_side: bool = False,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        server_hostname: Optional[str] = None,
+        session: Optional[_SSL.Session] = None,
+    ) -> _sslConn:
+        """Wrap an existing Python socket connection and return a TLS socket
+        object.
+        """
+        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
+        loop = _asyncio.get_running_loop()
+        if session:
+            ssl_conn.set_session(session)
+        if server_side is True:
+            ssl_conn.set_accept_state()
+        else:
+            # SNI
+            if server_hostname and not _is_ip_address(server_hostname):
+                # XXX: Do this in a callback registered with
+                # SSLContext.set_info_callback? See Twisted for an example.
+                ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
+            if self.verify_mode != _stdlibssl.CERT_NONE:
+                # Request a stapled OCSP response.
+                await loop.run_in_executor(None, ssl_conn.request_ocsp)
+            ssl_conn.set_connect_state()
+        # If this wasn't true the caller of wrap_socket would call
+        # do_handshake()
+        if do_handshake_on_connect:
+            # XXX: If we do hostname checking in a callback we can get rid
+            # of this call to do_handshake() since the handshake
+            # will happen automatically later.
+            await loop.run_in_executor(None, ssl_conn.do_handshake)
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:

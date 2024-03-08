@@ -300,6 +300,12 @@ class ReadPrefTester(MongoClient):
             self.record_a_read(conn.address)
             yield conn, read_preference
 
+    async def _socket_for_reads_async(self, read_preference, session):
+        context = await super()._socket_for_reads_async(read_preference, session)
+        async with context as (sock_info, read_preference):
+            self.record_a_read(sock_info.address)
+            return await super()._socket_for_reads_async(read_preference, session)
+
     def record_a_read(self, address):
         server = self._get_topology().select_server_by_address(address, _Op.TEST, 0)
         self.has_read_from.add(server)

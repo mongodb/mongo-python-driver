@@ -17,7 +17,15 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncContextManager,
+    Callable,
+    ContextManager,
+    Optional,
+    Union,
+)
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -314,6 +322,11 @@ class Server:
         self, handler: Optional[_MongoClientErrorHandler] = None
     ) -> ContextManager[Connection]:
         return self.pool.checkout(handler)
+
+    async def checkout_async(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> AsyncContextManager[Connection]:
+        return self.pool.checkout_async(handler)
 
     @property
     def description(self) -> ServerDescription:

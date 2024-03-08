@@ -15,11 +15,16 @@
 """Database level operations."""
 from __future__ import annotations
 
+import asyncio
+import functools
+import threading
+from concurrent.futures import wait
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
+    List,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -31,6 +36,7 @@ from typing import (
     overload,
 )
 
+from bson import SON
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
@@ -67,6 +73,108 @@ def _check_name(name: str) -> None:
 
 
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
+
+
+class TaskRunner:
+    """A class that runs an event loop in a thread."""
+
+    def __init__(self):
+        self.__loop = asyncio.new_event_loop()
+        self.__loop_thread = threading.Thread(target=self._runner, daemon=True)
+        self.__loop_thread.start()
+        self.waiting = False
+        self.lock = threading.Lock()
+
+    def close(self):
+        if self.__loop and not self.__loop.is_closed():
+            self.__loop.stop()
+
+    def _runner(self):
+        loop = self.__loop
+        assert loop is not None
+        try:
+            loop.run_forever()
+        finally:
+            loop.stop()
+
+    def run(self, coro):
+        """Run a coroutine on the event loop and return the result"""
+        fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
+        with self.lock:
+            self.waiting = True
+        try:
+            wait([fut])
+            return fut.result()
+        finally:
+            with self.lock:
+                self.waiting = False
+
+
+class TaskRunnerPool:
+    """A singleton class that manages a pool of task runners."""
+
+    __instance = None
+
+    @staticmethod
+    def getInstance():
+        if TaskRunnerPool.__instance is None:
+            TaskRunnerPool()
+        assert TaskRunnerPool.__instance is not None
+        return TaskRunnerPool.__instance
+
+    def __init__(self):
+        if TaskRunnerPool.__instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            TaskRunnerPool.__instance = self
+        self._semaphore = threading.Semaphore(1)
+        self._runners: List[TaskRunner] = []
+
+    def __del__(self):
+        self.close()
+
+    def run(self, coro):
+        with self._semaphore:
+            for runner in self._runners:
+                with runner.lock:
+                    waiting = runner.waiting
+                if not waiting:
+                    return runner.run(coro)
+            runner = TaskRunner()
+            self._runners.append(runner)
+            return runner.run(coro)
+
+    def close(self):
+        for runner in self._runners:
+            runner.close()
+        self._runners = []
+
+
+def synchronize(async_method, doc=None):
+    """Decorate `async_method` so it runs synchronously
+    The method runs on an event loop.
+    :Parameters:
+     - `async_method`:      Unbound method of pymongo Collection, Database,
+                            MongoClient, etc.
+     - `doc`:               Optionally override async_method's docstring
+    """
+
+    @functools.wraps(async_method)
+    def method(self, *args, **kwargs):
+        runner = TaskRunnerPool.getInstance()
+        coro = async_method(self, *args, **kwargs)
+        return runner.run(coro)
+
+    # This is for the benefit of generating documentation with Sphinx.
+    method.is_sync_method = True  # type: ignore[attr-defined]
+    name = async_method.__name__
+    method.async_method_name = name  # type: ignore[attr-defined]
+    method.__name__ = async_method.__name__.replace("_async", "")
+
+    if doc is not None:
+        method.__doc__ = doc
+
+    return method
 
 
 class Database(common.BaseObject, Generic[_DocumentType]):
@@ -139,6 +247,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             _check_name(name)
 
         self.__name = name
+        self.__io_loop = None
         self.__client: MongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
 
@@ -747,15 +856,48 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 client=self.__client,
             )
 
+    async def _command_async(
+        self,
+        sock_info,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        write_concern=None,
+        parse_write_concern_error=False,
+        session=None,
+        **kwargs,
+    ):
+        """Internal command helper."""
+        if isinstance(command, str):
+            command = SON([(command, value)])
+
+        command.update(kwargs)
+        async with self.__client._tmp_session_async(session) as s:
+            return await sock_info.command_async(
+                self.__name,
+                command,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                write_concern=write_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client,
+            )
+
     @overload
-    def command(
+    async def command_async(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: None = None,
+        codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -763,7 +905,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @overload
-    def command(
+    async def command_async(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -778,7 +920,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    def command(
+    async def command_async(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -879,7 +1021,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:
             kwargs["comment"] = comment
 
@@ -890,21 +1031,25 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self.__client._conn_for_reads(read_preference, session, operation=command_name) as (
-            connection,
+        async with self.__client._conn_for_reads_async(
+            read_preference, session, operation=command_name
+        ) as (
+            sock_info,
             read_preference,
         ):
-            return self._command(
-                connection,
+            return await self._command_async(
+                sock_info,
                 command,
                 value,
                 check,
                 allowable_errors,
                 read_preference,
-                opts,
+                codec_options,
                 session=session,
                 **kwargs,
             )
+
+    command = synchronize(command_async)
 
     @_csot.apply
     def cursor_command(

@@ -46,7 +46,7 @@ from pymongo.logger import (
     _ServerSelectionStatusMessage,
 )
 from pymongo.monitor import SrvMonitor
-from pymongo.pool import Pool, PoolOptions
+from pymongo.pool import Pool, PoolOptions, _ALock
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -139,6 +139,7 @@ class Topology:
         self._opened = False
         self._closed = False
         self._lock = _create_lock()
+        self._alock = _ALock(self._lock)
         self._condition = self._settings.condition_class(self._lock)
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
@@ -203,6 +204,41 @@ class Topology:
                 self._session_pool.reset()
 
         with self._lock:
+            self._ensure_opened()
+
+    async def open_async(self) -> None:
+        """Start monitoring, or restart after a fork.
+
+        No effect if called multiple times.
+
+        .. warning:: Topology is shared among multiple threads and is protected
+          by mutual exclusion. Using Topology from a process other than the one
+          that initialized it will emit a warning and may result in deadlock. To
+          prevent this from happening, MongoClient must be created after any
+          forking.
+
+        """
+        pid = os.getpid()
+        if self._pid is None:
+            self._pid = pid
+        elif pid != self._pid:
+            self._pid = pid
+            warnings.warn(
+                "MongoClient opened before fork. May not be entirely fork-safe, "
+                "proceed with caution. See PyMongo's documentation for details: "
+                "https://pymongo.readthedocs.io/en/stable/faq.html#"
+                "is-pymongo-fork-safe",
+                stacklevel=2,
+            )
+            async with self._alock:
+                # Close servers and clear the pools.
+                for server in self._servers.values():
+                    server.close()
+                # Reset the session pool to avoid duplicate sessions in
+                # the child process.
+                self._session_pool.reset()
+
+        async with self._alock:
             self._ensure_opened()
 
     def get_server_selection_timeout(self) -> float:
@@ -668,9 +704,26 @@ class Topology:
         with self._lock:
             return self._session_pool.get_server_session(session_timeout_minutes)
 
+    async def get_server_session_async(
+        self, session_timeout_minutes: Optional[int]
+    ) -> _ServerSession:
+        """Start or resume a server session, or raise ConfigurationError."""
+        async with self._alock:
+            return self._session_pool.get_server_session(session_timeout_minutes)
+
     def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
             with self._lock:
+                self._session_pool.return_server_session(
+                    server_session, self._description.logical_session_timeout_minutes
+                )
+        else:
+            # Called from a __del__ method, can't use a lock.
+            self._session_pool.return_server_session_no_lock(server_session)
+
+    async def return_server_session_async(self, server_session: _ServerSession, lock: bool) -> None:
+        if lock:
+            async with self._alock:
                 self._session_pool.return_server_session(
                     server_session, self._description.logical_session_timeout_minutes
                 )

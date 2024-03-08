@@ -517,6 +517,13 @@ class ClientSession:
         """
         self._end_session(lock=True)
 
+    async def end_session_async(self) -> None:
+        """Finish this session. If a transaction has started, abort it.
+
+        It is an error to use the session after the session has ended.
+        """
+        await self._end_session_async(lock=True)
+
     def _end_session(self, lock: bool) -> None:
         if self._server_session is not None:
             try:
@@ -527,6 +534,18 @@ class ClientSession:
                 self._unpin()
             finally:
                 self._client._return_server_session(self._server_session, lock)
+                self._server_session = None
+
+    async def _end_session_async(self, lock: bool) -> None:
+        if self._server_session is not None:
+            try:
+                if self.in_transaction:
+                    self.abort_transaction()
+                # It's possible we're still pinned here when the transaction
+                # is in the committed state when the session is discarded.
+                self._unpin()
+            finally:
+                await self._client._return_server_session_async(self._server_session, lock)
                 self._server_session = None
 
     def _check_ended(self) -> None:
