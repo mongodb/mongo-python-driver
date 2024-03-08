@@ -45,7 +45,7 @@ from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
-PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+ENVIRON = os.environ.get("OIDC_ENV", "aws")
 
 
 # Generate unified tests.
@@ -64,12 +64,12 @@ class OIDCTestBase(unittest.TestCase):
 
     def get_token(self, username=None):
         """Get a token for the current provider."""
-        if PROVIDER_NAME == "aws":
+        if ENVIRON == "test":
             token_dir = os.environ["OIDC_TOKEN_DIR"]
             token_file = os.path.join(token_dir, username).replace(os.sep, "/")
             with open(token_file) as fid:
                 return fid.read()
-        elif PROVIDER_NAME == "azure":
+        elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud, username)["access_token"]
@@ -91,8 +91,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     @classmethod
     def setUpClass(cls):
-        if PROVIDER_NAME != "aws":
-            raise unittest.SkipTest("Human workflows are only tested with the aws provider")
+        if ENVIRON != "test":
+            raise unittest.SkipTest("Human workflows are only tested with the test environment")
         super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
@@ -630,7 +630,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def setUp(self):
         self.request_called = 0
-        if PROVIDER_NAME == "aws":
+        if ENVIRON == "test":
             self.default_username = "test_user1"
         else:
             self.default_username = None
@@ -752,9 +752,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client.close()
 
     def test_2_5_invalid_client_configuration_with_callback(self):
-        # Create a MongoClient configured with an OIDC callback and auth mechanism property PROVIDER_NAME:aws.
+        # Create a MongoClient configured with an OIDC callback and auth mechanism property OIDC_ENV:test.
         request_cb = self.create_request_cb()
-        props: Dict = {"OIDC_CALLBACK": request_cb, "PROVIDER_NAME": "aws"}
+        props: Dict = {"OIDC_CALLBACK": request_cb, "OIDC_ENV": "test"}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
@@ -893,24 +893,24 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client2.close()
 
     def test_azure_no_username(self):
-        if PROVIDER_NAME != "azure":
+        if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
         opts = parse_uri(self.uri_single)["options"]
         token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
 
-        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
+        props = dict(TOKEN_AUDIENCE=token_aud, OIDC_ENV="azure")
         client = self.create_client(authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
 
     def test_azure_bad_username(self):
-        if PROVIDER_NAME != "azure":
+        if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
 
         opts = parse_uri(self.uri_single)["options"]
         token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
 
-        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
+        props = dict(TOKEN_AUDIENCE=token_aud, OIDC_ENV="azure")
         client = self.create_client(username="bad", authmechanismproperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()

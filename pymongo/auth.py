@@ -170,7 +170,7 @@ def _build_credentials_tuple(
         properties = extra.get("authmechanismproperties", {})
         callback = properties.get("OIDC_CALLBACK")
         human_callback = properties.get("OIDC_HUMAN_CALLBACK")
-        provider_name = properties.get("PROVIDER_NAME")
+        environ = properties.get("OIDC_ENV")
         token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
             "*.mongodb.net",
@@ -182,40 +182,40 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
-        msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
+        msg = (
+            "authentication with MONGODB-OIDC requires providing either a callback or a environment"
+        )
         if passwd is not None:
             msg = "password is not supported by MONGODB-OIDC"
             raise ConfigurationError(msg)
         if callback or human_callback:
-            if provider_name is not None:
+            if environ is not None:
                 raise ConfigurationError(msg)
             if callback and human_callback:
                 msg = "cannot set both OIDC_CALLBACK and OIDC_HUMAN_CALLBACK"
                 raise ConfigurationError(msg)
-        elif provider_name is not None:
-            if provider_name == "aws":
+        elif environ is not None:
+            if environ == "test":
                 if user is not None:
-                    msg = "AWS provider for MONGODB-OIDC does not support username"
+                    msg = "test environment for MONGODB-OIDC does not support username"
                     raise ConfigurationError(msg)
                 callback = _OIDCAWSCallback()
-            elif provider_name == "azure":
+            elif environ == "azure":
                 passwd = None
                 if not token_audience:
                     raise ConfigurationError(
-                        "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
+                        "Azure environment for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
                     )
                 callback = _OIDCAzureCallback(token_audience, user)
             else:
-                raise ConfigurationError(
-                    f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
-                )
+                raise ConfigurationError(f"unrecognized OIDC_ENV for MONGODB-OIDC: {environ}")
         else:
             raise ConfigurationError(msg)
 
         oidc_props = _OIDCProperties(
             callback=callback,
             human_callback=human_callback,
-            provider_name=provider_name,
+            environment=environ,
             allowed_hosts=allowed_hosts,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())

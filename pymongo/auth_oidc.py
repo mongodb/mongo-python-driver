@@ -67,7 +67,7 @@ class OIDCCallback(abc.ABC):
 class _OIDCProperties:
     callback: Optional[OIDCCallback] = field(default=None)
     human_callback: Optional[OIDCCallback] = field(default=None)
-    provider_name: Optional[str] = field(default=None)
+    environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
 
 
@@ -91,7 +91,7 @@ def _get_authenticator(
     properties = credentials.mechanism_properties
 
     # Validate that the address is allowed.
-    if not properties.provider_name:
+    if not properties.environment:
         found = False
         allowed_hosts = properties.allowed_hosts
         for patt in allowed_hosts:

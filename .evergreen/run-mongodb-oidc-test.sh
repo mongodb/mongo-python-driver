@@ -5,9 +5,9 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 echo "Running MONGODB-OIDC authentication tests"
 
-OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-"aws"}
+OIDC_ENV=${OIDC_ENV:-"test"}
 
-if [ $OIDC_PROVIDER_NAME == "aws" ]; then
+if [ $OIDC_ENV == "test" ]; then
     # Make sure DRIVERS_TOOLS is set.
     if [ -z "$DRIVERS_TOOLS" ]; then
         echo "Must specify DRIVERS_TOOLS"
@@ -40,10 +40,12 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         set -x
     fi
     export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
-    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    set +x   # turn off xtrace for this portion
+    export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
+    set -x
 
-elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
+elif [ $OIDC_ENV == "azure" ]; then
     if [ -z "${AZUREOIDC_AUDIENCE:-}" ]; then
         echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
@@ -54,11 +56,11 @@ elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
     set -x
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:azure"
+    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=OIDC_ENV:azure"
     export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${AZUREOIDC_AUDIENCE}"
     export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
 else
-    echo "Unrecognized OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME"
+    echo "Unrecognized OIDC_ENV $OIDC_ENV"
     exit 1
 fi
 
