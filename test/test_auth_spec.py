@@ -87,7 +87,7 @@ def create_test(test_case):
                                 actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
                             )
                         elif "OIDC_ENV" in expected:
-                            self.assertEqual(actual.environ, expected["OIDC_ENV"])
+                            self.assertEqual(actual.environment, expected["OIDC_ENV"])
                         elif "callback" in expected:
                             self.assertEqual(actual.callback, expected["callback"])
                         else:
