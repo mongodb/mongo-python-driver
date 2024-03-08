@@ -45,7 +45,7 @@ from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
-ENVIRON = os.environ.get("OIDC_ENV", "aws")
+ENVIRON = os.environ.get("OIDC_ENV", "test")
 
 
 # Generate unified tests.
@@ -73,6 +73,8 @@ class OIDCTestBase(unittest.TestCase):
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud, username)["access_token"]
+        else:
+            raise RuntimeError(f"Invalid OIDC_ENV {ENVIRON}")
 
     @contextmanager
     def fail_point(self, command_args):
