@@ -105,7 +105,7 @@ class Server:
         self._monitor.request_check()
 
     @_handle_reauth
-    def run_operation(
+    async def run_operation(
         self,
         conn: Connection,
         operation: Union[_Query, _GetMore],

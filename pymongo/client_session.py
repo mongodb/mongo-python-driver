@@ -156,6 +156,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
+from pymongo.asynchronous import synchronize
 from pymongo.cursor import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
@@ -992,16 +993,20 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
+    async def _materialize_async(
+        self, logical_session_timeout_minutes: Optional[int] = None
+    ) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = self._client._topology.get_server_session(
+            self._server_session = await self._client._topology.get_server_session_async(
                 logical_session_timeout_minutes
             )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
-    def _apply_to(
+    _materialize = synchronize(_materialize_async)
+
+    async def _apply_to_async(
         self,
         command: MutableMapping[str, Any],
         is_retryable: bool,
@@ -1013,7 +1018,7 @@ class ClientSession:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
             return
         self._check_ended()
-        self._materialize(conn.logical_session_timeout_minutes)
+        await self._materialize_async(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1044,6 +1049,8 @@ class ClientSession:
 
             command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
+
+    _apply_to = synchronize(_apply_to_async)
 
     def _start_retryable_write(self) -> None:
         self._check_ended()

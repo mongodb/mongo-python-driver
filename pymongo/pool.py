@@ -1172,7 +1172,7 @@ class Connection:
 
         self.add_server_api(spec)
         if session:
-            session._apply_to(spec, retryable_write, read_preference, self)
+            await session._apply_to_async(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
