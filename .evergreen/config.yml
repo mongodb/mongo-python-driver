@@ -2053,6 +2053,7 @@ tasks:
 
     - name: "assign-pr-reviewer"
       tags: ["pr"]
+      allowed_requesters: ["patch", "github_pr"]
       commands:
         - command: shell.exec
           type: test
