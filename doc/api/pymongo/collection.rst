@@ -69,3 +69,5 @@
       .. automethod:: drop
       .. automethod:: rename
       .. automethod:: options
+      .. automethod:: __getitem__
+      .. automethod:: __getattr__
