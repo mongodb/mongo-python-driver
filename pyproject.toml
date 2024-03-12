@@ -137,7 +137,7 @@ module = ["test.*"]
 disable_error_code = ["no-untyped-def", "no-untyped-call"]
 
 [[tool.mypy.overrides]]
-module = "service_identity.*"
+module = ["service_identity.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
