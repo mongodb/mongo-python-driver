@@ -71,10 +71,10 @@ class OIDCTestBase(unittest.TestCase):
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
-            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-            return _get_azure_response(token_aud, username)["access_token"]
+            resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+            return _get_azure_response(resource, username)["access_token"]
         else:
-            raise RuntimeError(f"Invalid OIDC_ENV {ENVIRON}")
+            raise RuntimeError(f"Invalid ENVIRONMENT {ENVIRON}")
 
     @contextmanager
     def fail_point(self, command_args):
@@ -754,9 +754,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client.close()
 
     def test_2_5_invalid_client_configuration_with_callback(self):
-        # Create a MongoClient configured with an OIDC callback and auth mechanism property OIDC_ENV:test.
+        # Create a MongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
         request_cb = self.create_request_cb()
-        props: Dict = {"OIDC_CALLBACK": request_cb, "OIDC_ENV": "test"}
+        props: Dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
@@ -898,9 +898,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
         opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+        resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
 
-        props = dict(TOKEN_AUDIENCE=token_aud, OIDC_ENV="azure")
+        props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
         client = self.create_client(authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
@@ -910,9 +910,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
             raise unittest.SkipTest("Test is only supported on Azure")
 
         opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+        token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
 
-        props = dict(TOKEN_AUDIENCE=token_aud, OIDC_ENV="azure")
+        props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
         client = self.create_client(username="bad", authmechanismproperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()

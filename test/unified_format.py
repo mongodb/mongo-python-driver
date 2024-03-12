@@ -165,11 +165,11 @@ for provider_name, provider_data in [
 
 OIDC_ENV = os.environ.get("OIDC_ENV", "test")
 if OIDC_ENV == "test":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"OIDC_ENV": "test"}
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}
 elif OIDC_ENV == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "OIDC_ENV": "azure",
-        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+        "ENVIRONMENT": "azure",
+        "TOKEN_RESOURCE": os.environ["AZUREOIDC_RESOURCE"],
     }
 
 

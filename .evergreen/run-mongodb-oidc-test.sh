@@ -39,15 +39,15 @@ if [ $OIDC_ENV == "test" ]; then
         export MONGODB_URI_MULTI="$OIDC_ATLAS_URI_MULTI/?authMechanism=MONGODB-OIDC"
         set -x
     fi
-    export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
+    export OIDC_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
     set +x   # turn off xtrace for this portion
     export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
     set -x
 
 elif [ $OIDC_ENV == "azure" ]; then
-    if [ -z "${AZUREOIDC_AUDIENCE:-}" ]; then
-        echo "Must specify an AZUREOIDC_AUDIENCE"
+    if [ -z "${AZUREOIDC_RESOURCE:-}" ]; then
+        echo "Must specify an AZUREOIDC_RESOURCE"
         exit 1
     fi
     set +x   # turn off xtrace for this portion
@@ -56,8 +56,8 @@ elif [ $OIDC_ENV == "azure" ]; then
     set -x
     export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
     MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=OIDC_ENV:azure"
-    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${AZUREOIDC_AUDIENCE}"
+    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=ENVIRONMENT:azure"
+    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_RESOURCE:${TOKEN_RESOURCE}"
     export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
 else
     echo "Unrecognized OIDC_ENV $OIDC_ENV"

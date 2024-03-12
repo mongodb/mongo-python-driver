@@ -109,24 +109,24 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-class _OIDCAWSCallback(OIDCCallback):
+class _OIDTestCallback(OIDCCallback):
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
+        token_file = os.environ.get("OIDC_TOKEN_FILE")
         if not token_file:
             raise RuntimeError(
-                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
+                'MONGODB-OIDC with an "test" provider requires "OIDC_TOKEN_FILE" to be set'
             )
         with open(token_file) as fid:
             return OIDCCallbackResult(access_token=fid.read().strip())
 
 
 class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_audience: str, username: Optional[str]) -> None:
-        self.token_audience = token_audience
+    def __init__(self, token_resource: str, username: Optional[str]) -> None:
+        self.token_resource = token_resource
         self.username = username
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
+        resp = _get_azure_response(self.token_resource, self.username, context.timeout_seconds)
         return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )

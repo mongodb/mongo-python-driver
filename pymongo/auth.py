@@ -40,9 +40,9 @@ from pymongo.auth_aws import _authenticate_aws
 from pymongo.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
-    _OIDCAWSCallback,
     _OIDCAzureCallback,
     _OIDCProperties,
+    _OIDCTestCallback,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
@@ -170,8 +170,8 @@ def _build_credentials_tuple(
         properties = extra.get("authmechanismproperties", {})
         callback = properties.get("OIDC_CALLBACK")
         human_callback = properties.get("OIDC_HUMAN_CALLBACK")
-        environ = properties.get("OIDC_ENV")
-        token_audience = properties.get("TOKEN_AUDIENCE", "")
+        environ = properties.get("ENVIRONMENT")
+        token_resource = properties.get("TOKEN_RESOURCE", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -199,16 +199,16 @@ def _build_credentials_tuple(
                 if user is not None:
                     msg = "test environment for MONGODB-OIDC does not support username"
                     raise ConfigurationError(msg)
-                callback = _OIDCAWSCallback()
+                callback = _OIDCTestCallback()
             elif environ == "azure":
                 passwd = None
-                if not token_audience:
+                if not token_resource:
                     raise ConfigurationError(
-                        "Azure environment for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
+                        "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
-                callback = _OIDCAzureCallback(token_audience, user)
+                callback = _OIDCAzureCallback(token_resource, user)
             else:
-                raise ConfigurationError(f"unrecognized OIDC_ENV for MONGODB-OIDC: {environ}")
+                raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:
             raise ConfigurationError(msg)
 
