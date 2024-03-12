@@ -17,20 +17,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
-try:
-    import pymongocrypt  # type:ignore[import] # noqa: F401
-
-    _HAVE_PYMONGOCRYPT = True
-except ImportError:
-    _HAVE_PYMONGOCRYPT = False
 from bson import int64
-from pymongo.common import validate_is_mapping
+from pymongo.common import import_available, validate_is_mapping
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
 if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
     from pymongo.typings import _DocumentTypeArg
+
+
+_HAVE_PYMONGOCRYPT = import_available("pymongocrypt")
 
 
 class AutoEncryptionOpts:

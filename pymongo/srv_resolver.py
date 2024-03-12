@@ -17,17 +17,15 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
-try:
-    from dns import resolver
-
-    _HAVE_DNSPYTHON = True
-except ImportError:
-    _HAVE_DNSPYTHON = False
-
-from pymongo.common import CONNECT_TIMEOUT
+from pymongo.common import CONNECT_TIMEOUT, import_available
 from pymongo.errors import ConfigurationError
+
+_HAVE_DNSPYTHON = import_available("dns")
+
+if TYPE_CHECKING and _HAVE_DNSPYTHON:
+    from dns import resolver
 
 
 # dnspython can return bytes or str from various parts
@@ -40,6 +38,9 @@ def maybe_decode(text: Union[str, bytes]) -> str:
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
 def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
+    # Delayed import of resolver for performance reasons.
+    from dns import resolver
+
     if hasattr(resolver, "resolve"):
         # dnspython >= 2
         return resolver.resolve(*args, **kwargs)

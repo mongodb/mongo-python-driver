@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import os
 import socket
+import sys
 import typing
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
@@ -44,6 +45,7 @@ from pymongo.auth_oidc import (
     _OIDCAzureCallback,
     _OIDCProperties,
 )
+from pymongo.common import import_available
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -51,18 +53,10 @@ if TYPE_CHECKING:
     from pymongo.hello import Hello
     from pymongo.pool import Connection
 
-HAVE_KERBEROS = True
-_USE_PRINCIPAL = False
-try:
-    import winkerberos as kerberos  # type:ignore[import]
-
-    if tuple(map(int, kerberos.__version__.split(".")[:2])) >= (0, 5):
-        _USE_PRINCIPAL = True
-except ImportError:
-    try:
-        import kerberos  # type:ignore[import]
-    except ImportError:
-        HAVE_KERBEROS = False
+if sys.platform == "win32":
+    HAVE_KERBEROS = import_available("winkerberos")
+else:
+    HAVE_KERBEROS = import_available("kerberos")
 
 
 MECHANISMS = frozenset(
@@ -403,8 +397,18 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
         if props.service_realm is not None:
             service = service + "@" + props.service_realm
 
+        # Delayed import of kerberos for performance reasons.
+        use_principal = False
+        if sys.platform == "win32":
+            import winkerberos as kerberos  # type:ignore[import]
+
+            if tuple(map(int, kerberos.__version__.split(".")[:2])) >= (0, 5):
+                use_principal = True
+        else:
+            import kerberos  # type:ignore[import]
+
         if password is not None:
-            if _USE_PRINCIPAL:
+            if use_principal:
                 # Note that, though we use unquote_plus for unquoting URI
                 # options, we use quote here. Microsoft's UrlUnescape (used
                 # by WinKerberos) doesn't support +.

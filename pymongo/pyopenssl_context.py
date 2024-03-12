@@ -25,14 +25,10 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
-from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
-from service_identity import CertificateError as _SICertificateError
-from service_identity import VerificationError as _SIVerificationError
-from service_identity.pyopenssl import verify_hostname as _verify_hostname
-from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
+from pymongo.common import import_available
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
@@ -48,12 +44,13 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 
-try:
-    import certifi
+_HAVE_CERTIFI = import_available("certifi")
 
-    _HAVE_CERTIFI = True
-except ImportError:
-    _HAVE_CERTIFI = False
+# Ensure cryptography and service_identity are available.
+if not import_available("cryptography"):
+    pass
+if not import_available("service_idenity"):
+    pass
 
 PROTOCOL_SSLv23 = _SSL.SSLv23_METHOD
 # Always available
@@ -323,6 +320,9 @@ class SSLContext:
     def _load_certifi(self) -> None:
         """Attempt to load CA certs from certifi."""
         if _HAVE_CERTIFI:
+            # Delayed import of certify for performance reasons.
+            import certifi
+
             self.load_verify_locations(certifi.where())
         else:
             raise _ConfigurationError(
@@ -334,6 +334,8 @@ class SSLContext:
 
     def _load_wincerts(self, store: str) -> None:
         """Attempt to load CA certs from Windows trust store."""
+        from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
+
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
         for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
@@ -379,6 +381,11 @@ class SSLContext:
         """Wrap an existing Python socket connection and return a TLS socket
         object.
         """
+        from service_identity import CertificateError as _SICertificateError
+        from service_identity import VerificationError as _SIVerificationError
+        from service_identity.pyopenssl import verify_hostname as _verify_hostname
+        from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
+
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
         if session:
             ssl_conn.set_session(session)

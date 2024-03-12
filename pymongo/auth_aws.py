@@ -15,41 +15,11 @@
 """MONGODB-AWS Authentication helpers."""
 from __future__ import annotations
 
-try:
-    import pymongo_auth_aws  # type:ignore[import]
-    from pymongo_auth_aws import (
-        AwsCredential,
-        AwsSaslContext,
-        PyMongoAuthAwsError,
-    )
-
-    _HAVE_MONGODB_AWS = True
-except ImportError:
-
-    class AwsSaslContext:  # type: ignore
-        def __init__(self, credentials: MongoCredential):
-            pass
-
-    _HAVE_MONGODB_AWS = False
-
-try:
-    from pymongo_auth_aws.auth import (  # type:ignore[import]
-        set_cached_credentials,
-        set_use_cached_credentials,
-    )
-
-    # Enable credential caching.
-    set_use_cached_credentials(True)
-except ImportError:
-
-    def set_cached_credentials(_creds: Optional[AwsCredential]) -> None:
-        pass
-
-
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type
+from typing import TYPE_CHECKING, Any, Mapping, Type
 
 import bson
 from bson.binary import Binary
+from pymongo.common import import_available
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -58,19 +28,7 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
 
 
-class _AwsSaslContext(AwsSaslContext):  # type: ignore
-    # Dependency injection:
-    def binary_type(self) -> Type[Binary]:
-        """Return the bson.binary.Binary type."""
-        return Binary
-
-    def bson_encode(self, doc: Mapping[str, Any]) -> bytes:
-        """Encode a dictionary to BSON."""
-        return bson.encode(doc)
-
-    def bson_decode(self, data: _ReadableBuffer) -> Mapping[str, Any]:
-        """Decode BSON to a dictionary."""
-        return bson.decode(data)
+_HAVE_MONGODB_AWS = import_available("pymongo_auth_aws")
 
 
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
@@ -83,6 +41,33 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
 
     if conn.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
+
+    # Delayed import of pymongo_auth_aws for performance reasons.
+    import pymongo_auth_aws  # type:ignore[import]
+    from pymongo_auth_aws import (
+        AwsCredential,
+        AwsSaslContext,
+        PyMongoAuthAwsError,
+        set_cached_credentials,
+        set_use_cached_credentials,
+    )
+
+    # Enable credential caching.
+    set_use_cached_credentials(True)
+
+    class _AwsSaslContext(AwsSaslContext):  # type: ignore
+        # Dependency injection:
+        def binary_type(self) -> Type[Binary]:
+            """Return the bson.binary.Binary type."""
+            return Binary
+
+        def bson_encode(self, doc: Mapping[str, Any]) -> bytes:
+            """Encode a dictionary to BSON."""
+            return bson.encode(doc)
+
+        def bson_decode(self, data: _ReadableBuffer) -> Mapping[str, Any]:
+            """Decode BSON to a dictionary."""
+            return bson.decode(data)
 
     try:
         ctx = _AwsSaslContext(

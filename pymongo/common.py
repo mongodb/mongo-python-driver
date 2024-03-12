@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import importlib.util
 import warnings
 from collections import OrderedDict, abc
 from difflib import get_close_matches
@@ -429,6 +430,10 @@ _MECHANISM_PROPS = frozenset(
         "ALLOWED_HOSTS",
     ]
 )
+
+
+def import_available(name: str, package: str | None = None) -> bool:
+    return importlib.util.find_spec(name, package) is not None
 
 
 def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Union[bool, str]]:
