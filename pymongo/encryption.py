@@ -123,14 +123,14 @@ async def mark_command_async(callback, database: str, cmd: bytes) -> bytes:
     inflated_cmd = _inflate_bson(cmd, DEFAULT_RAW_BSON_OPTIONS)
     assert self.mongocryptd_client is not None
     try:
-        res = await self.mongocryptd_client[database].command_async(
+        res = await self.mongocryptd_client[database].command(
             inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
         )
     except ServerSelectionTimeoutError:
         if self.opts._mongocryptd_bypass_spawn:
             raise
         self.spawn()
-        res = await self.mongocryptd_client[database].command_async(
+        res = await self.mongocryptd_client[database].command(
             inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
         )
     return res.raw

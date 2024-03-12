@@ -60,7 +60,7 @@ async def _connect_async(options):
     )
     print(uri)
     client = pymongo.MongoClient(uri)
-    await client.admin.command_async("ping")
+    await client.admin.command("ping")
 
 
 class TestOCSP(unittest.TestCase):

@@ -1212,7 +1212,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
                     spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
-                    await conn.command_async("admin", spec, read_preference=read_pref, client=self)
+                    await conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
             # command.
@@ -1690,7 +1690,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if cursor_id or conn_mgr:
                 self._close_cursor_soon(cursor_id, address, conn_mgr)
         if session and not explicit_session:
-            session._end_session(lock=locks_allowed)
+            await session._end_session(lock=locks_allowed)
 
     def _close_cursor_soon(
         self,
@@ -1758,7 +1758,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        await conn.command_async(db, spec, session=session, client=self)
+        await conn.command(db, spec, session=session, client=self)
 
     async def _process_kill_cursors(self) -> None:
         """Process any pending kill cursors requests."""
@@ -1890,12 +1890,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     s._server_session.mark_dirty()
 
                 # Always call end_session on error.
-                await s.end_session_async()
+                await s.end_session()
                 raise
             finally:
                 # Call end_session when we exit this scope.
                 if close:
-                    await s.end_session_async()
+                    await s.end_session()
         else:
             yield None
 

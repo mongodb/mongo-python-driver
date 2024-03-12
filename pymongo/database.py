@@ -317,7 +317,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return None
 
     @_csot.apply
-    def create_collection(
+    async def create_collection(
         self,
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
@@ -450,7 +450,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if clustered_index:
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
-        with self.__client._tmp_session(session) as s:
+        async with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
@@ -471,7 +471,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 **kwargs,
             )
 
-    def aggregate(
+    async def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> CommandCursor[_DocumentType]:
         """Perform a database-level aggregation.
@@ -533,7 +533,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self.client._tmp_session(session, close=False) as s:
+        async with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 CommandCursor,
@@ -542,7 +542,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session is not None,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return self.client._retryable_read(
+            return await self.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
@@ -734,7 +734,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         command.update(kwargs)
         async with self.__client._tmp_session(session) as s:
-            return await conn.command_async(
+            return await conn.command(
                 self.__name,
                 command,
                 read_preference,
@@ -909,7 +909,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
-    def cursor_command(
+    async def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -973,18 +973,20 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        with self.__client._tmp_session(session, close=False) as tmp_session:
+        async with self.__client._tmp_session(session, close=False) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
             if read_preference is None:
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self.__client._conn_for_reads(read_preference, tmp_session, command_name) as (
+            async with await self.__client._conn_for_reads(
+                read_preference, tmp_session, command_name
+            ) as (
                 conn,
                 read_preference,
             ):
-                response = self._command(
+                response = await self._command(
                     conn,
                     command,
                     value,
@@ -1035,7 +1037,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return await self.__client._retryable_read(_cmd, read_preference, session, operation)
 
-    def _list_collections(
+    async def _list_collections(
         self,
         conn: Connection,
         session: Optional[ClientSession],
@@ -1049,10 +1051,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        with self.__client._tmp_session(session, close=False) as tmp_session:
-            cursor = self._command(conn, cmd, read_preference=read_preference, session=tmp_session)[
-                "cursor"
-            ]
+        async with self.__client._tmp_session(session, close=False) as tmp_session:
+            cursor = (
+                await self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
+            )["cursor"]
             cmd_cursor = CommandCursor(
                 coll,
                 cursor,
@@ -1064,7 +1066,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
-    def list_collections(
+    async def list_collections(
         self,
         session: Optional[ClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
@@ -1096,19 +1098,21 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        def _cmd(
+        async def _cmd(
             session: Optional[ClientSession],
             _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
-            return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
+            return await self._list_collections(
+                conn, session, read_preference=read_preference, **kwargs
+            )
 
-        return self.__client._retryable_read(
+        return await self.__client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
         )
 
-    def list_collection_names(
+    async def list_collection_names(
         self,
         session: Optional[ClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
@@ -1153,17 +1157,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [result["name"] for result in self.list_collections(session=session, **kwargs)]
+        return [result["name"] for result in await self.list_collections(session=session, **kwargs)]
 
-    def _drop_helper(
+    async def _drop_helper(
         self, name: str, session: Optional[ClientSession] = None, comment: Optional[Any] = None
     ) -> dict[str, Any]:
         command = {"drop": name}
         if comment is not None:
             command["comment"] = comment
 
-        with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
-            return self._command(
+        async with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
+            return await self._command(
                 connection,
                 command,
                 allowable_errors=["ns not found", 26],
@@ -1173,7 +1177,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
-    def drop_collection(
+    async def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
         session: Optional[ClientSession] = None,
@@ -1241,16 +1245,16 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
-            self._drop_helper(
+            await self._drop_helper(
                 _esc_coll_name(encrypted_fields, name), session=session, comment=comment
             )
-            self._drop_helper(
+            await self._drop_helper(
                 _ecoc_coll_name(encrypted_fields, name), session=session, comment=comment
             )
 
-        return self._drop_helper(name, session, comment)
+        return await self._drop_helper(name, session, comment)
 
-    def validate_collection(
+    async def validate_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
         scandata: bool = False,
@@ -1305,7 +1309,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if background is not None:
             cmd["background"] = background
 
-        result = self.command(cmd, session=session)
+        result = await self.command(cmd, session=session)
 
         valid = True
         # Pre 1.9 results

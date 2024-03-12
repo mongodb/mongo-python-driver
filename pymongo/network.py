@@ -35,7 +35,6 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, message, ssl_support
-from pymongo.asynchronous import synchronize
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
@@ -63,7 +62,7 @@ if TYPE_CHECKING:
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
-async def command_async(
+async def command(
     conn: Connection,
     dbname: str,
     spec: MutableMapping[str, Any],
@@ -194,7 +193,7 @@ async def command_async(
         )
 
     try:
-        await sendall_async(conn.conn, msg)
+        await sendall(conn.conn, msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
@@ -299,10 +298,7 @@ async def command_async(
     return response_doc  # type: ignore[return-value]
 
 
-command = synchronize(command_async)
-
-
-async def send_async(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
+async def send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
     timeout = socket.gettimeout()
     socket.settimeout(0)
     try:
@@ -311,12 +307,12 @@ async def send_async(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
         socket.settimeout(timeout)
 
 
-async def sendall_async(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
+async def sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
     view = memoryview(buf)
     total_length = len(buf)
     total_sent = 0
     while total_sent < total_length:
-        sent = await send_async(socket, view[total_sent:], flags)
+        sent = await send(socket, view[total_sent:], flags)
         total_sent += sent
 
 
@@ -337,7 +333,7 @@ async def receive_message(
             deadline = None
     # Ignore the response's request id.
     length, _, response_to, op_code = _UNPACK_HEADER(
-        await _receive_data_on_socket_async(conn, 16, deadline)
+        await _receive_data_on_socket(conn, 16, deadline)
     )
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
@@ -354,13 +350,11 @@ async def receive_message(
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            await _receive_data_on_socket_async(conn, 9, deadline)
+            await _receive_data_on_socket(conn, 9, deadline)
         )
-        data = decompress(
-            await _receive_data_on_socket_async(conn, length - 25, deadline), compressor_id
-        )
+        data = decompress(await _receive_data_on_socket(conn, length - 25, deadline), compressor_id)
     else:
-        data = await _receive_data_on_socket_async(conn, length - 16, deadline)
+        data = await _receive_data_on_socket(conn, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -374,7 +368,7 @@ async def receive_message(
 _POLL_TIMEOUT = 0.5
 
 
-async def wait_for_read_async(conn: Connection, deadline: Optional[float]) -> None:
+async def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     sock = conn.conn
     timed_out = False
@@ -408,14 +402,11 @@ async def wait_for_read_async(conn: Connection, deadline: Optional[float]) -> No
         await asyncio.sleep(0)
 
 
-wait_for_read = synchronize(wait_for_read_async)
-
-
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-async def _receive_data_on_socket_async(
+async def _receive_data_on_socket(
     conn: Connection, length: int, deadline: Optional[float]
 ) -> memoryview:
     buf = bytearray(length)
@@ -423,7 +414,7 @@ async def _receive_data_on_socket_async(
     bytes_read = 0
     while bytes_read < length:
         try:
-            await wait_for_read_async(conn, deadline)
+            await wait_for_read(conn, deadline)
             # CSOT: Update timeout. When the timeout has expired perform one
             # final non-blocking recv. This helps avoid spurious timeouts when
             # the response is actually already buffered on the client.
@@ -442,6 +433,3 @@ async def _receive_data_on_socket_async(
         bytes_read += chunk_length
 
     return mv
-
-
-_receive_data_on_socket = synchronize(_receive_data_on_socket_async)

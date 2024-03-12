@@ -292,7 +292,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
             raise AutoReconnect("mock SocketInfo.command error")
 
         for conn in pool.conns:
-            conn.command_async = mock_command
+            conn.command = mock_command
 
         def insert_command(i):
             try:

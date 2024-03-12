@@ -16,7 +16,7 @@ async def ping():
     from test.utils import rs_or_single_client
 
     client = rs_or_single_client()
-    return await client.test.command_async("ping")
+    return await client.test.command("ping")
 
 
 class TestAsyncioGevent(unittest.TestCase):

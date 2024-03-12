@@ -27,7 +27,7 @@ class MainHandler(RequestHandler):
 
         client = rs_or_single_client()
         client.test.command("ping")
-        value = await client.test.command_async("ping")
+        value = await client.test.command("ping")
         value = json.dumps(value, default=str)
         self.write(value)
 

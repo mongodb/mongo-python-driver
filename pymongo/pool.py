@@ -85,7 +85,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import command, command_async, receive_message, sendall_async
+from pymongo.network import command, receive_message, sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -883,9 +883,7 @@ class Connection:
 
         if performing_handshake:
             start = time.monotonic()
-        doc = await self.command_async(
-            "admin", cmd, publish_events=False, exhaust_allowed=awaitable
-        )
+        doc = await self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
         if performing_handshake:
             self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
@@ -939,7 +937,7 @@ class Connection:
         return response_doc
 
     @_handle_reauth
-    def command(
+    async def command(
         self,
         dbname: str,
         spec: MutableMapping[str, Any],
@@ -991,104 +989,14 @@ class Connection:
 
         self.add_server_api(spec)
         if session:
-            session._apply_to(spec, retryable_write, read_preference, self)
+            await session._apply_to(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(
-                self,
-                dbname,
-                spec,
-                self.is_mongos,
-                read_preference,
-                codec_options,
-                session,
-                client,
-                check,
-                allowable_errors,
-                self.address,
-                listeners,
-                self.max_bson_size,
-                read_concern,
-                parse_write_concern_error=parse_write_concern_error,
-                collation=collation,
-                compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
-                unacknowledged=unacknowledged,
-                user_fields=user_fields,
-                exhaust_allowed=exhaust_allowed,
-                write_concern=write_concern,
-            )
-        except (OperationFailure, NotPrimaryError):
-            raise
-        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
-        except BaseException as error:
-            self._raise_connection_failure(error)
-
-    @_handle_reauth
-    async def command_async(
-        self,
-        dbname: str,
-        spec: MutableMapping[str, Any],
-        read_preference: _ServerMode = ReadPreference.PRIMARY,
-        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        parse_write_concern_error: bool = False,
-        collation: Optional[_CollationIn] = None,
-        session: Optional[ClientSession] = None,
-        client: Optional[MongoClient] = None,
-        retryable_write: bool = False,
-        publish_events: bool = True,
-        user_fields: Optional[Mapping[str, Any]] = None,
-        exhaust_allowed: bool = False,
-    ) -> dict[str, Any]:
-        """Execute a command or raise an error.
-
-        :param dbname: name of the database on which to run the command
-        :param spec: a command document as a dict, SON, or mapping object
-        :param read_preference: a read preference
-        :param codec_options: a CodecOptions instance
-        :param check: raise OperationFailure if there are errors
-        :param allowable_errors: errors to ignore if `check` is True
-        :param read_concern: The read concern for this command.
-        :param write_concern: The write concern for this command.
-        :param parse_write_concern_error: Whether to parse the
-            ``writeConcernError`` field in the command response.
-        :param collation: The collation for this command.
-        :param session: optional ClientSession instance.
-        :param client: optional MongoClient for gossipping $clusterTime.
-        :param retryable_write: True if this command is a retryable write.
-        :param publish_events: Should we publish events for this command?
-        :param user_fields: Response fields that should be decoded
-            using the TypeDecoders from codec_options, passed to
-            bson._decode_all_selective.
-        """
-        self.validate_session(client, session)
-        session = _validate_session_write_concern(session, write_concern)
-
-        # Ensure command name remains in first place.
-        if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
-            spec = dict(spec)
-
-        if not (write_concern is None or write_concern.acknowledged or collation is None):
-            raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
-
-        self.add_server_api(spec)
-        if session:
-            await session._apply_to_async(spec, retryable_write, read_preference, self)
-        self.send_cluster_time(spec, session, client)
-        listeners = self.listeners if publish_events else None
-        unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        if self.op_msg_enabled:
-            self._raise_if_not_writable(unacknowledged)
-        try:
-            return await command_async(
+            return await command(
                 self,
                 dbname,
                 spec,
@@ -1130,7 +1038,7 @@ class Connection:
             )
 
         try:
-            await sendall_async(self.conn, message)
+            await sendall(self.conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 

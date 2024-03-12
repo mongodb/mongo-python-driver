@@ -156,7 +156,6 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.asynchronous import synchronize
 from pymongo.cursor import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
@@ -511,37 +510,18 @@ class ClientSession:
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
 
-    def end_session(self) -> None:
+    async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
 
         It is an error to use the session after the session has ended.
         """
-        self._end_session(lock=True)
+        await self._end_session(lock=True)
 
-    async def end_session_async(self) -> None:
-        """Finish this session. If a transaction has started, abort it.
-
-        It is an error to use the session after the session has ended.
-        """
-        await self._end_session_async(lock=True)
-
-    def _end_session(self, lock: bool) -> None:
+    async def _end_session(self, lock: bool) -> None:
         if self._server_session is not None:
             try:
                 if self.in_transaction:
-                    self.abort_transaction()
-                # It's possible we're still pinned here when the transaction
-                # is in the committed state when the session is discarded.
-                self._unpin()
-            finally:
-                self._client._return_server_session(self._server_session, lock)
-                self._server_session = None
-
-    async def _end_session_async(self, lock: bool) -> None:
-        if self._server_session is not None:
-            try:
-                if self.in_transaction:
-                    self.abort_transaction()
+                    await self.abort_transaction()
                 # It's possible we're still pinned here when the transaction
                 # is in the committed state when the session is discarded.
                 self._unpin()
@@ -553,11 +533,11 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def __enter__(self) -> ClientSession:
+    async def __aenter__(self) -> ClientSession:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self._end_session(lock=True)
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self._end_session(lock=True)
 
     @property
     def client(self) -> MongoClient:
@@ -608,7 +588,7 @@ class ClientSession:
             return parent_val
         return getattr(self.client, name)
 
-    def with_transaction(
+    async def with_transaction(
         self,
         callback: Callable[[ClientSession], _T],
         read_concern: Optional[ReadConcern] = None,
@@ -706,7 +686,7 @@ class ClientSession:
                 ret = callback(self)
             except Exception as exc:
                 if self.in_transaction:
-                    self.abort_transaction()
+                    await self.abort_transaction()
                 if (
                     isinstance(exc, PyMongoError)
                     and exc.has_error_label("TransientTransactionError")
@@ -722,7 +702,7 @@ class ClientSession:
 
             while True:
                 try:
-                    self.commit_transaction()
+                    await self.commit_transaction()
                 except PyMongoError as exc:
                     if (
                         exc.has_error_label("UnknownTransactionCommitResult")
@@ -782,7 +762,7 @@ class ClientSession:
         self._start_retryable_write()
         return _TransactionContext(self)
 
-    def commit_transaction(self) -> None:
+    async def commit_transaction(self) -> None:
         """Commit a multi-statement transaction.
 
         .. versionadded:: 3.7
@@ -803,7 +783,7 @@ class ClientSession:
             self._transaction.state = _TxnState.IN_PROGRESS
 
         try:
-            self._finish_transaction_with_retry("commitTransaction")
+            await self._finish_transaction_with_retry("commitTransaction")
         except ConnectionFailure as exc:
             # We do not know if the commit was successfully applied on the
             # server or if it satisfied the provided write concern, set the
@@ -825,7 +805,7 @@ class ClientSession:
         finally:
             self._transaction.state = _TxnState.COMMITTED
 
-    def abort_transaction(self) -> None:
+    async def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
 
         .. versionadded:: 3.7
@@ -845,7 +825,7 @@ class ClientSession:
             raise InvalidOperation("Cannot call abortTransaction after calling commitTransaction")
 
         try:
-            self._finish_transaction_with_retry("abortTransaction")
+            await self._finish_transaction_with_retry("abortTransaction")
         except (OperationFailure, ConnectionFailure):
             # The transactions spec says to ignore abortTransaction errors.
             pass
@@ -853,20 +833,22 @@ class ClientSession:
             self._transaction.state = _TxnState.ABORTED
             self._unpin()
 
-    def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
+    async def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
 
         :param command_name: Either "commitTransaction" or "abortTransaction".
         """
 
-        def func(
+        async def func(
             _session: Optional[ClientSession], conn: Connection, _retryable: bool
         ) -> dict[str, Any]:
-            return self._finish_transaction(conn, command_name)
+            return await self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
+        return await self._client._retry_internal(
+            func, self, None, retryable=True, operation=_Op.ABORT
+        )
 
-    def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
+    async def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
@@ -889,7 +871,7 @@ class ClientSession:
         if self._transaction.recovery_token:
             cmd["recoveryToken"] = self._transaction.recovery_token
 
-        return self._client.admin._command(
+        return await self._client.admin._command(
             conn, cmd, session=self, write_concern=wc, parse_write_concern_error=True
         )
 
@@ -993,9 +975,7 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    async def _materialize_async(
-        self, logical_session_timeout_minutes: Optional[int] = None
-    ) -> None:
+    async def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = await self._client._topology.get_server_session_async(
@@ -1004,9 +984,7 @@ class ClientSession:
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
-    _materialize = synchronize(_materialize_async)
-
-    async def _apply_to_async(
+    async def _apply_to(
         self,
         command: MutableMapping[str, Any],
         is_retryable: bool,
@@ -1018,7 +996,7 @@ class ClientSession:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
             return
         self._check_ended()
-        await self._materialize_async(conn.logical_session_timeout_minutes)
+        await self._materialize(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1049,8 +1027,6 @@ class ClientSession:
 
             command["txnNumber"] = self._server_session.transaction_id
             command["autocommit"] = False
-
-    _apply_to = synchronize(_apply_to_async)
 
     def _start_retryable_write(self) -> None:
         self._check_ended()

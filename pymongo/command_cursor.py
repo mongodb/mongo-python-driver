@@ -74,7 +74,7 @@ class CommandCursor(Generic[_DocumentType]):
         self.__killed = self.__id == 0
         self.__comment = comment
         if self.__killed:
-            self.__end_session(True)
+            self._end_session_entry()
 
         if "ns" in cursor_info:  # noqa: SIM401
             self.__ns = cursor_info["ns"]
@@ -85,6 +85,16 @@ class CommandCursor(Generic[_DocumentType]):
 
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
+
+    def _end_session_entry(self):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.__end_session(True))
+            else:
+                loop.run_until_complete(self.__end_session(True))
+        except Exception:
+            raise
 
     def __del__(self) -> None:
         try:
@@ -120,9 +130,9 @@ class CommandCursor(Generic[_DocumentType]):
             self.__session = None
         self.__sock_mgr = None
 
-    def __end_session(self, synchronous: bool) -> None:
+    async def __end_session(self, synchronous: bool) -> None:
         if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
+            await self.__session._end_session(lock=synchronous)
             self.__session = None
 
     def close(self) -> None:

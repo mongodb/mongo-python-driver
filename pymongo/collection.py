@@ -627,7 +627,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
 
-            result = await conn.command_async(
+            result = await conn.command(
                 self.__database.name,
                 command,
                 write_concern=write_concern,
