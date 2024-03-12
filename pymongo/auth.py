@@ -206,7 +206,7 @@ def _build_credentials_tuple(
                     raise ConfigurationError(
                         "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
-                callback = _OIDCAzureCallback(token_resource, user)
+                callback = _OIDCAzureCallback(token_resource)
             else:
                 raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:
@@ -217,6 +217,7 @@ def _build_credentials_tuple(
             human_callback=human_callback,
             environment=environ,
             allowed_hosts=allowed_hosts,
+            username=user,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 

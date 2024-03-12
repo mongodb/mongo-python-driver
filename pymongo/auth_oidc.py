@@ -43,6 +43,7 @@ class OIDCIdPInfo:
 @dataclass
 class OIDCCallbackContext:
     timeout_seconds: float
+    username: str
     version: int
     refresh_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
@@ -69,6 +70,7 @@ class _OIDCProperties:
     human_callback: Optional[OIDCCallback] = field(default=None)
     environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
+    username: str = field(default="")
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -121,12 +123,11 @@ class _OIDCTestCallback(OIDCCallback):
 
 
 class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_resource: str, username: Optional[str]) -> None:
+    def __init__(self, token_resource: str) -> None:
         self.token_resource = token_resource
-        self.username = username
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_resource, self.username, context.timeout_seconds)
+        resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
         return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )
@@ -255,6 +256,7 @@ class _OIDCAuthenticator:
                     version=CALLBACK_VERSION,
                     refresh_token=self.refresh_token,
                     idp_info=self.idp_info,
+                    username=self.properties.username,
                 )
                 resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
