@@ -13,12 +13,19 @@
 # limitations under the License.
 from __future__ import annotations
 
+import importlib.util
 import warnings
 from typing import Any, Iterable, Optional, Union
 
-from pymongo.common import import_available
 from pymongo.hello import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
+
+
+# Inline import_available here to avoid import cycle.
+def import_available(name: str, package: str | None = None) -> bool:
+    """Check whether an import is available."""
+    return importlib.util.find_spec(name, package) is not None
+
 
 _HAVE_SNAPPY = import_available("snappy")
 _HAVE_ZLIB = import_available("zlib")

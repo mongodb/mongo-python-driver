@@ -35,6 +35,18 @@ from typing import (
     cast,
 )
 
+try:
+    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
+    from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
+    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
+
+    _HAVE_PYMONGOCRYPT = True
+except ImportError:
+    _HAVE_PYMONGOCRYPT = False
+    MongoCryptCallback = object
+
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
@@ -42,7 +54,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
 from pymongo.collection import Collection
-from pymongo.common import CONNECT_TIMEOUT, import_available
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.database import Database
@@ -66,9 +78,8 @@ from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
-_HAVE_PYMONGOCRYPT = import_available("pymongocrypt")
-if TYPE_CHECKING and _HAVE_PYMONGOCRYPT:
-    from pymongocrypt.mongocrypt import MongoCryptCallback, MongoCryptKmsContext
+if TYPE_CHECKING:
+    from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
@@ -153,8 +164,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
-        from pymongocrypt.errors import MongoCryptError
-
         try:
             conn = _configured_socket((host, port), opts)
             try:
@@ -319,10 +328,6 @@ class _Encrypter:
         :param client: The encrypted MongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
-        # Delayed import of encryption classes
-        from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
-        from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
-
         if opts._schema_map is None:
             schema_map = None
         else:
@@ -574,8 +579,6 @@ class ClientEncryption(Generic[_DocumentType]):
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
             None, key_vault_coll, None, opts
         )
-        from pymongocrypt import ExplicitEncrypter, MongoCryptOptions
-
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )

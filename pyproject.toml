@@ -196,6 +196,7 @@ unfixable = [
   "RUF100", # Unused noqa
   "T20",  # Removes print statements
   "F841", # Removes unused variables
+  "F401",    # Unused imports
 ]
 exclude = []
 flake8-unused-arguments.ignore-variadic-names = true

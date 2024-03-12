@@ -15,6 +15,7 @@
 """Exceptions raised by PyMongo."""
 from __future__ import annotations
 
+from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Union
 
 from bson.errors import InvalidDocument
