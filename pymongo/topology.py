@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 
-def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
+async def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
     q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
@@ -152,8 +152,8 @@ class Topology:
             assert self._events is not None
             weak: weakref.ReferenceType[queue.Queue]
 
-            def target() -> bool:
-                return process_events_queue(weak)
+            async def target() -> bool:
+                return await process_events_queue(weak)
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
@@ -206,7 +206,7 @@ class Topology:
                 self._session_pool.reset()
 
         async with self._alock:
-            self._ensure_opened()
+            await self._ensure_opened()
 
     open = synchronize(open_async)
 
@@ -315,8 +315,8 @@ class Topology:
                 )
                 logged_waiting = True
 
-            self._ensure_opened()
-            await self._request_check_all_async()
+            await self._ensure_opened()
+            await self.request_check_all_async()
 
             # Release the lock and wait for the topology description to
             # change, or for a timeout. We won't miss any changes that
@@ -464,7 +464,7 @@ class Topology:
             )
 
         self._description = new_td
-        self._update_servers()
+        await self._update_servers()
         self._receive_cluster_time_no_lock(server_description.cluster_time)
 
         if self._publish_tp and not suppress_event:
@@ -520,7 +520,7 @@ class Topology:
 
     on_change = synchronize(on_change_async)
 
-    def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
+    async def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
         Hold the lock when calling this.
         """
@@ -529,7 +529,7 @@ class Topology:
             return
         self._description = _updated_topology_description_srv_polling(self._description, seedlist)
 
-        self._update_servers()
+        await self._update_servers()
 
         if self._publish_tp:
             assert self._events is not None
@@ -545,7 +545,7 @@ class Topology:
         # We do no I/O holding the lock.
         async with self._alock:
             if self._opened:
-                self._process_srv_update(seedlist)
+                await self._process_srv_update(seedlist)
 
     on_srv_update = synchronize(on_srv_update_async)
 
@@ -730,7 +730,7 @@ class Topology:
         """
         return Selection.from_topology_description(self._description)
 
-    def _ensure_opened(self) -> None:
+    async def _ensure_opened(self) -> None:
         """Start monitors, or restart after a fork.
 
         Hold the lock when calling this.
@@ -740,15 +740,15 @@ class Topology:
 
         if not self._opened:
             self._opened = True
-            self._update_servers()
+            await self._update_servers()
 
             # Start or restart the events publishing thread.
             if self._publish_tp or self._publish_server:
-                self.__events_executor.open()
+                await self.__events_executor.open()
 
             # Start the SRV polling thread.
             if self._srv_monitor and (self.description.topology_type in SRV_POLLING_TOPOLOGIES):
-                self._srv_monitor.open()
+                await self._srv_monitor.open()
 
             if self._settings.load_balanced:
                 # Emit initial SDAM events for load balancer mode.
@@ -761,7 +761,7 @@ class Topology:
 
         # Ensure that the monitors are open.
         for server in self._servers.values():
-            server.open()
+            await server.open()
 
     def _is_stale_error(self, address: _Address, err_ctx: _ErrorContext) -> bool:
         server = self._servers.get(address)
@@ -865,7 +865,7 @@ class Topology:
         for server in self._servers.values():
             server.request_check()
 
-    def _update_servers(self) -> None:
+    async def _update_servers(self) -> None:
         """Sync our Servers from TopologyDescription.server_descriptions.
 
         Hold the lock while calling this.
@@ -892,7 +892,7 @@ class Topology:
                 )
 
                 self._servers[address] = server
-                server.open()
+                await server.open()
             else:
                 # Cache old is_writable value.
                 was_writable = self._servers[address].description.is_writable

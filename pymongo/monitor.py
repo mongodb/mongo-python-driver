@@ -80,12 +80,12 @@ class MonitorBase:
         self._topology = weakref.proxy(topology, _on_topology_gc)
         _register(self)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.
         """
-        self._executor.open()
+        await self._executor.open()
 
     def gc_safe_close(self) -> None:
         """GC safe close."""

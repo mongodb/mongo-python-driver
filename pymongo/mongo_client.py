@@ -862,7 +862,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
-        self._init_background()
 
         self._encrypter = None
         if self.__options.auto_encryption_opts:
@@ -871,19 +870,37 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
         self._timeout = self.__options.timeout
 
-        if _HAS_REGISTER_AT_FORK:
-            # Add this client to the list of weakly referenced items.
-            # This will be used later if we fork.
-            MongoClient._clients[self._topology._topology_id] = self
+        # if _HAS_REGISTER_AT_FORK:
+        #     # Add this client to the list of weakly referenced items.
+        #     # This will be used later if we fork.
+        #     MongoClient._clients[self._topology._topology_id] = self
 
-    def _init_background(self) -> None:
+
+    @classmethod
+    async def create_and_connect(cls,
+        host: Optional[Union[str, Sequence[str]]] = None,
+        port: Optional[int] = None,
+        document_class: Optional[Type[_DocumentType]] = None,
+        tz_aware: Optional[bool] = None,
+        connect: Optional[bool] = None,
+        type_registry: Optional[TypeRegistry] = None,
+        **kwargs: Any,
+    ) -> MongoClient:
+        client = MongoClient(host, port, document_class, tz_aware, type_registry, **kwargs)
+
+        await client._init_background()
+        await client._get_topology()
+
+        return client
+
+    async def _init_background(self) -> None:
         self._topology = Topology(self._topology_settings)
 
-        def target() -> bool:
+        async def target() -> bool:
             client = self_ref()
             if client is None:
                 return False  # Stop the executor.
-            MongoClient._process_periodic_tasks(client)
+            await MongoClient._process_periodic_tasks(client)
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -1239,7 +1256,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         await self._topology.open_async()
         async with self.__alock:
-            self._kill_cursors_executor.open()
+            await self._kill_cursors_executor.open()
         return self._topology
 
     @contextlib.asynccontextmanager
@@ -1296,7 +1313,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             to a specific server, used for getMore.
         """
         try:
-            topology = await self._get_topology_async()
+            topology = await self._get_topology()
             if session and not session.in_transaction:
                 session._transaction.reset()
             address = address or (session and session._pinned_address)
@@ -1408,7 +1425,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return await server.run_operation_async(
+            return await server.run_operation(
                 conn,
                 operation,
                 read_preference,
@@ -2284,10 +2301,10 @@ class _MongoClientErrorHandler:
         )
         await self.client._topology.handle_error_async(self.server_address, err_ctx)
 
-    def __aenter__(self) -> _MongoClientErrorHandler:
+    async def __aenter__(self) -> _MongoClientErrorHandler:
         return self
 
-    def __aexit__(
+    async def __aexit__(
         self,
         exc_type: Optional[Type[Exception]],
         exc_val: Optional[Exception],
@@ -2332,7 +2349,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation = operation
         self._operation_id = operation_id
 
-    def run(self) -> T:
+    async def run(self) -> T:
         """Runs the supplied func() and attempts a retry
 
         :raises: self._last_error: Last exception raised
@@ -2350,7 +2367,7 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                return self._read() if self._is_read else self._write()
+                return await self._read() if self._is_read else await self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
@@ -2467,7 +2484,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
-                return self._func(self._session, conn, self._retryable)  # type: ignore
+                return await self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
                 raise
@@ -2475,7 +2492,7 @@ class _ClientConnectionRetryable(Generic[T]):
             _add_retryable_write_error(exc, max_wire_version, is_mongos)
             raise
 
-    def _read(self) -> T:
+    async def _read(self) -> T:
         """Wrapper method for read-type retryable client executions
 
         :return: Output for func()'s call
@@ -2488,7 +2505,7 @@ class _ClientConnectionRetryable(Generic[T]):
         ):
             if self._retrying and not self._retryable:
                 self._check_last_error()
-            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 def _after_fork_child() -> None:

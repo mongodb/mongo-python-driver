@@ -323,7 +323,7 @@ async def sendall_async(socket: socket.socket, buf: bytes, flags: int = 0) -> No
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
-async def receive_message_async(
+async def receive_message(
     conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
@@ -370,8 +370,6 @@ async def receive_message_async(
         ) from None
     return unpack_reply(data)
 
-
-receive_message = synchronize(receive_message_async)
 
 _POLL_TIMEOUT = 0.5
 

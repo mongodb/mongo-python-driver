@@ -71,13 +71,13 @@ class Server:
         if self._publish:
             self._events = events()  # type: ignore[misc]
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.
         """
         if not self._pool.opts.load_balanced:
-            self._monitor.open()
+            await self._monitor.open()
 
     def reset(self, service_id: Optional[ObjectId] = None) -> None:
         """Clear the connection pool."""
@@ -175,8 +175,8 @@ class Server:
             if more_to_come:
                 reply = conn.receive_message(None)
             else:
-                conn.send_message(data, max_doc_size)
-                reply = conn.receive_message(request_id)
+                await conn.send_message(data, max_doc_size)
+                reply = await conn.receive_message(request_id)
 
             # Unpack and check for command errors.
             if use_cmd:
@@ -194,7 +194,7 @@ class Server:
             )
             if use_cmd:
                 first = docs[0]
-                operation.client._process_response(first, operation.session)
+                await operation.client._process_response(first, operation.session)
                 _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             duration = datetime.now() - start

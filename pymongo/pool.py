@@ -86,7 +86,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import command, command_async, receive_message
+from pymongo.network import command, command_async, receive_message, sendall_async
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -1209,7 +1209,7 @@ class Connection:
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def send_message(self, message: bytes, max_doc_size: int) -> None:
+    async def send_message(self, message: bytes, max_doc_size: int) -> None:
         """Send a raw BSON message or raise ConnectionFailure.
 
         If a network exception is raised, the socket is closed.
@@ -1221,17 +1221,17 @@ class Connection:
             )
 
         try:
-            self.conn.sendall(message)
+            await sendall_async(self.conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+    async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
         """
         try:
-            return receive_message(self, request_id, self.max_message_size)
+            return await receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
