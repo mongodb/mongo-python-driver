@@ -109,7 +109,7 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-class _OIDTestCallback(OIDCCallback):
+class _OIDCTestCallback(OIDCCallback):
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         token_file = os.environ.get("OIDC_TOKEN_FILE")
         if not token_file:
