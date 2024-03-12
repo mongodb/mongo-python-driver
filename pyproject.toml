@@ -127,7 +127,6 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.7"
 strict = true
 show_error_codes = true
 pretty = true
@@ -136,6 +135,10 @@ disable_error_code = ["type-arg", "no-any-return"]
 [[tool.mypy.overrides]]
 module = ["test.*"]
 disable_error_code = ["no-untyped-def", "no-untyped-call"]
+
+[[tool.mypy.overrides]]
+module = ["service_identity.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py37"
