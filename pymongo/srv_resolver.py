@@ -82,6 +82,9 @@ class _SrvResolver:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
 
     def get_options(self) -> Optional[str]:
+        # Delayed import of resolver for performance reasons.
+        from dns import resolver
+
         try:
             results = _resolve(self.__fqdn, "TXT", lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
