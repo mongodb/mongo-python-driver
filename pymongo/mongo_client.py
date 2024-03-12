@@ -41,7 +41,6 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
-    ContextManager,
     FrozenSet,
     Generic,
     Mapping,
@@ -68,6 +67,7 @@ from pymongo import (
     periodic_executor,
     uri_parser,
 )
+from pymongo.asynchronous import synchronize
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.client_session import _EmptyServerSession
@@ -932,7 +932,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = await self._topology.select_server_async(writable_server_selector, _Op.TEST)
+        server = await self._topology.select_server(writable_server_selector, _Op.TEST)
 
         return getattr(server.description, attr_name)
 
@@ -1085,7 +1085,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self._topology.description
 
-    @property
     async def address(self) -> Optional[tuple[str, int]]:
         """(host, port) of the current standalone, primary, or mongos, or None.
 
@@ -1117,7 +1116,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return None
         return await self._server_property("address")
 
-    @property
     async def primary(self) -> Optional[tuple[str, int]]:
         """The (host, port) of the current primary of the replica set.
 
@@ -1128,9 +1126,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
-        return await self._topology.get_primary_async()  # type: ignore[return-value]
+        return await self._topology.get_primary()  # type: ignore[return-value]
 
-    @property
     async def secondaries(self) -> set[_Address]:
         """The secondary members known to this client.
 
@@ -1143,7 +1140,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return await self._topology.get_secondaries()
 
-    @property
     async def arbiters(self) -> set[_Address]:
         """Arbiters in the replica set.
 
@@ -1153,7 +1149,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return await self._topology.get_arbiters()
 
-    @property
     async def is_primary(self) -> bool:
         """If this client is connected to a server that can accept writes.
 
@@ -1233,14 +1228,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        session_ids = await self._topology.pop_all_sessions_async()
+        session_ids = await self._topology.pop_all_sessions()
         if session_ids:
             await self._end_sessions(session_ids)
         # Stop the periodic task thread and then send pending killCursor
         # requests before closing the topology.
         self._kill_cursors_executor.close()
         await self._process_kill_cursors()
-        await self._topology.close_async()
+        await self._topology.close()
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
@@ -1251,7 +1246,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        await self._topology.open_async()
+        await self._topology.open()
         async with self.__alock:
             await self._kill_cursors_executor.open()
         return self._topology
@@ -1316,13 +1311,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
-                server = await topology.select_server_by_address_async(
+                server = await topology.select_server_by_address(
                     address, operation, operation_id=operation_id
                 )
                 if not server:
                     raise AutoReconnect("server %s:%d no longer available" % address)
             else:
-                server = await topology.select_server_async(
+                server = await topology.select_server(
                     server_selector,
                     operation,
                     deprioritized_servers=deprioritized_servers,
@@ -1338,7 +1333,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> ContextManager[Connection]:
+    ) -> AsyncIterator[Connection]:
         server = await self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
@@ -1406,7 +1401,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.conn_mgr.lock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    return await server.run_operation_async(
+                    return await server.run_operation(
                         operation.conn_mgr.conn,
                         operation,
                         operation.read_preference,
@@ -1739,7 +1734,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = await topology.select_server_by_address_async(tuple(address), _Op.KILL_CURSORS)  # type: ignore[arg-type]
+            server = await topology.select_server_by_address(tuple(address), _Op.KILL_CURSORS)  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
             server = await topology.select_server(writable_server_selector, _Op.KILL_CURSORS)
@@ -1807,7 +1802,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         try:
             await self._process_kill_cursors()
-            await self._topology.update_pool_async()
+            await self._topology.update_pool()
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return
@@ -1854,7 +1849,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
-        return await self._topology.return_server_session_async(server_session, lock)
+        return await self._topology.return_server_session(server_session, lock)
 
     def _ensure_session(self, session: Optional[ClientSession] = None) -> Optional[ClientSession]:
         """If provided session is None, lend a temporary session."""
@@ -1917,7 +1912,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _process_response(
         self, reply: Mapping[str, Any], session: Optional[ClientSession]
     ) -> None:
-        await self._topology.receive_cluster_time_async(reply.get("$clusterTime"))
+        await self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
 
@@ -2296,7 +2291,7 @@ class _MongoClientErrorHandler:
             self.completed_handshake,
             self.service_id,
         )
-        await self.client._topology.handle_error_async(self.server_address, err_ctx)
+        await self.client._topology.handle_error(self.server_address, err_ctx)
 
     async def __aenter__(self) -> _MongoClientErrorHandler:
         return self
@@ -2503,6 +2498,199 @@ class _ClientConnectionRetryable(Generic[T]):
             if self._retrying and not self._retryable:
                 self._check_last_error()
             return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
+
+
+class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
+    HOST = "localhost"
+    PORT = 27017
+    # Define order to retrieve options from ClientOptions for __repr__.
+    # No host/port; these are retrieved from TopologySettings.
+    _constructor_args = ("document_class", "tz_aware", "connect")
+    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+
+    def __init__(
+        self,
+        host: Optional[Union[str, Sequence[str]]] = None,
+        port: Optional[int] = None,
+        document_class: Optional[Type[_DocumentType]] = None,
+        tz_aware: Optional[bool] = None,
+        connect: Optional[bool] = None,
+        type_registry: Optional[TypeRegistry] = None,
+        **kwargs: Any,
+    ) -> None:
+        doc_class = document_class or dict
+        self.__init_kwargs: dict[str, Any] = {
+            "host": host,
+            "port": port,
+            "document_class": doc_class,
+            "tz_aware": tz_aware,
+            "connect": connect,
+            "type_registry": type_registry,
+            **kwargs,
+        }
+
+        if host is None:
+            host = self.HOST
+        if isinstance(host, str):
+            host = [host]
+        if port is None:
+            port = self.PORT
+        if not isinstance(port, int):
+            raise TypeError("port must be an instance of int")
+
+        # _pool_class, _monitor_class, and _condition_class are for deep
+        # customization of PyMongo, e.g. Motor.
+        pool_class = kwargs.pop("_pool_class", None)
+        monitor_class = kwargs.pop("_monitor_class", None)
+        condition_class = kwargs.pop("_condition_class", None)
+
+        # Parse options passed as kwargs.
+        keyword_opts = common._CaseInsensitiveDictionary(kwargs)
+        keyword_opts["document_class"] = doc_class
+
+        seeds = set()
+        username = None
+        password = None
+        dbase = None
+        opts = common._CaseInsensitiveDictionary()
+        fqdn = None
+        srv_service_name = keyword_opts.get("srvservicename")
+        srv_max_hosts = keyword_opts.get("srvmaxhosts")
+        if len([h for h in host if "/" in h]) > 1:
+            raise ConfigurationError("host must not contain multiple MongoDB URIs")
+        for entity in host:
+            # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
+            # it must be a URI,
+            # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
+            if "/" in entity:
+                # Determine connection timeout from kwargs.
+                timeout = keyword_opts.get("connecttimeoutms")
+                if timeout is not None:
+                    timeout = common.validate_timeout_or_none_or_zero(
+                        keyword_opts.cased_key("connecttimeoutms"), timeout
+                    )
+                res = uri_parser.parse_uri(
+                    entity,
+                    port,
+                    validate=True,
+                    warn=True,
+                    normalize=False,
+                    connect_timeout=timeout,
+                    srv_service_name=srv_service_name,
+                    srv_max_hosts=srv_max_hosts,
+                )
+                seeds.update(res["nodelist"])
+                username = res["username"] or username
+                password = res["password"] or password
+                dbase = res["database"] or dbase
+                opts = res["options"]
+                fqdn = res["fqdn"]
+            else:
+                seeds.update(uri_parser.split_hosts(entity, port))
+        if not seeds:
+            raise ConfigurationError("need to specify at least one host")
+
+        for hostname in [node[0] for node in seeds]:
+            if _detect_external_db(hostname):
+                break
+
+        # Add options with named keyword arguments to the parsed kwarg options.
+        if type_registry is not None:
+            keyword_opts["type_registry"] = type_registry
+        if tz_aware is None:
+            tz_aware = opts.get("tz_aware", False)
+        if connect is None:
+            connect = opts.get("connect", True)
+        keyword_opts["tz_aware"] = tz_aware
+        keyword_opts["connect"] = connect
+
+        # Handle deprecated options in kwarg options.
+        keyword_opts = _handle_option_deprecations(keyword_opts)
+        # Validate kwarg options.
+        keyword_opts = common._CaseInsensitiveDictionary(
+            dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
+        )
+
+        # Override connection string options with kwarg options.
+        opts.update(keyword_opts)
+
+        if srv_service_name is None:
+            srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
+
+        srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
+        # Normalize combined options.
+        opts = _normalize_options(opts)
+        _check_options(seeds, opts)
+
+        # Username and password passed as kwargs override user info in URI.
+        username = opts.get("username", username)
+        password = opts.get("password", password)
+        self.__options = options = ClientOptions(username, password, dbase, opts)
+
+        self.__default_database_name = dbase
+        self.__lock = _create_lock()
+        self.__kill_cursors_queue: list = []
+
+        self._event_listeners = options.pool_options._event_listeners
+        super().__init__(
+            options.codec_options,
+            options.read_preference,
+            options.write_concern,
+            options.read_concern,
+        )
+
+        self._topology_settings = TopologySettings(
+            seeds=seeds,
+            replica_set_name=options.replica_set_name,
+            pool_class=pool_class,
+            pool_options=options.pool_options,
+            monitor_class=monitor_class,
+            condition_class=condition_class,
+            local_threshold_ms=options.local_threshold_ms,
+            server_selection_timeout=options.server_selection_timeout,
+            server_selector=options.server_selector,
+            heartbeat_frequency=options.heartbeat_frequency,
+            fqdn=fqdn,
+            direct_connection=options.direct_connection,
+            load_balanced=options.load_balanced,
+            srv_service_name=srv_service_name,
+            srv_max_hosts=srv_max_hosts,
+            server_monitoring_mode=options.server_monitoring_mode,
+        )
+
+        self._init_background()
+
+        if connect:
+            self._get_topology()
+
+        self._encrypter = None
+        if self.__options.auto_encryption_opts:
+            from pymongo.encryption import _Encrypter
+
+            self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
+        self._timeout = self.__options.timeout
+
+        if _HAS_REGISTER_AT_FORK:
+            # Add this client to the list of weakly referenced items.
+            # This will be used later if we fork.
+            MongoClient._clients[self._topology._topology_id] = self
+
+    @synchronize
+    def _init_background(self) -> None:
+        ...
+
+    @synchronize
+    def _get_topology(self) -> Topology:
+        ...
+
+    @synchronize
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
+        ...
+
+    __getattr__ = MongoClient.__getattr__
+    __getitem__ = MongoClient.__getitem__
 
 
 def _after_fork_child() -> None:

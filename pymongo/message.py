@@ -362,7 +362,7 @@ class _Query:
         conn.validate_session(self.client, self.session)
         return use_find_cmd
 
-    def as_command(
+    async def as_command(
         self, conn: Connection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
@@ -391,7 +391,7 @@ class _Query:
         session = self.session
         conn.add_server_api(cmd)
         if session:
-            session._apply_to(cmd, False, self.read_preference, conn)
+            await session._apply_to(cmd, False, self.read_preference, conn)
             # Explain does not support readConcern.
             if not explain and not session.in_transaction:
                 session._update_read_concern(cmd, conn)
@@ -406,7 +406,7 @@ class _Query:
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(
+    async def get_message(
         self, read_preference: _ServerMode, conn: Connection, use_cmd: bool = False
     ) -> tuple[int, bytes, int]:
         """Get a query message, possibly setting the secondaryOk bit."""
@@ -422,7 +422,7 @@ class _Query:
         spec = self.spec
 
         if use_cmd:
-            spec = self.as_command(conn, apply_timeout=True)[0]
+            spec = (await self.as_command(conn, apply_timeout=True))[0]
             request_id, msg, size, _ = _op_msg(
                 0,
                 spec,
@@ -526,7 +526,7 @@ class _GetMore:
         conn.validate_session(self.client, self.session)
         return use_cmd
 
-    def as_command(
+    async def as_command(
         self, conn: Connection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
@@ -543,7 +543,7 @@ class _GetMore:
             conn,
         )
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference, conn)
+            await self.session._apply_to(cmd, False, self.read_preference, conn)
         conn.add_server_api(cmd)
         conn.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption
@@ -556,7 +556,7 @@ class _GetMore:
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(
+    async def get_message(
         self, dummy0: Any, conn: Connection, use_cmd: bool = False
     ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
@@ -564,7 +564,7 @@ class _GetMore:
         ctx = conn.compression_context
 
         if use_cmd:
-            spec = self.as_command(conn, apply_timeout=True)[0]
+            spec = (await self.as_command(conn, apply_timeout=True))[0]
             if self.conn_mgr and self.exhaust:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:

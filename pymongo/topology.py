@@ -26,7 +26,6 @@ import weakref
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
-from pymongo.asynchronous import synchronize
 from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
@@ -173,7 +172,7 @@ class Topology:
         if self._settings.fqdn is not None and not self._settings.load_balanced:
             self._srv_monitor = SrvMonitor(self, self._settings)
 
-    async def open_async(self) -> None:
+    async def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         No effect if called multiple times.
@@ -208,8 +207,6 @@ class Topology:
         async with self._alock:
             await self._ensure_opened()
 
-    open = synchronize(open_async)
-
     def get_server_selection_timeout(self) -> float:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
@@ -217,7 +214,7 @@ class Topology:
             return self._settings.server_selection_timeout
         return timeout
 
-    async def select_servers_async(
+    async def select_servers(
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
@@ -246,7 +243,7 @@ class Topology:
             server_timeout = server_selection_timeout
 
         async with self._alock:
-            server_descriptions = await self._select_servers_loop_async(
+            server_descriptions = await self._select_servers_loop(
                 selector, server_timeout, operation, operation_id, address
             )
 
@@ -254,9 +251,7 @@ class Topology:
                 cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
             ]
 
-    select_servers = synchronize(select_servers_async)
-
-    async def _select_servers_loop_async(
+    async def _select_servers_loop(
         self,
         selector: Callable[[Selection], Selection],
         timeout: float,
@@ -332,8 +327,6 @@ class Topology:
         self._description.check_compatible()
         return server_descriptions
 
-    _select_servers_loop = synchronize(_select_servers_loop_async)
-
     async def _select_server(
         self,
         selector: Callable[[Selection], Selection],
@@ -343,7 +336,7 @@ class Topology:
         deprioritized_servers: Optional[list[Server]] = None,
         operation_id: Optional[int] = None,
     ) -> Server:
-        servers = await self.select_servers_async(
+        servers = await self.select_servers(
             selector, operation, server_selection_timeout, address, operation_id
         )
         servers = _filter_servers(servers, deprioritized_servers)
@@ -355,7 +348,7 @@ class Topology:
         else:
             return server2
 
-    async def select_server_async(
+    async def select_server(
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
@@ -389,9 +382,7 @@ class Topology:
             )
         return server
 
-    select_server = synchronize(select_server_async)
-
-    async def select_server_by_address_async(
+    async def select_server_by_address(
         self,
         address: _Address,
         operation: str,
@@ -416,7 +407,7 @@ class Topology:
         Raises exc:`ServerSelectionTimeoutError` after
         `server_selection_timeout` if no matching servers are found.
         """
-        return await self.select_server_async(
+        return await self.select_server(
             any_server_selector,
             operation,
             server_selection_timeout,
@@ -424,9 +415,7 @@ class Topology:
             operation_id=operation_id,
         )
 
-    select_server_by_address = synchronize(select_server_by_address_async)
-
-    async def _process_change_async(
+    async def _process_change(
         self,
         server_description: ServerDescription,
         reset_pool: bool = False,
@@ -492,8 +481,6 @@ class Topology:
         # Wake waiters in select_servers().
         self._acondition.notify_all()
 
-    _process_change = synchronize(_process_change_async)
-
     async def on_change(
         self,
         server_description: ServerDescription,
@@ -512,9 +499,7 @@ class Topology:
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
-                await self._process_change_async(
-                    server_description, reset_pool, interrupt_connections
-                )
+                await self._process_change(server_description, reset_pool, interrupt_connections)
 
     async def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
@@ -556,7 +541,7 @@ class Topology:
     def has_server(self, address: _Address) -> bool:
         return address in self._servers
 
-    async def get_primary_async(self) -> Optional[_Address]:
+    async def get_primary(self) -> Optional[_Address]:
         """Return primary's address or None."""
         # Implemented here in Topology instead of MongoClient, so it can lock.
         async with self._alock:
@@ -566,9 +551,7 @@ class Topology:
 
             return writable_server_selector(self._new_selection())[0].address
 
-    get_primary = synchronize(get_primary_async)
-
-    async def _get_replica_set_members_async(
+    async def _get_replica_set_members(
         self, selector: Callable[[Selection], Selection]
     ) -> set[_Address]:
         """Return set of replica set member addresses."""
@@ -583,15 +566,13 @@ class Topology:
 
             return {sd.address for sd in iter(selector(self._new_selection()))}
 
-    _get_replica_set_members = synchronize(_get_replica_set_members_async)
-
     async def get_secondaries(self) -> set[_Address]:
         """Return set of secondary addresses."""
-        return await self._get_replica_set_members_async(secondary_server_selector)
+        return await self._get_replica_set_members(secondary_server_selector)
 
     async def get_arbiters(self) -> set[_Address]:
         """Return set of arbiter addresses."""
-        return await self._get_replica_set_members_async(arbiter_server_selector)
+        return await self._get_replica_set_members(arbiter_server_selector)
 
     def max_cluster_time(self) -> Optional[ClusterTime]:
         """Return a document, the highest seen $clusterTime."""
@@ -612,19 +593,15 @@ class Topology:
             ):
                 self._max_cluster_time = cluster_time
 
-    async def receive_cluster_time_async(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
+    async def receive_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
         async with self._alock:
             self._receive_cluster_time_no_lock(cluster_time)
 
-    receive_cluster_time = synchronize(receive_cluster_time_async)
-
-    async def request_check_all_async(self, wait_time: int = 5) -> None:
+    async def request_check_all(self, wait_time: int = 5) -> None:
         """Wake all monitors, wait for at least one to check its server."""
         async with self._alock:
             self._request_check_all()
             await self._acondition.wait(wait_time)
-
-    request_check_all = synchronize(request_check_all_async)
 
     def data_bearing_servers(self) -> list[ServerDescription]:
         """Return a list of all data-bearing servers.
@@ -635,7 +612,7 @@ class Topology:
             return self._description.known_servers
         return self._description.readable_servers
 
-    async def update_pool_async(self) -> None:
+    async def update_pool(self) -> None:
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         async with self._alock:
@@ -649,12 +626,10 @@ class Topology:
                 server.pool.remove_stale_sockets(generation)
             except PyMongoError as exc:
                 ctx = _ErrorContext(exc, 0, generation, False, None)
-                self.handle_error(server.description.address, ctx)
+                await self.handle_error(server.description.address, ctx)
                 raise
 
-    update_pool = synchronize(update_pool_async)
-
-    async def close_async(self) -> None:
+    async def close(self) -> None:
         """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
         :exc:`~.errors.InvalidOperation`.
@@ -683,29 +658,21 @@ class Topology:
         if self._publish_server or self._publish_tp:
             self.__events_executor.close()
 
-    close = synchronize(close_async)
-
     @property
     def description(self) -> TopologyDescription:
         return self._description
 
-    async def pop_all_sessions_async(self) -> list[_ServerSession]:
+    async def pop_all_sessions(self) -> list[_ServerSession]:
         """Pop all session ids from the pool."""
         async with self._alock:
             return self._session_pool.pop_all()
 
-    pop_all_sessions = synchronize(pop_all_sessions_async)
-
-    async def get_server_session_async(
-        self, session_timeout_minutes: Optional[int]
-    ) -> _ServerSession:
+    async def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         async with self._alock:
             return self._session_pool.get_server_session(session_timeout_minutes)
 
-    get_server_session = synchronize(get_server_session_async)
-
-    async def return_server_session_async(self, server_session: _ServerSession, lock: bool) -> None:
+    async def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
             async with self._alock:
                 self._session_pool.return_server_session(
@@ -714,8 +681,6 @@ class Topology:
         else:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)
-
-    return_server_session = synchronize(return_server_session_async)
 
     def _new_selection(self) -> Selection:
         """A Selection object, initially including all known servers.
@@ -746,7 +711,7 @@ class Topology:
 
             if self._settings.load_balanced:
                 # Emit initial SDAM events for load balancer mode.
-                self._process_change(
+                await self._process_change(
                     ServerDescription(
                         self._seed_addresses[0],
                         Hello({"ok": 1, "serviceId": self._topology_id, "maxWireVersion": 13}),
@@ -843,7 +808,7 @@ class Topology:
             # that server and close the current monitoring connection."
             server._monitor.cancel_check()
 
-    async def handle_error_async(self, address: _Address, err_ctx: _ErrorContext) -> None:
+    async def handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
         """Handle an application error.
 
         May reset the server to Unknown, clear the pool, and request an
@@ -851,8 +816,6 @@ class Topology:
         """
         async with self._alock:
             self._handle_error(address, err_ctx)
-
-    handle_error = synchronize(handle_error_async)
 
     def _request_check_all(self) -> None:
         """Wake all monitors. Hold the lock when calling this."""

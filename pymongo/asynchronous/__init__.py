@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import queue
+import sys
 import threading
 from concurrent.futures import wait
 
@@ -91,28 +92,26 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def synchronize(async_method, doc=None):
-    """Decorate `async_method` so it runs synchronously
+def synchronize(method, doc=None):
+    """Decorate `method` so it runs a synchronous version of an identically-named asynchronous method.
     The method runs on an event loop.
     :Parameters:
-     - `async_method`:      Unbound method of pymongo Collection, Database,
+     - `method`:            Unbound name of a method in pymongo Collection, Database,
                             MongoClient, etc.
-     - `doc`:               Optionally override async_method's docstring
+     - `doc`:               Optionally override the async version of method's docstring
     """
 
-    @functools.wraps(async_method)
-    def method(self, *args, **kwargs):
+    @functools.wraps(method)
+    def wrapped(self, *args, **kwargs):
         runner = TaskRunnerPool.getInstance()
+        async_name = self.__class__.__name__.replace("Sync", "")
+        async_class = getattr(sys.modules["__main__"], async_name)
+        async_method = getattr(async_class, method.__name__)
+
+        if doc is not None:
+            async_method.__doc__ = doc
+
         coro = async_method(self, *args, **kwargs)
         return runner.run(coro)
 
-    # This is for the benefit of generating documentation with Sphinx.
-    method.is_sync_method = True  # type: ignore[attr-defined]
-    name = async_method.__name__
-    method.async_method_name = name  # type: ignore[attr-defined]
-    method.__name__ = async_method.__name__.replace("_async", "")
-
-    if doc is not None:
-        method.__doc__ = doc
-
-    return method
+    return wrapped

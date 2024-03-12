@@ -15,6 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import warnings
 from collections import deque
@@ -332,7 +333,14 @@ class Cursor(Generic[_DocumentType]):
         return self.__retrieved
 
     def __del__(self) -> None:
-        self.__die()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.__die())
+            else:
+                loop.run_until_complete(self.__die())
+        except Exception:
+            raise
 
     def rewind(self) -> Cursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.
@@ -438,9 +446,9 @@ class Cursor(Generic[_DocumentType]):
             self.__session = None
         self.__sock_mgr = None
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        self.__die(True)
+        await self.__die(True)
 
     def __query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
@@ -1021,7 +1029,7 @@ class Cursor(Generic[_DocumentType]):
         self.__collation = validate_collation_or_none(collation)
         return self
 
-    def __send_message(self, operation: Union[_Query, _GetMore]) -> None:
+    async def __send_message(self, operation: Union[_Query, _GetMore]) -> None:
         """Send a query or getmore operation and handles the response.
 
         If operation is ``None`` this is an exhaust cursor, which reads
@@ -1036,7 +1044,7 @@ class Cursor(Generic[_DocumentType]):
             raise InvalidOperation("exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation(
+            response = await client._run_operation(
                 operation, self._unpack_response, address=self.__address
             )
         except OperationFailure as exc:
@@ -1044,9 +1052,9 @@ class Cursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
             if exc.timeout:
-                self.__die(False)
+                await self.__die(False)
             else:
-                self.close()
+                await self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -1059,10 +1067,10 @@ class Cursor(Generic[_DocumentType]):
             raise
         except ConnectionFailure:
             self.__killed = True
-            self.close()
+            await self.close()
             raise
         except Exception:
-            self.close()
+            await self.close()
             raise
 
         self.__address = response.address
@@ -1099,10 +1107,10 @@ class Cursor(Generic[_DocumentType]):
         if self.__id == 0:
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
-            self.close()
+            await self.close()
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
-            self.close()
+            await self.close()
 
     def _unpack_response(
         self,
@@ -1120,7 +1128,7 @@ class Cursor(Generic[_DocumentType]):
             self.__read_preference = self.__collection._read_preference_for(self.session)
         return self.__read_preference
 
-    def _refresh(self) -> int:
+    async def _refresh(self) -> int:
         """Refreshes the cursor with more data from Mongo.
 
         Returns the length of self.__data after refresh. Will exit early if
@@ -1157,7 +1165,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__allow_disk_use,
                 self.__exhaust,
             )
-            self.__send_message(q)
+            await self.__send_message(q)
         elif self.__id:  # Get More
             if self.__limit:
                 limit = self.__limit - self.__retrieved
@@ -1180,7 +1188,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__exhaust,
                 self.__comment,
             )
-            self.__send_message(g)
+            await self.__send_message(g)
 
         return len(self.__data)
 
@@ -1233,25 +1241,26 @@ class Cursor(Generic[_DocumentType]):
             return self.__session
         return None
 
-    def __iter__(self) -> Cursor[_DocumentType]:
+    def __aiter__(self) -> Cursor[_DocumentType]:
         return self
 
-    def next(self) -> _DocumentType:
+    async def next(self) -> _DocumentType:
         """Advance the cursor."""
         if self.__empty:
-            raise StopIteration
-        if len(self.__data) or self._refresh():
+            raise StopAsyncIteration
+        if len(self.__data) or await self._refresh():
             return self.__data.popleft()
         else:
-            raise StopIteration
+            raise StopAsyncIteration
 
-    __next__ = next
+    async def __anext__(self):
+        return await self.next()
 
-    def __enter__(self) -> Cursor[_DocumentType]:
+    async def __aenter__(self) -> Cursor[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
 
     def __copy__(self) -> Cursor[_DocumentType]:
         """Support function for `copy.copy()`.

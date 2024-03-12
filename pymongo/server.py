@@ -135,10 +135,10 @@ class Server:
         if more_to_come:
             request_id = 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
+            message = await operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
-        cmd, dbn = operation.as_command(conn)
+        cmd, dbn = await operation.as_command(conn)
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -157,7 +157,7 @@ class Server:
             )
 
         if publish:
-            cmd, dbn = operation.as_command(conn)
+            cmd, dbn = await operation.as_command(conn)
             if "$db" not in cmd:
                 cmd["$db"] = dbn
             assert listeners is not None

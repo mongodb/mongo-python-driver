@@ -978,7 +978,7 @@ class ClientSession:
     async def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = await self._client._topology.get_server_session_async(
+            self._server_session = await self._client._topology.get_server_session(
                 logical_session_timeout_minutes
             )
             if old.started_retryable_write:
