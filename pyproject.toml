@@ -127,7 +127,6 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.7"
 strict = true
 show_error_codes = true
 pretty = true
