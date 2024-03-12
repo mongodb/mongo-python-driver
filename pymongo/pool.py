@@ -33,7 +33,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
-    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -839,100 +838,10 @@ class Connection:
         else:
             return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
-    def hello(self) -> Hello[dict[str, Any]]:
-        return self._hello(None, None, None)
+    async def hello(self) -> Hello:
+        return await self._hello(None, None, None)
 
-    async def hello_async(self) -> Hello:
-        return await self._hello_async(None, None, None)
-
-    def _hello(
-        self,
-        cluster_time: Optional[ClusterTime],
-        topology_version: Optional[Any],
-        heartbeat_frequency: Optional[int],
-    ) -> Hello[dict[str, Any]]:
-        cmd = self.hello_cmd()
-        performing_handshake = not self.performed_handshake
-        awaitable = False
-        if performing_handshake:
-            self.performed_handshake = True
-            cmd["client"] = self.opts.metadata
-            if self.compression_settings:
-                cmd["compression"] = self.compression_settings.compressors
-            if self.opts.load_balanced:
-                cmd["loadBalanced"] = True
-        elif topology_version is not None:
-            cmd["topologyVersion"] = topology_version
-            assert heartbeat_frequency is not None
-            cmd["maxAwaitTimeMS"] = int(heartbeat_frequency * 1000)
-            awaitable = True
-            # If connect_timeout is None there is no timeout.
-            if self.opts.connect_timeout:
-                self.set_conn_timeout(self.opts.connect_timeout + heartbeat_frequency)
-
-        if not performing_handshake and cluster_time is not None:
-            cmd["$clusterTime"] = cluster_time
-
-        creds = self.opts._credentials
-        if creds:
-            if creds.mechanism == "DEFAULT" and creds.username:
-                cmd["saslSupportedMechs"] = creds.source + "." + creds.username
-            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
-            if auth_ctx:
-                speculative_authenticate = auth_ctx.speculate_command()
-                if speculative_authenticate is not None:
-                    cmd["speculativeAuthenticate"] = speculative_authenticate
-        else:
-            auth_ctx = None
-
-        if performing_handshake:
-            start = time.monotonic()
-        doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
-        if performing_handshake:
-            self.connect_rtt = time.monotonic() - start
-        hello = Hello(doc, awaitable=awaitable)
-        self.is_writable = hello.is_writable
-        self.max_wire_version = hello.max_wire_version
-        self.max_bson_size = hello.max_bson_size
-        self.max_message_size = hello.max_message_size
-        self.max_write_batch_size = hello.max_write_batch_size
-        self.supports_sessions = (
-            hello.logical_session_timeout_minutes is not None and hello.is_readable
-        )
-        self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
-        self.hello_ok = hello.hello_ok
-        self.is_repl = hello.server_type in (
-            SERVER_TYPE.RSPrimary,
-            SERVER_TYPE.RSSecondary,
-            SERVER_TYPE.RSArbiter,
-            SERVER_TYPE.RSOther,
-            SERVER_TYPE.RSGhost,
-        )
-        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
-        self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
-        if performing_handshake and self.compression_settings:
-            ctx = self.compression_settings.get_compression_context(hello.compressors)
-            self.compression_context = ctx
-
-        self.op_msg_enabled = True
-        self.server_connection_id = hello.connection_id
-        if creds:
-            self.negotiated_mechs = hello.sasl_supported_mechs
-        if auth_ctx:
-            auth_ctx.parse_response(hello)  # type:ignore[arg-type]
-            if auth_ctx.speculate_succeeded():
-                self.auth_ctx = auth_ctx
-        if self.opts.load_balanced:
-            if not hello.service_id:
-                raise ConfigurationError(
-                    "Driver attempted to initialize in load balancing mode,"
-                    " but the server does not support this mode"
-                )
-            self.service_id = hello.service_id
-            self.generation = self.pool_gen.get(self.service_id)
-        return hello
-
-    async def _hello_async(
+    async def _hello(
         self,
         cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
@@ -2121,7 +2030,7 @@ class Pool:
             self.active_contexts.add(conn.cancel_context)
         try:
             if self.handshake:
-                await conn.hello_async()
+                await conn.hello()
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
@@ -2133,84 +2042,8 @@ class Pool:
 
         return conn
 
-    @contextlib.contextmanager
-    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
-        """Get a connection from the pool. Use with a "with" statement.
-
-        Returns a :class:`Connection` object wrapping a connected
-        :class:`socket.socket`.
-
-        This method should always be used in a with-statement::
-
-            with pool.get_conn() as connection:
-                connection.send_message(msg)
-                data = connection.receive_message(op_code, request_id)
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param handler: A _MongoClientErrorHandler.
-        """
-        listeners = self.opts._event_listeners
-        checkout_started_time = time.monotonic()
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_check_out_started(self.address)
-            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    clientId=self._client_id,
-                    message=_ConnectionStatusMessage.CHECKOUT_STARTED,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                )
-
-        conn = self._get_conn(checkout_started_time, handler=handler)
-
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            duration = time.monotonic() - checkout_started_time
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    clientId=self._client_id,
-                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=conn.id,
-                    durationMS=duration,
-                )
-        try:
-            with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-            yield conn
-        except BaseException:
-            # Exception in caller. Ensure the connection gets returned.
-            # Note that when pinned is True, the session owns the
-            # connection and it is responsible for checking the connection
-            # back into the pool.
-            pinned = conn.pinned_txn or conn.pinned_cursor
-            if handler:
-                # Perform SDAM error handling rules while the connection is
-                # still checked out.
-                exc_type, exc_val, _ = sys.exc_info()
-                handler.handle(exc_type, exc_val)
-            if not pinned and conn.active:
-                self.checkin(conn)
-            raise
-        if conn.pinned_txn:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ntxns += 1
-        elif conn.pinned_cursor:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ncursors += 1
-        elif conn.active:
-            self.checkin(conn)
-
     @contextlib.asynccontextmanager
-    async def checkout_async(
+    async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
     ) -> AsyncIterator[Connection]:
         """Get a connection from the pool. Use with a "with" statement.

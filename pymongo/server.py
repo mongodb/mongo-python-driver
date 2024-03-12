@@ -20,9 +20,8 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
+    AsyncIterator,
     Callable,
-    ContextManager,
     Optional,
     Union,
 )
@@ -318,15 +317,10 @@ class Server:
 
         return response
 
-    def checkout(
+    async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> ContextManager[Connection]:
+    ) -> AsyncIterator[Connection]:
         return self.pool.checkout(handler)
-
-    async def checkout_async(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncContextManager[Connection]:
-        return self.pool.checkout_async(handler)
 
     @property
     def description(self) -> ServerDescription:

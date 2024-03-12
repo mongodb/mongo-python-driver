@@ -200,7 +200,7 @@ async def command_async(
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
         else:
-            reply = await receive_message_async(conn, request_id)
+            reply = await receive_message(conn, request_id)
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
@@ -208,7 +208,7 @@ async def command_async(
 
             response_doc = unpacked_docs[0]
             if client:
-                await client._process_response_async(response_doc, session)
+                await client._process_response(response_doc, session)
             if check:
                 helpers._check_command_response(
                     response_doc,

@@ -15,6 +15,7 @@
 """CommandCursor class to iterate over command results."""
 from __future__ import annotations
 
+import asyncio
 from collections import deque
 from typing import (
     TYPE_CHECKING,
@@ -86,9 +87,16 @@ class CommandCursor(Generic[_DocumentType]):
             raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self) -> None:
-        self.__die()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.__die())
+            else:
+                loop.run_until_complete(self.__die())
+        except Exception:
+            raise
 
-    def __die(self, synchronous: bool = False) -> None:
+    async def __die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         already_killed = self.__killed
         self.__killed = True
@@ -100,7 +108,7 @@ class CommandCursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        self.__collection.database.client._cleanup_cursor(
+        await self.__collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
             address,

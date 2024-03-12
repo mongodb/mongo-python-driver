@@ -36,7 +36,6 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.asynchronous import synchronize
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -680,7 +679,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
 
     @overload
-    def _command(
+    async def _command(
         self,
         conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
@@ -697,7 +696,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @overload
-    def _command(
+    async def _command(
         self,
         conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
@@ -713,7 +712,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> _CodecDocumentType:
         ...
 
-    def _command(
+    async def _command(
         self,
         conn: Connection,
         command: Union[str, MutableMapping[str, Any]],
@@ -734,42 +733,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             command = {command: value}
 
         command.update(kwargs)
-        with self.__client._tmp_session(session) as s:
-            return conn.command(
-                self.__name,
-                command,
-                read_preference,
-                codec_options,
-                check,
-                allowable_errors,
-                write_concern=write_concern,
-                parse_write_concern_error=parse_write_concern_error,
-                session=s,
-                client=self.__client,
-            )
-
-    async def _command_async(
-        self,
-        conn: Connection,
-        command: Union[str, MutableMapping[str, Any]],
-        value: int = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: _ServerMode = ReadPreference.PRIMARY,
-        codec_options: Union[
-            CodecOptions[dict[str, Any]], CodecOptions[_CodecDocumentType]
-        ] = DEFAULT_CODEC_OPTIONS,
-        write_concern: Optional[WriteConcern] = None,
-        parse_write_concern_error: bool = False,
-        session: Optional[ClientSession] = None,
-        **kwargs: Any,
-    ) -> Union[dict[str, Any], _CodecDocumentType]:
-        """Internal command helper."""
-        if isinstance(command, str):
-            command = {command: value}
-
-        command.update(kwargs)
-        async with self.__client._tmp_session_async(session) as s:
+        async with self.__client._tmp_session(session) as s:
             return await conn.command_async(
                 self.__name,
                 command,
@@ -784,7 +748,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     @overload
-    def command(
+    async def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -799,7 +763,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @overload
-    def command(
+    async def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -813,137 +777,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> _CodecDocumentType:
         ...
 
-    # @_csot.apply
-    # def command(
-    #     self,
-    #     command: Union[str, MutableMapping[str, Any]],
-    #     value: Any = 1,
-    #     check: bool = True,
-    #     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    #     read_preference: Optional[_ServerMode] = None,
-    #     codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
-    #     session: Optional[ClientSession] = None,
-    #     comment: Optional[Any] = None,
-    #     **kwargs: Any,
-    # ) -> Union[dict[str, Any], _CodecDocumentType]:
-    #     """Issue a MongoDB command.
-    #
-    #     Send command `command` to the database and return the
-    #     response. If `command` is an instance of :class:`str`
-    #     then the command {`command`: `value`} will be sent.
-    #     Otherwise, `command` must be an instance of
-    #     :class:`dict` and will be sent as is.
-    #
-    #     Any additional keyword arguments will be added to the final
-    #     command document before it is sent.
-    #
-    #     For example, a command like ``{buildinfo: 1}`` can be sent
-    #     using:
-    #
-    #     >>> db.command("buildinfo")
-    #     OR
-    #     >>> db.command({"buildinfo": 1})
-    #
-    #     For a command where the value matters, like ``{count:
-    #     collection_name}`` we can do:
-    #
-    #     >>> db.command("count", collection_name)
-    #     OR
-    #     >>> db.command({"count": collection_name})
-    #
-    #     For commands that take additional arguments we can use
-    #     kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
-    #
-    #     >>> db.command("filemd5", object_id, root=file_root)
-    #     OR
-    #     >>> db.command({"filemd5": object_id, "root": file_root})
-    #
-    #     :param command: document representing the command to be issued,
-    #         or the name of the command (for simple commands only).
-    #
-    #         .. note:: the order of keys in the `command` document is
-    #            significant (the "verb" must come first), so commands
-    #            which require multiple keys (e.g. `findandmodify`)
-    #            should be done with this in mind.
-    #
-    #     :param value: value to use for the command verb when
-    #         `command` is passed as a string
-    #     :param check: check the response for errors, raising
-    #         :class:`~pymongo.errors.OperationFailure` if there are any
-    #     :param allowable_errors: if `check` is ``True``, error messages
-    #         in this list will be ignored by error-checking
-    #     :param read_preference: The read preference for this
-    #         operation. See :mod:`~pymongo.read_preferences` for options.
-    #         If the provided `session` is in a transaction, defaults to the
-    #         read preference configured for the transaction.
-    #         Otherwise, defaults to
-    #         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-    #     :param codec_options: A :class:`~bson.codec_options.CodecOptions`
-    #         instance.
-    #     :param session: A
-    #         :class:`~pymongo.client_session.ClientSession`.
-    #     :param comment: A user-provided comment to attach to this
-    #         command.
-    #     :param kwargs: additional keyword arguments will
-    #         be added to the command document before it is sent
-    #
-    #
-    #     .. note:: :meth:`command` does **not** obey this Database's
-    #        :attr:`read_preference` or :attr:`codec_options`. You must use the
-    #        ``read_preference`` and ``codec_options`` parameters instead.
-    #
-    #     .. note:: :meth:`command` does **not** apply any custom TypeDecoders
-    #        when decoding the command response.
-    #
-    #     .. note:: If this client has been configured to use MongoDB Stable
-    #        API (see :ref:`versioned-api-ref`), then :meth:`command` will
-    #        automatically add API versioning options to the given command.
-    #        Explicitly adding API versioning options in the command and
-    #        declaring an API version on the client is not supported.
-    #
-    #     .. versionchanged:: 3.6
-    #        Added ``session`` parameter.
-    #
-    #     .. versionchanged:: 3.0
-    #        Removed the `as_class`, `fields`, `uuid_subtype`, `tag_sets`,
-    #        and `secondary_acceptable_latency_ms` option.
-    #        Removed `compile_re` option: PyMongo now always represents BSON
-    #        regular expressions as :class:`~bson.regex.Regex` objects. Use
-    #        :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
-    #        BSON regular expression to a Python regular expression object.
-    #        Added the ``codec_options`` parameter.
-    #
-    #     .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
-    #     """
-    #     opts = codec_options or DEFAULT_CODEC_OPTIONS
-    #     if comment is not None:
-    #         kwargs["comment"] = comment
-    #
-    #     if isinstance(command, str):
-    #         command_name = command
-    #     else:
-    #         command_name = next(iter(command))
-    #
-    #     if read_preference is None:
-    #         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-    #     with self.__client._conn_for_reads(read_preference, session, operation=command_name) as (
-    #         connection,
-    #         read_preference,
-    #     ):
-    #         return self._command(
-    #             connection,
-    #             command,
-    #             value,
-    #             check,
-    #             allowable_errors,
-    #             read_preference,
-    #             opts,
-    #             session=session,
-    #             **kwargs,
-    #         )
-
     @_csot.apply
-    async def command_async(
+    async def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
@@ -1055,13 +890,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        async with await self.__client._conn_for_reads_async(
+        async with await self.__client._conn_for_reads(
             read_preference, session, operation=command_name
         ) as (
             connection,
             read_preference,
         ):
-            return await self._command_async(
+            return await self._command(
                 connection,
                 command,
                 value,
@@ -1072,8 +907,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 **kwargs,
             )
-
-    command = synchronize(command_async)
 
     @_csot.apply
     def cursor_command(
@@ -1193,7 +1026,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: _ServerMode,
         ) -> dict[str, Any]:
-            return await self._command_async(
+            return await self._command(
                 conn,
                 command,
                 read_preference=read_preference,

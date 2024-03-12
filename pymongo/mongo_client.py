@@ -39,7 +39,6 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
     AsyncIterator,
     Callable,
     ContextManager,
@@ -862,7 +861,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
-
         self._encrypter = None
         if self.__options.auto_encryption_opts:
             from pymongo.encryption import _Encrypter
@@ -870,19 +868,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
         self._timeout = self.__options.timeout
 
-        # if _HAS_REGISTER_AT_FORK:
-        #     # Add this client to the list of weakly referenced items.
-        #     # This will be used later if we fork.
-        #     MongoClient._clients[self._topology._topology_id] = self
-
-
     @classmethod
-    async def create_and_connect(cls,
+    async def create_and_connect(
+        cls,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
         document_class: Optional[Type[_DocumentType]] = None,
         tz_aware: Optional[bool] = None,
-        connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
         **kwargs: Any,
     ) -> MongoClient:
@@ -890,6 +882,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         await client._init_background()
         await client._get_topology()
+
+        if _HAS_REGISTER_AT_FORK:
+            # Add this client to the list of weakly referenced items.
+            # This will be used later if we fork.
+            MongoClient._clients[client._topology._topology_id] = client
 
         return client
 
@@ -1204,7 +1201,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             # Use Connection.command directly to avoid implicitly creating
             # another session.
-            async with self._conn_for_reads_async(
+            async with self._conn_for_reads(
                 ReadPreference.PRIMARY_PREFERRED, None, operation=_Op.END_SESSIONS
             ) as (
                 conn,
@@ -1270,7 +1267,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
-            async with server.checkout_async(handler=err_handler) as conn:
+            async with await server.checkout(handler=err_handler) as conn:
                 # Pin this session to the selected server or connection.
                 if (
                     in_txn
@@ -1342,8 +1339,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
     ) -> ContextManager[Connection]:
-        server = await self._select_server_async(writable_server_selector, session, operation)
-        return self._checkout_async(server, session)
+        server = await self._select_server(writable_server_selector, session, operation)
+        return self._checkout(server, session)
 
     @contextlib.asynccontextmanager
     async def _conn_from_server(
@@ -1356,10 +1353,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # always send primaryPreferred when directly connected to a repl set
         # member.
         # Thread safe: if the type is single it cannot change.
-        topology = await self._get_topology_async()
+        topology = await self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
-        async with self._checkout_async(server, session) as conn:
+        async with self._checkout(server, session) as conn:
             if single:
                 if conn.is_repl and not (session and session.in_transaction):
                     # Use primary preferred to ensure any repl set member
@@ -1375,11 +1372,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         operation: str,
-    ) -> AsyncContextManager[tuple[Connection, _ServerMode]]:
+    ) -> AsyncIterator[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
-        _ = await self._get_topology_async()
-        server = await self._select_server_async(read_preference, session, operation)
-        return await self._conn_from_server_async(read_preference, server, session)
+        _ = await self._get_topology()
+        server = await self._select_server(read_preference, session, operation)
+        return self._conn_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self.__options.load_balanced and not (session and session.in_transaction)
@@ -1577,7 +1574,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
-        async with self._tmp_session_async(session) as s:
+        async with self._tmp_session(session) as s:
             return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def __eq__(self, other: Any) -> bool:
@@ -2045,7 +2042,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
         async with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            await self[name]._command_async(
+            await self[name]._command(
                 conn,
                 {"dropDatabase": 1, "comment": comment},
                 read_preference=ReadPreference.PRIMARY,

@@ -409,7 +409,7 @@ class Cursor(Generic[_DocumentType]):
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self.__collection, session=session)
 
-    def __die(self, synchronous: bool = False) -> None:
+    async def __die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         try:
             already_killed = self.__killed
@@ -426,7 +426,7 @@ class Cursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        self.__collection.database.client._cleanup_cursor(
+        await self.__collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
             address,

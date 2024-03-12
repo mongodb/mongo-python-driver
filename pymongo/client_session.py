@@ -546,7 +546,7 @@ class ClientSession:
                 # is in the committed state when the session is discarded.
                 self._unpin()
             finally:
-                await self._client._return_server_session_async(self._server_session, lock)
+                await self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
 
     def _check_ended(self) -> None:

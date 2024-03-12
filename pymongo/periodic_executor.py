@@ -21,9 +21,9 @@ import sys
 import threading
 import time
 import weakref
-from typing import Any, Callable, Optional, Coroutine
+from typing import Any, Callable, Coroutine, Optional
 
-from pymongo.lock import _create_lock, _ALock
+from pymongo.lock import _ALock, _create_lock
 
 
 class PeriodicExecutor:

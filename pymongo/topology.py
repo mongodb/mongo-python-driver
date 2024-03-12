@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 
-async def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
+def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
     q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
@@ -153,7 +153,7 @@ class Topology:
             weak: weakref.ReferenceType[queue.Queue]
 
             async def target() -> bool:
-                return await process_events_queue(weak)
+                return process_events_queue(weak)
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
@@ -316,7 +316,7 @@ class Topology:
                 logged_waiting = True
 
             await self._ensure_opened()
-            await self.request_check_all_async()
+            self._request_check_all()
 
             # Release the lock and wait for the topology description to
             # change, or for a timeout. We won't miss any changes that
@@ -334,7 +334,7 @@ class Topology:
 
     _select_servers_loop = synchronize(_select_servers_loop_async)
 
-    async def _select_server_async(
+    async def _select_server(
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
@@ -355,8 +355,6 @@ class Topology:
         else:
             return server2
 
-    _select_server = synchronize(_select_server_async)
-
     async def select_server_async(
         self,
         selector: Callable[[Selection], Selection],
@@ -367,7 +365,7 @@ class Topology:
         operation_id: Optional[int] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server = await self._select_server_async(
+        server = await self._select_server(
             selector,
             operation,
             server_selection_timeout,
@@ -496,7 +494,7 @@ class Topology:
 
     _process_change = synchronize(_process_change_async)
 
-    async def on_change_async(
+    async def on_change(
         self,
         server_description: ServerDescription,
         reset_pool: bool = False,
@@ -518,8 +516,6 @@ class Topology:
                     server_description, reset_pool, interrupt_connections
                 )
 
-    on_change = synchronize(on_change_async)
-
     async def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
         Hold the lock when calling this.
@@ -540,14 +536,12 @@ class Topology:
                 )
             )
 
-    async def on_srv_update_async(self, seedlist: list[tuple[str, Any]]) -> None:
+    async def on_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new list of nodes obtained from scanning SRV records."""
         # We do no I/O holding the lock.
         async with self._alock:
             if self._opened:
                 await self._process_srv_update(seedlist)
-
-    on_srv_update = synchronize(on_srv_update_async)
 
     def get_server_by_address(self, address: _Address) -> Optional[Server]:
         """Get a Server or None.
