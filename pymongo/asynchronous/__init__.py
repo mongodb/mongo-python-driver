@@ -110,7 +110,13 @@ def synchronize(method, doc=None):
     def wrapped(self, *args, **kwargs):
         runner = TaskRunnerPool.getInstance()
         async_name = self.__class__.__name__.replace("Sync", "")
-        async_class = getattr(sys.modules["__main__"], async_name)
+        try:  # TODO: Make this less horrifically hacky
+            async_class = getattr(sys.modules["pymongo"], async_name)
+        except AttributeError:
+            try:
+                async_class = getattr(sys.modules["pymongo"].database, async_name)
+            except AttributeError:
+                async_class = getattr(sys.modules["pymongo"].collection, async_name)
 
         try:
             async_method = getattr(async_class, method.__name__)
@@ -121,6 +127,12 @@ def synchronize(method, doc=None):
             async_method.__doc__ = doc
 
         coro = async_method(self, *args, **kwargs)
-        return runner.run(coro)
+
+        # If we're already running in a runner thread, just return the coroutine
+        try:
+            asyncio.get_running_loop()
+            return coro
+        except RuntimeError:
+            return runner.run(coro)
 
     return wrapped

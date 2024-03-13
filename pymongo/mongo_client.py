@@ -719,6 +719,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                client.__my_database__
         """
         doc_class = document_class or dict
+        self._asynchronous = True
         self.__init_kwargs: dict[str, Any] = {
             "host": host,
             "port": port,
@@ -827,7 +828,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self.__options = options = ClientOptions(username, password, dbase, opts)
+        self._options = options = ClientOptions(username, password, dbase, opts)
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
@@ -862,11 +863,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._encrypter = None
-        if self.__options.auto_encryption_opts:
+        if self._options.auto_encryption_opts:
             from pymongo.encryption import _Encrypter
 
-            self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
-        self._timeout = self.__options.timeout
+            self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
+        self._timeout = self._options.timeout
 
     @classmethod
     async def create_and_connect(
@@ -1189,7 +1190,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.0
         """
-        return self.__options
+        return self._options
 
     async def _end_sessions(self, session_ids: list[_ServerSession]) -> None:
         """Send endSessions command(s) with the given session ids."""
@@ -1374,7 +1375,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._conn_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
-        return self.__options.load_balanced and not (session and session.in_transaction)
+        return self._options.load_balanced and not (session and session.in_transaction)
 
     @_csot.apply
     async def _run_operation(
@@ -1606,12 +1607,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         ]
         # ... then everything in self._constructor_args...
         options.extend(
-            option_repr(key, self.__options._options[key]) for key in self._constructor_args
+            option_repr(key, self._options._options[key]) for key in self._constructor_args
         )
         # ... then everything else.
         options.extend(
-            option_repr(key, self.__options._options[key])
-            for key in self.__options._options
+            option_repr(key, self._options._options[key])
+            for key in self._options._options
             if key not in set(self._constructor_args) and key != "username" and key != "password"
         )
         return ", ".join(options)
@@ -1634,7 +1635,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> database.Database[_DocumentType]:
+    def __getitem__(
+        self, name: str
+    ) -> database.Database[_DocumentType] | database.SyncDatabase[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1642,7 +1645,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :param name: the name of the database to get
         """
-        return database.Database(self, name)
+        if self._asynchronous:
+            return database.Database(self, name)
+        else:
+            return database.SyncDatabase(self, name)
 
     async def _cleanup_cursor(
         self,
@@ -2121,7 +2127,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database[_DocumentType]:
+    ) -> database.Database[_DocumentType] | database.SyncDatabase[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
@@ -2169,9 +2175,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError("No default database defined")
             name = self.__default_database_name
 
-        return database.Database(
-            self, name, codec_options, read_preference, write_concern, read_concern
-        )
+        if self._asynchronous:
+            return database.Database(
+                self, name, codec_options, read_preference, write_concern, read_concern
+            )
+        else:
+            return database.SyncDatabase(
+                self, name, codec_options, read_preference, write_concern, read_concern
+            )
 
     def _database_default_options(self, name: str) -> Database:
         """Get a Database instance with the default settings."""
@@ -2527,6 +2538,7 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> None:
         doc_class = document_class or dict
+        self._asynchronous = False
         self.__init_kwargs: dict[str, Any] = {
             "host": host,
             "port": port,
@@ -2635,7 +2647,7 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self.__options = options = ClientOptions(username, password, dbase, opts)
+        self._options = options = ClientOptions(username, password, dbase, opts)
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
@@ -2669,17 +2681,17 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
-        self._init_background_sync()
+        self._init_background()
 
         if connect:
-            self._get_topology_sync()
+            self._get_topology()
 
         self._encrypter = None
-        if self.__options.auto_encryption_opts:
+        if self._options.auto_encryption_opts:
             from pymongo.encryption import _Encrypter
 
-            self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
-        self._timeout = self.__options.timeout
+            self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
+        self._timeout = self._options.timeout
 
         if _HAS_REGISTER_AT_FORK:
             # Add this client to the list of weakly referenced items.
@@ -2687,11 +2699,11 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             SyncMongoClient._clients[self._topology._topology_id] = self
 
     @synchronize
-    def _init_background_sync(self) -> None:
+    def _init_background(self) -> None:
         ...
 
     @synchronize
-    def _get_topology_sync(self) -> Topology:
+    def _get_topology(self) -> Topology:
         ...
 
     @synchronize
@@ -2706,7 +2718,7 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.0
         """
-        return self.__options
+        return self._options
 
     @synchronize
     def list_databases(
@@ -2725,8 +2737,6 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> list[str]:
         ...
 
-    _init_background = MongoClient._init_background
-    _get_topology = MongoClient._get_topology
     _conn_for_reads = MongoClient._conn_for_reads
     _conn_from_server = MongoClient._conn_from_server
     _select_server = MongoClient._select_server
@@ -2739,10 +2749,13 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     _process_response = MongoClient._process_response
     _process_kill_cursors = MongoClient._process_kill_cursors
     _retryable_read = MongoClient._retryable_read
+    _retryable_write = MongoClient._retryable_write
+    _retry_with_session = MongoClient._retry_with_session
     _retry_internal = MongoClient._retry_internal
     _cleanup_cursor = MongoClient._cleanup_cursor
     _database_default_options = MongoClient._database_default_options
     _list_databases = MongoClient._list_databases
+    _should_pin_cursor = MongoClient._should_pin_cursor
     _after_fork = MongoClient._after_fork
     _duplicate = MongoClient._duplicate
 
