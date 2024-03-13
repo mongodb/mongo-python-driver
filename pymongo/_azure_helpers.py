@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import json
 from typing import Any, Optional
-from urllib.request import Request, urlopen
 
 
 def _get_azure_response(
     resource: str, object_id: Optional[str] = None, timeout: float = 5
 ) -> dict[str, Any]:
+    # Delayed import to save import time.
+    from urllib.request import Request, urlopen
+
     url = "http://169.254.169.254/metadata/identity/oauth2/token"
     url += "?api-version=2018-02-01"
     url += f"&resource={resource}"

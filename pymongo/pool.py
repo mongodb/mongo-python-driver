@@ -41,7 +41,7 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, auth, helpers
+from pymongo import __version__, _csot, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -857,9 +857,12 @@ class Connection:
 
         creds = self.opts._credentials
         if creds:
+            # Deferred import.
+            from pymongo.auth import _AuthContext
+
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
-            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
+            auth_ctx = _AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
                 if speculative_authenticate is not None:
@@ -1080,6 +1083,9 @@ class Connection:
 
         Can raise ConnectionFailure or OperationFailure.
         """
+        # Deferred import.
+        from pymongo.auth import authenticate
+
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
         if reauthenticate:
@@ -1090,7 +1096,7 @@ class Connection:
         if not self.ready:
             creds = self.opts._credentials
             if creds:
-                auth.authenticate(creds, self, reauthenticate=reauthenticate)
+                authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:
                 assert self.listeners is not None
