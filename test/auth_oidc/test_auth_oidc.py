@@ -828,6 +828,30 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
+    def test_5_1_azure_with_no_username(self):
+        if ENVIRON != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+        opts = parse_uri(self.uri_single)["options"]
+        resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+
+        props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
+        client = self.create_client(authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+    def test_5_2_azure_with_bad_username(self):
+        if ENVIRON != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+
+        opts = parse_uri(self.uri_single)["options"]
+        token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+
+        props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
+        client = self.create_client(username="bad", authmechanismproperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
     def test_speculative_auth_success(self):
         client1 = self.create_client()
         client1.test.test.find_one()
@@ -893,30 +917,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 3)
         client1.close()
         client2.close()
-
-    def test_azure_no_username(self):
-        if ENVIRON != "azure":
-            raise unittest.SkipTest("Test is only supported on Azure")
-        opts = parse_uri(self.uri_single)["options"]
-        resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
-
-        props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
-        client = self.create_client(authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
-
-    def test_azure_bad_username(self):
-        if ENVIRON != "azure":
-            raise unittest.SkipTest("Test is only supported on Azure")
-
-        opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
-
-        props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
-        client = self.create_client(username="bad", authmechanismproperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
 
 
 if __name__ == "__main__":
