@@ -2756,6 +2756,7 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     _database_default_options = MongoClient._database_default_options
     _list_databases = MongoClient._list_databases
     _should_pin_cursor = MongoClient._should_pin_cursor
+    _run_operation = MongoClient._run_operation
     _after_fork = MongoClient._after_fork
     _duplicate = MongoClient._duplicate
 

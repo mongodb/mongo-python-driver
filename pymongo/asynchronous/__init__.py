@@ -46,6 +46,14 @@ class TaskRunner:
             with self.lock:
                 self.waiting = False
 
+    def check_errors(self):
+        if self.errors.qsize():
+            error = self.errors.get()
+            if isinstance(error, StopAsyncIteration):
+                raise StopIteration
+            else:
+                raise error
+
 
 class TaskRunnerPool:
     """A singleton class that manages a pool of task runners."""
@@ -77,19 +85,13 @@ class TaskRunnerPool:
                     waiting = runner.waiting
                 if not waiting:
                     res = runner.run(coro)
-                    if runner.errors.qsize():
-                        error = runner.errors.get()
-                        raise error
-                    else:
-                        return res
+                    runner.check_errors()
+                    return res
             runner = TaskRunner()
             self._runners.append(runner)
             res = runner.run(coro)
-            if runner.errors.qsize():
-                error = runner.errors.get()
-                raise error
-            else:
-                return res
+            runner.check_errors()
+            return res
 
     def close(self):
         for runner in self._runners:
@@ -110,18 +112,19 @@ def synchronize(method, doc=None):
     def wrapped(self, *args, **kwargs):
         runner = TaskRunnerPool.getInstance()
         async_name = self.__class__.__name__.replace("Sync", "")
-        try:  # TODO: Make this less horrifically hacky
-            async_class = getattr(sys.modules["pymongo"], async_name)
-        except AttributeError:
-            try:
-                async_class = getattr(sys.modules["pymongo"].database, async_name)
-            except AttributeError:
-                async_class = getattr(sys.modules["pymongo"].collection, async_name)
-
+        if "Cursor" in async_name:
+            async_class = self.__class__
+        else:
+            packages = ["mongo_client", "database", "collection"]
+            for package in packages:  # TODO: Make this less horrifically hacky
+                try:
+                    async_class = getattr(getattr(sys.modules["pymongo"], package), async_name)
+                except AttributeError:
+                    continue
         try:
-            async_method = getattr(async_class, method.__name__)
+            async_method = getattr(async_class, method.__name__[:2] + "a" + method.__name__[2:])
         except AttributeError:
-            async_method = getattr(async_class, method.__name__.replace("_sync", ""))
+            async_method = getattr(async_class, method.__name__)
 
         if doc is not None:
             async_method.__doc__ = doc
