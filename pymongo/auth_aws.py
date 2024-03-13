@@ -15,38 +15,16 @@
 """MONGODB-AWS Authentication helpers."""
 from __future__ import annotations
 
-try:
-    import pymongo_auth_aws  # type:ignore[import]
-    from pymongo_auth_aws import (
-        AwsCredential,
-        AwsSaslContext,
-        PyMongoAuthAwsError,
-    )
+from pymongo.common import lazy_import
 
+try:
+    pymongo_auth_aws = lazy_import("pymongo_auth_aws")
     _HAVE_MONGODB_AWS = True
 except ImportError:
-
-    class AwsSaslContext:  # type: ignore
-        def __init__(self, credentials: MongoCredential):
-            pass
-
     _HAVE_MONGODB_AWS = False
 
-try:
-    from pymongo_auth_aws.auth import (  # type:ignore[import]
-        set_cached_credentials,
-        set_use_cached_credentials,
-    )
 
-    # Enable credential caching.
-    set_use_cached_credentials(True)
-except ImportError:
-
-    def set_cached_credentials(_creds: Optional[AwsCredential]) -> None:
-        pass
-
-
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type
+from typing import TYPE_CHECKING, Any, Mapping, Type
 
 import bson
 from bson.binary import Binary
@@ -56,6 +34,9 @@ if TYPE_CHECKING:
     from bson.typings import _ReadableBuffer
     from pymongo.auth import MongoCredential
     from pymongo.pool import Connection
+
+if TYPE_CHECKING and _HAVE_MONGODB_AWS:
+    from pymongo_auth_aws import AwsSaslContext  # type:ignore[import]
 
 
 class _AwsSaslContext(AwsSaslContext):  # type: ignore
@@ -86,7 +67,7 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
 
     try:
         ctx = _AwsSaslContext(
-            AwsCredential(
+            pymongo_auth_aws.AwsCredential(
                 credentials.username,
                 credentials.password,
                 credentials.mechanism_properties.aws_session_token,
@@ -108,14 +89,14 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
             if res["done"]:
                 # SASL complete.
                 break
-    except PyMongoAuthAwsError as exc:
+    except pymongo_auth_aws.PyMongoAuthAwsError as exc:
         # Clear the cached credentials if we hit a failure in auth.
-        set_cached_credentials(None)
+        pymongo_auth_aws.set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
         raise OperationFailure(
             f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})"
         ) from None
     except Exception:
         # Clear the cached credentials if we hit a failure in auth.
-        set_cached_credentials(None)
+        pymongo_auth_aws.set_cached_credentials(None)
         raise

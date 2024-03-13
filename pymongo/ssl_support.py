@@ -41,7 +41,7 @@ if HAVE_SSL:
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = True
     SSLError = _ssl.SSLError
-    BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
+    BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS  # type:ignore[has-type]
 
     def get_ssl_context(
         certfile: Optional[str],
@@ -97,7 +97,7 @@ else:
 
     HAS_SNI = False
     IPADDR_SAFE = False
-    BLOCKING_IO_ERRORS = ()  # type:ignore[assignment]
+    BLOCKING_IO_ERRORS = ()
 
     def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""
