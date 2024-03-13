@@ -39,21 +39,6 @@ if TYPE_CHECKING and _HAVE_MONGODB_AWS:
     import pymongo_auth_aws  # type:ignore[import]
 
 
-class _AwsSaslContext(pymongo_auth_aws.AwsSaslContext):  # type: ignore
-    # Dependency injection:
-    def binary_type(self) -> Type[Binary]:
-        """Return the bson.binary.Binary type."""
-        return Binary
-
-    def bson_encode(self, doc: Mapping[str, Any]) -> bytes:
-        """Encode a dictionary to BSON."""
-        return bson.encode(doc)
-
-    def bson_decode(self, data: _ReadableBuffer) -> Mapping[str, Any]:
-        """Decode BSON to a dictionary."""
-        return bson.decode(data)
-
-
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
     if not _HAVE_MONGODB_AWS:
@@ -65,8 +50,22 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     if conn.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
+    class AwsSaslContext(pymongo_auth_aws.AwsSaslContext):  # type: ignore
+        # Dependency injection:
+        def binary_type(self) -> Type[Binary]:
+            """Return the bson.binary.Binary type."""
+            return Binary
+
+        def bson_encode(self, doc: Mapping[str, Any]) -> bytes:
+            """Encode a dictionary to BSON."""
+            return bson.encode(doc)
+
+        def bson_decode(self, data: _ReadableBuffer) -> Mapping[str, Any]:
+            """Decode BSON to a dictionary."""
+            return bson.decode(data)
+
     try:
-        ctx = _AwsSaslContext(
+        ctx = AwsSaslContext(
             pymongo_auth_aws.AwsCredential(
                 credentials.username,
                 credentials.password,
