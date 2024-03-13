@@ -76,7 +76,12 @@ class TaskRunnerPool:
                 with runner.lock:
                     waiting = runner.waiting
                 if not waiting:
-                    return runner.run(coro)
+                    res = runner.run(coro)
+                    if runner.errors.qsize():
+                        error = runner.errors.get()
+                        raise error
+                    else:
+                        return res
             runner = TaskRunner()
             self._runners.append(runner)
             res = runner.run(coro)
@@ -106,7 +111,11 @@ def synchronize(method, doc=None):
         runner = TaskRunnerPool.getInstance()
         async_name = self.__class__.__name__.replace("Sync", "")
         async_class = getattr(sys.modules["__main__"], async_name)
-        async_method = getattr(async_class, method.__name__)
+
+        try:
+            async_method = getattr(async_class, method.__name__)
+        except AttributeError:
+            async_method = getattr(async_class, method.__name__.replace("_sync", ""))
 
         if doc is not None:
             async_method.__doc__ = doc

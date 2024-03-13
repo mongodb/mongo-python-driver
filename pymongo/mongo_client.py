@@ -831,8 +831,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
-        self.__alock = _ALock(self.__lock)
-        self.__kill_cursors_queue: list = []
+        self._alock = _ALock(self.__lock)
+        self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
         super().__init__(
@@ -1247,7 +1247,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         launches the connection process in the background.
         """
         await self._topology.open()
-        async with self.__alock:
+        async with self._alock:
             await self._kill_cursors_executor.open()
         return self._topology
 
@@ -1629,7 +1629,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                f"MongoClient has no attribute {name!r}. To access the {name}"
+                f"{type(self).__name__} has no attribute {name!r}. To access the {name}"
                 f" database, use client[{name!r}]."
             )
         return self.__getitem__(name)
@@ -1694,7 +1694,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         conn_mgr: Optional[_ConnectionManager] = None,
     ) -> None:
         """Request that a cursor and/or connection be cleaned up soon."""
-        self.__kill_cursors_queue.append((address, cursor_id, conn_mgr))
+        self._kill_cursors_queue.append((address, cursor_id, conn_mgr))
 
     async def _close_cursor_now(
         self,
@@ -1763,7 +1763,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Other threads or the GC may append to the queue concurrently.
         while True:
             try:
-                address, cursor_id, conn_mgr = self.__kill_cursors_queue.pop()
+                address, cursor_id, conn_mgr = self._kill_cursors_queue.pop()
             except IndexError:
                 break
 
@@ -1809,7 +1809,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             else:
                 helpers._handle_exception()
 
-    def __start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
+    def _start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
         server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
@@ -1836,7 +1836,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        return self.__start_session(
+        return self._start_session(
             False,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
@@ -1859,7 +1859,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.
-            return self.__start_session(True, causal_consistency=False)
+            return self._start_session(True, causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
             # Sessions not supported.
             return None
@@ -1934,6 +1934,28 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             ),
         )
 
+    async def _list_databases(
+        self,
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[dict[str, Any]]:
+        cmd = {"listDatabases": 1}
+        cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
+        admin = self._database_default_options("admin")
+        res = await admin._retryable_read_command(
+            cmd, session=session, operation=_Op.LIST_DATABASES
+        )
+        # listDatabases doesn't return a cursor (yet). Fake one.
+        cursor = {
+            "id": 0,
+            "firstBatch": res["databases"],
+            "ns": "admin.$cmd",
+        }
+        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
+
     async def list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
@@ -1957,21 +1979,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        cmd = {"listDatabases": 1}
-        cmd.update(kwargs)
-        if comment is not None:
-            cmd["comment"] = comment
-        admin = self._database_default_options("admin")
-        res = await admin._retryable_read_command(
-            cmd, session=session, operation=_Op.LIST_DATABASES
-        )
-        # listDatabases doesn't return a cursor (yet). Fake one.
-        cursor = {
-            "id": 0,
-            "firstBatch": res["databases"],
-            "ns": "admin.$cmd",
-        }
-        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        return await self._list_databases(session, comment, **kwargs)
 
     async def list_database_names(
         self,
@@ -1992,7 +2000,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return [
             doc["name"]
-            for doc in await self.list_databases(session, nameOnly=True, comment=comment)
+            for doc in await self._list_databases(session, nameOnly=True, comment=comment)
         ]
 
     @_csot.apply
@@ -2631,7 +2639,8 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = _create_lock()
-        self.__kill_cursors_queue: list = []
+        self._alock = _ALock(self.__lock)
+        self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
         super().__init__(
@@ -2660,10 +2669,10 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
-        self._init_background()
+        self._init_background_sync()
 
         if connect:
-            self._get_topology()
+            self._get_topology_sync()
 
         self._encrypter = None
         if self.__options.auto_encryption_opts:
@@ -2675,19 +2684,69 @@ class SyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if _HAS_REGISTER_AT_FORK:
             # Add this client to the list of weakly referenced items.
             # This will be used later if we fork.
-            MongoClient._clients[self._topology._topology_id] = self
+            SyncMongoClient._clients[self._topology._topology_id] = self
 
     @synchronize
-    def _init_background(self) -> None:
+    def _init_background_sync(self) -> None:
         ...
 
     @synchronize
-    def _get_topology(self) -> Topology:
+    def _get_topology_sync(self) -> Topology:
         ...
 
     @synchronize
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         ...
+
+    @property
+    def options(self) -> ClientOptions:
+        """The configuration options for this client.
+
+        :return: An instance of :class:`~pymongo.client_options.ClientOptions`.
+
+        .. versionadded:: 4.0
+        """
+        return self.__options
+
+    @synchronize
+    def list_databases(
+        self,
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[dict[str, Any]]:
+        ...
+
+    @synchronize
+    def list_database_names(
+        self,
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> list[str]:
+        ...
+
+    _init_background = MongoClient._init_background
+    _get_topology = MongoClient._get_topology
+    _conn_for_reads = MongoClient._conn_for_reads
+    _conn_from_server = MongoClient._conn_from_server
+    _select_server = MongoClient._select_server
+    _checkout = MongoClient._checkout
+    _tmp_session = MongoClient._tmp_session
+    _ensure_session = MongoClient._ensure_session
+    _start_session = MongoClient._start_session
+    _return_server_session = MongoClient._return_server_session
+    _send_cluster_time = MongoClient._send_cluster_time
+    _process_response = MongoClient._process_response
+    _process_kill_cursors = MongoClient._process_kill_cursors
+    _retryable_read = MongoClient._retryable_read
+    _retry_internal = MongoClient._retry_internal
+    _cleanup_cursor = MongoClient._cleanup_cursor
+    _database_default_options = MongoClient._database_default_options
+    _list_databases = MongoClient._list_databases
+    _after_fork = MongoClient._after_fork
+    _duplicate = MongoClient._duplicate
+
+    get_database = MongoClient.get_database
 
     __getattr__ = MongoClient.__getattr__
     __getitem__ = MongoClient.__getitem__

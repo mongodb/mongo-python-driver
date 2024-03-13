@@ -139,7 +139,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             _check_name(name)
 
         self.__name = name
-        self.__client: MongoClient[_DocumentType] | MongoClient = client
+        self.__client: MongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
 
     @property
