@@ -400,7 +400,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
         # Delayed import of kerberos for performance reasons.
         use_principal = False
         if sys.platform == "win32":
-            import winkerberos as kerberos  # type:ignore[import]
+            import winkerberos as kerberos
 
             if tuple(map(int, kerberos.__version__.split(".")[:2])) >= (0, 5):
                 use_principal = True

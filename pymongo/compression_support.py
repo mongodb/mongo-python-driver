@@ -132,7 +132,7 @@ class ZstdContext:
     def compress(data: bytes) -> bytes:
         # ZstdCompressor is not thread safe.
         # TODO: Use a pool?
-        from zstandard import ZstdCompressor  # type:ignore[import]
+        from zstandard import ZstdCompressor
 
         return ZstdCompressor().compress(data)
 
@@ -153,7 +153,7 @@ def decompress(data: bytes, compressor_id: int) -> bytes:
     elif compressor_id == ZstdContext.compressor_id:
         # ZstdDecompressor is not thread safe.
         # TODO: Use a pool?
-        from zstandard import ZstdDecompressor  # type:ignore[import]
+        from zstandard import ZstdDecompressor
 
         return ZstdDecompressor().decompress(data)
     else:
