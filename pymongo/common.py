@@ -43,7 +43,6 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.auth import MECHANISMS
 from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
@@ -401,6 +400,9 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
+    # Lazy import to prevent an import cycle.
+    from pymongo.auth import MECHANISMS
+
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
     return value

@@ -36,10 +36,10 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
 
 if TYPE_CHECKING and _HAVE_MONGODB_AWS:
-    from pymongo_auth_aws import AwsSaslContext  # type:ignore[import]
+    import pymongo_auth_aws  # type:ignore[import]
 
 
-class _AwsSaslContext(AwsSaslContext):  # type: ignore
+class _AwsSaslContext(pymongo_auth_aws.AwsSaslContext):  # type: ignore
     # Dependency injection:
     def binary_type(self) -> Type[Binary]:
         """Return the bson.binary.Binary type."""
