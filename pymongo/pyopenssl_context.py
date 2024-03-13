@@ -44,9 +44,6 @@ _service_identity_pyopenssl = lazy_import("service_identity.pyopenssl")
 if TYPE_CHECKING:
     from ssl import VerifyMode
 
-    import cryptography.x509 as _x509  # type:ignore[no-redef]
-    import service_identity as _service_identity  # type:ignore[no-redef]
-    import service_identity.pyopenssl as _service_identity_pyopenssl  # type:ignore[no-redef]
     from cryptography.x509 import Certificate
 
 _T = TypeVar("_T")
