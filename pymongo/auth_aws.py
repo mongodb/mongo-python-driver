@@ -35,9 +35,6 @@ if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
     from pymongo.pool import Connection
 
-if TYPE_CHECKING and _HAVE_MONGODB_AWS:
-    import pymongo_auth_aws  # type:ignore[no-redef,import]
-
 
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
