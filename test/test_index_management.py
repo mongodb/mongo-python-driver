@@ -60,12 +60,12 @@ class TestSearchIndexProse(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        # if not os.environ.get("TEST_INDEX_MANAGEMENT"):
-        #     raise unittest.SkipTest("Skipping index management tests")
+        if not os.environ.get("TEST_INDEX_MANAGEMENT"):
+            raise unittest.SkipTest("Skipping index management tests")
         url = os.environ.get("MONGODB_URI")
-        # username = os.environ["DB_USER"]
-        # password = os.environ["DB_PASSWORD"]
-        cls.client = MongoClient(url)
+        username = os.environ["DB_USER"]
+        password = os.environ["DB_PASSWORD"]
+        cls.client = MongoClient(url, username=username, password=password)
         cls.client.drop_database(_NAME)
         cls.db = cls.client.test_search_index_prose
 
