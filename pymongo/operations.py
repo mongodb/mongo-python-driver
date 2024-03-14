@@ -609,7 +609,7 @@ class SearchIndexModel:
             self.__document = dict(name=name, definition=definition)
         else:
             self.__document = dict(definition=definition)
-        self.__document["type"] = type
+        self.__document["type"] = type  # type: ignore[assignment]
 
     @property
     def document(self) -> Mapping[str, Any]:
