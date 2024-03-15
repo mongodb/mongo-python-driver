@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
@@ -26,6 +27,7 @@ from test.unified_format import generate_test_classes
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "command_logging")
 
+os.environ["MONGOB_LOG_MAX_DOCUMENT_LENGTH"] = "2000"
 
 globals().update(
     generate_test_classes(
@@ -33,7 +35,6 @@ globals().update(
         module=__name__,
     )
 )
-
 
 if __name__ == "__main__":
     unittest.main()
