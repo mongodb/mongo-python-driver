@@ -301,7 +301,7 @@ class Monitor(MonitorBase):
         start = time.monotonic()
         if conn.more_to_come:
             # Read the next streaming hello (MongoDB 4.4+).
-            response = Hello(conn._next_reply(), awaitable=True)
+            response = Hello(await conn._next_reply(), awaitable=True)
         elif (
             self._stream and conn.performed_handshake and self._server_description.topology_version
         ):

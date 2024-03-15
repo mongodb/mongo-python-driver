@@ -1493,7 +1493,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return self._name
 
     @_csot.apply
-    @synchronize
+    @synchronize(Database)
     def create_collection(
         self,
         name: str,
@@ -1507,14 +1507,14 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> Collection[_DocumentType] | SyncCollection[_DocumentType]:
         ...
 
-    @synchronize
+    @synchronize(Database)
     def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> CommandCursor[_DocumentType]:
         ...
 
     @overload
-    @synchronize
+    @synchronize(Database)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1530,7 +1530,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @overload
-    @synchronize
+    @synchronize(Database)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1546,7 +1546,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize
+    @synchronize(Database)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1562,7 +1562,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize
+    @synchronize(Database)
     def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1576,7 +1576,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[_DocumentType]:
         ...
 
-    @synchronize
+    @synchronize(Database)
     def list_collections(
         self,
         session: Optional[ClientSession] = None,
@@ -1586,7 +1586,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         ...
 
-    @synchronize
+    @synchronize(Database)
     def list_collection_names(
         self,
         session: Optional[ClientSession] = None,
@@ -1597,7 +1597,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize
+    @synchronize(Database)
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1607,7 +1607,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize
+    @synchronize(Database)
     def validate_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1619,7 +1619,7 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize
+    @synchronize(Database)
     def dereference(
         self,
         dbref: DBRef,

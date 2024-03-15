@@ -15,6 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import warnings
 from collections import deque
@@ -333,7 +334,14 @@ class Cursor(Generic[_DocumentType]):
         return self.__retrieved
 
     def __del__(self) -> None:
-        self.__die()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.__die())
+            else:
+                loop.run_until_complete(self.__die())
+        except Exception:
+            raise
 
     def rewind(self) -> Cursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.
@@ -410,7 +418,7 @@ class Cursor(Generic[_DocumentType]):
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self.__collection, session=session)
 
-    async def __adie(self, synchronous: bool = False) -> None:
+    async def __die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         try:
             already_killed = self.__killed
@@ -439,13 +447,9 @@ class Cursor(Generic[_DocumentType]):
             self.__session = None
         self.__sock_mgr = None
 
-    @synchronize
-    def __die(self, synchronous: bool = False) -> None:
-        ...
-
     async def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        await self.__adie(True)
+        await self.__die(True)
 
     def __query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
@@ -873,7 +877,7 @@ class Cursor(Generic[_DocumentType]):
         self.__ordering = helpers._index_document(keys)
         return self
 
-    def distinct(self, key: str) -> list:
+    async def distinct(self, key: str) -> list:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -899,7 +903,7 @@ class Cursor(Generic[_DocumentType]):
         if self.__collation is not None:
             options["collation"] = self.__collation
 
-        return self.__collection.distinct(key, session=self.__session, **options)
+        return await self.__collection.distinct(key, session=self.__session, **options)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
@@ -1049,7 +1053,7 @@ class Cursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
             if exc.timeout:
-                await self.__adie(False)
+                await self.__die(False)
             else:
                 await self.close()
             # If this is a tailable cursor the error is likely
@@ -1256,7 +1260,7 @@ class Cursor(Generic[_DocumentType]):
     async def __anext__(self):
         return await self.next()
 
-    @synchronize
+    @synchronize(None, async_method_name="__anext__")
     def __next__(self):
         ...
 
@@ -1269,7 +1273,7 @@ class Cursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
-    @synchronize
+    @synchronize(None, async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         ...
 

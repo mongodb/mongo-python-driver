@@ -3617,7 +3617,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
             else:
                 self._create(name, kwargs, collation, session)
 
-    @synchronize
+    @synchronize(Collection)
     def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
@@ -3627,7 +3627,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> InsertOneResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def replace_one(
         self,
         filter: Mapping[str, Any],
@@ -3642,7 +3642,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def update_one(
         self,
         filter: Mapping[str, Any],
@@ -3658,7 +3658,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def update_many(
         self,
         filter: Mapping[str, Any],
@@ -3674,7 +3674,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def drop(
         self,
         session: Optional[ClientSession] = None,
@@ -3683,7 +3683,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def delete_one(
         self,
         filter: Mapping[str, Any],
@@ -3695,7 +3695,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def delete_many(
         self,
         filter: Mapping[str, Any],
@@ -3707,25 +3707,25 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def find_one(
         self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
     ) -> Optional[_DocumentType]:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def count_documents(
         self,
         filter: Mapping[str, Any],
@@ -3735,7 +3735,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> int:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def create_index(
         self,
         keys: _IndexKeyHint,
@@ -3745,7 +3745,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> str:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def create_indexes(
         self,
         indexes: Sequence[IndexModel],
@@ -3756,7 +3756,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize
+    @synchronize(Collection)
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -3766,7 +3766,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def drop_indexes(
         self,
         session: Optional[ClientSession] = None,
@@ -3775,7 +3775,7 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize
+    @synchronize(Collection)
     def list_indexes(
         self,
         session: Optional[ClientSession] = None,

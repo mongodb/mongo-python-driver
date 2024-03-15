@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import functools
 import queue
-import sys
 import threading
 from concurrent.futures import wait
+from typing import Optional, Type
 
 
 class TaskRunner:
@@ -99,43 +99,45 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def synchronize(method, doc=None):
-    """Decorate `method` so it runs a synchronous version of an identically-named asynchronous method.
+def synchronize(
+    async_class: Optional[Type], async_method_name: Optional[str] = None, doc: Optional[str] = None
+):
+    """Decorate a given method so it runs a synchronous version of an identically-named asynchronous method.
     The method runs on an event loop.
     :Parameters:
-     - `method`:            Unbound name of a method in pymongo Collection, Database,
-                            MongoClient, etc.
-     - `doc`:               Optionally override the async version of method's docstring
+     - 'async_class`:       The class to pull the asynchronous method from. Defaults to the calling class.
+     - `async_method_name`: Optionally override the name of the async method.
+     - `doc`:               Optionally override the async version of method's docstring.
     """
 
-    @functools.wraps(method)
-    def wrapped(self, *args, **kwargs):
-        runner = TaskRunnerPool.getInstance()
-        async_name = self.__class__.__name__.replace("Sync", "")
-        if "Cursor" in async_name:
-            async_class = self.__class__
-        else:
-            packages = ["mongo_client", "database", "collection"]
-            for package in packages:  # TODO: Make this less horrifically hacky
+    def class_wrapper(method):
+        @functools.wraps(method)
+        def wrapped(self, *args, **kwargs):
+            runner = TaskRunnerPool.getInstance()
+            if async_class is not None:
+                a_class = async_class
+            else:
+                a_class = self.__class__
+            if async_method_name is not None:
+                async_method = getattr(a_class, async_method_name)
+            else:
                 try:
-                    async_class = getattr(getattr(sys.modules["pymongo"], package), async_name)
+                    async_method = getattr(a_class, method.__name__)
                 except AttributeError:
-                    continue
-        try:
-            async_method = getattr(async_class, method.__name__[:2] + "a" + method.__name__[2:])
-        except AttributeError:
-            async_method = getattr(async_class, method.__name__)
+                    raise
 
-        if doc is not None:
-            async_method.__doc__ = doc
+            if doc is not None:
+                async_method.__doc__ = doc
 
-        coro = async_method(self, *args, **kwargs)
+            coro = async_method(self, *args, **kwargs)
 
-        # If we're already running in a runner thread, just return the coroutine
-        try:
-            asyncio.get_running_loop()
-            return coro
-        except RuntimeError:
-            return runner.run(coro)
+            # If we're already running in a runner thread, just return the coroutine
+            try:
+                asyncio.get_running_loop()
+                return coro
+            except RuntimeError:
+                return runner.run(coro)
 
-    return wrapped
+        return wrapped
+
+    return class_wrapper
