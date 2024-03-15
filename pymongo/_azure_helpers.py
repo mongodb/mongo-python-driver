@@ -21,13 +21,13 @@ from urllib.request import Request, urlopen
 
 
 def _get_azure_response(
-    resource: str, object_id: Optional[str] = None, timeout: float = 5
+    resource: str, client_id: Optional[str] = None, timeout: float = 5
 ) -> dict[str, Any]:
     url = "http://169.254.169.254/metadata/identity/oauth2/token"
     url += "?api-version=2018-02-01"
     url += f"&resource={resource}"
-    if object_id:
-        url += f"&object_id={object_id}"
+    if client_id:
+        url += f"&client_id={client_id}"
     headers = {"Metadata": "true", "Accept": "application/json"}
     request = Request(url, headers=headers)  # noqa: S310
     print("fetching url", url)  # noqa: T201
