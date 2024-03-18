@@ -588,7 +588,12 @@ class SearchIndexModel:
 
     __slots__ = ("__document",)
 
-    def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        definition: Mapping[str, Any],
+        name: Optional[str] = None,
+        type: Optional[str] = "search",
+    ) -> None:
         """Create a Search Index instance.
 
         For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
@@ -604,6 +609,7 @@ class SearchIndexModel:
             self.__document = dict(name=name, definition=definition)
         else:
             self.__document = dict(definition=definition)
+        self.__document["type"] = type  # type: ignore[assignment]
 
     @property
     def document(self) -> Mapping[str, Any]:
