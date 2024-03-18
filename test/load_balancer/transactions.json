@@ -940,6 +940,7 @@
     },
     {
       "description": "pinned connection is released after a transient network commit error",
+      "skipReason": "waiting on CLOUDP-202309",
       "operations": [
         {
           "name": "failPoint",

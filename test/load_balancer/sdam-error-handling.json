@@ -261,6 +261,7 @@
     },
     {
       "description": "errors during the initial connection hello are ignored",
+      "skipReason": "waiting on CLOUDP-202309",
       "runOnRequirements": [
         {
           "minServerVersion": "4.9"
