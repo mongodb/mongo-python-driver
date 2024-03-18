@@ -46,6 +46,10 @@ class TaskRunner:
             with self.lock:
                 self.waiting = False
 
+    def schedule(self, coro):
+        """Schedule a coroutine on the event loop as a task"""
+        return asyncio.run_coroutine_threadsafe(coro, self.__loop)
+
     def check_errors(self):
         if self.errors.qsize():
             error = self.errors.get()
@@ -92,6 +96,14 @@ class TaskRunnerPool:
             res = runner.run(coro)
             runner.check_errors()
             return res
+
+    def schedule(self, coro):
+        with self._semaphore:
+            for runner in self._runners:
+                return runner.schedule(coro)
+            runner = TaskRunner()
+            self._runners.append(runner)
+            return runner.schedule(coro)
 
     def close(self):
         for runner in self._runners:
@@ -141,3 +153,8 @@ def synchronize(
         return wrapped
 
     return class_wrapper
+
+
+def schedule_task(coroutine):
+    runner = TaskRunnerPool.getInstance()
+    runner.schedule(coroutine)

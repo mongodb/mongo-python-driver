@@ -68,7 +68,7 @@ from pymongo import (
     periodic_executor,
     uri_parser,
 )
-from pymongo.asynchronous import synchronize
+from pymongo.asynchronous import schedule_task, synchronize
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.client_session import _EmptyServerSession
@@ -302,9 +302,6 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._init_background()
-
-        if connect:
-            self._topology_task = asyncio.ensure_future(self._fetch_topology())
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -858,6 +855,8 @@ class MongoClient(BaseMongoClient):
     ) -> None:
         super().__init__(host, port, document_class, tz_aware, connect, type_registry, **kwargs)
         self._asynchronous = True
+        if connect:
+            self._topology_task = asyncio.create_task(self._fetch_topology())
 
     async def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.
@@ -1003,8 +1002,13 @@ class MongoClient(BaseMongoClient):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        if self._topology_task is None:
-            self._topology_task = asyncio.ensure_future(self._fetch_topology())
+        try:
+            if self._topology_task is not None:
+                return await self._topology_task
+            else:
+                self._topology_task = asyncio.create_task(self._fetch_topology())
+        except AttributeError:
+            self._topology_task = asyncio.create_task(self._fetch_topology())
 
         return await self._topology_task
 
@@ -1990,6 +1994,8 @@ class SyncMongoClient(BaseMongoClient):
     ) -> None:
         super().__init__(host, port, document_class, tz_aware, connect, type_registry, **kwargs)
         self._asynchronous = False
+        if connect:
+            self._topology_task = schedule_task(self._fetch_topology())
 
     @synchronize(MongoClient)
     def _get_topology(self) -> Topology:
