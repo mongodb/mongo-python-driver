@@ -471,7 +471,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if (
                 check_exists
                 and (not s or not s.in_transaction)
-                and name in self.list_collection_names(filter={"name": name}, session=s)
+                and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
             return Collection(
@@ -894,6 +894,28 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        return await self._command_helper(
+            command,
+            value,
+            check,
+            allowable_errors,
+            read_preference,
+            session=session,
+            **kwargs,
+        )
+
+    async def _command_helper(
+        self,
+        command: Union[str, MutableMapping[str, Any]],
+        value: Any = 1,
+        check: bool = True,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Union[dict[str, Any], _CodecDocumentType]:
         opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:
             kwargs["comment"] = comment
@@ -1081,7 +1103,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
-    async def list_collections(
+    async def _list_collections_helper(
         self,
         session: Optional[ClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
@@ -1127,6 +1149,59 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
         )
 
+    async def list_collections(
+        self,
+        session: Optional[ClientSession] = None,
+        filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[MutableMapping[str, Any]]:
+        """Get a cursor over the collections of this database.
+
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param filter:  A query document to filter the list of
+            collections returned from the listCollections command.
+        :param comment: A user-provided comment to attach to this
+            command.
+        :param kwargs: Optional parameters of the
+            `listCollections command
+            <https://mongodb.com/docs/manual/reference/command/listCollections/>`_
+            can be passed as keyword arguments to this method. The supported
+            options differ by server version.
+
+
+        :return: An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionadded:: 3.6
+        """
+        return await self._list_collections_helper(session, filter, comment, **kwargs)
+
+    async def _list_collection_names(
+        self,
+        session: Optional[ClientSession] = None,
+        filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> list[str]:
+        if comment is not None:
+            kwargs["comment"] = comment
+        if filter is None:
+            kwargs["nameOnly"] = True
+
+        else:
+            # The enumerate collections spec states that "drivers MUST NOT set
+            # nameOnly if a filter specifies any keys other than name."
+            common.validate_is_mapping("filter", filter)
+            kwargs["filter"] = filter
+            if not filter or (len(filter) == 1 and "name" in filter):
+                kwargs["nameOnly"] = True
+
+        return [
+            result["name"]
+            for result in await self._list_collections_helper(session=session, **kwargs)
+        ]
+
     async def list_collection_names(
         self,
         session: Optional[ClientSession] = None,
@@ -1159,20 +1234,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if comment is not None:
-            kwargs["comment"] = comment
-        if filter is None:
-            kwargs["nameOnly"] = True
-
-        else:
-            # The enumerate collections spec states that "drivers MUST NOT set
-            # nameOnly if a filter specifies any keys other than name."
-            common.validate_is_mapping("filter", filter)
-            kwargs["filter"] = filter
-            if not filter or (len(filter) == 1 and "name" in filter):
-                kwargs["nameOnly"] = True
-
-        return [result["name"] for result in await self.list_collections(session=session, **kwargs)]
+        return await self._list_collection_names(session, filter, comment, **kwargs)
 
     async def _drop_helper(
         self, name: str, session: Optional[ClientSession] = None, comment: Optional[Any] = None
@@ -1632,6 +1694,9 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
     _retryable_read_command = Database._retryable_read_command
     _command = Database._command
     _list_collections = Database._list_collections
+    _list_collections_helper = Database._list_collections_helper
+    _list_collection_names = Database._list_collection_names
+    _command_helper = Database._command_helper
 
     get_collection = Database.get_collection
 

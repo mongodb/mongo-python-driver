@@ -1998,10 +1998,6 @@ class SyncMongoClient(BaseMongoClient):
             self._topology_task = schedule_task(self._fetch_topology())
 
     @synchronize(MongoClient)
-    def _get_topology(self) -> Topology:
-        ...
-
-    @synchronize(MongoClient)
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         ...
 
@@ -2037,6 +2033,7 @@ class SyncMongoClient(BaseMongoClient):
     _cleanup_cursor = MongoClient._cleanup_cursor
     _list_databases = MongoClient._list_databases
     _run_operation = MongoClient._run_operation
+    _get_topology = MongoClient._get_topology
 
 
 def _after_fork_child() -> None:

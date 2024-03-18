@@ -143,12 +143,7 @@ def synchronize(
 
             coro = async_method(self, *args, **kwargs)
 
-            # If we're already running in a runner thread, just return the coroutine
-            try:
-                asyncio.get_running_loop()
-                return coro
-            except RuntimeError:
-                return runner.run(coro)
+            return runner.run(coro)
 
         return wrapped
 
