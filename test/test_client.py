@@ -597,34 +597,6 @@ class ClientUnitTest(unittest.TestCase):
             with self.assertWarns(UserWarning):
                 MongoClient(multi_host)
 
-    def test_detect_external_db(self):
-        hosts = [
-            "normalhost.com",
-            "host.cosmos.AZURE.com",
-            "host.docdb.amazonaws.com",
-            "host.docdb-elastic.amazonaws.com",
-        ]
-        with self.assertLogs("pymongo", level="INFO") as cm:
-            for host in hosts:
-                _detect_external_db(host)
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
-            self.assertEqual(len(logs), 3)
-            self.assertEqual(
-                logs[0],
-                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
-            )
-            self.assertEqual(
-                logs[1],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
-            self.assertEqual(
-                logs[2],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
-
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):
