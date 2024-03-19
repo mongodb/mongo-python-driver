@@ -270,8 +270,9 @@ class _OIDCAuthenticator:
     def _run_command(self, conn: Connection, cmd: MutableMapping[str, Any]) -> Mapping[str, Any]:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
-        except OperationFailure:
-            self._invalidate(conn)
+        except OperationFailure as e:
+            if e.code == 18:
+                self._invalidate(conn)
             raise
 
     def _invalidate(self, conn: Connection) -> None:
