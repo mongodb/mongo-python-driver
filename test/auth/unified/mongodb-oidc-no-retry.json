@@ -329,7 +329,7 @@
                   "failCommands": [
                     "saslStart"
                   ],
-                  "errorCode": 20
+                  "errorCode": 18
                 }
               }
             }
@@ -404,7 +404,7 @@
                   "failCommands": [
                     "saslStart"
                   ],
-                  "errorCode": 20
+                  "errorCode": 18
                 }
               }
             }
@@ -419,7 +419,7 @@
               }
             },
             "expectError": {
-              "errorCode": 20
+              "errorCode": 18
             }
           }
         ]

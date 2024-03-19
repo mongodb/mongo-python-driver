@@ -40,7 +40,7 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         set -x
     fi
     export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
-    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
 
 elif [ $OIDC_PROVIDER_NAME == "azure" ]; then

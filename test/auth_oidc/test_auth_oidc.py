@@ -238,8 +238,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Set a fail point for ``saslStart`` commands.
         with self.fail_point(
             {
-                "mode": "alwaysOn",
-                "data": {"failCommands": ["saslStart"], "errorCode": 20},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
             }
         ):
             # Perform a ``find`` operation that succeeds
@@ -255,13 +255,40 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Set a fail point for ``saslStart`` commands.
         with self.fail_point(
             {
-                "mode": "alwaysOn",
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a ``find`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
+    def test_3_3_unexpected_error_code_does_not_clear_cache(self):
+        # Create a ``MongoClient`` with a human callback that returns a valid token
+        client = self.create_client()
+
+        # Set a fail point for ``saslStart`` commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
                 "data": {"failCommands": ["saslStart"], "errorCode": 20},
             }
         ):
             # Perform a ``find`` operation that fails.
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
+
+        # Assert that the callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        # Perform a ``find`` operation that succeeds.
+        client.test.test.find_one()
+
+        # Assert that the callback has been called once.
+        self.assertEqual(self.request_called, 1)
 
         # Close the client.
         client.close()
