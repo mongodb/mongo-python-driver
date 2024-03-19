@@ -87,7 +87,7 @@
         "source": "$external",
         "mechanism": "GSSAPI",
         "mechanism_properties": {
-          "SERVICE_NAME": "other",
+          "SERVICE_NAME": "other"
         }
       }
     },
