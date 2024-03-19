@@ -15,7 +15,6 @@
 """Collection level utilities for Mongo."""
 from __future__ import annotations
 
-import asyncio
 from collections import abc
 from typing import (
     TYPE_CHECKING,
@@ -119,23 +118,23 @@ if TYPE_CHECKING:
     from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession
     from pymongo.collation import Collation
-    from pymongo.database import Database, SyncDatabase
+    from pymongo.database import BaseDatabase, Database, SyncDatabase
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
 
+
 class BaseCollection(common.BaseObject, Generic[_DocumentType]):
     """A base, synchronicity-agnostic collection."""
+
     def __init__(
         self,
-        database: Database[_DocumentType],
+        database: BaseDatabase[_DocumentType],
         name: str,
-        create: Optional[bool] = False,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -239,233 +238,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         )
         self._timeout = database.client.options.timeout
 
-class Collection(BaseCollection):
-    """A Mongo collection."""
-
-    def __init__(
-        self,
-        database: Database[_DocumentType],
-        name: str,
-        create: Optional[bool] = False,
-        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
-        **kwargs: Any,
-    ) -> None:
-        """Get / create a Mongo collection.
-
-        Raises :class:`TypeError` if `name` is not an instance of
-        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
-        not a valid collection name. Any additional keyword arguments will be used
-        as options passed to the create command. See
-        :meth:`~pymongo.database.Database.create_collection` for valid
-        options.
-
-        If `create` is ``True``, `collation` is specified, or any additional
-        keyword arguments are present, a ``create`` command will be
-        sent, using ``session`` if specified. Otherwise, a ``create`` command
-        will not be sent and the collection will be created implicitly on first
-        use. The optional ``session`` argument is *only* used for the ``create``
-        command, it is not associated with the collection afterward.
-
-        :param database: the database to get a collection from
-        :param name: the name of the collection to get
-        :param create: if ``True``, force collection
-            creation even without options being set
-        :param codec_options: An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) database.codec_options is used.
-        :param read_preference: The read preference to use. If
-            ``None`` (the default) database.read_preference is used.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) database.write_concern is used.
-        :param read_concern: An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) database.read_concern is used.
-        :param collation: An instance of
-            :class:`~pymongo.collation.Collation`. If a collation is provided,
-            it will be passed to the create collection command.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession` that is used with
-            the create collection command
-        :param kwargs: additional keyword arguments will
-            be passed as options for the create collection command
-
-        .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
-
-        .. versionchanged:: 4.0
-           Removed the reindex, map_reduce, inline_map_reduce,
-           parallel_scan, initialize_unordered_bulk_op,
-           initialize_ordered_bulk_op, group, count, insert, save,
-           update, remove, find_and_modify, and ensure_index methods. See the
-           :ref:`pymongo4-migration-guide`.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-
-        .. versionchanged:: 3.4
-           Support the `collation` option.
-
-        .. versionchanged:: 3.2
-           Added the read_concern option.
-
-        .. versionchanged:: 3.0
-           Added the codec_options, read_preference, and write_concern options.
-           Removed the uuid_subtype attribute.
-           :class:`~pymongo.collection.Collection` no longer returns an
-           instance of :class:`~pymongo.collection.Collection` for attribute
-           names with leading underscores. You must use dict-style lookups
-           instead::
-
-               collection['__my_collection__']
-
-           Not:
-
-               collection.__my_collection__
-
-        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
-        """
-        super().__init__(
-            database,
-            name,
-            create,
-            codec_options,
-            read_preference,
-            write_concern,
-            read_concern,
-            session,
-            **kwargs
-        )
-        encrypted_fields = kwargs.pop("encryptedFields", None)
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
-        self._asynchronous = True
-
-        if create or kwargs or collation:
-            if encrypted_fields:
-                asyncio.create_task(self._create_encrypted(name, kwargs, collation, session, encrypted_fields=encrypted_fields))
-            else:
-                asyncio.create_task(self._create(name, kwargs, collation, session))
-
-    async def _conn_for_writes(
-        self, session: Optional[ClientSession], operation: str
-    ) -> AsyncIterator[Connection]:
-        return await self._database.client._conn_for_writes(session, operation)
-
-    async def _command(
-        self,
-        conn: Connection,
-        command: MutableMapping[str, Any],
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = None,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        collation: Optional[_CollationIn] = None,
-        session: Optional[ClientSession] = None,
-        retryable_write: bool = False,
-        user_fields: Optional[Any] = None,
-    ) -> Mapping[str, Any]:
-        """Internal command helper.
-
-        :param conn` - A Connection instance.
-        :param command` - The command itself, as a :class:`~bson.son.SON` instance.
-        :param read_preference` (optional) - The read preference to use.
-        :param codec_options` (optional) - An instance of
-            :class:`~bson.codec_options.CodecOptions`.
-        :param check: raise OperationFailure if there are errors
-        :param allowable_errors: errors to ignore if `check` is True
-        :param read_concern` (optional) - An instance of
-            :class:`~pymongo.read_concern.ReadConcern`.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`.
-        :param collation` (optional) - An instance of
-            :class:`~pymongo.collation.Collation`.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
-        :param retryable_write: True if this command is a retryable
-            write.
-        :param user_fields: Response fields that should be decoded
-            using the TypeDecoders from codec_options, passed to
-            bson._decode_all_selective.
-
-        :return: The result document.
-        """
-        async with self._database.client._tmp_session(session) as s:
-            return await conn.command(
-                self._database.name,
-                command,
-                read_preference or self._read_preference_for(session),
-                codec_options or self.codec_options,
-                check,
-                allowable_errors,
-                read_concern=read_concern,
-                write_concern=write_concern,
-                parse_write_concern_error=True,
-                collation=collation,
-                session=s,
-                client=self._database.client,
-                retryable_write=retryable_write,
-                user_fields=user_fields,
-            )
-
-    async def _create(
-        self,
-        name: str,
-        options: MutableMapping[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[ClientSession],
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
-        qev2_required: bool = False,
-    ) -> None:
-        """Sends a create command with the given options."""
-        cmd: dict[str, Any] = {"create": name}
-        if encrypted_fields:
-            cmd["encryptedFields"] = encrypted_fields
-
-        if options:
-            if "size" in options:
-                options["size"] = float(options["size"])
-            cmd.update(options)
-        async with await self._conn_for_writes(session, operation=_Op.CREATE) as conn:
-            if qev2_required and conn.max_wire_version < 21:
-                raise ConfigurationError(
-                    "Driver support of Queryable Encryption is incompatible with server. "
-                    "Upgrade server to use Queryable Encryption. "
-                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
-                )
-
-            await self._command(
-                conn,
-                cmd,
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                collation=collation,
-                session=session,
-            )
-
-    async def _create_encrypted(self,
-        name: str,
-        options: MutableMapping[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[ClientSession],
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
-        qev2_required: bool = False,
-    ) -> None:
-        common.validate_is_mapping("encrypted_fields", encrypted_fields)
-        opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-        await self._create(
-            _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=qev2_required
-        )
-        await self._create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
-        await self._create(name, options, collation, session, encrypted_fields=encrypted_fields)
-        await self.create_index([("__safeContent__", ASCENDING)], session)
-
-    def __getattr__(self, name: str) -> Collection[_DocumentType]:
+    def __getattr__(self, name: str) -> BaseCollection[_DocumentType]:
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -475,16 +248,15 @@ class Collection(BaseCollection):
         if name.startswith("_"):
             full_name = f"{self._name}.{name}"
             raise AttributeError(
-                f"Collection has no attribute {name!r}. To access the {full_name}"
+                f"{type(self).__name__} has no attribute {name!r}. To access the {full_name}"
                 f" collection, use database['{full_name}']."
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> Collection[_DocumentType]:
+    def __getitem__(self, name: str) -> BaseCollection[_DocumentType]:
         return Collection(
             self._database,
             f"{self._name}.{name}",
-            False,
             self.codec_options,
             self.read_preference,
             self.write_concern,
@@ -492,7 +264,7 @@ class Collection(BaseCollection):
         )
 
     def __repr__(self) -> str:
-        return f"Collection({self._database!r}, {self._name!r})"
+        return f"{type(self).__name__}({self._database!r}, {self._name!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
@@ -567,15 +339,254 @@ class Collection(BaseCollection):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        return Collection(
-            self._database,
-            self._name,
-            False,
-            codec_options or self.codec_options,
-            read_preference or self.read_preference,
-            write_concern or self.write_concern,
-            read_concern or self.read_concern,
+        raise NotImplementedError
+
+    def _write_concern_for_cmd(
+        self, cmd: Mapping[str, Any], session: Optional[ClientSession]
+    ) -> WriteConcern:
+        raw_wc = cmd.get("writeConcern")
+        if raw_wc is not None:
+            return WriteConcern(**raw_wc)
+        else:
+            return self._write_concern_for(session)
+
+    # See PYTHON-3084.
+    __iter__ = None
+
+    def __next__(self) -> NoReturn:
+        raise TypeError(f"'{type(self).__name__}' object is not iterable")
+
+    next = __next__
+
+    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
+        """This is only here so that some API misusages are easier to debug."""
+        if "." not in self._name:
+            raise TypeError(
+                f"'{type(self).__name__}' object is not callable. If you "
+                "meant to call the '%s' method on a 'Database' "
+                "object it is failing because no such method "
+                "exists." % self._name
+            )
+        raise TypeError(
+            f"'{type(self).__name__}' object is not callable. If you meant to "
+            f"call the '%s' method on a '{type(self).__name__}' object it is "
+            "failing because no such method exists." % self._name.split(".")[-1]
         )
+
+
+class Collection(BaseCollection[_DocumentType]):
+    """A Mongo collection."""
+
+    def __init__(
+        self,
+        database: Database[_DocumentType],
+        name: str,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Get / create a Mongo collection.
+
+        Raises :class:`TypeError` if `name` is not an instance of
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
+        not a valid collection name. Any additional keyword arguments will be used
+        as options passed to the create command. See
+        :meth:`~pymongo.database.Database.create_collection` for valid
+        options.
+
+        If `create` is ``True``, `collation` is specified, or any additional
+        keyword arguments are present, a ``create`` command will be
+        sent, using ``session`` if specified. Otherwise, a ``create`` command
+        will not be sent and the collection will be created implicitly on first
+        use. The optional ``session`` argument is *only* used for the ``create``
+        command, it is not associated with the collection afterward.
+
+        :param database: the database to get a collection from
+        :param name: the name of the collection to get
+        :param codec_options: An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) database.codec_options is used.
+        :param read_preference: The read preference to use. If
+            ``None`` (the default) database.read_preference is used.
+        :param write_concern: An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) database.write_concern is used.
+        :param read_concern: An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) database.read_concern is used.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession` that is used with
+            the create collection command
+        :param kwargs: additional keyword arguments will
+            be passed as options for the create collection command
+
+        .. versionchanged:: 4.2
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+
+        .. versionchanged:: 4.0
+           Removed the reindex, map_reduce, inline_map_reduce,
+           parallel_scan, initialize_unordered_bulk_op,
+           initialize_ordered_bulk_op, group, count, insert, save,
+           update, remove, find_and_modify, and ensure_index methods. See the
+           :ref:`pymongo4-migration-guide`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
+
+        .. versionchanged:: 3.2
+           Added the read_concern option.
+
+        .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
+           Removed the uuid_subtype attribute.
+           :class:`~pymongo.collection.Collection` no longer returns an
+           instance of :class:`~pymongo.collection.Collection` for attribute
+           names with leading underscores. You must use dict-style lookups
+           instead::
+
+               collection['__my_collection__']
+
+           Not:
+
+               collection.__my_collection__
+
+        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
+        """
+        super().__init__(
+            database, name, codec_options, read_preference, write_concern, read_concern, **kwargs
+        )
+        self._asynchronous = True
+
+    async def _conn_for_writes(
+        self, session: Optional[ClientSession], operation: str
+    ) -> AsyncIterator[Connection]:
+        return await self._database.client._conn_for_writes(session, operation)
+
+    async def _command(
+        self,
+        conn: Connection,
+        command: MutableMapping[str, Any],
+        read_preference: Optional[_ServerMode] = None,
+        codec_options: Optional[CodecOptions] = None,
+        check: bool = True,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        collation: Optional[_CollationIn] = None,
+        session: Optional[ClientSession] = None,
+        retryable_write: bool = False,
+        user_fields: Optional[Any] = None,
+    ) -> Mapping[str, Any]:
+        """Internal command helper.
+
+        :param conn` - A Connection instance.
+        :param command` - The command itself, as a :class:`~bson.son.SON` instance.
+        :param read_preference` (optional) - The read preference to use.
+        :param codec_options` (optional) - An instance of
+            :class:`~bson.codec_options.CodecOptions`.
+        :param check: raise OperationFailure if there are errors
+        :param allowable_errors: errors to ignore if `check` is True
+        :param read_concern` (optional) - An instance of
+            :class:`~pymongo.read_concern.ReadConcern`.
+        :param write_concern: An instance of
+            :class:`~pymongo.write_concern.WriteConcern`.
+        :param collation` (optional) - An instance of
+            :class:`~pymongo.collation.Collation`.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param retryable_write: True if this command is a retryable
+            write.
+        :param user_fields: Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
+
+        :return: The result document.
+        """
+        async with self._database.client._tmp_session(session) as s:
+            return await conn.command(
+                self._database.name,
+                command,
+                read_preference or self._read_preference_for(session),
+                codec_options or self.codec_options,
+                check,
+                allowable_errors,
+                read_concern=read_concern,
+                write_concern=write_concern,
+                parse_write_concern_error=True,
+                collation=collation,
+                session=s,
+                client=self._database.client,
+                retryable_write=retryable_write,
+                user_fields=user_fields,
+            )
+
+    async def _create_helper(
+        self,
+        name: str,
+        options: MutableMapping[str, Any],
+        collation: Optional[_CollationIn],
+        session: Optional[ClientSession],
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        qev2_required: bool = False,
+    ) -> None:
+        """Sends a create command with the given options."""
+        cmd: dict[str, Any] = {"create": name}
+        if encrypted_fields:
+            cmd["encryptedFields"] = encrypted_fields
+
+        if options:
+            if "size" in options:
+                options["size"] = float(options["size"])
+            cmd.update(options)
+        async with await self._conn_for_writes(session, operation=_Op.CREATE) as conn:
+            if qev2_required and conn.max_wire_version < 21:
+                raise ConfigurationError(
+                    "Driver support of Queryable Encryption is incompatible with server. "
+                    "Upgrade server to use Queryable Encryption. "
+                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                )
+
+            await self._command(
+                conn,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                write_concern=self._write_concern_for(session),
+                collation=collation,
+                session=session,
+            )
+
+    async def _create(
+        self,
+        options: MutableMapping[str, Any],
+        session: Optional[ClientSession],
+        **kwargs: Any,
+    ) -> None:
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
+        encrypted_fields = kwargs.pop("encryptedFields", None)
+        if encrypted_fields:
+            common.validate_is_mapping("encrypted_fields", encrypted_fields)
+            opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
+            await self._create_helper(
+                _esc_coll_name(encrypted_fields, self._name),
+                opts,
+                None,
+                session,
+                qev2_required=True,
+            )
+            await self._create_helper(
+                _ecoc_coll_name(encrypted_fields, self._name), opts, None, session
+            )
+            await self._create_helper(
+                self._name, options, collation, session, encrypted_fields=encrypted_fields
+            )
+            await self.create_index([("__safeContent__", ASCENDING)], session)
+        else:
+            await self._create_helper(self._name, options, collation, session)
 
     @_csot.apply
     def bulk_write(
@@ -2427,7 +2438,6 @@ class Collection(BaseCollection):
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
 
-
     async def index_information(
         self,
         session: Optional[ClientSession] = None,
@@ -3170,15 +3180,6 @@ class Collection(BaseCollection):
 
         return await self._retryable_non_cursor_read(_cmd, session, operation=_Op.DISTINCT)
 
-    def _write_concern_for_cmd(
-        self, cmd: Mapping[str, Any], session: Optional[ClientSession]
-    ) -> WriteConcern:
-        raw_wc = cmd.get("writeConcern")
-        if raw_wc is not None:
-            return WriteConcern(**raw_wc)
-        else:
-            return self._write_concern_for(session)
-
     async def _find_and_modify(
         self,
         filter: Mapping[str, Any],
@@ -3603,43 +3604,18 @@ class Collection(BaseCollection):
             **kwargs,
         )
 
-    # See PYTHON-3084.
-    __iter__ = None
 
-    def __next__(self) -> NoReturn:
-        raise TypeError("'Collection' object is not iterable")
-
-    next = __next__
-
-    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
-        """This is only here so that some API misusages are easier to debug."""
-        if "." not in self._name:
-            raise TypeError(
-                "'Collection' object is not callable. If you "
-                "meant to call the '%s' method on a 'Database' "
-                "object it is failing because no such method "
-                "exists." % self._name
-            )
-        raise TypeError(
-            "'Collection' object is not callable. If you meant to "
-            "call the '%s' method on a 'Collection' object it is "
-            "failing because no such method exists." % self._name.split(".")[-1]
-        )
-
-
-class SyncCollection(common.BaseObject, Generic[_DocumentType]):
+class SyncCollection(BaseCollection[_DocumentType]):
     """A Mongo collection."""
 
     def __init__(
         self,
         database: SyncDatabase[_DocumentType],
         name: str,
-        create: Optional[bool] = False,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -3718,44 +3694,9 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
         super().__init__(
-            codec_options or database.codec_options,
-            read_preference or database.read_preference,
-            write_concern or database.write_concern,
-            read_concern or database.read_concern,
+            database, name, codec_options, read_preference, write_concern, read_concern, **kwargs
         )
-        if not isinstance(name, str):
-            raise TypeError("name must be an instance of str")
-
-        if not name or ".." in name:
-            raise InvalidName("collection names cannot be empty")
-        if "$" in name and not (name.startswith(("oplog.$main", "$cmd"))):
-            raise InvalidName("collection names must not contain '$': %r" % name)
-        if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start or end with '.': %r" % name)
-        if "\x00" in name:
-            raise InvalidName("collection names must not contain the null character")
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
-
-        self._database: SyncDatabase[_DocumentType] = database
-        self._name = name
-        self._full_name = f"{self._database.name}.{self._name}"
-        self._write_response_codec_options = self.codec_options._replace(
-            unicode_decode_error_handler="replace", document_class=dict
-        )
-        self._timeout = database.client.options.timeout
-        encrypted_fields = kwargs.pop("encryptedFields", None)
-        if create or kwargs or collation:
-            if encrypted_fields:
-                common.validate_is_mapping("encrypted_fields", encrypted_fields)
-                opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-                self._create(
-                    _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=True
-                )
-                self._create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
-                self._create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
-                self.create_index([("__safeContent__", ASCENDING)], session)
-            else:
-                self._create(name, kwargs, collation, session)
+        self._asynchronous = False
 
     @synchronize(Collection)
     def insert_one(
@@ -3925,5 +3866,3 @@ class SyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     _create = Collection._create
     _insert_one = Collection._insert_one
-    name = Collection.name
-    database = Collection.database

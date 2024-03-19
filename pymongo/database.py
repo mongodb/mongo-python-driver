@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import MongoClient, SyncMongoClient
+    from pymongo.mongo_client import BaseMongoClient, MongoClient, SyncMongoClient
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
@@ -70,12 +70,10 @@ def _check_name(name: str) -> None:
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
-class Database(common.BaseObject, Generic[_DocumentType]):
-    """A Mongo database."""
-
+class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
     def __init__(
         self,
-        client: MongoClient[_DocumentType],
+        client: BaseMongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -159,7 +157,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Database[_DocumentType]:
+    ) -> BaseDatabase[_DocumentType]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -190,17 +188,27 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.8
         """
-        return Database(
-            self.client,
-            self._name,
-            codec_options or self.codec_options,
-            read_preference or self.read_preference,
-            write_concern or self.write_concern,
-            read_concern or self.read_concern,
-        )
+        if self._asynchronous:
+            return Database(
+                self.client,
+                self._name,
+                codec_options or self.codec_options,
+                read_preference or self.read_preference,
+                write_concern or self.write_concern,
+                read_concern or self.read_concern,
+            )
+        else:
+            return SyncDatabase(
+                self.client,
+                self._name,
+                codec_options or self.codec_options,
+                read_preference or self.read_preference,
+                write_concern or self.write_concern,
+                read_concern or self.read_concern,
+            )
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Database):
+        if isinstance(other, BaseDatabase):
             return self._client == other.client and self._name == other.name
         return NotImplemented
 
@@ -211,7 +219,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return hash((self._client, self._name))
 
     def __repr__(self) -> str:
-        return f"Database({self._client!r}, {self._name!r})"
+        return f"{type(self).__name__}({self._client!r}, {self._name!r})"
 
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a collection of this database by name.
@@ -234,7 +242,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         :param name: the name of the collection to get
         """
-        if self.client._asynchronous:
+        if self._asynchronous:
             return Collection(self, name)
         else:
             return SyncCollection(self, name)
@@ -283,11 +291,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             default) the :attr:`read_concern` of this :class:`Database` is
             used.
         """
-        if self.client._asynchronous:
+        if self._asynchronous:
             return Collection(
                 self,
                 name,
-                False,
                 codec_options,
                 read_preference,
                 write_concern,
@@ -297,7 +304,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return SyncCollection(
                 self,
                 name,
-                False,
                 codec_options,
                 read_preference,
                 write_concern,
@@ -330,6 +336,89 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if options.get("encryptedFields"):
                 return cast(Mapping[str, Any], deepcopy(options["encryptedFields"]))
         return None
+
+    # See PYTHON-3084.
+    __iter__ = None
+
+    def __next__(self) -> NoReturn:
+        raise TypeError("'Database' object is not iterable")
+
+    next = __next__
+
+    def __bool__(self) -> NoReturn:
+        raise NotImplementedError(
+            "Database objects do not implement truth "
+            "value testing or bool(). Please compare "
+            "with None instead: database is not None"
+        )
+
+
+class Database(BaseDatabase[_DocumentType]):
+    """A Mongo database."""
+
+    def __init__(
+        self,
+        client: MongoClient[_DocumentType],
+        name: str,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> None:
+        """Get a database by client and name.
+
+        Raises :class:`TypeError` if `name` is not an instance of
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
+        `name` is not a valid database name.
+
+        :param client: A :class:`~pymongo.mongo_client.MongoClient` instance.
+        :param name: The database name.
+        :param codec_options: An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) client.codec_options is used.
+        :param read_preference: The read preference to use. If
+            ``None`` (the default) client.read_preference is used.
+        :param write_concern: An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) client.write_concern is used.
+        :param read_concern: An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) client.read_concern is used.
+
+        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
+
+        .. versionchanged:: 4.0
+           Removed the eval, system_js, error, last_status, previous_error,
+           reset_error_history, authenticate, logout, collection_names,
+           current_op, add_user, remove_user, profiling_level,
+           set_profiling_level, and profiling_info methods.
+           See the :ref:`pymongo4-migration-guide`.
+
+        .. versionchanged:: 3.2
+           Added the read_concern option.
+
+        .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
+           :class:`~pymongo.database.Database` no longer returns an instance
+           of :class:`~pymongo.collection.Collection` for attribute names
+           with leading underscores. You must use dict-style lookups instead::
+
+               db['__my_collection__']
+
+           Not:
+
+               db.__my_collection__
+        """
+        super().__init__(
+            client,
+            name,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
+        )
+
+        self._asynchronous = True
 
     @_csot.apply
     async def create_collection(
@@ -474,17 +563,18 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
-            return Collection(
+            coll = Collection(
                 self,
                 name,
-                True,
                 codec_options,
                 read_preference,
                 write_concern,
                 read_concern,
-                session=s,
                 **kwargs,
             )
+            await coll._create()
+
+            return coll
 
     async def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
@@ -1413,21 +1503,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return result
 
-    # See PYTHON-3084.
-    __iter__ = None
-
-    def __next__(self) -> NoReturn:
-        raise TypeError("'Database' object is not iterable")
-
-    next = __next__
-
-    def __bool__(self) -> NoReturn:
-        raise NotImplementedError(
-            "Database objects do not implement truth "
-            "value testing or bool(). Please compare "
-            "with None instead: database is not None"
-        )
-
     async def dereference(
         self,
         dbref: DBRef,
@@ -1471,7 +1546,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
 
 
-class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
+class SyncDatabase(BaseDatabase[_DocumentType]):
     """A Mongo database."""
 
     def __init__(
@@ -1528,31 +1603,15 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
                db.__my_collection__
         """
         super().__init__(
-            codec_options or client.codec_options,
-            read_preference or client.read_preference,
-            write_concern or client.write_concern,
-            read_concern or client.read_concern,
+            client,
+            name,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
         )
 
-        if not isinstance(name, str):
-            raise TypeError("name must be an instance of str")
-
-        if name != "$external":
-            _check_name(name)
-
-        self._name = name
-        self._client: SyncMongoClient[_DocumentType] = client
-        self._timeout = client.options.timeout
-
-    @property
-    def client(self) -> SyncMongoClient[_DocumentType]:
-        """The client instance for this :class:`Database`."""
-        return self._client
-
-    @property
-    def name(self) -> str:
-        """The name of this :class:`Database`."""
-        return self._name
+        self._asynchronous = False
 
     @_csot.apply
     @synchronize(Database)
@@ -1693,12 +1752,8 @@ class SyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     _retryable_read_command = Database._retryable_read_command
     _command = Database._command
+    _command_helper = Database._command_helper
     _list_collections = Database._list_collections
     _list_collections_helper = Database._list_collections_helper
     _list_collection_names = Database._list_collection_names
-    _command_helper = Database._command_helper
-
-    get_collection = Database.get_collection
-
-    __getitem__ = Database.__getitem__
-    __getattr__ = Database.__getattr__
+    _drop_helper = Database._drop_helper
