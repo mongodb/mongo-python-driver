@@ -744,6 +744,23 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
+    def _get_database(
+        self,
+        name: Optional[str] = None,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> database.Database[_DocumentType]:
+        if name is None:
+            if self._default_database_name is None:
+                raise ConfigurationError("No default database defined")
+            name = self._default_database_name
+
+        return database.Database(
+            self, name, codec_options, read_preference, write_concern, read_concern
+        )
+
     def get_database(
         self,
         name: Optional[str] = None,

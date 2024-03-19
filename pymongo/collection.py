@@ -15,6 +15,7 @@
 """Collection level utilities for Mongo."""
 from __future__ import annotations
 
+import asyncio
 from collections import abc
 from typing import (
     TYPE_CHECKING,
@@ -123,10 +124,8 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
 
-
-class Collection(common.BaseObject, Generic[_DocumentType]):
-    """A Mongo collection."""
-
+class BaseCollection(common.BaseObject, Generic[_DocumentType]):
+    """A base, synchronicity-agnostic collection."""
     def __init__(
         self,
         database: Database[_DocumentType],
@@ -231,7 +230,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidName("collection names must not start or end with '.': %r" % name)
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         self._database: Database[_DocumentType] = database
         self._name = name
@@ -240,19 +238,117 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             unicode_decode_error_handler="replace", document_class=dict
         )
         self._timeout = database.client.options.timeout
+
+class Collection(BaseCollection):
+    """A Mongo collection."""
+
+    def __init__(
+        self,
+        database: Database[_DocumentType],
+        name: str,
+        create: Optional[bool] = False,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Get / create a Mongo collection.
+
+        Raises :class:`TypeError` if `name` is not an instance of
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
+        not a valid collection name. Any additional keyword arguments will be used
+        as options passed to the create command. See
+        :meth:`~pymongo.database.Database.create_collection` for valid
+        options.
+
+        If `create` is ``True``, `collation` is specified, or any additional
+        keyword arguments are present, a ``create`` command will be
+        sent, using ``session`` if specified. Otherwise, a ``create`` command
+        will not be sent and the collection will be created implicitly on first
+        use. The optional ``session`` argument is *only* used for the ``create``
+        command, it is not associated with the collection afterward.
+
+        :param database: the database to get a collection from
+        :param name: the name of the collection to get
+        :param create: if ``True``, force collection
+            creation even without options being set
+        :param codec_options: An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) database.codec_options is used.
+        :param read_preference: The read preference to use. If
+            ``None`` (the default) database.read_preference is used.
+        :param write_concern: An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) database.write_concern is used.
+        :param read_concern: An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) database.read_concern is used.
+        :param collation: An instance of
+            :class:`~pymongo.collation.Collation`. If a collation is provided,
+            it will be passed to the create collection command.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession` that is used with
+            the create collection command
+        :param kwargs: additional keyword arguments will
+            be passed as options for the create collection command
+
+        .. versionchanged:: 4.2
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+
+        .. versionchanged:: 4.0
+           Removed the reindex, map_reduce, inline_map_reduce,
+           parallel_scan, initialize_unordered_bulk_op,
+           initialize_ordered_bulk_op, group, count, insert, save,
+           update, remove, find_and_modify, and ensure_index methods. See the
+           :ref:`pymongo4-migration-guide`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
+
+        .. versionchanged:: 3.2
+           Added the read_concern option.
+
+        .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
+           Removed the uuid_subtype attribute.
+           :class:`~pymongo.collection.Collection` no longer returns an
+           instance of :class:`~pymongo.collection.Collection` for attribute
+           names with leading underscores. You must use dict-style lookups
+           instead::
+
+               collection['__my_collection__']
+
+           Not:
+
+               collection.__my_collection__
+
+        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
+        """
+        super().__init__(
+            database,
+            name,
+            create,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
+            session,
+            **kwargs
+        )
         encrypted_fields = kwargs.pop("encryptedFields", None)
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
+        self._asynchronous = True
+
         if create or kwargs or collation:
             if encrypted_fields:
-                common.validate_is_mapping("encrypted_fields", encrypted_fields)
-                opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-                self._create(
-                    _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=True
-                )
-                self._create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
-                self._create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
-                self.create_index([("__safeContent__", ASCENDING)], session)
+                asyncio.create_task(self._create_encrypted(name, kwargs, collation, session, encrypted_fields=encrypted_fields))
             else:
-                self._create(name, kwargs, collation, session)
+                asyncio.create_task(self._create(name, kwargs, collation, session))
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
@@ -351,6 +447,23 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 collation=collation,
                 session=session,
             )
+
+    async def _create_encrypted(self,
+        name: str,
+        options: MutableMapping[str, Any],
+        collation: Optional[_CollationIn],
+        session: Optional[ClientSession],
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        qev2_required: bool = False,
+    ) -> None:
+        common.validate_is_mapping("encrypted_fields", encrypted_fields)
+        opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
+        await self._create(
+            _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=qev2_required
+        )
+        await self._create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
+        await self._create(name, options, collation, session, encrypted_fields=encrypted_fields)
+        await self.create_index([("__safeContent__", ASCENDING)], session)
 
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a sub-collection of this collection by name.
@@ -1228,7 +1341,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        dbo = self._database.client.get_database(
+        dbo = self._database.client._get_database(
             self._database.name,
             self.codec_options,
             self.read_preference,
@@ -2156,7 +2269,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if comment is not None:
             kwargs["comment"] = comment
-        await self.drop_index("*", session=session, **kwargs)
+        await self._drop_index("*", session=session, **kwargs)
 
     @_csot.apply
     async def drop_index(
@@ -2205,6 +2318,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
+        await self._drop_index(index_or_name, session, comment, **kwargs)
+
+    @_csot.apply
+    async def _drop_index(
+        self,
+        index_or_name: _IndexKeyHint,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
         name = index_or_name
         if isinstance(index_or_name, list):
             name = helpers._gen_index_name(index_or_name)
@@ -2253,6 +2376,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
+        return await self._list_indexes(session, comment)
+
+    async def _list_indexes(
+        self,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions = CodecOptions(SON)
         coll = cast(
             Collection[MutableMapping[str, Any]],
@@ -2297,6 +2427,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
 
+
     async def index_information(
         self,
         session: Optional[ClientSession] = None,
@@ -2331,7 +2462,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = await self.list_indexes(session=session, comment=comment)
+        cursor = await self._list_indexes(session=session, comment=comment)
         info = {}
         async for index in cursor:
             index["key"] = list(index["key"].items())
@@ -2416,7 +2547,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(model, SearchIndexModel):
             model = SearchIndexModel(model["definition"], model.get("name"))
-        return await self.create_search_indexes([model], session, comment, **kwargs)[0]
+        return await self._create_search_indexes([model], session, comment, **kwargs)[0]
 
     async def create_search_indexes(
         self,
@@ -2440,6 +2571,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
+        return await self._create_search_indexes(models, session, comment, **kwargs)
+
+    async def _create_search_indexes(
+        self,
+        models: list[SearchIndexModel],
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> list[str]:
         if comment is not None:
             kwargs["comment"] = comment
 
@@ -2553,7 +2693,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        dbo = self._database.client.get_database(
+        dbo = self._database.client._get_database(
             self._database.name,
             self.codec_options,
             self.read_preference,
@@ -3039,7 +3179,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         else:
             return self._write_concern_for(session)
 
-    async def __find_and_modify(
+    async def _find_and_modify(
         self,
         filter: Mapping[str, Any],
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
@@ -3077,7 +3217,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        async def _find_and_modify(
+        async def _find_and_modify_helper(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Any:
             acknowledged = write_concern.acknowledged
@@ -3113,7 +3253,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return await self._database.client._retryable_write(
             write_concern.acknowledged,
-            _find_and_modify,
+            _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,
         )
@@ -3203,7 +3343,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         kwargs["remove"] = True
         if comment is not None:
             kwargs["comment"] = comment
-        return await self.__find_and_modify(
+        return await self._find_and_modify(
             filter, projection, sort, let=let, hint=hint, session=session, **kwargs
         )
 
@@ -3302,7 +3442,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         kwargs["update"] = replacement
         if comment is not None:
             kwargs["comment"] = comment
-        return await self.__find_and_modify(
+        return await self._find_and_modify(
             filter,
             projection,
             sort,
@@ -3450,7 +3590,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         kwargs["update"] = update
         if comment is not None:
             kwargs["comment"] = comment
-        return await self.__find_and_modify(
+        return await self._find_and_modify(
             filter,
             projection,
             sort,
