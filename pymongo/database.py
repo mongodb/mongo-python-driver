@@ -358,7 +358,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
 
     def __init__(
         self,
-        client: MongoClient[_DocumentType],
+        client: BaseMongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
