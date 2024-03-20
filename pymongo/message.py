@@ -957,15 +957,15 @@ class _BulkWriteContext:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
 
-    def execute(
+    async def execute(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
-        result = self.write_command(cmd, request_id, msg, to_send, client)
-        client._process_response(result, self.session)
+        result = await self.write_command(cmd, request_id, msg, to_send, client)
+        await client._process_response(result, self.session)
         return result, to_send
 
-    def execute_unack(
+    async def execute_unack(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> list[Mapping[str, Any]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
@@ -974,7 +974,7 @@ class _BulkWriteContext:
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.unack_write(cmd, request_id, msg, 0, to_send, client)
+        await self.unack_write(cmd, request_id, msg, 0, to_send, client)
         return to_send
 
     @property
@@ -1000,7 +1000,7 @@ class _BulkWriteContext:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
 
-    def unack_write(
+    async def unack_write(
         self,
         cmd: MutableMapping[str, Any],
         request_id: int,
@@ -1029,7 +1029,7 @@ class _BulkWriteContext:
         if self.publish:
             cmd = self._start(cmd, request_id, docs)
         try:
-            result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
+            result = await self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
             duration = datetime.datetime.now() - self.start_time
             if result is not None:
                 reply = _convert_write_result(self.name, cmd, result)
@@ -1090,7 +1090,7 @@ class _BulkWriteContext:
         return result
 
     @_handle_reauth
-    def write_command(
+    async def write_command(
         self,
         cmd: MutableMapping[str, Any],
         request_id: int,
@@ -1119,7 +1119,7 @@ class _BulkWriteContext:
         if self.publish:
             self._start(cmd, request_id, docs)
         try:
-            reply = self.conn.write_command(request_id, msg, self.codec)
+            reply = await self.conn.write_command(request_id, msg, self.codec)
             duration = datetime.datetime.now() - self.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -1242,20 +1242,20 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         outgoing = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
         return outgoing, to_send
 
-    def execute(
+    async def execute(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
-        result: Mapping[str, Any] = self.conn.command(
+        result: Mapping[str, Any] = await self.conn.command(
             self.db_name, batched_cmd, codec_options=self.codec, session=self.session, client=client
         )
         return result, to_send
 
-    def execute_unack(
+    async def execute_unack(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> list[Mapping[str, Any]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
-        self.conn.command(
+        await self.conn.command(
             self.db_name,
             batched_cmd,
             write_concern=WriteConcern(w=0),

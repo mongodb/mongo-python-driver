@@ -1059,7 +1059,7 @@ class Connection:
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
 
-    def write_command(
+    async def write_command(
         self, request_id: int, msg: bytes, codec_options: CodecOptions
     ) -> dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
@@ -1069,8 +1069,8 @@ class Connection:
         :param request_id: an int.
         :param msg: bytes, the command message.
         """
-        self.send_message(msg, 0)
-        reply = self.receive_message(request_id)
+        await self.send_message(msg, 0)
+        reply = await self.receive_message(request_id)
         result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
