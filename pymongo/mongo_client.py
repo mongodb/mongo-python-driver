@@ -322,7 +322,7 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
             client = self_ref()
             if client is None:
                 return False  # Stop the executor.
-            await MongoClient._process_periodic_tasks(client)
+            await AsyncMongoClient._process_periodic_tasks(client)
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -344,10 +344,13 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Resets topology in a child after successfully forking."""
         self._init_background()
 
-    def _duplicate(self, **kwargs: Any) -> MongoClient:
+    def _duplicate(self, **kwargs: Any) -> BaseMongoClient:
         args = self._init_kwargs.copy()
         args.update(kwargs)
-        return MongoClient(**args)
+        if self._asynchronous:
+            return AsyncMongoClient(**args)
+        else:
+            return MongoClient(**args)
 
     def watch(
         self,
@@ -594,7 +597,7 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __getitem__(
         self, name: str
-    ) -> database.Database[_DocumentType] | database.SyncDatabase[_DocumentType]:
+    ) -> database.AsyncDatabase[_DocumentType] | database.Database[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -603,9 +606,9 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param name: the name of the database to get
         """
         if self._asynchronous:
-            return database.Database(self, name)
+            return database.AsyncDatabase(self, name)
         else:
-            return database.SyncDatabase(self, name)
+            return database.Database(self, name)
 
     def _close_cursor_soon(
         self,
@@ -762,7 +765,7 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database[_DocumentType] | database.SyncDatabase[_DocumentType]:
+    ) -> database.AsyncDatabase[_DocumentType] | database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
@@ -811,11 +814,11 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
             name = self._default_database_name
 
         if self._asynchronous:
-            return database.Database(
+            return database.AsyncDatabase(
                 self, name, codec_options, read_preference, write_concern, read_concern
             )
         else:
-            return database.SyncDatabase(
+            return database.Database(
                 self, name, codec_options, read_preference, write_concern, read_concern
             )
 
@@ -828,7 +831,7 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
             write_concern=DEFAULT_WRITE_CONCERN,
         )
 
-    def __enter__(self) -> MongoClient[_DocumentType]:
+    def __enter__(self) -> BaseMongoClient[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -843,9 +846,9 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
 
-class MongoClient(BaseMongoClient):
+class AsyncMongoClient(BaseMongoClient):
     """
-    A client-side representation of a MongoDB cluster.
+    An asynchronous client-side representation of a MongoDB cluster.
 
     Instances can represent either a standalone MongoDB server, a replica
     set, or a sharded cluster. Instances of this class are responsible for
@@ -969,7 +972,7 @@ class MongoClient(BaseMongoClient):
         try:
             # Use Connection.command directly to avoid implicitly creating
             # another session.
-            async with self._conn_for_reads(
+            async with await self._conn_for_reads(
                 ReadPreference.PRIMARY_PREFERRED, None, operation=_Op.END_SESSIONS
             ) as (
                 conn,
@@ -1632,7 +1635,7 @@ class MongoClient(BaseMongoClient):
         """
         return [
             doc["name"]
-            for doc in await self._list_databases(session, nameOnly=True, comment=comment)
+            async for doc in await self._list_databases(session, nameOnly=True, comment=comment)
         ]
 
     @_csot.apply
@@ -1676,7 +1679,7 @@ class MongoClient(BaseMongoClient):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        async with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
+        async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
             await self[name]._command(
                 conn,
                 {"dropDatabase": 1, "comment": comment},
@@ -1744,7 +1747,7 @@ class _MongoClientErrorHandler:
         "handled",
     )
 
-    def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
+    def __init__(self, client: BaseMongoClient, server: Server, session: Optional[ClientSession]):
         self.client = client
         self.server_address = server.description.address
         self.session = session
@@ -1808,7 +1811,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: MongoClient,
+        mongo_client: BaseMongoClient,
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[_Bulk],
         operation: str,
@@ -1998,7 +2001,7 @@ class _ClientConnectionRetryable(Generic[T]):
             return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
-class SyncMongoClient(BaseMongoClient):
+class MongoClient(BaseMongoClient):
     def __init__(
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
@@ -2014,35 +2017,35 @@ class SyncMongoClient(BaseMongoClient):
         if connect:
             self._topology_task = schedule_task(self._fetch_topology())
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def address(self) -> Optional[tuple[str, int]]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def primary(self) -> Optional[tuple[str, int]]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def secondaries(self) -> set[_Address]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def arbiters(self) -> set[_Address]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def is_primary(self) -> bool:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def close(self) -> None:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
@@ -2051,7 +2054,7 @@ class SyncMongoClient(BaseMongoClient):
     ) -> CommandCursor[dict[str, Any]]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def list_database_names(
         self,
         session: Optional[client_session.ClientSession] = None,
@@ -2059,7 +2062,7 @@ class SyncMongoClient(BaseMongoClient):
     ) -> list[str]:
         ...
 
-    @synchronize(MongoClient)
+    @synchronize(AsyncMongoClient)
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2068,30 +2071,30 @@ class SyncMongoClient(BaseMongoClient):
     ) -> None:
         ...
 
-    _server_property = MongoClient._server_property
-    _conn_for_reads = MongoClient._conn_for_reads
-    _conn_for_writes = MongoClient._conn_for_writes
-    _conn_from_server = MongoClient._conn_from_server
-    _select_server = MongoClient._select_server
-    _checkout = MongoClient._checkout
-    _tmp_session = MongoClient._tmp_session
-    _return_server_session = MongoClient._return_server_session
-    _process_response = MongoClient._process_response
-    _retryable_read = MongoClient._retryable_read
-    _retryable_write = MongoClient._retryable_write
-    _retry_with_session = MongoClient._retry_with_session
-    _retry_internal = MongoClient._retry_internal
-    _cleanup_cursor = MongoClient._cleanup_cursor
-    _close_cursor_now = MongoClient._close_cursor_now
-    _kill_cursors = MongoClient._kill_cursors
-    _kill_cursor_impl = MongoClient._kill_cursor_impl
-    _process_kill_cursors = MongoClient._process_kill_cursors
-    _process_periodic_tasks = MongoClient._process_periodic_tasks
-    _list_databases = MongoClient._list_databases
-    _run_operation = MongoClient._run_operation
-    _fetch_topology = MongoClient._fetch_topology
-    _get_topology = MongoClient._get_topology
-    _end_sessions = MongoClient._end_sessions
+    _server_property = AsyncMongoClient._server_property
+    _conn_for_reads = AsyncMongoClient._conn_for_reads
+    _conn_for_writes = AsyncMongoClient._conn_for_writes
+    _conn_from_server = AsyncMongoClient._conn_from_server
+    _select_server = AsyncMongoClient._select_server
+    _checkout = AsyncMongoClient._checkout
+    _tmp_session = AsyncMongoClient._tmp_session
+    _return_server_session = AsyncMongoClient._return_server_session
+    _process_response = AsyncMongoClient._process_response
+    _retryable_read = AsyncMongoClient._retryable_read
+    _retryable_write = AsyncMongoClient._retryable_write
+    _retry_with_session = AsyncMongoClient._retry_with_session
+    _retry_internal = AsyncMongoClient._retry_internal
+    _cleanup_cursor = AsyncMongoClient._cleanup_cursor
+    _close_cursor_now = AsyncMongoClient._close_cursor_now
+    _kill_cursors = AsyncMongoClient._kill_cursors
+    _kill_cursor_impl = AsyncMongoClient._kill_cursor_impl
+    _process_kill_cursors = AsyncMongoClient._process_kill_cursors
+    _process_periodic_tasks = AsyncMongoClient._process_periodic_tasks
+    _list_databases = AsyncMongoClient._list_databases
+    _run_operation = AsyncMongoClient._run_operation
+    _fetch_topology = AsyncMongoClient._fetch_topology
+    _get_topology = AsyncMongoClient._get_topology
+    _end_sessions = AsyncMongoClient._end_sessions
 
 
 def _after_fork_child() -> None:

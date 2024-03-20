@@ -38,7 +38,7 @@ from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous import synchronize
 from pymongo.change_stream import DatabaseChangeStream
-from pymongo.collection import Collection, SyncCollection
+from pymongo.collection import AsyncCollection, Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
@@ -189,7 +189,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.8
         """
         if self._asynchronous:
-            return Database(
+            return AsyncDatabase(
                 self.client,
                 self._name,
                 codec_options or self.codec_options,
@@ -198,7 +198,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
                 read_concern or self.read_concern,
             )
         else:
-            return SyncDatabase(
+            return Database(
                 self.client,
                 self._name,
                 codec_options or self.codec_options,
@@ -235,7 +235,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> Collection[_DocumentType] | SyncCollection:
+    def __getitem__(self, name: str) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -243,9 +243,9 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         :param name: the name of the collection to get
         """
         if self._asynchronous:
-            return Collection(self, name)
+            return AsyncCollection(self, name)
         else:
-            return SyncCollection(self, name)
+            return Collection(self, name)
 
     def get_collection(
         self,
@@ -254,7 +254,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentType] | SyncCollection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -292,7 +292,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             used.
         """
         if self._asynchronous:
-            return Collection(
+            return AsyncCollection(
                 self,
                 name,
                 codec_options,
@@ -301,7 +301,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
                 read_concern,
             )
         else:
-            return SyncCollection(
+            return Collection(
                 self,
                 name,
                 codec_options,
@@ -353,8 +353,8 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         )
 
 
-class Database(BaseDatabase[_DocumentType]):
-    """A Mongo database."""
+class AsyncDatabase(BaseDatabase[_DocumentType]):
+    """An asynchronous Mongo database."""
 
     def __init__(
         self,
@@ -431,7 +431,7 @@ class Database(BaseDatabase[_DocumentType]):
         session: Optional[ClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
-    ) -> Collection[_DocumentType] | SyncCollection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -1333,7 +1333,7 @@ class Database(BaseDatabase[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        async with self._client._conn_for_writes(session, operation=_Op.DROP) as connection:
+        async with await self._client._conn_for_writes(session, operation=_Op.DROP) as connection:
             return await self._command(
                 connection,
                 command,
@@ -1546,7 +1546,7 @@ class Database(BaseDatabase[_DocumentType]):
         )
 
 
-class SyncDatabase(BaseDatabase[_DocumentType]):
+class Database(BaseDatabase[_DocumentType]):
     """A Mongo database."""
 
     def __init__(
@@ -1614,7 +1614,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         self._asynchronous = False
 
     @_csot.apply
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def create_collection(
         self,
         name: str,
@@ -1625,17 +1625,17 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         session: Optional[ClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
-    ) -> Collection[_DocumentType] | SyncCollection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
         ...
 
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> CommandCursor[_DocumentType]:
         ...
 
     @overload
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1651,7 +1651,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         ...
 
     @overload
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1667,7 +1667,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1683,7 +1683,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1697,7 +1697,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
     ) -> CommandCursor[_DocumentType]:
         ...
 
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def list_collections(
         self,
         session: Optional[ClientSession] = None,
@@ -1707,7 +1707,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         ...
 
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def list_collection_names(
         self,
         session: Optional[ClientSession] = None,
@@ -1718,7 +1718,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1728,7 +1728,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def validate_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1740,7 +1740,7 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize(Database)
+    @synchronize(AsyncDatabase)
     def dereference(
         self,
         dbref: DBRef,
@@ -1750,10 +1750,10 @@ class SyncDatabase(BaseDatabase[_DocumentType]):
     ) -> Optional[_DocumentType]:
         ...
 
-    _retryable_read_command = Database._retryable_read_command
-    _command = Database._command
-    _command_helper = Database._command_helper
-    _list_collections = Database._list_collections
-    _list_collections_helper = Database._list_collections_helper
-    _list_collection_names = Database._list_collection_names
-    _drop_helper = Database._drop_helper
+    _retryable_read_command = AsyncDatabase._retryable_read_command
+    _command = AsyncDatabase._command
+    _command_helper = AsyncDatabase._command_helper
+    _list_collections = AsyncDatabase._list_collections
+    _list_collections_helper = AsyncDatabase._list_collections_helper
+    _list_collection_names = AsyncDatabase._list_collection_names
+    _drop_helper = AsyncDatabase._drop_helper
