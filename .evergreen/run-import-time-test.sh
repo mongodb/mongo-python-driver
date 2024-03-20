@@ -29,9 +29,9 @@ function get_import_time() {
     echo $last_line
 }
 
-import_time_curr=$(generate_import_log $HEAD_SHA)
+import_time_curr=$(get_import_time $HEAD_SHA)
 git checkout $BASE_SHA
-import_time_prev=$(generate_import_log $BASE_SHA)
+import_time_prev=$(get_import_time $BASE_SHA)
 
 # Check if we got 20% or more slower
 let diff=$import_time_curr-$import_time_prev
