@@ -118,7 +118,7 @@ if TYPE_CHECKING:
     from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession
     from pymongo.collation import Collation
-    from pymongo.database import BaseDatabase, Database
+    from pymongo.database import BaseDatabase
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
@@ -308,7 +308,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         return self._name
 
     @property
-    def database(self) -> Database[_DocumentType]:
+    def database(self) -> BaseDatabase[_DocumentType]:
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
@@ -383,13 +383,151 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
             "failing because no such method exists." % self._name.split(".")[-1]
         )
 
+    def watch(
+        self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
+    ) -> CollectionChangeStream[_DocumentType]:
+        """Watch changes on this collection.
+
+        Performs an aggregation with an implicit initial ``$changeStream``
+        stage and returns a
+        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
+        iterates over changes on this collection.
+
+        .. code-block:: python
+
+           with db.collection.watch() as stream:
+               for change in stream:
+                   print(change)
+
+        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
+        blocks until the next change document is returned or an error is
+        raised. If the
+        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
+        encounters a network error when retrieving a batch from the server,
+        it will automatically attempt to recreate the cursor such that no
+        change events are missed. Any error encountered during the resume
+        attempt indicates there may be an outage and will be raised.
+
+        .. code-block:: python
+
+            try:
+                with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    for insert_change in stream:
+                        print(insert_change)
+            except pymongo.errors.PyMongoError:
+                # The ChangeStream encountered an unrecoverable error or the
+                # resume attempt failed to recreate the cursor.
+                logging.error("...")
+
+        For a precise description of the resume process see the
+        `change streams specification`_.
+
+        .. note:: Using this helper method is preferred to directly calling
+            :meth:`~pymongo.collection.Collection.aggregate` with a
+            ``$changeStream`` stage, for the purpose of supporting
+            resumability.
+
+        .. warning:: This Collection's :attr:`read_concern` must be
+            ``ReadConcern("majority")`` in order to use the ``$changeStream``
+            stage.
+
+        :param pipeline: A list of aggregation pipeline stages to
+            append to an initial ``$changeStream`` stage. Not all
+            pipeline stages are valid after a ``$changeStream`` stage, see the
+            MongoDB documentation on change streams for the supported stages.
+        :param full_document: The fullDocument to pass as an option
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup',
+            'whenAvailable', 'required'. When set to 'updateLookup', the
+            change notification for partial updates will include both a delta
+            describing the changes to the document, as well as a copy of the
+            entire document that was changed from some time after the change
+            occurred.
+        :param full_document_before_change: Allowed values: 'whenAvailable'
+            and 'required'. Change events may now result in a
+            'fullDocumentBeforeChange' response field.
+        :param resume_after: A resume token. If provided, the
+            change stream will start returning changes that occur directly
+            after the operation specified in the resume token. A resume token
+            is the _id value of a change document.
+        :param max_await_time_ms: The maximum time in milliseconds
+            for the server to wait for changes before responding to a getMore
+            operation.
+        :param batch_size: The maximum number of documents to return
+            per batch.
+        :param collation: The :class:`~pymongo.collation.Collation`
+            to use for the aggregation.
+        :param start_at_operation_time: If provided, the resulting
+            change stream will only return changes that occurred at or after
+            the specified :class:`~bson.timestamp.Timestamp`. Requires
+            MongoDB >= 4.0.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param start_after: The same as `resume_after` except that
+            `start_after` can resume notifications after an invalidate event.
+            This option and `resume_after` are mutually exclusive.
+        :param comment: A user-provided comment to attach to this
+            command.
+        :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
+
+        :return: A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+
+        .. versionchanged:: 4.3
+           Added `show_expanded_events` parameter.
+
+        .. versionchanged:: 4.2
+           Added ``full_document_before_change`` parameter.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+
+        .. versionchanged:: 3.9
+           Added the ``start_after`` parameter.
+
+        .. versionchanged:: 3.7
+           Added the ``start_at_operation_time`` parameter.
+
+        .. versionadded:: 3.6
+
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
+
+        .. _change streams specification:
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
+        """
+        return CollectionChangeStream(
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+            comment,
+            full_document_before_change,
+            show_expanded_events,
+        )
+
 
 class AsyncCollection(BaseCollection[_DocumentType]):
     """An asynchronous Mongo collection."""
 
     def __init__(
         self,
-        database: Database[_DocumentType],
+        database: BaseDatabase[_DocumentType],
         name: str,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -599,7 +737,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
             await self._create_helper(self._name, options, collation, session)
 
     @_csot.apply
-    def bulk_write(
+    async def bulk_write(
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
@@ -691,7 +829,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
                 raise TypeError(f"{request!r} is not a valid request") from None
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = blk.execute(write_concern, session, _Op.INSERT)
+        bulk_api_result = await blk.execute(write_concern, session, _Op.INSERT)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -804,7 +942,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         )
 
     @_csot.apply
-    def insert_many(
+    async def insert_many(
         self,
         documents: Iterable[Union[_DocumentType, RawBSONDocument]],
         ordered: bool = True,
@@ -875,7 +1013,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         blk.ops = list(gen())
-        blk.execute(write_concern, session, _Op.INSERT)
+        await blk.execute(write_concern, session, _Op.INSERT)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     async def _update(
@@ -1362,7 +1500,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        dbo = self._database.client._get_database(
+        dbo = self._database.client.get_database(
             self._database.name,
             self.codec_options,
             self.read_preference,
@@ -2715,7 +2853,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        dbo = self._database.client._get_database(
+        dbo = self._database.client.get_database(
             self._database.name,
             self.codec_options,
             self.read_preference,
@@ -2915,144 +3053,6 @@ class AsyncCollection(BaseCollection[_DocumentType]):
                     **kwargs,
                 ),
             )
-
-    def watch(
-        self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
-    ) -> CollectionChangeStream[_DocumentType]:
-        """Watch changes on this collection.
-
-        Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a
-        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
-        iterates over changes on this collection.
-
-        .. code-block:: python
-
-           with db.collection.watch() as stream:
-               for change in stream:
-                   print(change)
-
-        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
-        blocks until the next change document is returned or an error is
-        raised. If the
-        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
-        encounters a network error when retrieving a batch from the server,
-        it will automatically attempt to recreate the cursor such that no
-        change events are missed. Any error encountered during the resume
-        attempt indicates there may be an outage and will be raised.
-
-        .. code-block:: python
-
-            try:
-                with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    for insert_change in stream:
-                        print(insert_change)
-            except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
-                # resume attempt failed to recreate the cursor.
-                logging.error("...")
-
-        For a precise description of the resume process see the
-        `change streams specification`_.
-
-        .. note:: Using this helper method is preferred to directly calling
-            :meth:`~pymongo.collection.Collection.aggregate` with a
-            ``$changeStream`` stage, for the purpose of supporting
-            resumability.
-
-        .. warning:: This Collection's :attr:`read_concern` must be
-            ``ReadConcern("majority")`` in order to use the ``$changeStream``
-            stage.
-
-        :param pipeline: A list of aggregation pipeline stages to
-            append to an initial ``$changeStream`` stage. Not all
-            pipeline stages are valid after a ``$changeStream`` stage, see the
-            MongoDB documentation on change streams for the supported stages.
-        :param full_document: The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'updateLookup',
-            'whenAvailable', 'required'. When set to 'updateLookup', the
-            change notification for partial updates will include both a delta
-            describing the changes to the document, as well as a copy of the
-            entire document that was changed from some time after the change
-            occurred.
-        :param full_document_before_change: Allowed values: 'whenAvailable'
-            and 'required'. Change events may now result in a
-            'fullDocumentBeforeChange' response field.
-        :param resume_after: A resume token. If provided, the
-            change stream will start returning changes that occur directly
-            after the operation specified in the resume token. A resume token
-            is the _id value of a change document.
-        :param max_await_time_ms: The maximum time in milliseconds
-            for the server to wait for changes before responding to a getMore
-            operation.
-        :param batch_size: The maximum number of documents to return
-            per batch.
-        :param collation: The :class:`~pymongo.collation.Collation`
-            to use for the aggregation.
-        :param start_at_operation_time: If provided, the resulting
-            change stream will only return changes that occurred at or after
-            the specified :class:`~bson.timestamp.Timestamp`. Requires
-            MongoDB >= 4.0.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
-        :param start_after: The same as `resume_after` except that
-            `start_after` can resume notifications after an invalidate event.
-            This option and `resume_after` are mutually exclusive.
-        :param comment: A user-provided comment to attach to this
-            command.
-        :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
-
-        :return: A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
-
-        .. versionchanged:: 4.3
-           Added `show_expanded_events` parameter.
-
-        .. versionchanged:: 4.2
-           Added ``full_document_before_change`` parameter.
-
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-
-        .. versionchanged:: 3.9
-           Added the ``start_after`` parameter.
-
-        .. versionchanged:: 3.7
-           Added the ``start_at_operation_time`` parameter.
-
-        .. versionadded:: 3.6
-
-        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
-
-        .. _change streams specification:
-            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
-        """
-        return CollectionChangeStream(
-            self,
-            pipeline,
-            full_document,
-            resume_after,
-            max_await_time_ms,
-            batch_size,
-            collation,
-            start_at_operation_time,
-            session,
-            start_after,
-            comment,
-            full_document_before_change,
-            show_expanded_events,
-        )
 
     @_csot.apply
     async def rename(
@@ -3622,7 +3622,7 @@ class Collection(BaseCollection[_DocumentType]):
 
     def __init__(
         self,
-        database: Database[_DocumentType],
+        database: BaseDatabase[_DocumentType],
         name: str,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -3718,6 +3718,17 @@ class Collection(BaseCollection[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> InsertOneResult:
+        ...
+
+    @synchronize(AsyncCollection)
+    def insert_many(
+        self,
+        documents: Iterable[Union[_DocumentType, RawBSONDocument]],
+        ordered: bool = True,
+        bypass_document_validation: bool = False,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> InsertManyResult:
         ...
 
     @synchronize(AsyncCollection)
@@ -3876,7 +3887,184 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         ...
 
+    @synchronize(AsyncCollection)
+    def options(
+        self,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> MutableMapping[str, Any]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def bulk_write(
+        self,
+        requests: Sequence[_WriteOp[_DocumentType]],
+        ordered: bool = True,
+        bypass_document_validation: bool = False,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
+    ) -> BulkWriteResult:
+        ...
+
+    @synchronize(AsyncCollection)
+    def aggregate(
+        self,
+        pipeline: _Pipeline,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[_DocumentType]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def aggregate_raw_batches(
+        self,
+        pipeline: _Pipeline,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> RawBatchCursor[_DocumentType]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def create_search_index(
+        self,
+        model: Union[Mapping[str, Any], SearchIndexModel],
+        session: Optional[ClientSession] = None,
+        comment: Any = None,
+        **kwargs: Any,
+    ) -> str:
+        ...
+
+    @synchronize(AsyncCollection)
+    def create_search_indexes(
+        self,
+        models: list[SearchIndexModel],
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> list[str]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def distinct(
+        self,
+        key: str,
+        filter: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> list:
+        ...
+
+    @synchronize(AsyncCollection)
+    async def drop_search_index(
+        self,
+        name: str,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @synchronize(AsyncCollection)
+    async def find_one_and_delete(
+        self,
+        filter: Mapping[str, Any],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
+        ...
+
+    @synchronize(AsyncCollection)
+    def find_one_and_replace(
+        self,
+        filter: Mapping[str, Any],
+        replacement: Mapping[str, Any],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
+        ...
+
+    @synchronize(AsyncCollection)
+    def find_one_and_update(
+        self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
+        ...
+
+    @synchronize(AsyncCollection)
+    def index_information(
+        self,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> MutableMapping[str, Any]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def list_search_indexes(
+        self,
+        name: Optional[str] = None,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[Mapping[str, Any]]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def rename(
+        self,
+        new_name: str,
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> MutableMapping[str, Any]:
+        ...
+
+    @synchronize(AsyncCollection)
+    def update_search_index(
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        session: Optional[ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    _aggregate = AsyncCollection._aggregate
+    _count_cmd = AsyncCollection._count_cmd
+    _create_search_indexes = AsyncCollection._create_search_indexes
+    _drop_index = AsyncCollection._drop_index
+    _find_and_modify = AsyncCollection._find_and_modify
+    _list_indexes = AsyncCollection._list_indexes
     _create = AsyncCollection._create
+    _create_helper = AsyncCollection._create_helper
     _insert_one = AsyncCollection._insert_one
     _retryable_non_cursor_read = AsyncCollection._retryable_non_cursor_read
     _create_indexes = AsyncCollection._create_indexes
