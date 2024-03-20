@@ -337,12 +337,6 @@ class BaseMongoClient(common.BaseObject, Generic[_DocumentType]):
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
 
-    async def _fetch_topology(self) -> Topology:
-        await self._topology.open()
-        async with self._alock:
-            await self._kill_cursors_executor.open()
-        return self._topology
-
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)
 
@@ -874,6 +868,12 @@ class MongoClient(BaseMongoClient):
         self._asynchronous = True
         if connect:
             self._topology_task = asyncio.create_task(self._fetch_topology())
+
+    async def _fetch_topology(self) -> Topology:
+        await self._topology.open()
+        async with self._alock:
+            await self._kill_cursors_executor.open()
+        return self._topology
 
     async def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.
@@ -2015,7 +2015,31 @@ class SyncMongoClient(BaseMongoClient):
             self._topology_task = schedule_task(self._fetch_topology())
 
     @synchronize(MongoClient)
+    def address(self) -> Optional[tuple[str, int]]:
+        ...
+
+    @synchronize(MongoClient)
+    def primary(self) -> Optional[tuple[str, int]]:
+        ...
+
+    @synchronize(MongoClient)
+    def secondaries(self) -> set[_Address]:
+        ...
+
+    @synchronize(MongoClient)
+    def arbiters(self) -> set[_Address]:
+        ...
+
+    @synchronize(MongoClient)
+    def is_primary(self) -> bool:
+        ...
+
+    @synchronize(MongoClient)
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
+        ...
+
+    @synchronize(MongoClient)
+    def close(self) -> None:
         ...
 
     @synchronize(MongoClient)
@@ -2035,22 +2059,39 @@ class SyncMongoClient(BaseMongoClient):
     ) -> list[str]:
         ...
 
+    @synchronize(MongoClient)
+    def drop_database(
+        self,
+        name_or_database: Union[str, database.Database[_DocumentTypeArg]],
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
+    ) -> None:
+        ...
+
+    _server_property = MongoClient._server_property
     _conn_for_reads = MongoClient._conn_for_reads
+    _conn_for_writes = MongoClient._conn_for_writes
     _conn_from_server = MongoClient._conn_from_server
     _select_server = MongoClient._select_server
     _checkout = MongoClient._checkout
     _tmp_session = MongoClient._tmp_session
     _return_server_session = MongoClient._return_server_session
     _process_response = MongoClient._process_response
-    _process_kill_cursors = MongoClient._process_kill_cursors
     _retryable_read = MongoClient._retryable_read
     _retryable_write = MongoClient._retryable_write
     _retry_with_session = MongoClient._retry_with_session
     _retry_internal = MongoClient._retry_internal
     _cleanup_cursor = MongoClient._cleanup_cursor
+    _close_cursor_now = MongoClient._close_cursor_now
+    _kill_cursors = MongoClient._kill_cursors
+    _kill_cursor_impl = MongoClient._kill_cursor_impl
+    _process_kill_cursors = MongoClient._process_kill_cursors
+    _process_periodic_tasks = MongoClient._process_periodic_tasks
     _list_databases = MongoClient._list_databases
     _run_operation = MongoClient._run_operation
+    _fetch_topology = MongoClient._fetch_topology
     _get_topology = MongoClient._get_topology
+    _end_sessions = MongoClient._end_sessions
 
 
 def _after_fork_child() -> None:
