@@ -417,6 +417,9 @@ functions:
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
           fi
+          if [ -n "${IS_SERVERLESS_PROXY}" ]; then
+            export IS_SERVERLESS_PROXY=1
+          fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
           fi
@@ -2479,6 +2482,7 @@ axes:
         variables:
           test_serverless: true
           VAULT_NAME: "serverless_next"
+          IS_SERVERLESS_PROXY: true
         batchtime: 10080  # 7 days
 
 buildvariants:

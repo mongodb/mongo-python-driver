@@ -102,9 +102,9 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.mongo_client import MongoClient, _detect_external_db
+from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
+from pymongo.pool import _METADATA, ENV_VAR_K8S, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -596,34 +596,6 @@ class ClientUnitTest(unittest.TestCase):
                     MongoClient(host)
             with self.assertWarns(UserWarning):
                 MongoClient(multi_host)
-
-    def test_detect_external_db(self):
-        hosts = [
-            "normalhost.com",
-            "host.cosmos.AZURE.com",
-            "host.docdb.amazonaws.com",
-            "host.docdb-elastic.amazonaws.com",
-        ]
-        with self.assertLogs("pymongo", level="INFO") as cm:
-            for host in hosts:
-                _detect_external_db(host)
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
-            self.assertEqual(len(logs), 3)
-            self.assertEqual(
-                logs[0],
-                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
-            )
-            self.assertEqual(
-                logs[1],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
-            self.assertEqual(
-                logs[2],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
 
 
 class TestClient(IntegrationTest):
