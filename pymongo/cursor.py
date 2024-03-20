@@ -337,9 +337,9 @@ class Cursor(Generic[_DocumentType]):
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                loop.create_task(self.__die())
+                loop.create_task(self._die())
             else:
-                loop.run_until_complete(self.__die())
+                loop.run_until_complete(self._die())
         except Exception:
             raise
 
@@ -418,7 +418,7 @@ class Cursor(Generic[_DocumentType]):
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self.__collection, session=session)
 
-    async def __die(self, synchronous: bool = False) -> None:
+    async def _die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         try:
             already_killed = self.__killed
@@ -449,7 +449,7 @@ class Cursor(Generic[_DocumentType]):
 
     async def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        await self.__die(True)
+        await self._die(True)
 
     def __query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
@@ -1053,7 +1053,7 @@ class Cursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
             if exc.timeout:
-                await self.__die(False)
+                await self._die(False)
             else:
                 await self.close()
             # If this is a tailable cursor the error is likely

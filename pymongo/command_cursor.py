@@ -30,6 +30,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
+from pymongo.asynchronous import synchronize
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
@@ -100,13 +101,13 @@ class CommandCursor(Generic[_DocumentType]):
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                loop.create_task(self.__die())
+                loop.create_task(self._die())
             else:
-                loop.run_until_complete(self.__die())
+                loop.run_until_complete(self._die())
         except Exception:
             raise
 
-    async def __die(self, synchronous: bool = False) -> None:
+    async def _die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         already_killed = self.__killed
         self.__killed = True
@@ -135,9 +136,9 @@ class CommandCursor(Generic[_DocumentType]):
             await self.__session._end_session(lock=synchronous)
             self.__session = None
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        self.__die(True)
+        await self._die(True)
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -189,11 +190,11 @@ class CommandCursor(Generic[_DocumentType]):
             else:
                 self.__sock_mgr = conn_mgr
 
-    def __send_message(self, operation: _GetMore) -> None:
+    async def __send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
         client = self.__collection.database.client
         try:
-            response = client._run_operation(
+            response = await client._run_operation(
                 operation, self._unpack_response, address=self.__address
             )
         except OperationFailure as exc:
@@ -201,19 +202,19 @@ class CommandCursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
             if exc.timeout:
-                self.__die(False)
+                await self._die(False)
             else:
                 # Return the session and pinned connection, if necessary.
-                self.close()
+                await self.close()
             raise
         except ConnectionFailure:
             # Don't send killCursors because the cursor is already closed.
             self.__killed = True
             # Return the session and pinned connection, if necessary.
-            self.close()
+            await self.close()
             raise
         except Exception:
-            self.close()
+            await self.close()
             raise
 
         if isinstance(response, PinnedResponse):
@@ -230,7 +231,7 @@ class CommandCursor(Generic[_DocumentType]):
             self.__id = response.data.cursor_id
 
         if self.__id == 0:
-            self.close()
+            await self.close()
         self.__data = deque(documents)
 
     def _unpack_response(
@@ -243,7 +244,7 @@ class CommandCursor(Generic[_DocumentType]):
     ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
-    def _refresh(self) -> int:
+    async def _refresh(self) -> int:
         """Refreshes the cursor with more data from the server.
 
         Returns the length of self.__data after refresh. Will exit early if
@@ -256,7 +257,7 @@ class CommandCursor(Generic[_DocumentType]):
         if self.__id:  # Get More
             dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)
-            self.__send_message(
+            await self.__send_message(
                 self._getmore_class(
                     dbname,
                     collname,
@@ -273,7 +274,7 @@ class CommandCursor(Generic[_DocumentType]):
                 )
             )
         else:  # Cursor id is zero nothing else to return
-            self.__die(True)
+            await self._die(True)
 
         return len(self.__data)
 
@@ -320,28 +321,36 @@ class CommandCursor(Generic[_DocumentType]):
     def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
-    def next(self) -> _DocumentType:
+    def __aiter__(self) -> Iterator[_DocumentType]:
+        return self
+
+    async def next(self) -> _DocumentType:
         """Advance the cursor."""
         # Block until a document is returnable.
         while self.alive:
-            doc = self._try_next(True)
+            doc = await self._try_next(True)
             if doc is not None:
                 return doc
 
-        raise StopIteration
+        raise StopAsyncIteration
 
-    __next__ = next
+    @synchronize(None, async_method_name="__anext__")
+    def __next__(self):
+        ...
 
-    def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
+    async def __anext__(self):
+        return await self.next()
+
+    async def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
         """Advance the cursor blocking for at most one getMore command."""
         if not len(self.__data) and not self.__killed and get_more_allowed:
-            self._refresh()
+            await self._refresh()
         if len(self.__data):
             return self.__data.popleft()
         else:
             return None
 
-    def try_next(self) -> Optional[_DocumentType]:
+    async def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next document without waiting
@@ -357,13 +366,20 @@ class CommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        return self._try_next(get_more_allowed=True)
+        return await self._try_next(get_more_allowed=True)
+
+    async def __aenter__(self) -> CommandCursor[_DocumentType]:
+        return self
 
     def __enter__(self) -> CommandCursor[_DocumentType]:
         return self
 
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
+
+    @synchronize(None, async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
+        ...
 
 
 class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
