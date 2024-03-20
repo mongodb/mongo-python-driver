@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
-from pymongo.common import lazy_import
+from pymongo._lazy_import import lazy_import
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache

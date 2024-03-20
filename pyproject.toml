@@ -45,7 +45,7 @@ dependencies = [
 
 [project.optional-dependencies]
 aws = [
-    "pymongo-auth-aws<2.0.0",
+    "pymongo-auth-aws>=1.1.0,<2.0.0",
 ]
 encryption = [
     "pymongo[aws]",

@@ -13,33 +13,12 @@
 # limitations under the License.
 from __future__ import annotations
 
-import importlib.util
-import sys
 import warnings
-from types import ModuleType
 from typing import Any, Iterable, Optional, Union
 
+from pymongo._lazy_import import lazy_import
 from pymongo.hello import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
-
-
-def lazy_import(name: str) -> ModuleType:
-    """Lazily import a module by name.  Inlined here to prevent circular import.
-
-    From https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
-    """
-    spec = importlib.util.find_spec(name)
-    if spec is None:
-        # Import the module to trigger an import error.
-        importlib.import_module(name)
-    assert spec is not None
-    loader = importlib.util.LazyLoader(spec.loader)  # type:ignore[arg-type]
-    spec.loader = loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    loader.exec_module(module)
-    return module
-
 
 try:
     snappy = lazy_import("snappy")

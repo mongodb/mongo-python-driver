@@ -15,7 +15,7 @@
 """MONGODB-AWS Authentication helpers."""
 from __future__ import annotations
 
-from pymongo.common import lazy_import
+from pymongo._lazy_import import lazy_import
 
 try:
     pymongo_auth_aws = lazy_import("pymongo_auth_aws")

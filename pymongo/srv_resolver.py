@@ -19,7 +19,8 @@ import ipaddress
 import random
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pymongo.common import CONNECT_TIMEOUT, lazy_import
+from pymongo._lazy_import import lazy_import
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:

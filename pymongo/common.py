@@ -17,12 +17,9 @@
 from __future__ import annotations
 
 import datetime
-import importlib.util
-import sys
 import warnings
 from collections import OrderedDict, abc
 from difflib import get_close_matches
-from types import ModuleType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -43,6 +40,7 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
+from pymongo.auth import MECHANISMS
 from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
@@ -140,24 +138,6 @@ SRV_SERVICE_NAME = "mongodb"
 
 # Default value for serverMonitoringMode
 SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
-
-
-def lazy_import(name: str) -> ModuleType:
-    """Lazily import a module by name
-
-    From https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
-    """
-    spec = importlib.util.find_spec(name)
-    if spec is None:
-        # Import the module to trigger an import error.
-        importlib.import_module(name)
-    assert spec is not None
-    loader = importlib.util.LazyLoader(spec.loader)  # type:ignore[arg-type]
-    spec.loader = loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    loader.exec_module(module)
-    return module
 
 
 def partition_node(node: str) -> tuple[str, int]:
@@ -400,9 +380,6 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
-    # Lazy import to prevent an import cycle.
-    from pymongo.auth import MECHANISMS
-
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
     return value
