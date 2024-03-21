@@ -5,7 +5,7 @@ import functools
 import queue
 import threading
 from concurrent.futures import wait
-from typing import Optional, Type
+from typing import Optional
 
 
 class TaskRunner:
@@ -111,13 +111,10 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def synchronize(
-    async_class: Optional[Type], async_method_name: Optional[str] = None, doc: Optional[str] = None
-):
+def synchronize(async_method_name: Optional[str] = None, doc: Optional[str] = None):
     """Decorate a given method so it runs a synchronous version of an identically-named asynchronous method.
     The method runs on an event loop.
     :Parameters:
-     - 'async_class`:       The class to pull the asynchronous method from. Defaults to the calling class.
      - `async_method_name`: Optionally override the name of the async method.
      - `doc`:               Optionally override the async version of method's docstring.
     """
@@ -126,15 +123,11 @@ def synchronize(
         @functools.wraps(method)
         def wrapped(self, *args, **kwargs):
             runner = TaskRunnerPool.getInstance()
-            if async_class is not None:
-                a_class = async_class
-            else:
-                a_class = self.__class__
             if async_method_name is not None:
-                async_method = getattr(a_class, async_method_name)
+                async_method = self._delegate.async_method_name
             else:
                 try:
-                    async_method = getattr(a_class, method.__name__)
+                    async_method = self._delegate.method.__name__
                 except AttributeError:
                     raise
 
@@ -143,11 +136,7 @@ def synchronize(
 
             coro = async_method(self, *args, **kwargs)
 
-            try:
-                asyncio.get_running_loop()
-                return coro
-            except RuntimeError:
-                return runner.run(coro)
+            return runner.run(coro)
 
         return wrapped
 

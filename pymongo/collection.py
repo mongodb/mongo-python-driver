@@ -1791,7 +1791,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
-        cursor = await self._find(filter, *args, **kwargs)
+        cursor = await self.find(filter, *args, **kwargs)
         async for result in cursor.limit(-1):
             return result
         return None
