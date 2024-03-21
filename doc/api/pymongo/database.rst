@@ -20,6 +20,8 @@
          .. note::  Use dictionary style access if `collection_name` is an
             attribute of the :class:`Database` class eg: db[`collection_name`].
 
+      .. automethod:: __getitem__
+      .. automethod:: __getattr__
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
