@@ -28,4 +28,5 @@ function get_import_time() {
 get_import_time $HEAD_SHA
 git checkout $BASE_SHA
 get_import_time $BASE_SHA
+git checkout $HEAD_SHA
 python tools/compare_import_time.py $HEAD_SHA $BASE_SHA
