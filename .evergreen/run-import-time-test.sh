@@ -23,20 +23,9 @@ function get_import_time() {
     python -c "import pymongo"
     log_file="pymongo-$1.log"
     python -X importtime -c "import pymongo" 2> $log_file
-    last_line=$(echo "$(tail -n 1 $log_file)" | cut -d " " -f 5)
-    rm -rf import-venv
 }
 
 get_import_time $HEAD_SHA
-import_time_curr=$last_line
 git checkout $BASE_SHA
 get_import_time $BASE_SHA
-import_time_prev=$last_line
-
-# Check if we got 20% or more slower
-let diff=$import_time_curr-$import_time_prev
-let ratio=$diff / $import_time_prev * 100
-if [ $ratio -gt 20 ]; then
-    echo "Import got $ratio percent slower"
-    exit 1
-fi
+python tools/compare_import_time.py $HEAD_SHA $BASE_SHA
