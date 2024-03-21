@@ -128,7 +128,7 @@ class _AggregationCommand:
             self._write_preference = pref = _AggWritePref(pref)  # type: ignore[assignment]
         return pref
 
-    def get_cursor(
+    async def get_cursor(
         self,
         session: Optional[ClientSession],
         server: Server,
@@ -159,7 +159,7 @@ class _AggregationCommand:
             write_concern = None
 
         # Run command.
-        result = conn.command(
+        result = await conn.command(
             self._database.name,
             cmd,
             read_preference,

@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import BaseMongoClient, MongoClient, SyncMongoClient
+    from pymongo.mongo_client import BaseMongoClient
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
@@ -138,11 +138,11 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             _check_name(name)
 
         self._name = name
-        self._client: MongoClient[_DocumentType] = client
+        self._client: BaseMongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
 
     @property
-    def client(self) -> MongoClient[_DocumentType]:
+    def client(self) -> BaseMongoClient[_DocumentType]:
         """The client instance for this :class:`Database`."""
         return self._client
 
@@ -350,6 +350,134 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             "Database objects do not implement truth "
             "value testing or bool(). Please compare "
             "with None instead: database is not None"
+        )
+
+    def watch(
+        self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
+    ) -> DatabaseChangeStream[_DocumentType]:
+        """Watch changes on this database.
+
+        Performs an aggregation with an implicit initial ``$changeStream``
+        stage and returns a
+        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
+        iterates over changes on all collections in this database.
+
+        Introduced in MongoDB 4.0.
+
+        .. code-block:: python
+
+           with db.watch() as stream:
+               for change in stream:
+                   print(change)
+
+        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
+        blocks until the next change document is returned or an error is
+        raised. If the
+        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
+        encounters a network error when retrieving a batch from the server,
+        it will automatically attempt to recreate the cursor such that no
+        change events are missed. Any error encountered during the resume
+        attempt indicates there may be an outage and will be raised.
+
+        .. code-block:: python
+
+            try:
+                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    for insert_change in stream:
+                        print(insert_change)
+            except pymongo.errors.PyMongoError:
+                # The ChangeStream encountered an unrecoverable error or the
+                # resume attempt failed to recreate the cursor.
+                logging.error("...")
+
+        For a precise description of the resume process see the
+        `change streams specification`_.
+
+        :param pipeline: A list of aggregation pipeline stages to
+            append to an initial ``$changeStream`` stage. Not all
+            pipeline stages are valid after a ``$changeStream`` stage, see the
+            MongoDB documentation on change streams for the supported stages.
+        :param full_document: The fullDocument to pass as an option
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup',
+            'whenAvailable', 'required'. When set to 'updateLookup', the
+            change notification for partial updates will include both a delta
+            describing the changes to the document, as well as a copy of the
+            entire document that was changed from some time after the change
+            occurred.
+        :param full_document_before_change: Allowed values: 'whenAvailable'
+            and 'required'. Change events may now result in a
+            'fullDocumentBeforeChange' response field.
+        :param resume_after: A resume token. If provided, the
+            change stream will start returning changes that occur directly
+            after the operation specified in the resume token. A resume token
+            is the _id value of a change document.
+        :param max_await_time_ms: The maximum time in milliseconds
+            for the server to wait for changes before responding to a getMore
+            operation.
+        :param batch_size: The maximum number of documents to return
+            per batch.
+        :param collation: The :class:`~pymongo.collation.Collation`
+            to use for the aggregation.
+        :param start_at_operation_time: If provided, the resulting
+            change stream will only return changes that occurred at or after
+            the specified :class:`~bson.timestamp.Timestamp`. Requires
+            MongoDB >= 4.0.
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param start_after: The same as `resume_after` except that
+            `start_after` can resume notifications after an invalidate event.
+            This option and `resume_after` are mutually exclusive.
+        :param comment: A user-provided comment to attach to this
+            command.
+        :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
+
+        :return: A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionchanged:: 4.3
+           Added `show_expanded_events` parameter.
+
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+
+        .. versionchanged:: 3.9
+           Added the ``start_after`` parameter.
+
+        .. versionadded:: 3.7
+
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
+
+        .. _change streams specification:
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
+        """
+        return DatabaseChangeStream(
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+            comment,
+            full_document_before_change,
+            show_expanded_events=show_expanded_events,
         )
 
 
@@ -572,7 +700,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
                 read_concern,
                 **kwargs,
             )
-            await coll._create()
+            await coll._create(kwargs, s, **kwargs)
 
             return coll
 
@@ -654,134 +782,6 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
             )
-
-    def watch(
-        self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
-    ) -> DatabaseChangeStream[_DocumentType]:
-        """Watch changes on this database.
-
-        Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a
-        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
-        iterates over changes on all collections in this database.
-
-        Introduced in MongoDB 4.0.
-
-        .. code-block:: python
-
-           with db.watch() as stream:
-               for change in stream:
-                   print(change)
-
-        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
-        blocks until the next change document is returned or an error is
-        raised. If the
-        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
-        encounters a network error when retrieving a batch from the server,
-        it will automatically attempt to recreate the cursor such that no
-        change events are missed. Any error encountered during the resume
-        attempt indicates there may be an outage and will be raised.
-
-        .. code-block:: python
-
-            try:
-                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    for insert_change in stream:
-                        print(insert_change)
-            except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
-                # resume attempt failed to recreate the cursor.
-                logging.error("...")
-
-        For a precise description of the resume process see the
-        `change streams specification`_.
-
-        :param pipeline: A list of aggregation pipeline stages to
-            append to an initial ``$changeStream`` stage. Not all
-            pipeline stages are valid after a ``$changeStream`` stage, see the
-            MongoDB documentation on change streams for the supported stages.
-        :param full_document: The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'updateLookup',
-            'whenAvailable', 'required'. When set to 'updateLookup', the
-            change notification for partial updates will include both a delta
-            describing the changes to the document, as well as a copy of the
-            entire document that was changed from some time after the change
-            occurred.
-        :param full_document_before_change: Allowed values: 'whenAvailable'
-            and 'required'. Change events may now result in a
-            'fullDocumentBeforeChange' response field.
-        :param resume_after: A resume token. If provided, the
-            change stream will start returning changes that occur directly
-            after the operation specified in the resume token. A resume token
-            is the _id value of a change document.
-        :param max_await_time_ms: The maximum time in milliseconds
-            for the server to wait for changes before responding to a getMore
-            operation.
-        :param batch_size: The maximum number of documents to return
-            per batch.
-        :param collation: The :class:`~pymongo.collation.Collation`
-            to use for the aggregation.
-        :param start_at_operation_time: If provided, the resulting
-            change stream will only return changes that occurred at or after
-            the specified :class:`~bson.timestamp.Timestamp`. Requires
-            MongoDB >= 4.0.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
-        :param start_after: The same as `resume_after` except that
-            `start_after` can resume notifications after an invalidate event.
-            This option and `resume_after` are mutually exclusive.
-        :param comment: A user-provided comment to attach to this
-            command.
-        :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
-
-        :return: A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
-
-        .. versionchanged:: 4.3
-           Added `show_expanded_events` parameter.
-
-        .. versionchanged:: 4.2
-            Added ``full_document_before_change`` parameter.
-
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-
-        .. versionchanged:: 3.9
-           Added the ``start_after`` parameter.
-
-        .. versionadded:: 3.7
-
-        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
-
-        .. _change streams specification:
-            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
-        """
-        return DatabaseChangeStream(
-            self,
-            pipeline,
-            full_document,
-            resume_after,
-            max_await_time_ms,
-            batch_size,
-            collation,
-            start_at_operation_time,
-            session,
-            start_after,
-            comment,
-            full_document_before_change,
-            show_expanded_events=show_expanded_events,
-        )
 
     @overload
     async def _command(
@@ -1289,7 +1289,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
 
         return [
             result["name"]
-            for result in await self._list_collections_helper(session=session, **kwargs)
+            async for result in await self._list_collections_helper(session=session, **kwargs)
         ]
 
     async def list_collection_names(
@@ -1551,7 +1551,7 @@ class Database(BaseDatabase[_DocumentType]):
 
     def __init__(
         self,
-        client: SyncMongoClient[_DocumentType],
+        client: BaseMongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,

@@ -509,7 +509,7 @@ class ClientContext:
     def has_secondaries(self):
         if not self.client:
             return False
-        return bool(len(self.client.secondaries))
+        return bool(len(self.client.secondaries()))
 
     @property
     def storage_engine(self):

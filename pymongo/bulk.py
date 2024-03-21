@@ -577,7 +577,7 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            with client._conn_for_writes(session, operation) as connection:
+            async with await client._conn_for_writes(session, operation) as connection:
                 await self.execute_no_results(connection, generator, write_concern)
                 return None
         else:

@@ -950,6 +950,13 @@ class AsyncMongoClient(BaseMongoClient):
         """
         return await self._server_property("is_writable")
 
+    async def is_mongos(self) -> bool:
+        """If this client is connected to mongos. If the client is not
+        connected, this will block until a connection is established or raise
+        ServerSelectionTimeoutError if no server is available.
+        """
+        return await self._server_property("server_type") == SERVER_TYPE.Mongos
+
     async def _end_sessions(self, session_ids: list[_ServerSession]) -> None:
         """Send endSessions command(s) with the given session ids."""
         try:
@@ -2018,6 +2025,10 @@ class MongoClient(BaseMongoClient):
 
     @synchronize(AsyncMongoClient)
     def is_primary(self) -> bool:
+        ...
+
+    @synchronize(AsyncMongoClient)
+    def is_mongos(self) -> bool:
         ...
 
     @synchronize(AsyncMongoClient)

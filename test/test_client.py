@@ -1781,7 +1781,7 @@ class TestClient(IntegrationTest):
             {"mode": {"times": 1}, "data": {"closeConnection": True, "failCommands": ["find"]}}
         ):
             assert client.address is not None
-            expected = "{}:{}: ".format(*client.address)
+            expected = "{}:{}: ".format(*client.address())
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 

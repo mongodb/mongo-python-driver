@@ -742,7 +742,7 @@ class Topology:
 
         return _is_stale_error_topology_version(cur_tv, error_tv)
 
-    def _handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
+    async def _handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
         if self._is_stale_error(address, err_ctx):
             return
 
@@ -785,7 +785,7 @@ class Topology:
                 is_shutting_down = err_code in helpers._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
-                    self._process_change(ServerDescription(address, error=error))
+                    await self._process_change(ServerDescription(address, error=error))
                 if is_shutting_down or (err_ctx.max_wire_version <= 7):
                     # Clear the pool.
                     server.reset(service_id)
@@ -793,14 +793,14 @@ class Topology:
             elif not err_ctx.completed_handshake:
                 # Unknown command error during the connection handshake.
                 if not self._settings.load_balanced:
-                    self._process_change(ServerDescription(address, error=error))
+                    await self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
                 server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
             if not self._settings.load_balanced:
-                self._process_change(ServerDescription(address, error=error))
+                await self._process_change(ServerDescription(address, error=error))
             # Clear the pool.
             server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
@@ -815,7 +815,7 @@ class Topology:
         immediate check depending on the error and the context.
         """
         async with self._alock:
-            self._handle_error(address, err_ctx)
+            await self._handle_error(address, err_ctx)
 
     def _request_check_all(self) -> None:
         """Wake all monitors. Hold the lock when calling this."""

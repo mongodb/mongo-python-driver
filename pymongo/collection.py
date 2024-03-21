@@ -51,7 +51,14 @@ from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.cursor import Cursor, RawBatchCursor
+from pymongo.cursor import (
+    AsyncCursor,
+    AsyncRawBatchCursor,
+    BaseCursor,
+    BaseRawBatchCursor,
+    Cursor,
+    RawBatchCursor,
+)
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
@@ -320,7 +327,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentType]:
+    ) -> BaseCollection[_DocumentType]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -349,7 +356,24 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        raise NotImplementedError
+        if self._asynchronous:
+            return AsyncCollection(
+                self._database,
+                self._name,
+                codec_options or self.codec_options,
+                read_preference or self.read_preference,
+                write_concern or self.write_concern,
+                read_concern or self.read_concern,
+            )
+        else:
+            return Collection(
+                self._database,
+                self._name,
+                codec_options or self.codec_options,
+                read_preference or self.read_preference,
+                write_concern or self.write_concern,
+                read_concern or self.read_concern,
+            )
 
     def _write_concern_for_cmd(
         self, cmd: Mapping[str, Any], session: Optional[ClientSession]
@@ -1767,12 +1791,12 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
-        cursor = await self.find(filter, *args, **kwargs)
+        cursor = await self._find(filter, *args, **kwargs)
         async for result in cursor.limit(-1):
             return result
         return None
 
-    async def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
+    async def _find(self, *args: Any, **kwargs: Any) -> BaseCursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a query document that all results
@@ -1958,9 +1982,202 @@ class AsyncCollection(BaseCollection[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        return Cursor(self, *args, **kwargs)
+        return AsyncCursor(self, *args, **kwargs)
 
-    async def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
+    async def find(self, *args: Any, **kwargs: Any) -> BaseCursor[_DocumentType]:
+        """Query the database.
+
+        The `filter` argument is a query document that all results
+        must match. For example:
+
+        >>> db.test.find({"hello": "world"})
+
+        only matches documents that have a key "hello" with value
+        "world".  Matches can have other keys *in addition* to
+        "hello". The `projection` argument is used to specify a subset
+        of fields that should be included in the result documents. By
+        limiting results to a certain subset of fields you can cut
+        down on network traffic and decoding time.
+
+        Raises :class:`TypeError` if any of the arguments are of
+        improper type. Returns an instance of
+        :class:`~pymongo.cursor.Cursor` corresponding to this query.
+
+        The :meth:`find` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
+
+        :param filter: A query document that selects which documents
+            to include in the result set. Can be an empty document to include
+            all documents.
+        :param projection: a list of field names that should be
+            returned in the result set or a dict specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a dict to exclude fields from
+            the result (e.g. projection={'_id': False}).
+        :param session: a
+            :class:`~pymongo.client_session.ClientSession`.
+        :param skip: the number of documents to omit (from
+            the start of the result set) when returning the results
+        :param limit: the maximum number of results to
+            return. A limit of 0 (the default) is equivalent to setting no
+            limit.
+        :param no_cursor_timeout: if False (the default), any
+            returned cursor is closed by the server after 10 minutes of
+            inactivity. If set to True, the returned cursor will never
+            time out on the server. Care should be taken to ensure that
+            cursors with no_cursor_timeout turned on are properly closed.
+        :param cursor_type: the type of cursor to return. The valid
+            options are defined by :class:`~pymongo.cursor.CursorType`:
+
+            - :attr:`~pymongo.cursor.CursorType.NON_TAILABLE` - the result of
+              this find call will return a standard cursor over the result set.
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE` - the result of this
+              find call will be a tailable cursor - tailable cursors are only
+              for use with capped collections. They are not closed when the
+              last data is retrieved but are kept open and the cursor location
+              marks the final document position. If more data is received
+              iteration of the cursor will continue from the last document
+              received. For details, see the `tailable cursor documentation
+              <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_.
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` - the result
+              of this find call will be a tailable cursor with the await flag
+              set. The server will wait for a few seconds after returning the
+              full result set so that it can capture and return additional data
+              added during the query.
+            - :attr:`~pymongo.cursor.CursorType.EXHAUST` - the result of this
+              find call will be an exhaust cursor. MongoDB will stream batched
+              results to the client without waiting for the client to request
+              each batch, reducing latency. See notes on compatibility below.
+
+        :param sort: a list of (key, direction) pairs
+            specifying the sort order for this query. See
+            :meth:`~pymongo.cursor.Cursor.sort` for details.
+        :param allow_partial_results: if True, mongos will return
+            partial results if some shards are down instead of returning an
+            error.
+        :param oplog_replay: **DEPRECATED** - if True, set the
+            oplogReplay query flag. Default: False.
+        :param batch_size: Limits the number of documents returned in
+            a single batch.
+        :param collation: An instance of
+            :class:`~pymongo.collation.Collation`.
+        :param return_key: If True, return only the index keys in
+            each document.
+        :param show_record_id: If True, adds a field ``$recordId`` in
+            each document with the storage engine's internal record identifier.
+        :param snapshot: **DEPRECATED** - If True, prevents the
+            cursor from returning a document more than once because of an
+            intervening write operation.
+        :param hint: An index, in the same format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.hint` on the cursor to tell Mongo the
+            proper index to use for the query.
+        :param max_time_ms: Specifies a time limit for a query
+            operation. If the specified time is exceeded, the operation will be
+            aborted and :exc:`~pymongo.errors.ExecutionTimeout` is raised. Pass
+            this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max_time_ms` on the cursor.
+        :param max_scan: **DEPRECATED** - The maximum number of
+            documents to scan. Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max_scan` on the cursor.
+        :param min: A list of field, limit pairs specifying the
+            inclusive lower bound for all keys of a specific index in order.
+            Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.min` on the cursor. ``hint`` must
+            also be passed to ensure the query utilizes the correct index.
+        :param max: A list of field, limit pairs specifying the
+            exclusive upper bound for all keys of a specific index in order.
+            Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max` on the cursor. ``hint`` must
+            also be passed to ensure the query utilizes the correct index.
+        :param comment: A string to attach to the query to help
+            interpret and trace the operation in the server logs and in profile
+            data. Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.comment` on the cursor.
+        :param allow_disk_use: if True, MongoDB may use temporary
+            disk files to store data exceeding the system memory limit while
+            processing a blocking sort operation. The option has no effect if
+            MongoDB can satisfy the specified sort using an index, or if the
+            blocking sort requires less memory than the 100 MiB limit. This
+            option is only supported on MongoDB 4.4 and above.
+
+        .. note:: There are a number of caveats to using
+          :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
+
+          - The `limit` option can not be used with an exhaust cursor.
+
+          - Exhaust cursors are not supported by mongos and can not be
+            used with a sharded cluster.
+
+          - A :class:`~pymongo.cursor.Cursor` instance created with the
+            :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
+            exclusive :class:`~socket.socket` connection to MongoDB. If the
+            :class:`~pymongo.cursor.Cursor` is discarded without being
+            completely iterated the underlying :class:`~socket.socket`
+            connection will be closed and discarded without being returned to
+            the connection pool.
+
+        .. versionchanged:: 4.0
+           Removed the ``modifiers`` option.
+           Empty projections (eg {} or []) are passed to the server as-is,
+           rather than the previous behavior which substituted in a
+           projection of ``{"_id": 1}``. This means that an empty projection
+           will now return the entire document, not just the ``"_id"`` field.
+
+        .. versionchanged:: 3.11
+           Added the ``allow_disk_use`` option.
+           Deprecated the ``oplog_replay`` option. Support for this option is
+           deprecated in MongoDB 4.4. The query engine now automatically
+           optimizes queries against the oplog without requiring this
+           option to be set.
+
+        .. versionchanged:: 3.7
+           Deprecated the ``snapshot`` option, which is deprecated in MongoDB
+           3.6 and removed in MongoDB 4.0.
+           Deprecated the ``max_scan`` option. Support for this option is
+           deprecated in MongoDB 4.0. Use ``max_time_ms`` instead to limit
+           server-side execution time.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
+        .. versionchanged:: 3.5
+           Added the options ``return_key``, ``show_record_id``, ``snapshot``,
+           ``hint``, ``max_time_ms``, ``max_scan``, ``min``, ``max``, and
+           ``comment``.
+           Deprecated the ``modifiers`` option.
+
+        .. versionchanged:: 3.4
+           Added support for the ``collation`` option.
+
+        .. versionchanged:: 3.0
+           Changed the parameter names ``spec``, ``fields``, ``timeout``, and
+           ``partial`` to ``filter``, ``projection``, ``no_cursor_timeout``,
+           and ``allow_partial_results`` respectively.
+           Added the ``cursor_type``, ``oplog_replay``, and ``modifiers``
+           options.
+           Removed the ``network_timeout``, ``read_preference``, ``tag_sets``,
+           ``secondary_acceptable_latency_ms``, ``max_scan``, ``snapshot``,
+           ``tailable``, ``await_data``, ``exhaust``, ``as_class``, and
+           slave_okay parameters.
+           Removed ``compile_re`` option: PyMongo now always
+           represents BSON regular expressions as :class:`~bson.regex.Regex`
+           objects. Use :meth:`~bson.regex.Regex.try_compile` to attempt to
+           convert from a BSON regular expression to a Python regular
+           expression object.
+           Soft deprecated the ``manipulate`` option.
+
+        .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
+        """
+        if self._asynchronous:
+            return AsyncCursor(self, *args, **kwargs)
+        else:
+            return Cursor(self, *args, **kwargs)
+
+    async def find_raw_batches(
+        self, *args: Any, **kwargs: Any
+    ) -> BaseRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1989,7 +2206,10 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         # OP_MSG is required to support encryption.
         if self._database.client._encrypter:
             raise InvalidOperation("find_raw_batches does not support auto encryption")
-        return RawBatchCursor(self, *args, **kwargs)
+        if self._asynchronous:
+            return AsyncRawBatchCursor(self, *args, **kwargs)
+        else:
+            return RawBatchCursor(self, *args, **kwargs)
 
     async def _count_cmd(
         self,
@@ -3178,8 +3398,8 @@ class AsyncCollection(BaseCollection[_DocumentType]):
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> list:
-            return await (
-                self._command(
+            return (
+                await self._command(
                     conn,
                     cmd,
                     read_preference=read_preference,
@@ -4075,3 +4295,4 @@ class Collection(BaseCollection[_DocumentType]):
     _update = AsyncCollection._update
     _delete_retryable = AsyncCollection._delete_retryable
     _delete = AsyncCollection._delete
+    _find = AsyncCollection._find
