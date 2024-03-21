@@ -20,7 +20,7 @@ head_sha = sys.argv[-2]
 
 
 def get_total_time(sha: str) -> int:
-    with open(f"python-{sha}.log") as fid:
+    with open(f"pymongo-{sha}.log") as fid:
         last_line = fid.readlines()[-1]
     return int(last_line.split()[4])
 
