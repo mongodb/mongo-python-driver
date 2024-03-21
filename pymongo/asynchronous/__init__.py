@@ -5,7 +5,7 @@ import functools
 import queue
 import threading
 from concurrent.futures import wait
-from typing import Optional
+from typing import Any, Optional
 
 
 class TaskRunner:
@@ -111,23 +111,67 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def synchronize(async_method_name: Optional[str] = None, doc: Optional[str] = None):
-    """Decorate a given method so it runs a synchronous version of an identically-named asynchronous method.
-    The method runs on an event loop.
+def delegate_property(prop):
+    """Decorate a given property to delegate it to the delegate class."""
+
+    @functools.wraps(prop)
+    def wrapped(self):
+        try:
+            delegated = getattr(self._delegate, prop.__name__)
+        except AttributeError:
+            raise
+        return delegated
+
+    return property(wrapped)
+
+
+def delegate_method(wrapper_class: Optional[Any] = None):
+    """Decorate a given method to delegate it to the delegate class.
     :Parameters:
-     - `async_method_name`: Optionally override the name of the async method.
-     - `doc`:               Optionally override the async version of method's docstring.
+     - `wrapper_class`:     An optional class to wrap around an asynchronous return type.
     """
 
     def class_wrapper(method):
         @functools.wraps(method)
         def wrapped(self, *args, **kwargs):
+            try:
+                delegated = getattr(self._delegate, method.__name__)
+            except AttributeError:
+                raise
+
+            result = delegated(*args, **kwargs)
+            if wrapper_class:
+                return wrapper_class(result)
+            else:
+                return result
+
+        return wrapped
+
+    return class_wrapper
+
+
+def synchronize(
+    wrapper_class: Optional[Any] = None,
+    async_method_name: Optional[str] = None,
+    doc: Optional[str] = None,
+):
+    """Decorate a given method so it runs a synchronous version of an identically-named asynchronous method.
+    The method runs on an event loop.
+    :Parameters:
+     - `wrapper_class`:     An optional class to wrap around an asynchronous return type.
+     - `async_method_name`: Optionally override the name of the async method.
+     - `doc`:               Optionally override the async version of method's docstring.
+    """
+
+    def name_wrapper(method):
+        @functools.wraps(method)
+        def wrapped(self, *args, **kwargs):
             runner = TaskRunnerPool.getInstance()
             if async_method_name is not None:
-                async_method = self._delegate.async_method_name
+                async_method = getattr(self._delegate, async_method_name)
             else:
                 try:
-                    async_method = self._delegate.method.__name__
+                    async_method = self._delegate.method
                 except AttributeError:
                     raise
 
@@ -136,13 +180,20 @@ def synchronize(async_method_name: Optional[str] = None, doc: Optional[str] = No
 
             coro = async_method(self, *args, **kwargs)
 
-            return runner.run(coro)
+            if wrapper_class:
+                return wrapper_class(runner.run(coro))
+            else:
+                return runner.run(coro)
 
         return wrapped
 
-    return class_wrapper
+    return name_wrapper
 
 
 def schedule_task(coroutine):
-    runner = TaskRunnerPool.getInstance()
-    runner.schedule(coroutine)
+    try:
+        asyncio.get_running_loop()
+        return coroutine
+    except RuntimeError:
+        runner = TaskRunnerPool.getInstance()
+        runner.schedule(coroutine)
