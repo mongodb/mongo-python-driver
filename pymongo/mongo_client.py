@@ -1954,11 +1954,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
+        async_client: Optional[AsyncMongoClient] = None,
         **kwargs: Any,
     ) -> None:
-        self._delegate = AsyncMongoClient(
-            host, port, document_class, tz_aware, connect, type_registry, **kwargs
-        )
+        if async_client is not None:
+            self._delegate = async_client
+        else:
+            self._delegate = AsyncMongoClient(
+                host, port, document_class, tz_aware, connect, type_registry, **kwargs
+            )
+
+    @classmethod
+    def wrap(cls, async_client):
+        return cls(async_client=async_client)
 
     @synchronize
     def address(self) -> Optional[tuple[str, int]]:
@@ -2079,20 +2087,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> database.Database[_DocumentType]:
         ...
 
-    @delegate_method
+    @delegate_property
     def __eq__(self, other: Any) -> bool:
         ...
 
-    @delegate_method
+    @delegate_property
     def __ne__(self, other: Any) -> bool:
         ...
 
-    @delegate_method
+    @delegate_property
     def __hash__(self) -> int:
         ...
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._delegate})"
+        return f"{type(self).__name__}({self._delegate._repr_helper()})"
 
     @delegate_method(wrapper_class=database.Database)
     def __getattr__(self, name: str) -> database.Database[_DocumentType]:

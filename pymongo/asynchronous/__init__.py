@@ -111,18 +111,27 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def delegate_property(prop):
-    """Decorate a given property to delegate it to the delegate class."""
+def delegate_property(wrapper_class: Optional[Any] = None):
+    """Decorate a given property to delegate it to the delegate class.
+    :Parameters:
+     - `wrapper_class`:     An optional class to wrap around an asynchronous return type.
+    """
 
-    @functools.wraps(prop)
-    def wrapped(self):
-        try:
-            delegated = getattr(self._delegate, prop.__name__)
-        except AttributeError:
-            raise
-        return delegated
+    def class_wrapper(prop):
+        @functools.wraps(prop)
+        def wrapped(self):
+            try:
+                delegated = property(getattr(self._delegate, prop.__name__))
+            except AttributeError:
+                raise
+            if wrapper_class:
+                return wrapper_class.wrap(delegated)
+            else:
+                return delegated
 
-    return property(wrapped)
+        return wrapped
+
+    return class_wrapper
 
 
 def delegate_method(wrapper_class: Optional[Any] = None):
@@ -141,7 +150,7 @@ def delegate_method(wrapper_class: Optional[Any] = None):
 
             result = delegated(*args, **kwargs)
             if wrapper_class:
-                return wrapper_class(result)
+                return wrapper_class.wrap(result)
             else:
                 return result
 
@@ -171,17 +180,17 @@ def synchronize(
                 async_method = getattr(self._delegate, async_method_name)
             else:
                 try:
-                    async_method = self._delegate.method
+                    async_method = getattr(self._delegate, method.__name__)
                 except AttributeError:
                     raise
 
             if doc is not None:
                 async_method.__doc__ = doc
 
-            coro = async_method(self, *args, **kwargs)
+            coro = async_method(*args, **kwargs)
 
             if wrapper_class:
-                return wrapper_class(runner.run(coro))
+                return wrapper_class.wrap(runner.run(coro))
             else:
                 return runner.run(coro)
 
