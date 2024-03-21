@@ -391,17 +391,25 @@ class CommandCursor(Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
+        delegate_cursor: Optional[AsyncCommandCursor] = None,
     ) -> None:
-        self._delegate = AsyncCommandCursor(
-            collection,
-            cursor_info,
-            address,
-            batch_size,
-            max_await_time_ms,
-            session,
-            explicit_session,
-            comment,
-        )
+        if delegate_cursor is not None:
+            self._delegate = delegate_cursor
+        else:
+            self._delegate = AsyncCommandCursor(
+                collection,
+                cursor_info,
+                address,
+                batch_size,
+                max_await_time_ms,
+                session,
+                explicit_session,
+                comment,
+            )
+
+    @classmethod
+    def wrap(cls, delegate_cursor: AsyncCommandCursor):
+        return cls(None, None, None, delegate_cursor=delegate_cursor)  # type:ignore[arg]
 
     @synchronize
     def next(self) -> _DocumentType:
@@ -410,15 +418,6 @@ class CommandCursor(Generic[_DocumentType]):
     @synchronize
     async def try_next(self) -> Optional[_DocumentType]:
         ...
-
-    def __getattr__(self, item):
-        try:
-            return self.__getattr__(item)
-        except AttributeError:
-            try:
-                return getattr(self._delegate, item)
-            except AttributeError:
-                raise
 
     def __aiter__(self) -> Iterator[_DocumentType]:
         raise NotImplementedError("Use pymongo.AsyncCommandCursor for asynchronous iteration.")
