@@ -31,7 +31,7 @@ curr_time = get_total_time(head_sha)
 # Check if we got 20% or more slower.
 change = int((curr_time - base_time) / base_time * 100)
 if change > 20:
-    print(f"PyMongo import got {change}")
+    print(f"PyMongo import got {change} percent worse")
     sys.exit(1)
 
-print("Import time changed by {change} percent")
+print(f"Import time changed by {change} percent")
