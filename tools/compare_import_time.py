@@ -19,7 +19,7 @@ base_sha = sys.argv[-1]
 head_sha = sys.argv[-2]
 
 
-def get_total_time(sha):
+def get_total_time(sha: str) -> int:
     with open(f"python-{sha}.log") as fid:
         last_line = fid.readlines()[-1]
     return int(last_line.split()[4])
