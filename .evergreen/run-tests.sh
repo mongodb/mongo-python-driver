@@ -33,6 +33,7 @@ SSL=${SSL:-nossl}
 TEST_ARGS="${*:1}"
 PYTHON=$(which python)
 export PIP_QUIET=1  # Quiet by default
+export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
@@ -121,7 +122,7 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
-    python -m pip install --prefer-binary '.[encryption]'
+    python -m pip install '.[encryption]'
 
     # Install libmongocrypt if necessary.
     if [ ! -d "libmongocrypt" ]; then
