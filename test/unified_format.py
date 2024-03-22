@@ -82,6 +82,7 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     NotPrimaryError,
+    OperationFailure,
     PyMongoError,
 )
 from pymongo.monitoring import (
@@ -1229,6 +1230,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         return cursor
 
+    def kill_all_sessions(self):
+        try:
+            self.client.admin.command("killAllSessions", [])
+        except OperationFailure:
+            # "operation was interrupted" by killing the command's
+            # own session.
+            pass
+
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
@@ -1787,6 +1796,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
+
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
             attempts = 3
