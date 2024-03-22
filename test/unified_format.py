@@ -1231,6 +1231,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return cursor
 
     def kill_all_sessions(self):
+        if getattr(self, "client", None) is None:
+            return
         try:
             self.client.admin.command("killAllSessions", [])
         except OperationFailure:
