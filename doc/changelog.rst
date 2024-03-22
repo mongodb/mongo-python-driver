@@ -76,7 +76,7 @@ Unavoidable breaking changes
 
 - PyMongo now uses `lazy imports <https://docs.python.org/3/library/importlib.html#implementing-lazy-imports>`_ for external dependencies.
   If you are relying on any kind of monkey-patching of the standard library, you may need to explicitly import those external libraries in addition
-  to ``pymongo`` before applying the patch.
+  to ``pymongo`` before applying the patch.  Note that we test with ``gevent`` and ``eventlet`` patching, and those continue to work.
 
 Changes in Version 4.6.2
 ------------------------

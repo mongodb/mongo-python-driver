@@ -9,10 +9,9 @@ if [ -z "$PYTHON_BINARY" ]; then
     PYTHON_BINARY=$(find_python3)
 fi
 
-# Skip the report of it isn't a PR run.
+# Use the previous commit if this was not a PR run.
 if [ "$BASE_SHA" == "$HEAD_SHA" ]; then
-    echo "Skipping API Report"
-    exit 0
+    BASE_SHA=$(git rev-parse HEAD~1)
 fi
 
 function get_import_time() {
