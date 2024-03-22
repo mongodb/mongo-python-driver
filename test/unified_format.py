@@ -946,11 +946,14 @@ def coerce_result(opname, result):
     if opname in ("deleteOne", "deleteMany"):
         return {"deletedCount": result.deleted_count}
     if opname in ("updateOne", "updateMany", "replaceOne"):
-        return {
+        value = {
             "matchedCount": result.matched_count,
             "modifiedCount": result.modified_count,
             "upsertedCount": 0 if result.upserted_id is None else 1,
         }
+        if result.upserted_id is not None:
+            value["upsertedId"] = result.upserted_id
+        return value
     return result
 
 
