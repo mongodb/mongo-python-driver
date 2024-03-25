@@ -74,6 +74,12 @@ Unavoidable breaking changes
     >>> dict_to_SON(data_as_dict)
     SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
+- PyMongo now uses `lazy imports <https://docs.python.org/3/library/importlib.html#implementing-lazy-imports>`_ for external dependencies.
+  If you are relying on any kind of monkey-patching of the standard library, you may need to explicitly import those external libraries in addition
+  to ``pymongo`` before applying the patch.  Note that we test with ``gevent`` and ``eventlet`` patching, and those continue to work.
+
+- The "aws" extra now requires minimum version of ``1.1.0`` for ``pymongo_auth_aws``.
+
 Changes in Version 4.6.2
 ------------------------
 

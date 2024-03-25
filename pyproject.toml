@@ -45,7 +45,7 @@ dependencies = [
 
 [project.optional-dependencies]
 aws = [
-    "pymongo-auth-aws<2.0.0",
+    "pymongo-auth-aws>=1.1.0,<2.0.0",
 ]
 encryption = [
     "pymongo[aws]",
@@ -207,6 +207,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]
+"tools/*.py" = ["T201"]
 "green_framework_test.py" = ["T201"]
 
 [tool.coverage.run]

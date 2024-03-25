@@ -248,7 +248,9 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
-     python -m pip install $GREEN_FRAMEWORK
+    # Install all optional deps to ensure lazy imports are getting patched.
+    python -m pip install -q ".[aws,encryption,gssapi,ocsp,snappy,zstd]"
+    python -m pip install $GREEN_FRAMEWORK
 fi
 
 # Show the installed packages
