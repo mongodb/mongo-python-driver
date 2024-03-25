@@ -593,7 +593,7 @@ class SearchIndexModel:
         definition: Mapping[str, Any],
         name: Optional[str] = None,
         type: Optional[str] = "search",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Create a Search Index instance.
 
@@ -609,7 +609,7 @@ class SearchIndexModel:
         .. versionchanged:: 4.7
            Added the type and kwargs arguments.
         """
-        self.__document = {}
+        self.__document: dict[str, Any] = {}
         if name is not None:
             self.__document["name"] = name
         self.__document["definition"] = definition
