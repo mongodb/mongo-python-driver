@@ -2410,7 +2410,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 4.5
         """
         if not isinstance(model, SearchIndexModel):
-            model = SearchIndexModel(model["definition"], model.get("name"), model.get("type"))
+            model = SearchIndexModel(**model)
         return self.create_search_indexes([model], session, comment, **kwargs)[0]
 
     def create_search_indexes(
