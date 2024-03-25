@@ -70,7 +70,7 @@ class _OIDCProperties:
     human_callback: Optional[OIDCCallback] = field(default=None)
     environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
-    username: str = field(default="")
+    username: str = ""
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
