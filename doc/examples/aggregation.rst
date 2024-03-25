@@ -45,8 +45,8 @@ To achieve this we need to pass in three operations to the pipeline.
 First, we need to unwind the ``tags`` array, then group by the tags and
 sum them up, finally we sort by count.
 
-As python dictionaries don't maintain order you should use :class:`~bson.son.SON`
-or :class:`collections.OrderedDict` where explicit ordering is required
+Python dictionaries prior to 3.7 don't maintain order. You should use :class:`~bson.son.SON`
+or :class:`collections.OrderedDict` where explicit ordering is required for an older Python version
 eg "$sort":
 
 .. note::
