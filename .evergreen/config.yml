@@ -2723,9 +2723,8 @@ buildvariants:
      python-version: ["pypy3.8", "pypy3.10"]
      green-framework: "*"
      auth-ssl: "*"
-     encryption: ["encryption"]
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *encryption-server-versions
+  tasks: *all-server-versions
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
