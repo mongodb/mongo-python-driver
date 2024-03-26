@@ -85,7 +85,7 @@ class MonitorBase:
 
         Multiple calls have no effect.
         """
-        await self._executor.open()
+        self._executor.open()
 
     def gc_safe_close(self) -> None:
         """GC safe close."""
@@ -167,23 +167,23 @@ class Monitor(MonitorBase):
         # was closed directly after resolves the race.
         await self._rtt_monitor.open()
         if self._executor._stopped:
-            self._rtt_monitor.close()
+            await self._rtt_monitor.close()
 
     def gc_safe_close(self) -> None:
         self._executor.close()
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         self.gc_safe_close()
-        self._rtt_monitor.close()
+        await self._rtt_monitor.close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
-        self._reset_connection()
+        await self._reset_connection()
 
-    def _reset_connection(self) -> None:
+    async def _reset_connection(self) -> None:
         # Clear our pooled connection.
-        self._pool.reset()
+        await self._pool.reset()
 
     async def _run(self) -> None:
         try:
@@ -222,7 +222,7 @@ class Monitor(MonitorBase):
                 self._executor.skip_sleep()
         except ReferenceError:
             # Topology was garbage-collected.
-            self.close()
+            await self.close()
 
     async def _check_server(self) -> ServerDescription:
         """Call hello or read the next streaming response.
@@ -249,7 +249,7 @@ class Monitor(MonitorBase):
                 awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
-            self._reset_connection()
+            await self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
             self._rtt_monitor.reset()
@@ -276,7 +276,7 @@ class Monitor(MonitorBase):
             self._listeners.publish_server_heartbeat_started(address, awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
-            self._reset_connection()
+            await self._reset_connection()
         async with self._pool.checkout() as conn:
             self._cancel_context = conn.cancel_context
             response, round_trip_time = await self._check_with_socket(conn)
@@ -391,11 +391,11 @@ class _RttMonitor(MonitorBase):
         self._moving_min = MovingMinimum()
         self._lock = _create_lock()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         self.gc_safe_close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
-        self._pool.reset()
+        await self._pool.reset()
 
     def add_sample(self, sample: float) -> None:
         """Add a RTT sample."""
@@ -423,9 +423,9 @@ class _RttMonitor(MonitorBase):
             self.add_sample(rtt)
         except ReferenceError:
             # Topology was garbage-collected.
-            self.close()
+            await self.close()
         except Exception:
-            self._pool.reset()
+            await self._pool.reset()
 
     async def _ping(self) -> float:
         """Run a "hello" command and return the RTT."""

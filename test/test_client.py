@@ -149,7 +149,7 @@ class ClientUnitTest(unittest.TestCase):
             serverSelectionTimeoutMS=12000,
         )
 
-        options = client._options
+        options = client.options
         pool_opts = options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         # socket.Socket.settimeout takes a float in seconds
@@ -162,17 +162,17 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_connect_timeout(self):
         client = MongoClient(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
-        pool_opts = client._options.pool_options
+        pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
         client = MongoClient(connect=False, connectTimeoutMS=0, socketTimeoutMS=0)
-        pool_opts = client._options.pool_options
+        pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
         client = MongoClient(
             "mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0", connect=False
         )
-        pool_opts = client._options.pool_options
+        pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
 
@@ -321,10 +321,10 @@ class ClientUnitTest(unittest.TestCase):
         metadata = copy.deepcopy(_METADATA)
         metadata["application"] = {"name": "foobar"}
         client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
-        options = client._options
+        options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         client = MongoClient("foo", 27017, appname="foobar", connect=False)
-        options = client._options
+        options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # No error
         MongoClient(appname="x" * 128)
@@ -346,7 +346,7 @@ class ClientUnitTest(unittest.TestCase):
             driver=DriverInfo("FooDriver", "1.2.3", None),
             connect=False,
         )
-        options = client._options
+        options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
         client = MongoClient(
@@ -356,7 +356,7 @@ class ClientUnitTest(unittest.TestCase):
             driver=DriverInfo("FooDriver", "1.2.3", "FooPlatform"),
             connect=False,
         )
-        options = client._options
+        options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
@@ -365,7 +365,7 @@ class ClientUnitTest(unittest.TestCase):
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
         client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
-        options = client._options
+        options = client.options
         self.assertEqual(options.pool_options.metadata["env"], metadata["env"])
 
     def test_kwargs_codec_options(self):
@@ -449,7 +449,7 @@ class ClientUnitTest(unittest.TestCase):
         # Ensure kwarg options override connection string options.
         uri = "mongodb://localhost/?ssl=true&replicaSet=name&readPreference=primary"
         c = MongoClient(uri, ssl=False, replicaSet="newname", readPreference="secondaryPreferred")
-        clopts = c._options
+        clopts = c.options
         opts = clopts._options
 
         self.assertEqual(opts["tls"], False)
@@ -502,7 +502,7 @@ class ClientUnitTest(unittest.TestCase):
 
         # Matching SSL and TLS options should not cause errors.
         c = MongoClient("mongodb://localhost/?ssl=false", tls=False, connect=False)
-        self.assertEqual(c._options._options["tls"], False)
+        self.assertEqual(c.options._options["tls"], False)
 
         # Conflicting tlsInsecure options should raise an error.
         with self.assertRaises(InvalidURI):
@@ -642,8 +642,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             self.assertTrue(conn in server._pool.conns)
@@ -653,8 +653,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket, two
             # connections could be created and checked into the pool.
@@ -667,8 +667,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two connections from being created.
@@ -681,12 +681,12 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn_one:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn_one:
                 pass
             # Assert that the pool does not close connections prematurely.
             time.sleep(0.300)
-            with server._pool.checkout() as conn_two:
+            with server._pool._s_checkout() as conn_two:
                 pass
             self.assertIs(conn_one, conn_two)
             wait_until(
@@ -698,19 +698,19 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "pool initialized with 10 connections",
             )
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool.checkout() as conn:
+            with server._pool._s_checkout() as conn:
                 conn.close_conn(None)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
@@ -722,13 +722,13 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
-            with server._pool.checkout() as new_con:
+            with server._pool._s_checkout() as new_con:
                 self.assertNotEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
             self.assertFalse(conn in server._pool.conns)
@@ -736,12 +736,12 @@ class TestClient(IntegrationTest):
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
-            with server._pool.checkout() as conn:
+            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            with server._pool._s_checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)
-            with server._pool.checkout() as new_con:
+            with server._pool._s_checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
 
@@ -1242,7 +1242,7 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool.checkout() as conn:
+        with pool._s_checkout() as conn:
             keepalive = conn.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
@@ -1552,7 +1552,7 @@ class TestClient(IntegrationTest):
 
     def test_compression(self):
         def compression_settings(client):
-            pool_options = client._options.pool_options
+            pool_options = client.options.pool_options
             return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
@@ -1668,7 +1668,7 @@ class TestClient(IntegrationTest):
                 while self.running:
                     exc = AutoReconnect("mock pool error")
                     ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    client._topology.handle_error(pool.address, ctx)
+                    client._topology._s_handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
@@ -1679,7 +1679,7 @@ class TestClient(IntegrationTest):
         try:
             while True:
                 for _ in range(10):
-                    client._topology.update_pool()
+                    client._topology._s_update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:
@@ -1781,7 +1781,7 @@ class TestClient(IntegrationTest):
             {"mode": {"times": 1}, "data": {"closeConnection": True, "failCommands": ["find"]}}
         ):
             assert client.address is not None
-            expected = "{}:{}: ".format(*client.address())
+            expected = "{}:{}: ".format(*client.address)
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
@@ -1798,7 +1798,7 @@ class TestClient(IntegrationTest):
         # Add cursor to kill cursors queue
         del cursor
         wait_until(
-            lambda: client._MongoClient__kill_cursors_queue,
+            lambda: client._kill_cursors_queue,
             "waited for cursor to be added to queue",
         )
         client._process_periodic_tasks()  # This must not raise or print any exceptions
@@ -1885,7 +1885,7 @@ class TestClient(IntegrationTest):
                     os.environ["AWS_REGION"] = ""
             with rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
                 client.admin.command("ping")
-                options = client._options
+                options = client.options
                 self.assertEqual(options.pool_options.metadata, metadata)
 
     def test_handshake_01_aws(self):
@@ -2021,9 +2021,9 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a server error on getmore.
-        def receive_message(request_id):
+        async def receive_message(request_id):
             # Discard the actual server response.
-            Connection.receive_message(conn, request_id)
+            await Connection.receive_message(conn, request_id)
 
             # responseFlags bit 1 is QueryFailure.
             msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
@@ -2075,7 +2075,7 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a network error.
-        conn = cursor._Cursor__sock_mgr.conn
+        conn = cursor._sock_mgr.conn
         conn.conn.close()
 
         # A getmore fails.
@@ -2083,7 +2083,7 @@ class TestExhaustCursor(IntegrationTest):
         self.assertTrue(conn.closed)
 
         wait_until(
-            lambda: len(client._MongoClient__kill_cursors_queue) == 0,
+            lambda: len(client._kill_cursors_queue) == 0,
             "waited for all killCursor requests to complete",
         )
         # The socket was closed and the semaphore was decremented.
@@ -2283,7 +2283,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        c._get_topology().select_servers(writable_server_selector, _Op.TEST)
+        c._get_topology()._s_select_servers(writable_server_selector, _Op.TEST)
         self.assertEqual(c.address, ("a", 1))
 
     def _test_network_error(self, operation_callback):
@@ -2306,7 +2306,7 @@ class TestMongoClientFailover(MockClientTest):
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, 6)
             c.set_wire_version_range("b:2", 2, 7)
-            c._get_topology().select_servers(writable_server_selector, _Op.TEST)
+            c._get_topology()._s_select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
             c.kill_host("a:1")

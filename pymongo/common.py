@@ -903,7 +903,7 @@ class BaseObject:
     ) -> None:
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
-        self.__codec_options = codec_options
+        self._codec_options = codec_options
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
@@ -911,24 +911,24 @@ class BaseObject:
                 "pymongo.read_preferences for valid "
                 "options."
             )
-        self.__read_preference = read_preference
+        self._read_preference = read_preference
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
                 "write_concern must be an instance of pymongo.write_concern.WriteConcern"
             )
-        self.__write_concern = write_concern
+        self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError("read_concern must be an instance of pymongo.read_concern.ReadConcern")
-        self.__read_concern = read_concern
+        self._read_concern = read_concern
 
     @property
     def codec_options(self) -> CodecOptions:
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
         """
-        return self.__codec_options
+        return self._codec_options
 
     @property
     def write_concern(self) -> WriteConcern:
@@ -938,7 +938,7 @@ class BaseObject:
         .. versionchanged:: 3.0
           The :attr:`write_concern` attribute is now read only.
         """
-        return self.__write_concern
+        return self._write_concern
 
     def _write_concern_for(self, session: Optional[ClientSession]) -> WriteConcern:
         """Read only access to the write concern of this instance or session."""
@@ -954,14 +954,14 @@ class BaseObject:
         .. versionchanged:: 3.0
           The :attr:`read_preference` attribute is now read only.
         """
-        return self.__read_preference
+        return self._read_preference
 
     def _read_preference_for(self, session: Optional[ClientSession]) -> _ServerMode:
         """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:
-            return session._txn_read_preference() or self.__read_preference
-        return self.__read_preference
+            return session._txn_read_preference() or self._read_preference
+        return self._read_preference
 
     @property
     def read_concern(self) -> ReadConcern:
@@ -970,7 +970,7 @@ class BaseObject:
 
         .. versionadded:: 3.2
         """
-        return self.__read_concern
+        return self._read_concern
 
 
 class _CaseInsensitiveDictionary(MutableMapping[str, Any]):

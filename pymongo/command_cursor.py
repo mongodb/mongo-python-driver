@@ -30,7 +30,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.asynchronous import synchronize
+from pymongo.asynchronous import delegate_method, synchronize
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
@@ -39,7 +39,7 @@ from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
+    from pymongo.collection import AsyncCollection, Collection
     from pymongo.pool import Connection
 
 
@@ -50,7 +50,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
     def __init__(
         self,
-        collection: Collection[_DocumentType],
+        collection: AsyncCollection[_DocumentType],
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,
@@ -61,7 +61,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     ) -> None:
         """Create a new command cursor."""
         self._sock_mgr: Any = None
-        self._collection: Collection[_DocumentType] = collection
+        self._collection: AsyncCollection[_DocumentType] = collection
         self._id = cursor_info["id"]
         self._data = deque(cursor_info["firstBatch"])
         self._postbatchresumetoken: Optional[Mapping[str, Any]] = cursor_info.get(
@@ -95,7 +95,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             else:
                 loop.run_until_complete(self._end_session(True))
         except Exception:
-            raise
+            pass
 
     def __del__(self) -> None:
         try:
@@ -105,7 +105,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             else:
                 loop.run_until_complete(self._die())
         except Exception:
-            raise
+            pass
 
     def batch_size(self, batch_size: int) -> AsyncCommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -143,7 +143,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         """
         return self._postbatchresumetoken
 
-    def _maybe_pin_connection(self, conn: Connection) -> None:
+    async def _maybe_pin_connection(self, conn: Connection) -> None:
         client = self._collection.database.client
         if not client._should_pin_cursor(self._session):
             return
@@ -153,7 +153,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self._id == 0:
-                conn_mgr.close()
+                await conn_mgr.close()
             else:
                 self._sock_mgr = conn_mgr
 
@@ -411,12 +411,20 @@ class CommandCursor(Generic[_DocumentType]):
     def wrap(cls, delegate_cursor: AsyncCommandCursor):
         return cls(None, None, None, delegate_cursor=delegate_cursor)  # type:ignore[arg]
 
-    @synchronize
+    @synchronize()
     def next(self) -> _DocumentType:
         ...
 
-    @synchronize
+    @synchronize()
     async def try_next(self) -> Optional[_DocumentType]:
+        ...
+
+    @synchronize()
+    def _maybe_pin_connection(self, conn: Connection) -> None:
+        ...
+
+    @delegate_method()
+    def _die(self, synchronous: bool = False) -> None:
         ...
 
     def __aiter__(self) -> Iterator[_DocumentType]:

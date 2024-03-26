@@ -36,21 +36,22 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.asynchronous import synchronize
+from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import AsyncCollection, Collection
-from pymongo.command_cursor import CommandCursor
+from pymongo.command_cursor import AsyncCommandCursor, CommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import BaseMongoClient
+    from pymongo.mongo_client import AsyncMongoClient, MongoClient
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
@@ -70,10 +71,10 @@ def _check_name(name: str) -> None:
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
-class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
+class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     def __init__(
         self,
-        client: BaseMongoClient[_DocumentType],
+        client: AsyncMongoClient[_DocumentType],
         name: str,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -138,11 +139,11 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             _check_name(name)
 
         self._name = name
-        self._client: BaseMongoClient[_DocumentType] = client
+        self._client: AsyncMongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
 
     @property
-    def client(self) -> BaseMongoClient[_DocumentType]:
+    def client(self) -> AsyncMongoClient[_DocumentType]:
         """The client instance for this :class:`Database`."""
         return self._client
 
@@ -157,7 +158,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> BaseDatabase[_DocumentType]:
+    ) -> AsyncDatabase[_DocumentType]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -188,27 +189,17 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.8
         """
-        if self._asynchronous:
-            return AsyncDatabase(
-                self.client,
-                self._name,
-                codec_options or self.codec_options,
-                read_preference or self.read_preference,
-                write_concern or self.write_concern,
-                read_concern or self.read_concern,
-            )
-        else:
-            return Database(
-                self.client,
-                self._name,
-                codec_options or self.codec_options,
-                read_preference or self.read_preference,
-                write_concern or self.write_concern,
-                read_concern or self.read_concern,
-            )
+        return AsyncDatabase(
+            self._client,
+            self._name,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, BaseDatabase):
+        if isinstance(other, AsyncDatabase):
             return self._client == other.client and self._name == other.name
         return NotImplemented
 
@@ -221,7 +212,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._client!r}, {self._name!r})"
 
-    def __getattr__(self, name: str) -> Collection[_DocumentType]:
+    def __getattr__(self, name: str) -> AsyncCollection[_DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -235,17 +226,14 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
+    def __getitem__(self, name: str) -> AsyncCollection[_DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
 
         :param name: the name of the collection to get
         """
-        if self._asynchronous:
-            return AsyncCollection(self, name)
-        else:
-            return Collection(self, name)
+        return AsyncCollection(self, name)
 
     def get_collection(
         self,
@@ -254,7 +242,7 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -291,24 +279,14 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             default) the :attr:`read_concern` of this :class:`Database` is
             used.
         """
-        if self._asynchronous:
-            return AsyncCollection(
-                self,
-                name,
-                codec_options,
-                read_preference,
-                write_concern,
-                read_concern,
-            )
-        else:
-            return Collection(
-                self,
-                name,
-                codec_options,
-                read_preference,
-                write_concern,
-                read_concern,
-            )
+        return AsyncCollection(
+            self,
+            name,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
+        )
 
     def _get_encrypted_fields(
         self, kwargs: Mapping[str, Any], coll_name: str, ask_db: bool
@@ -480,74 +458,6 @@ class BaseDatabase(common.BaseObject, Generic[_DocumentType]):
             show_expanded_events=show_expanded_events,
         )
 
-
-class AsyncDatabase(BaseDatabase[_DocumentType]):
-    """An asynchronous Mongo database."""
-
-    def __init__(
-        self,
-        client: BaseMongoClient[_DocumentType],
-        name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> None:
-        """Get a database by client and name.
-
-        Raises :class:`TypeError` if `name` is not an instance of
-        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
-        `name` is not a valid database name.
-
-        :param client: A :class:`~pymongo.mongo_client.MongoClient` instance.
-        :param name: The database name.
-        :param codec_options: An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) client.codec_options is used.
-        :param read_preference: The read preference to use. If
-            ``None`` (the default) client.read_preference is used.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) client.write_concern is used.
-        :param read_concern: An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) client.read_concern is used.
-
-        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
-
-        .. versionchanged:: 4.0
-           Removed the eval, system_js, error, last_status, previous_error,
-           reset_error_history, authenticate, logout, collection_names,
-           current_op, add_user, remove_user, profiling_level,
-           set_profiling_level, and profiling_info methods.
-           See the :ref:`pymongo4-migration-guide`.
-
-        .. versionchanged:: 3.2
-           Added the read_concern option.
-
-        .. versionchanged:: 3.0
-           Added the codec_options, read_preference, and write_concern options.
-           :class:`~pymongo.database.Database` no longer returns an instance
-           of :class:`~pymongo.collection.Collection` for attribute names
-           with leading underscores. You must use dict-style lookups instead::
-
-               db['__my_collection__']
-
-           Not:
-
-               db.__my_collection__
-        """
-        super().__init__(
-            client,
-            name,
-            codec_options,
-            read_preference,
-            write_concern,
-            read_concern,
-        )
-
-        self._asynchronous = True
-
     @_csot.apply
     async def create_collection(
         self,
@@ -706,7 +616,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
 
     async def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
-    ) -> CommandCursor[_DocumentType]:
+    ) -> AsyncCommandCursor[_DocumentType]:
         """Perform a database-level aggregation.
 
         See the `aggregation pipeline`_ documentation for a list of stages
@@ -769,7 +679,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         async with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
-                CommandCursor,
+                AsyncCommandCursor,
                 pipeline,
                 kwargs,
                 session is not None,
@@ -1046,7 +956,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         comment: Optional[Any] = None,
         max_await_time_ms: Optional[int] = None,
         **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> AsyncCommandCursor[_DocumentType]:
         """Issue a MongoDB command and parse the response as a cursor.
 
         If the response from the server does not include a cursor field, an error will be thrown.
@@ -1126,7 +1036,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
                 )
                 coll = self.get_collection("$cmd", read_preference=read_preference)
                 if response.get("cursor"):
-                    cmd_cursor = CommandCursor(
+                    cmd_cursor = AsyncCommandCursor(
                         coll,
                         response["cursor"],
                         conn.address,
@@ -1135,7 +1045,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
                         explicit_session=session is not None,
                         comment=comment,
                     )
-                    cmd_cursor._maybe_pin_connection(conn)
+                    await cmd_cursor._maybe_pin_connection(conn)
                     return cmd_cursor
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
@@ -1170,7 +1080,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         session: Optional[ClientSession],
         read_preference: _ServerMode,
         **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
         coll = cast(
             Collection[MutableMapping[str, Any]],
@@ -1182,7 +1092,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
             cursor = (
                 await self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
-            cmd_cursor = CommandCursor(
+            cmd_cursor = AsyncCommandCursor(
                 coll,
                 cursor,
                 conn.address,
@@ -1190,7 +1100,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
                 explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
-        cmd_cursor._maybe_pin_connection(conn)
+        await cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
     async def _list_collections_helper(
@@ -1199,7 +1109,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :param session: a
@@ -1230,7 +1140,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
             _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
-        ) -> CommandCursor[MutableMapping[str, Any]]:
+        ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
             return await self._list_collections(
                 conn, session, read_preference=read_preference, **kwargs
             )
@@ -1245,7 +1155,7 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :param session: a
@@ -1546,17 +1456,18 @@ class AsyncDatabase(BaseDatabase[_DocumentType]):
         )
 
 
-class Database(BaseDatabase[_DocumentType]):
+class Database(common.BaseObject, Generic[_DocumentType]):
     """A Mongo database."""
 
     def __init__(
         self,
-        client: BaseMongoClient[_DocumentType],
-        name: str,
+        client: Optional[AsyncMongoClient[_DocumentType]] = None,
+        name: Optional[str] = None,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
+        async_database: Optional[AsyncDatabase] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -1602,19 +1513,53 @@ class Database(BaseDatabase[_DocumentType]):
 
                db.__my_collection__
         """
-        super().__init__(
-            client,
-            name,
-            codec_options,
-            read_preference,
-            write_concern,
-            read_concern,
-        )
+        if async_database is not None:
+            self._delegate = async_database
+        else:
+            if hasattr(client, "_delegate"):
+                client = client._delegate
+            self._delegate = AsyncDatabase(
+                client,
+                name,
+                codec_options,
+                read_preference,
+                write_concern,
+                read_concern,
+            )
 
-        self._asynchronous = False
+    @classmethod
+    def wrap(cls, async_database: AsyncDatabase):
+        return cls(async_database=async_database)
 
-    @_csot.apply
-    @synchronize(AsyncDatabase)
+    @delegate_property()
+    def codec_options(self) -> CodecOptions:
+        ...
+
+    @delegate_property()
+    def write_concern(self) -> WriteConcern:
+        ...
+
+    @delegate_property()
+    def read_preference(self) -> _ServerMode:
+        ...
+
+    @delegate_property()
+    def topology_description(self) -> TopologyDescription:
+        ...
+
+    @delegate_property()
+    def read_concern(self) -> ReadConcern:
+        ...
+
+    @delegate_property()
+    def client(self) -> MongoClient[_DocumentType]:
+        ...
+
+    @delegate_property()
+    def name(self) -> str:
+        ...
+
+    @synchronize(wrapper_class=Collection)
     def create_collection(
         self,
         name: str,
@@ -1625,17 +1570,28 @@ class Database(BaseDatabase[_DocumentType]):
         session: Optional[ClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
-    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
+    ) -> Collection[_DocumentType]:
         ...
 
-    @synchronize(AsyncDatabase)
+    @synchronize(wrapper_class=Collection)
+    def get_collection(
+        self,
+        name: str,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> Collection[_DocumentType]:
+        ...
+
+    @synchronize(wrapper_class=CommandCursor)
     def aggregate(
         self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> CommandCursor[_DocumentType]:
         ...
 
     @overload
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1651,7 +1607,7 @@ class Database(BaseDatabase[_DocumentType]):
         ...
 
     @overload
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1666,8 +1622,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> _CodecDocumentType:
         ...
 
-    @_csot.apply
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1682,8 +1637,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> Union[dict[str, Any], _CodecDocumentType]:
         ...
 
-    @_csot.apply
-    @synchronize(AsyncDatabase)
+    @synchronize(wrapper_class=CommandCursor)
     def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1697,7 +1651,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> CommandCursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncDatabase)
+    @synchronize(wrapper_class=CommandCursor)
     def list_collections(
         self,
         session: Optional[ClientSession] = None,
@@ -1707,7 +1661,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         ...
 
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def list_collection_names(
         self,
         session: Optional[ClientSession] = None,
@@ -1718,7 +1672,7 @@ class Database(BaseDatabase[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1728,7 +1682,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def validate_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],
@@ -1740,7 +1694,7 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> dict[str, Any]:
         ...
 
-    @synchronize(AsyncDatabase)
+    @synchronize()
     def dereference(
         self,
         dbref: DBRef,
@@ -1750,10 +1704,81 @@ class Database(BaseDatabase[_DocumentType]):
     ) -> Optional[_DocumentType]:
         ...
 
-    _retryable_read_command = AsyncDatabase._retryable_read_command
-    _command = AsyncDatabase._command
-    _command_helper = AsyncDatabase._command_helper
-    _list_collections = AsyncDatabase._list_collections
-    _list_collections_helper = AsyncDatabase._list_collections_helper
-    _list_collection_names = AsyncDatabase._list_collection_names
-    _drop_helper = AsyncDatabase._drop_helper
+    @synchronize()  # TODO: Give this a wrapper class for Database, circular import issue
+    def with_options(
+        self,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> Database[_DocumentType]:
+        ...
+
+    @synchronize()
+    def watch(
+        self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
+    ) -> DatabaseChangeStream[_DocumentType]:
+        ...
+
+    # See PYTHON-3084.
+    __iter__ = None
+
+    @delegate_method()
+    def __next__(self) -> NoReturn:
+        ...
+
+    next = __next__
+
+    @delegate_method()
+    def __bool__(self) -> NoReturn:
+        ...
+
+    def __getattr__(self, name: str) -> Collection[_DocumentType]:
+        """Get a collection of this database by name.
+
+        Raises InvalidName if an invalid collection name is used.
+
+        :param name: the name of the collection to get
+        """
+        if name.startswith("_"):
+            raise AttributeError(
+                f"Database has no attribute {name!r}. To access the {name}"
+                f" collection, use database[{name!r}]."
+            )
+        return self.__getitem__(name)
+
+    @delegate_method(wrapper_class=Collection)
+    def __getitem__(self, name: str) -> Collection[_DocumentType]:
+        ...
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, self.__class__):
+            return self.client == other.client and self.name == other.name
+        return NotImplemented
+
+    @delegate_method()
+    def __ne__(self, other: Any) -> bool:
+        ...
+
+    @delegate_method()
+    def __hash__(self) -> int:
+        ...
+
+    def __repr__(self) -> str:
+        return self._delegate.__repr__().replace("Async", "")
+
+    @property
+    def _timeout(self):
+        return self._delegate._timeout

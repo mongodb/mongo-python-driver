@@ -39,14 +39,14 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
-from pymongo.asynchronous import synchronize
+from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock
+from pymongo.lock import _ALock, _create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
@@ -146,15 +146,16 @@ class _ConnectionManager:
     def __init__(self, conn: Connection, more_to_come: bool):
         self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
-        self.lock = _create_lock()
+        self._lock = _create_lock()
+        self.alock = _ALock(self._lock)
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Return this instance's connection to the connection pool."""
         if self.conn:
-            self.conn.unpin()
+            await self.conn.unpin()
             self.conn = None
 
 
@@ -196,6 +197,7 @@ class BaseCursor(Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
+        is_mongos: Optional[bool] = False,
     ) -> None:
         """Create a new cursor.
 
@@ -283,10 +285,11 @@ class BaseCursor(Generic[_DocumentType]):
         self._snapshot = snapshot
         self._hint: Union[str, dict[str, Any], None]
         self._set_hint(hint)
+        self._is_mongos = is_mongos
 
         # Exhaust cursor support
         if cursor_type == CursorType.EXHAUST:
-            if self._collection.database.client.is_mongos:
+            if self._is_mongos:
                 raise InvalidOperation("Exhaust cursors are not supported by mongos")
             if limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
@@ -344,7 +347,7 @@ class BaseCursor(Generic[_DocumentType]):
             else:
                 loop.run_until_complete(self._die())
         except Exception:
-            raise
+            pass
 
     def clone(self) -> BaseCursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -471,7 +474,7 @@ class BaseCursor(Generic[_DocumentType]):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self._collection.database.client.is_mongos:
+            if self._is_mongos:
                 raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self._exhaust = True
 
@@ -1359,26 +1362,132 @@ class AsyncCursor(BaseCursor[_DocumentType]):
 
 
 class Cursor(BaseCursor[_DocumentType]):
-    @synchronize(AsyncCursor)
+    def __init__(
+        self,
+        collection: BaseCollection[_DocumentType],
+        filter: Optional[Mapping[str, Any]] = None,
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        skip: int = 0,
+        limit: int = 0,
+        no_cursor_timeout: bool = False,
+        cursor_type: int = CursorType.NON_TAILABLE,
+        sort: Optional[_Sort] = None,
+        allow_partial_results: bool = False,
+        oplog_replay: bool = False,
+        batch_size: int = 0,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_Hint] = None,
+        max_scan: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
+        max: Optional[_Sort] = None,
+        min: Optional[_Sort] = None,
+        return_key: Optional[bool] = None,
+        show_record_id: Optional[bool] = None,
+        snapshot: Optional[bool] = None,
+        comment: Optional[Any] = None,
+        session: Optional[ClientSession] = None,
+        allow_disk_use: Optional[bool] = None,
+        let: Optional[bool] = None,
+        async_cursor: AsyncCursor = None,
+    ) -> None:
+        if async_cursor:
+            self._delegate = async_cursor
+        else:
+            self._delegate = AsyncCursor(
+                collection,
+                filter,
+                projection,
+                skip,
+                limit,
+                no_cursor_timeout,
+                cursor_type,
+                sort,
+                allow_partial_results,
+                oplog_replay,
+                batch_size,
+                collation,
+                hint,
+                max_scan,
+                max_time_ms,
+                max,
+                min,
+                return_key,
+                show_record_id,
+                snapshot,
+                comment,
+                session,
+                allow_disk_use,
+                let,
+            )
+
+    @classmethod
+    def wrap(cls, async_cursor: AsyncCursor):
+        return cls(None, None, async_cursor=async_cursor)
+
+    @synchronize()
     def close(self) -> None:
         ...
 
-    @synchronize(AsyncCursor)
+    @synchronize()
     def distinct(self, key: str) -> list:
         ...
 
-    @synchronize(AsyncCursor)
-    def rewind(self) -> BaseCursor[_DocumentType]:
+    @synchronize(wrapper_class="self")
+    def rewind(self) -> Cursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncCursor)
+    @synchronize()
     def next(self) -> _DocumentType:
         ...
+
+    @delegate_method()
+    def _check_okay_to_chain(self) -> None:
+        ...
+
+    @delegate_property()
+    def collection(self) -> BaseCollection[_DocumentType]:
+        ...
+
+    @delegate_property()
+    def retrieved(self) -> int:
+        ...
+
+    @delegate_property()
+    def alive(self) -> bool:
+        ...
+
+    @delegate_property()
+    def cursor_id(self) -> Optional[int]:
+        ...
+
+    @delegate_property()
+    def address(self) -> Optional[tuple[str, Any]]:
+        ...
+
+    @delegate_property()
+    def session(self) -> Optional[ClientSession]:
+        ...
+
+    @property
+    def _has_filter(self):
+        return self._delegate._has_filter
+
+    @property
+    def _spec(self):
+        return self._delegate._spec
+
+    @_spec.setter
+    def _spec(self, new_spec):
+        self._delegate._spec = new_spec
+
+    @property
+    def _sock_mgr(self):
+        return self._delegate._sock_mgr
 
     async def __anext__(self):
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
 
-    @synchronize(AsyncCursor, async_method_name="__anext__")
+    @synchronize(async_method_name="__anext__")
     def __next__(self):
         ...
 
@@ -1397,13 +1506,13 @@ class Cursor(BaseCursor[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
 
-    @synchronize(AsyncCursor, async_method_name="__aexit__")
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    @delegate_method()
+    def __del__(self) -> None:
         ...
 
-    _die = AsyncCursor._die
-    _send_message = AsyncCursor._send_message
-    _refresh = AsyncCursor._refresh
+    @synchronize(async_method_name="__aexit__")
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        ...
 
 
 class BaseRawBatchCursor(BaseCursor[_DocumentType]):

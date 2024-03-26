@@ -888,7 +888,7 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology.select_server(writable_server_selector, _Op.TEST)
+    server = topology._s_select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 

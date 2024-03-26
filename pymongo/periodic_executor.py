@@ -66,12 +66,12 @@ class PeriodicExecutor:
     def run_target(self):
         asyncio.run(self._run())
 
-    async def open(self) -> None:
+    def open(self) -> None:
         """Start. Multiple calls have no effect.
 
         Not safe to call from multiple threads at once.
         """
-        async with self._alock:
+        with self._lock:
             if self._thread_will_exit:
                 # If the background thread has read self._stopped as True
                 # there is a chance that it has not yet exited. The call to

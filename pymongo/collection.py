@@ -45,11 +45,15 @@ from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
 )
-from pymongo.asynchronous import synchronize
+from pymongo.asynchronous import delegate_property, synchronize
 from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
-from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.command_cursor import (
+    AsyncCommandCursor,
+    AsyncRawBatchCommandCursor,
+    CommandCursor,
+)
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import (
     AsyncCursor,
@@ -88,6 +92,7 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
+from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern, validate_boolean
 
@@ -125,18 +130,18 @@ if TYPE_CHECKING:
     from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession
     from pymongo.collation import Collation
-    from pymongo.database import BaseDatabase
+    from pymongo.database import AsyncDatabase
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
 
 
-class BaseCollection(common.BaseObject, Generic[_DocumentType]):
-    """A base, synchronicity-agnostic collection."""
+class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
+    """An asynchronous Mongo collection."""
 
     def __init__(
         self,
-        database: BaseDatabase[_DocumentType],
+        database: AsyncDatabase[_DocumentType],
         name: str,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -237,7 +242,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
 
-        self._database: BaseDatabase[_DocumentType] = database
+        self._database: AsyncDatabase[_DocumentType] = database
         self._name = name
         self._full_name = f"{self._database.name}.{self._name}"
         self._write_response_codec_options = self.codec_options._replace(
@@ -245,7 +250,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         )
         self._timeout = database.client.options.timeout
 
-    def __getattr__(self, name: str) -> BaseCollection[_DocumentType]:
+    def __getattr__(self, name: str) -> AsyncCollection[_DocumentType]:
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -260,31 +265,21 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> BaseCollection[_DocumentType]:
-        if self._asynchronous:
-            return AsyncCollection(
-                self._database,
-                f"{self._name}.{name}",
-                self.codec_options,
-                self.read_preference,
-                self.write_concern,
-                self.read_concern,
-            )
-        else:
-            return Collection(
-                self._database,
-                f"{self._name}.{name}",
-                self.codec_options,
-                self.read_preference,
-                self.write_concern,
-                self.read_concern,
-            )
+    def __getitem__(self, name: str) -> AsyncCollection[_DocumentType]:
+        return AsyncCollection(
+            self._database,
+            f"{self._name}.{name}",
+            self.codec_options,
+            self.read_preference,
+            self.write_concern,
+            self.read_concern,
+        )
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._database!r}, {self._name!r})"
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, BaseCollection):
+        if isinstance(other, AsyncCollection):
             return self._database == other.database and self._name == other.name
         return NotImplemented
 
@@ -315,7 +310,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         return self._name
 
     @property
-    def database(self) -> BaseDatabase[_DocumentType]:
+    def database(self) -> AsyncDatabase[_DocumentType]:
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
@@ -327,7 +322,7 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> BaseCollection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -356,24 +351,14 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        if self._asynchronous:
-            return AsyncCollection(
-                self._database,
-                self._name,
-                codec_options or self.codec_options,
-                read_preference or self.read_preference,
-                write_concern or self.write_concern,
-                read_concern or self.read_concern,
-            )
-        else:
-            return Collection(
-                self._database,
-                self._name,
-                codec_options or self.codec_options,
-                read_preference or self.read_preference,
-                write_concern or self.write_concern,
-                read_concern or self.read_concern,
-            )
+        return AsyncCollection(
+            self._database,
+            self._name,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
     def _write_concern_for_cmd(
         self, cmd: Mapping[str, Any], session: Optional[ClientSession]
@@ -544,95 +529,6 @@ class BaseCollection(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events,
         )
-
-
-class AsyncCollection(BaseCollection[_DocumentType]):
-    """An asynchronous Mongo collection."""
-
-    def __init__(
-        self,
-        database: BaseDatabase[_DocumentType],
-        name: str,
-        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        **kwargs: Any,
-    ) -> None:
-        """Get / create a Mongo collection.
-
-        Raises :class:`TypeError` if `name` is not an instance of
-        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
-        not a valid collection name. Any additional keyword arguments will be used
-        as options passed to the create command. See
-        :meth:`~pymongo.database.Database.create_collection` for valid
-        options.
-
-        If `create` is ``True``, `collation` is specified, or any additional
-        keyword arguments are present, a ``create`` command will be
-        sent, using ``session`` if specified. Otherwise, a ``create`` command
-        will not be sent and the collection will be created implicitly on first
-        use. The optional ``session`` argument is *only* used for the ``create``
-        command, it is not associated with the collection afterward.
-
-        :param database: the database to get a collection from
-        :param name: the name of the collection to get
-        :param codec_options: An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) database.codec_options is used.
-        :param read_preference: The read preference to use. If
-            ``None`` (the default) database.read_preference is used.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) database.write_concern is used.
-        :param read_concern: An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) database.read_concern is used.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession` that is used with
-            the create collection command
-        :param kwargs: additional keyword arguments will
-            be passed as options for the create collection command
-
-        .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
-
-        .. versionchanged:: 4.0
-           Removed the reindex, map_reduce, inline_map_reduce,
-           parallel_scan, initialize_unordered_bulk_op,
-           initialize_ordered_bulk_op, group, count, insert, save,
-           update, remove, find_and_modify, and ensure_index methods. See the
-           :ref:`pymongo4-migration-guide`.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-
-        .. versionchanged:: 3.4
-           Support the `collation` option.
-
-        .. versionchanged:: 3.2
-           Added the read_concern option.
-
-        .. versionchanged:: 3.0
-           Added the codec_options, read_preference, and write_concern options.
-           Removed the uuid_subtype attribute.
-           :class:`~pymongo.collection.Collection` no longer returns an
-           instance of :class:`~pymongo.collection.Collection` for attribute
-           names with leading underscores. You must use dict-style lookups
-           instead::
-
-               collection['__my_collection__']
-
-           Not:
-
-               collection.__my_collection__
-
-        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
-        """
-        super().__init__(
-            database, name, codec_options, read_preference, write_concern, read_concern, **kwargs
-        )
-        self._asynchronous = True
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
@@ -1982,7 +1878,8 @@ class AsyncCollection(BaseCollection[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        return AsyncCursor(self, *args, **kwargs)
+        is_mongos = await self._database.client.is_mongos()
+        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
 
     async def find(self, *args: Any, **kwargs: Any) -> BaseCursor[_DocumentType]:
         """Query the database.
@@ -2170,10 +2067,8 @@ class AsyncCollection(BaseCollection[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        if self._asynchronous:
-            return AsyncCursor(self, *args, **kwargs)
-        else:
-            return Cursor(self, *args, **kwargs)
+        is_mongos = await self._database.client.is_mongos()
+        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
 
     async def find_raw_batches(
         self, *args: Any, **kwargs: Any
@@ -2206,10 +2101,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         # OP_MSG is required to support encryption.
         if self._database.client._encrypter:
             raise InvalidOperation("find_raw_batches does not support auto encryption")
-        if self._asynchronous:
-            return AsyncRawBatchCursor(self, *args, **kwargs)
-        else:
-            return RawBatchCursor(self, *args, **kwargs)
+        return AsyncRawBatchCursor(self, *args, **kwargs)
 
     async def _count_cmd(
         self,
@@ -2790,7 +2682,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
                 if exc.code != 26:
                     raise
                 cursor = {"id": 0, "firstBatch": []}
-            cmd_cursor = CommandCursor(
+            cmd_cursor = AsyncCommandCursor(
                 coll,
                 cursor,
                 conn.address,
@@ -2798,7 +2690,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
                 explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
-            cmd_cursor._maybe_pin_connection(conn)
+            await cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
         async with self._database.client._tmp_session(session, False) as s:
@@ -2882,7 +2774,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         )
         cmd = _CollectionAggregationCommand(
             coll,
-            CommandCursor,
+            AsyncCommandCursor,
             pipeline,
             kwargs,
             explicit_session=session is not None,
@@ -3104,7 +2996,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         self,
         aggregation_command: Type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[CommandCursor],
+        cursor_class: Type[AsyncCommandCursor],
         session: Optional[ClientSession],
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
@@ -3218,7 +3110,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
             return await self._aggregate(
                 _CollectionAggregationCommand,
                 pipeline,
-                CommandCursor,
+                AsyncCommandCursor,
                 session=s,
                 explicit_session=session is not None,
                 let=let,
@@ -3267,7 +3159,7 @@ class AsyncCollection(BaseCollection[_DocumentType]):
                 await self._aggregate(
                     _CollectionRawAggregationCommand,
                     pipeline,
-                    RawBatchCommandCursor,
+                    AsyncRawBatchCommandCursor,
                     session=s,
                     explicit_session=session is not None,
                     **kwargs,
@@ -3837,17 +3729,18 @@ class AsyncCollection(BaseCollection[_DocumentType]):
         )
 
 
-class Collection(BaseCollection[_DocumentType]):
+class Collection(common.BaseObject, Generic[_DocumentType]):
     """A Mongo collection."""
 
     def __init__(
         self,
-        database: BaseDatabase[_DocumentType],
+        database: AsyncDatabase[_DocumentType],
         name: str,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
+        async_collection: Optional[AsyncCollection] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -3925,12 +3818,44 @@ class Collection(BaseCollection[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
-        super().__init__(
-            database, name, codec_options, read_preference, write_concern, read_concern, **kwargs
-        )
-        self._asynchronous = False
+        if async_collection is not None:
+            self._delegate = async_collection
+        else:
+            self._delegate = AsyncCollection(
+                database,
+                name,
+                codec_options,
+                read_preference,
+                write_concern,
+                read_concern,
+                **kwargs,
+            )
 
-    @synchronize(AsyncCollection)
+    @classmethod
+    def wrap(cls, async_collection: AsyncCollection):
+        return cls(None, None, async_collection=async_collection)
+
+    @delegate_property()
+    def codec_options(self) -> CodecOptions:
+        ...
+
+    @delegate_property()
+    def write_concern(self) -> WriteConcern:
+        ...
+
+    @delegate_property()
+    def read_preference(self) -> _ServerMode:
+        ...
+
+    @delegate_property()
+    def topology_description(self) -> TopologyDescription:
+        ...
+
+    @delegate_property()
+    def read_concern(self) -> ReadConcern:
+        ...
+
+    @synchronize()
     def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
@@ -3940,7 +3865,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> InsertOneResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def insert_many(
         self,
         documents: Iterable[Union[_DocumentType, RawBSONDocument]],
@@ -3951,7 +3876,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> InsertManyResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def replace_one(
         self,
         filter: Mapping[str, Any],
@@ -3966,7 +3891,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def update_one(
         self,
         filter: Mapping[str, Any],
@@ -3982,7 +3907,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def update_many(
         self,
         filter: Mapping[str, Any],
@@ -3998,7 +3923,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> UpdateResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def drop(
         self,
         session: Optional[ClientSession] = None,
@@ -4007,7 +3932,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def delete_one(
         self,
         filter: Mapping[str, Any],
@@ -4019,7 +3944,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> DeleteResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def delete_many(
         self,
         filter: Mapping[str, Any],
@@ -4031,25 +3956,25 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> DeleteResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def find_one(
         self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
     ) -> Optional[_DocumentType]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize(wrapper_class=Cursor)
     def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize(wrapper_class=RawBatchCursor)
     def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def count_documents(
         self,
         filter: Mapping[str, Any],
@@ -4059,7 +3984,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> int:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def create_index(
         self,
         keys: _IndexKeyHint,
@@ -4069,7 +3994,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> str:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def create_indexes(
         self,
         indexes: Sequence[IndexModel],
@@ -4080,7 +4005,7 @@ class Collection(BaseCollection[_DocumentType]):
         ...
 
     @_csot.apply
-    @synchronize(AsyncCollection)
+    @synchronize()
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -4090,7 +4015,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def drop_indexes(
         self,
         session: Optional[ClientSession] = None,
@@ -4099,7 +4024,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def list_indexes(
         self,
         session: Optional[ClientSession] = None,
@@ -4107,7 +4032,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def options(
         self,
         session: Optional[ClientSession] = None,
@@ -4115,7 +4040,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> MutableMapping[str, Any]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def bulk_write(
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
@@ -4127,7 +4052,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> BulkWriteResult:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize(wrapper_class=CommandCursor)
     def aggregate(
         self,
         pipeline: _Pipeline,
@@ -4138,7 +4063,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> CommandCursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def aggregate_raw_batches(
         self,
         pipeline: _Pipeline,
@@ -4148,7 +4073,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> RawBatchCursor[_DocumentType]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def create_search_index(
         self,
         model: Union[Mapping[str, Any], SearchIndexModel],
@@ -4158,7 +4083,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> str:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def create_search_indexes(
         self,
         models: list[SearchIndexModel],
@@ -4168,7 +4093,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> list[str]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def distinct(
         self,
         key: str,
@@ -4179,7 +4104,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> list:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     async def drop_search_index(
         self,
         name: str,
@@ -4189,7 +4114,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     async def find_one_and_delete(
         self,
         filter: Mapping[str, Any],
@@ -4203,7 +4128,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> _DocumentType:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def find_one_and_replace(
         self,
         filter: Mapping[str, Any],
@@ -4220,7 +4145,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> _DocumentType:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def find_one_and_update(
         self,
         filter: Mapping[str, Any],
@@ -4238,7 +4163,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> _DocumentType:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def index_information(
         self,
         session: Optional[ClientSession] = None,
@@ -4246,7 +4171,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> MutableMapping[str, Any]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def list_search_indexes(
         self,
         name: Optional[str] = None,
@@ -4256,7 +4181,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> CommandCursor[Mapping[str, Any]]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def rename(
         self,
         new_name: str,
@@ -4266,7 +4191,7 @@ class Collection(BaseCollection[_DocumentType]):
     ) -> MutableMapping[str, Any]:
         ...
 
-    @synchronize(AsyncCollection)
+    @synchronize()
     def update_search_index(
         self,
         name: str,

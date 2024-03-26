@@ -56,7 +56,7 @@ from typing import (
 )
 
 import bson
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
@@ -72,7 +72,7 @@ from pymongo.asynchronous import delegate_method, delegate_property, schedule_ta
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.client_session import _EmptyServerSession
-from pymongo.command_cursor import CommandCursor
+from pymongo.command_cursor import AsyncCommandCursor, CommandCursor
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -812,7 +812,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _fetch_topology(self) -> Topology:
         await self._topology.open()
         async with self._alock:
-            await self._kill_cursors_executor.open()
+            self._kill_cursors_executor.open()
         return self._topology
 
     async def _server_property(self, attr_name: str) -> Any:
@@ -1032,7 +1032,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             topology = await self._get_topology()
             if session and not session.in_transaction:
-                session._transaction.reset()
+                await session._transaction.reset()
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
@@ -1053,7 +1053,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # Server selection errors in a transaction are transient.
             if session and session.in_transaction:
                 exc._add_error_label("TransientTransactionError")
-                session._unpin()
+                await session._unpin()
             raise
 
     async def _conn_for_writes(
@@ -1120,7 +1120,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            with operation.conn_mgr.lock:
+            async with operation.conn_mgr.alock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return await server.run_operation(
@@ -1329,7 +1329,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                         cursor_id, address, session=session, conn_mgr=conn_mgr
                     )
             if conn_mgr:
-                conn_mgr.close()
+                await conn_mgr.close()
         else:
             # The cursor will be closed later in a different session.
             if cursor_id or conn_mgr:
@@ -1353,7 +1353,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                with conn_mgr.lock:  # TODO: ASYNC LOCK
+                async with conn_mgr.alock:  # TODO: ASYNC LOCK
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None
@@ -1518,7 +1518,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[dict[str, Any]]:
+    ) -> AsyncCommandCursor[dict[str, Any]]:
         cmd = {"listDatabases": 1}
         cmd.update(kwargs)
         if comment is not None:
@@ -1533,14 +1533,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
 
     async def list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[dict[str, Any]]:
+    ) -> AsyncCommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :param session: a
@@ -1577,10 +1577,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        return [
-            doc["name"]
-            async for doc in await self._list_databases(session, nameOnly=True, comment=comment)
-        ]
+        res = await self._list_databases(session, nameOnly=True, comment=comment)
+        return [doc["name"] async for doc in res]
 
     @_csot.apply
     async def drop_database(
@@ -1712,6 +1710,12 @@ class _MongoClientErrorHandler:
         self.service_id = conn.service_id
         self.completed_handshake = completed_handshake
 
+    @synchronize(async_method_name="handle")
+    def _s_handle(
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
+    ) -> None:
+        ...
+
     async def handle(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
     ) -> None:
@@ -1728,7 +1732,7 @@ class _MongoClientErrorHandler:
                 if exc_val.has_error_label("TransientTransactionError") or exc_val.has_error_label(
                     "RetryableWriteError"
                 ):
-                    self.session._unpin()
+                    await self.session._unpin()
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
@@ -1837,7 +1841,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:
                         assert self._session
-                        self._session._unpin()
+                        await self._session._unpin()
                     if not retryable_write_error_exc or self._is_not_eligible_for_retry():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
@@ -1946,6 +1950,9 @@ class _ClientConnectionRetryable(Generic[T]):
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
+    HOST = "localhost"
+    PORT = 27017
+
     def __init__(
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
@@ -1960,6 +1967,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if async_client is not None:
             self._delegate = async_client
         else:
+            if host is None:
+                host = self.HOST
+            if port is None:
+                port = self.PORT
+
             self._delegate = AsyncMongoClient(
                 host, port, document_class, tz_aware, connect, type_registry, **kwargs
             )
@@ -1968,35 +1980,49 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def wrap(cls, async_client):
         return cls(async_client=async_client)
 
-    @synchronize
+    @synchronize()
+    def _get_topology(self) -> Topology:
+        ...
+
+    @synchronize()
+    def _process_periodic_tasks(self) -> None:
+        ...
+
+    @property
+    @synchronize()
     def address(self) -> Optional[tuple[str, int]]:
         ...
 
-    @synchronize
+    @property
+    @synchronize()
     def primary(self) -> Optional[tuple[str, int]]:
         ...
 
+    @property
     @synchronize()
     def secondaries(self) -> set[_Address]:
         ...
 
-    @synchronize
+    @property
+    @synchronize()
     def arbiters(self) -> set[_Address]:
         ...
 
-    @synchronize
+    @property
+    @synchronize()
     def is_primary(self) -> bool:
         ...
 
-    @synchronize
+    @property
+    @synchronize()
     def is_mongos(self) -> bool:
         ...
 
-    @synchronize
+    @synchronize()
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         ...
 
-    @synchronize
+    @synchronize()
     def close(self) -> None:
         ...
 
@@ -2009,7 +2035,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[dict[str, Any]]:
         ...
 
-    @synchronize
+    @synchronize()
     def list_database_names(
         self,
         session: Optional[client_session.ClientSession] = None,
@@ -2017,7 +2043,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> list[str]:
         ...
 
-    @synchronize
+    @synchronize()
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2037,7 +2063,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> database.Database[_DocumentType]:
         ...
 
-    @delegate_method
+    @delegate_method()
     def watch(
         self,
         pipeline: Optional[_Pipeline] = None,
@@ -2055,19 +2081,39 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> ChangeStream[_DocumentType]:
         ...
 
-    @delegate_property
+    @delegate_property()
+    def codec_options(self) -> CodecOptions:
+        ...
+
+    @delegate_property()
+    def write_concern(self) -> WriteConcern:
+        ...
+
+    @delegate_property()
+    def read_preference(self) -> _ServerMode:
+        ...
+
+    @delegate_property()
     def topology_description(self) -> TopologyDescription:
         ...
 
-    @delegate_property
+    @delegate_property()
+    def read_concern(self) -> ReadConcern:
+        ...
+
+    @delegate_property()
     def nodes(self) -> FrozenSet[_Address]:
         ...
 
-    @delegate_property
+    @delegate_property()
     def options(self) -> ClientOptions:
         ...
 
-    @delegate_method
+    @property
+    def _topology(self) -> Topology:
+        return self._delegate._topology
+
+    @delegate_method()
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
@@ -2087,30 +2133,34 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> database.Database[_DocumentType]:
         ...
 
-    @delegate_property
     def __eq__(self, other: Any) -> bool:
-        ...
+        if isinstance(other, self.__class__):
+            return self._topology == other._topology
+        return NotImplemented
 
-    @delegate_property
     def __ne__(self, other: Any) -> bool:
-        ...
+        return not self == other
 
-    @delegate_property
+    @delegate_method()
     def __hash__(self) -> int:
         ...
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._delegate._repr_helper()})"
 
-    @delegate_method(wrapper_class=database.Database)
     def __getattr__(self, name: str) -> database.Database[_DocumentType]:
-        ...
+        if name.startswith("_"):
+            raise AttributeError(
+                f"MongoClient has no attribute {name!r}. To access the {name}"
+                f" database, use client[{name!r}]."
+            )
+        return self.__getitem__(name)
 
     @delegate_method(wrapper_class=database.Database)
     def __getitem__(self, name: str) -> database.Database[_DocumentType]:
         ...
 
-    @delegate_method
+    @delegate_method()
     def __next__(self) -> NoReturn:
         ...
 
@@ -2124,6 +2174,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     # See PYTHON-3084.
     __iter__ = None
+
+    @property
+    def _kill_cursors_executor(self):
+        return self._delegate._kill_cursors_executor
+
+    @property
+    def _topology_settings(self):
+        return self._delegate._topology_settings
+
+    @property
+    def _kill_cursors_queue(self):
+        return self._delegate._kill_cursors_queue
 
 
 def _after_fork_child() -> None:

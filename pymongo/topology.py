@@ -26,6 +26,7 @@ import weakref
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
+from pymongo.asynchronous import synchronize
 from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
@@ -199,7 +200,7 @@ class Topology:
             async with self._alock:
                 # Close servers and clear the pools.
                 for server in self._servers.values():
-                    server.close()
+                    await server.close()
                 # Reset the session pool to avoid duplicate sessions in
                 # the child process.
                 self._session_pool.reset()
@@ -213,6 +214,17 @@ class Topology:
         if timeout is None:
             return self._settings.server_selection_timeout
         return timeout
+
+    @synchronize(async_method_name="select_servers")
+    def _s_select_servers(
+        self,
+        selector: Callable[[Selection], Selection],
+        operation: str,
+        server_selection_timeout: Optional[float] = None,
+        address: Optional[_Address] = None,
+        operation_id: Optional[int] = None,
+    ) -> list[Server]:
+        ...
 
     async def select_servers(
         self,
@@ -382,6 +394,18 @@ class Topology:
             )
         return server
 
+    @synchronize(async_method_name="select_server")
+    def _s_select_server(
+        self,
+        selector: Callable[[Selection], Selection],
+        operation: str,
+        server_selection_timeout: Optional[float] = None,
+        address: Optional[_Address] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
+        operation_id: Optional[int] = None,
+    ) -> Server:
+        ...
+
     async def select_server_by_address(
         self,
         address: _Address,
@@ -438,7 +462,7 @@ class Topology:
         ):
             server = self._servers.get(server_description.address)
             if server:
-                server.pool.ready()
+                await server.pool.ready()
 
         suppress_event = (self._publish_server or self._publish_tp) and sd_old == server_description
         if self._publish_server and not suppress_event:
@@ -476,7 +500,7 @@ class Topology:
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
-                server.pool.reset(interrupt_connections=interrupt_connections)
+                await server.pool.reset(interrupt_connections=interrupt_connections)
 
         # Wake waiters in select_servers().
         self._acondition.notify_all()
@@ -623,11 +647,15 @@ class Topology:
 
         for server, generation in servers:
             try:
-                server.pool.remove_stale_sockets(generation)
+                await server.pool.remove_stale_sockets(generation)
             except PyMongoError as exc:
                 ctx = _ErrorContext(exc, 0, generation, False, None)
                 await self.handle_error(server.description.address, ctx)
                 raise
+
+    @synchronize(async_method_name="update_pool")
+    def _s_update_pool(self) -> None:
+        ...
 
     async def close(self) -> None:
         """Clear pools and terminate monitors. Topology does not reopen on
@@ -636,7 +664,7 @@ class Topology:
         """
         async with self._alock:
             for server in self._servers.values():
-                server.close()
+                await server.close()
 
             # Mark all servers Unknown.
             self._description = self._description.reset()
@@ -703,7 +731,7 @@ class Topology:
 
             # Start or restart the events publishing thread.
             if self._publish_tp or self._publish_server:
-                await self.__events_executor.open()
+                self.__events_executor.open()
 
             # Start the SRV polling thread.
             if self._srv_monitor and (self.description.topology_type in SRV_POLLING_TOPOLOGIES):
@@ -788,21 +816,21 @@ class Topology:
                     await self._process_change(ServerDescription(address, error=error))
                 if is_shutting_down or (err_ctx.max_wire_version <= 7):
                     # Clear the pool.
-                    server.reset(service_id)
+                    await server.reset(service_id)
                 server.request_check()
             elif not err_ctx.completed_handshake:
                 # Unknown command error during the connection handshake.
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
-                server.reset(service_id)
+                await server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
             if not self._settings.load_balanced:
                 await self._process_change(ServerDescription(address, error=error))
             # Clear the pool.
-            server.reset(service_id)
+            await server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
             # reading or writing`_, clients MUST cancel the hello check on
             # that server and close the current monitoring connection."
@@ -816,6 +844,10 @@ class Topology:
         """
         async with self._alock:
             await self._handle_error(address, err_ctx)
+
+    @synchronize(async_method_name="handle_error")
+    def _s_handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
+        ...
 
     def _request_check_all(self) -> None:
         """Wake all monitors. Hold the lock when calling this."""
@@ -857,11 +889,11 @@ class Topology:
                 self._servers[address].description = sd
                 # Update is_writable value of the pool, if it changed.
                 if was_writable != sd.is_writable:
-                    self._servers[address].pool.update_is_writable(sd.is_writable)
+                    await self._servers[address].pool.update_is_writable(sd.is_writable)
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                server.close()
+                await server.close()
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address: _Address) -> Pool:

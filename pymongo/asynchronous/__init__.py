@@ -111,17 +111,18 @@ class TaskRunnerPool:
         self._runners = []
 
 
-def delegate_property(wrapper_class: Optional[Any] = None):
+def delegate_property(*, wrapper_class: Optional[Any] = None):
     """Decorate a given property to delegate it to the delegate class.
     :Parameters:
      - `wrapper_class`:     An optional class to wrap around an asynchronous return type.
     """
 
     def class_wrapper(prop):
+        @property
         @functools.wraps(prop)
         def wrapped(self):
             try:
-                delegated = property(getattr(self._delegate, prop.__name__))
+                delegated = getattr(self._delegate, prop.__name__)
             except AttributeError:
                 raise
             if wrapper_class:
@@ -134,7 +135,7 @@ def delegate_property(wrapper_class: Optional[Any] = None):
     return class_wrapper
 
 
-def delegate_method(wrapper_class: Optional[Any] = None):
+def delegate_method(*, wrapper_class: Optional[Any] = None):
     """Decorate a given method to delegate it to the delegate class.
     :Parameters:
      - `wrapper_class`:     An optional class to wrap around an asynchronous return type.
@@ -160,6 +161,7 @@ def delegate_method(wrapper_class: Optional[Any] = None):
 
 
 def synchronize(
+    *,
     wrapper_class: Optional[Any] = None,
     async_method_name: Optional[str] = None,
     doc: Optional[str] = None,
@@ -176,11 +178,12 @@ def synchronize(
         @functools.wraps(method)
         def wrapped(self, *args, **kwargs):
             runner = TaskRunnerPool.getInstance()
+            delegate = self._delegate if hasattr(self, "_delegate") else self
             if async_method_name is not None:
-                async_method = getattr(self._delegate, async_method_name)
+                async_method = getattr(delegate, async_method_name)
             else:
                 try:
-                    async_method = getattr(self._delegate, method.__name__)
+                    async_method = getattr(delegate, method.__name__)
                 except AttributeError:
                     raise
 

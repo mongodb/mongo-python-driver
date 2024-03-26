@@ -38,8 +38,8 @@ class MockPool(Pool):
         # Actually connect to the default server.
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
-    @contextlib.contextmanager
-    def checkout(self, handler=None):
+    @contextlib.asynccontextmanager
+    async def checkout(self, handler=None):
         client = self.client
         host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:
@@ -83,7 +83,7 @@ class MockMonitor(Monitor):
         self.client = weakref.proxy(client)
         Monitor.__init__(self, server_description, topology, pool, topology_settings)
 
-    def _check_once(self):
+    async def _check_once(self):
         client = self.client
         address = self._server_description.address
         response, rtt = client.mock_hello("%s:%d" % address)  # type: ignore[str-format]

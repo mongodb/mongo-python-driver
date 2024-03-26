@@ -420,14 +420,14 @@ class _Transaction:
             conn.pin_txn()
             self.conn_mgr = _ConnectionManager(conn, False)
 
-    def unpin(self) -> None:
+    async def unpin(self) -> None:
         self.pinned_address = None
         if self.conn_mgr:
-            self.conn_mgr.close()
+            await self.conn_mgr.close()
         self.conn_mgr = None
 
-    def reset(self) -> None:
-        self.unpin()
+    async def reset(self) -> None:
+        await self.unpin()
         self.state = _TxnState.NONE
         self.sharded = False
         self.recovery_token = None
@@ -524,7 +524,7 @@ class ClientSession:
                     await self.abort_transaction()
                 # It's possible we're still pinned here when the transaction
                 # is in the committed state when the session is discarded.
-                self._unpin()
+                await self._unpin()
             finally:
                 await self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
@@ -681,7 +681,9 @@ class ClientSession:
         """
         start_time = time.monotonic()
         while True:
-            self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
+            await self.start_transaction(
+                read_concern, write_concern, read_preference, max_commit_time_ms
+            )
             try:
                 ret = callback(self)
             except Exception as exc:
@@ -722,7 +724,7 @@ class ClientSession:
                 # Commit succeeded.
                 return ret
 
-    def start_transaction(
+    async def start_transaction(
         self,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
@@ -757,7 +759,7 @@ class ClientSession:
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference, max_commit_time_ms
         )
-        self._transaction.reset()
+        await self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
         return _TransactionContext(self)
@@ -831,7 +833,7 @@ class ClientSession:
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
-            self._unpin()
+            await self._unpin()
 
     async def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
         """Run commit or abort with one retry after any retryable error.
@@ -964,9 +966,9 @@ class ClientSession:
         """Pin this session to the given Server or to the given connection."""
         self._transaction.pin(server, conn)
 
-    def _unpin(self) -> None:
+    async def _unpin(self) -> None:
         """Unpin this session from any pinned Server."""
-        self._transaction.unpin()
+        await self._transaction.unpin()
 
     def _txn_read_preference(self) -> Optional[_ServerMode]:
         """Return read preference of this transaction or None."""

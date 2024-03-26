@@ -78,11 +78,11 @@ class Server:
         if not self._pool.opts.load_balanced:
             await self._monitor.open()
 
-    def reset(self, service_id: Optional[ObjectId] = None) -> None:
+    async def reset(self, service_id: Optional[ObjectId] = None) -> None:
         """Clear the connection pool."""
-        self.pool.reset(service_id)
+        await self.pool.reset(service_id)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Clear the connection pool and stop the monitor.
 
         Reconnect with open().
@@ -96,8 +96,8 @@ class Server:
                     (self._description.address, self._topology_id),
                 )
             )
-        self._monitor.close()
-        self._pool.close()
+        await self._monitor.close()
+        await self._pool.close()
 
     def request_check(self) -> None:
         """Check the server's state soon."""
@@ -172,7 +172,7 @@ class Server:
 
         try:
             if more_to_come:
-                reply = conn.receive_message(None)
+                reply = await conn.receive_message(None)
             else:
                 await conn.send_message(data, max_doc_size)
                 reply = await conn.receive_message(request_id)

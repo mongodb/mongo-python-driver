@@ -25,9 +25,9 @@ from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
-    from pymongo.command_cursor import CommandCursor
-    from pymongo.database import Database
+    from pymongo.collection import AsyncCollection, Collection
+    from pymongo.command_cursor import AsyncCommandCursor, CommandCursor
+    from pymongo.database import AsyncDatabase, Database
     from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
     from pymongo.server import Server
@@ -44,8 +44,8 @@ class _AggregationCommand:
 
     def __init__(
         self,
-        target: Union[Database, Collection],
-        cursor_class: type[CommandCursor],
+        target: Union[AsyncDatabase, AsyncCollection],
+        cursor_class: type[AsyncCommandCursor],
         pipeline: _Pipeline,
         options: MutableMapping[str, Any],
         explicit_session: bool,
@@ -198,12 +198,12 @@ class _AggregationCommand:
             explicit_session=self._explicit_session,
             comment=self._options.get("comment"),
         )
-        cmd_cursor._maybe_pin_connection(conn)
+        await cmd_cursor._maybe_pin_connection(conn)
         return cmd_cursor
 
 
 class _CollectionAggregationCommand(_AggregationCommand):
-    _target: Collection
+    _target: AsyncCollection
 
     @property
     def _aggregation_target(self) -> str:
@@ -213,12 +213,12 @@ class _CollectionAggregationCommand(_AggregationCommand):
     def _cursor_namespace(self) -> str:
         return self._target.full_name
 
-    def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
         """The Collection used for the aggregate command cursor."""
         return self._target
 
     @property
-    def _database(self) -> Database:
+    def _database(self) -> AsyncDatabase:
         return self._target.database
 
 
@@ -232,7 +232,7 @@ class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
 
 
 class _DatabaseAggregationCommand(_AggregationCommand):
-    _target: Database
+    _target: AsyncDatabase
 
     @property
     def _aggregation_target(self) -> int:
@@ -243,10 +243,10 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         return f"{self._target.name}.$cmd.aggregate"
 
     @property
-    def _database(self) -> Database:
+    def _database(self) -> AsyncDatabase:
         return self._target
 
-    def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
         """The Collection used for the aggregate command cursor."""
         # Collection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level
