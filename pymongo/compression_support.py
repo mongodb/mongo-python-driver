@@ -16,16 +16,19 @@ from __future__ import annotations
 import warnings
 from typing import Any, Iterable, Optional, Union
 
-try:
-    import snappy  # type:ignore[import]
+from pymongo._lazy_import import lazy_import
+from pymongo.hello import HelloCompat
+from pymongo.monitoring import _SENSITIVE_COMMANDS
 
+try:
+    snappy = lazy_import("snappy")
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.
     _HAVE_SNAPPY = False
 
 try:
-    import zlib
+    zlib = lazy_import("zlib")
 
     _HAVE_ZLIB = True
 except ImportError:
@@ -33,14 +36,10 @@ except ImportError:
     _HAVE_ZLIB = False
 
 try:
-    from zstandard import ZstdCompressor, ZstdDecompressor
-
+    zstandard = lazy_import("zstandard")
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False
-
-from pymongo.hello import HelloCompat
-from pymongo.monitoring import _SENSITIVE_COMMANDS
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
@@ -138,7 +137,7 @@ class ZstdContext:
     def compress(data: bytes) -> bytes:
         # ZstdCompressor is not thread safe.
         # TODO: Use a pool?
-        return ZstdCompressor().compress(data)
+        return zstandard.ZstdCompressor().compress(data)
 
 
 def decompress(data: bytes, compressor_id: int) -> bytes:
@@ -153,6 +152,6 @@ def decompress(data: bytes, compressor_id: int) -> bytes:
     elif compressor_id == ZstdContext.compressor_id:
         # ZstdDecompressor is not thread safe.
         # TODO: Use a pool?
-        return ZstdDecompressor().decompress(data)
+        return zstandard.ZstdDecompressor().decompress(data)
     else:
         raise ValueError("Unknown compressorId %d" % (compressor_id,))

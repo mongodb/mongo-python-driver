@@ -342,6 +342,9 @@ static long long millis_from_datetime(PyObject* datetime) {
 static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
     // Allocate a new DatetimeMS object.
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     PyObject* dt;
     PyObject* ll_millis;
@@ -480,6 +483,9 @@ static int _load_python_objects(PyObject* module) {
     PyObject* re_compile = NULL;
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
+    if (!state) {
+        return 1;
+    }
 
     /* Cache commonly used attribute names to improve performance. */
     if (!((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
@@ -638,6 +644,9 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t
     PyObject* type_registry_obj = NULL;
     struct module_state *state = GETSTATE(self);
     long type_marker;
+    if (!state) {
+        return 0;
+    }
 
     options->unicode_decode_error_handler = NULL;
 
@@ -862,6 +871,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      */
     long type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
+        return 0;
+    }
+    if (!state) {
         return 0;
     }
 
@@ -1501,6 +1513,9 @@ int write_dict(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     long type_marker;
     int is_dict = PyDict_Check(dict);
+    if (!state) {
+        return 0;
+    }
 
     if (!is_dict) {
         /* check for RawBSONDocument */
@@ -1638,6 +1653,9 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* raw_bson_document_bytes_obj;
     long type_marker;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "ObO|b", &dict, &check_keys,
                           &options_obj, &top_level) &&
@@ -1689,6 +1707,9 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     PyObject* database = NULL;
     PyObject* ret = NULL;
     int db_present = 0;
+    if (!state) {
+        return NULL;
+    }
 
     /* Decoding for DBRefs */
     if (PyMapping_HasKey(value, state->_dollar_ref_str) && PyMapping_HasKey(value, state->_dollar_id_str)) { /* DBRef */
@@ -1743,6 +1764,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned max, const codec_options_t* options, int raw_array) {
     struct module_state *state = GETSTATE(self);
     PyObject* value = NULL;
+    if (!state) {
+        return NULL;
+    }
     switch (type) {
     case 1:
         {

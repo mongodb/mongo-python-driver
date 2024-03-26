@@ -21,9 +21,10 @@ import time
 from collections import deque
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from typing import Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
 
-from pymongo.write_concern import WriteConcern
+if TYPE_CHECKING:
+    from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)

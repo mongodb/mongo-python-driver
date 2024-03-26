@@ -2071,6 +2071,21 @@ tasks:
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
               echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
+    - name: "check-import-time"
+      tags: ["pr"]
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            shell: "bash"
+            working_dir: src
+            script: |
+              ${PREPARE_SHELL}
+              set -x
+              export BASE_SHA=${revision}
+              export HEAD_SHA=${github_commit}
+              bash .evergreen/run-import-time-test.sh
+
 axes:
   # Choice of distro
   - id: platform
@@ -3045,6 +3060,12 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: "assign-pr-reviewer"
+
+- name: rhel8-import-time
+  display_name: Import Time Check
+  run_on: rhel87-small
+  tasks:
+    - name: "check-import-time"
 
 - name: Release
   display_name: Release
