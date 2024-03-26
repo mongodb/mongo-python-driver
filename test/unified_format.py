@@ -1015,6 +1015,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
+        # Handle mongos_clients for transactions tests.
+        cls.mongos_clients = []
+        if client_context.supports_transactions():
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
             if "retryable-writes" in cls.TEST_SPEC["description"]:
@@ -1238,12 +1244,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
             return
-        try:
-            self.client.admin.command("killAllSessions", [])
-        except OperationFailure:
-            # "operation was interrupted" by killing the command's
-            # own session.
-            pass
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            try:
+                self.client.admin.command("killAllSessions", [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
