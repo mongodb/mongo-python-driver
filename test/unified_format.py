@@ -1171,6 +1171,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
 
+        return exception
+
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
@@ -1400,7 +1402,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if opargs:
             arguments = parse_spec_options(copy.deepcopy(opargs))
             prepare_spec_arguments(
-                spec, arguments, camel_to_snake(opname), self.entity_map, self.run_operations
+                spec,
+                arguments,
+                camel_to_snake(opname),
+                self.entity_map,
+                self.run_operations_and_throw,
             )
         else:
             arguments = {}
@@ -1458,7 +1464,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
             if ignore and isinstance(exc, (PyMongoError,)):
-                return None
+                return exc
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
@@ -1712,6 +1718,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.run_special_operation(op)
             else:
                 self.run_entity_operation(op)
+
+    def run_operations_and_throw(self, spec):
+        for op in spec:
+            if op["object"] == "testRunner":
+                self.run_special_operation(op)
+            else:
+                result = self.run_entity_operation(op)
+                if isinstance(result, Exception):
+                    raise result
 
     def check_events(self, spec):
         for event_spec in spec:
