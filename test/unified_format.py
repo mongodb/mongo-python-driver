@@ -1017,7 +1017,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # Handle mongos_clients for transactions tests.
         cls.mongos_clients = []
-        if client_context.supports_transactions():
+        if (
+            client_context.supports_transactions()
+            and not client_context.load_balancer
+            and not client_context.serverless
+        ):
             for address in client_context.mongoses:
                 cls.mongos_clients.append(single_client("{}:{}".format(*address)))
 
