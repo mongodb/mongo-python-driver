@@ -593,23 +593,28 @@ class SearchIndexModel:
         definition: Mapping[str, Any],
         name: Optional[str] = None,
         type: Optional[str] = "search",
+        **kwargs: Any,
     ) -> None:
         """Create a Search Index instance.
 
         For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
 
-        :param definition: - The definition for this index.
-        :param name: - The name for this index, if present.
-
-        .. versionadded:: 4.5
+        :param definition: The definition for this index.
+        :param name: The name for this index, if present.
+        :param type: The type for this index which defaults to "search". Alternative values include "vectorSearch".
+        :param kwargs: Keyword arguments supplying any additional options.
 
         .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
+        .. versionadded:: 4.5
+        .. versionchanged:: 4.7
+           Added the type and kwargs arguments.
         """
+        self.__document: dict[str, Any] = {}
         if name is not None:
-            self.__document = dict(name=name, definition=definition)
-        else:
-            self.__document = dict(definition=definition)
-        self.__document["type"] = type  # type: ignore[assignment]
+            self.__document["name"] = name
+        self.__document["definition"] = definition
+        self.__document["type"] = type
+        self.__document.update(kwargs)
 
     @property
     def document(self) -> Mapping[str, Any]:

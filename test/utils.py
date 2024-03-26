@@ -1053,7 +1053,12 @@ def parse_spec_options(opts):
         opts["read_preference"] = parse_read_preference(opts.pop("readPreference"))
 
     if "writeConcern" in opts:
-        opts["write_concern"] = WriteConcern(**dict(opts.pop("writeConcern")))
+        w_opts = opts.pop("writeConcern")
+        if "journal" in w_opts:
+            w_opts["j"] = w_opts.pop("journal")
+        if "wtimeoutMS" in w_opts:
+            w_opts["wtimeout"] = w_opts.pop("wtimeoutMS")
+        opts["write_concern"] = WriteConcern(**dict(w_opts))
 
     if "readConcern" in opts:
         opts["read_concern"] = ReadConcern(**dict(opts.pop("readConcern")))

@@ -25,6 +25,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 from test.unified_format import generate_test_classes
+from test.utils import AllowListEventListener
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
@@ -39,7 +40,8 @@ class TestCreateSearchIndex(IntegrationTest):
     def test_inputs(self):
         if not os.environ.get("TEST_INDEX_MANAGEMENT"):
             raise unittest.SkipTest("Skipping index management tests")
-        client = MongoClient()
+        listener = AllowListEventListener("createSearchIndexes")
+        client = MongoClient(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.test.test
         coll.drop()
@@ -54,6 +56,11 @@ class TestCreateSearchIndex(IntegrationTest):
                 coll.create_search_index(model)
             with self.assertRaises(OperationFailure):
                 coll.create_search_index(model_kwargs)
+
+        listener.reset()
+        with self.assertRaises(OperationFailure):
+            coll.create_search_index({"definition": definition, "arbitraryOption": 1})
+        self.assertIn("arbitraryOption", listener.events[0].command["indexes"][0])
 
 
 class TestSearchIndexProse(unittest.TestCase):

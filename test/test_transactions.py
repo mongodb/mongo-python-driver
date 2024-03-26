@@ -50,9 +50,6 @@ from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 
-# Location of JSON test specifications.
-TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "legacy")
-
 _TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 
 # Max number of operations to perform after a transaction to prove unpinning
@@ -410,10 +407,6 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(TransactionsBase):
-    TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "transactions-convenient-api"
-    )
-
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
         class _MyException(Exception):
@@ -574,24 +567,6 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
-
-
-def create_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    @client_context.require_transactions
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = SpecTestCreator(create_test, TestTransactions, TEST_PATH)
-test_creator.create_tests()
-
-
-SpecTestCreator(
-    create_test, TestTransactionsConvenientAPI, TestTransactionsConvenientAPI.TEST_PATH
-).create_tests()
 
 
 if __name__ == "__main__":
