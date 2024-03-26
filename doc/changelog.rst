@@ -39,6 +39,8 @@ PyMongo 4.7 brings a number of improvements including:
 - Added the :attr:`pymongo.monitoring.ConnectionCheckedOutEvent.duration`,
   :attr:`pymongo.monitoring.ConnectionCheckOutFailedEvent.duration`, and
   :attr:`pymongo.monitoring.ConnectionReadyEvent.duration` properties.
+- Added the ``type`` and ``kwargs`` arguments to :class:`~pymongo.operations.SearchIndexModel` to enable
+  creating vector search indexes in MongoDB Atlas.
 
 
 Unavoidable breaking changes
