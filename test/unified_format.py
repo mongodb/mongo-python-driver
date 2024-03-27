@@ -971,6 +971,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    mongos_clients: list[MongoClient] = []
 
     @staticmethod
     def should_run_on(run_on_spec):
