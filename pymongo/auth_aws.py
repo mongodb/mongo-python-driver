@@ -45,7 +45,10 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
         )
 
     # Delayed import.
-    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+    from pymongo_auth_aws.auth import (  # type:ignore[import]
+        set_cached_credentials,
+        set_use_cached_credentials,
+    )
 
     set_use_cached_credentials(True)
 
