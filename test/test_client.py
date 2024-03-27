@@ -20,6 +20,7 @@ import contextlib
 import copy
 import datetime
 import gc
+import logging
 import os
 import re
 import signal
@@ -32,6 +33,8 @@ import time
 from typing import Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
+
+import pytest
 
 from pymongo.operations import _Op
 
@@ -101,7 +104,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
+from pymongo.pool import _METADATA, ENV_VAR_K8S, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -125,6 +128,10 @@ class ClientUnitTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(
@@ -545,6 +552,50 @@ class ClientUnitTest(unittest.TestCase):
             expected = re.escape(expected)
             with self.assertRaisesRegex(ConfigurationError, expected):
                 MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
+
+    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    def test_detected_environment_logging(self, mock_get_hosts):
+        normal_hosts = [
+            "normal.host.com",
+            "host.cosmos.azure.com",
+            "host.docdb.amazonaws.com",
+            "host.docdb-elastic.amazonaws.com",
+        ]
+        srv_hosts = ["mongodb+srv://<test>:<test>@" + s for s in normal_hosts]
+        multi_host = (
+            "host.cosmos.azure.com,host.docdb.amazonaws.com,host.docdb-elastic.amazonaws.com"
+        )
+        with self.assertLogs("pymongo", level="INFO") as cm:
+            for host in normal_hosts:
+                MongoClient(host)
+            for host in srv_hosts:
+                mock_get_hosts.return_value = [(host, 1)]
+                MongoClient(host)
+            MongoClient(multi_host)
+            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
+            self.assertEqual(len(logs), 7)
+
+    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    def test_detected_environment_warning(self, mock_get_hosts):
+        with self._caplog.at_level(logging.WARN):
+            normal_hosts = [
+                "host.cosmos.azure.com",
+                "host.docdb.amazonaws.com",
+                "host.docdb-elastic.amazonaws.com",
+            ]
+            srv_hosts = ["mongodb+srv://<test>:<test>@" + s for s in normal_hosts]
+            multi_host = (
+                "host.cosmos.azure.com,host.docdb.amazonaws.com,host.docdb-elastic.amazonaws.com"
+            )
+            for host in normal_hosts:
+                with self.assertWarns(UserWarning):
+                    MongoClient(host)
+            for host in srv_hosts:
+                mock_get_hosts.return_value = [(host, 1)]
+                with self.assertWarns(UserWarning):
+                    MongoClient(host)
+            with self.assertWarns(UserWarning):
+                MongoClient(multi_host)
 
 
 class TestClient(IntegrationTest):

@@ -816,11 +816,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
-        kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
+        kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> db.command("filemd5", object_id, root=file_root)
+        >>> db.command("count", collection_name, query=query)
         OR
-        >>> db.command({"filemd5": object_id, "root": file_root})
+        >>> db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).

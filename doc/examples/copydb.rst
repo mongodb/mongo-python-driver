@@ -70,4 +70,4 @@ but it has been removed.
    http://mongodb.com/docs/manual/reference/method/db.copyDatabase/
 
 .. _Copy a Database:
-   https://www.mongodb.com/docs/database-tools/mongodump/#std-label-mongodump-example-copy-clone-database
+   https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases

@@ -82,6 +82,7 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     NotPrimaryError,
+    OperationFailure,
     PyMongoError,
 )
 from pymongo.monitoring import (
@@ -950,11 +951,14 @@ def coerce_result(opname, result):
     if opname in ("deleteOne", "deleteMany"):
         return {"deletedCount": result.deleted_count}
     if opname in ("updateOne", "updateMany", "replaceOne"):
-        return {
+        value = {
             "matchedCount": result.matched_count,
             "modifiedCount": result.modified_count,
             "upsertedCount": 0 if result.upserted_id is None else 1,
         }
+        if result.upserted_id is not None:
+            value["upsertedId"] = result.upserted_id
+        return value
     return result
 
 
@@ -1016,6 +1020,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
+        # Handle mongos_clients for transactions tests.
+        cls.mongos_clients = []
+        if (
+            client_context.supports_transactions()
+            and not client_context.load_balancer
+            and not client_context.serverless
+        ):
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
             if "retryable-writes" in cls.TEST_SPEC["description"]:
@@ -1035,6 +1049,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+        self.IS_SERVERLESS_PROXY = os.environ.get("IS_SERVERLESS_PROXY")
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
@@ -1056,6 +1071,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+        if self.IS_SERVERLESS_PROXY is not None and (
+            "errors during the initial connection hello are ignored" in spec["description"]
+            or "pinned connection is released after a transient network commit error"
+            in spec["description"]
+        ):
+            self.skipTest("waiting on CLOUDP-202309")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1165,6 +1186,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
 
+        return exception
+
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
@@ -1226,6 +1249,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cursor.batch_size(batch_size)
 
         return cursor
+
+    def kill_all_sessions(self):
+        if getattr(self, "client", None) is None:
+            return
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            try:
+                self.client.admin.command("killAllSessions", [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
@@ -1384,7 +1419,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if opargs:
             arguments = parse_spec_options(copy.deepcopy(opargs))
             prepare_spec_arguments(
-                spec, arguments, camel_to_snake(opname), self.entity_map, self.run_operations
+                spec,
+                arguments,
+                camel_to_snake(opname),
+                self.entity_map,
+                self.run_operations_and_throw,
             )
         else:
             arguments = {}
@@ -1442,7 +1481,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
             if ignore and isinstance(exc, (PyMongoError,)):
-                return None
+                return exc
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
@@ -1697,6 +1736,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 self.run_entity_operation(op)
 
+    def run_operations_and_throw(self, spec):
+        for op in spec:
+            if op["object"] == "testRunner":
+                self.run_special_operation(op)
+            else:
+                result = self.run_entity_operation(op)
+                if isinstance(result, Exception):
+                    raise result
+
     def check_events(self, spec):
         for event_spec in spec:
             client_name = event_spec["client"]
@@ -1785,6 +1833,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
+
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
             attempts = 3

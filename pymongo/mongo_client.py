@@ -86,6 +86,7 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
+from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -788,6 +789,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
+
+        for hostname in [node[0] for node in seeds]:
+            if _detect_external_db(hostname):
+                break
 
         # Add options with named keyword arguments to the parsed kwarg options.
         if type_registry is not None:
@@ -2485,6 +2490,31 @@ def _after_fork_child() -> None:
     # Perform cleanup in clients (i.e. get rid of topology)
     for _, client in MongoClient._clients.items():
         client._after_fork()
+
+
+def _detect_external_db(entity: str) -> bool:
+    """Detects external database hosts and logs an informational message at the INFO level."""
+    entity = entity.lower()
+    cosmos_db_hosts = [".cosmos.azure.com"]
+    document_db_hosts = [".docdb.amazonaws.com", ".docdb-elastic.amazonaws.com"]
+
+    for host in cosmos_db_hosts:
+        if entity.endswith(host):
+            _log_or_warn(
+                _CLIENT_LOGGER,
+                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
+                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
+            )
+            return True
+    for host in document_db_hosts:
+        if entity.endswith(host):
+            _log_or_warn(
+                _CLIENT_LOGGER,
+                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
+                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
+            )
+            return True
+    return False
 
 
 if _HAS_REGISTER_AT_FORK:

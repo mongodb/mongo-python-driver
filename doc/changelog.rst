@@ -32,9 +32,15 @@ PyMongo 4.7 brings a number of improvements including:
 
 - Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
   could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
+- Added a warning when connecting to DocumentDB and CosmosDB clusters.
+  For more information regarding feature compatibility and support please visit
+  `mongodb.com/supportability/documentdb <https://mongodb.com/supportability/documentdb>`_ and
+  `mongodb.com/supportability/cosmosdb <https://mongodb.com/supportability/cosmosdb>`_.
 - Added the :attr:`pymongo.monitoring.ConnectionCheckedOutEvent.duration`,
   :attr:`pymongo.monitoring.ConnectionCheckOutFailedEvent.duration`, and
   :attr:`pymongo.monitoring.ConnectionReadyEvent.duration` properties.
+- Added the ``type`` and ``kwargs`` arguments to :class:`~pymongo.operations.SearchIndexModel` to enable
+  creating vector search indexes in MongoDB Atlas.
 
 
 Unavoidable breaking changes
@@ -69,6 +75,12 @@ Unavoidable breaking changes
     >>>
     >>> dict_to_SON(data_as_dict)
     SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
+
+- PyMongo now uses `lazy imports <https://docs.python.org/3/library/importlib.html#implementing-lazy-imports>`_ for external dependencies.
+  If you are relying on any kind of monkey-patching of the standard library, you may need to explicitly import those external libraries in addition
+  to ``pymongo`` before applying the patch.  Note that we test with ``gevent`` and ``eventlet`` patching, and those continue to work.
+
+- The "aws" extra now requires minimum version of ``1.1.0`` for ``pymongo_auth_aws``.
 
 Changes in Version 4.6.2
 ------------------------

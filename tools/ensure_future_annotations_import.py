@@ -35,7 +35,7 @@ for dirname in ["pymongo", "bson", "gridfs"]:
             missing.append(path)
 
 if missing:
-    print(f"Missing '{pattern}' import in:")  # noqa: T201
+    print(f"Missing '{pattern}' import in:")
     for item in missing:
-        print(item)  # noqa: T201
+        print(item)
     sys.exit(1)
