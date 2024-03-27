@@ -19,7 +19,6 @@ from pymongo._lazy_import import lazy_import
 
 try:
     pymongo_auth_aws = lazy_import("pymongo_auth_aws")
-    pymongo_auth_aws_auth = lazy_import("pymongo_auth_aws.auth")
     _HAVE_MONGODB_AWS = True
 except ImportError:
     _HAVE_MONGODB_AWS = False
@@ -45,7 +44,10 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
             "install with: python -m pip install 'pymongo[aws]'"
         )
 
-    pymongo_auth_aws_auth.set_use_cached_credentials(True)
+    # Delayed import.
+    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+
+    set_use_cached_credentials(True)
 
     if conn.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
@@ -90,12 +92,12 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
                 break
     except pymongo_auth_aws.PyMongoAuthAwsError as exc:
         # Clear the cached credentials if we hit a failure in auth.
-        pymongo_auth_aws_auth.set_cached_credentials(None)
+        set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
         raise OperationFailure(
             f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})"
         ) from None
     except Exception:
         # Clear the cached credentials if we hit a failure in auth.
-        pymongo_auth_aws_auth.set_cached_credentials(None)
+        set_cached_credentials(None)
         raise

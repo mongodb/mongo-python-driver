@@ -22,10 +22,9 @@ from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
-from pymongo_auth_aws import AwsCredential
+from pymongo_auth_aws import AwsCredential, auth
 
 from pymongo import MongoClient
-from pymongo.auth_aws import pymongo_auth_aws_auth as auth
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
