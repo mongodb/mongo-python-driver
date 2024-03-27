@@ -142,6 +142,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         self._client: AsyncMongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
 
+    def _wrap_sync(self):
+        return Database(async_database=self)
+
     @property
     def client(self) -> AsyncMongoClient[_DocumentType]:
         """The client instance for this :class:`Database`."""
@@ -601,7 +604,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
-            coll = Collection(
+            coll = AsyncCollection(
                 self,
                 name,
                 codec_options,
@@ -1551,9 +1554,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def read_concern(self) -> ReadConcern:
         ...
 
-    @delegate_property()
+    @property
     def client(self) -> MongoClient[_DocumentType]:
-        ...
+        return self._delegate.client._wrap_sync()
 
     @delegate_property()
     def name(self) -> str:
@@ -1573,7 +1576,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Collection[_DocumentType]:
         ...
 
-    @synchronize(wrapper_class=Collection)
+    @delegate_method(wrapper_class=Collection)
     def get_collection(
         self,
         name: str,
@@ -1764,7 +1767,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, self.__class__):
+        if isinstance(other, Database):
             return self.client == other.client and self.name == other.name
         return NotImplemented
 

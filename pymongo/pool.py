@@ -1050,7 +1050,7 @@ class Connection:
             # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
+    async def unack_write(self, msg: bytes, max_doc_size: int) -> None:
         """Send unack OP_MSG.
 
         Can raise ConnectionFailure or InvalidDocument.
@@ -1059,7 +1059,7 @@ class Connection:
         :param max_doc_size: size in bytes of the largest document in `msg`.
         """
         self._raise_if_not_writable(True)
-        self.send_message(msg, max_doc_size)
+        await self.send_message(msg, max_doc_size)
 
     async def write_command(
         self, request_id: int, msg: bytes, codec_options: CodecOptions
@@ -1281,10 +1281,11 @@ async def _create_connection(address: _Address, options: PoolOptions) -> socket.
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            sock.settimeout(timeout)
+            sock.settimeout(0)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             tstart = time.monotonic()
+            sock.setblocking(False)
             while True:
                 try:
                     sock.connect(sa)

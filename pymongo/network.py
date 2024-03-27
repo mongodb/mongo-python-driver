@@ -300,7 +300,7 @@ async def command(
 
 async def send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
     timeout = socket.gettimeout()
-    socket.settimeout(0)
+    socket.settimeout(0.0)
     try:
         return socket.send(buf, flags)
     finally:
@@ -308,12 +308,13 @@ async def send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
 
 
 async def sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
-    view = memoryview(buf)
-    total_length = len(buf)
-    total_sent = 0
-    while total_sent < total_length:
-        sent = await send(socket, view[total_sent:], flags)
-        total_sent += sent
+    timeout = socket.gettimeout()
+    socket.settimeout(0.0)
+    loop = asyncio.get_event_loop()
+    try:
+        await asyncio.wait_for(loop.sock_sendall(socket, buf), timeout=timeout)
+    finally:
+        socket.settimeout(timeout)
 
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack

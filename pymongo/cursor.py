@@ -393,9 +393,7 @@ class BaseCursor(Generic[_DocumentType]):
             "has_filter",
         )
         data = {
-            k: v
-            for k, v in self.__dict__.items()
-            if k.startswith("_Cursor__") and k[9:] in values_to_clone
+            k: v for k, v in self.__dict__.items() if k.startswith("_") and k[1:] in values_to_clone
         }
         if deepcopy:
             data = self._deepcopy(data)
@@ -850,7 +848,7 @@ class BaseCursor(Generic[_DocumentType]):
         """
         raise NotImplementedError
 
-    def explain(self) -> _DocumentType:
+    async def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
@@ -868,7 +866,7 @@ class BaseCursor(Generic[_DocumentType]):
         # always use a hard limit for explains
         if c._limit:
             c._limit = -abs(c._limit)
-        return next(c)
+        return await anext(c)
 
     def _set_hint(self, index: Optional[_Hint]) -> None:
         if index is None:
@@ -1101,6 +1099,9 @@ class BaseCursor(Generic[_DocumentType]):
 
 
 class AsyncCursor(BaseCursor[_DocumentType]):
+    def _wrap_sync(self):
+        return Cursor(self.collection, async_cursor=self)
+
     async def _die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         try:
@@ -1423,6 +1424,50 @@ class Cursor(BaseCursor[_DocumentType]):
     @classmethod
     def wrap(cls, async_cursor: AsyncCursor):
         return cls(None, None, async_cursor=async_cursor)
+
+    def _wrap(self, async_cursor: AsyncCursor) -> Cursor[_DocumentType]:
+        self._delegate = async_cursor
+        return self
+
+    @delegate_method()
+    def add_option(self, mask: int) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def remove_option(self, mask: int) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def allow_disk_use(self, allow_disk_use: bool) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def limit(self, limit: int) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method(wrapper_class="self")
+    def batch_size(self, batch_size: int) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def skip(self, skip: int) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def max_time_ms(self, max_time_ms: Optional[int]) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method()
+    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method(wrapper_class="self")
+    def clone(self) -> BaseCursor[_DocumentType]:
+        ...
+
+    @synchronize()
+    def explain(self) -> _DocumentType:
+        ...
 
     @synchronize()
     def close(self) -> None:

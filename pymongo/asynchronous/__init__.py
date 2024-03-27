@@ -135,6 +135,13 @@ def delegate_property(*, wrapper_class: Optional[Any] = None):
     return class_wrapper
 
 
+def wrap_class(cls, wrapper, result):
+    if isinstance(wrapper, str):
+        return cls._wrap(result)
+    else:
+        return wrapper.wrap(result)
+
+
 def delegate_method(*, wrapper_class: Optional[Any] = None):
     """Decorate a given method to delegate it to the delegate class.
     :Parameters:
@@ -151,7 +158,7 @@ def delegate_method(*, wrapper_class: Optional[Any] = None):
 
             result = delegated(*args, **kwargs)
             if wrapper_class:
-                return wrapper_class.wrap(result)
+                return wrap_class(self, wrapper_class, result)
             else:
                 return result
 

@@ -45,7 +45,7 @@ from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
 )
-from pymongo.asynchronous import delegate_property, synchronize
+from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
@@ -130,7 +130,7 @@ if TYPE_CHECKING:
     from pymongo.aggregation import _AggregationCommand
     from pymongo.client_session import ClientSession
     from pymongo.collation import Collation
-    from pymongo.database import AsyncDatabase
+    from pymongo.database import AsyncDatabase, Database
     from pymongo.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
@@ -3821,6 +3821,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if async_collection is not None:
             self._delegate = async_collection
         else:
+            if hasattr(database, "_delegate"):
+                database = database._delegate
             self._delegate = AsyncCollection(
                 database,
                 name,
@@ -3834,6 +3836,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @classmethod
     def wrap(cls, async_collection: AsyncCollection):
         return cls(None, None, async_collection=async_collection)
+
+    def _wrap(self, async_collection: AsyncCollection) -> Collection[_DocumentType]:
+        self._delegate = async_collection
+        return self
 
     @delegate_property()
     def codec_options(self) -> CodecOptions:
@@ -4004,7 +4010,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> list[str]:
         ...
 
-    @_csot.apply
     @synchronize()
     def drop_index(
         self,
@@ -4024,7 +4029,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    @synchronize()
+    @synchronize(wrapper_class=CommandCursor)
     def list_indexes(
         self,
         session: Optional[ClientSession] = None,
@@ -4202,22 +4207,103 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    _aggregate = AsyncCollection._aggregate
-    _count_cmd = AsyncCollection._count_cmd
-    _create_search_indexes = AsyncCollection._create_search_indexes
-    _drop_index = AsyncCollection._drop_index
-    _find_and_modify = AsyncCollection._find_and_modify
-    _list_indexes = AsyncCollection._list_indexes
-    _create = AsyncCollection._create
-    _create_helper = AsyncCollection._create_helper
-    _insert_one = AsyncCollection._insert_one
-    _retryable_non_cursor_read = AsyncCollection._retryable_non_cursor_read
-    _create_indexes = AsyncCollection._create_indexes
-    _conn_for_writes = AsyncCollection._conn_for_writes
-    _command = AsyncCollection._command
-    _aggregate_one_result = AsyncCollection._aggregate_one_result
-    _update_retryable = AsyncCollection._update_retryable
-    _update = AsyncCollection._update
-    _delete_retryable = AsyncCollection._delete_retryable
-    _delete = AsyncCollection._delete
-    _find = AsyncCollection._find
+    @delegate_method(wrapper_class="self")
+    def with_options(
+        self,
+        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> Collection[_DocumentType]:
+        ...
+
+    def __getattr__(self, name: str) -> Collection[_DocumentType]:
+        """Get a sub-collection of this collection by name.
+
+        Raises InvalidName if an invalid collection name is used.
+
+        :param name: the name of the collection to get
+        """
+        if name.startswith("_"):
+            full_name = f"{self._delegate._name}.{name}"
+            raise AttributeError(
+                f"Collection has no attribute {name!r}. To access the {full_name}"
+                f" collection, use database['{full_name}']."
+            )
+        return self.__getitem__(name)
+
+    @delegate_method(wrapper_class="self")
+    def __getitem__(self, name: str) -> Collection[_DocumentType]:
+        ...
+
+    def __repr__(self) -> str:
+        return self._delegate.__repr__().replace("Async", "")
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Collection):
+            return (
+                self._delegate.database == other._delegate.database
+                and self._delegate._name == other.name
+            )
+        return NotImplemented
+
+    def __ne__(self, other: Any) -> bool:
+        return not self == other
+
+    @delegate_method()
+    def __hash__(self) -> int:
+        ...
+
+    def __bool__(self) -> NoReturn:
+        raise NotImplementedError(
+            "Collection objects do not implement truth "
+            "value testing or bool(). Please compare "
+            "with None instead: collection is not None"
+        )
+
+    @delegate_property()
+    def full_name(self) -> str:
+        ...
+
+    @delegate_property()
+    def name(self) -> str:
+        ...
+
+    def database(self) -> Database[_DocumentType]:
+        return self._delegate.database._wrap_sync()
+
+    __iter__ = None
+
+    def __next__(self) -> NoReturn:
+        raise TypeError("'Collection' object is not iterable")
+
+    next = __next__
+
+    @synchronize()
+    def _create(  # TODO: Used for tests, remove
+        self,
+        options: MutableMapping[str, Any],
+        session: Optional[ClientSession],
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    # _aggregate = AsyncCollection._aggregate
+    # _count_cmd = AsyncCollection._count_cmd
+    # _create_search_indexes = AsyncCollection._create_search_indexes
+    # _drop_index = AsyncCollection._drop_index
+    # _find_and_modify = AsyncCollection._find_and_modify
+    # _list_indexes = AsyncCollection._list_indexes
+    # _create = AsyncCollection._create
+    # _create_helper = AsyncCollection._create_helper
+    # _insert_one = AsyncCollection._insert_one
+    # _retryable_non_cursor_read = AsyncCollection._retryable_non_cursor_read
+    # _create_indexes = AsyncCollection._create_indexes
+    # _conn_for_writes = AsyncCollection._conn_for_writes
+    # _command = AsyncCollection._command
+    # _aggregate_one_result = AsyncCollection._aggregate_one_result
+    # _update_retryable = AsyncCollection._update_retryable
+    # _update = AsyncCollection._update
+    # _delete_retryable = AsyncCollection._delete_retryable
+    # _delete = AsyncCollection._delete
+    # _find = AsyncCollection._find

@@ -317,6 +317,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
+    def _wrap_sync(self):
+        return MongoClient(async_client=self)
+
     def _init_background(self) -> None:
         self._topology = Topology(self._topology_settings)
 
@@ -723,7 +726,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             raise ConfigurationError("No default database name defined or provided.")
 
         name = cast(str, self._default_database_name or default)
-        return database.Database(
+        return database.AsyncDatabase(
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
@@ -1359,7 +1362,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     assert conn_mgr.conn is not None
                     await self._kill_cursor_impl([cursor_id], address, session, conn_mgr.conn)
             else:
-                await self._kill_cursors([cursor_id], address, self._get_topology(), session)
+                await self._kill_cursors([cursor_id], address, await self._get_topology(), session)
         except PyMongoError:
             # Make another attempt to kill the cursor later.
             self._close_cursor_soon(cursor_id, address)

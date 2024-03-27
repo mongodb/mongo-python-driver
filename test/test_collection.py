@@ -192,7 +192,7 @@ class TestCollection(IntegrationTest):
             lambda: "create_test_no_wc" not in db.list_collection_names(),
             "drop create_test_no_wc collection",
         )
-        Collection(db, name="create_test_no_wc", create=True)
+        db.create_collection("create_test_no_wc")
         wait_until(
             lambda: "create_test_no_wc" in db.list_collection_names(),
             "create create_test_no_wc collection",
@@ -200,9 +200,7 @@ class TestCollection(IntegrationTest):
         # SERVER-33317
         if not client_context.is_mongos or not client_context.version.at_least(3, 7, 0):
             with self.assertRaises(OperationFailure):
-                Collection(
-                    db, name="create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN, create=True
-                )
+                db.create_collection("create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN)
 
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection("test")
@@ -1519,12 +1517,12 @@ class TestCollection(IntegrationTest):
 
         # Test that batchSize is handled properly.
         cursor = db.test.aggregate([], batchSize=5)
-        self.assertEqual(5, len(cursor._CommandCursor__data))  # type: ignore
+        self.assertEqual(5, len(cursor._data))  # type: ignore
         # Force a getMore
-        cursor._CommandCursor__data.clear()  # type: ignore
+        cursor._data.clear()  # type: ignore
         next(cursor)
         # batchSize - 1
-        self.assertEqual(4, len(cursor._CommandCursor__data))  # type: ignore
+        self.assertEqual(4, len(cursor._data))  # type: ignore
         # Exhaust the cursor. There shouldn't be any errors.
         for _doc in cursor:
             pass

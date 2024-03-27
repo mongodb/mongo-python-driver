@@ -30,7 +30,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.asynchronous import delegate_method, synchronize
+from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
@@ -411,6 +411,22 @@ class CommandCursor(Generic[_DocumentType]):
     def wrap(cls, delegate_cursor: AsyncCommandCursor):
         return cls(None, None, None, delegate_cursor=delegate_cursor)  # type:ignore[arg]
 
+    @delegate_property()
+    def alive(self) -> bool:
+        ...
+
+    @delegate_property()
+    def cursor_id(self) -> int:
+        ...
+
+    @delegate_property()
+    def address(self) -> Optional[_Address]:
+        ...
+
+    @delegate_property()
+    def session(self) -> Optional[ClientSession]:
+        ...
+
     @synchronize()
     def next(self) -> _DocumentType:
         ...
@@ -452,6 +468,10 @@ class CommandCursor(Generic[_DocumentType]):
     @synchronize(async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         ...
+
+    @property
+    def _data(self):  # TODO: Used for tests, remove
+        return self._delegate._data
 
 
 class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
