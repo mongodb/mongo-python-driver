@@ -37,6 +37,11 @@ if TYPE_CHECKING:
     from pymongo.pool import Connection
 
 
+def _enable_use_cached_credentials():
+    """Enable the use of cached credentials"""
+    pymongo_auth_aws_auth.set_use_cached_credentials(True)
+
+
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
     if not _HAVE_MONGODB_AWS:
@@ -45,8 +50,7 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
             "install with: python -m pip install 'pymongo[aws]'"
         )
 
-    # Enable the use of cached credentials.
-    pymongo_auth_aws_auth.set_use_cached_credentials(True)
+    _enable_use_cached_credentials()
 
     if conn.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
