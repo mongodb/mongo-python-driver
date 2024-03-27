@@ -25,7 +25,6 @@ sys.path[0:0] = [""]
 from pymongo_auth_aws import AwsCredential, auth
 
 from pymongo import MongoClient
-from pymongo.auth_aws import _enable_use_cached_credentials
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
@@ -64,7 +63,10 @@ class TestAuthAWS(unittest.TestCase):
         if not hasattr(auth, "set_cached_credentials"):
             self.skipTest("Cached credentials not available")
 
-        _enable_use_cached_credentials()
+        # Make a connection to ensure that we enable caching.
+        client = MongoClient(self.uri)
+        client.get_database().test.find_one()
+        client.close()
 
         # Ensure cleared credentials.
         auth.set_cached_credentials(None)
