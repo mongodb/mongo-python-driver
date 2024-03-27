@@ -86,8 +86,8 @@ def create_test(test_case):
                             self.assertEqual(
                                 actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
                             )
-                        elif "PROVIDER_NAME" in expected:
-                            self.assertEqual(actual.provider_name, expected["PROVIDER_NAME"])
+                        elif "ENVIRONMENT" in expected:
+                            self.assertEqual(actual.environment, expected["ENVIRONMENT"])
                         elif "callback" in expected:
                             self.assertEqual(actual.callback, expected["callback"])
                         else:
