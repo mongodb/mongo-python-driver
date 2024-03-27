@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set +x          # Disable debug trace
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
 
 echo "Running MONGODB-OIDC authentication tests"
 
@@ -40,26 +40,43 @@ if [ $OIDC_PROVIDER_NAME == "aws" ]; then
         set -x
     fi
     export AWS_WEB_IDENTITY_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
-    export OIDC_ADMIN_USER=$OIDC_ALTAS_USER
+    set +x   # turn off xtrace for this portion
+    export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
     export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
+    set -x
 
 elif [ $OIDC_PROVIDER_NAME == "azure" ]; then
     if [ -z "${AZUREOIDC_AUDIENCE:-}" ]; then
         echo "Must specify an AZUREOIDC_AUDIENCE"
         exit 1
     fi
+    export OIDC_AUDIENCE=$AZUREOIDC_AUDIENCE
     set +x   # turn off xtrace for this portion
     export OIDC_ADMIN_USER=$AZUREOIDC_USERNAME
     export OIDC_ADMIN_PWD=pwd123
     set -x
-    export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
-    MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:azure"
-    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${AZUREOIDC_AUDIENCE}"
-    export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
+elif [ $OIDC_PROVIDER_NAME == "gcp" ]; then
+    if [ -z "${GCPOIDC_AUDIENCE:-}" ]; then
+        echo "Must specify an GCPOIDC_AUDIENCE"
+        exit 1
+    fi
+    export OIDC_AUDIENCE=$GCPOIDC_AUDIENCE
+    set +x   # turn off xtrace for this portion
+    export OIDC_ADMIN_USER=$GCPOIDC_ATLAS_USER
+    export OIDC_ADMIN_PWD=$GCPOIDC_ATLAS_PASSWORD
+    export MONGODB_URI=$GCPOIDC_ATLAS_URI
+    set -x
 else
     echo "Unrecognized OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME"
     exit 1
+fi
+
+if [[ $OIDC_PROVIDER_NAME == "azure" ]] || [[ $OIDC_PROVIDER_NAME == "gcp" ]]; then
+    export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
+    MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
+    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:${OIDC_PROVIDER_NAME}"
+    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${OIDC_AUDIENCE}"
+    export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
 fi
 
 export TEST_AUTH_OIDC=1

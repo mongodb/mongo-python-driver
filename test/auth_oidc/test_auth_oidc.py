@@ -27,12 +27,14 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
+import pprint
 from test.unified_format import generate_test_classes
 from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
+from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
@@ -46,7 +48,6 @@ from pymongo.uri_parser import parse_uri
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
-
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
@@ -73,6 +74,10 @@ class OIDCTestBase(unittest.TestCase):
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud, username)["access_token"]
+        elif PROVIDER_NAME == "gcp":
+            opts = parse_uri(self.uri_single)["options"]
+            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+            return _get_gcp_response(token_aud, username)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):
