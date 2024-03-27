@@ -68,6 +68,8 @@ class TestAuthAWS(unittest.TestCase):
         client.get_database().test.find_one()
         client.close()
 
+        self.assertTrue(auth.get_use_cached_credentials())
+
         # Ensure cleared credentials.
         auth.set_cached_credentials(None)
         self.assertEqual(auth.get_cached_credentials(), None)
