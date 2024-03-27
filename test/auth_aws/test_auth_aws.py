@@ -22,9 +22,10 @@ from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
-from pymongo_auth_aws import AwsCredential, auth
+from pymongo_auth_aws import AwsCredential
 
 from pymongo import MongoClient
+from pymongo.auth_aws import pymongo_auth_aws_auth as auth
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
@@ -60,8 +61,6 @@ class TestAuthAWS(unittest.TestCase):
     def setup_cache(self):
         if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
             self.skipTest("Not testing cached credentials")
-        if not hasattr(auth, "set_cached_credentials"):
-            self.skipTest("Cached credentials not available")
 
         # Make a connection to ensure that we enable caching.
         client = MongoClient(self.uri)
