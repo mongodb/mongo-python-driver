@@ -1534,6 +1534,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def wrap(cls, async_database: AsyncDatabase):
         return cls(async_database=async_database)
 
+    def _wrap(self, async_database: AsyncDatabase) -> Database[_DocumentType]:
+        self._delegate = async_database
+        return self
+
     @delegate_property()
     def codec_options(self) -> CodecOptions:
         ...
@@ -1707,7 +1711,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Optional[_DocumentType]:
         ...
 
-    @synchronize()  # TODO: Give this a wrapper class for Database, circular import issue
+    @delegate_method(wrapper_class="self")
     def with_options(
         self,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
@@ -1768,12 +1772,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
-            return self.client == other.client and self.name == other.name
+            return (
+                self._delegate.client == other._delegate.client
+                and self._delegate._name == other._delegate.name
+            )
         return NotImplemented
 
-    @delegate_method()
     def __ne__(self, other: Any) -> bool:
-        ...
+        return not self == other
 
     @delegate_method()
     def __hash__(self) -> int:

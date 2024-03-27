@@ -111,6 +111,13 @@ class TaskRunnerPool:
         self._runners = []
 
 
+def wrap_class(cls, wrapper, result):
+    if isinstance(wrapper, str):
+        return cls._wrap(result)
+    else:
+        return wrapper.wrap(result)
+
+
 def delegate_property(*, wrapper_class: Optional[Any] = None):
     """Decorate a given property to delegate it to the delegate class.
     :Parameters:
@@ -126,20 +133,13 @@ def delegate_property(*, wrapper_class: Optional[Any] = None):
             except AttributeError:
                 raise
             if wrapper_class:
-                return wrapper_class.wrap(delegated)
+                return wrap_class(self, wrapper_class, delegated)
             else:
                 return delegated
 
         return wrapped
 
     return class_wrapper
-
-
-def wrap_class(cls, wrapper, result):
-    if isinstance(wrapper, str):
-        return cls._wrap(result)
-    else:
-        return wrapper.wrap(result)
 
 
 def delegate_method(*, wrapper_class: Optional[Any] = None):
@@ -200,7 +200,7 @@ def synchronize(
             coro = async_method(*args, **kwargs)
 
             if wrapper_class:
-                return wrapper_class.wrap(runner.run(coro))
+                return wrap_class(self, wrapper_class, runner.run(coro))
             else:
                 return runner.run(coro)
 
