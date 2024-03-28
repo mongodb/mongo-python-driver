@@ -1445,9 +1445,9 @@ class Cursor(BaseCursor[_DocumentType]):
     def limit(self, limit: int) -> BaseCursor[_DocumentType]:
         ...
 
-    @delegate_method(wrapper_class="self")
-    def batch_size(self, batch_size: int) -> BaseCursor[_DocumentType]:
-        ...
+    def batch_size(self, batch_size: int) -> Cursor[_DocumentType]:
+        self._delegate = self._delegate.batch_size(batch_size)
+        return self
 
     @delegate_method()
     def skip(self, skip: int) -> BaseCursor[_DocumentType]:
@@ -1528,6 +1528,10 @@ class Cursor(BaseCursor[_DocumentType]):
     @property
     def _sock_mgr(self):
         return self._delegate._sock_mgr
+
+    @delegate_method(wrapper_class="self")
+    def collation(self, collation: Optional[_CollationIn]) -> BaseCursor[_DocumentType]:
+        ...
 
     async def __anext__(self):
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")

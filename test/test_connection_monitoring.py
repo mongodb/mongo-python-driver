@@ -451,7 +451,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(PoolState.CLOSED, pool.state)
         # Checking out a connection should fail
         with self.assertRaises(_PoolClosedError):
-            with pool.checkout():
+            with pool._s_checkout():
                 pass
 
 

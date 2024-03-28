@@ -250,6 +250,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
         self._timeout = database.client.options.timeout
 
+    def _wrap_sync(self):
+        return Collection(self._database, self._name, async_collection=self)
+
     def __getattr__(self, name: str) -> AsyncCollection[_DocumentType]:
         """Get a sub-collection of this collection by name.
 
@@ -260,7 +263,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if name.startswith("_"):
             full_name = f"{self._name}.{name}"
             raise AttributeError(
-                f"{type(self).__name__} has no attribute {name!r}. To access the {full_name}"
+                f"AsyncCollection has no attribute {name!r}. To access the {full_name}"
                 f" collection, use database['{full_name}']."
             )
         return self.__getitem__(name)
@@ -276,7 +279,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._database!r}, {self._name!r})"
+        return f"AsyncCollection({self._database!r}, {self._name!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncCollection):
@@ -291,7 +294,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     def __bool__(self) -> NoReturn:
         raise NotImplementedError(
-            "Collection objects do not implement truth "
+            "AsyncCollection objects do not implement truth "
             "value testing or bool(). Please compare "
             "with None instead: collection is not None"
         )
@@ -4207,7 +4210,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         ...
 
-    @delegate_method(wrapper_class="self")
     def with_options(
         self,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
@@ -4215,7 +4217,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
     ) -> Collection[_DocumentType]:
-        ...
+        new_delegate = self._delegate.with_options(
+            codec_options, read_preference, write_concern, read_concern
+        )
+        return Collection(None, None, async_collection=new_delegate)
+        # return self._delegate.with_options(codec_options, read_preference, write_concern, read_concern)._wrap_sync()
 
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a sub-collection of this collection by name.
@@ -4232,9 +4238,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    @delegate_method(wrapper_class="self")
+    # @delegate_method(wrapper_class="self")
     def __getitem__(self, name: str) -> Collection[_DocumentType]:
-        ...
+        coll = self._delegate.__getitem__(name)
+        return Collection(None, None, async_collection=coll)
 
     def __repr__(self) -> str:
         return self._delegate.__repr__().replace("Async", "")
@@ -4267,6 +4274,24 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     @delegate_property()
     def name(self) -> str:
+        ...
+
+    @delegate_method()
+    def watch(
+        self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
+    ) -> CollectionChangeStream[_DocumentType]:
         ...
 
     def database(self) -> Database[_DocumentType]:

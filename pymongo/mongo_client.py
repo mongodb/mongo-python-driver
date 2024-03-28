@@ -32,7 +32,6 @@ access:
 """
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import os
 import weakref
@@ -971,11 +970,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         try:
             if self._topology_task is not None:
-                return await self._topology_task
+                return self._topology_task.result()
             else:
-                self._topology_task = asyncio.create_task(self._fetch_topology())
+                self._topology_task = schedule_task(self._fetch_topology())
         except AttributeError:
-            self._topology_task = asyncio.create_task(self._fetch_topology())
+            self._topology_task = schedule_task(self._fetch_topology())
 
         return await self._topology_task
 

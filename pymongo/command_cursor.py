@@ -427,6 +427,10 @@ class CommandCursor(Generic[_DocumentType]):
     def session(self) -> Optional[ClientSession]:
         ...
 
+    def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
+        self._delegate = self._delegate.batch_size(batch_size)
+        return self
+
     @synchronize()
     def next(self) -> _DocumentType:
         ...
