@@ -32,18 +32,20 @@ if [ $OIDC_ENV == "test" ]; then
         export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
         export MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
         export MONGODB_URI_MULTI="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
+        export OIDC_ADMIN_USER=bob
+        export OIDC_ADMIN_PWD=pwd123
     else
         set +x   # turn off xtrace for this portion
-        export MONGODB_URI="$OIDC_ATLAS_URI_SINGLE"
-        export MONGODB_URI_SINGLE="$OIDC_ATLAS_URI_SINGLE/?authMechanism=MONGODB-OIDC"
-        export MONGODB_URI_MULTI="$OIDC_ATLAS_URI_MULTI/?authMechanism=MONGODB-OIDC"
+        export MONGODB_URI="$OIDC_URI_SINGLE"
+        export MONGODB_URI_SINGLE="$OIDC_URI_SINGLE/?authMechanism=MONGODB-OIDC"
+        if [ -n ${OIDC_URI_MULTI:-""} ]; then
+            export MONGODB_URI_MULTI="$OIDC_URI_MULTI/?authMechanism=MONGODB-OIDC"
+        fi
+        export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
+        export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
         set -x
     fi
     export OIDC_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
-    set +x   # turn off xtrace for this portion
-    export OIDC_ADMIN_USER=$OIDC_ATLAS_USER
-    export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
-    set -x
 
 elif [ $OIDC_ENV == "azure" ]; then
     if [ -z "${AZUREOIDC_RESOURCE:-}" ]; then

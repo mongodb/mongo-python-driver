@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch DRIVERS-2878 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -527,7 +527,7 @@ functions:
           AWS_ROLE_SESSION_NAME="test" \
             .evergreen/run-mongodb-aws-test.sh web-identity
 
-  "run oidc auth test with aws credentials":
+  "run oidc auth test with test credentials":
     - command: subprocess.exec
       type: test
       params:
@@ -990,6 +990,29 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - oidc-auth-test-azure-latest
+
+  - name: testoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - func: "assume ec2 role"
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-latest
 
   - name: test_aws_lambda_task_group
     setup_group:
@@ -1913,11 +1936,6 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: "oidc-auth-test-latest"
-      commands:
-        - func: "assume ec2 role"
-        - func: "run oidc auth test with aws credentials"
-
     - name: load-balancer-test
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1926,6 +1944,10 @@ tasks:
             LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
+
+    - name: "oidc-auth-test-latest"
+      commands:
+      - func: "run oidc auth test with test credentials"
 
     - name: "oidc-auth-test-azure-latest"
       commands:
@@ -2974,7 +2996,8 @@ buildvariants:
     platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
   display_name: "MONGODB-OIDC Auth ${platform}"
   tasks:
-    - name: "oidc-auth-test-latest"
+    - name: testoidc_task_group
+      batchtime: 20160 # 14 days
 
 - name: testazureoidc-variant
   display_name: "Azure OIDC"
