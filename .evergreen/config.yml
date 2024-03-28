@@ -999,9 +999,9 @@ task_groups:
       - func: make files executable
       - func: "assume ec2 role"
       - command: subprocess.exec
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         params:
           binary: bash
+          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
     teardown_task:
