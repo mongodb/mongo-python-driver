@@ -164,13 +164,13 @@ for provider_name, provider_data in [
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
-PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
-if PROVIDER_NAME == "aws":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
-elif PROVIDER_NAME == "azure":
+OIDC_ENV = os.environ.get("OIDC_ENV", "test")
+if OIDC_ENV == "test":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}
+elif OIDC_ENV == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "PROVIDER_NAME": "azure",
-        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+        "ENVIRONMENT": "azure",
+        "TOKEN_RESOURCE": os.environ["AZUREOIDC_RESOURCE"],
     }
 
 
@@ -971,6 +971,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    mongos_clients: list[MongoClient] = []
 
     @staticmethod
     def should_run_on(run_on_spec):

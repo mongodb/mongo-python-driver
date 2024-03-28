@@ -43,6 +43,7 @@ class OIDCIdPInfo:
 @dataclass
 class OIDCCallbackContext:
     timeout_seconds: float
+    username: str
     version: int
     refresh_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
@@ -67,8 +68,9 @@ class OIDCCallback(abc.ABC):
 class _OIDCProperties:
     callback: Optional[OIDCCallback] = field(default=None)
     human_callback: Optional[OIDCCallback] = field(default=None)
-    provider_name: Optional[str] = field(default=None)
+    environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
+    username: str = ""
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -91,7 +93,7 @@ def _get_authenticator(
     properties = credentials.mechanism_properties
 
     # Validate that the address is allowed.
-    if not properties.provider_name:
+    if not properties.environment:
         found = False
         allowed_hosts = properties.allowed_hosts
         for patt in allowed_hosts:
@@ -109,24 +111,23 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-class _OIDCAWSCallback(OIDCCallback):
+class _OIDCTestCallback(OIDCCallback):
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
+        token_file = os.environ.get("OIDC_TOKEN_FILE")
         if not token_file:
             raise RuntimeError(
-                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
+                'MONGODB-OIDC with an "test" provider requires "OIDC_TOKEN_FILE" to be set'
             )
         with open(token_file) as fid:
             return OIDCCallbackResult(access_token=fid.read().strip())
 
 
 class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_audience: str, username: Optional[str]) -> None:
-        self.token_audience = token_audience
-        self.username = username
+    def __init__(self, token_resource: str) -> None:
+        self.token_resource = token_resource
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
+        resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
         return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )
@@ -255,6 +256,7 @@ class _OIDCAuthenticator:
                     version=CALLBACK_VERSION,
                     refresh_token=self.refresh_token,
                     idp_info=self.idp_info,
+                    username=self.properties.username,
                 )
                 resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
