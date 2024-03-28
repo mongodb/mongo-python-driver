@@ -862,18 +862,19 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     const codec_options_t* options,
                                     unsigned char in_custom_call,
                                     unsigned char in_fallback_call) {
-    struct module_state *state = GETSTATE(self);
     PyObject* new_value = NULL;
     int retval;
     int is_list;
+    long type;
+    struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return 0;
+    }
     /*
      * Use _type_marker attribute instead of PyObject_IsInstance for better perf.
      */
-    long type = _type_marker(value, state->_type_marker_str);
+    type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
-        return 0;
-    }
-    if (!state) {
         return 0;
     }
 
