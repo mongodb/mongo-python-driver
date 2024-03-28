@@ -25,10 +25,11 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
+from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.client_session import ClientSession
-from pymongo.collection import Collection
+from pymongo.collection import AsyncCollection, Collection
 from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.cursor import Cursor
+from pymongo.cursor import AsyncCursor, Cursor
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -124,11 +125,14 @@ def _disallow_transactions(session: Optional[ClientSession]) -> None:
         raise InvalidOperation("GridFS does not support multi-document transactions")
 
 
-class GridIn:
+class AsyncGridIn:
     """Class to write data to GridFS."""
 
     def __init__(
-        self, root_collection: Collection, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        root_collection: AsyncCollection,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
     ) -> None:
         """Write a file to GridFS
 
@@ -180,8 +184,8 @@ class GridIn:
            `root_collection` must use an acknowledged
            :attr:`~pymongo.collection.Collection.write_concern`
         """
-        if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+        if not isinstance(root_collection, AsyncCollection):
+            raise TypeError("root_collection must be an instance of AsyncCollection")
 
         if not root_collection.write_concern.acknowledged:
             raise ConfigurationError("root_collection must use acknowledged write_concern")
@@ -210,30 +214,34 @@ class GridIn:
         object.__setattr__(self, "_buffered_docs", [])
         object.__setattr__(self, "_buffered_docs_size", 0)
 
-    def __create_index(self, collection: Collection, index_key: Any, unique: bool) -> None:
-        doc = collection.find_one(projection={"_id": 1}, session=self._session)
+    async def _create_index(
+        self, collection: AsyncCollection, index_key: Any, unique: bool
+    ) -> None:
+        doc = await collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
                 index_keys = [
                     index_spec["key"]
-                    for index_spec in collection.list_indexes(session=self._session)
+                    async for index_spec in await collection.list_indexes(session=self._session)
                 ]
             except OperationFailure:
                 index_keys = []
             if index_key not in index_keys:
-                collection.create_index(index_key.items(), unique=unique, session=self._session)
+                await collection.create_index(
+                    index_key.items(), unique=unique, session=self._session
+                )
 
-    def __ensure_indexes(self) -> None:
+    async def _ensure_indexes(self) -> None:
         if not object.__getattribute__(self, "_ensured_index"):
             _disallow_transactions(self._session)
-            self.__create_index(self._coll.files, _F_INDEX, False)
-            self.__create_index(self._coll.chunks, _C_INDEX, True)
+            await self._create_index(self._coll.files, _F_INDEX, False)
+            await self._create_index(self._coll.chunks, _C_INDEX, True)
             object.__setattr__(self, "_ensured_index", True)
 
-    def abort(self) -> None:
+    async def abort(self) -> None:
         """Remove all chunks/files that may have been uploaded and close."""
-        self._coll.chunks.delete_many({"files_id": self._file["_id"]}, session=self._session)
-        self._coll.files.delete_one({"_id": self._file["_id"]}, session=self._session)
+        await self._coll.chunks.delete_many({"files_id": self._file["_id"]}, session=self._session)
+        await self._coll.files.delete_one({"_id": self._file["_id"]}, session=self._session)
         object.__setattr__(self, "_closed", True)
 
     @property
@@ -268,7 +276,7 @@ class GridIn:
             return self._file[name]
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    async def set(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
         # the class like filename, use regular __setattr__
         if name in self.__dict__ or name in self.__class__.__dict__:
@@ -279,11 +287,13 @@ class GridIn:
             # them now.
             self._file[name] = value
             if self._closed:
-                self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+                await self._coll.files.update_one(
+                    {"_id": self._file["_id"]}, {"$set": {name: value}}
+                )
 
-    def __flush_data(self, data: Any, force: bool = False) -> None:
+    async def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
-        self.__ensure_indexes()
+        await self._ensure_indexes()
         assert len(data) <= self.chunk_size
         if data:
             self._buffered_docs.append(
@@ -299,7 +309,7 @@ class GridIn:
             or len(self._buffered_docs) >= _UPLOAD_BUFFER_CHUNKS
         ):
             try:
-                self._chunks.insert_many(self._buffered_docs, session=self._session)
+                await self._chunks.insert_many(self._buffered_docs, session=self._session)
             except BulkWriteError as exc:
                 # For backwards compatibility, raise an insert_one style exception.
                 write_errors = exc.details["writeErrors"]
@@ -317,21 +327,21 @@ class GridIn:
         self._chunk_number += 1
         self._position += len(data)
 
-    def __flush_buffer(self, force: bool = False) -> None:
+    async def _flush_buffer(self, force: bool = False) -> None:
         """Flush the buffer contents out to a chunk."""
-        self.__flush_data(self._buffer.getvalue(), force=force)
+        await self._flush_data(self._buffer.getvalue(), force=force)
         self._buffer.close()
         self._buffer = io.BytesIO()
 
-    def __flush(self) -> Any:
+    async def _flush(self) -> Any:
         """Flush the file to the database."""
         try:
-            self.__flush_buffer(force=True)
+            await self._flush_buffer(force=True)
             # The GridFS spec says length SHOULD be an Int64.
             self._file["length"] = Int64(self._position)
             self._file["uploadDate"] = datetime.datetime.now(tz=datetime.timezone.utc)
 
-            return self._coll.files.insert_one(self._file, session=self._session)
+            return await self._coll.files.insert_one(self._file, session=self._session)
         except DuplicateKeyError:
             self._raise_file_exists(self._id)
 
@@ -339,14 +349,14 @@ class GridIn:
         """Raise a FileExists exception for the given file_id."""
         raise FileExists("file with _id %r already exists" % file_id)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Flush the file and close it.
 
         A closed file cannot be written any more. Calling
         :meth:`close` more than once is allowed.
         """
         if not self._closed:
-            self.__flush()
+            await self._flush()
             object.__setattr__(self, "_closed", True)
 
     def read(self, size: int = -1) -> NoReturn:
@@ -358,7 +368,7 @@ class GridIn:
     def seekable(self) -> bool:
         return False
 
-    def write(self, data: Any) -> None:
+    async def write(self, data: Any) -> None:
         """Write data to the file. There is no return value.
 
         `data` can be either a string of bytes or a file-like object
@@ -404,28 +414,134 @@ class GridIn:
                 try:
                     to_write = read(space)
                 except BaseException:
-                    self.abort()
+                    await self.abort()
                     raise
                 self._buffer.write(to_write)
                 if len(to_write) < space:
                     return  # EOF or incomplete
-            self.__flush_buffer()
+            await self._flush_buffer()
         to_write = read(self.chunk_size)
         while to_write and len(to_write) == self.chunk_size:
-            self.__flush_data(to_write)
+            await self._flush_data(to_write)
             to_write = read(self.chunk_size)
         self._buffer.write(to_write)
 
-    def writelines(self, sequence: Iterable[Any]) -> None:
+    async def writelines(self, sequence: Iterable[Any]) -> None:
         """Write a sequence of strings to the file.
 
         Does not add separators.
         """
         for line in sequence:
-            self.write(line)
+            await self.write(line)
 
     def writeable(self) -> bool:
         return True
+
+    async def __aenter__(self) -> AsyncGridIn:
+        """Support for the context manager protocol."""
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+        """Support for the context manager protocol.
+
+        Close the file if no exceptions occur and allow exceptions to propagate.
+        """
+        if exc_type is None:
+            # No exceptions happened.
+            await self.close()
+        else:
+            # Something happened, at minimum mark as closed.
+            object.__setattr__(self, "_closed", True)
+
+        # propagate exceptions
+        return False
+
+
+class GridIn:
+    """Class to write data to GridFS."""
+
+    def __init__(
+        self, root_collection: Collection, session: Optional[ClientSession] = None, **kwargs: Any
+    ) -> None:
+        self._delegate = AsyncGridIn(root_collection._delegate, session, **kwargs)
+        self._coll = Collection.wrap(self._delegate._coll)
+
+    @synchronize()
+    def abort(self) -> None:
+        ...
+
+    @delegate_property()
+    def closed(self) -> bool:
+        ...
+
+    _id: Any = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
+    filename: Optional[str] = _grid_in_property("filename", "Name of this file.")
+    name: Optional[str] = _grid_in_property("filename", "Alias for `filename`.")
+    content_type: Optional[str] = _grid_in_property(
+        "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
+    )
+    length: int = _grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
+    chunk_size: int = _grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
+    upload_date: datetime.datetime = _grid_in_property(
+        "uploadDate", "Date that this file was uploaded.", closed_only=True
+    )
+    md5: Optional[str] = _grid_in_property(
+        "md5",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        closed_only=True,
+    )
+
+    _buffer: io.BytesIO
+    _closed: bool
+    _buffered_docs: list[dict[str, Any]]
+    _buffered_docs_size: int
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self._delegate.__getattr__(name)
+        except AttributeError as e:
+            raise AttributeError("GridIn object has no attribute '%s'" % name) from e
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        # For properties of this instance like _buffer, or descriptors set on
+        # the class like filename, use regular __setattr__
+        if name in self._delegate.__dict__ or name in self._delegate.__class__.__dict__:
+            object.__setattr__(self._delegate, name, value)
+        else:
+            # All other attributes are part of the document in db.fs.files.
+            # Store them to be sent to server on close() or if closed, send
+            # them now.
+            self._delegate._file[name] = value
+            if self._delegate._closed:
+                self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+
+    @synchronize()
+    def close(self) -> None:
+        ...
+
+    @delegate_method()
+    def read(self, size: int = -1) -> NoReturn:
+        ...
+
+    @delegate_method()
+    def readable(self) -> bool:
+        ...
+
+    @delegate_method()
+    def seekable(self) -> bool:
+        ...
+
+    @synchronize()
+    def write(self, data: Any) -> None:
+        ...
+
+    @synchronize()
+    def writelines(self, sequence: Iterable[Any]) -> None:
+        ...
+
+    @delegate_method()
+    def writeable(self) -> bool:
+        ...
 
     def __enter__(self) -> GridIn:
         """Support for the context manager protocol."""
@@ -441,18 +557,18 @@ class GridIn:
             self.close()
         else:
             # Something happened, at minimum mark as closed.
-            object.__setattr__(self, "_closed", True)
+            object.__setattr__(self._delegate, "_closed", True)
 
         # propagate exceptions
         return False
 
 
-class GridOut(io.IOBase):
+class AsyncGridOut(io.IOBase):
     """Class to read data out of GridFS."""
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: AsyncCollection,
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
@@ -488,23 +604,23 @@ class GridOut(io.IOBase):
            Creating a GridOut does not immediately retrieve the file metadata
            from the server. Metadata is fetched when first needed.
         """
-        if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+        if not isinstance(root_collection, AsyncCollection):
+            raise TypeError("root_collection must be an instance of AsyncCollection")
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
 
         super().__init__()
 
-        self.__chunks = root_collection.chunks
-        self.__files = root_collection.files
-        self.__file_id = file_id
-        self.__buffer = EMPTY
+        self._chunks = root_collection.chunks
+        self._files = root_collection.files
+        self._file_id = file_id
+        self._buffer = EMPTY
         # Start position within the current buffered chunk.
-        self.__buffer_pos = 0
-        self.__chunk_iter = None
+        self._buffer_pos = 0
+        self._chunk_iter = None
         # Position within the total file.
-        self.__position = 0
+        self._position = 0
         self._file = file_document
         self._session = session
 
@@ -531,19 +647,19 @@ class GridOut(io.IOBase):
     )
 
     _file: Any
-    __chunk_iter: Any
+    _chunk_iter: Any
 
-    def _ensure_file(self) -> None:
+    async def open(self) -> None:
+        _disallow_transactions(self._session)
+        self._file = await self._files.find_one({"_id": self._file_id}, session=self._session)
         if not self._file:
-            _disallow_transactions(self._session)
-            self._file = self.__files.find_one({"_id": self.__file_id}, session=self._session)
-            if not self._file:
-                raise NoFile(
-                    f"no file in gridfs collection {self.__files!r} with _id {self.__file_id!r}"
-                )
+            raise NoFile(f"no file in gridfs collection {self._files!r} with _id {self._file_id!r}")
 
     def __getattr__(self, name: str) -> Any:
-        self._ensure_file()
+        if not self._file:
+            raise InvalidOperation(
+                "You must call AsyncGridOut.open() before accessing the %s property" % name
+            )
         if name in self._file:
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
@@ -551,38 +667,38 @@ class GridOut(io.IOBase):
     def readable(self) -> bool:
         return True
 
-    def readchunk(self) -> bytes:
+    async def readchunk(self) -> bytes:
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
-        received = len(self.__buffer) - self.__buffer_pos
+        received = len(self._buffer) - self._buffer_pos
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
 
         if received > 0:
-            chunk_data = self.__buffer[self.__buffer_pos :]
-        elif self.__position < int(self.length):
-            chunk_number = int((received + self.__position) / chunk_size)
-            if self.__chunk_iter is None:
-                self.__chunk_iter = _GridOutChunkIterator(
-                    self, self.__chunks, self._session, chunk_number
+            chunk_data = self._buffer[self._buffer_pos :]
+        elif self._position < int(self.length):
+            chunk_number = int((received + self._position) / chunk_size)
+            if self._chunk_iter is None:
+                self._chunk_iter = _AsyncGridOutChunkIterator(
+                    self, self._chunks, self._session, chunk_number
                 )
 
-            chunk = self.__chunk_iter.next()
-            chunk_data = chunk["data"][self.__position % chunk_size :]
+            chunk = await self._chunk_iter.next()
+            chunk_data = chunk["data"][self._position % chunk_size :]
 
             if not chunk_data:
                 raise CorruptGridFile("truncated chunk")
 
-        self.__position += len(chunk_data)
-        self.__buffer = EMPTY
-        self.__buffer_pos = 0
+        self._position += len(chunk_data)
+        self._buffer = EMPTY
+        self._buffer_pos = 0
         return chunk_data
 
-    def _read_size_or_line(self, size: int = -1, line: bool = False) -> bytes:
+    async def _read_size_or_line(self, size: int = -1, line: bool = False) -> bytes:
         """Internal read() and readline() helper."""
-        self._ensure_file()
-        remainder = int(self.length) - self.__position
+        await self.open()
+        remainder = int(self.length) - self._position
         if size < 0 or size > remainder:
             size = remainder
 
@@ -593,14 +709,14 @@ class GridOut(io.IOBase):
         data = []
         while received < size:
             needed = size - received
-            if self.__buffer:
+            if self._buffer:
                 # Optimization: Read the buffer with zero byte copies.
-                buf = self.__buffer
-                chunk_start = self.__buffer_pos
-                chunk_data = memoryview(buf)[self.__buffer_pos :]
-                self.__buffer = EMPTY
-                self.__buffer_pos = 0
-                self.__position += len(chunk_data)
+                buf = self._buffer
+                chunk_start = self._buffer_pos
+                chunk_data = memoryview(buf)[self._buffer_pos :]
+                self._buffer = EMPTY
+                self._buffer_pos = 0
+                self._position += len(chunk_data)
             else:
                 buf = self.readchunk()
                 chunk_start = 0
@@ -614,23 +730,23 @@ class GridOut(io.IOBase):
             if len(chunk_data) > needed:
                 data.append(chunk_data[:needed])
                 # Optimization: Save the buffer with zero byte copies.
-                self.__buffer = buf
-                self.__buffer_pos = chunk_start + needed
-                self.__position -= len(self.__buffer) - self.__buffer_pos
+                self._buffer = buf
+                self._buffer_pos = chunk_start + needed
+                self._position -= len(self._buffer) - self._buffer_pos
             else:
                 data.append(chunk_data)
             received += len(chunk_data)
 
         # Detect extra chunks after reading the entire file.
-        if size == remainder and self.__chunk_iter:
+        if size == remainder and self._chunk_iter:
             try:
-                self.__chunk_iter.next()
+                await self._chunk_iter.next()
             except StopIteration:
                 pass
 
         return b"".join(data)
 
-    def read(self, size: int = -1) -> bytes:
+    async def read(self, size: int = -1) -> bytes:
         """Read at most `size` bytes from the file (less if there
         isn't enough data).
 
@@ -644,20 +760,20 @@ class GridOut(io.IOBase):
            entire file. Previously, this method would check for extra chunks
            on every call.
         """
-        return self._read_size_or_line(size=size)
+        return await self._read_size_or_line(size=size)
 
-    def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
+    async def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
         """Read one line or up to `size` bytes from the file.
 
         :param size: the maximum number of bytes to read
         """
-        return self._read_size_or_line(size=size, line=True)
+        return await self._read_size_or_line(size=size, line=True)
 
     def tell(self) -> int:
         """Return the current position of this file."""
-        return self.__position
+        return self._position
 
-    def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
+    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
         """Set the current position of this file.
 
         :param pos: the position (or offset if using relative
@@ -675,7 +791,7 @@ class GridOut(io.IOBase):
         if whence == _SEEK_SET:
             new_pos = pos
         elif whence == _SEEK_CUR:
-            new_pos = self.__position + pos
+            new_pos = self._position + pos
         elif whence == _SEEK_END:
             new_pos = int(self.length) + pos
         else:
@@ -685,21 +801,21 @@ class GridOut(io.IOBase):
             raise OSError(22, "Invalid value for `pos` - must be positive")
 
         # Optimization, continue using the same buffer and chunk iterator.
-        if new_pos == self.__position:
+        if new_pos == self._position:
             return new_pos
 
-        self.__position = new_pos
-        self.__buffer = EMPTY
-        self.__buffer_pos = 0
-        if self.__chunk_iter:
-            self.__chunk_iter.close()
-            self.__chunk_iter = None
+        self._position = new_pos
+        self._buffer = EMPTY
+        self._buffer_pos = 0
+        if self._chunk_iter:
+            await self._chunk_iter.close()
+            self._chunk_iter = None
         return new_pos
 
     def seekable(self) -> bool:
         return True
 
-    def __iter__(self) -> GridOut:
+    def __aiter__(self) -> AsyncGridOut:
         """Return an iterator over all of this file's data.
 
         The iterator will return lines (delimited by ``b'\\n'``) of
@@ -720,11 +836,11 @@ class GridOut(io.IOBase):
         """
         return self
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Make GridOut more generically file-like."""
-        if self.__chunk_iter:
-            self.__chunk_iter.close()
-            self.__chunk_iter = None
+        if self._chunk_iter:
+            await self._chunk_iter.close()
+            self._chunk_iter = None
         super().close()
 
     def write(self, value: Any) -> NoReturn:
@@ -736,17 +852,17 @@ class GridOut(io.IOBase):
     def writable(self) -> bool:
         return False
 
-    def __enter__(self) -> GridOut:
-        """Makes it possible to use :class:`GridOut` files
-        with the context manager protocol.
+    async def __aenter__(self) -> AsyncGridOut:
+        """Makes it possible to use :class:`AsyncGridOut` files
+        with the async context manager protocol.
         """
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
-        """Makes it possible to use :class:`GridOut` files
-        with the context manager protocol.
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+        """Makes it possible to use :class:`AsyncGridOut` files
+        with the async context manager protocol.
         """
-        self.close()
+        await self.close()
         return False
 
     def fileno(self) -> NoReturn:
@@ -771,7 +887,127 @@ class GridOut(io.IOBase):
         pass
 
 
-class _GridOutChunkIterator:
+class GridOut(io.IOBase):
+    """Class to read data out of GridFS."""
+
+    def __init__(
+        self,
+        root_collection: Collection,
+        file_id: Optional[int] = None,
+        file_document: Optional[Any] = None,
+        session: Optional[ClientSession] = None,
+    ) -> None:
+        self._delegate = AsyncGridOut(root_collection._delegate, file_id, file_document, session)
+        self._coll = Collection.wrap(self._delegate._coll)
+
+    @synchronize()
+    def _open(self) -> None:
+        ...
+
+    def __getattr__(self, name: str) -> Any:
+        if not self._file:
+            self._open()
+        if name in self._file:
+            return self._file[name]
+        raise AttributeError("GridOut object has no attribute '%s'" % name)
+
+    @synchronize()
+    def readable(self) -> bool:
+        ...
+
+    @delegate_method()
+    def readchunk(self) -> bytes:
+        ...
+
+    @synchronize()
+    def read(self, size: int = -1) -> bytes:
+        ...
+
+    @delegate_method()
+    def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
+        ...
+
+    @synchronize()
+    def tell(self) -> int:
+        ...
+
+    @synchronize()
+    def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
+        ...
+
+    @delegate_method()
+    def seekable(self) -> bool:
+        ...
+
+    def __iter__(self) -> GridOut:
+        """Return an iterator over all of this file's data.
+
+        The iterator will return lines (delimited by ``b'\\n'``) of
+        :class:`bytes`. This can be useful when serving files
+        using a webserver that handles such an iterator efficiently.
+
+        .. versionchanged:: 3.8
+           The iterator now raises :class:`CorruptGridFile` when encountering
+           any truncated, missing, or extra chunk in a file. The previous
+           behavior was to only raise :class:`CorruptGridFile` on a missing
+           chunk.
+
+        .. versionchanged:: 4.0
+           The iterator now iterates over *lines* in the file, instead
+           of chunks, to conform to the base class :py:class:`io.IOBase`.
+           Use :meth:`GridOut.readchunk` to read chunk by chunk instead
+           of line by line.
+        """
+        return self
+
+    @synchronize()
+    def close(self) -> None:
+        ...
+
+    @delegate_method()
+    def write(self, value: Any) -> NoReturn:
+        ...
+
+    @delegate_method()
+    def writelines(self, lines: Any) -> NoReturn:
+        ...
+
+    @delegate_method()
+    def writable(self) -> bool:
+        ...
+
+    def __enter__(self) -> GridOut:
+        """Makes it possible to use :class:`AsyncGridOut` files
+        with the async context manager protocol.
+        """
+        return self
+
+    @synchronize(async_method_name="__aexit__")
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+        ...
+
+    @delegate_method()
+    def fileno(self) -> NoReturn:
+        ...
+
+    @delegate_method()
+    def flush(self) -> None:
+        ...
+
+    @delegate_method()
+    def isatty(self) -> bool:
+        ...
+
+    @delegate_method()
+    def truncate(self, size: Optional[int] = None) -> NoReturn:
+        ...
+
+    @delegate_method()
+    def __del__(self) -> None:
+        ...
+
+
+class _AsyncGridOutChunkIterator:
     """Iterates over a file's chunks using a single cursor.
 
     Raises CorruptGridFile when encountering any truncated, missing, or extra
@@ -780,8 +1016,8 @@ class _GridOutChunkIterator:
 
     def __init__(
         self,
-        grid_out: GridOut,
-        chunks: Collection,
+        grid_out: AsyncGridOut,
+        chunks: AsyncCollection,
         session: Optional[ClientSession],
         next_chunk: Any,
     ) -> None:
@@ -794,24 +1030,24 @@ class _GridOutChunkIterator:
         self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
         self._cursor = None
 
-    _cursor: Optional[Cursor]
+    _cursor: Optional[AsyncCursor]
 
     def expected_chunk_length(self, chunk_n: int) -> int:
         if chunk_n < self._num_chunks - 1:
             return self._chunk_size
         return self._length - (self._chunk_size * (self._num_chunks - 1))
 
-    def __iter__(self) -> _GridOutChunkIterator:
+    def __aiter__(self) -> _AsyncGridOutChunkIterator:
         return self
 
-    def _create_cursor(self) -> None:
+    async def _create_cursor(self) -> None:
         filter = {"files_id": self._id}
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
         _disallow_transactions(self._session)
-        self._cursor = self._chunks.find(filter, sort=[("n", 1)], session=self._session)
+        self._cursor = await self._chunks.find(filter, sort=[("n", 1)], session=self._session)
 
-    def _next_with_retry(self) -> Mapping[str, Any]:
+    async def _next_with_retry(self) -> Mapping[str, Any]:
         """Return the next chunk and retry once on CursorNotFound.
 
         We retry on CursorNotFound to maintain backwards compatibility in
@@ -819,25 +1055,25 @@ class _GridOutChunkIterator:
         server's default cursor timeout).
         """
         if self._cursor is None:
-            self._create_cursor()
+            await self._create_cursor()
             assert self._cursor is not None
         try:
-            return self._cursor.next()
+            return await self._cursor.next()
         except CursorNotFound:
-            self._cursor.close()
-            self._create_cursor()
+            await self._cursor.close()
+            await self._create_cursor()
             return self._cursor.next()
 
-    def next(self) -> Mapping[str, Any]:
+    async def next(self) -> Mapping[str, Any]:
         try:
-            chunk = self._next_with_retry()
+            chunk = await self._next_with_retry()
         except StopIteration:
             if self._next_chunk >= self._num_chunks:
                 raise
             raise CorruptGridFile("no chunk #%d" % self._next_chunk) from None
 
         if chunk["n"] != self._next_chunk:
-            self.close()
+            await self.close()
             raise CorruptGridFile(
                 "Missing chunk: expected chunk #%d but found "
                 "chunk with n=%d" % (self._next_chunk, chunk["n"])
@@ -846,7 +1082,7 @@ class _GridOutChunkIterator:
         if chunk["n"] >= self._num_chunks:
             # According to spec, ignore extra chunks if they are empty.
             if len(chunk["data"]):
-                self.close()
+                await self.close()
                 raise CorruptGridFile(
                     "Extra chunk found: expected %d chunks but found "
                     "chunk with n=%d" % (self._num_chunks, chunk["n"])
@@ -854,7 +1090,7 @@ class _GridOutChunkIterator:
 
         expected_length = self.expected_chunk_length(chunk["n"])
         if len(chunk["data"]) != expected_length:
-            self.close()
+            await self.close()
             raise CorruptGridFile(
                 "truncated chunk #%d: expected chunk length to be %d but "
                 "found chunk with length %d" % (chunk["n"], expected_length, len(chunk["data"]))
@@ -863,26 +1099,104 @@ class _GridOutChunkIterator:
         self._next_chunk += 1
         return chunk
 
-    __next__ = next
+    __anext__ = next
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if self._cursor:
-            self._cursor.close()
+            await self._cursor.close()
             self._cursor = None
+
+
+class AsyncGridOutIterator:
+    def __init__(self, grid_out: AsyncGridOut, chunks: AsyncCollection, session: ClientSession):
+        self._chunk_iter = _AsyncGridOutChunkIterator(grid_out, chunks, session, 0)
+
+    def __aiter__(self) -> AsyncGridOutIterator:
+        return self
+
+    async def next(self) -> bytes:
+        chunk = await self._chunk_iter.next()
+        return bytes(chunk["data"])
+
+    __anext__ = next
 
 
 class GridOutIterator:
     def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
-        self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
+        self._delegate = _AsyncGridOutChunkIterator(
+            grid_out._delegate, chunks._delegate, session, 0
+        )
 
     def __iter__(self) -> GridOutIterator:
         return self
 
+    @synchronize()
     def next(self) -> bytes:
-        chunk = self.__chunk_iter.next()
-        return bytes(chunk["data"])
+        ...
 
     __next__ = next
+
+
+class AsyncGridOutCursor(AsyncCursor):
+    """A cursor / iterator for returning GridOut objects as the result
+    of an arbitrary query against the GridFS files collection.
+    """
+
+    def __init__(
+        self,
+        collection: AsyncCollection,
+        filter: Optional[Mapping[str, Any]] = None,
+        skip: int = 0,
+        limit: int = 0,
+        no_cursor_timeout: bool = False,
+        sort: Optional[Any] = None,
+        batch_size: int = 0,
+        session: Optional[ClientSession] = None,
+    ) -> None:
+        """Create a new cursor, similar to the normal
+        :class:`~pymongo.cursor.Cursor`.
+
+        Should not be called directly by application developers - see
+        the :class:`~gridfs.GridFS` method :meth:`~gridfs.GridFS.find` instead.
+
+        .. versionadded 2.7
+
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
+        """
+        _disallow_transactions(session)
+        collection = _clear_entity_type_registry(collection)
+
+        # Hold on to the base "fs" collection to create GridOut objects later.
+        self._root_collection = collection
+
+        super().__init__(
+            collection.files,
+            filter,
+            skip=skip,
+            limit=limit,
+            no_cursor_timeout=no_cursor_timeout,
+            sort=sort,
+            batch_size=batch_size,
+            session=session,
+        )
+
+    async def next(self) -> AsyncGridOut:
+        """Get next GridOut object from cursor."""
+        _disallow_transactions(self.session)
+        next_file = await super().next()
+        return AsyncGridOut(self._root_collection, file_document=next_file, session=self.session)
+
+    __anext__ = next
+
+    def add_option(self, *args: Any, **kwargs: Any) -> NoReturn:
+        raise NotImplementedError("Method does not exist for GridOutCursor")
+
+    def remove_option(self, *args: Any, **kwargs: Any) -> NoReturn:
+        raise NotImplementedError("Method does not exist for GridOutCursor")
+
+    def _clone_base(self, session: Optional[ClientSession]) -> AsyncGridOutCursor:
+        """Creates an empty GridOutCursor for information to be copied into."""
+        return AsyncGridOutCursor(self._root_collection, session=session)
 
 
 class GridOutCursor(Cursor):
@@ -911,28 +1225,13 @@ class GridOutCursor(Cursor):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        _disallow_transactions(session)
-        collection = _clear_entity_type_registry(collection)
-
-        # Hold on to the base "fs" collection to create GridOut objects later.
-        self.__root_collection = collection
-
-        super().__init__(
-            collection.files,
-            filter,
-            skip=skip,
-            limit=limit,
-            no_cursor_timeout=no_cursor_timeout,
-            sort=sort,
-            batch_size=batch_size,
-            session=session,
+        self._delegate = AsyncGridOutCursor(
+            collection._delegate, filter, skip, limit, no_cursor_timeout, sort, batch_size, session
         )
 
-    def next(self) -> GridOut:
-        """Get next GridOut object from cursor."""
-        _disallow_transactions(self.session)
-        next_file = super().next()
-        return GridOut(self.__root_collection, file_document=next_file, session=self.session)
+    @synchronize(wrapper_class=GridOut)
+    async def next(self) -> GridOut:
+        ...
 
     __next__ = next
 
@@ -941,7 +1240,3 @@ class GridOutCursor(Cursor):
 
     def remove_option(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise NotImplementedError("Method does not exist for GridOutCursor")
-
-    def _clone_base(self, session: Optional[ClientSession]) -> GridOutCursor:
-        """Creates an empty GridOutCursor for information to be copied into."""
-        return GridOutCursor(self.__root_collection, session=session)

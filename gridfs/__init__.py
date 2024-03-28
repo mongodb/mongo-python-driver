@@ -28,6 +28,9 @@ from bson.objectid import ObjectId
 from gridfs.errors import NoFile
 from gridfs.grid_file import (
     DEFAULT_CHUNK_SIZE,
+    AsyncGridIn,
+    AsyncGridOut,
+    AsyncGridOutCursor,
     GridIn,
     GridOut,
     GridOutCursor,
@@ -35,10 +38,11 @@ from gridfs.grid_file import (
     _disallow_transactions,
 )
 from pymongo import ASCENDING, DESCENDING, _csot
+from pymongo.asynchronous import delegate_method, synchronize
 from pymongo.client_session import ClientSession
-from pymongo.collection import Collection
+from pymongo.collection import AsyncCollection
 from pymongo.common import validate_string
-from pymongo.database import Database
+from pymongo.database import AsyncDatabase, Database
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
@@ -440,12 +444,12 @@ class GridFS:
         return f is not None
 
 
-class GridFSBucket:
+class AsyncGridFSBucket:
     """An instance of GridFS on top of a single Database."""
 
     def __init__(
         self,
-        db: Database,
+        db: AsyncDatabase,
         bucket_name: str = "fs",
         chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
         write_concern: Optional[WriteConcern] = None,
@@ -484,8 +488,8 @@ class GridFSBucket:
 
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
-        if not isinstance(db, Database):
-            raise TypeError("database must be an instance of Database")
+        if not isinstance(db, AsyncDatabase):
+            raise TypeError("database must be an instance of AsyncDatabase")
 
         db = _clear_entity_type_registry(db)
 
@@ -495,11 +499,11 @@ class GridFSBucket:
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks: Collection = self._collection.chunks.with_options(
+        self._chunks: AsyncCollection = self._collection.chunks.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
-        self._files: Collection = self._collection.files.with_options(
+        self._files: AsyncCollection = self._collection.files.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
@@ -512,7 +516,7 @@ class GridFSBucket:
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
-    ) -> GridIn:
+    ) -> AsyncGridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -558,7 +562,7 @@ class GridFSBucket:
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(self._collection, session=session, **opts)
+        return AsyncGridIn(self._collection, session=session, **opts)
 
     def open_upload_stream_with_id(
         self,
@@ -567,7 +571,7 @@ class GridFSBucket:
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
-    ) -> GridIn:
+    ) -> AsyncGridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -618,10 +622,10 @@ class GridFSBucket:
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(self._collection, session=session, **opts)
+        return AsyncGridIn(self._collection, session=session, **opts)
 
     @_csot.apply
-    def upload_from_stream(
+    async def upload_from_stream(
         self,
         filename: str,
         source: Any,
@@ -663,13 +667,15 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
-            gin.write(source)
+        async with self.open_upload_stream(
+            filename, chunk_size_bytes, metadata, session=session
+        ) as gin:
+            await gin.write(source)
 
         return cast(ObjectId, gin._id)
 
     @_csot.apply
-    def upload_from_stream_with_id(
+    async def upload_from_stream_with_id(
         self,
         file_id: Any,
         filename: str,
@@ -713,14 +719,14 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_upload_stream_with_id(
+        async with self.open_upload_stream_with_id(
             file_id, filename, chunk_size_bytes, metadata, session=session
         ) as gin:
-            gin.write(source)
+            await gin.write(source)
 
-    def open_download_stream(
+    async def open_download_stream(
         self, file_id: Any, session: Optional[ClientSession] = None
-    ) -> GridOut:
+    ) -> AsyncGridOut:
         """Opens a Stream from which the application can read the contents of
         the stored file specified by file_id.
 
@@ -744,14 +750,14 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        gout = GridOut(self._collection, file_id, session=session)
+        gout = AsyncGridOut(self._collection, file_id, session=session)
 
         # Raise NoFile now, instead of on first attribute access.
-        gout._ensure_file()
+        await gout.open()
         return gout
 
     @_csot.apply
-    def download_to_stream(
+    async def download_to_stream(
         self, file_id: Any, destination: Any, session: Optional[ClientSession] = None
     ) -> None:
         """Downloads the contents of the stored file specified by file_id and
@@ -779,15 +785,15 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream(file_id, session=session) as gout:
+        async with self.open_download_stream(file_id, session=session) as gout:
             while True:
-                chunk = gout.readchunk()
+                chunk = await gout.readchunk()
                 if not len(chunk):
                     break
-                destination.write(chunk)
+                await destination.write(chunk)
 
     @_csot.apply
-    def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
+    async def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
         """Given an file_id, delete this stored file's files collection document
         and associated chunks from a GridFS bucket.
 
@@ -809,12 +815,12 @@ class GridFSBucket:
            Added ``session`` parameter.
         """
         _disallow_transactions(session)
-        res = self._files.delete_one({"_id": file_id}, session=session)
-        self._chunks.delete_many({"files_id": file_id}, session=session)
+        res = await self._files.delete_one({"_id": file_id}, session=session)
+        await self._chunks.delete_many({"files_id": file_id}, session=session)
         if not res.deleted_count:
             raise NoFile("no file could be deleted because none matched %s" % file_id)
 
-    def find(self, *args: Any, **kwargs: Any) -> GridOutCursor:
+    def find(self, *args: Any, **kwargs: Any) -> AsyncGridOutCursor:
         """Find and return the files collection documents that match ``filter``
 
         Returns a cursor that iterates across files matching
@@ -859,11 +865,11 @@ class GridFSBucket:
         :param sort: The order by which to sort results. Defaults to
             None.
         """
-        return GridOutCursor(self._collection, *args, **kwargs)
+        return AsyncGridOutCursor(self._collection, *args, **kwargs)
 
-    def open_download_stream_by_name(
+    async def open_download_stream_by_name(
         self, filename: str, revision: int = -1, session: Optional[ClientSession] = None
-    ) -> GridOut:
+    ) -> AsyncGridOut:
         """Opens a Stream from which the application can read the contents of
         `filename` and optional `revision`.
 
@@ -903,7 +909,7 @@ class GridFSBucket:
         validate_string("filename", filename)
         query = {"filename": filename}
         _disallow_transactions(session)
-        cursor = self._files.find(query, session=session)
+        cursor = await self._files.find(query, session=session)
         if revision < 0:
             skip = abs(revision) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -911,12 +917,12 @@ class GridFSBucket:
             cursor.limit(-1).skip(revision).sort("uploadDate", ASCENDING)
         try:
             grid_file = next(cursor)
-            return GridOut(self._collection, file_document=grid_file, session=session)
+            return AsyncGridOut(self._collection, file_document=grid_file, session=session)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (revision, filename)) from None
 
     @_csot.apply
-    def download_to_stream_by_name(
+    async def download_to_stream_by_name(
         self,
         filename: str,
         destination: Any,
@@ -959,14 +965,14 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream_by_name(filename, revision, session=session) as gout:
+        async with self.open_download_stream_by_name(filename, revision, session=session) as gout:
             while True:
-                chunk = gout.readchunk()
+                chunk = await gout.readchunk()
                 if not len(chunk):
                     break
-                destination.write(chunk)
+                await destination.write(chunk)
 
-    def rename(
+    async def rename(
         self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None
     ) -> None:
         """Renames the stored file with the specified file_id.
@@ -990,7 +996,7 @@ class GridFSBucket:
            Added ``session`` parameter.
         """
         _disallow_transactions(session)
-        result = self._files.update_one(
+        result = await self._files.update_one(
             {"_id": file_id}, {"$set": {"filename": new_filename}}, session=session
         )
         if not result.matched_count:
@@ -998,3 +1004,138 @@ class GridFSBucket:
                 "no files could be renamed %r because none "
                 "matched file_id %i" % (new_filename, file_id)
             )
+
+
+class GridFSBucket:
+    """An instance of GridFS on top of a single Database."""
+
+    def __init__(
+        self,
+        db: Database,
+        bucket_name: str = "fs",
+        chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+    ) -> None:
+        """Create a new instance of :class:`GridFSBucket`.
+
+        Raises :exc:`TypeError` if `database` is not an instance of
+        :class:`~pymongo.database.Database`.
+
+        Raises :exc:`~pymongo.errors.ConfigurationError` if `write_concern`
+        is not acknowledged.
+
+        :param database: database to use.
+        :param bucket_name: The name of the bucket. Defaults to 'fs'.
+        :param chunk_size_bytes: The chunk size in bytes. Defaults
+            to 255KB.
+        :param write_concern: The
+            :class:`~pymongo.write_concern.WriteConcern` to use. If ``None``
+            (the default) db.write_concern is used.
+        :param read_preference: The read preference to use. If
+            ``None`` (the default) db.read_preference is used.
+
+        .. versionchanged:: 4.0
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
+
+        .. versionchanged:: 3.11
+           Running a GridFSBucket operation in a transaction now always raises
+           an error. GridFSBucket does not support multi-document transactions.
+
+        .. versionchanged:: 3.7
+           Added the `disable_md5` parameter.
+
+        .. versionadded:: 3.1
+
+        .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
+        """
+        self._delegate = AsyncGridFSBucket(
+            db._delegate, bucket_name, chunk_size_bytes, write_concern, read_preference
+        )
+
+    @delegate_method(wrapper_class=GridIn)
+    def open_upload_stream(
+        self,
+        filename: str,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> GridIn:
+        ...
+
+    @delegate_method(wrapper_class=GridIn)
+    def open_upload_stream_with_id(
+        self,
+        file_id: Any,
+        filename: str,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> GridIn:
+        ...
+
+    @synchronize()
+    def upload_from_stream(
+        self,
+        filename: str,
+        source: Any,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> ObjectId:
+        ...
+
+    @synchronize()
+    def upload_from_stream_with_id(
+        self,
+        file_id: Any,
+        filename: str,
+        source: Any,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> None:
+        ...
+
+    @synchronize()
+    def open_download_stream(
+        self, file_id: Any, session: Optional[ClientSession] = None
+    ) -> GridOut:
+        ...
+
+    @synchronize()
+    def download_to_stream(
+        self, file_id: Any, destination: Any, session: Optional[ClientSession] = None
+    ) -> None:
+        ...
+
+    @synchronize()
+    async def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
+        ...
+
+    @delegate_method(wrapper_class=GridOutCursor)
+    def find(self, *args: Any, **kwargs: Any) -> GridOutCursor:
+        ...
+
+    @synchronize(wrapper_class=GridOut)
+    def open_download_stream_by_name(
+        self, filename: str, revision: int = -1, session: Optional[ClientSession] = None
+    ) -> GridOut:
+        ...
+
+    @synchronize()
+    def download_to_stream_by_name(
+        self,
+        filename: str,
+        destination: Any,
+        revision: int = -1,
+        session: Optional[ClientSession] = None,
+    ) -> None:
+        ...
+
+    @synchronize()
+    def rename(
+        self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None
+    ) -> None:
+        ...
