@@ -45,7 +45,7 @@ if [ $OIDC_ENV == "test" ]; then
         export OIDC_ADMIN_PWD=$OIDC_ATLAS_PASSWORD
         set -x
     fi
-    export OIDC_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user1"
+    export OIDC_TOKEN_FILE="$OIDC_TOKEN_DIR/test_user2"
 
 elif [ $OIDC_ENV == "azure" ]; then
     if [ -z "${AZUREOIDC_RESOURCE:-}" ]; then
