@@ -17,6 +17,8 @@ if [ $OIDC_ENV == "test" ]; then
 
 elif [ $OIDC_ENV == "azure" ]; then
     source ./env.sh
+    env
+    exit 1
 
 else
     echo "Unrecognized OIDC_ENV $OIDC_ENV"
