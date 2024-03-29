@@ -16,7 +16,7 @@ if [ $OIDC_ENV == "test" ]; then
     source ${DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh
 
 elif [ $OIDC_ENV == "azure" ]; then
-    source ./secrets-export.sh
+    source ./env.sh
 
 else
     echo "Unrecognized OIDC_ENV $OIDC_ENV"
