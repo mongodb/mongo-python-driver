@@ -266,12 +266,12 @@ class TopologyDescription:
         if not selection:
             return []
         # Round trip time in seconds.
-        fastest = min(cast(float, s.round_trip_time) for s in selection.server_descriptions)
+        fastest = min(s.round_trip_time for s in selection.server_descriptions if s.round_trip_time is not None)
         threshold = self._topology_settings.local_threshold_ms / 1000.0
         return [
             s
             for s in selection.server_descriptions
-            if (cast(float, s.round_trip_time) - fastest) <= threshold
+            if s.round_trip_time is not None and (s.round_trip_time - fastest) <= threshold
         ]
 
     def apply_selector(
