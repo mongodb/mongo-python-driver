@@ -47,8 +47,8 @@ ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 ENVIRON = os.environ.get("OIDC_ENV", "test")
 DOMAIN = os.environ.get("OIDC_DOMAIN")
-TOKEN_DIR = os.environ["OIDC_TOKEN_DIR"]
-TOKEN_FILE = os.environ["OIDC_TOKEN_FILE"]
+TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR")
+TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE")
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
