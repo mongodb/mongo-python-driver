@@ -46,7 +46,7 @@ from pymongo.uri_parser import parse_uri
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 ENVIRON = os.environ.get("OIDC_ENV", "test")
-DOMAIN = os.environ["OIDC_DOMAIN"]
+DOMAIN = os.environ.get("OIDC_DOMAIN")
 TOKEN_DIR = os.environ["OIDC_TOKEN_DIR"]
 TOKEN_FILE = os.environ["OIDC_TOKEN_FILE"]
 
@@ -99,6 +99,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def setUpClass(cls):
         if ENVIRON != "test":
             raise unittest.SkipTest("Human workflows are only tested with the test environment")
+        if DOMAIN is None:
+            raise ValueError("Missing OIDC_DOMAIN")
         super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
