@@ -63,7 +63,9 @@ class TestCreateSearchIndex(IntegrationTest):
         self.assertIn("arbitraryOption", listener.events[0].command["indexes"][0])
 
 
-class TestSearchIndexProse(unittest.TestCase):
+class TestSearchIndexIntegration(unittest.TestCase):
+    db = "test_search_index"
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -72,9 +74,12 @@ class TestSearchIndexProse(unittest.TestCase):
         url = os.environ.get("MONGODB_URI")
         username = os.environ["DB_USER"]
         password = os.environ["DB_PASSWORD"]
-        cls.client = MongoClient(url, username=username, password=password)
+        cls.listener = listener = AllowListEventListener("commandStarted")
+        cls.client = MongoClient(
+            url, username=username, password=password, event_listeners=listener
+        )
         cls.client.drop_database(_NAME)
-        cls.db = cls.client.test_search_index_prose
+        cls.db = cls.client[cls.db]
 
     @classmethod
     def tearDownClass(cls):
@@ -93,6 +98,27 @@ class TestSearchIndexProse(unittest.TestCase):
                 return indices[0]
                 break
             time.sleep(5)
+
+    def test_comment_field(self):
+        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
+        coll0 = self.db[f"col{uuid.uuid4()}"]
+        coll0.insert_one({})
+
+        # Create a new search index on ``coll0`` that implicitly passes its type.
+        search_definition = {"mappings": {"dynamic": False}}
+        implicit_search_resp = coll0.create_search_index(
+            model={"name": _NAME + "-implicit", "definition": search_definition}
+        )
+
+        # Get the index definition.
+        self.listener.reset()
+        coll0.list_search_indexes(name=implicit_search_resp, comment="foo").next()
+        event = self.listener.events[0]
+        self.assertEqual(event["command"]["comment"], "foo")
+
+
+class TestSearchIndexProse(unittest.TestCase):
+    db = "test_search_index_prose"
 
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""

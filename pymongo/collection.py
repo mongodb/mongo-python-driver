@@ -2372,6 +2372,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline,
             kwargs,
             explicit_session=session is not None,
+            comment=comment,
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
