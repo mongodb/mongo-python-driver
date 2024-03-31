@@ -64,7 +64,7 @@ class TestCreateSearchIndex(IntegrationTest):
 
 
 class TestSearchIndexIntegration(unittest.TestCase):
-    db = "test_search_index"
+    db_name = "test_search_index"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -79,7 +79,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
             url, username=username, password=password, event_listeners=listener
         )
         cls.client.drop_database(_NAME)
-        cls.db = cls.client[cls.db]
+        cls.db = cls.client[cls.db_name]
 
     @classmethod
     def tearDownClass(cls):
@@ -118,7 +118,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
 
 
 class TestSearchIndexProse(unittest.TestCase):
-    db = "test_search_index_prose"
+    db_name = "test_search_index_prose"
 
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
