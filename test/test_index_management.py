@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 from test.unified_format import generate_test_classes
-from test.utils import AllowListEventListener
+from test.utils import AllowListEventListener, EventListener
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
@@ -74,7 +74,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
         url = os.environ.get("MONGODB_URI")
         username = os.environ["DB_USER"]
         password = os.environ["DB_PASSWORD"]
-        cls.listener = listener = AllowListEventListener("commandStarted")
+        cls.listener = listener = EventListener()
         cls.client = MongoClient(
             url, username=username, password=password, event_listeners=[listener]
         )
@@ -117,7 +117,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
         self.assertEqual(event["command"]["comment"], "foo")
 
 
-class TestSearchIndexProse(unittest.TestCase):
+class TestSearchIndexProse(TestSearchIndexIntegration):
     db_name = "test_search_index_prose"
 
     def test_case_1(self):
