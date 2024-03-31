@@ -76,7 +76,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
         password = os.environ["DB_PASSWORD"]
         cls.listener = listener = AllowListEventListener("commandStarted")
         cls.client = MongoClient(
-            url, username=username, password=password, event_listeners=listener
+            url, username=username, password=password, event_listeners=[listener]
         )
         cls.client.drop_database(_NAME)
         cls.db = cls.client[cls.db_name]
