@@ -114,7 +114,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
         self.listener.reset()
         coll0.list_search_indexes(name=implicit_search_resp, comment="foo").next()
         event = self.listener.events[0]
-        self.assertEqual(event["command"]["comment"], "foo")
+        self.assertEqual(event.command["comment"], "foo")
 
 
 class TestSearchIndexProse(TestSearchIndexIntegration):
