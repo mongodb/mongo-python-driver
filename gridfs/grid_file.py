@@ -79,11 +79,6 @@ def _grid_in_property(
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
-    def setter(self: Any, value: Any) -> Any:
-        if self._closed:
-            self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {field_name: value}})
-        self._file[field_name] = value
-
     if read_only:
         docstring += "\n\nThis attribute is read-only."
     elif closed_only:
@@ -94,24 +89,35 @@ def _grid_in_property(
             "has been called.",
         )
 
-    if not read_only and not closed_only:
-        return property(getter, setter, doc=docstring)
     return property(getter, doc=docstring)
 
 
-def _grid_out_property(field_name: str, docstring: str) -> Any:
+def _grid_out_property(field_name: str, docstring: str, synchronous: bool = False) -> Any:
     """Create a GridOut property."""
 
-    def getter(self: Any) -> Any:
-        self._ensure_file()
+    def s_getter(self: Any) -> Any:
+        self.open()
 
+        # Protect against PHP-237
+        if field_name == "length":
+            return self._delegate._file.get(field_name, 0)
+        return self._delegate._file.get(field_name, None)
+
+    def a_getter(self: Any) -> Any:
+        if not self._file:
+            raise InvalidOperation(
+                "You must call GridOut.open() before accessing " "the %s property" % field_name
+            )
         # Protect against PHP-237
         if field_name == "length":
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
     docstring += "\n\nThis attribute is read-only."
-    return property(getter, doc=docstring)
+    if synchronous:
+        return property(s_getter, doc=docstring)
+    else:
+        return property(a_getter, doc=docstring)
 
 
 def _clear_entity_type_registry(entity: Any, **kwargs: Any) -> Any:
@@ -272,7 +278,9 @@ class AsyncGridIn:
     _buffered_docs_size: int
 
     def __getattr__(self, name: str) -> Any:
-        if name in self._file:
+        if name == "_coll":
+            return object.__getattribute__(self, name)
+        elif name in self._file:
             return self._file[name]
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
@@ -461,10 +469,55 @@ class GridIn:
     """Class to write data to GridFS."""
 
     def __init__(
-        self, root_collection: Collection, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        root_collection: Collection,
+        session: Optional[ClientSession] = None,
+        async_gridin: Optional[AsyncGridIn] = None,
+        **kwargs: Any,
     ) -> None:
-        self._delegate = AsyncGridIn(root_collection._delegate, session, **kwargs)
-        self._coll = Collection.wrap(self._delegate._coll)
+        if async_gridin:
+            object.__setattr__(self, "_delegate", async_gridin)
+        else:
+            object.__setattr__(
+                self, "_delegate", AsyncGridIn(root_collection._delegate, session, **kwargs)
+            )
+        object.__setattr__(self, "_coll", Collection.wrap(self._delegate._coll))
+
+    @classmethod
+    def wrap(cls, async_gridin: AsyncGridIn):
+        return cls(None, async_gridin=async_gridin)
+
+    @property
+    def _id(self):
+        return self._delegate._id
+
+    @property
+    def filename(self):
+        return self._delegate.filename
+
+    @property
+    def name(self):
+        return self._delegate.name
+
+    @property
+    def content_type(self):
+        return self._delegate.content_type
+
+    @property
+    def length(self) -> int:
+        return self._delegate.length
+
+    @property
+    def chunk_size(self) -> int:
+        return self._delegate.chunk_size
+
+    @property
+    def upload_date(self) -> datetime.datetime:
+        return self._delegate.upload_date
+
+    @property
+    def md5(self) -> Optional[str]:
+        return self._delegate.md5
 
     @synchronize()
     def abort(self) -> None:
@@ -474,38 +527,26 @@ class GridIn:
     def closed(self) -> bool:
         ...
 
-    _id: Any = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
-    filename: Optional[str] = _grid_in_property("filename", "Name of this file.")
-    name: Optional[str] = _grid_in_property("filename", "Alias for `filename`.")
-    content_type: Optional[str] = _grid_in_property(
-        "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
-    )
-    length: int = _grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
-    chunk_size: int = _grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
-    upload_date: datetime.datetime = _grid_in_property(
-        "uploadDate", "Date that this file was uploaded.", closed_only=True
-    )
-    md5: Optional[str] = _grid_in_property(
-        "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
-        closed_only=True,
-    )
-
     _buffer: io.BytesIO
     _closed: bool
     _buffered_docs: list[dict[str, Any]]
     _buffered_docs_size: int
 
     def __getattr__(self, name: str) -> Any:
-        try:
-            return self._delegate.__getattr__(name)
-        except AttributeError as e:
-            raise AttributeError("GridIn object has no attribute '%s'" % name) from e
+        if name in ["_delegate", "_coll"]:
+            return object.__getattribute__(self, name)
+        else:
+            try:
+                return self._delegate.__getattr__(name)
+            except AttributeError as e:
+                raise AttributeError("GridIn object has no attribute '%s'" % name) from e
 
     def __setattr__(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
         # the class like filename, use regular __setattr__
-        if name in self._delegate.__dict__ or name in self._delegate.__class__.__dict__:
+        if name in ["_delegate", "_coll"]:
+            object.__setattr__(self, name, value)
+        elif name in self._delegate.__dict__ or name in self._delegate.__class__.__dict__:
             object.__setattr__(self._delegate, name, value)
         else:
             # All other attributes are part of the document in db.fs.files.
@@ -650,10 +691,13 @@ class AsyncGridOut(io.IOBase):
     _chunk_iter: Any
 
     async def open(self) -> None:
-        _disallow_transactions(self._session)
-        self._file = await self._files.find_one({"_id": self._file_id}, session=self._session)
         if not self._file:
-            raise NoFile(f"no file in gridfs collection {self._files!r} with _id {self._file_id!r}")
+            _disallow_transactions(self._session)
+            self._file = await self._files.find_one({"_id": self._file_id}, session=self._session)
+            if not self._file:
+                raise NoFile(
+                    f"no file in gridfs collection {self._files!r} with _id {self._file_id!r}"
+                )
 
     def __getattr__(self, name: str) -> Any:
         if not self._file:
@@ -718,7 +762,7 @@ class AsyncGridOut(io.IOBase):
                 self._buffer_pos = 0
                 self._position += len(chunk_data)
             else:
-                buf = self.readchunk()
+                buf = await self.readchunk()
                 chunk_start = 0
                 chunk_data = memoryview(buf)
             if line:
@@ -741,7 +785,7 @@ class AsyncGridOut(io.IOBase):
         if size == remainder and self._chunk_iter:
             try:
                 await self._chunk_iter.next()
-            except StopIteration:
+            except StopAsyncIteration:
                 pass
 
         return b"".join(data)
@@ -896,26 +940,61 @@ class GridOut(io.IOBase):
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
+        async_gridout: Optional[AsyncGridOut] = None,
     ) -> None:
-        self._delegate = AsyncGridOut(root_collection._delegate, file_id, file_document, session)
-        self._coll = Collection.wrap(self._delegate._coll)
+        if async_gridout:
+            self._delegate = async_gridout
+        else:
+            self._delegate = AsyncGridOut(
+                root_collection._delegate, file_id, file_document, session
+            )
+
+    filename: str = _grid_out_property("filename", "Name of this file.", synchronous=True)
+    name: str = _grid_out_property("filename", "Alias for `filename`.", synchronous=True)
+    content_type: Optional[str] = _grid_out_property(
+        "contentType",
+        "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file.",
+        synchronous=True,
+    )
+    length: int = _grid_out_property("length", "Length (in bytes) of this file.", synchronous=True)
+    chunk_size: int = _grid_out_property("chunkSize", "Chunk size for this file.", synchronous=True)
+    upload_date: datetime.datetime = _grid_out_property(
+        "uploadDate", "Date that this file was first uploaded.", synchronous=True
+    )
+    aliases: Optional[list[str]] = _grid_out_property(
+        "aliases",
+        "DEPRECATED, will be removed in PyMongo 5.0. List of aliases for this file.",
+        synchronous=True,
+    )
+    metadata: Optional[Mapping[str, Any]] = _grid_out_property(
+        "metadata", "Metadata attached to this file.", synchronous=True
+    )
+    md5: Optional[str] = _grid_out_property(
+        "md5",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        synchronous=True,
+    )
+
+    @classmethod
+    def wrap(cls, async_gridout: AsyncGridOut):
+        return cls(None, async_gridout=async_gridout)
 
     @synchronize()
-    def _open(self) -> None:
+    def open(self) -> None:
         ...
 
     def __getattr__(self, name: str) -> Any:
-        if not self._file:
-            self._open()
-        if name in self._file:
-            return self._file[name]
+        if not self._delegate._file:
+            self.open()
+        if name in self._delegate._file:
+            return self._delegate._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
 
     @synchronize()
     def readable(self) -> bool:
         ...
 
-    @delegate_method()
+    @synchronize()
     def readchunk(self) -> bytes:
         ...
 
@@ -923,7 +1002,7 @@ class GridOut(io.IOBase):
     def read(self, size: int = -1) -> bytes:
         ...
 
-    @delegate_method()
+    @synchronize()
     def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
         ...
 
@@ -1067,7 +1146,7 @@ class _AsyncGridOutChunkIterator:
     async def next(self) -> Mapping[str, Any]:
         try:
             chunk = await self._next_with_retry()
-        except StopIteration:
+        except StopAsyncIteration:
             if self._next_chunk >= self._num_chunks:
                 raise
             raise CorruptGridFile("no chunk #%d" % self._next_chunk) from None
@@ -1214,6 +1293,7 @@ class GridOutCursor(Cursor):
         sort: Optional[Any] = None,
         batch_size: int = 0,
         session: Optional[ClientSession] = None,
+        async_cursor: Optional[AsyncGridOutCursor] = None,
     ) -> None:
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
@@ -1225,9 +1305,19 @@ class GridOutCursor(Cursor):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        self._delegate = AsyncGridOutCursor(
-            collection._delegate, filter, skip, limit, no_cursor_timeout, sort, batch_size, session
-        )
+        if async_cursor:
+            self._delegate = async_cursor
+        else:
+            self._delegate = AsyncGridOutCursor(
+                collection._delegate,
+                filter,
+                skip,
+                limit,
+                no_cursor_timeout,
+                sort,
+                batch_size,
+                session,
+            )
 
     @synchronize(wrapper_class=GridOut)
     async def next(self) -> GridOut:

@@ -4294,6 +4294,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> CollectionChangeStream[_DocumentType]:
         ...
 
+    @property
     def database(self) -> Database[_DocumentType]:
         return self._delegate.database._wrap_sync()
 

@@ -98,9 +98,9 @@ class GridFS:
         if not database.write_concern.acknowledged:
             raise ConfigurationError("database must use acknowledged write_concern")
 
-        self.__collection = database[collection]
-        self.__files = self.__collection.files
-        self.__chunks = self.__collection.chunks
+        self._collection = database[collection]
+        self._files = self._collection.files
+        self._chunks = self._collection.chunks
 
     def new_file(self, **kwargs: Any) -> GridIn:
         """Create a new file in GridFS.
@@ -115,7 +115,7 @@ class GridFS:
 
         :param kwargs: keyword arguments for file creation
         """
-        return GridIn(self.__collection, **kwargs)
+        return GridIn(self._collection, **kwargs)
 
     def put(self, data: Any, **kwargs: Any) -> Any:
         """Put data in GridFS as a new file.
@@ -143,7 +143,7 @@ class GridFS:
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-        with GridIn(self.__collection, **kwargs) as grid_file:
+        with GridIn(self._collection, **kwargs) as grid_file:
             grid_file.write(data)
             return grid_file._id
 
@@ -160,10 +160,10 @@ class GridFS:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        gout = GridOut(self.__collection, file_id, session=session)
+        gout = GridOut(self._collection, file_id, session=session)
 
         # Raise NoFile now, instead of on first attribute access.
-        gout._ensure_file()
+        gout.open()
         return gout
 
     def get_version(
@@ -211,7 +211,7 @@ class GridFS:
             query["filename"] = filename
 
         _disallow_transactions(session)
-        cursor = self.__files.find(query, session=session)
+        cursor = self._files.find(query, session=session)
         if version is None:
             version = -1
         if version < 0:
@@ -221,7 +221,7 @@ class GridFS:
             cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
             doc = next(cursor)
-            return GridOut(self.__collection, file_document=doc, session=session)
+            return GridOut(self._collection, file_document=doc, session=session)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
@@ -270,8 +270,8 @@ class GridFS:
            ``delete`` no longer ensures indexes.
         """
         _disallow_transactions(session)
-        self.__files.delete_one({"_id": file_id}, session=session)
-        self.__chunks.delete_many({"files_id": file_id}, session=session)
+        self._files.delete_one({"_id": file_id}, session=session)
+        self._chunks.delete_many({"files_id": file_id}, session=session)
 
     def list(self, session: Optional[ClientSession] = None) -> list[str]:
         """List the names of all files stored in this instance of
@@ -290,7 +290,7 @@ class GridFS:
         # With an index, distinct includes documents with no filename
         # as None.
         return [
-            name for name in self.__files.distinct("filename", session=session) if name is not None
+            name for name in self._files.distinct("filename", session=session) if name is not None
         ]
 
     def find_one(
@@ -391,7 +391,7 @@ class GridFS:
         .. versionadded:: 2.7
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        return GridOutCursor(self.__collection, *args, **kwargs)
+        return GridOutCursor(self._collection, *args, **kwargs)
 
     def exists(
         self,
@@ -437,9 +437,9 @@ class GridFS:
         """
         _disallow_transactions(session)
         if kwargs:
-            f = self.__files.find_one(kwargs, ["_id"], session=session)
+            f = self._files.find_one(kwargs, ["_id"], session=session)
         else:
-            f = self.__files.find_one(document_or_id, ["_id"], session=session)
+            f = self._files.find_one(document_or_id, ["_id"], session=session)
 
         return f is not None
 
@@ -785,12 +785,12 @@ class AsyncGridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        async with self.open_download_stream(file_id, session=session) as gout:
+        async with await self.open_download_stream(file_id, session=session) as gout:
             while True:
                 chunk = await gout.readchunk()
                 if not len(chunk):
                     break
-                await destination.write(chunk)
+                destination.write(chunk)
 
     @_csot.apply
     async def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
@@ -916,9 +916,9 @@ class AsyncGridFSBucket:
         else:
             cursor.limit(-1).skip(revision).sort("uploadDate", ASCENDING)
         try:
-            grid_file = next(cursor)
+            grid_file = await anext(cursor)
             return AsyncGridOut(self._collection, file_document=grid_file, session=session)
-        except StopIteration:
+        except StopAsyncIteration:
             raise NoFile("no version %d for filename %r" % (revision, filename)) from None
 
     @_csot.apply
@@ -965,12 +965,14 @@ class AsyncGridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        async with self.open_download_stream_by_name(filename, revision, session=session) as gout:
+        async with await self.open_download_stream_by_name(
+            filename, revision, session=session
+        ) as gout:
             while True:
                 chunk = await gout.readchunk()
                 if not len(chunk):
                     break
-                await destination.write(chunk)
+                destination.write(chunk)
 
     async def rename(
         self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None
@@ -1098,7 +1100,7 @@ class GridFSBucket:
     ) -> None:
         ...
 
-    @synchronize()
+    @synchronize(wrapper_class=GridOut)
     def open_download_stream(
         self, file_id: Any, session: Optional[ClientSession] = None
     ) -> GridOut:

@@ -15,7 +15,6 @@
 """Cursor class to iterate over Mongo query results."""
 from __future__ import annotations
 
-import asyncio
 import copy
 import warnings
 from collections import deque
@@ -339,15 +338,15 @@ class BaseCursor(Generic[_DocumentType]):
     def _die(self):
         raise NotImplementedError
 
-    def __del__(self) -> None:
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self._die())
-            else:
-                loop.run_until_complete(self._die())
-        except Exception:
-            pass
+    # def __del__(self) -> None:
+    #     try:
+    #         loop = asyncio.get_event_loop()
+    #         if loop.is_running():
+    #             loop.create_task(self._die())
+    #         else:
+    #             loop.run_until_complete(self._die())
+    #     except Exception:
+    #         pass
 
     def clone(self) -> BaseCursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -1441,7 +1440,13 @@ class Cursor(BaseCursor[_DocumentType]):
     def allow_disk_use(self, allow_disk_use: bool) -> BaseCursor[_DocumentType]:
         ...
 
-    @delegate_method()
+    @delegate_method(wrapper_class="self")
+    def sort(
+        self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None
+    ) -> BaseCursor[_DocumentType]:
+        ...
+
+    @delegate_method(wrapper_class="self")
     def limit(self, limit: int) -> BaseCursor[_DocumentType]:
         ...
 
@@ -1449,7 +1454,7 @@ class Cursor(BaseCursor[_DocumentType]):
         self._delegate = self._delegate.batch_size(batch_size)
         return self
 
-    @delegate_method()
+    @delegate_method(wrapper_class="self")
     def skip(self, skip: int) -> BaseCursor[_DocumentType]:
         ...
 
@@ -1555,9 +1560,9 @@ class Cursor(BaseCursor[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
 
-    @delegate_method()
-    def __del__(self) -> None:
-        ...
+    # @delegate_method()
+    # def __del__(self) -> None:
+    #     ...
 
     @synchronize(async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
