@@ -63,8 +63,8 @@ class TestCreateSearchIndex(IntegrationTest):
         self.assertIn("arbitraryOption", listener.events[0].command["indexes"][0])
 
 
-class TestSearchIndexIntegration(unittest.TestCase):
-    db_name = "test_search_index"
+class SearchIndexIntegrationBase(unittest.TestCase):
+    db_name = "test_search_index_base"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -99,6 +99,10 @@ class TestSearchIndexIntegration(unittest.TestCase):
                 break
             time.sleep(5)
 
+
+class TestSearchIndexIntegration(SearchIndexIntegrationBase):
+    db_name = "test_search_index"
+
     def test_comment_field(self):
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
         coll0 = self.db[f"col{uuid.uuid4()}"]
@@ -106,9 +110,12 @@ class TestSearchIndexIntegration(unittest.TestCase):
 
         # Create a new search index on ``coll0`` that implicitly passes its type.
         search_definition = {"mappings": {"dynamic": False}}
+        self.listener.reset()
         implicit_search_resp = coll0.create_search_index(
-            model={"name": _NAME + "-implicit", "definition": search_definition}
+            model={"name": _NAME + "-implicit", "definition": search_definition}, comment="foo"
         )
+        event = self.listener.events[0]
+        self.assertEqual(event.command["comment"], "foo")
 
         # Get the index definition.
         self.listener.reset()
@@ -117,7 +124,7 @@ class TestSearchIndexIntegration(unittest.TestCase):
         self.assertEqual(event.command["comment"], "foo")
 
 
-class TestSearchIndexProse(TestSearchIndexIntegration):
+class TestSearchIndexProse(SearchIndexIntegrationBase):
     db_name = "test_search_index_prose"
 
     def test_case_1(self):
