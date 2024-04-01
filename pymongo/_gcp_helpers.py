@@ -19,9 +19,9 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 
-def _get_gcp_response(audience: str, timeout: float = 5) -> dict[str, Any]:
+def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
     url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"
-    url += f"?audience={audience}"
+    url += f"?audience={resource}"
     headers = {"Metadata-Flavor": "Google", "Accept": "application/json"}
     request = Request(url, headers=headers)  # noqa: S310
     print("fetching url", url)  # noqa: T201

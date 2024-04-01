@@ -77,11 +77,11 @@ class OIDCTestBase(unittest.TestCase):
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
-            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
             return _get_azure_response(token_aud, username)["access_token"]
         elif ENVIRON == "gcp":
             opts = parse_uri(self.uri_single)["options"]
-            token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
+            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
             return _get_gcp_response(token_aud, username)["access_token"]
 
     @contextmanager

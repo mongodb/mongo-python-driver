@@ -135,11 +135,11 @@ class _OIDCAzureCallback(OIDCCallback):
 
 
 class _OIDCGCPCallback(OIDCCallback):
-    def __init__(self, token_audience: str) -> None:
-        self.token_audience = token_audience
+    def __init__(self, token_resource: str) -> None:
+        self.token_resource = token_resource
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_gcp_response(self.token_audience, context.timeout_seconds)
+        resp = _get_gcp_response(self.token_resource, context.timeout_seconds)
         return OIDCCallbackResult(access_token=resp["access_token"])
 
 

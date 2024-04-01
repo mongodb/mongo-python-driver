@@ -520,7 +520,7 @@
     },
     {
       "description": "should recognise the mechanism with gcp provider (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:gcp,TOKEN_AUDIENCE:foo",
+      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:foo",
       "valid": true,
       "credential": {
         "username": null,
@@ -529,19 +529,19 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "PROVIDER_NAME": "azure",
-          "TOKEN_AUDIENCE": "foo"
+          "TOKEN_RESOURCE": "foo"
         }
       }
     },
     {
       "description": "should throw an error for a username and password with gcp provider (MONGODB-OIDC)",
-      "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:gcp,TOKEN_AUDIENCE:foo",
+      "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:foo",
       "valid": false,
       "credential": null
     },
     {
-      "description": "should throw an error if not TOKEN_AUDIENCE with gcp provider (MONGODB-OIDC)",
-      "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:gcp",
+      "description": "should throw an error if not TOKEN_RESOURCE with gcp provider (MONGODB-OIDC)",
+      "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp",
       "valid": false,
       "credential": null
     },
