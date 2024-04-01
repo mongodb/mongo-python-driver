@@ -164,18 +164,18 @@ for provider_name, provider_data in [
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
-PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
-if PROVIDER_NAME == "aws":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
-elif PROVIDER_NAME == "azure":
+OIDC_ENV = os.environ.get("OIDC_ENV", "test")
+if OIDC_ENV == "test":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}
+elif OIDC_ENV == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "PROVIDER_NAME": "azure",
-        "TOKEN_AUDIENCE": os.environ["OIDC_AUDIENCE"],
+        "ENVIRONMENT": "azure",
+        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_RESOURCE"],
     }
-elif PROVIDER_NAME == "gcp":
+elif OIDC_ENV == "gcp":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "PROVIDER_NAME": "gcp",
-        "TOKEN_AUDIENCE": os.environ["OIDC_AUDIENCE"],
+        "ENVIRONMENT": "gcp",
+        "TOKEN_RESOURCE": os.environ["GCPOIDC_RESOURCE"],
     }
 
 
@@ -976,6 +976,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    mongos_clients: list[MongoClient] = []
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -1066,8 +1067,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
 
         if "unpin after TransientTransactionError error on" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
+
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
@@ -1256,7 +1257,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
             try:
-                self.client.admin.command("killAllSessions", [])
+                client.admin.command("killAllSessions", [])
             except OperationFailure:
                 # "operation was interrupted" by killing the command's
                 # own session.

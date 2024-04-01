@@ -862,18 +862,19 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     const codec_options_t* options,
                                     unsigned char in_custom_call,
                                     unsigned char in_fallback_call) {
-    struct module_state *state = GETSTATE(self);
     PyObject* new_value = NULL;
     int retval;
     int is_list;
+    long type;
+    struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return 0;
+    }
     /*
      * Use _type_marker attribute instead of PyObject_IsInstance for better perf.
      */
-    long type = _type_marker(value, state->_type_marker_str);
+    type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
-        return 0;
-    }
-    if (!state) {
         return 0;
     }
 
@@ -2293,6 +2294,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             uint32_t c_w_s_size;
             uint32_t code_size;
             uint32_t scope_size;
+            uint32_t len;
             PyObject* code;
             PyObject* scope;
 
@@ -2311,7 +2313,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             memcpy(&code_size, buffer + *position, 4);
             code_size = BSON_UINT32_FROM_LE(code_size);
             /* code_w_scope length + code length + code + scope length */
-            if (!code_size || max < code_size || max < 4 + 4 + code_size + 4) {
+            len = 4 + 4 + code_size + 4;
+            if (!code_size || max < code_size || max < len || len < code_size) {
                 goto invalid;
             }
             *position += 4;
@@ -2329,12 +2332,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
             memcpy(&scope_size, buffer + *position, 4);
             scope_size = BSON_UINT32_FROM_LE(scope_size);
-            if (scope_size < BSON_MIN_SIZE) {
-                Py_DECREF(code);
-                goto invalid;
-            }
             /* code length + code + scope length + scope */
-            if ((4 + code_size + 4 + scope_size) != c_w_s_size) {
+            len = 4 + 4 + code_size + scope_size;
+            if (scope_size < BSON_MIN_SIZE || len != c_w_s_size || len < scope_size) {
                 Py_DECREF(code);
                 goto invalid;
             }

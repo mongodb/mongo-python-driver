@@ -47,7 +47,10 @@ from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
-PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
+ENVIRON = os.environ.get("OIDC_ENV", "test")
+DOMAIN = os.environ.get("OIDC_DOMAIN", "")
+TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR", "")
+TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
@@ -57,7 +60,7 @@ class OIDCTestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
-        cls.uri_multiple = os.environ["MONGODB_URI_MULTI"]
+        cls.uri_multiple = os.environ.get("MONGODB_URI_MULTI")
         cls.uri_admin = os.environ["MONGODB_URI"]
 
     def setUp(self):
@@ -65,16 +68,18 @@ class OIDCTestBase(unittest.TestCase):
 
     def get_token(self, username=None):
         """Get a token for the current provider."""
-        if PROVIDER_NAME == "aws":
-            token_dir = os.environ["OIDC_TOKEN_DIR"]
-            token_file = os.path.join(token_dir, username).replace(os.sep, "/")
+        if ENVIRON == "test":
+            if username is None:
+                token_file = TOKEN_FILE
+            else:
+                token_file = os.path.join(TOKEN_DIR, username)
             with open(token_file) as fid:
                 return fid.read()
-        elif PROVIDER_NAME == "azure":
+        elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_azure_response(token_aud, username)["access_token"]
-        elif PROVIDER_NAME == "gcp":
+        elif ENVIRON == "gcp":
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
             return _get_gcp_response(token_aud, username)["access_token"]
@@ -96,8 +101,10 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     @classmethod
     def setUpClass(cls):
-        if PROVIDER_NAME != "aws":
-            raise unittest.SkipTest("Human workflows are only tested with the aws provider")
+        if ENVIRON != "test":
+            raise unittest.SkipTest("Human workflows are only tested with the test environment")
+        if DOMAIN is None:
+            raise ValueError("Missing OIDC_DOMAIN")
         super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
@@ -124,11 +131,14 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def create_client(self, *args, **kwargs):
         username = kwargs.get("username", "test_user1")
+        if kwargs.get("username"):
+            kwargs["username"] = f"{username}@{DOMAIN}"
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
         kwargs["retryReads"] = False
         if not len(args):
             args = [self.uri_single]
+
         return MongoClient(*args, authmechanismproperties=props, **kwargs)
 
     def test_1_1_single_principal_implicit_username(self):
@@ -148,6 +158,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_3_multiple_principal_user_1(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a client with MONGODB_URI_MULTI, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple, username="test_user1")
         # Perform a find operation that succeeds.
@@ -156,6 +168,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_4_multiple_principal_user_2(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a human callback that reads in the generated test_user2 token file.
         # Create a client with MONGODB_URI_MULTI, a username of test_user2, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple, username="test_user2")
@@ -165,6 +179,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_5_multiple_principal_no_user(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a client with MONGODB_URI_MULTI, no username, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple)
         # Assert that a find operation fails.
@@ -635,15 +651,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def setUp(self):
         self.request_called = 0
-        if PROVIDER_NAME == "aws":
-            self.default_username = "test_user1"
-        else:
-            self.default_username = None
 
     def create_request_cb(self, username=None, sleep=0):
-        if username is None:
-            username = self.default_username
-
         def request_token(context):
             assert isinstance(context.timeout_seconds, int)
             assert context.version == 1
@@ -757,9 +766,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client.close()
 
     def test_2_5_invalid_client_configuration_with_callback(self):
-        # Create a MongoClient configured with an OIDC callback and auth mechanism property PROVIDER_NAME:aws.
+        # Create a MongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
         request_cb = self.create_request_cb()
-        props: Dict = {"OIDC_CALLBACK": request_cb, "PROVIDER_NAME": "aws"}
+        props: Dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
@@ -831,6 +840,30 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
+    def test_5_1_azure_with_no_username(self):
+        if ENVIRON != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+        opts = parse_uri(self.uri_single)["options"]
+        resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+
+        props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
+        client = self.create_client(authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+    def test_5_2_azure_with_bad_username(self):
+        if ENVIRON != "azure":
+            raise unittest.SkipTest("Test is only supported on Azure")
+
+        opts = parse_uri(self.uri_single)["options"]
+        token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+
+        props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
+        client = self.create_client(username="bad", authmechanismproperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
     def test_speculative_auth_success(self):
         client1 = self.create_client()
         client1.test.test.find_one()
@@ -896,30 +929,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 3)
         client1.close()
         client2.close()
-
-    def test_azure_no_username(self):
-        if PROVIDER_NAME != "azure":
-            raise unittest.SkipTest("Test is only supported on Azure")
-        opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-
-        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
-        client = self.create_client(authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
-
-    def test_azure_bad_username(self):
-        if PROVIDER_NAME != "azure":
-            raise unittest.SkipTest("Test is only supported on Azure")
-
-        opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_AUDIENCE"]
-
-        props = dict(TOKEN_AUDIENCE=token_aud, PROVIDER_NAME="azure")
-        client = self.create_client(username="bad", authmechanismproperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
 
 
 if __name__ == "__main__":

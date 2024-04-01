@@ -60,8 +60,13 @@ class TestAuthAWS(unittest.TestCase):
     def setup_cache(self):
         if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
             self.skipTest("Not testing cached credentials")
-        if not hasattr(auth, "set_cached_credentials"):
-            self.skipTest("Cached credentials not available")
+
+        # Make a connection to ensure that we enable caching.
+        client = MongoClient(self.uri)
+        client.get_database().test.find_one()
+        client.close()
+
+        self.assertTrue(auth.get_use_cached_credentials())
 
         # Ensure cleared credentials.
         auth.set_cached_credentials(None)
