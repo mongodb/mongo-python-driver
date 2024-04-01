@@ -26,14 +26,6 @@ else
     exit 1
 fi
 
-if [[ $OIDC_PROVIDER_NAME == "azure" ]] || [[ $OIDC_PROVIDER_NAME == "gcp" ]]; then
-    export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
-    MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-    MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE}&authMechanismProperties=PROVIDER_NAME:${OIDC_PROVIDER_NAME}"
-    export MONGODB_URI_SINGLE="${MONGODB_URI_SINGLE},TOKEN_AUDIENCE:${OIDC_AUDIENCE}"
-    export MONGODB_URI_MULTI=$MONGODB_URI_SINGLE
-fi
-
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
