@@ -271,15 +271,16 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         )
 
         # Create a new search index on ``coll0`` with the ``createSearchIndex`` helper.
-        model = {"name": "test-search-index-case6", "definition": {"mappings": {"dynamic": False}}}
+        name = "test-search-index-case6"
+        model = {"name": name, "definition": {"mappings": {"dynamic": False}}}
         resp = coll0.create_search_index(model)
 
         # Assert that the command returns the name of the index: ``"test-search-index-case6"``.
-        self.assertEqual(resp, "test-search-index-case6")
+        self.assertEqual(resp, name)
 
         # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied and store the value in a variable ``index``:
         # - An index with the ``name`` of ``test-search-index-case6`` is present and the index has a field ``queryable`` with a value of ``true``.
-        index = self.wait_for_ready(coll0)
+        index = self.wait_for_ready(coll0, name)
 
         # Assert that ``index`` has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': false } }``
         self.assertIn("latestDefinition", index)
