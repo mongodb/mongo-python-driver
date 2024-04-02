@@ -175,7 +175,7 @@ elif OIDC_ENV == "azure":
 elif OIDC_ENV == "gcp":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
         "ENVIRONMENT": "gcp",
-        "TOKEN_RESOURCE": os.environ["GCPOIDC_RESOURCE"],
+        "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
     }
 
 
