@@ -528,7 +528,7 @@
         "source": "$external",
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
-          "PROVIDER_NAME": "azure",
+          "ENVIRONMENT": "azure",
           "TOKEN_RESOURCE": "foo"
         }
       }
