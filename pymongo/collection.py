@@ -2364,7 +2364,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline = [{"$listSearchIndexes": {"name": name}}]
 
         coll = self.with_options(
-            codec_options=DEFAULT_CODEC_OPTIONS, read_preference=ReadPreference.PRIMARY
+            codec_options=DEFAULT_CODEC_OPTIONS,
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=WriteConcern(),
+            read_concern=ReadConcern(),
         )
         cmd = _CollectionAggregationCommand(
             coll,
