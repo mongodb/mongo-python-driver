@@ -24,7 +24,6 @@ def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
     url += f"?audience={resource}"
     headers = {"Metadata-Flavor": "Google", "Accept": "application/json"}
     request = Request(url, headers=headers)  # noqa: S310
-    print("fetching url", url)  # noqa: T201
     try:
         with urlopen(request, timeout=timeout) as response:  # noqa: S310
             status = response.status
