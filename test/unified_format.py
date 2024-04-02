@@ -1062,8 +1062,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
 
         if "unpin after TransientTransactionError error on" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
+
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
@@ -1252,7 +1252,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
             try:
-                self.client.admin.command("killAllSessions", [])
+                client.admin.command("killAllSessions", [])
             except OperationFailure:
                 # "operation was interrupted" by killing the command's
                 # own session.

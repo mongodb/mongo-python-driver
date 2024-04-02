@@ -46,7 +46,9 @@ from pymongo.uri_parser import parse_uri
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 ENVIRON = os.environ.get("OIDC_ENV", "test")
-
+DOMAIN = os.environ.get("OIDC_DOMAIN", "")
+TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR", "")
+TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
@@ -56,7 +58,7 @@ class OIDCTestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
-        cls.uri_multiple = os.environ["MONGODB_URI_MULTI"]
+        cls.uri_multiple = os.environ.get("MONGODB_URI_MULTI")
         cls.uri_admin = os.environ["MONGODB_URI"]
 
     def setUp(self):
@@ -65,8 +67,10 @@ class OIDCTestBase(unittest.TestCase):
     def get_token(self, username=None):
         """Get a token for the current provider."""
         if ENVIRON == "test":
-            token_dir = os.environ["OIDC_TOKEN_DIR"]
-            token_file = os.path.join(token_dir, username).replace(os.sep, "/")
+            if username is None:
+                token_file = TOKEN_FILE
+            else:
+                token_file = os.path.join(TOKEN_DIR, username)
             with open(token_file) as fid:
                 return fid.read()
         elif ENVIRON == "azure":
@@ -95,6 +99,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def setUpClass(cls):
         if ENVIRON != "test":
             raise unittest.SkipTest("Human workflows are only tested with the test environment")
+        if DOMAIN is None:
+            raise ValueError("Missing OIDC_DOMAIN")
         super().setUpClass()
 
     def create_request_cb(self, username="test_user1", sleep=0):
@@ -121,11 +127,14 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def create_client(self, *args, **kwargs):
         username = kwargs.get("username", "test_user1")
+        if kwargs.get("username"):
+            kwargs["username"] = f"{username}@{DOMAIN}"
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
         kwargs["retryReads"] = False
         if not len(args):
             args = [self.uri_single]
+
         return MongoClient(*args, authmechanismproperties=props, **kwargs)
 
     def test_1_1_single_principal_implicit_username(self):
@@ -145,6 +154,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_3_multiple_principal_user_1(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a client with MONGODB_URI_MULTI, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple, username="test_user1")
         # Perform a find operation that succeeds.
@@ -153,6 +164,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_4_multiple_principal_user_2(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a human callback that reads in the generated test_user2 token file.
         # Create a client with MONGODB_URI_MULTI, a username of test_user2, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple, username="test_user2")
@@ -162,6 +175,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_1_5_multiple_principal_no_user(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a client with MONGODB_URI_MULTI, no username, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(self.uri_multiple)
         # Assert that a find operation fails.
@@ -632,15 +647,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def setUp(self):
         self.request_called = 0
-        if ENVIRON == "test":
-            self.default_username = "test_user1"
-        else:
-            self.default_username = None
 
     def create_request_cb(self, username=None, sleep=0):
-        if username is None:
-            username = self.default_username
-
         def request_token(context):
             assert isinstance(context.timeout_seconds, int)
             assert context.version == 1
