@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import io
 import math
 import os
@@ -400,8 +401,11 @@ class AsyncGridIn:
             raise ValueError("cannot write to a closed file")
 
         try:
-            # file-like
-            read = data.read
+            if isinstance(data, GridOut):
+                read = data._delegate.read
+            else:
+                # file-like
+                read = data.read
         except AttributeError:
             # string
             if not isinstance(data, (str, bytes)):
@@ -415,12 +419,35 @@ class AsyncGridIn:
                     ) from None
             read = io.BytesIO(data).read
 
+        if inspect.iscoroutinefunction(read):
+            await self._write_async(read)
+        else:
+            if self._buffer.tell() > 0:
+                # Make sure to flush only when _buffer is complete
+                space = self.chunk_size - self._buffer.tell()
+                if space:
+                    try:
+                        to_write = read(space)
+                    except BaseException:
+                        await self.abort()
+                        raise
+                    self._buffer.write(to_write)
+                    if len(to_write) < space:
+                        return  # EOF or incomplete
+                await self._flush_buffer()
+            to_write = read(self.chunk_size)
+            while to_write and len(to_write) == self.chunk_size:
+                await self._flush_data(to_write)
+                to_write = read(self.chunk_size)
+            self._buffer.write(to_write)
+
+    async def _write_async(self, read: Any) -> None:
         if self._buffer.tell() > 0:
             # Make sure to flush only when _buffer is complete
             space = self.chunk_size - self._buffer.tell()
             if space:
                 try:
-                    to_write = read(space)
+                    to_write = await read(space)
                 except BaseException:
                     await self.abort()
                     raise
@@ -428,10 +455,10 @@ class AsyncGridIn:
                 if len(to_write) < space:
                     return  # EOF or incomplete
             await self._flush_buffer()
-        to_write = read(self.chunk_size)
+        to_write = await read(self.chunk_size)
         while to_write and len(to_write) == self.chunk_size:
             await self._flush_data(to_write)
-            to_write = read(self.chunk_size)
+            to_write = await read(self.chunk_size)
         self._buffer.write(to_write)
 
     async def writelines(self, sequence: Iterable[Any]) -> None:

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import queue
+import inspect
 import threading
-from concurrent.futures import wait
 from typing import Any, Optional
 
 
@@ -13,12 +12,8 @@ class TaskRunner:
 
     def __init__(self):
         self.__loop = asyncio.new_event_loop()
-        self.__loop.set_debug(True)
         self.__loop_thread = threading.Thread(target=self._runner, daemon=True)
         self.__loop_thread.start()
-        self.waiting = False
-        self.lock = threading.Lock()
-        self.errors = queue.Queue()
 
     def close(self):
         if self.__loop and not self.__loop.is_closed():
@@ -35,28 +30,14 @@ class TaskRunner:
     def run(self, coro):
         """Run a coroutine on the event loop and return the result"""
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        with self.lock:
-            self.waiting = True
         try:
-            wait([fut])
             return fut.result()
-        except Exception as e:
-            self.errors.put(e)
-        finally:
-            with self.lock:
-                self.waiting = False
+        except StopAsyncIteration as e:
+            raise StopIteration from e
 
     def schedule(self, coro):
         """Schedule a coroutine on the event loop as a task"""
         return asyncio.run_coroutine_threadsafe(coro, self.__loop)
-
-    def check_errors(self):
-        if self.errors.qsize():
-            error = self.errors.get()
-            if isinstance(error, StopAsyncIteration):
-                raise StopIteration
-            else:
-                raise error
 
 
 class TaskRunnerPool:
@@ -76,39 +57,22 @@ class TaskRunnerPool:
             raise Exception("This class is a singleton!")
         else:
             TaskRunnerPool.__instance = self
+        self._runner: TaskRunner = TaskRunner()
         self._semaphore = threading.Semaphore(1)
-        self._runners: list[TaskRunner] = []
 
     def __del__(self):
         self.close()
 
     def run(self, coro):
         with self._semaphore:
-            for runner in self._runners:
-                with runner.lock:
-                    waiting = runner.waiting
-                if not waiting:
-                    res = runner.run(coro)
-                    runner.check_errors()
-                    return res
-            runner = TaskRunner()
-            self._runners.append(runner)
-            res = runner.run(coro)
-            runner.check_errors()
-            return res
+            return self._runner.run(coro)
 
     def schedule(self, coro):
         with self._semaphore:
-            for runner in self._runners:
-                return runner.schedule(coro)
-            runner = TaskRunner()
-            self._runners.append(runner)
-            return runner.schedule(coro)
+            return self._runner.schedule(coro)
 
     def close(self):
-        for runner in self._runners:
-            runner.close()
-        self._runners = []
+        self._runner.close()
 
 
 def wrap_class(cls, wrapper, result):
@@ -198,6 +162,9 @@ def synchronize(
                 async_method.__doc__ = doc
 
             coro = async_method(*args, **kwargs)
+
+            if not inspect.isawaitable(coro):
+                raise RuntimeError(f"Tried to synchronize an already synchronous function: {coro}")
 
             if wrapper_class:
                 return wrap_class(self, wrapper_class, runner.run(coro))

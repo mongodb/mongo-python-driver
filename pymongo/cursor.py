@@ -1428,47 +1428,47 @@ class Cursor(BaseCursor[_DocumentType]):
         self._delegate = async_cursor
         return self
 
-    @delegate_method()
-    def add_option(self, mask: int) -> BaseCursor[_DocumentType]:
+    @delegate_method(wrapper_class="self")
+    def add_option(self, mask: int) -> Cursor[_DocumentType]:
         ...
 
-    @delegate_method()
-    def remove_option(self, mask: int) -> BaseCursor[_DocumentType]:
+    @delegate_method(wrapper_class="self")
+    def remove_option(self, mask: int) -> Cursor[_DocumentType]:
         ...
 
-    @delegate_method()
-    def allow_disk_use(self, allow_disk_use: bool) -> BaseCursor[_DocumentType]:
+    @delegate_method(wrapper_class="self")
+    def allow_disk_use(self, allow_disk_use: bool) -> Cursor[_DocumentType]:
         ...
 
     @delegate_method(wrapper_class="self")
     def sort(
         self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None
-    ) -> BaseCursor[_DocumentType]:
+    ) -> Cursor[_DocumentType]:
         ...
 
     @delegate_method(wrapper_class="self")
-    def limit(self, limit: int) -> BaseCursor[_DocumentType]:
+    def limit(self, limit: int) -> Cursor[_DocumentType]:
         ...
 
+    @delegate_method(wrapper_class="self")
     def batch_size(self, batch_size: int) -> Cursor[_DocumentType]:
-        self._delegate = self._delegate.batch_size(batch_size)
-        return self
-
-    @delegate_method(wrapper_class="self")
-    def skip(self, skip: int) -> BaseCursor[_DocumentType]:
-        ...
-
-    @delegate_method()
-    def max_time_ms(self, max_time_ms: Optional[int]) -> BaseCursor[_DocumentType]:
-        ...
-
-    @delegate_method()
-    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> BaseCursor[_DocumentType]:
         ...
 
     @delegate_method(wrapper_class="self")
-    def clone(self) -> BaseCursor[_DocumentType]:
+    def skip(self, skip: int) -> Cursor[_DocumentType]:
         ...
+
+    @delegate_method(wrapper_class="self")
+    def max_time_ms(self, max_time_ms: Optional[int]) -> Cursor[_DocumentType]:
+        ...
+
+    @delegate_method(wrapper_class="self")
+    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
+        ...
+
+    def clone(self) -> Cursor[_DocumentType]:
+        cloned = self.wrap(self._delegate.clone())
+        return cloned
 
     @synchronize()
     def explain(self) -> _DocumentType:
@@ -1523,6 +1523,30 @@ class Cursor(BaseCursor[_DocumentType]):
         return self._delegate._has_filter
 
     @property
+    def _query_flags(self):
+        return self._delegate._query_flags
+
+    @property
+    def _data(self):
+        return self._delegate._data
+
+    @property
+    def _explicit_session(self):
+        return self._delegate._explicit_session
+
+    @property
+    def _skip(self):
+        return self._delegate._skip
+
+    @property
+    def _retrieved(self):
+        return self._delegate._retrieved
+
+    @property
+    def _max_await_time_ms(self):
+        return self._delegate._max_await_time_ms
+
+    @property
     def _spec(self):
         return self._delegate._spec
 
@@ -1533,6 +1557,14 @@ class Cursor(BaseCursor[_DocumentType]):
     @property
     def _sock_mgr(self):
         return self._delegate._sock_mgr
+
+    @property
+    def _exhaust(self):
+        return self._delegate._exhaust
+
+    @property
+    def _allow_disk_use(self):
+        return self._delegate._allow_disk_use
 
     @delegate_method(wrapper_class="self")
     def collation(self, collation: Optional[_CollationIn]) -> BaseCursor[_DocumentType]:
@@ -1545,16 +1577,16 @@ class Cursor(BaseCursor[_DocumentType]):
     def __next__(self):
         ...
 
-    def __aiter__(self) -> BaseCursor[_DocumentType]:
+    def __aiter__(self) -> None:
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
 
-    def __iter__(self) -> BaseCursor[_DocumentType]:
+    def __iter__(self) -> Cursor[_DocumentType]:
         return self
 
-    async def __aenter__(self) -> BaseCursor[_DocumentType]:
+    async def __aenter__(self) -> None:
         raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
 
-    def __enter__(self) -> BaseCursor[_DocumentType]:
+    def __enter__(self) -> Cursor[_DocumentType]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -1566,6 +1598,10 @@ class Cursor(BaseCursor[_DocumentType]):
 
     @synchronize(async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        ...
+
+    @delegate_method()
+    def __getitem__(self, index: Union[int, slice]) -> Union[_DocumentType, Cursor[_DocumentType]]:
         ...
 
 

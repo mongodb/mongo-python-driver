@@ -64,64 +64,64 @@ class TestCursor(IntegrationTest):
         )
 
         cursor2 = copy.deepcopy(cursor)
-        self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)  # type: ignore
+        self.assertEqual(cursor._spec, cursor2._spec)  # type: ignore
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
-        self.assertEqual(0, cursor._Cursor__query_flags)
+        self.assertEqual(0, cursor._query_flags)
         cursor.add_option(2)
         cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
-        self.assertEqual(2, cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(2, cursor2._query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.add_option(32)
         cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
-        self.assertEqual(34, cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(34, cursor2._query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.add_option(128)
         cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT).add_option(128)
-        self.assertEqual(162, cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(162, cursor2._query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
 
-        self.assertEqual(162, cursor._Cursor__query_flags)
+        self.assertEqual(162, cursor._query_flags)
         cursor.add_option(128)
-        self.assertEqual(162, cursor._Cursor__query_flags)
+        self.assertEqual(162, cursor._query_flags)
 
         cursor.remove_option(128)
         cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
-        self.assertEqual(34, cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(34, cursor2._query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(32)
         cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
-        self.assertEqual(2, cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(2, cursor2._query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
 
-        self.assertEqual(2, cursor._Cursor__query_flags)
+        self.assertEqual(2, cursor._query_flags)
         cursor.remove_option(32)
-        self.assertEqual(2, cursor._Cursor__query_flags)
+        self.assertEqual(2, cursor._query_flags)
 
         # Timeout
         cursor = self.db.test.find(no_cursor_timeout=True)
-        self.assertEqual(16, cursor._Cursor__query_flags)
+        self.assertEqual(16, cursor._query_flags)
         cursor2 = self.db.test.find().add_option(16)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(16)
-        self.assertEqual(0, cursor._Cursor__query_flags)
+        self.assertEqual(0, cursor._query_flags)
 
         # Tailable / Await data
         cursor = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
-        self.assertEqual(34, cursor._Cursor__query_flags)
+        self.assertEqual(34, cursor._query_flags)
         cursor2 = self.db.test.find().add_option(34)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(32)
-        self.assertEqual(2, cursor._Cursor__query_flags)
+        self.assertEqual(2, cursor._query_flags)
 
         # Partial
         cursor = self.db.test.find(allow_partial_results=True)
-        self.assertEqual(128, cursor._Cursor__query_flags)
+        self.assertEqual(128, cursor._query_flags)
         cursor2 = self.db.test.find().add_option(128)
-        self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(128)
-        self.assertEqual(0, cursor._Cursor__query_flags)
+        self.assertEqual(0, cursor._query_flags)
 
     def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support
@@ -130,13 +130,13 @@ class TestCursor(IntegrationTest):
                 self.db.test.find(cursor_type=CursorType.EXHAUST)
         else:
             cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
-            self.assertEqual(64, cursor._Cursor__query_flags)
+            self.assertEqual(64, cursor._query_flags)
             cursor2 = self.db.test.find().add_option(64)
-            self.assertEqual(cursor._Cursor__query_flags, cursor2._Cursor__query_flags)
-            self.assertTrue(cursor._Cursor__exhaust)
+            self.assertEqual(cursor._query_flags, cursor2._query_flags)
+            self.assertTrue(cursor._exhaust)
             cursor.remove_option(64)
-            self.assertEqual(0, cursor._Cursor__query_flags)
-            self.assertFalse(cursor._Cursor__exhaust)
+            self.assertEqual(0, cursor._query_flags)
+            self.assertFalse(cursor._exhaust)
 
     def test_allow_disk_use(self):
         db = self.db
@@ -146,9 +146,9 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, coll.find().allow_disk_use, "baz")
 
         cursor = coll.find().allow_disk_use(True)
-        self.assertEqual(True, cursor._Cursor__allow_disk_use)  # type: ignore
+        self.assertEqual(True, cursor._allow_disk_use)  # type: ignore
         cursor = coll.find().allow_disk_use(False)
-        self.assertEqual(False, cursor._Cursor__allow_disk_use)  # type: ignore
+        self.assertEqual(False, cursor._allow_disk_use)  # type: ignore
 
     def test_max_time_ms(self):
         db = self.db
@@ -162,15 +162,15 @@ class TestCursor(IntegrationTest):
         coll.find().max_time_ms(1)
 
         cursor = coll.find().max_time_ms(999)
-        self.assertEqual(999, cursor._Cursor__max_time_ms)  # type: ignore
+        self.assertEqual(999, cursor._max_time_ms)  # type: ignore
         cursor = coll.find().max_time_ms(10).max_time_ms(1000)
-        self.assertEqual(1000, cursor._Cursor__max_time_ms)  # type: ignore
+        self.assertEqual(1000, cursor._max_time_ms)  # type: ignore
 
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
-        self.assertEqual(999, c2._Cursor__max_time_ms)  # type: ignore
-        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())  # type: ignore
-        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())  # type: ignore
+        self.assertEqual(999, c2._max_time_ms)  # type: ignore
+        self.assertTrue("$maxTimeMS" in cursor._query_spec())  # type: ignore
+        self.assertTrue("$maxTimeMS" in c2._query_spec())  # type: ignore
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
@@ -204,24 +204,24 @@ class TestCursor(IntegrationTest):
 
         # When cursor is not tailable_await
         cursor = coll.find()
-        self.assertEqual(None, cursor._Cursor__max_await_time_ms)
+        self.assertEqual(None, cursor._max_await_time_ms)
         cursor = coll.find().max_await_time_ms(99)
-        self.assertEqual(None, cursor._Cursor__max_await_time_ms)
+        self.assertEqual(None, cursor._max_await_time_ms)
 
         # If cursor is tailable_await and timeout is unset
         cursor = coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
-        self.assertEqual(None, cursor._Cursor__max_await_time_ms)
+        self.assertEqual(None, cursor._max_await_time_ms)
 
         # If cursor is tailable_await and timeout is set
         cursor = coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99)
-        self.assertEqual(99, cursor._Cursor__max_await_time_ms)
+        self.assertEqual(99, cursor._max_await_time_ms)
 
         cursor = (
             coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
             .max_await_time_ms(10)
             .max_await_time_ms(90)
         )
-        self.assertEqual(90, cursor._Cursor__max_await_time_ms)
+        self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
         coll = rs_or_single_client(event_listeners=[listener])[self.db.name].pymongo_test
@@ -572,13 +572,13 @@ class TestCursor(IntegrationTest):
         cur = db.test.find().batch_size(1)
         next(cur)
         # find command batchSize should be 1
-        self.assertEqual(0, len(cur._Cursor__data))
+        self.assertEqual(0, len(cur._data))
         next(cur)
-        self.assertEqual(0, len(cur._Cursor__data))
+        self.assertEqual(0, len(cur._data))
         next(cur)
-        self.assertEqual(0, len(cur._Cursor__data))
+        self.assertEqual(0, len(cur._data))
         next(cur)
-        self.assertEqual(0, len(cur._Cursor__data))
+        self.assertEqual(0, len(cur._data))
 
     def test_limit_and_batch_size(self):
         db = self.db
@@ -587,51 +587,51 @@ class TestCursor(IntegrationTest):
 
         curs = db.test.find().limit(0).batch_size(10)
         next(curs)
-        self.assertEqual(10, curs._Cursor__retrieved)
+        self.assertEqual(10, curs._retrieved)
 
         curs = db.test.find(limit=0, batch_size=10)
         next(curs)
-        self.assertEqual(10, curs._Cursor__retrieved)
+        self.assertEqual(10, curs._retrieved)
 
         curs = db.test.find().limit(-2).batch_size(0)
         next(curs)
-        self.assertEqual(2, curs._Cursor__retrieved)
+        self.assertEqual(2, curs._retrieved)
 
         curs = db.test.find(limit=-2, batch_size=0)
         next(curs)
-        self.assertEqual(2, curs._Cursor__retrieved)
+        self.assertEqual(2, curs._retrieved)
 
         curs = db.test.find().limit(-4).batch_size(5)
         next(curs)
-        self.assertEqual(4, curs._Cursor__retrieved)
+        self.assertEqual(4, curs._retrieved)
 
         curs = db.test.find(limit=-4, batch_size=5)
         next(curs)
-        self.assertEqual(4, curs._Cursor__retrieved)
+        self.assertEqual(4, curs._retrieved)
 
         curs = db.test.find().limit(50).batch_size(500)
         next(curs)
-        self.assertEqual(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._retrieved)
 
         curs = db.test.find(limit=50, batch_size=500)
         next(curs)
-        self.assertEqual(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._retrieved)
 
         curs = db.test.find().batch_size(500)
         next(curs)
-        self.assertEqual(500, curs._Cursor__retrieved)
+        self.assertEqual(500, curs._retrieved)
 
         curs = db.test.find(batch_size=500)
         next(curs)
-        self.assertEqual(500, curs._Cursor__retrieved)
+        self.assertEqual(500, curs._retrieved)
 
         curs = db.test.find().limit(50)
         next(curs)
-        self.assertEqual(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._retrieved)
 
         curs = db.test.find(limit=50)
         next(curs)
-        self.assertEqual(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._retrieved)
 
         # these two might be shaky, as the default
         # is set by the server. as of 2.0.0-rc0, 101
@@ -639,15 +639,15 @@ class TestCursor(IntegrationTest):
         # for queries without ntoreturn
         curs = db.test.find()
         next(curs)
-        self.assertEqual(101, curs._Cursor__retrieved)
+        self.assertEqual(101, curs._retrieved)
 
         curs = db.test.find().limit(0).batch_size(0)
         next(curs)
-        self.assertEqual(101, curs._Cursor__retrieved)
+        self.assertEqual(101, curs._retrieved)
 
         curs = db.test.find(limit=0, batch_size=0)
         next(curs)
-        self.assertEqual(101, curs._Cursor__retrieved)
+        self.assertEqual(101, curs._retrieved)
 
     def test_skip(self):
         db = self.db
@@ -886,17 +886,17 @@ class TestCursor(IntegrationTest):
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
-        cursor2._Cursor__projection["cursor2"] = False
-        self.assertTrue("cursor2" in cursor._Cursor__projection)
+        cursor2._projection["cursor2"] = False
+        self.assertTrue("cursor2" in cursor._projection)
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
-        cursor3._Cursor__projection["cursor3"] = False
-        self.assertFalse("cursor3" in cursor._Cursor__projection)
+        cursor3._projection["cursor3"] = False
+        self.assertFalse("cursor3" in cursor._projection)
 
         cursor4 = cursor.clone()
-        cursor4._Cursor__projection["cursor4"] = False
-        self.assertFalse("cursor4" in cursor._Cursor__projection)
+        cursor4._projection["cursor4"] = False
+        self.assertFalse("cursor4" in cursor._projection)
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}
@@ -905,16 +905,16 @@ class TestCursor(IntegrationTest):
 
         cursor2 = copy.deepcopy(cursor)
 
-        self.assertNotEqual(id(cursor._Cursor__spec), id(cursor2._Cursor__spec))
-        self.assertEqual(id(cursor2._Cursor__spec["reflexive"]), id(cursor2._Cursor__spec))
-        self.assertEqual(len(cursor2._Cursor__spec), 2)
+        self.assertNotEqual(id(cursor._spec), id(cursor2._spec))
+        self.assertEqual(id(cursor2._spec["reflexive"]), id(cursor2._spec))
+        self.assertEqual(len(cursor2._spec), 2)
 
         # Ensure hints are cloned as the correct type
         cursor = self.db.test.find().hint([("z", 1), ("a", 1)])
         cursor2 = copy.deepcopy(cursor)
         # Internal types are now dict rather than SON by default
-        self.assertTrue(isinstance(cursor2._Cursor__hint, dict))
-        self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
+        self.assertTrue(isinstance(cursor2._hint, dict))
+        self.assertEqual(cursor._hint, cursor2._hint)
 
     def test_clone_empty(self):
         self.db.test.delete_many({})
