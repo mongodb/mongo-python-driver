@@ -72,7 +72,7 @@ from pymongo.operations import (
     _IndexList,
     _Op,
 )
-from pymongo.read_concern import ReadConcern
+from pymongo.read_concern import DEFAULT_READ_CONCERN, ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
@@ -82,7 +82,7 @@ from pymongo.results import (
     UpdateResult,
 )
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
-from pymongo.write_concern import WriteConcern, validate_boolean
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 T = TypeVar("T")
 
@@ -2366,8 +2366,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         coll = self.with_options(
             codec_options=DEFAULT_CODEC_OPTIONS,
             read_preference=ReadPreference.PRIMARY,
-            write_concern=WriteConcern(),
-            read_concern=ReadConcern(),
+            write_concern=DEFAULT_WRITE_CONCERN,
+            read_concern=DEFAULT_READ_CONCERN,
         )
         cmd = _CollectionAggregationCommand(
             coll,
