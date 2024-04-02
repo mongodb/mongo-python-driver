@@ -72,6 +72,7 @@ from pymongo.operations import (
     _IndexList,
     _Op,
 )
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
@@ -119,7 +120,6 @@ if TYPE_CHECKING:
     from pymongo.collation import Collation
     from pymongo.database import Database
     from pymongo.pool import Connection
-    from pymongo.read_concern import ReadConcern
     from pymongo.server import Server
 
 
