@@ -30,6 +30,8 @@ from test.utils import AllowListEventListener, EventListener
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "index_management")
 
@@ -256,6 +258,33 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
 
         # Run a ``dropSearchIndex`` command and assert that no error is thrown.
         coll0.drop_search_index("foo")
+
+    def test_case_6(self):
+        """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
+        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
+        coll0 = self.db[f"col{uuid.uuid4()}"]
+        coll0.insert_one({})
+
+        # Apply a write concern ``WriteConcern(w=1)`` and a read concern with ``ReadConcern(level="majority")`` to ``coll0``.
+        coll0 = coll0.with_options(
+            write_concern=WriteConcern(w="1"), read_concern=ReadConcern(level="majority")
+        )
+
+        # Create a new search index on ``coll0`` with the ``createSearchIndex`` helper.
+        name = "test-search-index-case6"
+        model = {"name": name, "definition": {"mappings": {"dynamic": False}}}
+        resp = coll0.create_search_index(model)
+
+        # Assert that the command returns the name of the index: ``"test-search-index-case6"``.
+        self.assertEqual(resp, name)
+
+        # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied and store the value in a variable ``index``:
+        # - An index with the ``name`` of ``test-search-index-case6`` is present and the index has a field ``queryable`` with a value of ``true``.
+        index = self.wait_for_ready(coll0, name)
+
+        # Assert that ``index`` has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': false } }``
+        self.assertIn("latestDefinition", index)
+        self.assertEqual(index["latestDefinition"], model["definition"])
 
     def test_case_7(self):
         """Driver handles index types."""
