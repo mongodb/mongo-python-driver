@@ -27,12 +27,14 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
+import pprint
 from test.unified_format import generate_test_classes
 from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
+from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
@@ -75,10 +77,12 @@ class OIDCTestBase(unittest.TestCase):
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
-            resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
-            return _get_azure_response(resource, username)["access_token"]
-        else:
-            raise RuntimeError(f"Invalid ENVIRONMENT {ENVIRON}")
+            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+            return _get_azure_response(token_aud, username)["access_token"]
+        elif ENVIRON == "gcp":
+            opts = parse_uri(self.uri_single)["options"]
+            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+            return _get_gcp_response(token_aud, username)["access_token"]
 
     @contextmanager
     def fail_point(self, command_args):

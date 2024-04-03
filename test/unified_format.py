@@ -172,6 +172,11 @@ elif OIDC_ENV == "azure":
         "ENVIRONMENT": "azure",
         "TOKEN_RESOURCE": os.environ["AZUREOIDC_RESOURCE"],
     }
+elif OIDC_ENV == "gcp":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "ENVIRONMENT": "gcp",
+        "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
+    }
 
 
 def interrupt_loop():
