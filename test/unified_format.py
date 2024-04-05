@@ -814,86 +814,79 @@ class MatchEvaluatorUtil:
             self.test.assertEqual(expectation, actual)
             return None
 
-    def assertHasDatabaseName(self, spec, actual):
-        if "databaseName" in spec:
-            self.test.assertEqual(spec["databaseName"], actual.database_name)
-
-    def assertHasServiceId(self, spec, actual):
-        if "hasServiceId" in spec:
-            if spec.get("hasServiceId"):
-                self.test.assertIsNotNone(actual.service_id)
-                self.test.assertIsInstance(actual.service_id, ObjectId)
-            else:
-                self.test.assertIsNone(actual.service_id)
-
-    def assertHasInterruptInUseConnections(self, spec, actual):
-        if "interruptInUseConnections" in spec:
-            self.test.assertEqual(
-                spec.get("interruptInUseConnections"), actual.interrupt_connections
-            )
-        else:
-            self.test.assertIsInstance(actual.interrupt_connections, bool)
-
-    def assertHasServerConnectionId(self, spec, actual):
-        if "hasServerConnectionId" in spec:
-            if spec.get("hasServerConnectionId"):
-                self.test.assertIsNotNone(actual.server_connection_id)
-                self.test.assertIsInstance(actual.server_connection_id, int)
-            else:
-                self.test.assertIsNone(actual.server_connection_id)
-
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         for field, expected in spec.items():
             field = camel_to_snake(field)
-            if "type" in spec:
+            if field == "type":
                 field = "server_type_name"
             self.test.assertEqual(getattr(actual, field), expected)
 
     def match_topology_description(self, actual: TopologyDescription, spec: dict) -> None:
         for field, expected in spec.items():
             field = camel_to_snake(field)
-            if "type" in spec:
+            if field == "type":
                 field = "topology_type_name"
             self.test.assertEqual(getattr(actual, field), expected)
 
-    def match_event(self, event_type, expectation, actual):
+    def match_event_fields(self, actual: Any, spec: dict) -> None:
+        for field, expected in spec.items():
+            if field == "command" and isinstance(actual, CommandStartedEvent):
+                command = spec["command"]
+                if command:
+                    self.match_result(command, actual.command)
+                continue
+            if field == "reply" and isinstance(actual, CommandSucceededEvent):
+                reply = spec["reply"]
+                if reply:
+                    self.match_result(reply, actual.reply)
+                continue
+            if field == "hasServiceId":
+                if spec["hasServiceId"]:
+                    self.test.assertIsNotNone(actual.service_id)
+                    self.test.assertIsInstance(actual.service_id, ObjectId)
+                else:
+                    self.test.assertIsNone(actual.service_id)
+                continue
+            if field == "hasServerConnectionId":
+                if spec["hasServerConnectionId"]:
+                    self.test.assertIsNotNone(actual.server_connection_id)
+                    self.test.assertIsInstance(actual.server_connection_id, int)
+                else:
+                    self.test.assertIsNone(actual.server_connection_id)
+                continue
+            if field in ("previousDescription", "newDescription"):
+                if isinstance(actual, ServerDescriptionChangedEvent):
+                    self.match_server_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                    continue
+                if isinstance(actual, TopologyDescriptionChangedEvent):
+                    self.match_topology_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                    continue
+
+            if field == "interruptInUseConnections":
+                field = "interrupt_connections"
+            else:
+                field = camel_to_snake(field)
+            self.test.assertEqual(getattr(actual, field), expected)
+
+    def match_event(self, expectation, actual):
         name, spec = next(iter(expectation.items()))
-
-        # every command event has the commandName field
-        if event_type == "command":
-            command_name = spec.get("commandName")
-            if command_name:
-                self.test.assertEqual(command_name, actual.command_name)
-
         if name == "commandStartedEvent":
             self.test.assertIsInstance(actual, CommandStartedEvent)
-            command = spec.get("command")
-            if command:
-                self.match_result(command, actual.command)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
-            reply = spec.get("reply")
-            if reply:
-                self.match_result(reply, actual.reply)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":
             self.test.assertIsInstance(actual, PoolReadyEvent)
         elif name == "poolClearedEvent":
             self.test.assertIsInstance(actual, PoolClearedEvent)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasInterruptInUseConnections(spec, actual)
+            self.test.assertIsInstance(actual.interrupt_connections, bool)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "connectionCreatedEvent":
@@ -902,50 +895,28 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ConnectionReadyEvent)
         elif name == "connectionClosedEvent":
             self.test.assertIsInstance(actual, ConnectionClosedEvent)
-            if "reason" in spec:
-                self.test.assertEqual(actual.reason, spec["reason"])
         elif name == "connectionCheckOutStartedEvent":
             self.test.assertIsInstance(actual, ConnectionCheckOutStartedEvent)
         elif name == "connectionCheckOutFailedEvent":
             self.test.assertIsInstance(actual, ConnectionCheckOutFailedEvent)
-            if "reason" in spec:
-                self.test.assertEqual(actual.reason, spec["reason"])
         elif name == "connectionCheckedOutEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
         elif name == "connectionCheckedInEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
         elif name == "serverDescriptionChangedEvent":
             self.test.assertIsInstance(actual, ServerDescriptionChangedEvent)
-            for field in spec:
-                if field in ("previousDescription", "newDescription"):
-                    self.match_server_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
-                    )
-                else:
-                    self.test.assertEqual(getattr(actual, camel_to_snake(field)), spec[field])
         elif name == "serverHeartbeatStartedEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "serverHeartbeatSucceededEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatSucceededEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "serverHeartbeatFailedEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
-            for field in spec:
-                if field in ("previousDescription", "newDescription"):
-                    self.match_topology_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
-                    )
-                else:
-                    self.test.assertEqual(getattr(actual, camel_to_snake(field)), spec[field])
         else:
             raise Exception(f"Unsupported event type {name}")
+
+        self.match_event_fields(actual, spec)
 
 
 def coerce_result(opname, result):
@@ -1616,7 +1587,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         count = 0
         for actual in actual_events:
             try:
-                self.match_evaluator.match_event("all", event, actual)
+                self.match_evaluator.match_event(event, actual)
             except AssertionError:
                 continue
             else:
@@ -1783,7 +1754,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
 
             for idx, expected_event in enumerate(events):
-                self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
+                self.match_evaluator.match_event(expected_event, actual_events[idx])
 
             if has_server_connection_id:
                 assert server_connection_id is not None
