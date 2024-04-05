@@ -111,7 +111,7 @@ class TestSrvPolling(unittest.TestCase):
     def get_nodelist(self, client):
         return client._topology.description.server_descriptions().keys()
 
-    def assert_nodelist_change(self, expected_nodelist, client):
+    def assert_nodelist_change(self, expected_nodelist, client, timeout=(100 * WAIT_TIME)):
         """Check if the client._topology eventually sees all nodes in the
         expected_nodelist.
         """
@@ -122,9 +122,9 @@ class TestSrvPolling(unittest.TestCase):
                 return True
             return False
 
-        wait_until(predicate, "see expected nodelist", timeout=100 * WAIT_TIME)
+        wait_until(predicate, "see expected nodelist", timeout=timeout)
 
-    def assert_nodelist_nochange(self, expected_nodelist, client):
+    def assert_nodelist_nochange(self, expected_nodelist, client, timeout=(100 * WAIT_TIME)):
         """Check if the client._topology ever deviates from seeing all nodes
         in the expected_nodelist. Consistency is checked after sleeping for
         (WAIT_TIME * 10) seconds. Also check that the resolver is called at
@@ -136,7 +136,7 @@ class TestSrvPolling(unittest.TestCase):
                 return pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count >= 1
             return False
 
-        wait_until(predicate, "Node list equals expected nodelist", timeout=100 * WAIT_TIME)
+        wait_until(predicate, "Node list equals expected nodelist", timeout=timeout)
 
         nodelist = self.get_nodelist(client)
         if set(expected_nodelist) != set(nodelist):
@@ -329,6 +329,22 @@ class TestSrvPolling(unittest.TestCase):
             )
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
+
+    def test_srv_waits_to_poll(self):
+        modified = [("localhost.test.build.10gen.cc", 27019)]
+
+        def resolver_response():
+            return modified
+
+        with SrvPollingKnobs(
+            ttl_time=WAIT_TIME,
+            min_srv_rescan_interval=WAIT_TIME,
+            nodelist_callback=resolver_response,
+        ):
+            client = MongoClient(self.CONNECTION_STRING)
+            self.assertRaises(
+                AssertionError, self.assert_nodelist_change, modified, client, timeout=WAIT_TIME / 2
+            )
 
 
 if __name__ == "__main__":
