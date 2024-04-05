@@ -843,16 +843,18 @@ class MatchEvaluatorUtil:
                 self.test.assertIsNone(actual.server_connection_id)
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
-        if "type" in spec:
-            self.test.assertEqual(actual.server_type_name, spec["type"])
-        if "error" in spec:
-            self.test.process_error(actual.error, spec["error"])
-        if "minWireVersion" in spec:
-            self.test.assertEqual(actual.min_wire_version, spec["minWireVersion"])
-        if "maxWireVersion" in spec:
-            self.test.assertEqual(actual.max_wire_version, spec["maxWireVersion"])
-        if "topologyVersion" in spec:
-            self.test.assertEqual(actual.topology_version, spec["topologyVersion"])
+        for field, expected in spec.items():
+            field = camel_to_snake(field)
+            if "type" in spec:
+                field = "server_type_name"
+            self.test.assertEqual(getattr(actual, field), expected)
+
+    def match_topology_description(self, actual: TopologyDescription, spec: dict) -> None:
+        for field, expected in spec.items():
+            field = camel_to_snake(field)
+            if "type" in spec:
+                field = "topology_type_name"
+            self.test.assertEqual(getattr(actual, field), expected)
 
     def match_event(self, event_type, expectation, actual):
         name, spec = next(iter(expectation.items()))
@@ -914,12 +916,13 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
         elif name == "serverDescriptionChangedEvent":
             self.test.assertIsInstance(actual, ServerDescriptionChangedEvent)
-            if "previousDescription" in spec:
-                self.match_server_description(
-                    actual.previous_description, spec["previousDescription"]
-                )
-            if "newDescription" in spec:
-                self.match_server_description(actual.new_description, spec["newDescription"])
+            for field in spec:
+                if field in ("previousDescription", "newDescription"):
+                    self.match_server_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                else:
+                    self.test.assertEqual(getattr(actual, camel_to_snake(field)), spec[field])
         elif name == "serverHeartbeatStartedEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
             if "awaited" in spec:
@@ -934,6 +937,13 @@ class MatchEvaluatorUtil:
                 self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
+            for field in spec:
+                if field in ("previousDescription", "newDescription"):
+                    self.match_topology_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                else:
+                    self.test.assertEqual(getattr(actual, camel_to_snake(field)), spec[field])
         else:
             raise Exception(f"Unsupported event type {name}")
 
@@ -972,7 +982,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.19")
+    SCHEMA_VERSION = Version.from_string("1.20")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1763,7 +1773,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertEqual(actual_events, [])
                 continue
 
-            self.assertEqual(len(actual_events), len(events), actual_events)
+            if len(actual_events) != len(events):
+                expected = "\n".join(str(e) for e in events)
+                actual = "\n".join(str(a) for a in actual_events)
+                self.assertEqual(
+                    len(actual_events),
+                    len(events),
+                    f"expected events:\n{expected}\nactual events:\n{actual}",
+                )
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
