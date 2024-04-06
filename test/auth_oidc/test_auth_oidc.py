@@ -111,7 +111,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         def request_token(context):
             # Validate the info.
             self.assertIsInstance(context.idp_info.issuer, str)
-            self.assertIsInstance(context.idp_info.clientId, str)
+            # self.assertIsInstance(context.idp_info.clientId, str)
 
             # Validate the timeout.
             timeout_seconds = context.timeout_seconds
@@ -135,7 +135,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def create_client(self, *args, **kwargs):
         username = kwargs.get("username", "test_user1")
-        if kwargs.get("username"):
+        if kwargs.get("username") in ["test_user1", "test_user2"]:
             kwargs["username"] = f"{username}@{DOMAIN}"
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
@@ -220,6 +220,16 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Assert that a find operation fails with a client-side error.
         with self.assertRaises(ConfigurationError):
             client.test.test.find_one()
+        # Close the client.
+        client.close()
+
+    def test_1_7_machine_idp_human_callback(self):
+        if not self.uri_multiple:
+            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
+        # Create a client with MONGODB_URI_SINGLE, a username of test_machine, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        client = self.create_client(username="test_machine")
+        # Perform a find operation that succeeds.
+        client.test.test.find_one()
         # Close the client.
         client.close()
 
