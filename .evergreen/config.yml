@@ -991,6 +991,30 @@ task_groups:
     tasks:
       - oidc-auth-test-azure-latest
 
+  - name: testgcpoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          binary: bash
+          env:
+            GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-gcp-latest
+
   - name: testoidc_task_group
     setup_group:
       - func: fetch source
@@ -1965,6 +1989,25 @@ tasks:
             git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
             export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+
+    - name: "oidc-auth-test-gcp-latest"
+      commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            cd src
+            git add .
+            git commit -m "add files"
+            export GCPOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
+            git archive -o $GCPOIDC_DRIVERS_TAR_FILE HEAD
+            # Define the command to run on the VM.
+            # Ensure that we source the environment file created for us, set up any other variables we need,
+            # and then run our test suite on the vm.
+            export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -2995,16 +3038,23 @@ buildvariants:
 - matrix_name: "oidc-auth-test"
   matrix_spec:
     platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
-  display_name: "MONGODB-OIDC Auth ${platform}"
+  display_name: "OIDC Auth ${platform}"
   tasks:
     - name: testoidc_task_group
       batchtime: 20160 # 14 days
 
 - name: testazureoidc-variant
-  display_name: "Azure OIDC"
-  run_on: ubuntu2004-small
+  display_name: "OIDC Auth Azure"
+  run_on: ubuntu2204-small
   tasks:
     - name: testazureoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+
+- name: testgcpoidc-variant
+  display_name: "OIDC Auth GCP"
+  run_on: ubuntu2204-small
+  tasks:
+    - name: testgcpoidc_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"

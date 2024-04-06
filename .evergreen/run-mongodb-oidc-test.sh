@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set +x          # Disable debug trace
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
 
 echo "Running MONGODB-OIDC authentication tests"
 
@@ -17,6 +17,9 @@ if [ $OIDC_ENV == "test" ]; then
 
 elif [ $OIDC_ENV == "azure" ]; then
     source ./env.sh
+
+elif [ $OIDC_ENV == "gcp" ]; then
+    source ./secrets-export.sh
 
 else
     echo "Unrecognized OIDC_ENV $OIDC_ENV"
