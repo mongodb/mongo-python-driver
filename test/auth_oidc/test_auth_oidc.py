@@ -227,9 +227,18 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_1_7_machine_idp_human_callback(self):
-        if not self.uri_multiple:
-            raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
+    def test_1_7_allowed_hosts_in_connection_string_ignored(self):
+        # Create an OIDC configured client with the connection string: `mongodb+srv://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D` and a Human Callback.
+        # Assert that the creation of the client raises a configuration error.
+        uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
+        with self.assertRaises(ConfigurationError):
+            _ = MongoClient(
+                uri, authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb())
+            )
+
+    def test_1_8_machine_idp_human_callback(self):
+        if not os.environ.get("OIDC_IS_LOCAL"):
+            raise unittest.SkipTest("Test Requires Local OIDC server")
         # Create a client with MONGODB_URI_SINGLE, a username of test_machine, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = self.create_client(username="test_machine")
         # Perform a find operation that succeeds.

@@ -195,8 +195,8 @@ class _OIDCAuthenticator:
         if self.access_token:
             try:
                 return self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except Exception:
+                return self._authenticate_machine(conn)
         return self._sasl_start_jwt(conn)
 
     def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
@@ -204,15 +204,15 @@ class _OIDCAuthenticator:
         if self.access_token:
             try:
                 return self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except Exception:
+                return self._authenticate_human(conn)
 
         # If we have a cached refresh token, try a JwtStepRequest with that.
         if self.refresh_token:
             try:
                 return self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except Exception:
+                return self._authenticate_human(conn)
 
         # Start a new Two-Step SASL conversation.
         # Run a PrincipalStepRequest to get the IdpInfo.
