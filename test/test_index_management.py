@@ -62,7 +62,17 @@ class TestCreateSearchIndex(IntegrationTest):
         listener.reset()
         with self.assertRaises(OperationFailure):
             coll.create_search_index({"definition": definition, "arbitraryOption": 1})
-        self.assertIn("arbitraryOption", listener.events[0].command["indexes"][0])
+        self.assertEqual(
+            {"definition": definition, "arbitraryOption": 1},
+            listener.events[0].command["indexes"][0],
+        )
+
+        listener.reset()
+        with self.assertRaises(OperationFailure):
+            coll.create_search_index({"definition": definition, "type": "search"})
+        self.assertEqual(
+            {"definition": definition, "type": "search"}, listener.events[0].command["indexes"][0]
+        )
 
 
 class SearchIndexIntegrationBase(unittest.TestCase):
