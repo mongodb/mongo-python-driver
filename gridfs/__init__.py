@@ -39,10 +39,10 @@ from gridfs.grid_file import (
 )
 from pymongo import ASCENDING, DESCENDING, _csot
 from pymongo.asynchronous import delegate_method, synchronize
-from pymongo.client_session import ClientSession
-from pymongo.collection import AsyncCollection
+from pymongo._async.client_session import ClientSession
+from pymongo._async.collection import AsyncCollection
 from pymongo.common import validate_string
-from pymongo.database import AsyncDatabase, Database
+from pymongo._async.database import AsyncDatabase
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
@@ -61,7 +61,7 @@ __all__ = [
 class GridFS:
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, database: Database, collection: str = "fs"):
+    def __init__(self, database: AsyncDatabase, collection: str = "fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -90,7 +90,7 @@ class GridFS:
 
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
-        if not isinstance(database, Database):
+        if not isinstance(database, AsyncDatabase):
             raise TypeError("database must be an instance of Database")
 
         database = _clear_entity_type_registry(database)
@@ -1013,7 +1013,7 @@ class GridFSBucket:
 
     def __init__(
         self,
-        db: Database,
+        db: AsyncDatabase,
         bucket_name: str = "fs",
         chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
         write_concern: Optional[WriteConcern] = None,

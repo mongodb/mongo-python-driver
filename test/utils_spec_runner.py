@@ -38,7 +38,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
-from pymongo import client_session
+from pymongo._sync import client_session
 from pymongo._sync.command_cursor import CommandCursor
 from pymongo._sync.cursor import Cursor
 from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError

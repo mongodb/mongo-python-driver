@@ -24,7 +24,8 @@ import time
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import MongoClient, message, timeout
+from pymongo import MongoClient, timeout
+from pymongo._sync import message
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 
@@ -33,7 +34,7 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context, unittest
 from test.utils import delay, get_pool, joinall, rs_or_single_client
 
-from pymongo.pool import Pool, PoolOptions
+from pymongo._sync.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
 
 

@@ -15,7 +15,6 @@
 """Test the topology module."""
 from __future__ import annotations
 
-import asyncio
 import os
 import socketserver
 import sys
@@ -54,8 +53,8 @@ from pymongo.errors import (
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _check_command_response, _check_write_command_response
 from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 
@@ -283,13 +282,10 @@ class TestIgnoreStaleErrors(IntegrationTest):
         starting_generation = pool.gen.get_overall()
         wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
 
-        async def mock_command(*args, **kwargs):
+        def mock_command(*args, **kwargs):
             # Synchronize all threads to ensure they use the same generation.
-            while 1:
-                if barrier.n_waiting == 0:
-                    break
-                await asyncio.sleep(0)
-            raise AutoReconnect("mock SocketInfo.command error")
+            barrier.wait()
+            raise AutoReconnect("mock Connection.command error")
 
         for conn in pool.conns:
             conn.command = mock_command

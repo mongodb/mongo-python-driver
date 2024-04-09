@@ -22,7 +22,7 @@ import sys
 import zipfile
 from io import BytesIO
 
-from pymongo.database import Database
+from pymongo._sync.database import Database
 
 sys.path[0:0] = [""]
 

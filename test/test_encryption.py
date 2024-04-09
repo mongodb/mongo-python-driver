@@ -29,7 +29,7 @@ import uuid
 from threading import Thread
 from typing import Any, Dict, Mapping
 
-from pymongo.collection import Collection
+from pymongo._sync.collection import Collection
 from pymongo.daemon import _spawn_daemon
 
 sys.path[0:0] = [""]
@@ -91,7 +91,7 @@ KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 def get_client_opts(client):
-    return client._MongoClient__options
+    return client.options
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):

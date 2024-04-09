@@ -33,8 +33,8 @@ from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology
 
 
 def get_addresses(server_list):

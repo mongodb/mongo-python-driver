@@ -70,9 +70,9 @@ from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo._sync.command_cursor import CommandCursor
 from pymongo.change_stream import ChangeStream
-from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
-from pymongo.collection import Collection
-from pymongo.database import Database
+from pymongo._sync.client_session import ClientSession, TransactionOptions, _TxnState
+from pymongo._sync.collection import Collection
+from pymongo._sync.database import Database
 from pymongo.encryption import ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (

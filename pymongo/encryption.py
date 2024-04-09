@@ -54,13 +54,13 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
-from pymongo._async.cursor import Cursor
+from pymongo._async.cursor import AsyncCursor
 from pymongo._async.network import BLOCKING_IO_ERRORS
 from pymongo._async.pool import PoolOptions, _configured_socket, _raise_connection_failure
-from pymongo.collection import Collection
+from pymongo._async.collection import AsyncCollection
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
-from pymongo.database import Database
+from pymongo._async.database import AsyncDatabase
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
@@ -70,7 +70,7 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-from pymongo.mongo_client import MongoClient
+from pymongo._async.mongo_client import AsyncMongoClient
 from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
@@ -193,9 +193,9 @@ async def encrypt_async(auto_encrypter, database, cmd):
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
-        client: Optional[MongoClient[_DocumentTypeArg]],
-        key_vault_coll: Collection[_DocumentTypeArg],
-        mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
+        client: Optional[AsyncMongoClient[_DocumentTypeArg]],
+        key_vault_coll: AsyncCollection[_DocumentTypeArg],
+        mongocryptd_client: Optional[AsyncMongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
@@ -205,8 +205,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = cast(
-            Collection[RawBSONDocument],
+        self.key_vault_coll: Optional[AsyncCollection[RawBSONDocument]] = cast(
+            AsyncCollection[RawBSONDocument],
             key_vault_coll.with_options(
                 codec_options=_KEY_VAULT_OPTS,
                 read_concern=ReadConcern(level="majority"),
@@ -270,7 +270,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             _raise_connection_failure((host, port), error)
 
     def collection_info(
-        self, database: Database[Mapping[str, Any]], filter: bytes
+        self, database: AsyncDatabase[Mapping[str, Any]], filter: bytes
     ) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
@@ -406,7 +406,7 @@ class _Encrypter:
     MongoDB commands.
     """
 
-    def __init__(self, client: MongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
+    def __init__(self, client: AsyncMongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
         """Create a _Encrypter for a client.
 
         :param client: The encrypted MongoClient.
@@ -425,8 +425,8 @@ class _Encrypter:
         self._internal_client = None
 
         def _get_internal_client(
-            encrypter: _Encrypter, mongo_client: MongoClient[_DocumentTypeArg]
-        ) -> MongoClient[_DocumentTypeArg]:
+            encrypter: _Encrypter, mongo_client: AsyncMongoClient[_DocumentTypeArg]
+        ) -> AsyncMongoClient[_DocumentTypeArg]:
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -450,7 +450,7 @@ class _Encrypter:
         db, coll = opts._key_vault_namespace.split(".", 1)
         key_vault_coll = key_vault_client[db][coll]
 
-        mongocryptd_client: MongoClient[Mapping[str, Any]] = MongoClient(
+        mongocryptd_client: AsyncMongoClient[Mapping[str, Any]] = AsyncMongoClient(
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 
@@ -582,7 +582,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: MongoClient[_DocumentTypeArg],
+        key_vault_client: AsyncMongoClient[_DocumentTypeArg],
         codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ) -> None:
@@ -690,13 +690,13 @@ class ClientEncryption(Generic[_DocumentType]):
 
     def create_encrypted_collection(
         self,
-        database: Database[_DocumentTypeArg],
+        database: AsyncDatabase[_DocumentTypeArg],
         name: str,
         encrypted_fields: Mapping[str, Any],
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> tuple[Collection[_DocumentTypeArg], Mapping[str, Any]]:
+    ) -> tuple[AsyncCollection[_DocumentTypeArg], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
         .. warning::
@@ -1035,7 +1035,7 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return self._key_vault_coll.find_one({"_id": id})
 
-    def get_keys(self) -> Cursor[RawBSONDocument]:
+    def get_keys(self) -> AsyncCursor[RawBSONDocument]:
         """Get all of the data keys.
 
         :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key

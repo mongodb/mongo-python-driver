@@ -35,10 +35,11 @@ from typing import List
 from bson import encode
 from bson.raw_bson import RawBSONDocument
 from gridfs import GridFS, GridFSBucket
-from pymongo import WriteConcern, client_session
+from pymongo import WriteConcern
+from pymongo._sync import client_session
 from pymongo._sync.command_cursor import CommandCursor
 from pymongo._sync.cursor import Cursor
-from pymongo.client_session import TransactionOptions
+from pymongo._sync.client_session import TransactionOptions
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,

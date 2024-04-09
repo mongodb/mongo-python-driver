@@ -27,10 +27,10 @@ from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.asynchronous import delegate_method, delegate_property, synchronize
-from pymongo.client_session import ClientSession
-from pymongo.collection import AsyncCollection, Collection
+from pymongo._async.client_session import ClientSession
+from pymongo._async.collection import AsyncCollection
 from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.cursor import AsyncCursor, Cursor
+from pymongo._async.cursor import AsyncCursor
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -148,7 +148,7 @@ class AsyncGridIn:
         provided by :class:`~gridfs.GridFS`.
 
         Raises :class:`TypeError` if `root_collection` is not an
-        instance of :class:`~pymongo.collection.Collection`.
+        instance of :class:`~pymongo.collection.AsyncCollection`.
 
         Any of the file level options specified in the `GridFS Spec
         <http://dochub.mongodb.org/core/gridfsspec>`_ may be passed as
@@ -189,7 +189,7 @@ class AsyncGridIn:
 
         .. versionchanged:: 3.0
            `root_collection` must use an acknowledged
-           :attr:`~pymongo.collection.Collection.write_concern`
+           :attr:`~pymongo.collection.AsyncCollection.write_concern`
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError("root_collection must be an instance of AsyncCollection")
@@ -497,7 +497,7 @@ class GridIn:
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: AsyncCollection,
         session: Optional[ClientSession] = None,
         async_gridin: Optional[AsyncGridIn] = None,
         **kwargs: Any,
@@ -508,7 +508,7 @@ class GridIn:
             object.__setattr__(
                 self, "_delegate", AsyncGridIn(root_collection._delegate, session, **kwargs)
             )
-        object.__setattr__(self, "_coll", Collection.wrap(self._delegate._coll))
+        object.__setattr__(self, "_coll", AsyncCollection.wrap(self._delegate._coll))
 
     @classmethod
     def wrap(cls, async_gridin: AsyncGridIn):
@@ -650,7 +650,7 @@ class AsyncGridOut(io.IOBase):
         Either `file_id` or `file_document` must be specified,
         `file_document` will be given priority if present. Raises
         :class:`TypeError` if `root_collection` is not an instance of
-        :class:`~pymongo.collection.Collection`.
+        :class:`~pymongo.collection.AsyncCollection`.
 
         :param root_collection: root collection to read from
         :param file_id: value of ``"_id"`` for the file to read
@@ -963,7 +963,7 @@ class GridOut(io.IOBase):
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: AsyncCollection,
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
@@ -1228,7 +1228,7 @@ class AsyncGridOutIterator:
 
 
 class GridOutIterator:
-    def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
+    def __init__(self, grid_out: GridOut, chunks: AsyncCollection, session: ClientSession):
         self._delegate = _AsyncGridOutChunkIterator(
             grid_out._delegate, chunks._delegate, session, 0
         )
@@ -1305,14 +1305,14 @@ class AsyncGridOutCursor(AsyncCursor):
         return AsyncGridOutCursor(self._root_collection, session=session)
 
 
-class GridOutCursor(Cursor):
+class GridOutCursor(AsyncCursor):
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
 
     def __init__(
         self,
-        collection: Collection,
+        collection: AsyncCollection,
         filter: Optional[Mapping[str, Any]] = None,
         skip: int = 0,
         limit: int = 0,

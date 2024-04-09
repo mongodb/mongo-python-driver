@@ -34,7 +34,7 @@ from test.utils import (
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from pymongo.collection import Collection
+from pymongo._sync.collection import Collection
 from pymongo.common import partition_node
 from pymongo.errors import (
     BulkWriteError,

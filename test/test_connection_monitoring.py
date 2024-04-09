@@ -60,7 +60,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.pool import PoolState, _PoolClosedError
+from pymongo._sync.pool import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
 from pymongo.topology_description import updated_topology_description
 
@@ -378,9 +378,9 @@ class TestCMAP(IntegrationTest):
         def mock_connect(*args, **kwargs):
             raise ConnectionFailure("connect failed")
 
-        pool.connect_async = mock_connect
+        pool.connect = mock_connect
         # Un-patch Pool.connect to break the cyclic reference.
-        self.addCleanup(delattr, pool, "connect_async")
+        self.addCleanup(delattr, pool, "connect")
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, "connect failed"):
