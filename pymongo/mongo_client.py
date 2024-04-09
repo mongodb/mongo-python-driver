@@ -919,7 +919,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = self._topology.select_server(writable_server_selector, _Op.TEST)
+        server = self._get_topology().select_server(writable_server_selector, _Op.TEST)
 
         return getattr(server.description, attr_name)
 
