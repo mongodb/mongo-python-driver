@@ -441,6 +441,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
+            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
+                props[key] = value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
                 if not isinstance(value, OIDCCallback):
                     raise ValueError("callback must be an OIDCCallback object")

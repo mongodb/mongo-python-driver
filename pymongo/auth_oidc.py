@@ -211,6 +211,10 @@ class _OIDCAuthenticator:
         if self.refresh_token:
             try:
                 return self._sasl_start_jwt(conn)
+            except OperationFailure as e:
+                if e.code == 18:
+                    self.refresh_token = None
+                return self._authenticate_human(conn)
             except Exception:
                 return self._authenticate_human(conn)
 

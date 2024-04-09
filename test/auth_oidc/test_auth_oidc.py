@@ -231,7 +231,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create an OIDC configured client with the connection string: `mongodb+srv://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D` and a Human Callback.
         # Assert that the creation of the client raises a configuration error.
         uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
-        with self.assertRaises(ConfigurationError):
+        with self.assertRaises(ConfigurationError), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             _ = MongoClient(
                 uri, authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb())
             )
@@ -429,7 +430,15 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def test_4_3_reauthenticate_succeeds_after_refresh_fails(self):
         # Create a default OIDC client with a human callback that returns an invalid refresh token
-        client = self.create_client()
+        cb = self.create_request_cb()
+
+        class CustomRequest(OIDCCallback):
+            def fetch(self, *args, **kwargs):
+                result = cb.fetch(*args, **kwargs)
+                result.refresh_token = "bad"
+                return result
+
+        client = self.create_client(request_cb=CustomRequest())
 
         # Perform a find operation that succeeds.
         client.test.test.find_one()
@@ -440,38 +449,56 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Force a reauthenication using a fail point.
         with self.fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
             # Perform a find operation that succeeds.
             client.test.test.find_one()
 
-        # Assert that the human callback has been called 3 times.
-        self.assertEqual(self.request_called, 3)
+        # Assert that the human callback has been called 2 times.
+        self.assertEqual(self.request_called, 2)
 
         # Close the client.
         client.close()
 
     def test_4_4_reauthenticate_fails(self):
-        # Create a client with a human callback that returns a valid token.
-        client = self.create_client()
+        # Create a default OIDC client with a human callback that returns invalid refresh tokens and
+        # Returns invalid access tokens after the first access.
+        cb = self.create_request_cb()
+
+        class CustomRequest(OIDCCallback):
+            fetch_called = 0
+
+            def fetch(self, *args, **kwargs):
+                self.fetch_called += 1
+                result = cb.fetch(*args, **kwargs)
+                result.refresh_token = "bad"
+                if self.fetch_called > 1:
+                    result.access_token = "bad"
+                return result
+
+        client = self.create_client(request_cb=CustomRequest())
+
         # Perform a find operation that succeeds (to force a speculative auth).
         client.test.test.find_one()
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
+
         # Force a reauthentication using a failCommand.
         with self.fail_point(
             {
-                "mode": {"times": 3},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
             # Perform a find operation that fails.
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
-        # Assert that the human callback has been called two times.
-        self.assertEqual(self.request_called, 2)
+
+        # Assert that the human callback has been called three times.
+        self.assertEqual(self.request_called, 3)
+
         # Close the client.
         client.close()
 
