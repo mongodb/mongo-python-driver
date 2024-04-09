@@ -26,7 +26,7 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Union,
+    Union, AsyncIterator,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -317,10 +317,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         return len(self._data)
 
-    def __iter__(self) -> Iterator[_DocumentType]:
-        raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
-
-    def __aiter__(self) -> Iterator[_DocumentType]:
+    def __aiter__(self) -> AsyncIterator[_DocumentType]:
         return self
 
     async def next(self) -> _DocumentType:
@@ -332,9 +329,6 @@ class AsyncCommandCursor(Generic[_DocumentType]):
                 return doc
 
         raise StopAsyncIteration
-
-    def __next__(self):
-        raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
 
     async def __anext__(self):
         return await self.next()
@@ -369,14 +363,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
         return self
 
-    def __enter__(self) -> AsyncCommandCursor[_DocumentType]:
-        raise NotImplementedError
-
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError
 
 
 class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):

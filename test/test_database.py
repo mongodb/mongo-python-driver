@@ -40,8 +40,8 @@ from bson.regex import Regex
 from bson.son import SON
 from pymongo import auth, helpers
 from pymongo._sync.mongo_client import MongoClient
-from pymongo.collection import Collection
-from pymongo.database import Database
+from pymongo._sync.collection import Collection
+from pymongo._sync.database import Database
 from pymongo.errors import (
     CollectionInvalid,
     ExecutionTimeout,

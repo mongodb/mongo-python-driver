@@ -26,7 +26,7 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Union,
+    Union, Iterator,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -318,9 +318,6 @@ class CommandCursor(Generic[_DocumentType]):
         return len(self._data)
 
     def __iter__(self) -> Iterator[_DocumentType]:
-        raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
-
-    def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
     def next(self) -> _DocumentType:
@@ -332,9 +329,6 @@ class CommandCursor(Generic[_DocumentType]):
                 return doc
 
         raise StopIteration
-
-    def __next__(self):
-        raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
 
     def __next__(self):
         return self.next()
@@ -369,14 +363,8 @@ class CommandCursor(Generic[_DocumentType]):
     def __enter__(self) -> CommandCursor[_DocumentType]:
         return self
 
-    def __enter__(self) -> CommandCursor[_DocumentType]:
-        raise NotImplementedError
-
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError
 
 
 class RawBatchCommandCursor(CommandCursor[_DocumentType]):

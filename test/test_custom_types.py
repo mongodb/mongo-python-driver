@@ -51,9 +51,9 @@ from bson.codec_options import (
 from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
-from gridfs import GridIn, GridOut
+# from gridfs import GridIn, GridOut # TODO: Synchronize gridfs
 from pymongo._sync.message import _CursorAddress
-from pymongo.collection import ReturnDocument
+from pymongo._sync.collection import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 
