@@ -46,7 +46,7 @@ import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot, auth, helpers
 from pymongo.asynchronous import synchronize
-from pymongo.client_session import _validate_session_write_concern
+from pymongo._async.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -87,7 +87,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import command, receive_message, sendall
+from pymongo._async.network import async_command, async_receive_message, async_sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -98,7 +98,7 @@ if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
     from pymongo.auth import MongoCredential, _AuthContext
-    from pymongo.client_session import ClientSession
+    from pymongo._async.client_session import ClientSession
     from pymongo.compression_support import (
         CompressionSettings,
         SnappyContext,
@@ -106,8 +106,8 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.driver_info import DriverInfo
-    from pymongo.message import _OpMsg, _OpReply
-    from pymongo.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo._async.message import _OpMsg, _OpReply
+    from pymongo._async.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
@@ -774,7 +774,7 @@ class Connection:
         self.conn.settimeout(timeout)
 
     def apply_timeout(
-        self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
+        self, client: AsyncMongoClient, cmd: Optional[MutableMapping[str, Any]]
     ) -> Optional[float]:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
@@ -940,7 +940,7 @@ class Connection:
         parse_write_concern_error: bool = False,
         collation: Optional[_CollationIn] = None,
         session: Optional[ClientSession] = None,
-        client: Optional[MongoClient] = None,
+        client: Optional[AsyncMongoClient] = None,
         retryable_write: bool = False,
         publish_events: bool = True,
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -986,7 +986,7 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return await command(
+            return await async_command(
                 self,
                 dbname,
                 spec,
@@ -1028,7 +1028,7 @@ class Connection:
             )
 
         try:
-            await sendall(self.conn, message)
+            await async_sendall(self.conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1038,7 +1038,7 @@ class Connection:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message(self, request_id, self.max_message_size)
+            return await async_receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1112,7 +1112,7 @@ class Connection:
                     )
 
     def validate_session(
-        self, client: Optional[MongoClient], session: Optional[ClientSession]
+        self, client: Optional[AsyncMongoClient], session: Optional[ClientSession]
     ) -> None:
         """Validate this session before use with client.
 
@@ -1163,7 +1163,7 @@ class Connection:
         self,
         command: MutableMapping[str, Any],
         session: Optional[ClientSession],
-        client: Optional[MongoClient],
+        client: Optional[AsyncMongoClient],
     ) -> None:
         """Add $clusterTime."""
         if client:
@@ -1229,7 +1229,7 @@ class Connection:
         )
 
 
-async def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
+def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
     Can raise socket.error.
@@ -1281,28 +1281,14 @@ async def _create_connection(address: _Address, options: PoolOptions) -> socket.
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            sock.settimeout(0)
+            sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
-            tstart = time.monotonic()
-            sock.setblocking(False)
-            while True:
-                try:
-                    sock.connect(sa)
-                    sock.settimeout(options.connect_timeout)
-                    break
-                except BlockingIOError as e:
-                    if (time.monotonic() - tstart) > tstart:
-                        raise TimeoutError("Socket operation timed out") from e
-                    await asyncio.sleep(0)
+            sock.connect(sa)
             return sock
         except OSError as e:
-            if e.errno == errno.EISCONN:
-                sock.settimeout(options.connect_timeout)
-                return sock
-            else:
-                err = e
-                sock.close()
+            err = e
+            sock.close()
 
     if err is not None:
         raise err
@@ -1323,7 +1309,7 @@ async def _configured_socket(
 
     Sets socket's SSL and timeout options.
     """
-    sock = await _create_connection(address, options)
+    sock = _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -1921,12 +1907,6 @@ class Pool:
                 self.address, AutoReconnect("connection pool paused"), timeout_details=details
             )
 
-    @synchronize(async_method_name="_get_conn")
-    def _s_get_conn(
-        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Connection:
-        ...
-
     async def _get_conn(
         self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
     ) -> Connection:
@@ -2051,10 +2031,6 @@ class Pool:
 
         conn.active = True
         return conn
-
-    @synchronize(async_method_name="checkin")
-    def _s_checkin(self, conn: Connection) -> None:
-        ...
 
     async def checkin(self, conn: Connection) -> None:
         """Return the connection to the pool, or if it's closed discard it.

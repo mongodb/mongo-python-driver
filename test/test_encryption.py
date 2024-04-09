@@ -68,7 +68,7 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference, encryption
-from pymongo.cursor import CursorType
+from pymongo._sync.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (

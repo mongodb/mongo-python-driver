@@ -40,13 +40,13 @@ from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
-from pymongo.command_cursor import CommandCursor
+from pymongo._sync.command_cursor import CommandCursor
 from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
     ServerSelectionTimeoutError,
 )
-from pymongo.message import _CursorAddress
+from pymongo._sync.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 

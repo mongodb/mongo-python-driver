@@ -20,11 +20,12 @@ import weakref
 from functools import partial
 from test import client_context
 
-from pymongo import MongoClient, common
+from pymongo import common
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.hello import Hello, HelloCompat
-from pymongo.monitor import Monitor
-from pymongo.pool import Pool
+from pymongo._sync.monitor import Monitor
+from pymongo._sync.pool import Pool
 from pymongo.server_description import ServerDescription
 
 
@@ -38,8 +39,8 @@ class MockPool(Pool):
         # Actually connect to the default server.
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
-    @contextlib.asynccontextmanager
-    async def checkout(self, handler=None):
+    @contextlib.contextmanager
+    def checkout(self, handler=None):
         client = self.client
         host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:
@@ -83,7 +84,7 @@ class MockMonitor(Monitor):
         self.client = weakref.proxy(client)
         Monitor.__init__(self, server_description, topology, pool, topology_settings)
 
-    async def _check_once(self):
+    def _check_once(self):
         client = self.client
         address = self._server_description.address
         response, rtt = client.mock_hello("%s:%d" % address)  # type: ignore[str-format]

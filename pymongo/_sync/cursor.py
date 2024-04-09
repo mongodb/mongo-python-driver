@@ -38,7 +38,6 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
-from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -46,7 +45,7 @@ from pymongo.common import (
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _ALock, _create_lock
-from pymongo.message import (
+from pymongo._sync.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
@@ -63,9 +62,9 @@ if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import BaseCollection
-    from pymongo.pool import Connection
+    from pymongo._sync.client_session import ClientSession
+    from pymongo._sync.collection import BaseCollection
+    from pymongo._sync.pool import Connection
     from pymongo.read_preferences import _ServerMode
 
 
@@ -151,10 +150,10 @@ class _ConnectionManager:
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Return this instance's connection to the connection pool."""
         if self.conn:
-            await self.conn.unpin()
+            self.conn.unpin()
             self.conn = None
 
 
@@ -847,7 +846,7 @@ class BaseCursor(Generic[_DocumentType]):
         """
         raise NotImplementedError
 
-    async def explain(self) -> _DocumentType:
+    def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
@@ -865,7 +864,7 @@ class BaseCursor(Generic[_DocumentType]):
         # always use a hard limit for explains
         if c._limit:
             c._limit = -abs(c._limit)
-        return await anext(c)
+        return anext(c)
 
     def _set_hint(self, index: Optional[_Hint]) -> None:
         if index is None:
@@ -1097,11 +1096,8 @@ class BaseCursor(Generic[_DocumentType]):
         return y
 
 
-class AsyncCursor(BaseCursor[_DocumentType]):
-    def _wrap_sync(self):
-        return Cursor(self.collection, async_cursor=self)
-
-    async def _die(self, synchronous: bool = False) -> None:
+class Cursor(BaseCursor[_DocumentType]):
+    def _die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         try:
             already_killed = self._killed
@@ -1118,7 +1114,7 @@ class AsyncCursor(BaseCursor[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        await self._collection.database.client._cleanup_cursor(
+        self._collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
             address,
@@ -1130,11 +1126,11 @@ class AsyncCursor(BaseCursor[_DocumentType]):
             self._session = None
         self._sock_mgr = None
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        await self._die(True)
+        self._die(True)
 
-    async def distinct(self, key: str) -> list:
+    def distinct(self, key: str) -> list:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -1160,9 +1156,9 @@ class AsyncCursor(BaseCursor[_DocumentType]):
         if self._collation is not None:
             options["collation"] = self._collation
 
-        return await self._collection.distinct(key, session=self._session, **options)
+        return self._collection.distinct(key, session=self._session, **options)
 
-    async def _send_message(self, operation: Union[_Query, _GetMore]) -> None:
+    def _send_message(self, operation: Union[_Query, _GetMore]) -> None:
         """Send a query or getmore operation and handles the response.
 
         If operation is ``None`` this is an exhaust cursor, which reads
@@ -1177,7 +1173,7 @@ class AsyncCursor(BaseCursor[_DocumentType]):
             raise InvalidOperation("exhaust cursors do not support auto encryption")
 
         try:
-            response = await client._run_operation(
+            response = client._run_operation(
                 operation, self._unpack_response, address=self._address
             )
         except OperationFailure as exc:
@@ -1185,9 +1181,9 @@ class AsyncCursor(BaseCursor[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
             if exc.timeout:
-                await self._die(False)
+                self._die(False)
             else:
-                await self.close()
+                self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self._killed to True ensures Cursor.alive will be
@@ -1200,10 +1196,10 @@ class AsyncCursor(BaseCursor[_DocumentType]):
             raise
         except ConnectionFailure:
             self._killed = True
-            await self.close()
+            self.close()
             raise
         except Exception:
-            await self.close()
+            self.close()
             raise
 
         self._address = response.address
@@ -1240,12 +1236,12 @@ class AsyncCursor(BaseCursor[_DocumentType]):
         if self._id == 0:
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
-            await self.close()
+            self.close()
 
         if self._limit and self._id and self._limit <= self._retrieved:
-            await self.close()
+            self.close()
 
-    async def _refresh(self) -> int:
+    def _refresh(self) -> int:
         """Refreshes the cursor with more data from Mongo.
 
         Returns the length of self._data after refresh. Will exit early if
@@ -1282,7 +1278,7 @@ class AsyncCursor(BaseCursor[_DocumentType]):
                 self._allow_disk_use,
                 self._exhaust,
             )
-            await self._send_message(q)
+            self._send_message(q)
         elif self._id:  # Get More
             if self._limit:
                 limit = self._limit - self._retrieved
@@ -1305,11 +1301,11 @@ class AsyncCursor(BaseCursor[_DocumentType]):
                 self._exhaust,
                 self._comment,
             )
-            await self._send_message(g)
+            self._send_message(g)
 
         return len(self._data)
 
-    async def rewind(self) -> BaseCursor[_DocumentType]:
+    def rewind(self) -> BaseCursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.
 
         Reset this cursor if it has been partially or completely evaluated.
@@ -1318,7 +1314,7 @@ class AsyncCursor(BaseCursor[_DocumentType]):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
-        await self.close()
+        self.close()
         self._data = deque()
         self._id = None
         self._address = None
@@ -1327,282 +1323,26 @@ class AsyncCursor(BaseCursor[_DocumentType]):
 
         return self
 
-    async def next(self) -> _DocumentType:
+    def next(self) -> _DocumentType:
         """Advance the cursor."""
         if self._empty:
-            raise StopAsyncIteration
-        if len(self._data) or await self._refresh():
+            raise StopIteration
+        if len(self._data) or self._refresh():
             return self._data.popleft()
         else:
-            raise StopAsyncIteration
-
-    async def __anext__(self):
-        return await self.next()
+            raise StopIteration
 
     def __next__(self):
-        raise NotImplementedError("Use pymongo.Cursor for synchronous iteration.")
-
-    def __aiter__(self) -> BaseCursor[_DocumentType]:
-        return self
+        return self.next()
 
     def __iter__(self) -> BaseCursor[_DocumentType]:
-        raise NotImplementedError("Use pymongo.Cursor for synchronous iteration.")
-
-    async def __aenter__(self) -> BaseCursor[_DocumentType]:
         return self
 
     def __enter__(self) -> BaseCursor[_DocumentType]:
-        raise NotImplementedError("Use pymongo.Cursor for synchronous iteration.")
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.close()
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError("Use pymongo.Cursor for synchronous iteration.")
-
-
-class Cursor(BaseCursor[_DocumentType]):
-    def __init__(
-        self,
-        collection: BaseCollection[_DocumentType],
-        filter: Optional[Mapping[str, Any]] = None,
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        skip: int = 0,
-        limit: int = 0,
-        no_cursor_timeout: bool = False,
-        cursor_type: int = CursorType.NON_TAILABLE,
-        sort: Optional[_Sort] = None,
-        allow_partial_results: bool = False,
-        oplog_replay: bool = False,
-        batch_size: int = 0,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_Hint] = None,
-        max_scan: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
-        max: Optional[_Sort] = None,
-        min: Optional[_Sort] = None,
-        return_key: Optional[bool] = None,
-        show_record_id: Optional[bool] = None,
-        snapshot: Optional[bool] = None,
-        comment: Optional[Any] = None,
-        session: Optional[ClientSession] = None,
-        allow_disk_use: Optional[bool] = None,
-        let: Optional[bool] = None,
-        async_cursor: AsyncCursor = None,
-    ) -> None:
-        if async_cursor:
-            self._delegate = async_cursor
-        else:
-            self._delegate = AsyncCursor(
-                collection,
-                filter,
-                projection,
-                skip,
-                limit,
-                no_cursor_timeout,
-                cursor_type,
-                sort,
-                allow_partial_results,
-                oplog_replay,
-                batch_size,
-                collation,
-                hint,
-                max_scan,
-                max_time_ms,
-                max,
-                min,
-                return_key,
-                show_record_id,
-                snapshot,
-                comment,
-                session,
-                allow_disk_use,
-                let,
-            )
-
-    @classmethod
-    def wrap(cls, async_cursor: AsyncCursor):
-        return cls(None, None, async_cursor=async_cursor)
-
-    def _wrap(self, async_cursor: AsyncCursor) -> Cursor[_DocumentType]:
-        self._delegate = async_cursor
-        return self
-
-    @delegate_method(wrapper_class="self")
-    def add_option(self, mask: int) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def remove_option(self, mask: int) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def allow_disk_use(self, allow_disk_use: bool) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def sort(
-        self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None
-    ) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def limit(self, limit: int) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def batch_size(self, batch_size: int) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def skip(self, skip: int) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def max_time_ms(self, max_time_ms: Optional[int]) -> Cursor[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
-        ...
-
-    def clone(self) -> Cursor[_DocumentType]:
-        cloned = self.wrap(self._delegate.clone())
-        return cloned
-
-    @synchronize()
-    def explain(self) -> _DocumentType:
-        ...
-
-    @synchronize()
-    def close(self) -> None:
-        ...
-
-    @synchronize()
-    def distinct(self, key: str) -> list:
-        ...
-
-    @synchronize(wrapper_class="self")
-    def rewind(self) -> Cursor[_DocumentType]:
-        ...
-
-    @synchronize()
-    def next(self) -> _DocumentType:
-        ...
-
-    @delegate_method()
-    def _check_okay_to_chain(self) -> None:
-        ...
-
-    @delegate_property()
-    def collection(self) -> BaseCollection[_DocumentType]:
-        ...
-
-    @delegate_property()
-    def retrieved(self) -> int:
-        ...
-
-    @delegate_property()
-    def alive(self) -> bool:
-        ...
-
-    @delegate_property()
-    def cursor_id(self) -> Optional[int]:
-        ...
-
-    @delegate_property()
-    def address(self) -> Optional[tuple[str, Any]]:
-        ...
-
-    @delegate_property()
-    def session(self) -> Optional[ClientSession]:
-        ...
-
-    @property
-    def _has_filter(self):
-        return self._delegate._has_filter
-
-    @property
-    def _query_flags(self):
-        return self._delegate._query_flags
-
-    @property
-    def _data(self):
-        return self._delegate._data
-
-    @property
-    def _explicit_session(self):
-        return self._delegate._explicit_session
-
-    @property
-    def _skip(self):
-        return self._delegate._skip
-
-    @property
-    def _retrieved(self):
-        return self._delegate._retrieved
-
-    @property
-    def _max_await_time_ms(self):
-        return self._delegate._max_await_time_ms
-
-    @property
-    def _spec(self):
-        return self._delegate._spec
-
-    @_spec.setter
-    def _spec(self, new_spec):
-        self._delegate._spec = new_spec
-
-    @property
-    def _sock_mgr(self):
-        return self._delegate._sock_mgr
-
-    @property
-    def _exhaust(self):
-        return self._delegate._exhaust
-
-    @property
-    def _allow_disk_use(self):
-        return self._delegate._allow_disk_use
-
-    @delegate_method(wrapper_class="self")
-    def collation(self, collation: Optional[_CollationIn]) -> BaseCursor[_DocumentType]:
-        ...
-
-    async def __anext__(self):
-        raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
-
-    @synchronize(async_method_name="__anext__")
-    def __next__(self):
-        ...
-
-    def __aiter__(self) -> None:
-        raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
-
-    def __iter__(self) -> Cursor[_DocumentType]:
-        return self
-
-    async def __aenter__(self) -> None:
-        raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
-
-    def __enter__(self) -> Cursor[_DocumentType]:
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError("Use pymongo.AsyncCursor for asynchronous iteration.")
-
-    # @delegate_method()
-    # def __del__(self) -> None:
-    #     ...
-
-    @synchronize(async_method_name="__aexit__")
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        ...
-
-    @delegate_method()
-    def __getitem__(self, index: Union[int, slice]) -> Union[_DocumentType, Cursor[_DocumentType]]:
-        ...
+        self.close()
 
 
 class BaseRawBatchCursor(BaseCursor[_DocumentType]):
@@ -1649,21 +1389,6 @@ class BaseRawBatchCursor(BaseCursor[_DocumentType]):
 
     def _getitem__(self, index: Any) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
-
-
-class AsyncRawBatchCursor(BaseRawBatchCursor[_DocumentType], AsyncCursor[_DocumentType]):
-    def __init__(
-        self, collection: BaseCollection[_DocumentType], *args: Any, **kwargs: Any
-    ) -> None:
-        """Create a new cursor / iterator over raw batches of BSON data.
-
-        Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.Collection.find_raw_batches`
-        instead.
-
-        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
-        """
-        super().__init__(collection, *args, **kwargs)
 
 
 class RawBatchCursor(BaseRawBatchCursor[_DocumentType], Cursor[_DocumentType]):

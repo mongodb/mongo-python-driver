@@ -19,7 +19,7 @@ import re
 import sys
 from typing import Any, Iterable, List, Mapping, Union
 
-from pymongo.command_cursor import CommandCursor
+from pymongo._sync.command_cursor import CommandCursor
 
 sys.path[0:0] = [""]
 

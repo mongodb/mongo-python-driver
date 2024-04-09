@@ -23,7 +23,7 @@ from pymongo.auth import MongoCredential, _build_credentials_tuple
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
-from pymongo.pool import PoolOptions
+from pymongo._async.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
     _ServerMode,

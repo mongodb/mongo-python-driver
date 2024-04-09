@@ -31,7 +31,7 @@ class PeriodicExecutor:
         self,
         interval: float,
         min_interval: float,
-        target: Callable[[], Coroutine[Any, Any, bool]],
+        target: Any,
         name: Optional[str] = None,
     ):
         """ "Run a target function periodically on a background thread.
@@ -59,12 +59,13 @@ class PeriodicExecutor:
         self._thread_will_exit = False
         self._lock = _create_lock()
         self._alock = _ALock(self._lock)
+        self._is_coroutine = asyncio.iscoroutinefunction(self._target)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
-    def run_target(self):
-        asyncio.run(self._run())
+    def _run_async(self):
+        asyncio.run(self._a_run())
 
     def open(self) -> None:
         """Start. Multiple calls have no effect.
@@ -93,7 +94,10 @@ class PeriodicExecutor:
             pass
 
         if not started:
-            thread = threading.Thread(target=self.run_target, name=self._name)
+            if self._is_coroutine:
+                thread = threading.Thread(target=self._run_async, name=self._name)
+            else:
+                thread = threading.Thread(target=self._run, name=self._name)
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
@@ -133,15 +137,15 @@ class PeriodicExecutor:
     def skip_sleep(self) -> None:
         self._skip_sleep = True
 
-    async def __should_stop(self) -> bool:
+    async def _a_should_stop(self) -> bool:
         async with self._alock:
             if self._stopped:
                 self._thread_will_exit = True
                 return True
             return False
 
-    async def _run(self) -> None:
-        while not await self.__should_stop():
+    async def _a_run(self) -> None:
+        while not await self._a_should_stop():
             try:
                 if not await self._target():
                     self._stopped = True
@@ -159,6 +163,38 @@ class PeriodicExecutor:
                 deadline = time.monotonic() + self._interval
                 while not self._stopped and time.monotonic() < deadline:
                     await asyncio.sleep(self._min_interval)
+                    if self._event:
+                        break  # Early wake.
+
+            self._event = False
+
+
+    def _should_stop(self) -> bool:
+        with self._alock:
+            if self._stopped:
+                self._thread_will_exit = True
+                return True
+            return False
+
+    def _run(self) -> None:
+        while not self._should_stop():
+            try:
+                if not self._target():
+                    self._stopped = True
+                    break
+            except BaseException:
+                with self._lock:
+                    self._stopped = True
+                    self._thread_will_exit = True
+
+                raise
+
+            if self._skip_sleep:
+                self._skip_sleep = False
+            else:
+                deadline = time.monotonic() + self._interval
+                while not self._stopped and time.monotonic() < deadline:
+                    time.sleep(self._min_interval)
                     if self._event:
                         break  # Early wake.
 

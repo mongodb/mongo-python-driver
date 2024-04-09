@@ -33,6 +33,7 @@ __all__ = [
     "MIN_SUPPORTED_WIRE_VERSION",
     "CursorType",
     "MongoClient",
+    "AsyncMongoClient",
     "DeleteMany",
     "DeleteOne",
     "IndexModel",
@@ -87,10 +88,11 @@ TEXT = "text"
 
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
-from pymongo.collection import ReturnDocument
+from pymongo._async.collection import ReturnDocument
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.cursor import CursorType
-from pymongo.mongo_client import MongoClient
+from pymongo._async.cursor import CursorType
+from pymongo._async.mongo_client import AsyncMongoClient
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,

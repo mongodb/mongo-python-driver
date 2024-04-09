@@ -19,7 +19,7 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    Iterator,
     Callable,
     Generic,
     Iterable,
@@ -40,28 +40,24 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, _csot, common, helpers, message
-from pymongo.aggregation import (
+from pymongo import ASCENDING, _csot, common, helpers
+from pymongo._sync import message
+from pymongo._sync.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
 )
-from pymongo.asynchronous import delegate_method, delegate_property, synchronize
-from pymongo.bulk import _Bulk
+from pymongo._sync.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
-from pymongo.command_cursor import (
-    AsyncCommandCursor,
-    AsyncRawBatchCommandCursor,
+from pymongo._sync.command_cursor import (
     CommandCursor,
+    RawBatchCommandCursor,
 )
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.cursor import (
-    AsyncCursor,
-    AsyncRawBatchCursor,
-    BaseCursor,
-    BaseRawBatchCursor,
+from pymongo._sync.cursor import (
     Cursor,
     RawBatchCursor,
+    BaseRawBatchCursor,
 )
 from pymongo.errors import (
     ConfigurationError,
@@ -70,7 +66,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers import _check_write_command_response
-from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo._sync.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -92,7 +88,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern, validate_boolean
 
@@ -127,21 +122,21 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
-    from pymongo.aggregation import _AggregationCommand
-    from pymongo.client_session import ClientSession
+    from pymongo._sync.aggregation import _AggregationCommand
+    from pymongo._sync.client_session import ClientSession
     from pymongo.collation import Collation
-    from pymongo.database import AsyncDatabase, Database
-    from pymongo.pool import Connection
+    from pymongo._sync.database import Database
+    from pymongo._sync.pool import Connection
     from pymongo.read_concern import ReadConcern
-    from pymongo.server import Server
+    from pymongo._sync.server import Server
 
 
-class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
+class Collection(common.BaseObject, Generic[_DocumentType]):
     """An asynchronous Mongo collection."""
 
     def __init__(
         self,
-        database: AsyncDatabase[_DocumentType],
+        database: Database[_DocumentType],
         name: str,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -242,7 +237,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
 
-        self._database: AsyncDatabase[_DocumentType] = database
+        self._database: Database[_DocumentType] = database
         self._name = name
         self._full_name = f"{self._database.name}.{self._name}"
         self._write_response_codec_options = self.codec_options._replace(
@@ -250,10 +245,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
         self._timeout = database.client.options.timeout
 
-    def _wrap_sync(self):
-        return Collection(self._database, self._name, async_collection=self)
-
-    def __getattr__(self, name: str) -> AsyncCollection[_DocumentType]:
+    def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -268,8 +260,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> AsyncCollection[_DocumentType]:
-        return AsyncCollection(
+    def __getitem__(self, name: str) -> Collection[_DocumentType]:
+        return Collection(
             self._database,
             f"{self._name}.{name}",
             self.codec_options,
@@ -282,7 +274,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return f"AsyncCollection({self._database!r}, {self._name!r})"
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, AsyncCollection):
+        if isinstance(other, Collection):
             return self._database == other.database and self._name == other.name
         return NotImplemented
 
@@ -294,7 +286,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     def __bool__(self) -> NoReturn:
         raise NotImplementedError(
-            "AsyncCollection objects do not implement truth "
+            "SyncCollection objects do not implement truth "
             "value testing or bool(). Please compare "
             "with None instead: collection is not None"
         )
@@ -313,7 +305,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return self._name
 
     @property
-    def database(self) -> AsyncDatabase[_DocumentType]:
+    def database(self) -> Database[_DocumentType]:
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
@@ -325,7 +317,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> AsyncCollection[_DocumentType]:
+    ) -> Collection[_DocumentType]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -354,7 +346,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        return AsyncCollection(
+        return Collection(
             self._database,
             self._name,
             codec_options or self.codec_options,
@@ -533,12 +525,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             show_expanded_events,
         )
 
-    async def _conn_for_writes(
+    def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> AsyncIterator[Connection]:
-        return await self._database.client._conn_for_writes(session, operation)
+    ) -> Iterator[Connection]:
+        return self._database.client._conn_for_writes(session, operation)
 
-    async def _command(
+    def _command(
         self,
         conn: Connection,
         command: MutableMapping[str, Any],
@@ -578,8 +570,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :return: The result document.
         """
-        async with self._database.client._tmp_session(session) as s:
-            return await conn.command(
+        with self._database.client._tmp_session(session) as s:
+            return conn.command(
                 self._database.name,
                 command,
                 read_preference or self._read_preference_for(session),
@@ -596,7 +588,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    async def _create_helper(
+    def _create_helper(
         self,
         name: str,
         options: MutableMapping[str, Any],
@@ -614,7 +606,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        async with await self._conn_for_writes(session, operation=_Op.CREATE) as conn:
+        with self._conn_for_writes(session, operation=_Op.CREATE) as conn:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -622,7 +614,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
                 )
 
-            await self._command(
+            self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -631,7 +623,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-    async def _create(
+    def _create(
         self,
         options: MutableMapping[str, Any],
         session: Optional[ClientSession],
@@ -642,25 +634,25 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
             opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-            await self._create_helper(
+            self._create_helper(
                 _esc_coll_name(encrypted_fields, self._name),
                 opts,
                 None,
                 session,
                 qev2_required=True,
             )
-            await self._create_helper(
+            self._create_helper(
                 _ecoc_coll_name(encrypted_fields, self._name), opts, None, session
             )
-            await self._create_helper(
+            self._create_helper(
                 self._name, options, collation, session, encrypted_fields=encrypted_fields
             )
-            await self.create_index([("__safeContent__", ASCENDING)], session)
+            self.create_index([("__safeContent__", ASCENDING)], session)
         else:
-            await self._create_helper(self._name, options, collation, session)
+            self._create_helper(self._name, options, collation, session)
 
     @_csot.apply
-    async def bulk_write(
+    def bulk_write(
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
@@ -752,12 +744,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 raise TypeError(f"{request!r} is not a valid request") from None
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = await blk.execute(write_concern, session, _Op.INSERT)
+        bulk_api_result = blk.execute(write_concern, session, _Op.INSERT)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    async def _insert_one(
+    def _insert_one(
         self,
         doc: Mapping[str, Any],
         ordered: bool,
@@ -774,13 +766,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        async def _insert_command(
+        def _insert_command(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> None:
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
 
-            result = await conn.command(
+            result = conn.command(
                 self._database.name,
                 command,
                 write_concern=write_concern,
@@ -792,7 +784,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
             _check_write_command_response(result)
 
-        await self._database.client._retryable_write(
+        self._database.client._retryable_write(
             acknowledged, _insert_command, session, operation=_Op.INSERT
         )
 
@@ -800,7 +792,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return doc.get("_id")
         return None
 
-    async def insert_one(
+    def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
         bypass_document_validation: bool = False,
@@ -852,7 +844,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
-            await self._insert_one(
+            self._insert_one(
                 document,
                 ordered=True,
                 write_concern=write_concern,
@@ -865,7 +857,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
 
     @_csot.apply
-    async def insert_many(
+    def insert_many(
         self,
         documents: Iterable[Union[_DocumentType, RawBSONDocument]],
         ordered: bool = True,
@@ -936,10 +928,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         blk.ops = list(gen())
-        await blk.execute(write_concern, session, _Op.INSERT)
+        blk.execute(write_concern, session, _Op.INSERT)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
-    async def _update(
+    def _update(
         self,
         conn: Connection,
         criteria: Mapping[str, Any],
@@ -1001,7 +993,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         # The command result has to be published for APM unmodified
         # so we make a shallow copy here before adding updatedExisting.
         result = (
-            await conn.command(
+            conn.command(
                 self._database.name,
                 command,
                 write_concern=write_concern,
@@ -1026,7 +1018,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return None
         return result
 
-    async def _update_retryable(
+    def _update_retryable(
         self,
         criteria: Mapping[str, Any],
         document: Union[Mapping[str, Any], _Pipeline],
@@ -1046,10 +1038,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
 
-        async def _update(
+        def _update(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Optional[Mapping[str, Any]]:
-            return await self._update(
+            return self._update(
                 conn,
                 criteria,
                 document,
@@ -1068,14 +1060,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 comment=comment,
             )
 
-        return await self._database.client._retryable_write(
+        return self._database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
             _update,
             session,
             operation,
         )
 
-    async def replace_one(
+    def replace_one(
         self,
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
@@ -1161,7 +1153,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("let", let)
         write_concern = self._write_concern_for(session)
         return UpdateResult(
-            await self._update_retryable(
+            self._update_retryable(
                 filter,
                 replacement,
                 _Op.UPDATE,
@@ -1177,7 +1169,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
-    async def update_one(
+    def update_one(
         self,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
@@ -1273,7 +1265,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
         return UpdateResult(
-            await self._update_retryable(
+            self._update_retryable(
                 filter,
                 update,
                 _Op.UPDATE,
@@ -1290,7 +1282,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
-    async def update_many(
+    def update_many(
         self,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
@@ -1373,7 +1365,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
         return UpdateResult(
-            await self._update_retryable(
+            self._update_retryable(
                 filter,
                 update,
                 _Op.UPDATE,
@@ -1391,7 +1383,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
-    async def drop(
+    def drop(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -1430,11 +1422,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        await dbo.drop_collection(
+        dbo.drop_collection(
             self._name, session=session, comment=comment, encrypted_fields=encrypted_fields
         )
 
-    async def _delete(
+    def _delete(
         self,
         conn: Connection,
         criteria: Mapping[str, Any],
@@ -1478,7 +1470,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         # Delete command.
-        result = await conn.command(
+        result = conn.command(
             self._database.name,
             command,
             write_concern=write_concern,
@@ -1490,7 +1482,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         _check_write_command_response(result)
         return result
 
-    async def _delete_retryable(
+    def _delete_retryable(
         self,
         criteria: Mapping[str, Any],
         multi: bool,
@@ -1505,10 +1497,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
 
-        async def _delete(
+        def _delete(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Mapping[str, Any]:
-            return await self._delete(
+            return self._delete(
                 conn,
                 criteria,
                 multi,
@@ -1523,14 +1515,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 comment=comment,
             )
 
-        return await self._database.client._retryable_write(
+        return self._database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete,
             session,
             operation=_Op.DELETE,
         )
 
-    async def delete_one(
+    def delete_one(
         self,
         filter: Mapping[str, Any],
         collation: Optional[_CollationIn] = None,
@@ -1582,7 +1574,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         write_concern = self._write_concern_for(session)
         return DeleteResult(
-            await self._delete_retryable(
+            self._delete_retryable(
                 filter,
                 False,
                 write_concern=write_concern,
@@ -1595,7 +1587,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
-    async def delete_many(
+    def delete_many(
         self,
         filter: Mapping[str, Any],
         collation: Optional[_CollationIn] = None,
@@ -1647,7 +1639,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         write_concern = self._write_concern_for(session)
         return DeleteResult(
-            await self._delete_retryable(
+            self._delete_retryable(
                 filter,
                 True,
                 write_concern=write_concern,
@@ -1660,7 +1652,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
-    async def find_one(
+    def find_one(
         self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
     ) -> Optional[_DocumentType]:
         """Get a single document from the database.
@@ -1690,12 +1682,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
-        cursor = await self.find(filter, *args, **kwargs)
-        async for result in cursor.limit(-1):
+        cursor = self.find(filter, *args, **kwargs)
+        for result in cursor.limit(-1):
             return result
         return None
 
-    async def _find(self, *args: Any, **kwargs: Any) -> BaseCursor[_DocumentType]:
+    def _find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a query document that all results
@@ -1881,10 +1873,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        is_mongos = await self._database.client.is_mongos()
-        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
+        is_mongos = self._database.client.is_mongos
+        return Cursor(self, is_mongos=is_mongos, *args, **kwargs)
 
-    async def find(self, *args: Any, **kwargs: Any) -> BaseCursor[_DocumentType]:
+    def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a query document that all results
@@ -2070,10 +2062,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        is_mongos = await self._database.client.is_mongos()
-        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
+        is_mongos = self._database.client.is_mongos
+        return Cursor(self, is_mongos=is_mongos, *args, **kwargs)
 
-    async def find_raw_batches(
+    def find_raw_batches(
         self, *args: Any, **kwargs: Any
     ) -> BaseRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
@@ -2104,9 +2096,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         # OP_MSG is required to support encryption.
         if self._database.client._encrypter:
             raise InvalidOperation("find_raw_batches does not support auto encryption")
-        return AsyncRawBatchCursor(self, *args, **kwargs)
+        return RawBatchCursor(self, *args, **kwargs)
 
-    async def _count_cmd(
+    def _count_cmd(
         self,
         session: Optional[ClientSession],
         conn: Connection,
@@ -2117,7 +2109,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Internal count command helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
-        res = await self._command(
+        res = self._command(
             conn,
             cmd,
             read_preference=read_preference,
@@ -2131,7 +2123,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return 0
         return int(res["n"])
 
-    async def _aggregate_one_result(
+    def _aggregate_one_result(
         self,
         conn: Connection,
         read_preference: Optional[_ServerMode],
@@ -2140,7 +2132,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession],
     ) -> Optional[Mapping[str, Any]]:
         """Internal helper to run an aggregate that returns a single result."""
-        result = await self._command(
+        result = self._command(
             conn,
             cmd,
             read_preference,
@@ -2156,7 +2148,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         batch = result["cursor"]["firstBatch"]
         return batch[0] if batch else None
 
-    async def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
+    def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -2188,7 +2180,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        async def _cmd(
+        def _cmd(
             session: Optional[ClientSession],
             _server: Server,
             conn: Connection,
@@ -2196,11 +2188,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ) -> int:
             cmd: dict[str, Any] = {"count": self._name}
             cmd.update(kwargs)
-            return await self._count_cmd(session, conn, read_preference, cmd, collation=None)
+            return self._count_cmd(session, conn, read_preference, cmd, collation=None)
 
-        return await self._retryable_non_cursor_read(_cmd, None, operation=_Op.COUNT)
+        return self._retryable_non_cursor_read(_cmd, None, operation=_Op.COUNT)
 
-    async def count_documents(
+    def count_documents(
         self,
         filter: Mapping[str, Any],
         session: Optional[ClientSession] = None,
@@ -2276,22 +2268,22 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
-        async def _cmd(
+        def _cmd(
             session: Optional[ClientSession],
             _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
-            result = await self._aggregate_one_result(
+            result = self._aggregate_one_result(
                 conn, read_preference, cmd, collation, session
             )
             if not result:
                 return 0
             return result["n"]
 
-        return await self._retryable_non_cursor_read(_cmd, session, _Op.COUNT)
+        return self._retryable_non_cursor_read(_cmd, session, _Op.COUNT)
 
-    async def _retryable_non_cursor_read(
+    def _retryable_non_cursor_read(
         self,
         func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
         session: Optional[ClientSession],
@@ -2299,10 +2291,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
         client = self._database.client
-        async with client._tmp_session(session) as s:
-            return await client._retryable_read(func, self._read_preference_for(s), s, operation)
+        with client._tmp_session(session) as s:
+            return client._retryable_read(func, self._read_preference_for(s), s, operation)
 
-    async def create_indexes(
+    def create_indexes(
         self,
         indexes: Sequence[IndexModel],
         session: Optional[ClientSession] = None,
@@ -2347,10 +2339,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         common.validate_list("indexes", indexes)
         if comment is not None:
             kwargs["comment"] = comment
-        return await self._create_indexes(indexes, session, **kwargs)
+        return self._create_indexes(indexes, session, **kwargs)
 
     @_csot.apply
-    async def _create_indexes(
+    def _create_indexes(
         self, indexes: Sequence[IndexModel], session: Optional[ClientSession], **kwargs: Any
     ) -> list[str]:
         """Internal createIndexes helper.
@@ -2363,7 +2355,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        async with await self._conn_for_writes(session, operation=_Op.CREATE_INDEXES) as conn:
+        with self._conn_for_writes(session, operation=_Op.CREATE_INDEXES) as conn:
             supports_quorum = conn.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
@@ -2384,7 +2376,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     "commitQuorum option for createIndexes"
                 )
 
-            await self._command(
+            self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2394,7 +2386,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
         return names
 
-    async def create_index(
+    def create_index(
         self,
         keys: _IndexKeyHint,
         session: Optional[ClientSession] = None,
@@ -2510,9 +2502,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd_options["comment"] = comment
         index = IndexModel(keys, **kwargs)
-        return (await self._create_indexes([index], session, **cmd_options))[0]
+        return (self._create_indexes([index], session, **cmd_options))[0]
 
-    async def drop_indexes(
+    def drop_indexes(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -2543,10 +2535,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if comment is not None:
             kwargs["comment"] = comment
-        await self._drop_index("*", session=session, **kwargs)
+        self._drop_index("*", session=session, **kwargs)
 
     @_csot.apply
-    async def drop_index(
+    def drop_index(
         self,
         index_or_name: _IndexKeyHint,
         session: Optional[ClientSession] = None,
@@ -2592,10 +2584,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
-        await self._drop_index(index_or_name, session, comment, **kwargs)
+        self._drop_index(index_or_name, session, comment, **kwargs)
 
     @_csot.apply
-    async def _drop_index(
+    def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
         session: Optional[ClientSession] = None,
@@ -2613,8 +2605,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.DROP_INDEXES) as conn:
-            await self._command(
+        with self._conn_for_writes(session, operation=_Op.DROP_INDEXES) as conn:
+            self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2623,7 +2615,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-    async def list_indexes(
+    def list_indexes(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -2650,9 +2642,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        return await self._list_indexes(session, comment)
+        return self._list_indexes(session, comment)
 
-    async def _list_indexes(
+    def _list_indexes(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -2665,7 +2657,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         explicit_session = session is not None
 
-        async def _cmd(
+        def _cmd(
             session: Optional[ClientSession],
             _server: Server,
             conn: Connection,
@@ -2677,7 +2669,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
             try:
                 cursor = (
-                    await self._command(conn, cmd, read_preference, codec_options, session=session)
+                    self._command(conn, cmd, read_preference, codec_options, session=session)
                 )["cursor"]
             except OperationFailure as exc:
                 # Ignore NamespaceNotFound errors to match the behavior
@@ -2685,7 +2677,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 if exc.code != 26:
                     raise
                 cursor = {"id": 0, "firstBatch": []}
-            cmd_cursor = AsyncCommandCursor(
+            cmd_cursor = CommandCursor(
                 coll,
                 cursor,
                 conn.address,
@@ -2693,15 +2685,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
-            await cmd_cursor._maybe_pin_connection(conn)
+            cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
-        async with self._database.client._tmp_session(session, False) as s:
-            return await self._database.client._retryable_read(
+        with self._database.client._tmp_session(session, False) as s:
+            return self._database.client._retryable_read(
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
 
-    async def index_information(
+    def index_information(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -2735,15 +2727,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = await self._list_indexes(session=session, comment=comment)
+        cursor = self._list_indexes(session=session, comment=comment)
         info = {}
-        async for index in cursor:
+        for index in cursor:
             index["key"] = list(index["key"].items())
             index = dict(index)  # noqa: PLW2901
             info[index.pop("name")] = index
         return info
 
-    async def list_search_indexes(
+    def list_search_indexes(
         self,
         name: Optional[str] = None,
         session: Optional[ClientSession] = None,
@@ -2777,14 +2769,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = _CollectionAggregationCommand(
             coll,
-            AsyncCommandCursor,
+            CommandCursor,
             pipeline,
             kwargs,
             explicit_session=session is not None,
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
+        return self._database.client._retryable_read(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
@@ -2792,7 +2784,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             operation=_Op.LIST_SEARCH_INDEX,
         )
 
-    async def create_search_index(
+    def create_search_index(
         self,
         model: Union[Mapping[str, Any], SearchIndexModel],
         session: Optional[ClientSession] = None,
@@ -2820,9 +2812,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(model, SearchIndexModel):
             model = SearchIndexModel(model["definition"], model.get("name"))
-        return await self._create_search_indexes([model], session, comment, **kwargs)[0]
+        return self._create_search_indexes([model], session, comment, **kwargs)[0]
 
-    async def create_search_indexes(
+    def create_search_indexes(
         self,
         models: list[SearchIndexModel],
         session: Optional[ClientSession] = None,
@@ -2844,9 +2836,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        return await self._create_search_indexes(models, session, comment, **kwargs)
+        return self._create_search_indexes(models, session, comment, **kwargs)
 
-    async def _create_search_indexes(
+    def _create_search_indexes(
         self,
         models: list[SearchIndexModel],
         session: Optional[ClientSession] = None,
@@ -2867,10 +2859,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
-        async with await self._conn_for_writes(
+        with self._conn_for_writes(
             session, operation=_Op.CREATE_SEARCH_INDEXES
         ) as conn:
-            resp = await self._command(
+            resp = self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2878,7 +2870,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
             return [index["name"] for index in resp["indexesCreated"]]
 
-    async def drop_search_index(
+    def drop_search_index(
         self,
         name: str,
         session: Optional[ClientSession] = None,
@@ -2903,8 +2895,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.DROP_SEARCH_INDEXES) as conn:
-            await self._command(
+        with self._conn_for_writes(session, operation=_Op.DROP_SEARCH_INDEXES) as conn:
+            self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2912,7 +2904,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
             )
 
-    async def update_search_index(
+    def update_search_index(
         self,
         name: str,
         definition: Mapping[str, Any],
@@ -2939,8 +2931,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.UPDATE_SEARCH_INDEX) as conn:
-            await self._command(
+        with self._conn_for_writes(session, operation=_Op.UPDATE_SEARCH_INDEX) as conn:
+            self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -2948,7 +2940,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
             )
 
-    async def options(
+    def options(
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
@@ -2975,12 +2967,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        cursor = await dbo.list_collections(
+        cursor = dbo.list_collections(
             session=session, filter={"name": self._name}, comment=comment
         )
 
         result = None
-        async for doc in cursor:
+        for doc in cursor:
             result = doc
             break
 
@@ -2995,11 +2987,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return options
 
     @_csot.apply
-    async def _aggregate(
+    def _aggregate(
         self,
         aggregation_command: Type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[AsyncCommandCursor],
+        cursor_class: Type[CommandCursor],
         session: Optional[ClientSession],
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
@@ -3018,7 +3010,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
+        return self._database.client._retryable_read(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
@@ -3026,7 +3018,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             operation=_Op.AGGREGATE,
         )
 
-    async def aggregate(
+    def aggregate(
         self,
         pipeline: _Pipeline,
         session: Optional[ClientSession] = None,
@@ -3109,11 +3101,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        async with self._database.client._tmp_session(session, close=False) as s:
-            return await self._aggregate(
+        with self._database.client._tmp_session(session, close=False) as s:
+            return self._aggregate(
                 _CollectionAggregationCommand,
                 pipeline,
-                AsyncCommandCursor,
+                CommandCursor,
                 session=s,
                 explicit_session=session is not None,
                 let=let,
@@ -3121,7 +3113,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 **kwargs,
             )
 
-    async def aggregate_raw_batches(
+    def aggregate_raw_batches(
         self,
         pipeline: _Pipeline,
         session: Optional[ClientSession] = None,
@@ -3156,13 +3148,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
-        async with self._database.client._tmp_session(session, close=False) as s:
+        with self._database.client._tmp_session(session, close=False) as s:
             return cast(
                 RawBatchCursor[_DocumentType],
-                await self._aggregate(
+                self._aggregate(
                     _CollectionRawAggregationCommand,
                     pipeline,
-                    AsyncRawBatchCommandCursor,
+                    RawBatchCommandCursor,
                     session=s,
                     explicit_session=session is not None,
                     **kwargs,
@@ -3170,7 +3162,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
-    async def rename(
+    def rename(
         self,
         new_name: str,
         session: Optional[ClientSession] = None,
@@ -3222,9 +3214,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        async with await self._conn_for_writes(session, operation=_Op.RENAME) as conn:
-            async with self._database.client._tmp_session(session) as s:
-                return await conn.command(
+        with self._conn_for_writes(session, operation=_Op.RENAME) as conn:
+            with self._database.client._tmp_session(session) as s:
+                return conn.command(
                     "admin",
                     cmd,
                     write_concern=write_concern,
@@ -3233,7 +3225,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     client=self._database.client,
                 )
 
-    async def distinct(
+    def distinct(
         self,
         key: str,
         filter: Optional[Mapping[str, Any]] = None,
@@ -3287,14 +3279,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
 
-        async def _cmd(
+        def _cmd(
             session: Optional[ClientSession],
             _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> list:
             return (
-                await self._command(
+                self._command(
                     conn,
                     cmd,
                     read_preference=read_preference,
@@ -3305,9 +3297,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 )
             )["values"]
 
-        return await self._retryable_non_cursor_read(_cmd, session, operation=_Op.DISTINCT)
+        return self._retryable_non_cursor_read(_cmd, session, operation=_Op.DISTINCT)
 
-    async def _find_and_modify(
+    def _find_and_modify(
         self,
         filter: Mapping[str, Any],
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
@@ -3345,7 +3337,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        async def _find_and_modify_helper(
+        def _find_and_modify_helper(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Any:
             acknowledged = write_concern.acknowledged
@@ -3365,7 +3357,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                         "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
                     )
                 cmd["hint"] = hint
-            out = await self._command(
+            out = self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
@@ -3379,14 +3371,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
             return out.get("value")
 
-        return await self._database.client._retryable_write(
+        return self._database.client._retryable_write(
             write_concern.acknowledged,
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,
         )
 
-    async def find_one_and_delete(
+    def find_one_and_delete(
         self,
         filter: Mapping[str, Any],
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
@@ -3471,11 +3463,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         kwargs["remove"] = True
         if comment is not None:
             kwargs["comment"] = comment
-        return await self._find_and_modify(
+        return self._find_and_modify(
             filter, projection, sort, let=let, hint=hint, session=session, **kwargs
         )
 
-    async def find_one_and_replace(
+    def find_one_and_replace(
         self,
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
@@ -3570,7 +3562,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         kwargs["update"] = replacement
         if comment is not None:
             kwargs["comment"] = comment
-        return await self._find_and_modify(
+        return self._find_and_modify(
             filter,
             projection,
             sort,
@@ -3582,7 +3574,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             **kwargs,
         )
 
-    async def find_one_and_update(
+    def find_one_and_update(
         self,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
@@ -3718,7 +3710,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         kwargs["update"] = update
         if comment is not None:
             kwargs["comment"] = comment
-        return await self._find_and_modify(
+        return self._find_and_modify(
             filter,
             projection,
             sort,
@@ -3730,606 +3722,3 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             session=session,
             **kwargs,
         )
-
-
-class Collection(common.BaseObject, Generic[_DocumentType]):
-    """A Mongo collection."""
-
-    def __init__(
-        self,
-        database: AsyncDatabase[_DocumentType],
-        name: str,
-        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        async_collection: Optional[AsyncCollection] = None,
-        **kwargs: Any,
-    ) -> None:
-        """Get / create a Mongo collection.
-
-        Raises :class:`TypeError` if `name` is not an instance of
-        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
-        not a valid collection name. Any additional keyword arguments will be used
-        as options passed to the create command. See
-        :meth:`~pymongo.database.Database.create_collection` for valid
-        options.
-
-        If `create` is ``True``, `collation` is specified, or any additional
-        keyword arguments are present, a ``create`` command will be
-        sent, using ``session`` if specified. Otherwise, a ``create`` command
-        will not be sent and the collection will be created implicitly on first
-        use. The optional ``session`` argument is *only* used for the ``create``
-        command, it is not associated with the collection afterward.
-
-        :param database: the database to get a collection from
-        :param name: the name of the collection to get
-        :param create: if ``True``, force collection
-            creation even without options being set
-        :param codec_options: An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) database.codec_options is used.
-        :param read_preference: The read preference to use. If
-            ``None`` (the default) database.read_preference is used.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) database.write_concern is used.
-        :param read_concern: An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) database.read_concern is used.
-        :param collation: An instance of
-            :class:`~pymongo.collation.Collation`. If a collation is provided,
-            it will be passed to the create collection command.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession` that is used with
-            the create collection command
-        :param kwargs: additional keyword arguments will
-            be passed as options for the create collection command
-
-        .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
-
-        .. versionchanged:: 4.0
-           Removed the reindex, map_reduce, inline_map_reduce,
-           parallel_scan, initialize_unordered_bulk_op,
-           initialize_ordered_bulk_op, group, count, insert, save,
-           update, remove, find_and_modify, and ensure_index methods. See the
-           :ref:`pymongo4-migration-guide`.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-
-        .. versionchanged:: 3.4
-           Support the `collation` option.
-
-        .. versionchanged:: 3.2
-           Added the read_concern option.
-
-        .. versionchanged:: 3.0
-           Added the codec_options, read_preference, and write_concern options.
-           Removed the uuid_subtype attribute.
-           :class:`~pymongo.collection.Collection` no longer returns an
-           instance of :class:`~pymongo.collection.Collection` for attribute
-           names with leading underscores. You must use dict-style lookups
-           instead::
-
-               collection['__my_collection__']
-
-           Not:
-
-               collection.__my_collection__
-
-        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
-        """
-        if async_collection is not None:
-            self._delegate = async_collection
-        else:
-            if hasattr(database, "_delegate"):
-                database = database._delegate
-            self._delegate = AsyncCollection(
-                database,
-                name,
-                codec_options,
-                read_preference,
-                write_concern,
-                read_concern,
-                **kwargs,
-            )
-
-    @classmethod
-    def wrap(cls, async_collection: AsyncCollection):
-        return cls(None, None, async_collection=async_collection)
-
-    def _wrap(self, async_collection: AsyncCollection) -> Collection[_DocumentType]:
-        self._delegate = async_collection
-        return self
-
-    @delegate_property()
-    def codec_options(self) -> CodecOptions:
-        ...
-
-    @delegate_property()
-    def write_concern(self) -> WriteConcern:
-        ...
-
-    @delegate_property()
-    def read_preference(self) -> _ServerMode:
-        ...
-
-    @delegate_property()
-    def topology_description(self) -> TopologyDescription:
-        ...
-
-    @delegate_property()
-    def read_concern(self) -> ReadConcern:
-        ...
-
-    @synchronize()
-    def insert_one(
-        self,
-        document: Union[_DocumentType, RawBSONDocument],
-        bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> InsertOneResult:
-        ...
-
-    @synchronize()
-    def insert_many(
-        self,
-        documents: Iterable[Union[_DocumentType, RawBSONDocument]],
-        ordered: bool = True,
-        bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> InsertManyResult:
-        ...
-
-    @synchronize()
-    def replace_one(
-        self,
-        filter: Mapping[str, Any],
-        replacement: Mapping[str, Any],
-        upsert: bool = False,
-        bypass_document_validation: bool = False,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> UpdateResult:
-        ...
-
-    @synchronize()
-    def update_one(
-        self,
-        filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
-        bypass_document_validation: bool = False,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> UpdateResult:
-        ...
-
-    @synchronize()
-    def update_many(
-        self,
-        filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> UpdateResult:
-        ...
-
-    @synchronize()
-    def drop(
-        self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
-    ) -> None:
-        ...
-
-    @synchronize()
-    def delete_one(
-        self,
-        filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> DeleteResult:
-        ...
-
-    @synchronize()
-    def delete_many(
-        self,
-        filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> DeleteResult:
-        ...
-
-    @synchronize()
-    def find_one(
-        self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
-    ) -> Optional[_DocumentType]:
-        ...
-
-    @synchronize(wrapper_class=Cursor)
-    def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
-        ...
-
-    @synchronize(wrapper_class=RawBatchCursor)
-    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
-        ...
-
-    @synchronize()
-    def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
-        ...
-
-    @synchronize()
-    def count_documents(
-        self,
-        filter: Mapping[str, Any],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> int:
-        ...
-
-    @synchronize()
-    def create_index(
-        self,
-        keys: _IndexKeyHint,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> str:
-        ...
-
-    @synchronize()
-    def create_indexes(
-        self,
-        indexes: Sequence[IndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> list[str]:
-        ...
-
-    @synchronize()
-    def drop_index(
-        self,
-        index_or_name: _IndexKeyHint,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    @synchronize()
-    def drop_indexes(
-        self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def list_indexes(
-        self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
-        ...
-
-    @synchronize()
-    def options(
-        self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> MutableMapping[str, Any]:
-        ...
-
-    @synchronize()
-    def bulk_write(
-        self,
-        requests: Sequence[_WriteOp[_DocumentType]],
-        ordered: bool = True,
-        bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
-    ) -> BulkWriteResult:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def aggregate(
-        self,
-        pipeline: _Pipeline,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
-        ...
-
-    @synchronize()
-    def aggregate_raw_batches(
-        self,
-        pipeline: _Pipeline,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> RawBatchCursor[_DocumentType]:
-        ...
-
-    @synchronize()
-    def create_search_index(
-        self,
-        model: Union[Mapping[str, Any], SearchIndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Any = None,
-        **kwargs: Any,
-    ) -> str:
-        ...
-
-    @synchronize()
-    def create_search_indexes(
-        self,
-        models: list[SearchIndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> list[str]:
-        ...
-
-    @synchronize()
-    def distinct(
-        self,
-        key: str,
-        filter: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> list:
-        ...
-
-    @synchronize()
-    async def drop_search_index(
-        self,
-        name: str,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    @synchronize()
-    async def find_one_and_delete(
-        self,
-        filter: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> _DocumentType:
-        ...
-
-    @synchronize()
-    def find_one_and_replace(
-        self,
-        filter: Mapping[str, Any],
-        replacement: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
-        upsert: bool = False,
-        return_document: bool = ReturnDocument.BEFORE,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> _DocumentType:
-        ...
-
-    @synchronize()
-    def find_one_and_update(
-        self,
-        filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
-        upsert: bool = False,
-        return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> _DocumentType:
-        ...
-
-    @synchronize()
-    def index_information(
-        self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> MutableMapping[str, Any]:
-        ...
-
-    @synchronize()
-    def list_search_indexes(
-        self,
-        name: Optional[str] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> CommandCursor[Mapping[str, Any]]:
-        ...
-
-    @synchronize()
-    def rename(
-        self,
-        new_name: str,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> MutableMapping[str, Any]:
-        ...
-
-    @synchronize()
-    def update_search_index(
-        self,
-        name: str,
-        definition: Mapping[str, Any],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    def with_options(
-        self,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentType]:
-        new_delegate = self._delegate.with_options(
-            codec_options, read_preference, write_concern, read_concern
-        )
-        return Collection(None, None, async_collection=new_delegate)
-        # return self._delegate.with_options(codec_options, read_preference, write_concern, read_concern)._wrap_sync()
-
-    def __getattr__(self, name: str) -> Collection[_DocumentType]:
-        """Get a sub-collection of this collection by name.
-
-        Raises InvalidName if an invalid collection name is used.
-
-        :param name: the name of the collection to get
-        """
-        if name.startswith("_"):
-            full_name = f"{self._delegate._name}.{name}"
-            raise AttributeError(
-                f"Collection has no attribute {name!r}. To access the {full_name}"
-                f" collection, use database['{full_name}']."
-            )
-        return self.__getitem__(name)
-
-    # @delegate_method(wrapper_class="self")
-    def __getitem__(self, name: str) -> Collection[_DocumentType]:
-        coll = self._delegate.__getitem__(name)
-        return Collection(None, None, async_collection=coll)
-
-    def __repr__(self) -> str:
-        return self._delegate.__repr__().replace("Async", "")
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Collection):
-            return (
-                self._delegate.database == other._delegate.database
-                and self._delegate._name == other.name
-            )
-        return NotImplemented
-
-    def __ne__(self, other: Any) -> bool:
-        return not self == other
-
-    @delegate_method()
-    def __hash__(self) -> int:
-        ...
-
-    def __bool__(self) -> NoReturn:
-        raise NotImplementedError(
-            "Collection objects do not implement truth "
-            "value testing or bool(). Please compare "
-            "with None instead: collection is not None"
-        )
-
-    @delegate_property()
-    def full_name(self) -> str:
-        ...
-
-    @delegate_property()
-    def name(self) -> str:
-        ...
-
-    @delegate_method()
-    def watch(
-        self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
-    ) -> CollectionChangeStream[_DocumentType]:
-        ...
-
-    @property
-    def database(self) -> Database[_DocumentType]:
-        return self._delegate.database._wrap_sync()
-
-    __iter__ = None
-
-    def __next__(self) -> NoReturn:
-        raise TypeError("'Collection' object is not iterable")
-
-    next = __next__
-
-    @synchronize()
-    def _create(  # TODO: Used for tests, remove
-        self,
-        options: MutableMapping[str, Any],
-        session: Optional[ClientSession],
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    # _aggregate = AsyncCollection._aggregate
-    # _count_cmd = AsyncCollection._count_cmd
-    # _create_search_indexes = AsyncCollection._create_search_indexes
-    # _drop_index = AsyncCollection._drop_index
-    # _find_and_modify = AsyncCollection._find_and_modify
-    # _list_indexes = AsyncCollection._list_indexes
-    # _create = AsyncCollection._create
-    # _create_helper = AsyncCollection._create_helper
-    # _insert_one = AsyncCollection._insert_one
-    # _retryable_non_cursor_read = AsyncCollection._retryable_non_cursor_read
-    # _create_indexes = AsyncCollection._create_indexes
-    # _conn_for_writes = AsyncCollection._conn_for_writes
-    # _command = AsyncCollection._command
-    # _aggregate_one_result = AsyncCollection._aggregate_one_result
-    # _update_retryable = AsyncCollection._update_retryable
-    # _update = AsyncCollection._update
-    # _delete_retryable = AsyncCollection._delete_retryable
-    # _delete = AsyncCollection._delete
-    # _find = AsyncCollection._find

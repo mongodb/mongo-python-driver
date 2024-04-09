@@ -44,7 +44,7 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
-from pymongo.cursor import Cursor, CursorType
+from pymongo._sync.cursor import Cursor, CursorType
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
 from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern

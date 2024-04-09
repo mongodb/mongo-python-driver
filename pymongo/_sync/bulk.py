@@ -35,7 +35,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.client_session import ClientSession, _validate_session_write_concern
+from pymongo._sync.client_session import ClientSession, _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -48,7 +48,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
-from pymongo.message import (
+from pymongo._sync.message import (
     _DELETE,
     _INSERT,
     _UPDATE,
@@ -60,8 +60,8 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from pymongo.collection import BaseCollection
-    from pymongo.pool import Connection
+    from pymongo._sync.collection import Collection
+    from pymongo._sync.pool import Connection
     from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _DELETE_ALL: int = 0
@@ -159,7 +159,7 @@ class _Bulk:
 
     def __init__(
         self,
-        collection: BaseCollection[_DocumentType],
+        collection: Collection[_DocumentType],
         ordered: bool,
         bypass_document_validation: bool,
         comment: Optional[str] = None,
@@ -300,7 +300,7 @@ class _Bulk:
             if run.ops:
                 yield run
 
-    async def _execute_command(
+    def _execute_command(
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
@@ -363,7 +363,7 @@ class _Bulk:
                     if retryable and not self.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    await session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
@@ -372,7 +372,7 @@ class _Bulk:
 
                 # Run as many ops as possible in one command.
                 if write_concern.acknowledged:
-                    result, to_send = await bwc.execute(cmd, ops, client)
+                    result, to_send = bwc.execute(cmd, ops, client)
 
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get("writeConcernError", {})
@@ -392,7 +392,7 @@ class _Bulk:
                     if self.ordered and "writeErrors" in result:
                         break
                 else:
-                    to_send = await bwc.execute_unack(cmd, ops, client)
+                    to_send = bwc.execute_unack(cmd, ops, client)
 
                 run.idx_offset += len(to_send)
 
@@ -403,7 +403,7 @@ class _Bulk:
             # Reset our state
             self.current_run = run = self.next_run
 
-    async def execute_command(
+    def execute_command(
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
@@ -424,10 +424,10 @@ class _Bulk:
         }
         op_id = _randint()
 
-        async def retryable_bulk(
+        def retryable_bulk(
             session: Optional[ClientSession], conn: Connection, retryable: bool
         ) -> None:
-            await self._execute_command(
+            self._execute_command(
                 generator,
                 write_concern,
                 session,
@@ -438,7 +438,7 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        await client._retryable_write(
+        client._retryable_write(
             self.is_retryable,
             retryable_bulk,
             session,
@@ -451,7 +451,7 @@ class _Bulk:
             _raise_bulk_write_error(full_result)
         return full_result
 
-    async def execute_op_msg_no_results(self, conn: Connection, generator: Iterator[Any]) -> None:
+    def execute_op_msg_no_results(self, conn: Connection, generator: Iterator[Any]) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
         client = self.collection.database.client
@@ -484,11 +484,11 @@ class _Bulk:
                 conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                to_send = await bwc.execute_unack(cmd, ops, client)
+                to_send = bwc.execute_unack(cmd, ops, client)
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 
-    async def execute_command_no_results(
+    def execute_command_no_results(
         self,
         conn: Connection,
         generator: Iterator[Any],
@@ -511,7 +511,7 @@ class _Bulk:
         initial_write_concern = WriteConcern()
         op_id = _randint()
         try:
-            await self._execute_command(
+            self._execute_command(
                 generator,
                 initial_write_concern,
                 None,
@@ -524,7 +524,7 @@ class _Bulk:
         except OperationFailure:
             pass
 
-    async def execute_no_results(
+    def execute_no_results(
         self,
         conn: Connection,
         generator: Iterator[Any],
@@ -552,10 +552,10 @@ class _Bulk:
             )
 
         if self.ordered:
-            return await self.execute_command_no_results(conn, generator, write_concern)
-        return await self.execute_op_msg_no_results(conn, generator)
+            return self.execute_command_no_results(conn, generator, write_concern)
+        return self.execute_op_msg_no_results(conn, generator)
 
-    async def execute(
+    def execute(
         self,
         write_concern: WriteConcern,
         session: Optional[ClientSession],
@@ -577,8 +577,8 @@ class _Bulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            async with await client._conn_for_writes(session, operation) as connection:
-                await self.execute_no_results(connection, generator, write_concern)
+            with client._conn_for_writes(session, operation) as connection:
+                self.execute_no_results(connection, generator, write_concern)
                 return None
         else:
-            return await self.execute_command(generator, write_concern, session, operation)
+            return self.execute_command(generator, write_concern, session, operation)

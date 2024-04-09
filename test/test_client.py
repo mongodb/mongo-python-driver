@@ -83,13 +83,14 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import event_loggers, message, monitoring
-from pymongo.client_options import ClientOptions
-from pymongo.command_cursor import CommandCursor
+from pymongo import event_loggers, monitoring
+from pymongo._sync import message
+from pymongo._sync.client_options import ClientOptions
+from pymongo._sync.command_cursor import CommandCursor
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
-from pymongo.cursor import Cursor, CursorType
-from pymongo.database import Database
+from pymongo._sync.cursor import Cursor, CursorType
+from pymongo._sync.database import Database
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -103,16 +104,16 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.mongo_client import MongoClient, _detect_external_db
+from pymongo._sync.mongo_client import MongoClient, _detect_external_db
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
+from pymongo._sync.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.settings import TOPOLOGY_TYPE
+from pymongo._sync.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
-from pymongo.topology import _ErrorContext
+from pymongo._sync.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 
@@ -642,8 +643,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             self.assertTrue(conn in server._pool.conns)
@@ -653,8 +654,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket, two
             # connections could be created and checked into the pool.
@@ -667,8 +668,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two connections from being created.
@@ -681,12 +682,12 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn_one:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn_one:
                 pass
             # Assert that the pool does not close connections prematurely.
             time.sleep(0.300)
-            with server._pool._s_checkout() as conn_two:
+            with server._pool.checkout() as conn_two:
                 pass
             self.assertIs(conn_one, conn_two)
             wait_until(
@@ -698,19 +699,19 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
             client = rs_or_single_client()
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "pool initialized with 10 connections",
             )
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool._s_checkout() as conn:
+            with server._pool.checkout() as conn:
                 conn.close_conn(None)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
@@ -722,13 +723,13 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)  # Sleep so that the socket becomes stale.
 
-            with server._pool._s_checkout() as new_con:
+            with server._pool.checkout() as new_con:
                 self.assertNotEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
             self.assertFalse(conn in server._pool.conns)
@@ -736,12 +737,12 @@ class TestClient(IntegrationTest):
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology()._s_select_server(readable_server_selector, _Op.TEST)
-            with server._pool._s_checkout() as conn:
+            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
             time.sleep(1)
-            with server._pool._s_checkout() as new_con:
+            with server._pool.checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
 
@@ -1242,7 +1243,7 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool._s_checkout() as conn:
+        with pool.checkout() as conn:
             keepalive = conn.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
@@ -1668,7 +1669,7 @@ class TestClient(IntegrationTest):
                 while self.running:
                     exc = AutoReconnect("mock pool error")
                     ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    client._topology._s_handle_error(pool.address, ctx)
+                    client._topology._handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
@@ -1679,7 +1680,7 @@ class TestClient(IntegrationTest):
         try:
             while True:
                 for _ in range(10):
-                    client._topology._s_update_pool()
+                    client._topology.update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:
@@ -2021,9 +2022,9 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a server error on getmore.
-        async def receive_message(request_id):
+        def receive_message(request_id):
             # Discard the actual server response.
-            await Connection.receive_message(conn, request_id)
+            Connection.receive_message(conn, request_id)
 
             # responseFlags bit 1 is QueryFailure.
             msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
@@ -2283,7 +2284,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        c._get_topology()._s_select_servers(writable_server_selector, _Op.TEST)
+        c._get_topology().select_servers(writable_server_selector, _Op.TEST)
         self.assertEqual(c.address, ("a", 1))
 
     def _test_network_error(self, operation_callback):
@@ -2306,7 +2307,7 @@ class TestMongoClientFailover(MockClientTest):
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, 6)
             c.set_wire_version_range("b:2", 2, 7)
-            c._get_topology()._s_select_servers(writable_server_selector, _Op.TEST)
+            c._get_topology().select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
             c.kill_host("a:1")

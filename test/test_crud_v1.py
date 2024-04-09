@@ -30,8 +30,8 @@ from test.utils import (
 )
 
 from pymongo import WriteConcern, operations
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo._sync.command_cursor import CommandCursor
+from pymongo._sync.cursor import Cursor
 from pymongo.errors import PyMongoError
 from pymongo.operations import (
     DeleteMany,

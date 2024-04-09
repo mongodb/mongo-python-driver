@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.asynchronous import synchronize
-from pymongo.client_session import _ServerSession, _ServerSessionPool
+from pymongo._async.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -46,9 +46,9 @@ from pymongo.logger import (
     _info_log,
     _ServerSelectionStatusMessage,
 )
-from pymongo.monitor import SrvMonitor
-from pymongo.pool import Pool, PoolOptions
-from pymongo.server import Server
+from pymongo._async.monitor import SrvMonitor
+from pymongo._async.pool import Pool, PoolOptions
+from pymongo._async.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
     Selection,
@@ -67,7 +67,7 @@ from pymongo.topology_description import (
 
 if TYPE_CHECKING:
     from bson import ObjectId
-    from pymongo.settings import TopologySettings
+    from pymongo._async.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
 
 
@@ -214,17 +214,6 @@ class Topology:
         if timeout is None:
             return self._settings.server_selection_timeout
         return timeout
-
-    @synchronize(async_method_name="select_servers")
-    def _s_select_servers(
-        self,
-        selector: Callable[[Selection], Selection],
-        operation: str,
-        server_selection_timeout: Optional[float] = None,
-        address: Optional[_Address] = None,
-        operation_id: Optional[int] = None,
-    ) -> list[Server]:
-        ...
 
     async def select_servers(
         self,
@@ -393,18 +382,6 @@ class Topology:
                 serverPort=server.description.address[1],
             )
         return server
-
-    @synchronize(async_method_name="select_server")
-    def _s_select_server(
-        self,
-        selector: Callable[[Selection], Selection],
-        operation: str,
-        server_selection_timeout: Optional[float] = None,
-        address: Optional[_Address] = None,
-        deprioritized_servers: Optional[list[Server]] = None,
-        operation_id: Optional[int] = None,
-    ) -> Server:
-        ...
 
     async def select_server_by_address(
         self,
@@ -653,10 +630,6 @@ class Topology:
                 await self.handle_error(server.description.address, ctx)
                 raise
 
-    @synchronize(async_method_name="update_pool")
-    def _s_update_pool(self) -> None:
-        ...
-
     async def close(self) -> None:
         """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
@@ -844,10 +817,6 @@ class Topology:
         """
         async with self._alock:
             await self._handle_error(address, err_ctx)
-
-    @synchronize(async_method_name="handle_error")
-    def _s_handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
-        ...
 
     def _request_check_all(self) -> None:
         """Wake all monitors. Hold the lock when calling this."""

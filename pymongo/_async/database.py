@@ -35,26 +35,24 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
-from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.asynchronous import delegate_method, delegate_property, synchronize
+from pymongo._async.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
-from pymongo.collection import AsyncCollection, Collection
-from pymongo.command_cursor import AsyncCommandCursor, CommandCursor
+from pymongo._async.collection import AsyncCollection
+from pymongo._async.command_cursor import AsyncCommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
     import bson.codec_options
-    from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import AsyncMongoClient, MongoClient
-    from pymongo.pool import Connection
+    from pymongo._async.client_session import ClientSession
+    from pymongo._async.mongo_client import AsyncMongoClient
+    from pymongo._async.pool import Connection
     from pymongo.read_concern import ReadConcern
-    from pymongo.server import Server
+    from pymongo._async.server import Server
     from pymongo.write_concern import WriteConcern
 
 
@@ -141,9 +139,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         self._name = name
         self._client: AsyncMongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
-
-    def _wrap_sync(self):
-        return Database(async_database=self)
 
     @property
     def client(self) -> AsyncMongoClient[_DocumentType]:
@@ -472,7 +467,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
-    ) -> AsyncCollection[_DocumentType] | Collection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -1086,7 +1081,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            AsyncCollection[MutableMapping[str, Any]],
             self.get_collection("$cmd", read_preference=read_preference),
         )
         cmd = {"listCollections": 1, "cursor": {}}
@@ -1259,7 +1254,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def drop_collection(
         self,
-        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
+        name_or_collection: Union[str, AsyncCollection[_DocumentTypeArg]],
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
@@ -1313,7 +1308,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         """
         name = name_or_collection
-        if isinstance(name, Collection):
+        if isinstance(name, AsyncCollection):
             name = name.name
 
         if not isinstance(name, str):
@@ -1336,7 +1331,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def validate_collection(
         self,
-        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
+        name_or_collection: Union[str, AsyncCollection[_DocumentTypeArg]],
         scandata: bool = False,
         full: bool = False,
         session: Optional[ClientSession] = None,
@@ -1377,7 +1372,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _validate command: https://mongodb.com/docs/manual/reference/command/validate/
         """
         name = name_or_collection
-        if isinstance(name, Collection):
+        if isinstance(name, AsyncCollection):
             name = name.name
 
         if not isinstance(name, str):
@@ -1457,337 +1452,3 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return await self[dbref.collection].find_one(
             {"_id": dbref.id}, session=session, comment=comment, **kwargs
         )
-
-
-class Database(common.BaseObject, Generic[_DocumentType]):
-    """A Mongo database."""
-
-    def __init__(
-        self,
-        client: Optional[AsyncMongoClient[_DocumentType]] = None,
-        name: Optional[str] = None,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        async_database: Optional[AsyncDatabase] = None,
-    ) -> None:
-        """Get a database by client and name.
-
-        Raises :class:`TypeError` if `name` is not an instance of
-        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
-        `name` is not a valid database name.
-
-        :param client: A :class:`~pymongo.mongo_client.MongoClient` instance.
-        :param name: The database name.
-        :param codec_options: An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) client.codec_options is used.
-        :param read_preference: The read preference to use. If
-            ``None`` (the default) client.read_preference is used.
-        :param write_concern: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) client.write_concern is used.
-        :param read_concern: An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) client.read_concern is used.
-
-        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
-
-        .. versionchanged:: 4.0
-           Removed the eval, system_js, error, last_status, previous_error,
-           reset_error_history, authenticate, logout, collection_names,
-           current_op, add_user, remove_user, profiling_level,
-           set_profiling_level, and profiling_info methods.
-           See the :ref:`pymongo4-migration-guide`.
-
-        .. versionchanged:: 3.2
-           Added the read_concern option.
-
-        .. versionchanged:: 3.0
-           Added the codec_options, read_preference, and write_concern options.
-           :class:`~pymongo.database.Database` no longer returns an instance
-           of :class:`~pymongo.collection.Collection` for attribute names
-           with leading underscores. You must use dict-style lookups instead::
-
-               db['__my_collection__']
-
-           Not:
-
-               db.__my_collection__
-        """
-        if async_database is not None:
-            self._delegate = async_database
-        else:
-            if hasattr(client, "_delegate"):
-                client = client._delegate
-            self._delegate = AsyncDatabase(
-                client,
-                name,
-                codec_options,
-                read_preference,
-                write_concern,
-                read_concern,
-            )
-
-    @classmethod
-    def wrap(cls, async_database: AsyncDatabase):
-        return cls(async_database=async_database)
-
-    def _wrap(self, async_database: AsyncDatabase) -> Database[_DocumentType]:
-        self._delegate = async_database
-        return self
-
-    @delegate_property()
-    def codec_options(self) -> CodecOptions:
-        ...
-
-    @delegate_property()
-    def write_concern(self) -> WriteConcern:
-        ...
-
-    @delegate_property()
-    def read_preference(self) -> _ServerMode:
-        ...
-
-    @delegate_property()
-    def topology_description(self) -> TopologyDescription:
-        ...
-
-    @delegate_property()
-    def read_concern(self) -> ReadConcern:
-        ...
-
-    @property
-    def client(self) -> MongoClient[_DocumentType]:
-        return self._delegate.client._wrap_sync()
-
-    @delegate_property()
-    def name(self) -> str:
-        ...
-
-    @synchronize(wrapper_class=Collection)
-    def create_collection(
-        self,
-        name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
-        check_exists: Optional[bool] = True,
-        **kwargs: Any,
-    ) -> Collection[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class=Collection)
-    def get_collection(
-        self,
-        name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentType]:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def aggregate(
-        self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
-    ) -> CommandCursor[_DocumentType]:
-        ...
-
-    @overload
-    @synchronize()
-    def command(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        value: Any = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: None = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        ...
-
-    @overload
-    @synchronize()
-    def command(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        value: Any = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: CodecOptions[_CodecDocumentType] = ...,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> _CodecDocumentType:
-        ...
-
-    @synchronize()
-    def command(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        value: Any = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> Union[dict[str, Any], _CodecDocumentType]:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def cursor_command(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        value: Any = 1,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        max_await_time_ms: Optional[int] = None,
-        **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def list_collections(
-        self,
-        session: Optional[ClientSession] = None,
-        filter: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
-        ...
-
-    @synchronize()
-    def list_collection_names(
-        self,
-        session: Optional[ClientSession] = None,
-        filter: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> list[str]:
-        ...
-
-    @_csot.apply
-    @synchronize()
-    def drop_collection(
-        self,
-        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
-    ) -> dict[str, Any]:
-        ...
-
-    @synchronize()
-    def validate_collection(
-        self,
-        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
-        scandata: bool = False,
-        full: bool = False,
-        session: Optional[ClientSession] = None,
-        background: Optional[bool] = None,
-        comment: Optional[Any] = None,
-    ) -> dict[str, Any]:
-        ...
-
-    @synchronize()
-    def dereference(
-        self,
-        dbref: DBRef,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> Optional[_DocumentType]:
-        ...
-
-    @delegate_method(wrapper_class="self")
-    def with_options(
-        self,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> Database[_DocumentType]:
-        ...
-
-    @synchronize()
-    def watch(
-        self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
-    ) -> DatabaseChangeStream[_DocumentType]:
-        ...
-
-    # See PYTHON-3084.
-    __iter__ = None
-
-    @delegate_method()
-    def __next__(self) -> NoReturn:
-        ...
-
-    next = __next__
-
-    @delegate_method()
-    def __bool__(self) -> NoReturn:
-        ...
-
-    def __getattr__(self, name: str) -> Collection[_DocumentType]:
-        """Get a collection of this database by name.
-
-        Raises InvalidName if an invalid collection name is used.
-
-        :param name: the name of the collection to get
-        """
-        if name.startswith("_"):
-            raise AttributeError(
-                f"Database has no attribute {name!r}. To access the {name}"
-                f" collection, use database[{name!r}]."
-            )
-        return self.__getitem__(name)
-
-    @delegate_method(wrapper_class=Collection)
-    def __getitem__(self, name: str) -> Collection[_DocumentType]:
-        ...
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Database):
-            return (
-                self._delegate.client == other._delegate.client
-                and self._delegate._name == other._delegate.name
-            )
-        return NotImplemented
-
-    def __ne__(self, other: Any) -> bool:
-        return not self == other
-
-    @delegate_method()
-    def __hash__(self) -> int:
-        ...
-
-    def __repr__(self) -> str:
-        return self._delegate.__repr__().replace("Async", "")
-
-    @property
-    def _timeout(self):
-        return self._delegate._timeout

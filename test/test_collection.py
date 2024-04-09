@@ -20,9 +20,9 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
-from typing import Any, Iterable, no_type_check
+from typing import Iterable, no_type_check
 
-from pymongo.database import Database
+from pymongo._sync.database import Database
 
 sys.path[0:0] = [""]
 
@@ -41,14 +41,13 @@ from test.utils import (
 from bson import encode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
-from pymongo.bulk import BulkWriteError
-from pymongo.collection import Collection, ReturnDocument
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import CursorType
+from pymongo._sync.bulk import BulkWriteError
+from pymongo._sync.collection import Collection, ReturnDocument
+from pymongo._sync.command_cursor import CommandCursor
+from pymongo._sync.cursor import CursorType
 from pymongo.errors import (
     ConfigurationError,
     DocumentTooLarge,
@@ -60,8 +59,8 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
-from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
-from pymongo.mongo_client import MongoClient
+from pymongo._sync.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference

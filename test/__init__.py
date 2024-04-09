@@ -45,11 +45,12 @@ from urllib.parse import quote_plus
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo import common, message
+from pymongo import common
+from pymongo._sync import message
 from pymongo.common import partition_node
-from pymongo.database import Database
+from pymongo._sync.database import Database
 from pymongo.hello import HelloCompat
-from pymongo.mongo_client import MongoClient
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.uri_parser import parse_uri
@@ -1189,7 +1190,7 @@ def print_running_topology(topology):
 
 
 def print_running_clients():
-    from pymongo.topology import Topology
+    from pymongo._sync.topology import Topology
 
     processed = set()
     # Avoid false positives on the main test client.

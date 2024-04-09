@@ -156,7 +156,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.cursor import _ConnectionManager
+from pymongo._async.cursor import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -175,8 +175,8 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from pymongo.pool import Connection
-    from pymongo.server import Server
+    from pymongo._async.pool import Connection
+    from pymongo._async.server import Server
     from pymongo.typings import ClusterTime, _Address
 
 
@@ -391,7 +391,7 @@ class _TxnState:
 class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
-    def __init__(self, opts: Optional[TransactionOptions], client: MongoClient):
+    def __init__(self, opts: Optional[TransactionOptions], client: AsyncMongoClient):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -476,7 +476,7 @@ def _within_time_limit(start_time: float) -> bool:
 _T = TypeVar("_T")
 
 if TYPE_CHECKING:
-    from pymongo.mongo_client import MongoClient
+    from pymongo._async.mongo_client import AsyncMongoClient
 
 
 class ClientSession:
@@ -494,13 +494,13 @@ class ClientSession:
 
     def __init__(
         self,
-        client: MongoClient,
+        client: AsyncMongoClient,
         server_session: Any,
         options: SessionOptions,
         implicit: bool,
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
-        self._client: MongoClient = client
+        self._client: AsyncMongoClient = client
         self._server_session = server_session
         self._options = options
         self._cluster_time: Optional[Mapping[str, Any]] = None
@@ -540,7 +540,7 @@ class ClientSession:
         await self._end_session(lock=True)
 
     @property
-    def client(self) -> MongoClient:
+    def client(self) -> AsyncMongoClient:
         """The :class:`~pymongo.mongo_client.MongoClient` this session was
         created from.
         """

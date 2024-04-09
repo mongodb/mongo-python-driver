@@ -39,8 +39,8 @@ from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
 from pymongo import client_session
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo._sync.command_cursor import CommandCursor
+from pymongo._sync.cursor import Cursor
 from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference

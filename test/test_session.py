@@ -36,9 +36,9 @@ from test.utils import (
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
-from pymongo.command_cursor import CommandCursor
+from pymongo._sync.command_cursor import CommandCursor
 from pymongo.common import _MAX_END_SESSIONS
-from pymongo.cursor import Cursor
+from pymongo._sync.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern

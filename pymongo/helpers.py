@@ -48,7 +48,7 @@ from pymongo.errors import (
 from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
-    from pymongo.cursor import _Hint
+    from pymongo._async.cursor import _Hint
     from pymongo.operations import _IndexList
     from pymongo.typings import _DocumentOut
 
@@ -317,8 +317,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 def _handle_reauth(func: F) -> F:
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
-        from pymongo.message import _BulkWriteContext
-        from pymongo.pool import Connection
+        from pymongo._async.message import _BulkWriteContext
+        from pymongo._async.pool import Connection
 
         try:
             return func(*args, **kwargs)

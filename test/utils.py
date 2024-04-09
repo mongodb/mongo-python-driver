@@ -34,9 +34,10 @@ from typing import Any, List
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import MongoClient, monitoring, operations, read_preferences
-from pymongo.collection import ReturnDocument
-from pymongo.cursor import CursorType
+from pymongo import monitoring, operations, read_preferences
+from pymongo._sync.mongo_client import MongoClient
+from pymongo._sync.collection import ReturnDocument
+from pymongo._sync.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
@@ -55,7 +56,7 @@ from pymongo.monitoring import (
     PoolReadyEvent,
 )
 from pymongo.operations import _Op
-from pymongo.pool import _CancellationContext, _PoolGeneration
+from pymongo._sync.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
@@ -888,7 +889,7 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology._s_select_server(writable_server_selector, _Op.TEST)
+    server = topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 

@@ -37,7 +37,7 @@ from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
 )
-from pymongo.cursor import CursorType
+from pymongo._sync.cursor import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne

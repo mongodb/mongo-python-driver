@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pool import Connection
+    from pymongo._async.message import _OpMsg, _OpReply
+    from pymongo._async.pool import Connection
     from pymongo.typings import _Address, _DocumentOut
 
 

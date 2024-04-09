@@ -37,8 +37,8 @@ from bson.raw_bson import RawBSONDocument
 from gridfs import GridFS, GridFSBucket
 from pymongo import WriteConcern, client_session
 from pymongo.client_session import TransactionOptions
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo._sync.command_cursor import CommandCursor
+from pymongo._sync.cursor import Cursor
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,

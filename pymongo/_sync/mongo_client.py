@@ -39,7 +39,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    Iterator,
     Callable,
     FrozenSet,
     Generic,
@@ -55,23 +55,24 @@ from typing import (
 )
 
 import bson
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
-    client_session,
     common,
-    database,
     helpers,
-    message,
     periodic_executor,
     uri_parser,
 )
-from pymongo.asynchronous import delegate_method, delegate_property, schedule_task, synchronize
+from pymongo._sync import (
+    client_session,
+    database,
+    message,
+)
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
-from pymongo.client_options import ClientOptions
-from pymongo.client_session import _EmptyServerSession
-from pymongo.command_cursor import AsyncCommandCursor, CommandCursor
+from pymongo._sync.client_options import ClientOptions
+from pymongo._sync.client_session import _EmptyServerSession
+from pymongo._sync.command_cursor import CommandCursor
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -92,8 +93,8 @@ from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
     ClusterTime,
@@ -116,14 +117,14 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from bson.objectid import ObjectId
-    from pymongo.bulk import _Bulk
-    from pymongo.client_session import ClientSession, _ServerSession
-    from pymongo.cursor import _ConnectionManager
-    from pymongo.message import _CursorAddress, _GetMore, _Query
-    from pymongo.pool import Connection
+    from pymongo._sync.bulk import _Bulk
+    from pymongo._sync.client_session import ClientSession, _ServerSession
+    from pymongo._sync.cursor import _ConnectionManager
+    from pymongo._sync.message import _CursorAddress, _GetMore, _Query
+    from pymongo._sync.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
-    from pymongo.server import Server
+    from pymongo._sync.server import Server
     from pymongo.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
@@ -138,7 +139,7 @@ _WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
 _ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
 
 
-class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
+class MongoClient(common.BaseObject, Generic[_DocumentType]):
     HOST = "localhost"
     PORT = 27017
     # Define order to retrieve options from ClientOptions for __repr__.
@@ -302,7 +303,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._init_background()
 
         if connect:
-            self._topology_task = schedule_task(self._fetch_topology())
+            self._fetch_topology()
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -314,19 +315,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if _HAS_REGISTER_AT_FORK:
             # Add this client to the list of weakly referenced items.
             # This will be used later if we fork.
-            AsyncMongoClient._clients[self._topology._topology_id] = self
-
-    def _wrap_sync(self):
-        return MongoClient(async_client=self)
+            MongoClient._clients[self._topology._topology_id] = self
 
     def _init_background(self) -> None:
         self._topology = Topology(self._topology_settings)
 
-        async def target() -> bool:
+        def target() -> bool:
             client = self_ref()
             if client is None:
                 return False  # Stop the executor.
-            await AsyncMongoClient._process_periodic_tasks(client)
+            MongoClient._process_periodic_tasks(client)
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -348,10 +346,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Resets topology in a child after successfully forking."""
         self._init_background()
 
-    def _duplicate(self, **kwargs: Any) -> AsyncMongoClient:
+    def _duplicate(self, **kwargs: Any) -> MongoClient:
         args = self._init_kwargs.copy()
         args.update(kwargs)
-        return AsyncMongoClient(**args)
+        return MongoClient(**args)
 
     def watch(
         self,
@@ -573,7 +571,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._repr_helper()})"
 
-    def __getattr__(self, name: str) -> database.AsyncDatabase[_DocumentType]:
+    def __getattr__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -588,7 +586,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             )
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> database.AsyncDatabase[_DocumentType]:
+    def __getitem__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -596,7 +594,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :param name: the name of the database to get
         """
-        return database.AsyncDatabase(self, name)
+        return database.Database(self, name)
 
     def _close_cursor_soon(
         self,
@@ -676,7 +674,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.AsyncDatabase[_DocumentType]:
+    ) -> database.Database[_DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
@@ -725,7 +723,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             raise ConfigurationError("No default database name defined or provided.")
 
         name = cast(str, self._default_database_name or default)
-        return database.AsyncDatabase(
+        return database.Database(
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
@@ -736,7 +734,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.AsyncDatabase[_DocumentType]:
+    ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
@@ -784,11 +782,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError("No default database defined")
             name = self._default_database_name
 
-        return database.AsyncDatabase(
+        return database.Database(
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
-    def _database_default_options(self, name: str) -> database.AsyncDatabase:
+    def _database_default_options(self, name: str) -> database.Database:
         """Get a Database instance with the default settings."""
         return self.get_database(
             name,
@@ -797,7 +795,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             write_concern=DEFAULT_WRITE_CONCERN,
         )
 
-    def __enter__(self) -> AsyncMongoClient[_DocumentType]:
+    def __enter__(self) -> MongoClient[_DocumentType]:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -811,13 +809,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     next = __next__
 
-    async def _fetch_topology(self) -> Topology:
-        await self._topology.open()
-        async with self._alock:
+    def _fetch_topology(self) -> Topology:
+        self._topology.open()
+        with self._alock:
             self._kill_cursors_executor.open()
         return self._topology
 
-    async def _server_property(self, attr_name: str) -> Any:
+    def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.
 
         If the client is not connected, this will block until a connection is
@@ -828,11 +826,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = await self._topology.select_server(writable_server_selector, _Op.TEST)
+        server = self._topology.select_server(writable_server_selector, _Op.TEST)
 
         return getattr(server.description, attr_name)
 
-    async def address(self) -> Optional[tuple[str, int]]:
+    @property
+    def address(self) -> Optional[tuple[str, int]]:
         """(host, port) of the current standalone, primary, or mongos, or None.
 
         Accessing :attr:`address` raises :exc:`~.errors.InvalidOperation` if
@@ -861,9 +860,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             TOPOLOGY_TYPE.Sharded,
         ):
             return None
-        return await self._server_property("address")
+        return self._server_property("address")
 
-    async def primary(self) -> Optional[tuple[str, int]]:
+    @property
+    def primary(self) -> Optional[tuple[str, int]]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -873,9 +873,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
-        return await self._topology.get_primary()  # type: ignore[return-value]
+        return self._topology.get_primary()  # type: ignore[return-value]
 
-    async def secondaries(self) -> set[_Address]:
+    @property
+    def secondaries(self) -> set[_Address]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -885,18 +886,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
-        return await self._topology.get_secondaries()
+        return self._topology.get_secondaries()
 
-    async def arbiters(self) -> set[_Address]:
+    @property
+    def arbiters(self) -> set[_Address]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
         connected to a replica set, there are no arbiters, or this client was
         created without the `replicaSet` option.
         """
-        return await self._topology.get_arbiters()
+        return self._topology.get_arbiters()
 
-    async def is_primary(self) -> bool:
+    @property
+    def is_primary(self) -> bool:
         """If this client is connected to a server that can accept writes.
 
         True if the current server is a standalone, mongos, or the primary of
@@ -904,21 +907,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         connection is established or raise ServerSelectionTimeoutError if no
         server is available.
         """
-        return await self._server_property("is_writable")
+        return self._server_property("is_writable")
 
-    async def is_mongos(self) -> bool:
+    @property
+    def is_mongos(self) -> bool:
         """If this client is connected to mongos. If the client is not
         connected, this will block until a connection is established or raise
         ServerSelectionTimeoutError if no server is available.
         """
-        return await self._server_property("server_type") == SERVER_TYPE.Mongos
+        return self._server_property("server_type") == SERVER_TYPE.Mongos
 
-    async def _end_sessions(self, session_ids: list[_ServerSession]) -> None:
+    def _end_sessions(self, session_ids: list[_ServerSession]) -> None:
         """Send endSessions command(s) with the given session ids."""
         try:
             # Use Connection.command directly to avoid implicitly creating
             # another session.
-            async with await self._conn_for_reads(
+            with self._conn_for_reads(
                 ReadPreference.PRIMARY_PREFERRED, None, operation=_Op.END_SESSIONS
             ) as (
                 conn,
@@ -929,13 +933,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
                     spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
-                    await conn.command("admin", spec, read_preference=read_pref, client=self)
+                    conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
             # command.
             pass
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Cleanup client resources and disconnect from MongoDB.
 
         End all server sessions created by this client by sending one or more
@@ -950,19 +954,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        session_ids = await self._topology.pop_all_sessions()
+        session_ids = self._topology.pop_all_sessions()
         if session_ids:
-            await self._end_sessions(session_ids)
+            self._end_sessions(session_ids)
         # Stop the periodic task thread and then send pending killCursor
         # requests before closing the topology.
         self._kill_cursors_executor.close()
-        await self._process_kill_cursors()
-        await self._topology.close()
+        self._process_kill_cursors()
+        self._topology.close()
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
 
-    async def _get_topology(self) -> Topology:
+    def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.
 
         If this client was created with "connect=False", calling _get_topology
@@ -970,26 +974,26 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         try:
             if self._topology_task is not None:
-                return self._topology_task.result()
+                return self._topology_task
             else:
-                self._topology_task = schedule_task(self._fetch_topology())
+                self._topology_task = self._fetch_topology()
         except AttributeError:
-            self._topology_task = schedule_task(self._fetch_topology())
+            self._topology_task = self._fetch_topology()
 
-        return await self._topology_task
+        return self._topology_task
 
-    @contextlib.asynccontextmanager
-    async def _checkout(
+    @contextlib.contextmanager
+    def _checkout(
         self, server: Server, session: Optional[ClientSession]
-    ) -> AsyncIterator[Connection]:
+    ) -> Iterator[Connection]:
         in_txn = session and session.in_transaction
-        async with _MongoClientErrorHandler(self, server, session) as err_handler:
+        with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session and session._pinned_connection:
                 err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
-            async with await server.checkout(handler=err_handler) as conn:
+            with server.checkout(handler=err_handler) as conn:
                 # Pin this session to the selected server or connection.
                 if (
                     in_txn
@@ -1012,7 +1016,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     )
                 yield conn
 
-    async def _select_server(
+    def _select_server(
         self,
         server_selector: Callable[[Selection], Selection],
         session: Optional[ClientSession],
@@ -1032,19 +1036,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             to a specific server, used for getMore.
         """
         try:
-            topology = await self._get_topology()
+            topology = self._get_topology()
             if session and not session.in_transaction:
-                await session._transaction.reset()
+                session._transaction.reset()
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
-                server = await topology.select_server_by_address(
+                server = topology.select_server_by_address(
                     address, operation, operation_id=operation_id
                 )
                 if not server:
                     raise AutoReconnect("server %s:%d no longer available" % address)
             else:
-                server = await topology.select_server(
+                server = topology.select_server(
                     server_selector,
                     operation,
                     deprioritized_servers=deprioritized_servers,
@@ -1055,19 +1059,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # Server selection errors in a transaction are transient.
             if session and session.in_transaction:
                 exc._add_error_label("TransientTransactionError")
-                await session._unpin()
+                session._unpin()
             raise
 
-    async def _conn_for_writes(
+    def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> AsyncIterator[Connection]:
-        server = await self._select_server(writable_server_selector, session, operation)
+    ) -> Iterator[Connection]:
+        server = self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
-    @contextlib.asynccontextmanager
-    async def _conn_from_server(
+    @contextlib.contextmanager
+    def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[ClientSession]
-    ) -> AsyncIterator[tuple[Connection, _ServerMode]]:
+    ) -> Iterator[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         # Get a connection for a server matching the read preference, and yield
         # conn with the effective read preference. The Server Selection
@@ -1075,10 +1079,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # always send primaryPreferred when directly connected to a repl set
         # member.
         # Thread safe: if the type is single it cannot change.
-        topology = await self._get_topology()
+        topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
-        async with self._checkout(server, session) as conn:
+        with self._checkout(server, session) as conn:
             if single:
                 if conn.is_repl and not (session and session.in_transaction):
                     # Use primary preferred to ensure any repl set member
@@ -1089,19 +1093,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     read_preference = ReadPreference.PRIMARY
             yield conn, read_preference
 
-    async def _conn_for_reads(
+    def _conn_for_reads(
         self,
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         operation: str,
-    ) -> AsyncIterator[tuple[Connection, _ServerMode]]:
+    ) -> Iterator[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
-        _ = await self._get_topology()
-        server = await self._select_server(read_preference, session, operation)
+        _ = self._get_topology()
+        server = self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
 
     @_csot.apply
-    async def _run_operation(
+    def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
         unpack_res: Callable,
@@ -1115,17 +1119,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             to a specific server, used for getMore.
         """
         if operation.conn_mgr:
-            server = await self._select_server(
+            server = self._select_server(
                 operation.read_preference,
                 operation.session,
                 operation.name,
                 address=address,
             )
 
-            async with operation.conn_mgr.alock:
-                async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
+            with operation.conn_mgr.alock:
+                with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    return await server.run_operation(
+                    return server.run_operation(
                         operation.conn_mgr.conn,
                         operation,
                         operation.read_preference,
@@ -1134,14 +1138,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                         self,
                     )
 
-        async def _cmd(
+        def _cmd(
             _session: Optional[ClientSession],
             server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return await server.run_operation(
+            return server.run_operation(
                 conn,
                 operation,
                 read_preference,
@@ -1150,7 +1154,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 self,
             )
 
-        return await self._retryable_read(
+        return self._retryable_read(
             _cmd,
             operation.read_preference,
             operation.session,
@@ -1159,7 +1163,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation=operation.name,
         )
 
-    async def _retry_with_session(
+    def _retry_with_session(
         self,
         retryable: bool,
         func: _WriteCall[T],
@@ -1180,7 +1184,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable = bool(
             retryable and self.options.retry_writes and session and not session.in_transaction
         )
-        return await self._retry_internal(
+        return self._retry_internal(
             func=func,
             session=session,
             bulk=bulk,
@@ -1190,7 +1194,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
     @_csot.apply
-    async def _retry_internal(
+    def _retry_internal(
         self,
         func: _WriteCall[T] | _ReadCall[T],
         session: Optional[ClientSession],
@@ -1215,7 +1219,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: Output of the calling func()
         """
-        return await _ClientConnectionRetryable(
+        return _ClientConnectionRetryable(
             mongo_client=self,
             func=func,
             bulk=bulk,
@@ -1228,7 +1232,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation_id=operation_id,
         ).run()
 
-    async def _retryable_read(
+    def _retryable_read(
         self,
         func: _ReadCall[T],
         read_pref: _ServerMode,
@@ -1259,7 +1263,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable = bool(
             retryable and self.options.retry_reads and not (session and session.in_transaction)
         )
-        return await self._retry_internal(
+        return self._retry_internal(
             func,
             session,
             None,
@@ -1271,7 +1275,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation_id=operation_id,
         )
 
-    async def _retryable_write(
+    def _retryable_write(
         self,
         retryable: bool,
         func: _WriteCall[T],
@@ -1293,10 +1297,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
-        async with self._tmp_session(session) as s:
-            return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+        with self._tmp_session(session) as s:
+            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
-    async def _cleanup_cursor(
+    def _cleanup_cursor(
         self,
         locks_allowed: bool,
         cursor_id: int,
@@ -1327,19 +1331,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     assert conn_mgr.conn is not None
                     conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
                 else:
-                    await self._close_cursor_now(
+                    self._close_cursor_now(
                         cursor_id, address, session=session, conn_mgr=conn_mgr
                     )
             if conn_mgr:
-                await conn_mgr.close()
+                conn_mgr.close()
         else:
             # The cursor will be closed later in a different session.
             if cursor_id or conn_mgr:
                 self._close_cursor_soon(cursor_id, address, conn_mgr)
         if session and not explicit_session:
-            await session._end_session(lock=locks_allowed)
+            session._end_session(lock=locks_allowed)
 
-    async def _close_cursor_now(
+    def _close_cursor_now(
         self,
         cursor_id: int,
         address: Optional[_CursorAddress],
@@ -1355,18 +1359,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                async with conn_mgr.alock:  # TODO: ASYNC LOCK
+                with conn_mgr.alock:  # TODO: ASYNC LOCK
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None
-                    await self._kill_cursor_impl([cursor_id], address, session, conn_mgr.conn)
+                    self._kill_cursor_impl([cursor_id], address, session, conn_mgr.conn)
             else:
-                await self._kill_cursors([cursor_id], address, await self._get_topology(), session)
+                self._kill_cursors([cursor_id], address, self._get_topology(), session)
         except PyMongoError:
             # Make another attempt to kill the cursor later.
             self._close_cursor_soon(cursor_id, address)
 
-    async def _kill_cursors(
+    def _kill_cursors(
         self,
         cursor_ids: Sequence[int],
         address: Optional[_CursorAddress],
@@ -1377,16 +1381,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
-            server = await topology.select_server_by_address(tuple(address), _Op.KILL_CURSORS)  # type: ignore[arg-type]
+            server = topology.select_server_by_address(tuple(address), _Op.KILL_CURSORS)  # type: ignore[arg-type]
         else:
             # Application called close_cursor() with no address.
-            server = await topology.select_server(writable_server_selector, _Op.KILL_CURSORS)
+            server = topology.select_server(writable_server_selector, _Op.KILL_CURSORS)
 
-        async with self._checkout(server, session) as conn:
+        with self._checkout(server, session) as conn:
             assert address is not None
-            await self._kill_cursor_impl(cursor_ids, address, session, conn)
+            self._kill_cursor_impl(cursor_ids, address, session, conn)
 
-    async def _kill_cursor_impl(
+    def _kill_cursor_impl(
         self,
         cursor_ids: Sequence[int],
         address: _CursorAddress,
@@ -1396,9 +1400,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        await conn.command(db, spec, session=session, client=self)
+        conn.command(db, spec, session=session, client=self)
 
-    async def _process_kill_cursors(self) -> None:
+    def _process_kill_cursors(self) -> None:
         """Process any pending kill cursors requests."""
         address_to_cursor_ids = defaultdict(list)
         pinned_cursors = []
@@ -1417,7 +1421,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
-                await self._cleanup_cursor(True, cursor_id, address, conn_mgr, None, False)
+                self._cleanup_cursor(True, cursor_id, address, conn_mgr, None, False)
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -1428,10 +1432,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
-            topology = await self._get_topology()
+            topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
-                    await self._kill_cursors(cursor_ids, address, topology, session=None)
+                    self._kill_cursors(cursor_ids, address, topology, session=None)
                 except Exception as exc:
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
@@ -1439,29 +1443,29 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                         helpers._handle_exception()
 
     # This method is run periodically by a background thread.
-    async def _process_periodic_tasks(self) -> None:
+    def _process_periodic_tasks(self) -> None:
         """Process any pending kill cursors requests and
         maintain connection pool parameters.
         """
         try:
-            await self._process_kill_cursors()
-            await self._topology.update_pool()
+            self._process_kill_cursors()
+            self._topology.update_pool()
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return
             else:
                 helpers._handle_exception()
 
-    async def _return_server_session(
+    def _return_server_session(
         self, server_session: Union[_ServerSession, _EmptyServerSession], lock: bool
     ) -> None:
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
-        return await self._topology.return_server_session(server_session, lock)
+        return self._topology.return_server_session(server_session, lock)
 
-    @contextlib.asynccontextmanager
-    async def _tmp_session(
+    @contextlib.contextmanager
+    def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
     ) -> Generator[Optional[client_session.ClientSession], None, None]:
         """If provided session is None, lend a temporary session."""
@@ -1481,23 +1485,23 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     s._server_session.mark_dirty()
 
                 # Always call end_session on error.
-                await s.end_session()
+                s.end_session()
                 raise
             finally:
                 # Call end_session when we exit this scope.
                 if close:
-                    await s.end_session()
+                    s.end_session()
         else:
             yield None
 
-    async def _process_response(
+    def _process_response(
         self, reply: Mapping[str, Any], session: Optional[ClientSession]
     ) -> None:
-        await self._topology.receive_cluster_time(reply.get("$clusterTime"))
+        self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
 
-    async def server_info(
+    def server_info(
         self, session: Optional[client_session.ClientSession] = None
     ) -> dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
@@ -1510,23 +1514,23 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return cast(
             dict,
-            await self.admin.command(
+            self.admin.command(
                 "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
             ),
         )
 
-    async def _list_databases(
+    def _list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> AsyncCommandCursor[dict[str, Any]]:
+    ) -> CommandCursor[dict[str, Any]]:
         cmd = {"listDatabases": 1}
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = await admin._retryable_read_command(
+        res = admin._retryable_read_command(
             cmd, session=session, operation=_Op.LIST_DATABASES
         )
         # listDatabases doesn't return a cursor (yet). Fake one.
@@ -1535,14 +1539,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
 
-    async def list_databases(
+    def list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> AsyncCommandCursor[dict[str, Any]]:
+    ) -> CommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :param session: a
@@ -1560,9 +1564,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        return await self._list_databases(session, comment, **kwargs)
+        return self._list_databases(session, comment, **kwargs)
 
-    async def list_database_names(
+    def list_database_names(
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
@@ -1579,11 +1583,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        res = await self._list_databases(session, nameOnly=True, comment=comment)
-        return [doc["name"] async for doc in res]
+        res = self._list_databases(session, nameOnly=True, comment=comment)
+        return [doc["name"] for doc in res]
 
     @_csot.apply
-    async def drop_database(
+    def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
         session: Optional[client_session.ClientSession] = None,
@@ -1623,8 +1627,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of str or a Database")
 
-        async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            await self[name]._command(
+        with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
+            self[name]._command(
                 conn,
                 {"dropDatabase": 1, "comment": comment},
                 read_preference=ReadPreference.PRIMARY,
@@ -1691,7 +1695,7 @@ class _MongoClientErrorHandler:
         "handled",
     )
 
-    def __init__(self, client: AsyncMongoClient, server: Server, session: Optional[ClientSession]):
+    def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
         self.client = client
         self.server_address = server.description.address
         self.session = session
@@ -1712,13 +1716,7 @@ class _MongoClientErrorHandler:
         self.service_id = conn.service_id
         self.completed_handshake = completed_handshake
 
-    @synchronize(async_method_name="handle")
-    def _s_handle(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
-    ) -> None:
-        ...
-
-    async def handle(
+    def handle(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
     ) -> None:
         if self.handled or exc_val is None:
@@ -1734,7 +1732,7 @@ class _MongoClientErrorHandler:
                 if exc_val.has_error_label("TransientTransactionError") or exc_val.has_error_label(
                     "RetryableWriteError"
                 ):
-                    await self.session._unpin()
+                    self.session._unpin()
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
@@ -1742,18 +1740,18 @@ class _MongoClientErrorHandler:
             self.completed_handshake,
             self.service_id,
         )
-        await self.client._topology.handle_error(self.server_address, err_ctx)
+        self.client._topology.handle_error(self.server_address, err_ctx)
 
-    async def __aenter__(self) -> _MongoClientErrorHandler:
+    def __enter__(self) -> _MongoClientErrorHandler:
         return self
 
-    async def __aexit__(
+    def __exit__(
         self,
         exc_type: Optional[Type[Exception]],
         exc_val: Optional[Exception],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        return await self.handle(exc_type, exc_val)
+        return self.handle(exc_type, exc_val)
 
 
 class _ClientConnectionRetryable(Generic[T]):
@@ -1761,7 +1759,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: AsyncMongoClient,
+        mongo_client: MongoClient,
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[_Bulk],
         operation: str,
@@ -1792,7 +1790,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation = operation
         self._operation_id = operation_id
 
-    async def run(self) -> T:
+    def run(self) -> T:
         """Runs the supplied func() and attempts a retry
 
         :raises: self._last_error: Last exception raised
@@ -1810,7 +1808,7 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                return await self._read() if self._is_read else await self._write()
+                return self._read() if self._is_read else self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
@@ -1843,7 +1841,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:
                         assert self._session
-                        await self._session._unpin()
+                        self._session._unpin()
                     if not retryable_write_error_exc or self._is_not_eligible_for_retry():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
@@ -1891,12 +1889,12 @@ class _ClientConnectionRetryable(Generic[T]):
                 assert self._last_error is not None
                 raise self._last_error
 
-    async def _get_server(self) -> Server:
+    def _get_server(self) -> Server:
         """Retrieves a server object based on provided object context
 
         :return: Abstraction to connect to server
         """
-        return await self._client._select_server(
+        return self._client._select_server(
             self._server_selector,
             self._session,
             self._operation,
@@ -1905,7 +1903,7 @@ class _ClientConnectionRetryable(Generic[T]):
             operation_id=self._operation_id,
         )
 
-    async def _write(self) -> T:
+    def _write(self) -> T:
         """Wrapper method for write-type retryable client executions
 
         :return: Output for func()'s call
@@ -1913,8 +1911,8 @@ class _ClientConnectionRetryable(Generic[T]):
         try:
             max_wire_version = 0
             is_mongos = False
-            self._server = await self._get_server()
-            async with self._client._checkout(self._server, self._session) as conn:
+            self._server = self._get_server()
+            with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
@@ -1927,7 +1925,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
-                return await self._func(self._session, conn, self._retryable)  # type: ignore
+                return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
                 raise
@@ -1935,259 +1933,20 @@ class _ClientConnectionRetryable(Generic[T]):
             _add_retryable_write_error(exc, max_wire_version, is_mongos)
             raise
 
-    async def _read(self) -> T:
+    def _read(self) -> T:
         """Wrapper method for read-type retryable client executions
 
         :return: Output for func()'s call
         """
-        self._server = await self._get_server()
+        self._server = self._get_server()
         assert self._read_pref is not None, "Read Preference required on read calls"
-        async with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
+        with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
             read_pref,
         ):
             if self._retrying and not self._retryable:
                 self._check_last_error()
-            return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
-
-
-class MongoClient(common.BaseObject, Generic[_DocumentType]):
-    HOST = "localhost"
-    PORT = 27017
-
-    def __init__(
-        self,
-        host: Optional[Union[str, Sequence[str]]] = None,
-        port: Optional[int] = None,
-        document_class: Optional[Type[_DocumentType]] = None,
-        tz_aware: Optional[bool] = None,
-        connect: Optional[bool] = None,
-        type_registry: Optional[TypeRegistry] = None,
-        async_client: Optional[AsyncMongoClient] = None,
-        **kwargs: Any,
-    ) -> None:
-        if async_client is not None:
-            self._delegate = async_client
-        else:
-            if host is None:
-                host = self.HOST
-            if port is None:
-                port = self.PORT
-
-            self._delegate = AsyncMongoClient(
-                host, port, document_class, tz_aware, connect, type_registry, **kwargs
-            )
-
-    @classmethod
-    def wrap(cls, async_client):
-        return cls(async_client=async_client)
-
-    @synchronize()
-    def _get_topology(self) -> Topology:
-        ...
-
-    @synchronize()
-    def _process_periodic_tasks(self) -> None:
-        ...
-
-    @property
-    @synchronize()
-    def address(self) -> Optional[tuple[str, int]]:
-        ...
-
-    @property
-    @synchronize()
-    def primary(self) -> Optional[tuple[str, int]]:
-        ...
-
-    @property
-    @synchronize()
-    def secondaries(self) -> set[_Address]:
-        ...
-
-    @property
-    @synchronize()
-    def arbiters(self) -> set[_Address]:
-        ...
-
-    @property
-    @synchronize()
-    def is_primary(self) -> bool:
-        ...
-
-    @property
-    @synchronize()
-    def is_mongos(self) -> bool:
-        ...
-
-    @synchronize()
-    def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
-        ...
-
-    @synchronize()
-    def close(self) -> None:
-        ...
-
-    @synchronize(wrapper_class=CommandCursor)
-    def list_databases(
-        self,
-        session: Optional[client_session.ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> CommandCursor[dict[str, Any]]:
-        ...
-
-    @synchronize()
-    def list_database_names(
-        self,
-        session: Optional[client_session.ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> list[str]:
-        ...
-
-    @synchronize()
-    def drop_database(
-        self,
-        name_or_database: Union[str, database.Database[_DocumentTypeArg]],
-        session: Optional[client_session.ClientSession] = None,
-        comment: Optional[Any] = None,
-    ) -> None:
-        ...
-
-    @delegate_method(wrapper_class=database.Database)
-    def get_database(
-        self,
-        name: Optional[str] = None,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database[_DocumentType]:
-        ...
-
-    @delegate_method()
-    def watch(
-        self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[client_session.ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
-    ) -> ChangeStream[_DocumentType]:
-        ...
-
-    @delegate_property()
-    def codec_options(self) -> CodecOptions:
-        ...
-
-    @delegate_property()
-    def write_concern(self) -> WriteConcern:
-        ...
-
-    @delegate_property()
-    def read_preference(self) -> _ServerMode:
-        ...
-
-    @delegate_property()
-    def topology_description(self) -> TopologyDescription:
-        ...
-
-    @delegate_property()
-    def read_concern(self) -> ReadConcern:
-        ...
-
-    @delegate_property()
-    def nodes(self) -> FrozenSet[_Address]:
-        ...
-
-    @delegate_property()
-    def options(self) -> ClientOptions:
-        ...
-
-    @property
-    def _topology(self) -> Topology:
-        return self._delegate._topology
-
-    @delegate_method()
-    def start_session(
-        self,
-        causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
-        snapshot: Optional[bool] = False,
-    ) -> client_session.ClientSession:
-        ...
-
-    @delegate_method(wrapper_class=database.Database)
-    def get_default_database(
-        self,
-        default: Optional[str] = None,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database[_DocumentType]:
-        ...
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, self.__class__):
-            return self._topology == other._topology
-        return NotImplemented
-
-    def __ne__(self, other: Any) -> bool:
-        return not self == other
-
-    @delegate_method()
-    def __hash__(self) -> int:
-        ...
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._delegate._repr_helper()})"
-
-    def __getattr__(self, name: str) -> database.Database[_DocumentType]:
-        if name.startswith("_"):
-            raise AttributeError(
-                f"MongoClient has no attribute {name!r}. To access the {name}"
-                f" database, use client[{name!r}]."
-            )
-        return self.__getitem__(name)
-
-    @delegate_method(wrapper_class=database.Database)
-    def __getitem__(self, name: str) -> database.Database[_DocumentType]:
-        ...
-
-    @delegate_method()
-    def __next__(self) -> NoReturn:
-        ...
-
-    next = __next__
-
-    def __enter__(self) -> MongoClient[_DocumentType]:
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
-
-    # See PYTHON-3084.
-    __iter__ = None
-
-    @property
-    def _kill_cursors_executor(self):
-        return self._delegate._kill_cursors_executor
-
-    @property
-    def _topology_settings(self):
-        return self._delegate._topology_settings
-
-    @property
-    def _kill_cursors_queue(self):
-        return self._delegate._kill_cursors_queue
+            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 def _after_fork_child() -> None:

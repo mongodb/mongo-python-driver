@@ -27,15 +27,15 @@ from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _O
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
-from pymongo.pool import _is_faas
+from pymongo._async.pool import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
-    from pymongo.pool import Connection, Pool, _CancellationContext
-    from pymongo.settings import TopologySettings
-    from pymongo.topology import Topology
+    from pymongo._async.pool import Connection, Pool, _CancellationContext
+    from pymongo._async.settings import TopologySettings
+    from pymongo._async.topology import Topology
 
 
 def _sanitize(error: Exception) -> None:
@@ -80,7 +80,7 @@ class MonitorBase:
         self._topology = weakref.proxy(topology, _on_topology_gc)
         _register(self)
 
-    async def open(self) -> None:
+    def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.

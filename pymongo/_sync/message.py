@@ -77,11 +77,11 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.client_session import ClientSession
+    from pymongo._sync.client_session import ClientSession
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
-    from pymongo.mongo_client import MongoClient
+    from pymongo._sync.mongo_client import MongoClient
     from pymongo.monitoring import _EventListeners
-    from pymongo.pool import Connection
+    from pymongo._sync.pool import Connection
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _DocumentOut
@@ -362,7 +362,7 @@ class _Query:
         conn.validate_session(self.client, self.session)
         return use_find_cmd
 
-    async def as_command(
+    def as_command(
         self, conn: Connection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
@@ -391,7 +391,7 @@ class _Query:
         session = self.session
         conn.add_server_api(cmd)
         if session:
-            await session._apply_to(cmd, False, self.read_preference, conn)
+            session._apply_to(cmd, False, self.read_preference, conn)
             # Explain does not support readConcern.
             if not explain and not session.in_transaction:
                 session._update_read_concern(cmd, conn)
@@ -406,7 +406,7 @@ class _Query:
         self._as_command = cmd, self.db
         return self._as_command
 
-    async def get_message(
+    def get_message(
         self, read_preference: _ServerMode, conn: Connection, use_cmd: bool = False
     ) -> tuple[int, bytes, int]:
         """Get a query message, possibly setting the secondaryOk bit."""
@@ -422,7 +422,7 @@ class _Query:
         spec = self.spec
 
         if use_cmd:
-            spec = (await self.as_command(conn, apply_timeout=True))[0]
+            spec = (self.as_command(conn, apply_timeout=True))[0]
             request_id, msg, size, _ = _op_msg(
                 0,
                 spec,
@@ -526,7 +526,7 @@ class _GetMore:
         conn.validate_session(self.client, self.session)
         return use_cmd
 
-    async def as_command(
+    def as_command(
         self, conn: Connection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
@@ -543,7 +543,7 @@ class _GetMore:
             conn,
         )
         if self.session:
-            await self.session._apply_to(cmd, False, self.read_preference, conn)
+            self.session._apply_to(cmd, False, self.read_preference, conn)
         conn.add_server_api(cmd)
         conn.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption
@@ -556,7 +556,7 @@ class _GetMore:
         self._as_command = cmd, self.db
         return self._as_command
 
-    async def get_message(
+    def get_message(
         self, dummy0: Any, conn: Connection, use_cmd: bool = False
     ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
@@ -564,7 +564,7 @@ class _GetMore:
         ctx = conn.compression_context
 
         if use_cmd:
-            spec = (await self.as_command(conn, apply_timeout=True))[0]
+            spec = (self.as_command(conn, apply_timeout=True))[0]
             if self.conn_mgr and self.exhaust:
                 flags = _OpMsg.EXHAUST_ALLOWED
             else:
@@ -957,15 +957,15 @@ class _BulkWriteContext:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
 
-    async def execute(
+    def execute(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
-        result = await self.write_command(cmd, request_id, msg, to_send, client)
-        await client._process_response(result, self.session)
+        result = self.write_command(cmd, request_id, msg, to_send, client)
+        client._process_response(result, self.session)
         return result, to_send
 
-    async def execute_unack(
+    def execute_unack(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> list[Mapping[str, Any]]:
         request_id, msg, to_send = self.__batch_command(cmd, docs)
@@ -974,7 +974,7 @@ class _BulkWriteContext:
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        await self.unack_write(cmd, request_id, msg, 0, to_send, client)
+        self.unack_write(cmd, request_id, msg, 0, to_send, client)
         return to_send
 
     @property
@@ -1000,7 +1000,7 @@ class _BulkWriteContext:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
 
-    async def unack_write(
+    def unack_write(
         self,
         cmd: MutableMapping[str, Any],
         request_id: int,
@@ -1029,7 +1029,7 @@ class _BulkWriteContext:
         if self.publish:
             cmd = self._start(cmd, request_id, docs)
         try:
-            result = await self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
+            result = self.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value]
             duration = datetime.datetime.now() - self.start_time
             if result is not None:
                 reply = _convert_write_result(self.name, cmd, result)
@@ -1090,7 +1090,7 @@ class _BulkWriteContext:
         return result
 
     @_handle_reauth
-    async def write_command(
+    def write_command(
         self,
         cmd: MutableMapping[str, Any],
         request_id: int,
@@ -1119,7 +1119,7 @@ class _BulkWriteContext:
         if self.publish:
             self._start(cmd, request_id, docs)
         try:
-            reply = await self.conn.write_command(request_id, msg, self.codec)
+            reply = self.conn.write_command(request_id, msg, self.codec)
             duration = datetime.datetime.now() - self.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -1242,20 +1242,20 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         outgoing = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
         return outgoing, to_send
 
-    async def execute(
+    def execute(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
-        result: Mapping[str, Any] = await self.conn.command(
+        result: Mapping[str, Any] = self.conn.command(
             self.db_name, batched_cmd, codec_options=self.codec, session=self.session, client=client
         )
         return result, to_send
 
-    async def execute_unack(
+    def execute_unack(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]], client: MongoClient
     ) -> list[Mapping[str, Any]]:
         batched_cmd, to_send = self.__batch_command(cmd, docs)
-        await self.conn.command(
+        self.conn.command(
             self.db_name,
             batched_cmd,
             write_concern=WriteConcern(w=0),

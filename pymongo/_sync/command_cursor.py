@@ -31,26 +31,26 @@ from typing import (
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.asynchronous import delegate_method, delegate_property, synchronize
-from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
+from pymongo._sync.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
+from pymongo._sync.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import AsyncCollection, Collection
-    from pymongo.pool import Connection
+    from pymongo._sync.client_session import ClientSession
+    from pymongo._sync.collection import Collection, Collection
+    from pymongo._sync.pool import Connection
 
 
-class AsyncCommandCursor(Generic[_DocumentType]):
+class CommandCursor(Generic[_DocumentType]):
     """A cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
 
     def __init__(
         self,
-        collection: AsyncCollection[_DocumentType],
+        collection: Collection[_DocumentType],
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,
@@ -61,7 +61,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     ) -> None:
         """Create a new command cursor."""
         self._sock_mgr: Any = None
-        self._collection: AsyncCollection[_DocumentType] = collection
+        self._collection: Collection[_DocumentType] = collection
         self._id = cursor_info["id"]
         self._data = deque(cursor_info["firstBatch"])
         self._postbatchresumetoken: Optional[Mapping[str, Any]] = cursor_info.get(
@@ -107,7 +107,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         except Exception:
             pass
 
-    def batch_size(self, batch_size: int) -> AsyncCommandCursor[_DocumentType]:
+    def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -137,13 +137,13 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         return len(self._data) > 0
 
     @property
-    def _post_batch_resume_token(self) -> AsyncCommandCursor[Mapping[str, Any]]:
+    def _post_batch_resume_token(self) -> CommandCursor[Mapping[str, Any]]:
         """Retrieve the postBatchResumeToken from the response to a
         changeStream aggregate or getMore.
         """
         return self._postbatchresumetoken
 
-    async def _maybe_pin_connection(self, conn: Connection) -> None:
+    def _maybe_pin_connection(self, conn: Connection) -> None:
         client = self._collection.database.client
         if not client._should_pin_cursor(self._session):
             return
@@ -153,7 +153,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self._id == 0:
-                await conn_mgr.close()
+                conn_mgr.close()
             else:
                 self._sock_mgr = conn_mgr
 
@@ -207,7 +207,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             return self._session
         return None
 
-    async def _die(self, synchronous: bool = False) -> None:
+    def _die(self, synchronous: bool = False) -> None:
         """Closes this cursor."""
         already_killed = self._killed
         self._killed = True
@@ -219,7 +219,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        await self._collection.database.client._cleanup_cursor(
+        self._collection.database.client._cleanup_cursor(
             synchronous,
             cursor_id,
             address,
@@ -231,20 +231,20 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             self._session = None
         self._sock_mgr = None
 
-    async def _end_session(self, synchronous: bool) -> None:
+    def _end_session(self, synchronous: bool) -> None:
         if self._session and not self._explicit_session:
-            await self._session._end_session(lock=synchronous)
+            self._session._end_session(lock=synchronous)
             self._session = None
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        await self._die(True)
+        self._die(True)
 
-    async def _send_message(self, operation: _GetMore) -> None:
+    def _send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
         client = self._collection.database.client
         try:
-            response = await client._run_operation(
+            response = client._run_operation(
                 operation, self._unpack_response, address=self._address
             )
         except OperationFailure as exc:
@@ -252,19 +252,19 @@ class AsyncCommandCursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
             if exc.timeout:
-                await self._die(False)
+                self._die(False)
             else:
                 # Return the session and pinned connection, if necessary.
-                await self.close()
+                self.close()
             raise
         except ConnectionFailure:
             # Don't send killCursors because the cursor is already closed.
             self._killed = True
             # Return the session and pinned connection, if necessary.
-            await self.close()
+            self.close()
             raise
         except Exception:
-            await self.close()
+            self.close()
             raise
 
         if isinstance(response, PinnedResponse):
@@ -281,10 +281,10 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             self._id = response.data.cursor_id
 
         if self._id == 0:
-            await self.close()
+            self.close()
         self._data = deque(documents)
 
-    async def _refresh(self) -> int:
+    def _refresh(self) -> int:
         """Refreshes the cursor with more data from the server.
 
         Returns the length of self._data after refresh. Will exit early if
@@ -297,7 +297,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         if self._id:  # Get More
             dbname, collname = self._ns.split(".", 1)
             read_pref = self._collection._read_preference_for(self.session)
-            await self._send_message(
+            self._send_message(
                 self._getmore_class(
                     dbname,
                     collname,
@@ -314,42 +314,42 @@ class AsyncCommandCursor(Generic[_DocumentType]):
                 )
             )
         else:  # Cursor id is zero nothing else to return
-            await self._die(True)
+            self._die(True)
 
         return len(self._data)
 
     def __iter__(self) -> Iterator[_DocumentType]:
         raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
 
-    def __aiter__(self) -> Iterator[_DocumentType]:
+    def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
-    async def next(self) -> _DocumentType:
+    def next(self) -> _DocumentType:
         """Advance the cursor."""
         # Block until a document is returnable.
         while self.alive:
-            doc = await self._try_next(True)
+            doc = self._try_next(True)
             if doc is not None:
                 return doc
 
-        raise StopAsyncIteration
+        raise StopIteration
 
     def __next__(self):
         raise NotImplementedError("Use pymongo.CommandCursor for synchronous iteration.")
 
-    async def __anext__(self):
-        return await self.next()
+    def __next__(self):
+        return self.next()
 
-    async def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
+    def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:
         """Advance the cursor blocking for at most one getMore command."""
         if not len(self._data) and not self._killed and get_more_allowed:
-            await self._refresh()
+            self._refresh()
         if len(self._data):
             return self._data.popleft()
         else:
             return None
 
-    async def try_next(self) -> Optional[_DocumentType]:
+    def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next document without waiting
@@ -365,120 +365,22 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 4.5
         """
-        return await self._try_next(get_more_allowed=True)
-
-    async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
-        return self
-
-    def __enter__(self) -> AsyncCommandCursor[_DocumentType]:
-        raise NotImplementedError
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.close()
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError
-
-
-class CommandCursor(Generic[_DocumentType]):
-    def __init__(
-        self,
-        collection: Collection[_DocumentType],
-        cursor_info: Mapping[str, Any],
-        address: Optional[_Address],
-        batch_size: int = 0,
-        max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
-        comment: Any = None,
-        delegate_cursor: Optional[AsyncCommandCursor] = None,
-    ) -> None:
-        if delegate_cursor is not None:
-            self._delegate = delegate_cursor
-        else:
-            self._delegate = AsyncCommandCursor(
-                collection,
-                cursor_info,
-                address,
-                batch_size,
-                max_await_time_ms,
-                session,
-                explicit_session,
-                comment,
-            )
-
-    @classmethod
-    def wrap(cls, delegate_cursor: AsyncCommandCursor):
-        return cls(None, None, None, delegate_cursor=delegate_cursor)  # type:ignore[arg]
-
-    @delegate_property()
-    def alive(self) -> bool:
-        ...
-
-    @delegate_property()
-    def cursor_id(self) -> int:
-        ...
-
-    @delegate_property()
-    def address(self) -> Optional[_Address]:
-        ...
-
-    @delegate_property()
-    def session(self) -> Optional[ClientSession]:
-        ...
-
-    def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
-        self._delegate = self._delegate.batch_size(batch_size)
-        return self
-
-    @synchronize()
-    def next(self) -> _DocumentType:
-        ...
-
-    @synchronize()
-    async def try_next(self) -> Optional[_DocumentType]:
-        ...
-
-    @synchronize()
-    def _maybe_pin_connection(self, conn: Connection) -> None:
-        ...
-
-    @delegate_method()
-    def _die(self, synchronous: bool = False) -> None:
-        ...
-
-    def __aiter__(self) -> Iterator[_DocumentType]:
-        raise NotImplementedError("Use pymongo.AsyncCommandCursor for asynchronous iteration.")
-
-    def __iter__(self) -> Iterator[_DocumentType]:
-        return self
-
-    async def __anext__(self):
-        raise NotImplementedError("Use pymongo.AsyncCommandCursor for asynchronous iteration.")
-
-    @synchronize(async_method_name="__anext__")
-    def __next__(self):
-        ...
-
-    async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
-        raise NotImplementedError("Use pymongo.AsyncCommandCursor for asynchronous iteration.")
+        return self._try_next(get_more_allowed=True)
 
     def __enter__(self) -> CommandCursor[_DocumentType]:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        raise NotImplementedError("Use pymongo.AsyncCommandCursor for asynchronous iteration.")
+    def __enter__(self) -> CommandCursor[_DocumentType]:
+        raise NotImplementedError
 
-    @synchronize(async_method_name="__aexit__")
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        ...
+        self.close()
 
-    @property
-    def _data(self):  # TODO: Used for tests, remove
-        return self._delegate._data
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        raise NotImplementedError
 
 
-class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
+class RawBatchCommandCursor(CommandCursor[_DocumentType]):
     _getmore_class = _RawBatchGetMore
 
     def __init__(
@@ -529,41 +431,3 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
 
     def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
-
-
-class RawBatchCommandCursor(CommandCursor[_DocumentType]):
-    _getmore_class = _RawBatchGetMore
-
-    def __init__(
-        self,
-        collection: Collection[_DocumentType],
-        cursor_info: Mapping[str, Any],
-        address: Optional[_Address],
-        batch_size: int = 0,
-        max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
-        comment: Any = None,
-    ) -> None:
-        """Create a new cursor / iterator over raw batches of BSON data.
-
-        Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.Collection.aggregate_raw_batches`
-        instead.
-
-        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
-        """
-        assert not cursor_info.get("firstBatch")
-        super().__init__(
-            collection,
-            cursor_info,
-            address,
-            batch_size,
-            max_await_time_ms,
-            session,
-            explicit_session,
-            comment,
-        )
-
-    _unpack_response = AsyncRawBatchCommandCursor._unpack_response
-    __getitem__ = AsyncRawBatchCommandCursor.__getitem__

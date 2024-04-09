@@ -22,13 +22,13 @@ from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
-from pymongo.aggregation import (
+from pymongo._async.aggregation import (
     _AggregationCommand,
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
 from pymongo.collation import validate_collation_or_none
-from pymongo.command_cursor import CommandCursor
+from pymongo._async.command_cursor import AsyncCommandCursor
 from pymongo.errors import (
     ConnectionFailure,
     CursorNotFound,
@@ -65,11 +65,11 @@ _RESUMABLE_GETMORE_ERRORS = frozenset(
 
 
 if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
-    from pymongo.database import Database
-    from pymongo.mongo_client import MongoClient
-    from pymongo.pool import Connection
+    from pymongo._async.client_session import ClientSession
+    from pymongo._async.collection import Collection
+    from pymongo._async.database import Database
+    from pymongo._async.mongo_client import MongoClient
+    from pymongo._async.pool import Connection
 
 
 def _resumable(exc: PyMongoError) -> bool:
@@ -231,13 +231,13 @@ class ChangeStream(Generic[_DocumentType]):
 
     def _run_aggregation_cmd(
         self, session: Optional[ClientSession], explicit_session: bool
-    ) -> CommandCursor:
+    ) -> AsyncCommandCursor:
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
         cmd = self._aggregation_command_class(
             self._target,
-            CommandCursor,
+            AsyncCommandCursor,
             self._aggregation_pipeline(),
             self._command_options(),
             explicit_session,
@@ -251,7 +251,7 @@ class ChangeStream(Generic[_DocumentType]):
             operation=_Op.AGGREGATE,
         )
 
-    def _create_cursor(self) -> CommandCursor:
+    def _create_cursor(self) -> AsyncCommandCursor:
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 

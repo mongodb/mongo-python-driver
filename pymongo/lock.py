@@ -67,6 +67,13 @@ class _ALock:
         await self.acquire()
         return self
 
+    def __enter__(self) -> _ALock:
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self.release()
 
@@ -121,5 +128,42 @@ class _ACondition:
         await self.acquire()
         return self
 
+    def __enter__(self) -> _ACondition:
+        self._condition.acquire()
+        return self
+
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.release()
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.release()
+
+
+class _Condition:
+    def __init__(self, condition: threading.Condition) -> None:
+        self._condition = condition
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        return self._condition.acquire(blocking, timeout)
+
+    def wait(self, timeout: Optional[float] = None) -> bool:
+        return self._condition.wait(timeout)
+
+    def wait_for(self, predicate: Callable, timeout: Optional[float] = None) -> bool:
+        return self._condition.wait_for(predicate, timeout)
+
+    def notify(self, n: int = 1) -> None:
+        self._condition.notify(n)
+
+    def notify_all(self) -> None:
+        self._condition.notify_all()
+
+    def release(self) -> None:
+        self._condition.release()
+
+    def __enter__(self) -> _Condition:
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self.release()

@@ -49,7 +49,7 @@ from pymongo.saslprep import saslprep
 
 if TYPE_CHECKING:
     from pymongo.hello import Hello
-    from pymongo.pool import Connection
+    from pymongo._async.pool import Connection
 
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False

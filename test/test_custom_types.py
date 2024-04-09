@@ -54,7 +54,7 @@ from bson.raw_bson import RawBSONDocument
 from gridfs import GridIn, GridOut
 from pymongo.collection import ReturnDocument
 from pymongo.errors import DuplicateKeyError
-from pymongo.message import _CursorAddress
+from pymongo._sync.message import _CursorAddress
 
 
 class DecimalEncoder(TypeEncoder):

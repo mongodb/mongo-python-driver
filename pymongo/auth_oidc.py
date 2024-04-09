@@ -30,7 +30,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
-    from pymongo.pool import Connection
+    from pymongo._async.pool import Connection
 
 
 @dataclass
