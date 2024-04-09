@@ -21,7 +21,6 @@ import os
 import queue
 import random
 import time
-import warnings
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
@@ -182,25 +181,8 @@ class Topology:
           forking.
 
         """
-        pid = os.getpid()
         if self._pid is None:
-            self._pid = pid
-        elif pid != self._pid:
-            self._pid = pid
-            warnings.warn(
-                "MongoClient opened before fork. May not be entirely fork-safe, "
-                "proceed with caution. See PyMongo's documentation for details: "
-                "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe",
-                stacklevel=2,
-            )
-            with self._lock:
-                # Close servers and clear the pools.
-                for server in self._servers.values():
-                    server.close()
-                # Reset the session pool to avoid duplicate sessions in
-                # the child process.
-                self._session_pool.reset()
+            self._pid = os.getpid()
 
         with self._lock:
             self._ensure_opened()
@@ -308,7 +290,6 @@ class Topology:
                 )
                 logged_waiting = True
 
-            self._ensure_opened()
             self._request_check_all()
 
             # Release the lock and wait for the topology description to
@@ -714,9 +695,9 @@ class Topology:
                     )
                 )
 
-        # Ensure that the monitors are open.
-        for server in self._servers.values():
-            server.open()
+            # Ensure that the monitors are open.
+            for server in self._servers.values():
+                server.open()
 
     def _is_stale_error(self, address: _Address, err_ctx: _ErrorContext) -> bool:
         server = self._servers.get(address)

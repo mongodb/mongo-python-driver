@@ -22,8 +22,6 @@ import time
 import weakref
 from typing import Any, Callable, Optional
 
-from pymongo.lock import _create_lock
-
 
 class PeriodicExecutor:
     def __init__(
@@ -55,8 +53,6 @@ class PeriodicExecutor:
         self._thread: Optional[threading.Thread] = None
         self._name = name
         self._skip_sleep = False
-        self._thread_will_exit = False
-        self._lock = _create_lock()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
@@ -66,20 +62,6 @@ class PeriodicExecutor:
 
         Not safe to call from multiple threads at once.
         """
-        with self._lock:
-            if self._thread_will_exit:
-                # If the background thread has read self._stopped as True
-                # there is a chance that it has not yet exited. The call to
-                # join should not block indefinitely because there is no
-                # other work done outside the while loop in self._run.
-                try:
-                    assert self._thread is not None
-                    self._thread.join()
-                except ReferenceError:
-                    # Thread terminated.
-                    pass
-            self._thread_will_exit = False
-            self._stopped = False
         started: Any = False
         try:
             started = self._thread and self._thread.is_alive()
@@ -128,24 +110,14 @@ class PeriodicExecutor:
     def skip_sleep(self) -> None:
         self._skip_sleep = True
 
-    def __should_stop(self) -> bool:
-        with self._lock:
-            if self._stopped:
-                self._thread_will_exit = True
-                return True
-            return False
-
     def _run(self) -> None:
-        while not self.__should_stop():
+        while not self._stopped:
             try:
                 if not self._target():
                     self._stopped = True
                     break
             except BaseException:
-                with self._lock:
-                    self._stopped = True
-                    self._thread_will_exit = True
-
+                self._stopped = True
                 raise
 
             if self._skip_sleep:
