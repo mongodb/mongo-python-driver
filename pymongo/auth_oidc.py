@@ -189,34 +189,43 @@ class _OIDCAuthenticator:
 
     def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If
-        # authentication fails, it's possible the cached access token is expired. In
-        # that case, invalidate the access token, fetch a new access token, and try
-        # to authenticate again.
+        # authentication fails with error code 18, invalidate the access token,
+        # fetch a new access token, and try to authenticate again. If authentication
+        # fails for any other reason, raise the error to the user.
         if self.access_token:
             try:
                 return self._sasl_start_jwt(conn)
-            except Exception:
-                return self._authenticate_machine(conn)
+            except OperationFailure as e:
+                if e.code == 18:
+                    return self._authenticate_machine(conn)
+                raise
         return self._sasl_start_jwt(conn)
 
     def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         # If we have a cached access token, try a JwtStepRequest.
+        # authentication fails with error code 18, invalidate the access token,
+        # and try to authenticate again.  If authentication fails for any other
+        # reason, raise the error to the user.
         if self.access_token:
             try:
                 return self._sasl_start_jwt(conn)
-            except Exception:
-                return self._authenticate_human(conn)
+            except OperationFailure as e:
+                if e.code == 18:
+                    return self._authenticate_human(conn)
+                raise
 
         # If we have a cached refresh token, try a JwtStepRequest with that.
+        # If authentication fails with error code 18, invalidate the access and
+        # refresh tokens, and try to authenticate again. If authentication fails for
+        # any other reason, raise the error to the user.
         if self.refresh_token:
             try:
                 return self._sasl_start_jwt(conn)
             except OperationFailure as e:
                 if e.code == 18:
                     self.refresh_token = None
-                return self._authenticate_human(conn)
-            except Exception:
-                return self._authenticate_human(conn)
+                    return self._authenticate_human(conn)
+                raise
 
         # Start a new Two-Step SASL conversation.
         # Run a PrincipalStepRequest to get the IdpInfo.
