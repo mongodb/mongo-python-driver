@@ -829,11 +829,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
-        kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
+        kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> db.command("filemd5", object_id, root=file_root)
+        >>> db.command("count", collection_name, query=query)
         OR
-        >>> db.command({"filemd5": object_id, "root": file_root})
+        >>> db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).
@@ -892,28 +892,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        return await self._command_helper(
-            command,
-            value,
-            check,
-            allowable_errors,
-            read_preference,
-            session=session,
-            **kwargs,
-        )
-
-    async def _command_helper(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        value: Any = 1,
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> Union[dict[str, Any], _CodecDocumentType]:
         opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:
             kwargs["comment"] = comment
@@ -925,9 +903,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        async with await self._client._conn_for_reads(
-            read_preference, session, operation=command_name
-        ) as (
+        async with await self._client._conn_for_reads(read_preference, session, operation=command_name) as (
             connection,
             read_preference,
         ):
