@@ -1,7 +1,7 @@
+from os import listdir
 from os.path import isfile, join
 
 from unasync import unasync_files, Rule
-import os
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -20,6 +20,6 @@ replacements = {
     "_ACondition": "_Condition"
 }
 
-async_files = ["./pymongo/_async/" + f for f in os.listdir("./pymongo/_async") if isfile(join("./pymongo/_async", f))]
+async_files = ["./pymongo/_async/" + f for f in listdir("./pymongo/_async") if isfile(join("./pymongo/_async", f))]
 
 unasync_files(async_files, [Rule(fromdir="/pymongo/_async/", todir="/pymongo/_sync/", additional_replacements=replacements)])
