@@ -54,7 +54,6 @@ from pymongo._async.command_cursor import (
 from pymongo._async.cursor import (
     AsyncCursor,
     AsyncRawBatchCursor,
-    BaseRawBatchCursor,
 )
 from pymongo._async.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.change_stream import CollectionChangeStream
@@ -2067,7 +2066,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def find_raw_batches(
         self, *args: Any, **kwargs: Any
-    ) -> BaseRawBatchCursor[_DocumentType]:
+    ) -> AsyncRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
