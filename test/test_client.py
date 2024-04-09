@@ -87,10 +87,14 @@ from pymongo import event_loggers, monitoring
 from pymongo._sync import message
 from pymongo._sync.client_options import ClientOptions
 from pymongo._sync.command_cursor import CommandCursor
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
-from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo._sync.cursor import Cursor, CursorType
 from pymongo._sync.database import Database
+from pymongo._sync.mongo_client import MongoClient, _detect_external_db
+from pymongo._sync.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
+from pymongo._sync.settings import TOPOLOGY_TYPE
+from pymongo._sync.topology import _ErrorContext
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -104,16 +108,12 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo._sync.mongo_client import MongoClient, _detect_external_db
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo._sync.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo._sync.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
-from pymongo._sync.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 
@@ -1669,7 +1669,7 @@ class TestClient(IntegrationTest):
                 while self.running:
                     exc = AutoReconnect("mock pool error")
                     ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    client._topology._handle_error(pool.address, ctx)
+                    client._topology.handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)

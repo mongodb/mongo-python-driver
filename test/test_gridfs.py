@@ -32,13 +32,13 @@ import gridfs
 from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from gridfs.grid_file import DEFAULT_CHUNK_SIZE, GridOutCursor
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.errors import (
     ConfigurationError,
     NotPrimaryError,
     ServerSelectionTimeoutError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 
 

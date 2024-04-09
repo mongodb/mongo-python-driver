@@ -15,7 +15,9 @@
 """Cursor class to iterate over Mongo query results."""
 from __future__ import annotations
 
+import asyncio
 import copy
+import inspect
 import warnings
 from collections import deque
 from typing import (
@@ -38,13 +40,6 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
-from pymongo.collation import validate_collation_or_none
-from pymongo.common import (
-    validate_is_document_type,
-    validate_is_mapping,
-)
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _ALock, _create_lock
 from pymongo._sync.message import (
     _CursorAddress,
     _GetMore,
@@ -54,6 +49,13 @@ from pymongo._sync.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import (
+    validate_is_document_type,
+    validate_is_mapping,
+)
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import _create_lock, _Lock
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
@@ -145,7 +147,7 @@ class _ConnectionManager:
         self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
         self._lock = _create_lock()
-        self.alock = _ALock(self._lock)
+        self.alock = _Lock(self._lock)
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come
@@ -337,15 +339,18 @@ class BaseCursor(Generic[_DocumentType]):
     def _die(self):
         raise NotImplementedError
 
-    # def __del__(self) -> None:
-    #     try:
-    #         loop = asyncio.get_event_loop()
-    #         if loop.is_running():
-    #             loop.create_task(self._die())
-    #         else:
-    #             loop.run_until_complete(self._die())
-    #     except Exception:
-    #         pass
+    def __del__(self) -> None:
+        if inspect.iscoroutinefunction(self._die):
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._die())
+                else:
+                    loop.run_until_complete(self._die())
+            except Exception:
+                pass
+        else:
+            self._die()
 
     def clone(self) -> BaseCursor[_DocumentType]:
         """Get a clone of this cursor.

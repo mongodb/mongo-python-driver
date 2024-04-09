@@ -38,9 +38,9 @@ from test.utils import (
 from test.version import Version
 
 from bson.son import SON
-from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo._sync.message import _maybe_add_read_preference
-from pymongo.mongo_client import MongoClient
+from pymongo._sync.mongo_client import MongoClient
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_preferences import (
     MovingAverage,
     Nearest,

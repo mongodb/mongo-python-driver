@@ -39,6 +39,7 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import auth, helpers
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (
@@ -49,7 +50,6 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern

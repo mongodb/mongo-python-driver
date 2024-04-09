@@ -39,10 +39,10 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterator,
     Callable,
     FrozenSet,
     Generic,
+    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -69,10 +69,12 @@ from pymongo._sync import (
     database,
     message,
 )
-from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo._sync.client_options import ClientOptions
 from pymongo._sync.client_session import _EmptyServerSession
 from pymongo._sync.command_cursor import CommandCursor
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology, _ErrorContext
+from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -86,15 +88,13 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _Lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo._sync.settings import TopologySettings
-from pymongo._sync.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
     ClusterTime,
@@ -122,9 +122,9 @@ if TYPE_CHECKING:
     from pymongo._sync.cursor import _ConnectionManager
     from pymongo._sync.message import _CursorAddress, _GetMore, _Query
     from pymongo._sync.pool import Connection
+    from pymongo._sync.server import Server
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
-    from pymongo._sync.server import Server
     from pymongo.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
@@ -269,8 +269,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._options = options = ClientOptions(username, password, dbase, opts)
 
         self._default_database_name = dbase
-        self._lock = _create_lock()
-        self._alock = _ALock(self._lock)
+        self._lock = _Lock(_create_lock())
         self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -811,7 +810,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _fetch_topology(self) -> Topology:
         self._topology.open()
-        with self._alock:
+        with self._lock:
             self._kill_cursors_executor.open()
         return self._topology
 
@@ -983,9 +982,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology_task
 
     @contextlib.contextmanager
-    def _checkout(
-        self, server: Server, session: Optional[ClientSession]
-    ) -> Iterator[Connection]:
+    def _checkout(self, server: Server, session: Optional[ClientSession]) -> Iterator[Connection]:
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1331,9 +1328,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     assert conn_mgr.conn is not None
                     conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
                 else:
-                    self._close_cursor_now(
-                        cursor_id, address, session=session, conn_mgr=conn_mgr
-                    )
+                    self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
             if conn_mgr:
                 conn_mgr.close()
         else:
@@ -1494,16 +1489,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         else:
             yield None
 
-    def _process_response(
-        self, reply: Mapping[str, Any], session: Optional[ClientSession]
-    ) -> None:
+    def _process_response(self, reply: Mapping[str, Any], session: Optional[ClientSession]) -> None:
         self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
 
-    def server_info(
-        self, session: Optional[client_session.ClientSession] = None
-    ) -> dict[str, Any]:
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :param session: a
@@ -1530,9 +1521,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = admin._retryable_read_command(
-            cmd, session=session, operation=_Op.LIST_DATABASES
-        )
+        res = admin._retryable_read_command(cmd, session=session, operation=_Op.LIST_DATABASES)
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,

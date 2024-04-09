@@ -48,6 +48,8 @@ from pymongo._sync.bulk import BulkWriteError
 from pymongo._sync.collection import Collection, ReturnDocument
 from pymongo._sync.command_cursor import CommandCursor
 from pymongo._sync.cursor import CursorType
+from pymongo._sync.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     ConfigurationError,
     DocumentTooLarge,
@@ -59,8 +61,6 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
-from pymongo._sync.message import _COMMAND_OVERHEAD, _gen_find_command
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference

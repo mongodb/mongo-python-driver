@@ -29,8 +29,8 @@ if TYPE_CHECKING:
     from pymongo._async.command_cursor import AsyncCommandCursor, CommandCursor
     from pymongo._async.database import AsyncDatabase, Database
     from pymongo._async.pool import Connection
-    from pymongo.read_preferences import _ServerMode
     from pymongo._async.server import Server
+    from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _DocumentType, _Pipeline
 
 

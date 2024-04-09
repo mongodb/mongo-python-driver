@@ -27,8 +27,8 @@ from pymongo._async.aggregation import (
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
-from pymongo.collation import validate_collation_or_none
 from pymongo._async.command_cursor import AsyncCommandCursor
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (
     ConnectionFailure,
     CursorNotFound,

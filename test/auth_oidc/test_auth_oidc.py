@@ -33,11 +33,11 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
+from pymongo._sync.cursor import CursorType
 from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
 )
-from pymongo._sync.cursor import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne

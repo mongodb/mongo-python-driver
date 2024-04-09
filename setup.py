@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import sys
 import warnings
-import unasync
 
 # Hack to silence atexit traceback in some Python versions
 try:
@@ -137,4 +136,7 @@ by this python implementation.\n
     )
     ext_modules = []
 
-setup(cmdclass={"build_ext": custom_build_ext, "build_py": unasync.cmdclass_build_py(rules=[unasync.Rule("pymongo/", "pymongo_sync")])}, ext_modules=ext_modules)  # type:ignore
+setup(
+    cmdclass={"build_ext": custom_build_ext},
+    ext_modules=ext_modules,
+)  # type:ignore

@@ -30,16 +30,15 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.asynchronous import delegate_method, delegate_property, synchronize
 from pymongo._sync.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo._sync.message import _CursorAddress, _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
-    from pymongo._sync.collection import Collection, Collection
+    from pymongo._sync.collection import Collection
     from pymongo._sync.pool import Connection
 
 

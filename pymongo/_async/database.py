@@ -36,9 +36,9 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo._async.aggregation import _DatabaseAggregationCommand
-from pymongo.change_stream import DatabaseChangeStream
 from pymongo._async.collection import AsyncCollection
 from pymongo._async.command_cursor import AsyncCommandCursor
+from pymongo.change_stream import DatabaseChangeStream
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
     from pymongo._async.mongo_client import AsyncMongoClient
     from pymongo._async.pool import Connection
-    from pymongo.read_concern import ReadConcern
     from pymongo._async.server import Server
+    from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
 
 

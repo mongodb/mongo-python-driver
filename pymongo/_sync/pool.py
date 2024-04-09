@@ -14,11 +14,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import collections
 import contextlib
 import copy
-import errno
 import logging
 import os
 import platform
@@ -33,7 +31,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Iterator,
-    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -45,8 +42,8 @@ from typing import (
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot, auth, helpers
-from pymongo.asynchronous import synchronize
 from pymongo._sync.client_session import _validate_session_write_concern
+from pymongo._sync.network import command, receive_message, sendall
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -75,7 +72,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.lock import _Condition, _ALock, _create_lock
+from pymongo.lock import _Condition, _create_lock, _Lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -87,7 +84,6 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo._sync.network import command, receive_message, sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -97,8 +93,10 @@ from pymongo.ssl_support import HAS_SNI, SSLError
 if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.auth import MongoCredential, _AuthContext
     from pymongo._sync.client_session import ClientSession
+    from pymongo._sync.message import _OpMsg, _OpReply
+    from pymongo._sync.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
         SnappyContext,
@@ -106,8 +104,6 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.driver_info import DriverInfo
-    from pymongo._sync.message import _OpMsg, _OpReply
-    from pymongo._sync.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
@@ -1300,9 +1296,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(
-    address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -1427,8 +1421,7 @@ class Pool:
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
-        self.lock = _create_lock()
-        self._alock = _ALock(self.lock)
+        self.lock = _Lock(_create_lock())
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1453,8 +1446,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = threading.Condition(self.lock)
-        self._asize_cond = _Condition(self.size_cond)
+        self.size_cond = _Condition(threading.Condition(self.lock))
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1492,7 +1484,7 @@ class Pool:
 
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
-        with self._alock:
+        with self.lock:
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 if self.enabled_for_cmap:
@@ -1519,7 +1511,7 @@ class Pool:
         interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
-        with self._asize_cond:
+        with self.size_cond:
             if self.closed:
                 return
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
@@ -1547,7 +1539,7 @@ class Pool:
                 self.state = PoolState.CLOSED
             # Clear the wait queue
             self._amax_connecting_cond.notify_all()
-            self._asize_cond.notify_all()
+            self.size_cond.notify_all()
 
             if interrupt_connections:
                 for context in self.active_contexts:
@@ -1596,16 +1588,14 @@ class Pool:
         Pool.
         """
         self.is_writable = is_writable
-        with self._alock:
+        with self.lock:
             for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)
 
     def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
-        self._reset(
-            close=False, service_id=service_id, interrupt_connections=interrupt_connections
-        )
+        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1623,12 +1613,12 @@ class Pool:
         pool.
         """
         # Take the lock to avoid the race condition described in PYTHON-2699.
-        with self._alock:
+        with self.lock:
             if self.state != PoolState.READY:
                 return
 
         if self.opts.max_idle_time_seconds is not None:
-            with self._alock:
+            with self.lock:
                 while (
                     self.conns
                     and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
@@ -1637,7 +1627,7 @@ class Pool:
                     conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
-            with self._asize_cond:
+            with self.size_cond:
                 # There are enough sockets in the pool.
                 if len(self.conns) + self.active_sockets >= self.opts.min_pool_size:
                     return
@@ -1654,7 +1644,7 @@ class Pool:
                     self._pending += 1
                     incremented = True
                 conn = self.connect()
-                with self._alock:
+                with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.gen.get_overall() != reference_generation:
@@ -1669,9 +1659,9 @@ class Pool:
                         self._pending -= 1
                         self._amax_connecting_cond.notify()
 
-                with self._asize_cond:
+                with self.size_cond:
                     self.requests -= 1
-                    self._asize_cond.notify()
+                    self.size_cond.notify()
 
     def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
@@ -1681,7 +1671,7 @@ class Pool:
         Note that the pool does not keep a reference to the socket -- you
         must call checkin() when you're done with it.
         """
-        with self._alock:
+        with self.lock:
             conn_id = self.next_connection_id
             self.next_connection_id += 1
 
@@ -1725,7 +1715,7 @@ class Pool:
             raise
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
-        with self._alock:
+        with self.lock:
             self.active_contexts.add(conn.cancel_context)
         try:
             if self.handshake:
@@ -1805,9 +1795,7 @@ class Pool:
             self._s_checkin(conn)
 
     @contextlib.contextmanager
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Iterator[Connection]:
+    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected
@@ -1854,7 +1842,7 @@ class Pool:
                     durationMS=duration,
                 )
         try:
-            with self._alock:
+            with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
         except BaseException:
@@ -1872,11 +1860,11 @@ class Pool:
                 self.checkin(conn)
             raise
         if conn.pinned_txn:
-            with self._alock:
+            with self.lock:
                 self.__pinned_sockets.add(conn)
                 self.ntxns += 1
         elif conn.pinned_cursor:
-            with self._alock:
+            with self.lock:
                 self.__pinned_sockets.add(conn)
                 self.ncursors += 1
         elif conn.active:
@@ -1939,7 +1927,7 @@ class Pool:
                 "Attempted to check out a connection from closed connection pool"
             )
 
-        with self._alock:
+        with self.lock:
             self.operation_count += 1
 
         # Get a free socket or create one.
@@ -1950,14 +1938,14 @@ class Pool:
         else:
             deadline = None
 
-        with self._asize_cond:
+        with self.size_cond:
             self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
-                if not _cond_wait(self._asize_cond, deadline):
+                if not _cond_wait(self.size_cond, deadline):
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
-                        self._asize_cond.notify()
+                        self.size_cond.notify()
                     self._raise_wait_queue_timeout(checkout_started_time)
                 self._raise_if_not_ready(checkout_started_time, emit_event=True)
             self.requests += 1
@@ -1967,7 +1955,7 @@ class Pool:
         incremented = False
         emitted_event = False
         try:
-            with self._alock:
+            with self.lock:
                 self.active_sockets += 1
                 incremented = True
             while conn is None:
@@ -2004,11 +1992,11 @@ class Pool:
             if conn:
                 # We checked out a socket but authentication failed.
                 conn.close_conn(ConnectionClosedReason.ERROR)
-            with self._asize_cond:
+            with self.size_cond:
                 self.requests -= 1
                 if incremented:
                     self.active_sockets -= 1
-                self._asize_cond.notify()
+                self.size_cond.notify()
 
             if self.enabled_for_cmap and not emitted_event:
                 assert self.opts._event_listeners is not None
@@ -2044,7 +2032,7 @@ class Pool:
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
-        with self._alock:
+        with self.lock:
             self.active_contexts.discard(conn.cancel_context)
         if self.enabled_for_cmap:
             assert listeners is not None
@@ -2082,7 +2070,7 @@ class Pool:
                             error=ConnectionClosedReason.ERROR,
                         )
             else:
-                with self._alock:
+                with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
                     if self.stale_generation(conn.generation, conn.service_id):
@@ -2094,7 +2082,7 @@ class Pool:
                         # Notify any threads waiting to create a connection.
                         self._amax_connecting_cond.notify()
 
-        with self._asize_cond:
+        with self.size_cond:
             if txn:
                 self.ntxns -= 1
             elif cursor:
@@ -2102,7 +2090,7 @@ class Pool:
             self.requests -= 1
             self.active_sockets -= 1
             self.operation_count -= 1
-            self._asize_cond.notify()
+            self.size_cond.notify()
 
     def _perished(self, conn: Connection) -> bool:
         """Return True and close the connection if it is "perished".

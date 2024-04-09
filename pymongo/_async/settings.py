@@ -21,10 +21,10 @@ from typing import Any, Collection, Optional, Type, Union
 
 from bson.objectid import ObjectId
 from pymongo import common
-from pymongo._async import pool, monitor
+from pymongo._async import monitor, pool
+from pymongo._async.pool import Pool, PoolOptions
 from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.errors import ConfigurationError
-from pymongo._async.pool import Pool, PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 

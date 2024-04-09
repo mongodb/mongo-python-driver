@@ -54,9 +54,11 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
+from pymongo._async.cursor import Cursor
+from pymongo._async.network import BLOCKING_IO_ERRORS
+from pymongo._async.pool import PoolOptions, _configured_socket, _raise_connection_failure
 from pymongo.collection import Collection
 from pymongo.common import CONNECT_TIMEOUT
-from pymongo._async.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.database import Database
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
@@ -69,9 +71,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
-from pymongo._async.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
-from pymongo._async.pool import PoolOptions, _configured_socket, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context

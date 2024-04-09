@@ -25,12 +25,12 @@ from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
-    from pymongo._sync.collection import Collection, Collection
-    from pymongo._sync.command_cursor import CommandCursor, CommandCursor
-    from pymongo._sync.database import Database, Database
+    from pymongo._sync.collection import Collection
+    from pymongo._sync.command_cursor import CommandCursor
+    from pymongo._sync.database import Database
     from pymongo._sync.pool import Connection
-    from pymongo.read_preferences import _ServerMode
     from pymongo._sync.server import Server
+    from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _DocumentType, _Pipeline
 
 

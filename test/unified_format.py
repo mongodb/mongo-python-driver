@@ -68,10 +68,10 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from pymongo._sync.command_cursor import CommandCursor
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
-from pymongo._sync.command_cursor import CommandCursor
 from pymongo.database import Database
 from pymongo.encryption import ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT

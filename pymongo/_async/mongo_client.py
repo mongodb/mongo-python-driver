@@ -69,10 +69,12 @@ from pymongo._async import (
     database,
     message,
 )
-from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo._async.client_options import ClientOptions
 from pymongo._async.client_session import _EmptyServerSession
 from pymongo._async.command_cursor import AsyncCommandCursor
+from pymongo._async.settings import TopologySettings
+from pymongo._async.topology import Topology, _ErrorContext
+from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -93,8 +95,6 @@ from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo._async.settings import TopologySettings
-from pymongo._async.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
     ClusterTime,
@@ -122,9 +122,9 @@ if TYPE_CHECKING:
     from pymongo._async.cursor import _ConnectionManager
     from pymongo._async.message import _CursorAddress, _GetMore, _Query
     from pymongo._async.pool import Connection
+    from pymongo._async.server import Server
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
-    from pymongo._async.server import Server
     from pymongo.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
@@ -269,8 +269,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._options = options = ClientOptions(username, password, dbase, opts)
 
         self._default_database_name = dbase
-        self._lock = _create_lock()
-        self._alock = _ALock(self._lock)
+        self._lock = _ALock(_create_lock())
         self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -811,7 +810,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _fetch_topology(self) -> Topology:
         await self._topology.open()
-        async with self._alock:
+        async with self._lock:
             self._kill_cursors_executor.open()
         return self._topology
 

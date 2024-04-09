@@ -36,9 +36,9 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo._sync.aggregation import _DatabaseAggregationCommand
-from pymongo.change_stream import DatabaseChangeStream
 from pymongo._sync.collection import Collection
 from pymongo._sync.command_cursor import CommandCursor
+from pymongo.change_stream import DatabaseChangeStream
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
     from pymongo._sync.mongo_client import MongoClient
     from pymongo._sync.pool import Connection
-    from pymongo.read_concern import ReadConcern
     from pymongo._sync.server import Server
+    from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
 
 
@@ -925,9 +925,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self._client._conn_for_reads(
-            read_preference, session, operation=command_name
-        ) as (
+        with self._client._conn_for_reads(read_preference, session, operation=command_name) as (
             connection,
             read_preference,
         ):
@@ -1015,9 +1013,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self._client._conn_for_reads(
-                read_preference, tmp_session, command_name
-            ) as (
+            with self._client._conn_for_reads(read_preference, tmp_session, command_name) as (
                 conn,
                 read_preference,
             ):
@@ -1139,9 +1135,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
-            return self._list_collections(
-                conn, session, read_preference=read_preference, **kwargs
-            )
+            return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self._client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
@@ -1196,8 +1190,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 kwargs["nameOnly"] = True
 
         return [
-            result["name"]
-            for result in self._list_collections_helper(session=session, **kwargs)
+            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
         ]
 
     def list_collection_names(

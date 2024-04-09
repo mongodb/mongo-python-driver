@@ -36,25 +36,26 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, ssl_support
 from pymongo._async import message
+from pymongo._async.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
-    ProtocolError, _OperationCancelled,
+    ProtocolError,
+    _OperationCancelled,
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo._async.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
 
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo._async.client_session import ClientSession
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo._async.mongo_client import MongoClient
-    from pymongo.monitoring import _EventListeners
     from pymongo._async.pool import Connection
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
@@ -358,7 +359,9 @@ async def async_receive_message(
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
             await _async_receive_data_on_socket(conn, 9, deadline)
         )
-        data = decompress(await _async_receive_data_on_socket(conn, length - 25, deadline), compressor_id)
+        data = decompress(
+            await _async_receive_data_on_socket(conn, length - 25, deadline), compressor_id
+        )
     else:
         data = await _async_receive_data_on_socket(conn, length - 16, deadline)
 
@@ -411,6 +414,7 @@ async def async_wait_for_read(conn: Connection, deadline: Optional[float]) -> No
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
+
 async def _async_receive_data_on_socket(
     conn: Connection, length: int, deadline: Optional[float]
 ) -> memoryview:
@@ -441,28 +445,28 @@ async def _async_receive_data_on_socket(
 
 
 def command(
-        conn: Connection,
-        dbname: str,
-        spec: MutableMapping[str, Any],
-        is_mongos: bool,
-        read_preference: Optional[_ServerMode],
-        codec_options: CodecOptions[_DocumentType],
-        session: Optional[ClientSession],
-        client: Optional[MongoClient],
-        check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        address: Optional[_Address] = None,
-        listeners: Optional[_EventListeners] = None,
-        max_bson_size: Optional[int] = None,
-        read_concern: Optional[ReadConcern] = None,
-        parse_write_concern_error: bool = False,
-        collation: Optional[_CollationIn] = None,
-        compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-        use_op_msg: bool = False,
-        unacknowledged: bool = False,
-        user_fields: Optional[Mapping[str, Any]] = None,
-        exhaust_allowed: bool = False,
-        write_concern: Optional[WriteConcern] = None,
+    conn: Connection,
+    dbname: str,
+    spec: MutableMapping[str, Any],
+    is_mongos: bool,
+    read_preference: Optional[_ServerMode],
+    codec_options: CodecOptions[_DocumentType],
+    session: Optional[ClientSession],
+    client: Optional[MongoClient],
+    check: bool = True,
+    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    address: Optional[_Address] = None,
+    listeners: Optional[_EventListeners] = None,
+    max_bson_size: Optional[int] = None,
+    read_concern: Optional[ReadConcern] = None,
+    parse_write_concern_error: bool = False,
+    collation: Optional[_CollationIn] = None,
+    compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    use_op_msg: bool = False,
+    unacknowledged: bool = False,
+    user_fields: Optional[Mapping[str, Any]] = None,
+    exhaust_allowed: bool = False,
+    write_concern: Optional[WriteConcern] = None,
 ) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
@@ -681,7 +685,7 @@ def sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
 
 
 def receive_message(
-        conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():

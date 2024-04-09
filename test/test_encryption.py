@@ -69,6 +69,7 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference, encryption
 from pymongo._sync.cursor import CursorType
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
@@ -83,7 +84,6 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 

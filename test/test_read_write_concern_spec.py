@@ -33,6 +33,7 @@ from test.utils import (
 from test.utils_spec_runner import SpecRunner
 
 from pymongo import DESCENDING
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -40,7 +41,6 @@ from pymongo.errors import (
     WriteError,
     WTimeoutError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern

@@ -35,13 +35,13 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.son import SON
 from gridfs.errors import CorruptGridFile, NoFile
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     ConfigurationError,
     NotPrimaryError,
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 
 

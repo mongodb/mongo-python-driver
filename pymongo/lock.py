@@ -139,6 +139,24 @@ class _ACondition:
         self.release()
 
 
+class _Lock:
+    def __init__(self, lock: threading.Lock) -> None:
+        self._lock = lock
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        return self._lock.acquire(blocking=blocking, timeout=timeout)
+
+    def release(self) -> None:
+        self._lock.release()
+
+    def __enter__(self) -> _Lock:
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+
 class _Condition:
     def __init__(self, condition: threading.Condition) -> None:
         self._condition = condition

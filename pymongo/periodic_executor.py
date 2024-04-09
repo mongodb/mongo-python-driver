@@ -21,7 +21,7 @@ import sys
 import threading
 import time
 import weakref
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Optional
 
 from pymongo.lock import _ALock, _create_lock
 
@@ -167,7 +167,6 @@ class PeriodicExecutor:
                         break  # Early wake.
 
             self._event = False
-
 
     def _should_stop(self) -> bool:
         with self._alock:

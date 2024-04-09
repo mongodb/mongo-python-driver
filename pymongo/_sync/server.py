@@ -20,17 +20,17 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterator,
     Callable,
+    Iterator,
     Optional,
     Union,
 )
 
 from bson import _decode_all_selective
+from pymongo._sync.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo._sync.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -40,8 +40,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo._sync.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo._sync.monitor import Monitor
-    from pymongo.monitoring import _EventListeners
     from pymongo._sync.pool import Connection, Pool
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
     from pymongo.typings import _DocumentOut
@@ -317,9 +317,7 @@ class Server:
 
         return response
 
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Iterator[Connection]:
+    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
         return self.pool.checkout(handler)
 
     @property

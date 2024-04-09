@@ -27,10 +27,10 @@ from typing import (
 )
 
 from bson import _decode_all_selective
+from pymongo._async.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response, _handle_reauth
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo._async.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -40,8 +40,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo._async.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo._async.monitor import Monitor
-    from pymongo.monitoring import _EventListeners
     from pymongo._async.pool import Connection, Pool
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
     from pymongo.typings import _DocumentOut

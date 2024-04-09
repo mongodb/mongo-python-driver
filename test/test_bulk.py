@@ -19,7 +19,7 @@ import sys
 import uuid
 from typing import Any, Optional
 
-from pymongo.mongo_client import MongoClient
+from pymongo._sync.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 

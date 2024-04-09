@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo import monitoring
-from pymongo.mongo_client import MongoClient
+from pymongo._sync.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 SERVER_API = None

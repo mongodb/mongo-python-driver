@@ -78,10 +78,10 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo._async.client_session import ClientSession
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo._async.mongo_client import AsyncMongoClient
-    from pymongo.monitoring import _EventListeners
     from pymongo._async.pool import Connection
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _DocumentOut

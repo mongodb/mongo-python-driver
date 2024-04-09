@@ -29,8 +29,8 @@ from pymongo._csot import remaining
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
-    from pymongo.auth import MongoCredential
     from pymongo._async.pool import Connection
+    from pymongo.auth import MongoCredential
 
 
 @dataclass

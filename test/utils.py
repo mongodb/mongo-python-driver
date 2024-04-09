@@ -35,9 +35,10 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import monitoring, operations, read_preferences
-from pymongo._sync.mongo_client import MongoClient
 from pymongo._sync.collection import ReturnDocument
 from pymongo._sync.cursor import CursorType
+from pymongo._sync.mongo_client import MongoClient
+from pymongo._sync.pool import _CancellationContext, _PoolGeneration
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
@@ -56,7 +57,6 @@ from pymongo.monitoring import (
     PoolReadyEvent,
 )
 from pymongo.operations import _Op
-from pymongo._sync.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector

@@ -47,18 +47,19 @@ from pymongo._async.aggregation import (
     _CollectionRawAggregationCommand,
 )
 from pymongo._async.bulk import _Bulk
-from pymongo.change_stream import CollectionChangeStream
-from pymongo.collation import validate_collation_or_none
 from pymongo._async.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
 )
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo._async.cursor import (
     AsyncCursor,
     AsyncRawBatchCursor,
     BaseRawBatchCursor,
 )
+from pymongo._async.message import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo.change_stream import CollectionChangeStream
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
@@ -66,7 +67,6 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers import _check_write_command_response
-from pymongo._async.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -124,11 +124,11 @@ if TYPE_CHECKING:
     import bson
     from pymongo._async.aggregation import _AggregationCommand
     from pymongo._async.client_session import ClientSession
-    from pymongo.collation import Collation
     from pymongo._async.database import AsyncDatabase
     from pymongo._async.pool import Connection
-    from pymongo.read_concern import ReadConcern
     from pymongo._async.server import Server
+    from pymongo.collation import Collation
+    from pymongo.read_concern import ReadConcern
 
 
 class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
