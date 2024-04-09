@@ -55,7 +55,7 @@ from pymongo.common import (
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock, _Lock
+from pymongo.lock import _Lock, _create_lock
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
@@ -869,7 +869,7 @@ class BaseCursor(Generic[_DocumentType]):
         # always use a hard limit for explains
         if c._limit:
             c._limit = -abs(c._limit)
-        return anext(c)
+        return next(c)
 
     def _set_hint(self, index: Optional[_Hint]) -> None:
         if index is None:

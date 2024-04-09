@@ -19,6 +19,7 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
+    Iterator,
     Callable,
     Generic,
     Iterable,
@@ -51,9 +52,9 @@ from pymongo._sync.command_cursor import (
     RawBatchCommandCursor,
 )
 from pymongo._sync.cursor import (
-    BaseRawBatchCursor,
     Cursor,
     RawBatchCursor,
+    BaseRawBatchCursor,
 )
 from pymongo._sync.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.change_stream import CollectionChangeStream
@@ -640,7 +641,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session,
                 qev2_required=True,
             )
-            self._create_helper(_ecoc_coll_name(encrypted_fields, self._name), opts, None, session)
+            self._create_helper(
+                _ecoc_coll_name(encrypted_fields, self._name), opts, None, session
+            )
             self._create_helper(
                 self._name, options, collation, session, encrypted_fields=encrypted_fields
             )
@@ -2062,7 +2065,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         is_mongos = self._database.client.is_mongos
         return Cursor(self, is_mongos=is_mongos, *args, **kwargs)
 
-    def find_raw_batches(self, *args: Any, **kwargs: Any) -> BaseRawBatchCursor[_DocumentType]:
+    def find_raw_batches(
+        self, *args: Any, **kwargs: Any
+    ) -> BaseRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -2269,7 +2274,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
-            result = self._aggregate_one_result(conn, read_preference, cmd, collation, session)
+            result = self._aggregate_one_result(
+                conn, read_preference, cmd, collation, session
+            )
             if not result:
                 return 0
             return result["n"]
@@ -2852,7 +2859,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
-        with self._conn_for_writes(session, operation=_Op.CREATE_SEARCH_INDEXES) as conn:
+        with self._conn_for_writes(
+            session, operation=_Op.CREATE_SEARCH_INDEXES
+        ) as conn:
             resp = self._command(
                 conn,
                 cmd,
@@ -2958,7 +2967,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        cursor = dbo.list_collections(session=session, filter={"name": self._name}, comment=comment)
+        cursor = dbo.list_collections(
+            session=session, filter={"name": self._name}, comment=comment
+        )
 
         result = None
         for doc in cursor:

@@ -22,8 +22,8 @@ import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
 from pymongo import common, periodic_executor
-from pymongo._csot import MovingMinimum
 from pymongo._sync.pool import _is_faas
+from pymongo._csot import MovingMinimum
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock

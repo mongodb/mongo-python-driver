@@ -39,7 +39,7 @@ from pymongo.typings import _Address, _DocumentOut, _DocumentType
 if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
     from pymongo._async.pool import Connection
-    from pymongo._sync.collection import AsyncCollection, Collection
+    from pymongo._async.collection import AsyncCollection
 
 
 class AsyncCommandCursor(Generic[_DocumentType]):
@@ -384,7 +384,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
 
     def __init__(
         self,
-        collection: Collection[_DocumentType],
+        collection: AsyncCollection[_DocumentType],
         cursor_info: Mapping[str, Any],
         address: Optional[_Address],
         batch_size: int = 0,

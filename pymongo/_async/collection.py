@@ -2619,7 +2619,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -2648,7 +2648,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions = CodecOptions(SON)
         coll = cast(
             self[MutableMapping[str, Any]],
@@ -2662,7 +2662,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
-        ) -> CommandCursor[MutableMapping[str, Any]]:
+        ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
             cmd = {"listIndexes": self._name, "cursor": {}}
             if comment is not None:
                 cmd["comment"] = comment
@@ -2741,7 +2741,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[Mapping[str, Any]]:
+    ) -> AsyncCommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
 
         :param name: If given, the name of the index to search
@@ -2997,7 +2997,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> AsyncCommandCursor[_DocumentType]:
         if comment is not None:
             kwargs["comment"] = comment
         cmd = aggregation_command(
@@ -3025,7 +3025,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> AsyncCommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 

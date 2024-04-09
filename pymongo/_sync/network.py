@@ -359,7 +359,9 @@ def receive_message(
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
             _async_receive_data_on_socket(conn, 9, deadline)
         )
-        data = decompress(_async_receive_data_on_socket(conn, length - 25, deadline), compressor_id)
+        data = decompress(
+            _async_receive_data_on_socket(conn, length - 25, deadline), compressor_id
+        )
     else:
         data = _async_receive_data_on_socket(conn, length - 16, deadline)
 

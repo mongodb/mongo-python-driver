@@ -20,8 +20,8 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Iterator,
+    Callable,
     Optional,
     Union,
 )
@@ -317,7 +317,9 @@ class Server:
 
         return response
 
-    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
+    def checkout(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> Iterator[Connection]:
         return self.pool.checkout(handler)
 
     @property
