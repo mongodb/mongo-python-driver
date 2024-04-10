@@ -35,10 +35,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.auth_oidc import (
-    OIDCCallback,
-    OIDCCallbackResult,
-)
+from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
 from pymongo.cursor import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -107,15 +104,24 @@ class TestAuthOIDCHuman(OIDCTestBase):
             raise ValueError("Missing OIDC_DOMAIN")
         super().setUpClass()
 
+    def setUp(self):
+        self.refresh_present = 0
+        super().setUp()
+
     def create_request_cb(self, username="test_user1", sleep=0):
-        def request_token(context):
+        def request_token(context: OIDCCallbackContext):
             # Validate the info.
             self.assertIsInstance(context.idp_info.issuer, str)
-            self.assertIsInstance(context.idp_info.clientId, str)
+            if context.idp_info.clientId is not None:
+                self.assertIsInstance(context.idp_info.clientId, str)
 
             # Validate the timeout.
             timeout_seconds = context.timeout_seconds
             self.assertEqual(timeout_seconds, 60 * 5)
+
+            if context.refresh_token:
+                self.refresh_present += 1
+
             token = self.get_token(username)
             resp = OIDCCallbackResult(access_token=token, refresh_token=token)
 
@@ -131,7 +137,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     def create_client(self, *args, **kwargs):
         username = kwargs.get("username", "test_user1")
-        if kwargs.get("username"):
+        if kwargs.get("username") in ["test_user1", "test_user2"]:
             kwargs["username"] = f"{username}@{DOMAIN}"
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
@@ -219,6 +225,26 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Close the client.
         client.close()
 
+    def test_1_7_allowed_hosts_in_connection_string_ignored(self):
+        # Create an OIDC configured client with the connection string: `mongodb+srv://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D` and a Human Callback.
+        # Assert that the creation of the client raises a configuration error.
+        uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
+        with self.assertRaises(ConfigurationError), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _ = MongoClient(
+                uri, authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb())
+            )
+
+    def test_1_8_machine_idp_human_callback(self):
+        if not os.environ.get("OIDC_IS_LOCAL"):
+            raise unittest.SkipTest("Test Requires Local OIDC server")
+        # Create a client with MONGODB_URI_SINGLE, a username of test_machine, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        client = self.create_client(username="test_machine")
+        # Perform a find operation that succeeds.
+        client.test.test.find_one()
+        # Close the client.
+        client.close()
+
     def test_2_1_valid_callback_inputs(self):
         # Create a MongoClient with a human callback that validates its inputs and returns a valid access token.
         client = self.create_client()
@@ -228,7 +254,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_2_2_OIDC_HUMAN_CALLBACK_returns_missing_data(self):
+    def test_2_2_callback_returns_missing_data(self):
         # Create a MongoClient with a human callback that returns data not conforming to the OIDCCredential with missing fields.
         class CustomCB(OIDCCallback):
             def fetch(self, ctx):
@@ -240,6 +266,29 @@ class TestAuthOIDCHuman(OIDCTestBase):
             client.test.test.find_one()
         # Close the client.
         client.close()
+
+    def test_2_3_refresh_token_is_passed_to_the_callback(self):
+        # Create a MongoClient with a human callback that checks for the presence of a refresh token.
+        client = self.create_client()
+
+        # Perform a find operation that succeeds.
+        client.test.test.find_one()
+
+        # Set a fail point for ``find`` commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a ``find`` operation that succeeds.
+            client.test.test.find_one()
+
+        # Assert that the callback has been called twice.
+        self.assertEqual(self.request_called, 2)
+
+        # Assert that the refresh token was used once.
+        self.assertEqual(self.refresh_present, 1)
 
     def test_3_1_uses_speculative_authentication_if_there_is_a_cached_token(self):
         # Create a client with a human callback that returns a valid token.
@@ -259,8 +308,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Set a fail point for ``saslStart`` commands.
         with self.fail_point(
             {
-                "mode": "alwaysOn",
-                "data": {"failCommands": ["saslStart"], "errorCode": 20},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
             }
         ):
             # Perform a ``find`` operation that succeeds
@@ -276,8 +325,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Set a fail point for ``saslStart`` commands.
         with self.fail_point(
             {
-                "mode": "alwaysOn",
-                "data": {"failCommands": ["saslStart"], "errorCode": 20},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
             }
         ):
             # Perform a ``find`` operation that fails.
@@ -378,8 +427,16 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client.close()
 
     def test_4_3_reauthenticate_succeeds_after_refresh_fails(self):
-        # Create a client with a human callback that returns a valid token.
-        client = self.create_client()
+        # Create a default OIDC client with a human callback that returns an invalid refresh token
+        cb = self.create_request_cb()
+
+        class CustomRequest(OIDCCallback):
+            def fetch(self, *args, **kwargs):
+                result = cb.fetch(*args, **kwargs)
+                result.refresh_token = "bad"
+                return result
+
+        client = self.create_client(request_cb=CustomRequest())
 
         # Perform a find operation that succeeds.
         client.test.test.find_one()
@@ -390,38 +447,56 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Force a reauthenication using a fail point.
         with self.fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
             # Perform a find operation that succeeds.
             client.test.test.find_one()
 
-        # Assert that the human callback has been called 3 times.
-        self.assertEqual(self.request_called, 3)
+        # Assert that the human callback has been called 2 times.
+        self.assertEqual(self.request_called, 2)
 
         # Close the client.
         client.close()
 
     def test_4_4_reauthenticate_fails(self):
-        # Create a client with a human callback that returns a valid token.
-        client = self.create_client()
+        # Create a default OIDC client with a human callback that returns invalid refresh tokens and
+        # Returns invalid access tokens after the first access.
+        cb = self.create_request_cb()
+
+        class CustomRequest(OIDCCallback):
+            fetch_called = 0
+
+            def fetch(self, *args, **kwargs):
+                self.fetch_called += 1
+                result = cb.fetch(*args, **kwargs)
+                result.refresh_token = "bad"
+                if self.fetch_called > 1:
+                    result.access_token = "bad"
+                return result
+
+        client = self.create_client(request_cb=CustomRequest())
+
         # Perform a find operation that succeeds (to force a speculative auth).
         client.test.test.find_one()
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
+
         # Force a reauthentication using a failCommand.
         with self.fail_point(
             {
-                "mode": {"times": 3},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
             # Perform a find operation that fails.
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
-        # Assert that the human callback has been called two times.
-        self.assertEqual(self.request_called, 2)
+
+        # Assert that the human callback has been called three times.
+        self.assertEqual(self.request_called, 3)
+
         # Close the client.
         client.close()
 
@@ -815,6 +890,33 @@ class TestAuthOIDCMachine(OIDCTestBase):
             client.test.test.find_one()
         # Verify that the callback was called 1 time.
         self.assertEqual(callback.count, 1)
+        # Close the client.
+        client.close()
+
+    def test_3_3_unexpected_error_code_does_not_clear_cache(self):
+        # Create a ``MongoClient`` with a human callback that returns a valid token
+        client = self.create_client()
+
+        # Set a fail point for ``saslStart`` commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["saslStart"], "errorCode": 20},
+            }
+        ):
+            # Perform a ``find`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Assert that the callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
+        # Perform a ``find`` operation that succeeds.
+        client.test.test.find_one()
+
+        # Assert that the callback has been called once.
+        self.assertEqual(self.request_called, 1)
+
         # Close the client.
         client.close()
 
