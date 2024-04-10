@@ -28,6 +28,7 @@ from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
 from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.helpers import _AUTHENTICATION_FAILURE_CODE
 
 if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
@@ -196,7 +197,7 @@ class _OIDCAuthenticator:
             try:
                 return self._sasl_start_jwt(conn)
             except OperationFailure as e:
-                if e.code == 18:
+                if self._is_auth_error(e):
                     return self._authenticate_machine(conn)
                 raise
         return self._sasl_start_jwt(conn)
@@ -210,7 +211,7 @@ class _OIDCAuthenticator:
             try:
                 return self._sasl_start_jwt(conn)
             except OperationFailure as e:
-                if e.code == 18:
+                if self._is_auth_error(e):
                     return self._authenticate_human(conn)
                 raise
 
@@ -222,7 +223,7 @@ class _OIDCAuthenticator:
             try:
                 return self._sasl_start_jwt(conn)
             except OperationFailure as e:
-                if e.code == 18:
+                if self._is_auth_error(e):
                     self.refresh_token = None
                     return self._authenticate_human(conn)
                 raise
@@ -294,9 +295,14 @@ class _OIDCAuthenticator:
         try:
             return conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure as e:
-            if e.code == 18:
+            if self._is_auth_error(e):
                 self._invalidate(conn)
             raise
+
+    def _is_auth_error(self, err: Exception) -> bool:
+        if not isinstance(err, OperationFailure):
+            return False
+        return err.code == _AUTHENTICATION_FAILURE_CODE
 
     def _invalidate(self, conn: Connection) -> None:
         # Ignore the invalidation if a token gen id is given and is less than our

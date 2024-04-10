@@ -35,10 +35,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.auth_oidc import (
-    OIDCCallback,
-    OIDCCallbackResult,
-)
+from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
 from pymongo.cursor import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -53,7 +50,7 @@ TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR", "")
 TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
 
 # Generate unified tests.
-# globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
+globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
 
 
 class OIDCTestBase(unittest.TestCase):
@@ -112,10 +109,11 @@ class TestAuthOIDCHuman(OIDCTestBase):
         super().setUp()
 
     def create_request_cb(self, username="test_user1", sleep=0):
-        def request_token(context):
+        def request_token(context: OIDCCallbackContext):
             # Validate the info.
             self.assertIsInstance(context.idp_info.issuer, str)
-            # self.assertIsInstance(context.idp_info.clientId, str)
+            if context.idp_info.clientId is not None:
+                self.assertIsInstance(context.idp_info.clientId, str)
 
             # Validate the timeout.
             timeout_seconds = context.timeout_seconds
