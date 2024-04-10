@@ -1,4 +1,4 @@
-# Copyright 2015 MongoDB, Inc.
+# Copyright 2015-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the MongoDB Driver Performance Benchmarking Spec."""
+"""Tests for the MongoDB Driver Performance Benchmarking Spec.
+
+See https://github.com/mongodb/specifications/blob/master/source/benchmarking/benchmarking.md
+
+
+To set up the benchmarks locally::
+
+    python -m pip install simplejson
+    git clone --depth 1 https://github.com/mongodb/specifications.git
+    pushd specifications/source/benchmarking/data
+    tar xf extended_bson.tgz
+    tar xf parallel.tgz
+    tar xf single_and_multi_document.tgz
+    popd
+    export TEST_PATH="specifications/source/benchmarking/data"
+    export OUTPUT_FILE="results.json"
+
+Then to run all benchmarks quickly::
+
+    FASTBENCH=1 python test/performance/perf_test.py -v
+
+To run individual benchmarks quickly::
+
+    FASTBENCH=1 python test/performance/perf_test.py -v TestRunCommand TestFindManyAndEmptyCursor
+"""
 from __future__ import annotations
 
 import multiprocessing as mp
@@ -36,9 +60,18 @@ from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import MongoClient
 
+# Spec says to use at least 1 minute cumulative execution time and up to 100 iterations or 5 minutes but that
+# makes the benchmarks too slow. Instead, we use at least 30 seconds and at most 60 seconds.
 NUM_ITERATIONS = 100
-MAX_ITERATION_TIME = 300
+MIN_ITERATION_TIME = 30
+MAX_ITERATION_TIME = 60
 NUM_DOCS = 10000
+# When debugging or prototyping it's often useful to run the benchmarks locally, set FASTBENCH=1 to run quickly.
+if bool(os.getenv("FASTBENCH")):
+    NUM_ITERATIONS = 2
+    MIN_ITERATION_TIME = 0.1
+    MAX_ITERATION_TIME = 0.5
+    NUM_DOCS = 1000
 
 TEST_PATH = os.environ.get(
     "TEST_PATH", os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.join("data"))
@@ -88,7 +121,7 @@ class PerformanceTest:
         megabytes_per_sec = self.data_size / median / 1000000
         print(
             f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
-            f"total time={duration:.3f}s"
+            f"total time={duration:.3f}s, iterations={len(self.results)}"
         )
         result_data.append(
             {
@@ -125,19 +158,25 @@ class PerformanceTest:
     def runTest(self):
         results = []
         start = time.monotonic()
-        for i in range(NUM_ITERATIONS):
-            if time.monotonic() - start > MAX_ITERATION_TIME:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("default")
-                    warnings.warn(
-                        f"Test timed out after {MAX_ITERATION_TIME}s, completed {i}/{NUM_ITERATIONS} iterations."
-                    )
-                break
+        i = 0
+        while True:
+            i += 1
             self.before()
             with Timer() as timer:
                 self.do_task()
             self.after()
             results.append(timer.interval)
+            duration = time.monotonic() - start
+            if duration > MIN_ITERATION_TIME and i >= NUM_ITERATIONS:
+                break
+            if duration > MAX_ITERATION_TIME:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("default")
+                    warnings.warn(
+                        f"{self.__class__.__name__} timed out after {MAX_ITERATION_TIME}s, completed {i}/{NUM_ITERATIONS} iterations."
+                    )
+
+                break
 
         self.results = results
 

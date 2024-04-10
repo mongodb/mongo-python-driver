@@ -41,6 +41,8 @@ PyMongo 4.7 brings a number of improvements including:
   :attr:`pymongo.monitoring.ConnectionReadyEvent.duration` properties.
 - Added the ``type`` and ``kwargs`` arguments to :class:`~pymongo.operations.SearchIndexModel` to enable
   creating vector search indexes in MongoDB Atlas.
+- Fixed a bug where ``read_concern`` and ``write_concern`` were improperly added to
+  :meth:`~pymongo.collection.Collection.list_search_indexes` queries.
 
 
 Unavoidable breaking changes

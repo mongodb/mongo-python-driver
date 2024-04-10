@@ -41,6 +41,7 @@ from pymongo.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
     _OIDCAzureCallback,
+    _OIDCGCPCallback,
     _OIDCProperties,
     _OIDCTestCallback,
 )
@@ -207,6 +208,13 @@ def _build_credentials_tuple(
                         "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCAzureCallback(token_resource)
+            elif environ == "gcp":
+                passwd = None
+                if not token_resource:
+                    raise ConfigurationError(
+                        "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                    )
+                callback = _OIDCGCPCallback(token_resource)
             else:
                 raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:

@@ -426,7 +426,6 @@ _MECHANISM_PROPS = frozenset(
         "AWS_SESSION_TOKEN",
         "ENVIRONMENT",
         "TOKEN_RESOURCE",
-        "ALLOWED_HOSTS",
     ]
 )
 
