@@ -321,12 +321,8 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
             command("hello", True)
 
 
-class TestRunCommand4Threads(TestRunCommand):
-    n_threads = 4
-
-
-class TestRunCommand16Threads(TestRunCommand):
-    n_threads = 16
+class TestRunCommand8Threads(TestRunCommand):
+    n_threads = 8
 
 
 class TestDocument(PerformanceTest):
@@ -377,12 +373,8 @@ class TestFindOneByID(FindTest, unittest.TestCase):
             find_one({"_id": _id})
 
 
-class TestFindOneByID4Threads(TestFindOneByID):
-    n_threads = 4
-
-
-class TestFindOneByID16Threads(TestFindOneByID):
-    n_threads = 16
+class TestFindOneByID8Threads(TestFindOneByID):
+    n_threads = 8
 
 
 class SmallDocInsertTest(TestDocument):
@@ -424,12 +416,8 @@ class TestFindManyAndEmptyCursor(FindTest, unittest.TestCase):
         list(self.corpus.find())
 
 
-class TestFindManyAndEmptyCursor4Threads(TestFindManyAndEmptyCursor):
-    n_threads = 4
-
-
-class TestFindManyAndEmptyCursor16Threads(TestFindManyAndEmptyCursor):
-    n_threads = 16
+class TestFindManyAndEmptyCursor8Threads(TestFindManyAndEmptyCursor):
+    n_threads = 8
 
 
 class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
