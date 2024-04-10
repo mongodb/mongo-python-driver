@@ -195,7 +195,6 @@ class AsyncCursor(Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
-        is_mongos: Optional[bool] = False,
     ) -> None:
         """Create a new cursor.
 
@@ -283,15 +282,6 @@ class AsyncCursor(Generic[_DocumentType]):
         self._snapshot = snapshot
         self._hint: Union[str, dict[str, Any], None]
         self._set_hint(hint)
-        self._is_mongos = is_mongos
-
-        # Exhaust cursor support
-        if cursor_type == CursorType.EXHAUST:
-            if self._is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
-            if limit:
-                raise InvalidOperation("Can't use limit and exhaust together.")
-            self._exhaust = True
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -311,6 +301,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self._read_concern = collection.read_concern
 
         self._query_flags = cursor_type
+        self._cursor_type = cursor_type
         if no_cursor_timeout:
             self._query_flags |= _QUERY_OPTIONS["no_timeout"]
         if allow_partial_results:
@@ -321,6 +312,15 @@ class AsyncCursor(Generic[_DocumentType]):
         # The namespace to use for find/getMore commands.
         self._dbname = collection.database.name
         self._collname = collection.name
+
+    async def _supports_exhaust(self) -> None:
+        # Exhaust cursor support
+        if self._cursor_type == CursorType.EXHAUST:
+            if await self._collection.database.client.is_mongos:
+                raise InvalidOperation("Exhaust cursors are not supported by mongos")
+            if self._limit:
+                raise InvalidOperation("Can't use limit and exhaust together.")
+            self._exhaust = True
 
     @property
     def collection(self) -> AsyncCollection[_DocumentType]:
@@ -389,6 +389,7 @@ class AsyncCursor(Generic[_DocumentType]):
             "snapshot",
             "exhaust",
             "has_filter",
+            "cursor_type",
         )
         data = {
             k: v for k, v in self.__dict__.items() if k.startswith("_") and k[1:] in values_to_clone
@@ -457,7 +458,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if self._retrieved or self._id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
-    def add_option(self, mask: int) -> AsyncCursor[_DocumentType]:
+    async def add_option(self, mask: int) -> AsyncCursor[_DocumentType]:
         """Set arbitrary query flags using a bitmask.
 
         To set the tailable flag:
@@ -470,7 +471,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self._is_mongos:
+            if await self._collection.database.client.is_mongos:
                 raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self._exhaust = True
 

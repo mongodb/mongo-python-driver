@@ -1872,8 +1872,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        is_mongos = await self._database.client.is_mongos
-        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
+        cursor = AsyncCursor(self, *args, **kwargs)
+        await cursor._supports_exhaust()
+        return cursor
 
     async def find(self, *args: Any, **kwargs: Any) -> AsyncCursor[_DocumentType]:
         """Query the database.
@@ -2061,8 +2062,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        is_mongos = await self._database.client.is_mongos
-        return AsyncCursor(self, is_mongos=is_mongos, *args, **kwargs)
+        cursor = AsyncCursor(self, *args, **kwargs)
+        await cursor._supports_exhaust()
+        return cursor
 
     async def find_raw_batches(
         self, *args: Any, **kwargs: Any

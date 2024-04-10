@@ -55,7 +55,7 @@ from pymongo.common import (
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _Lock, _create_lock
+from pymongo.lock import _create_lock, _Lock
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
@@ -195,7 +195,6 @@ class Cursor(Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
-        is_mongos: Optional[bool] = False,
     ) -> None:
         """Create a new cursor.
 
@@ -283,15 +282,6 @@ class Cursor(Generic[_DocumentType]):
         self._snapshot = snapshot
         self._hint: Union[str, dict[str, Any], None]
         self._set_hint(hint)
-        self._is_mongos = is_mongos
-
-        # Exhaust cursor support
-        if cursor_type == CursorType.EXHAUST:
-            if self._is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
-            if limit:
-                raise InvalidOperation("Can't use limit and exhaust together.")
-            self._exhaust = True
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -311,6 +301,7 @@ class Cursor(Generic[_DocumentType]):
         self._read_concern = collection.read_concern
 
         self._query_flags = cursor_type
+        self._cursor_type = cursor_type
         if no_cursor_timeout:
             self._query_flags |= _QUERY_OPTIONS["no_timeout"]
         if allow_partial_results:
@@ -321,6 +312,15 @@ class Cursor(Generic[_DocumentType]):
         # The namespace to use for find/getMore commands.
         self._dbname = collection.database.name
         self._collname = collection.name
+
+    def _supports_exhaust(self) -> None:
+        # Exhaust cursor support
+        if self._cursor_type == CursorType.EXHAUST:
+            if self._collection.database.client.is_mongos:
+                raise InvalidOperation("Exhaust cursors are not supported by mongos")
+            if self._limit:
+                raise InvalidOperation("Can't use limit and exhaust together.")
+            self._exhaust = True
 
     @property
     def collection(self) -> Collection[_DocumentType]:
@@ -389,6 +389,7 @@ class Cursor(Generic[_DocumentType]):
             "snapshot",
             "exhaust",
             "has_filter",
+            "cursor_type",
         )
         data = {
             k: v for k, v in self.__dict__.items() if k.startswith("_") and k[1:] in values_to_clone
@@ -470,7 +471,7 @@ class Cursor(Generic[_DocumentType]):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self._is_mongos:
+            if self._collection.database.client.is_mongos:
                 raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self._exhaust = True
 
@@ -636,9 +637,7 @@ class Cursor(Generic[_DocumentType]):
     def __getitem__(self, index: slice) -> Cursor[_DocumentType]:
         ...
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[_DocumentType, Cursor[_DocumentType]]:
+    def __getitem__(self, index: Union[int, slice]) -> Union[_DocumentType, Cursor[_DocumentType]]:
         """Get a single document or a slice of documents from this cursor.
 
         .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each
@@ -1331,9 +1330,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore
 
-    def __init__(
-        self, collection: Collection[_DocumentType], *args: Any, **kwargs: Any
-    ) -> None:
+    def __init__(self, collection: Collection[_DocumentType], *args: Any, **kwargs: Any) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
