@@ -97,6 +97,7 @@ if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
     from pymongo._async.message import _OpMsg, _OpReply
     from pymongo._async.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
+    from pymongo._async.pyopenssl_context import SSLContext, _sslConn
     from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
@@ -105,7 +106,6 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.driver_info import DriverInfo
-    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
@@ -1318,13 +1318,13 @@ async def _configured_socket(
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if HAS_SNI:
-            if hasattr(ssl_context, "wrap_socket"):
-                ssl_sock = await ssl_context.wrap_socket(sock, server_hostname=host)
+            if hasattr(ssl_context, "a_wrap_socket"):
+                ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)
             else:
                 ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
         else:
-            if hasattr(ssl_context, "wrap_socket"):
-                ssl_sock = await ssl_context.wrap_socket(sock)
+            if hasattr(ssl_context, "a_wrap_socket"):
+                ssl_sock = await ssl_context.a_wrap_socket(sock)
             else:
                 ssl_sock = ssl_context.wrap_socket(sock)
     except _CertificateError:

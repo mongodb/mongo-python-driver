@@ -44,7 +44,7 @@ from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.typings import _Address
 
 if TYPE_CHECKING:
-    from pymongo.pyopenssl_context import SSLContext
+    from pymongo._async.pyopenssl_context import SSLContext
 
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)

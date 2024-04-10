@@ -100,7 +100,9 @@ class ChangeStream(Generic[_DocumentType]):
     def __init__(
         self,
         target: Union[
-            MongoClient[_DocumentType], Database[_DocumentType], Collection[_DocumentType]
+            MongoClient[_DocumentType],
+            Database[_DocumentType],
+            Collection[_DocumentType],
         ],
         pipeline: Optional[_Pipeline],
         full_document: Optional[str],
