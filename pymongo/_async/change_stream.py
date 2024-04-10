@@ -66,9 +66,9 @@ _RESUMABLE_GETMORE_ERRORS = frozenset(
 
 if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
-    from pymongo._async.collection import Collection
-    from pymongo._async.database import Database
-    from pymongo._async.mongo_client import MongoClient
+    from pymongo._async.collection import AsyncCollection
+    from pymongo._async.database import AsyncDatabase
+    from pymongo._async.mongo_client import AsyncMongoClient
     from pymongo._async.pool import Connection
 
 
@@ -100,7 +100,9 @@ class ChangeStream(Generic[_DocumentType]):
     def __init__(
         self,
         target: Union[
-            MongoClient[_DocumentType], Database[_DocumentType], Collection[_DocumentType]
+            AsyncMongoClient[_DocumentType],
+            AsyncDatabase[_DocumentType],
+            AsyncCollection[_DocumentType],
         ],
         pipeline: Optional[_Pipeline],
         full_document: Optional[str],
@@ -149,8 +151,10 @@ class ChangeStream(Generic[_DocumentType]):
         self._closed = False
         self._timeout = self._target._timeout
         self._show_expanded_events = show_expanded_events
+
+    async def _initialize_cursor(self):
         # Initialize cursor.
-        self._cursor = self._create_cursor()
+        self._cursor = await self._create_cursor()
 
     @property
     def _aggregation_command_class(self) -> Type[_AggregationCommand]:
@@ -158,7 +162,7 @@ class ChangeStream(Generic[_DocumentType]):
         raise NotImplementedError
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> AsyncMongoClient:
         """The client against which the aggregation commands for
         this ChangeStream will be run.
         """
@@ -229,7 +233,7 @@ class ChangeStream(Generic[_DocumentType]):
                         f"response : {result!r}"
                     )
 
-    def _run_aggregation_cmd(
+    async def _run_aggregation_cmd(
         self, session: Optional[ClientSession], explicit_session: bool
     ) -> AsyncCommandCursor:
         """Run the full aggregation pipeline for this ChangeStream and return
@@ -244,31 +248,33 @@ class ChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
-        return self._client._retryable_read(
+        return await self._client._retryable_read(
             cmd.get_cursor,
             self._target._read_preference_for(session),
             session,
             operation=_Op.AGGREGATE,
         )
 
-    def _create_cursor(self) -> AsyncCommandCursor:
-        with self._client._tmp_session(self._session, close=False) as s:
-            return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
+    async def _create_cursor(self) -> AsyncCommandCursor:
+        async with self._client._tmp_session(self._session, close=False) as s:
+            return await self._run_aggregation_cmd(
+                session=s, explicit_session=self._session is not None
+            )
 
-    def _resume(self) -> None:
+    async def _resume(self) -> None:
         """Reestablish this change stream after a resumable error."""
         try:
-            self._cursor.close()
+            await self._cursor.close()
         except PyMongoError:
             pass
-        self._cursor = self._create_cursor()
+        self._cursor = await self._create_cursor()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close this ChangeStream."""
         self._closed = True
-        self._cursor.close()
+        await self._cursor.close()
 
-    def __iter__(self) -> ChangeStream[_DocumentType]:
+    def __aiter__(self) -> ChangeStream[_DocumentType]:
         return self
 
     @property
@@ -281,7 +287,7 @@ class ChangeStream(Generic[_DocumentType]):
         return copy.deepcopy(self._resume_token)
 
     @_csot.apply
-    def next(self) -> _DocumentType:
+    async def next(self) -> _DocumentType:
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
@@ -314,13 +320,13 @@ class ChangeStream(Generic[_DocumentType]):
         Raises :exc:`StopIteration` if this ChangeStream is closed.
         """
         while self.alive:
-            doc = self.try_next()
+            doc = await self.try_next()
             if doc is not None:
                 return doc
 
-        raise StopIteration
+        raise StopAsyncIteration
 
-    __next__ = next
+    __anext__ = next
 
     @property
     def alive(self) -> bool:
@@ -334,7 +340,7 @@ class ChangeStream(Generic[_DocumentType]):
         return not self._closed
 
     @_csot.apply
-    def try_next(self) -> Optional[_DocumentType]:
+    async def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting
@@ -366,25 +372,25 @@ class ChangeStream(Generic[_DocumentType]):
         .. versionadded:: 3.8
         """
         if not self._closed and not self._cursor.alive:
-            self._resume()
+            await self._resume()
 
         # Attempt to get the next change with at most one getMore and at most
         # one resume attempt.
         try:
             try:
-                change = self._cursor._try_next(True)
+                change = await self._cursor._try_next(True)
             except PyMongoError as exc:
                 if not _resumable(exc):
                     raise
-                self._resume()
-                change = self._cursor._try_next(False)
+                await self._resume()
+                change = await self._cursor._try_next(False)
         except PyMongoError as exc:
             # Close the stream after a fatal error.
             if not _resumable(exc) and not exc.timeout:
-                self.close()
+                await self.close()
             raise
         except Exception:
-            self.close()
+            await self.close()
             raise
 
         # Check if the cursor was invalidated.
@@ -406,7 +412,7 @@ class ChangeStream(Generic[_DocumentType]):
         try:
             resume_token = change["_id"]
         except KeyError:
-            self.close()
+            await self.close()
             raise InvalidOperation(
                 "Cannot provide resume functionality when the resume token is missing."
             ) from None
@@ -428,11 +434,11 @@ class ChangeStream(Generic[_DocumentType]):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    def __enter__(self) -> ChangeStream[_DocumentType]:
+    async def __aenter__(self) -> ChangeStream[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
 
 
 class CollectionChangeStream(ChangeStream[_DocumentType]):
@@ -444,14 +450,14 @@ class CollectionChangeStream(ChangeStream[_DocumentType]):
     .. versionadded:: 3.7
     """
 
-    _target: Collection[_DocumentType]
+    _target: AsyncCollection[_DocumentType]
 
     @property
     def _aggregation_command_class(self) -> Type[_CollectionAggregationCommand]:
         return _CollectionAggregationCommand
 
     @property
-    def _client(self) -> MongoClient[_DocumentType]:
+    def _client(self) -> AsyncMongoClient[_DocumentType]:
         return self._target.database.client
 
 
@@ -464,14 +470,14 @@ class DatabaseChangeStream(ChangeStream[_DocumentType]):
     .. versionadded:: 3.7
     """
 
-    _target: Database[_DocumentType]
+    _target: AsyncDatabase[_DocumentType]
 
     @property
     def _aggregation_command_class(self) -> Type[_DatabaseAggregationCommand]:
         return _DatabaseAggregationCommand
 
     @property
-    def _client(self) -> MongoClient[_DocumentType]:
+    def _client(self) -> AsyncMongoClient[_DocumentType]:
         return self._target.client
 
 

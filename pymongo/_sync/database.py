@@ -36,9 +36,9 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo._sync.aggregation import _DatabaseAggregationCommand
+from pymongo._sync.change_stream import DatabaseChangeStream
 from pymongo._sync.collection import Collection
 from pymongo._sync.command_cursor import CommandCursor
-from pymongo.change_stream import DatabaseChangeStream
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
@@ -440,7 +440,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return DatabaseChangeStream(
+        change_stream = DatabaseChangeStream(
             self,
             pipeline,
             full_document,
@@ -455,6 +455,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events=show_expanded_events,
         )
+
+        change_stream._initialize_cursor()
+        return change_stream
 
     @_csot.apply
     def create_collection(
@@ -991,9 +994,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self._client._conn_for_reads(
-                read_preference, tmp_session, command_name
-            ) as (
+            with self._client._conn_for_reads(read_preference, tmp_session, command_name) as (
                 conn,
                 read_preference,
             ):
@@ -1115,9 +1116,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: _ServerMode,
         ) -> CommandCursor[MutableMapping[str, Any]]:
-            return self._list_collections(
-                conn, session, read_preference=read_preference, **kwargs
-            )
+            return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self._client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
@@ -1172,8 +1171,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 kwargs["nameOnly"] = True
 
         return [
-            result["name"]
-            for result in self._list_collections_helper(session=session, **kwargs)
+            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
         ]
 
     def list_collection_names(

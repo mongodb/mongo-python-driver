@@ -69,12 +69,12 @@ from pymongo._async import (
     database,
     message,
 )
+from pymongo._async.change_stream import ChangeStream, ClusterChangeStream
 from pymongo._async.client_options import ClientOptions
 from pymongo._async.client_session import _EmptyServerSession
 from pymongo._async.command_cursor import AsyncCommandCursor
 from pymongo._async.settings import TopologySettings
 from pymongo._async.topology import Topology, _ErrorContext
-from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -350,7 +350,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         args.update(kwargs)
         return AsyncMongoClient(**args)
 
-    def watch(
+    async def watch(
         self,
         pipeline: Optional[_Pipeline] = None,
         full_document: Optional[str] = None,
@@ -462,7 +462,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return ClusterChangeStream(
+        change_stream = ClusterChangeStream(
             self.admin,
             pipeline,
             full_document,
@@ -477,6 +477,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events=show_expanded_events,
         )
+
+        await change_stream._initialize_cursor()
+        return change_stream
 
     @property
     def topology_description(self) -> TopologyDescription:

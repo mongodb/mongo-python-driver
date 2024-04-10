@@ -39,10 +39,10 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterator,
     Callable,
     FrozenSet,
     Generic,
+    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -69,12 +69,12 @@ from pymongo._sync import (
     database,
     message,
 )
+from pymongo._sync.change_stream import ChangeStream, ClusterChangeStream
 from pymongo._sync.client_options import ClientOptions
 from pymongo._sync.client_session import _EmptyServerSession
 from pymongo._sync.command_cursor import CommandCursor
 from pymongo._sync.settings import TopologySettings
 from pymongo._sync.topology import Topology, _ErrorContext
-from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -88,7 +88,7 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _Lock, _create_lock, _release_locks
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _Lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
@@ -462,7 +462,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return ClusterChangeStream(
+        change_stream = ClusterChangeStream(
             self.admin,
             pipeline,
             full_document,
@@ -477,6 +477,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events=show_expanded_events,
         )
+
+        change_stream._initialize_cursor()
+        return change_stream
 
     @property
     def topology_description(self) -> TopologyDescription:
@@ -982,9 +985,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology_task
 
     @contextlib.contextmanager
-    def _checkout(
-        self, server: Server, session: Optional[ClientSession]
-    ) -> Iterator[Connection]:
+    def _checkout(self, server: Server, session: Optional[ClientSession]) -> Iterator[Connection]:
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1330,9 +1331,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     assert conn_mgr.conn is not None
                     conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
                 else:
-                    self._close_cursor_now(
-                        cursor_id, address, session=session, conn_mgr=conn_mgr
-                    )
+                    self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
             if conn_mgr:
                 conn_mgr.close()
         else:
@@ -1493,16 +1492,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         else:
             yield None
 
-    def _process_response(
-        self, reply: Mapping[str, Any], session: Optional[ClientSession]
-    ) -> None:
+    def _process_response(self, reply: Mapping[str, Any], session: Optional[ClientSession]) -> None:
         self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
 
-    def server_info(
-        self, session: Optional[client_session.ClientSession] = None
-    ) -> dict[str, Any]:
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :param session: a
@@ -1529,9 +1524,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = admin._retryable_read_command(
-            cmd, session=session, operation=_Op.LIST_DATABASES
-        )
+        res = admin._retryable_read_command(cmd, session=session, operation=_Op.LIST_DATABASES)
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,

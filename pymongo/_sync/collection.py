@@ -46,6 +46,7 @@ from pymongo._sync.aggregation import (
     _CollectionRawAggregationCommand,
 )
 from pymongo._sync.bulk import _Bulk
+from pymongo._sync.change_stream import CollectionChangeStream
 from pymongo._sync.command_cursor import (
     CommandCursor,
     RawBatchCommandCursor,
@@ -55,7 +56,6 @@ from pymongo._sync.cursor import (
     RawBatchCursor,
 )
 from pymongo._sync.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -507,7 +507,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return CollectionChangeStream(
+        change_stream = CollectionChangeStream(
             self,
             pipeline,
             full_document,
@@ -522,6 +522,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events,
         )
+
+        change_stream._initialize_cursor()
+        return change_stream
 
     def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str

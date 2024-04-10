@@ -47,6 +47,7 @@ from pymongo._async.aggregation import (
     _CollectionRawAggregationCommand,
 )
 from pymongo._async.bulk import _Bulk
+from pymongo._async.change_stream import CollectionChangeStream
 from pymongo._async.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
@@ -56,7 +57,6 @@ from pymongo._async.cursor import (
     AsyncRawBatchCursor,
 )
 from pymongo._async.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -386,7 +386,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             "failing because no such method exists." % self._name.split(".")[-1]
         )
 
-    def watch(
+    async def watch(
         self,
         pipeline: Optional[_Pipeline] = None,
         full_document: Optional[str] = None,
@@ -508,7 +508,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return CollectionChangeStream(
+        change_stream = CollectionChangeStream(
             self,
             pipeline,
             full_document,
@@ -523,6 +523,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events,
         )
+
+        await change_stream._initialize_cursor()
+        return change_stream
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str

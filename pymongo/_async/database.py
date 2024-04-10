@@ -36,9 +36,9 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo._async.aggregation import _DatabaseAggregationCommand
+from pymongo._async.change_stream import DatabaseChangeStream
 from pymongo._async.collection import AsyncCollection
 from pymongo._async.command_cursor import AsyncCommandCursor
-from pymongo.change_stream import DatabaseChangeStream
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
 from pymongo.operations import _Op
@@ -328,7 +328,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             "with None instead: database is not None"
         )
 
-    def watch(
+    async def watch(
         self,
         pipeline: Optional[_Pipeline] = None,
         full_document: Optional[str] = None,
@@ -440,7 +440,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        return DatabaseChangeStream(
+        change_stream = DatabaseChangeStream(
             self,
             pipeline,
             full_document,
@@ -455,6 +455,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
             show_expanded_events=show_expanded_events,
         )
+
+        await change_stream._initialize_cursor()
+        return change_stream
 
     @_csot.apply
     async def create_collection(
@@ -903,7 +906,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        async with await self._client._conn_for_reads(read_preference, session, operation=command_name) as (
+        async with await self._client._conn_for_reads(
+            read_preference, session, operation=command_name
+        ) as (
             connection,
             read_preference,
         ):
