@@ -34,6 +34,7 @@ TEST_ARGS="${*:1}"
 PYTHON=$(which python)
 # TODO: Remove when we drop PyPy 3.8 support.
 OLD_PYPY=$(python -c "import sys; print(sys.implementation.name == \"pypy\" and sys.implementation.version < (7, 3, 7))")
+echo "OLD_PYPY=$OLD_PYPY"
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
