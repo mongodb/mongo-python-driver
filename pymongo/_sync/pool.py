@@ -31,7 +31,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Iterator,
-    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -44,7 +43,6 @@ import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot, auth, helpers
 from pymongo._sync.client_session import _validate_session_write_concern
-from pymongo.network import command, receive_message, sendall
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -73,7 +71,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.lock import _Condition, _Lock, _create_lock
+from pymongo.lock import _Condition, _create_lock, _Lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -85,6 +83,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
+from pymongo.network import command, receive_message, sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -97,7 +96,6 @@ if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
     from pymongo._sync.message import _OpMsg, _OpReply
     from pymongo._sync.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
@@ -106,6 +104,7 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.driver_info import DriverInfo
+    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
@@ -1297,9 +1296,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(
-    address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -1598,9 +1595,7 @@ class Pool:
     def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
-        self._reset(
-            close=False, service_id=service_id, interrupt_connections=interrupt_connections
-        )
+        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1800,9 +1795,7 @@ class Pool:
             self._s_checkin(conn)
 
     @contextlib.contextmanager
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Iterator[Connection]:
+    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected

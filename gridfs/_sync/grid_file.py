@@ -19,19 +19,35 @@ import datetime
 import inspect
 import io
 import math
-import os
 from collections import abc
 from typing import Any, Iterable, Mapping, NoReturn, Optional, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
+from gridfs.grid_file import (
+    _C_INDEX,
+    _CHUNK_OVERHEAD,
+    _F_INDEX,
+    _SEEK_CUR,
+    _SEEK_END,
+    _SEEK_SET,
+    _UPLOAD_BUFFER_CHUNKS,
+    _UPLOAD_BUFFER_SIZE,
+    DEFAULT_CHUNK_SIZE,
+    EMPTY,
+    NEWLN,
+    _clear_entity_type_registry,
+    _disallow_transactions,
+    _grid_in_property,
+    _grid_out_property,
+)
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
 from pymongo._sync.client_session import ClientSession
 from pymongo._sync.collection import Collection
-from pymongo._sync.database import Database
-from pymongo.common import MAX_MESSAGE_SIZE, validate_string
 from pymongo._sync.cursor import Cursor
+from pymongo._sync.database import Database
+from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -43,94 +59,7 @@ from pymongo.errors import (
 from pymongo.helpers import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
-_SEEK_SET = os.SEEK_SET
-_SEEK_CUR = os.SEEK_CUR
-_SEEK_END = os.SEEK_END
-
-EMPTY = b""
-NEWLN = b"\n"
-
-"""Default chunk size, in bytes."""
-# Slightly under a power of 2, to work well with server's record allocations.
-DEFAULT_CHUNK_SIZE = 255 * 1024
-# The number of chunked bytes to buffer before calling insert_many.
-_UPLOAD_BUFFER_SIZE = MAX_MESSAGE_SIZE
-# The number of chunk documents to buffer before calling insert_many.
-_UPLOAD_BUFFER_CHUNKS = 100000
-# Rough BSON overhead of a chunk document not including the chunk data itself.
-# Essentially len(encode({"_id": ObjectId(), "files_id": ObjectId(), "n": 1, "data": ""}))
-_CHUNK_OVERHEAD = 60
-
-_C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
-_F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
-
-
-def _grid_in_property(
-    field_name: str,
-    docstring: str,
-    read_only: Optional[bool] = False,
-    closed_only: Optional[bool] = False,
-) -> Any:
-    """Create a GridIn property."""
-
-    def getter(self: Any) -> Any:
-        if closed_only and not self._closed:
-            raise AttributeError("can only get %r on a closed file" % field_name)
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._file.get(field_name, 0)
-        return self._file.get(field_name, None)
-
-    if read_only:
-        docstring += "\n\nThis attribute is read-only."
-    elif closed_only:
-        docstring = "{}\n\n{}".format(
-            docstring,
-            "This attribute is read-only and "
-            "can only be read after :meth:`close` "
-            "has been called.",
-        )
-
-    return property(getter, doc=docstring)
-
-
-def _grid_out_property(field_name: str, docstring: str, synchronous: bool = False) -> Any:
-    """Create a GridOut property."""
-
-    def s_getter(self: Any) -> Any:
-        self.open()
-
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._delegate._file.get(field_name, 0)
-        return self._delegate._file.get(field_name, None)
-
-    def a_getter(self: Any) -> Any:
-        if not self._file:
-            raise InvalidOperation(
-                "You must call GridOut.open() before accessing " "the %s property" % field_name
-            )
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._file.get(field_name, 0)
-        return self._file.get(field_name, None)
-
-    docstring += "\n\nThis attribute is read-only."
-    if synchronous:
-        return property(s_getter, doc=docstring)
-    else:
-        return property(a_getter, doc=docstring)
-
-
-def _clear_entity_type_registry(entity: Any, **kwargs: Any) -> Any:
-    """Clear the given database/collection object's type registry."""
-    codecopts = entity.codec_options.with_options(type_registry=None)
-    return entity.with_options(codec_options=codecopts, **kwargs)
-
-
-def _disallow_transactions(session: Optional[ClientSession]) -> None:
-    if session and session.in_transaction:
-        raise InvalidOperation("GridFS does not support multi-document transactions")
+IS_SYNC = True
 
 
 class GridFS:
@@ -742,9 +671,7 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_upload_stream(
-            filename, chunk_size_bytes, metadata, session=session
-        ) as gin:
+        with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
         return cast(ObjectId, gin._id)
@@ -1040,9 +967,7 @@ class GridFSBucket:
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream_by_name(
-            filename, revision, session=session
-        ) as gout:
+        with self.open_download_stream_by_name(filename, revision, session=session) as gout:
             while True:
                 chunk = gout.readchunk()
                 if not len(chunk):
@@ -1172,9 +1097,7 @@ class GridIn:
         object.__setattr__(self, "_buffered_docs", [])
         object.__setattr__(self, "_buffered_docs_size", 0)
 
-    def _create_index(
-        self, collection: Collection, index_key: Any, unique: bool
-    ) -> None:
+    def _create_index(self, collection: Collection, index_key: Any, unique: bool) -> None:
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
@@ -1185,9 +1108,7 @@ class GridIn:
             except OperationFailure:
                 index_keys = []
             if index_key not in index_keys:
-                collection.create_index(
-                    index_key.items(), unique=unique, session=self._session
-                )
+                collection.create_index(index_key.items(), unique=unique, session=self._session)
 
     def _ensure_indexes(self) -> None:
         if not object.__getattribute__(self, "_ensured_index"):
@@ -1247,9 +1168,7 @@ class GridIn:
             # them now.
             self._file[name] = value
             if self._closed:
-                self._coll.files.update_one(
-                    {"_id": self._file["_id"]}, {"$set": {name: value}}
-                )
+                self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
     def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
@@ -1539,7 +1458,9 @@ class GridOut(io.IOBase):
                 )
 
     def __getattr__(self, name: str) -> Any:
-        if not self._file:
+        if IS_SYNC:
+            self.open()
+        elif not self._file:
             raise InvalidOperation(
                 "You must call AsyncGridOut.open() before accessing the %s property" % name
             )

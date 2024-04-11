@@ -20,13 +20,13 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterator,
     Generic,
-    Iterator,
     Mapping,
     NoReturn,
     Optional,
     Sequence,
-    Union, AsyncIterator,
+    Union,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -38,8 +38,8 @@ from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
-    from pymongo._async.pool import Connection
     from pymongo._async.collection import AsyncCollection
+    from pymongo._async.pool import Connection
 
 
 class AsyncCommandCursor(Generic[_DocumentType]):

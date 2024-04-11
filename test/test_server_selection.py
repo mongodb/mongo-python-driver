@@ -19,12 +19,12 @@ import os
 import sys
 
 from pymongo import MongoClient, ReadPreference
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
-from pymongo._sync.settings import TopologySettings
-from pymongo._sync.topology import Topology
 from pymongo.typings import strip_optional
 
 sys.path[0:0] = [""]

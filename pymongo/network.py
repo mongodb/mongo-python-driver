@@ -52,8 +52,8 @@ from pymongo.socket_checker import _errno_from_exception
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo._async.client_session import ClientSession
-    from pymongo._sync.mongo_client import MongoClient
     from pymongo._async.pool import Connection
+    from pymongo._sync.mongo_client import MongoClient
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern

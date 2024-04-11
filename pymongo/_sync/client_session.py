@@ -681,9 +681,7 @@ class ClientSession:
         """
         start_time = time.monotonic()
         while True:
-            self.start_transaction(
-                read_concern, write_concern, read_preference, max_commit_time_ms
-            )
+            self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)
             except Exception as exc:
@@ -846,9 +844,7 @@ class ClientSession:
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(
-            func, self, None, retryable=True, operation=_Op.ABORT
-        )
+        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1

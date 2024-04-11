@@ -44,7 +44,6 @@ import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot, auth, helpers
 from pymongo._async.client_session import _validate_session_write_concern
-from pymongo.network import async_command, async_receive_message, async_sendall
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -85,6 +84,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
+from pymongo.network import async_command, async_receive_message, async_sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -97,7 +97,6 @@ if TYPE_CHECKING:
     from pymongo._async.client_session import ClientSession
     from pymongo._async.message import _OpMsg, _OpReply
     from pymongo._async.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
-    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
@@ -106,6 +105,7 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.driver_info import DriverInfo
+    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi

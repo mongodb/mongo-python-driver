@@ -28,6 +28,8 @@ replacements = {
     "AsyncGridOutCursor": "GridOutCursor",
     "AsyncGridOutIterator": "GridOutIterator",
     "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
+    "_a_grid_in_property": "_grid_in_property",
+    "_a_grid_out_property": "_grid_out_property",
 }
 
 async_files = [
@@ -37,9 +39,7 @@ async_files = [
 ]
 
 gridfs_files = [
-    "./gridfs/_async/" + f
-    for f in listdir("./gridfs/_async")
-    if isfile(join("./gridfs/_async", f))
+    "./gridfs/_async/" + f for f in listdir("./gridfs/_async") if isfile(join("./gridfs/_async", f))
 ]
 
 unasync_files(
@@ -63,3 +63,13 @@ unasync_files(
         )
     ],
 )
+
+with open("./gridfs/_sync/grid_file.py", "r+") as f:
+    lines = f.readlines()
+    is_sync = [line for line in lines if line.startswith("IS_SYNC = ")][0]
+    index = lines.index(is_sync)
+    is_sync = is_sync.replace("False", "True")
+    lines[index] = is_sync
+    f.seek(0)
+    f.writelines(lines)
+    f.truncate()

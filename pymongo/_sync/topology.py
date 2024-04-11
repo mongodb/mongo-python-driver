@@ -41,7 +41,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import _Condition, _Lock, _create_lock
+from pymongo.lock import _Condition, _create_lock, _Lock
 from pymongo.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
@@ -549,9 +549,7 @@ class Topology:
 
             return writable_server_selector(self._new_selection())[0].address
 
-    def _get_replica_set_members(
-        self, selector: Callable[[Selection], Selection]
-    ) -> set[_Address]:
+    def _get_replica_set_members(self, selector: Callable[[Selection], Selection]) -> set[_Address]:
         """Return set of replica set member addresses."""
         # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:

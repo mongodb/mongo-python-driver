@@ -19,19 +19,35 @@ import datetime
 import inspect
 import io
 import math
-import os
 from collections import abc
 from typing import Any, Iterable, Mapping, NoReturn, Optional, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
+from gridfs.grid_file import (
+    _C_INDEX,
+    _CHUNK_OVERHEAD,
+    _F_INDEX,
+    _SEEK_CUR,
+    _SEEK_END,
+    _SEEK_SET,
+    _UPLOAD_BUFFER_CHUNKS,
+    _UPLOAD_BUFFER_SIZE,
+    DEFAULT_CHUNK_SIZE,
+    EMPTY,
+    NEWLN,
+    _a_grid_in_property,
+    _a_grid_out_property,
+    _clear_entity_type_registry,
+    _disallow_transactions,
+)
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
 from pymongo._async.client_session import ClientSession
 from pymongo._async.collection import AsyncCollection
-from pymongo._async.database import AsyncDatabase
-from pymongo.common import MAX_MESSAGE_SIZE, validate_string
 from pymongo._async.cursor import AsyncCursor
+from pymongo._async.database import AsyncDatabase
+from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -43,94 +59,7 @@ from pymongo.errors import (
 from pymongo.helpers import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
-_SEEK_SET = os.SEEK_SET
-_SEEK_CUR = os.SEEK_CUR
-_SEEK_END = os.SEEK_END
-
-EMPTY = b""
-NEWLN = b"\n"
-
-"""Default chunk size, in bytes."""
-# Slightly under a power of 2, to work well with server's record allocations.
-DEFAULT_CHUNK_SIZE = 255 * 1024
-# The number of chunked bytes to buffer before calling insert_many.
-_UPLOAD_BUFFER_SIZE = MAX_MESSAGE_SIZE
-# The number of chunk documents to buffer before calling insert_many.
-_UPLOAD_BUFFER_CHUNKS = 100000
-# Rough BSON overhead of a chunk document not including the chunk data itself.
-# Essentially len(encode({"_id": ObjectId(), "files_id": ObjectId(), "n": 1, "data": ""}))
-_CHUNK_OVERHEAD = 60
-
-_C_INDEX: dict[str, Any] = {"files_id": ASCENDING, "n": ASCENDING}
-_F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
-
-
-def _grid_in_property(
-    field_name: str,
-    docstring: str,
-    read_only: Optional[bool] = False,
-    closed_only: Optional[bool] = False,
-) -> Any:
-    """Create a GridIn property."""
-
-    def getter(self: Any) -> Any:
-        if closed_only and not self._closed:
-            raise AttributeError("can only get %r on a closed file" % field_name)
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._file.get(field_name, 0)
-        return self._file.get(field_name, None)
-
-    if read_only:
-        docstring += "\n\nThis attribute is read-only."
-    elif closed_only:
-        docstring = "{}\n\n{}".format(
-            docstring,
-            "This attribute is read-only and "
-            "can only be read after :meth:`close` "
-            "has been called.",
-        )
-
-    return property(getter, doc=docstring)
-
-
-def _grid_out_property(field_name: str, docstring: str, synchronous: bool = False) -> Any:
-    """Create a GridOut property."""
-
-    def s_getter(self: Any) -> Any:
-        self.open()
-
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._delegate._file.get(field_name, 0)
-        return self._delegate._file.get(field_name, None)
-
-    def a_getter(self: Any) -> Any:
-        if not self._file:
-            raise InvalidOperation(
-                "You must call GridOut.open() before accessing " "the %s property" % field_name
-            )
-        # Protect against PHP-237
-        if field_name == "length":
-            return self._file.get(field_name, 0)
-        return self._file.get(field_name, None)
-
-    docstring += "\n\nThis attribute is read-only."
-    if synchronous:
-        return property(s_getter, doc=docstring)
-    else:
-        return property(a_getter, doc=docstring)
-
-
-def _clear_entity_type_registry(entity: Any, **kwargs: Any) -> Any:
-    """Clear the given database/collection object's type registry."""
-    codecopts = entity.codec_options.with_options(type_registry=None)
-    return entity.with_options(codec_options=codecopts, **kwargs)
-
-
-def _disallow_transactions(session: Optional[ClientSession]) -> None:
-    if session and session.in_transaction:
-        raise InvalidOperation("GridFS does not support multi-document transactions")
+IS_SYNC = False
 
 
 class AsyncGridFS:
@@ -365,7 +294,9 @@ class AsyncGridFS:
         # With an index, distinct includes documents with no filename
         # as None.
         return [
-            name for name in await self._files.distinct("filename", session=session) if name is not None
+            name
+            for name in await self._files.distinct("filename", session=session)
+            if name is not None
         ]
 
     async def find_one(
@@ -1207,18 +1138,18 @@ class AsyncGridIn:
         """Is this file closed?"""
         return self._closed
 
-    _id: Any = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
-    filename: Optional[str] = _grid_in_property("filename", "Name of this file.")
-    name: Optional[str] = _grid_in_property("filename", "Alias for `filename`.")
-    content_type: Optional[str] = _grid_in_property(
+    _id: Any = _a_grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
+    filename: Optional[str] = _a_grid_in_property("filename", "Name of this file.")
+    name: Optional[str] = _a_grid_in_property("filename", "Alias for `filename`.")
+    content_type: Optional[str] = _a_grid_in_property(
         "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
     )
-    length: int = _grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
-    chunk_size: int = _grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
-    upload_date: datetime.datetime = _grid_in_property(
+    length: int = _a_grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
+    chunk_size: int = _a_grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
+    upload_date: datetime.datetime = _a_grid_in_property(
         "uploadDate", "Date that this file was uploaded.", closed_only=True
     )
-    md5: Optional[str] = _grid_in_property(
+    md5: Optional[str] = _a_grid_in_property(
         "md5",
         "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
         closed_only=True,
@@ -1504,24 +1435,24 @@ class AsyncGridOut(io.IOBase):
         self._file = file_document
         self._session = session
 
-    _id: Any = _grid_out_property("_id", "The ``'_id'`` value for this file.")
-    filename: str = _grid_out_property("filename", "Name of this file.")
-    name: str = _grid_out_property("filename", "Alias for `filename`.")
-    content_type: Optional[str] = _grid_out_property(
+    _id: Any = _a_grid_out_property("_id", "The ``'_id'`` value for this file.")
+    filename: str = _a_grid_out_property("filename", "Name of this file.")
+    name: str = _a_grid_out_property("filename", "Alias for `filename`.")
+    content_type: Optional[str] = _a_grid_out_property(
         "contentType", "DEPRECATED, will be removed in PyMongo 5.0. Mime-type for this file."
     )
-    length: int = _grid_out_property("length", "Length (in bytes) of this file.")
-    chunk_size: int = _grid_out_property("chunkSize", "Chunk size for this file.")
-    upload_date: datetime.datetime = _grid_out_property(
+    length: int = _a_grid_out_property("length", "Length (in bytes) of this file.")
+    chunk_size: int = _a_grid_out_property("chunkSize", "Chunk size for this file.")
+    upload_date: datetime.datetime = _a_grid_out_property(
         "uploadDate", "Date that this file was first uploaded."
     )
-    aliases: Optional[list[str]] = _grid_out_property(
+    aliases: Optional[list[str]] = _a_grid_out_property(
         "aliases", "DEPRECATED, will be removed in PyMongo 5.0. List of aliases for this file."
     )
-    metadata: Optional[Mapping[str, Any]] = _grid_out_property(
+    metadata: Optional[Mapping[str, Any]] = _a_grid_out_property(
         "metadata", "Metadata attached to this file."
     )
-    md5: Optional[str] = _grid_out_property(
+    md5: Optional[str] = _a_grid_out_property(
         "md5",
         "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
     )
@@ -1539,7 +1470,9 @@ class AsyncGridOut(io.IOBase):
                 )
 
     def __getattr__(self, name: str) -> Any:
-        if not self._file:
+        if IS_SYNC:
+            self.open()
+        elif not self._file:
             raise InvalidOperation(
                 "You must call AsyncGridOut.open() before accessing the %s property" % name
             )

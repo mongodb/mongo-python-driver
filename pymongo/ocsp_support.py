@@ -76,8 +76,8 @@ if TYPE_CHECKING:
     from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
     from OpenSSL.SSL import Connection
 
-    from pymongo.pyopenssl_context import _CallbackData
     from pymongo.ocsp_cache import _OCSPCache
+    from pymongo.pyopenssl_context import _CallbackData
 
     CertificateIssuerPublicKeyTypes = Union[
         dsa.DSAPublicKey,

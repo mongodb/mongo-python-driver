@@ -21,8 +21,8 @@ sys.path[0:0] = [""]
 
 from test import unittest
 
-from pymongo.hello import Hello
 from pymongo._sync.server import Server
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 
 

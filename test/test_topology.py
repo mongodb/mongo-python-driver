@@ -27,17 +27,17 @@ from test.utils import MockPool, wait_until
 
 from bson.objectid import ObjectId
 from pymongo import common
-from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
-from pymongo.hello import Hello, HelloCompat
 from pymongo._sync.monitor import Monitor
 from pymongo._sync.pool import PoolOptions
-from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo._sync.server import Server
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology, _ErrorContext, _filter_servers
+from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
+from pymongo.hello import Hello, HelloCompat
+from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo._sync.settings import TopologySettings
-from pymongo._sync.topology import Topology, _ErrorContext, _filter_servers
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 

@@ -28,13 +28,13 @@ from test.pymongo_mocks import DummyMonitor
 from test.utils import MockPool, parse_read_preference
 
 from bson import json_util
+from pymongo._sync.settings import TopologySettings
+from pymongo._sync.topology import Topology
 from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
-from pymongo._sync.settings import TopologySettings
-from pymongo._sync.topology import Topology
 
 
 def get_addresses(server_list):

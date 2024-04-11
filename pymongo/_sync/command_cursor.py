@@ -26,7 +26,7 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Union, Iterator,
+    Union,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -38,8 +38,8 @@ from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
-    from pymongo._sync.pool import Connection
     from pymongo._sync.collection import Collection
+    from pymongo._sync.pool import Connection
 
 
 class CommandCursor(Generic[_DocumentType]):

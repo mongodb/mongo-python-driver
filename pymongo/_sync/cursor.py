@@ -55,7 +55,7 @@ from pymongo.common import (
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _Lock, _create_lock
+from pymongo.lock import _create_lock, _Lock
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
@@ -637,9 +637,7 @@ class Cursor(Generic[_DocumentType]):
     def __getitem__(self, index: slice) -> Cursor[_DocumentType]:
         ...
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[_DocumentType, Cursor[_DocumentType]]:
+    def __getitem__(self, index: Union[int, slice]) -> Union[_DocumentType, Cursor[_DocumentType]]:
         """Get a single document or a slice of documents from this cursor.
 
         .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each
@@ -1332,9 +1330,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore
 
-    def __init__(
-        self, collection: Collection[_DocumentType], *args: Any, **kwargs: Any
-    ) -> None:
+    def __init__(self, collection: Collection[_DocumentType], *args: Any, **kwargs: Any) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
