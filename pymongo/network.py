@@ -149,8 +149,9 @@ def command(
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
+        # Note: changing to use OP_ENCRYPTED
         request_id, msg, size, max_doc_size = message._op_msg(
-            flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+            flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx, should_encrypt_op_msg=True
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
@@ -193,6 +194,7 @@ def command(
         )
 
     try:
+        print("ENCRYPTED MSG", msg)
         conn.conn.sendall(msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.

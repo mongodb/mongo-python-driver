@@ -649,6 +649,27 @@ def _compress(
     return request_id, header + compressed
 
 
+_pack_encrypted_op_msg_header = struct.Struct("<iiiiiiB").pack
+_ENCRYPTION_HEADER_SIZE = 25
+
+def _encrypt_op_msg(
+    operation: int, data: bytes, # TODO<TW>: encryption param
+) -> tuple[int, bytes]:
+    """Takes message data, encrypts it, and adds an OP_ENCRYPTED header."""
+    encrypted = data
+    request_id = _randint()
+
+    header = _pack_encrypted_op_msg_header(
+        _ENCRYPTION_HEADER_SIZE + len(encrypted),  # Total message length
+        request_id,  # Request id
+        0,  # responseTo
+        2014,  # operation id
+        operation,  # original operation id
+        len(data),  # uncompressed message length
+        4, # encryption key id
+    )
+    return request_id, header + encrypted
+
 _pack_header = struct.Struct("<iiii").pack
 
 
@@ -698,6 +719,20 @@ def _op_msg_no_header(
         data = [flags_type, encoded]
     return b"".join(data), total_size, max_doc_size
 
+def _op_msg_encrypted(
+    flags: int,
+    command: Mapping[str, Any],
+    identifier: str,
+    docs: Optional[list[Mapping[str, Any]]],
+    opts: CodecOptions,
+    # TODO<TW>: param for encryption settings
+) -> tuple[int, bytes, int, int]:
+    """Internal encrypted OP_MSG message helper."""
+    msg, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
+    # Note: 2014 is new opcode
+    rid, msg = _encrypt_op_msg(2014, msg)
+    return rid, msg, total_size, max_bson_size
+
 
 def _op_msg_compressed(
     flags: int,
@@ -737,6 +772,7 @@ def _op_msg(
     read_preference: Optional[_ServerMode],
     opts: CodecOptions,
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    should_encrypt_op_msg: bool = False,
 ) -> tuple[int, bytes, int, int]:
     """Get a OP_MSG message."""
     command["$db"] = dbname
@@ -753,7 +789,10 @@ def _op_msg(
         identifier = ""
         docs = None
     try:
-        if ctx:
+        if should_encrypt_op_msg:
+            print("USING OP_ENCRYPTED")
+            return _op_msg_encrypted(flags, command, identifier, docs, opts)
+        elif ctx:
             return _op_msg_compressed(flags, command, identifier, docs, opts, ctx)
         return _op_msg_uncompressed(flags, command, identifier, docs, opts)
     finally:
