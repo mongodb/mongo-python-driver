@@ -31,6 +31,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Iterator,
+    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -72,7 +73,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_reauth
-from pymongo.lock import _Condition, _create_lock, _Lock
+from pymongo.lock import _Condition, _Lock, _create_lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -1296,7 +1297,9 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _configured_socket(
+    address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -1595,7 +1598,9 @@ class Pool:
     def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
-        self._reset(close=False, service_id=service_id, interrupt_connections=interrupt_connections)
+        self._reset(
+            close=False, service_id=service_id, interrupt_connections=interrupt_connections
+        )
 
     def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
@@ -1795,7 +1800,9 @@ class Pool:
             self._s_checkin(conn)
 
     @contextlib.contextmanager
-    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
+    def checkout(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> Iterator[Connection]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected

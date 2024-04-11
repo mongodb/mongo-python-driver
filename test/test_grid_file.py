@@ -32,7 +32,7 @@ from test.utils import EventListener, rs_or_single_client
 from bson.objectid import ObjectId
 from gridfs import GridFS
 from gridfs.errors import NoFile
-from gridfs.grid_file import (
+from gridfs._sync.grid_file import (
     _SEEK_CUR,
     _SEEK_END,
     DEFAULT_CHUNK_SIZE,
@@ -253,9 +253,9 @@ class TestGridFile(IntegrationTest):
         cursor_clone = cursor.clone()
 
         cursor_dict = cursor.__dict__.copy()
-        cursor_dict.pop("_Cursor__session")
+        cursor_dict.pop("_session")
         cursor_clone_dict = cursor_clone.__dict__.copy()
-        cursor_clone_dict.pop("_Cursor__session")
+        cursor_clone_dict.pop("_session")
         self.assertDictEqual(cursor_dict, cursor_clone_dict)
 
         self.assertRaises(NotImplementedError, cursor.add_option, 0)
@@ -757,7 +757,7 @@ Bye"""
             # readchunk().
             assert client.address is not None
             client._close_cursor_now(
-                outfile._GridOut__chunk_iter._cursor.cursor_id,
+                outfile._chunk_iter._cursor.cursor_id,
                 _CursorAddress(client.address, db.fs.chunks.full_name),
             )
 
