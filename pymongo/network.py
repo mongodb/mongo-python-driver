@@ -36,7 +36,7 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo import _csot, helpers, ssl_support
 from pymongo._async import message
-from pymongo._async.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo._sync.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
@@ -52,7 +52,7 @@ from pymongo.socket_checker import _errno_from_exception
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo._async.client_session import ClientSession
-    from pymongo._async.mongo_client import MongoClient
+    from pymongo._sync.mongo_client import MongoClient
     from pymongo._async.pool import Connection
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners

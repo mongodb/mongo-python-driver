@@ -44,7 +44,7 @@ import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot, auth, helpers
 from pymongo._sync.client_session import _validate_session_write_concern
-from pymongo._sync.network import command, receive_message, sendall
+from pymongo.network import command, receive_message, sendall
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -97,7 +97,7 @@ if TYPE_CHECKING:
     from pymongo._sync.client_session import ClientSession
     from pymongo._sync.message import _OpMsg, _OpReply
     from pymongo._sync.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo._sync.pyopenssl_context import SSLContext, _sslConn
+    from pymongo.pyopenssl_context import SSLContext, _sslConn
     from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,

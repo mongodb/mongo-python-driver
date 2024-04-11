@@ -36,7 +36,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
-    from pymongo._async.pyopenssl_context import SSLContext
+    from pymongo.pyopenssl_context import SSLContext
     from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.topology_description import _ServerSelector
 

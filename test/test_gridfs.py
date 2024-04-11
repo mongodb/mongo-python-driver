@@ -31,7 +31,7 @@ from test.utils import joinall, one, rs_client, rs_or_single_client, single_clie
 import gridfs
 from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
-from gridfs.grid_file import DEFAULT_CHUNK_SIZE, GridOutCursor
+from gridfs._sync.grid_file import DEFAULT_CHUNK_SIZE, GridOutCursor
 from pymongo._sync.mongo_client import MongoClient
 from pymongo._sync.database import Database
 from pymongo.errors import (

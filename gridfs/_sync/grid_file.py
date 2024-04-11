@@ -81,11 +81,6 @@ def _grid_in_property(
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
-    def setter(self: Any, value: Any) -> Any:
-        if self._closed:
-            self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {field_name: value}})
-        self._file[field_name] = value
-
     if read_only:
         docstring += "\n\nThis attribute is read-only."
     elif closed_only:
@@ -96,24 +91,35 @@ def _grid_in_property(
             "has been called.",
         )
 
-    if not read_only and not closed_only:
-        return property(getter, setter, doc=docstring)
     return property(getter, doc=docstring)
 
 
-def _grid_out_property(field_name: str, docstring: str) -> Any:
+def _grid_out_property(field_name: str, docstring: str, synchronous: bool = False) -> Any:
     """Create a GridOut property."""
 
-    def getter(self: Any) -> Any:
+    def s_getter(self: Any) -> Any:
         self.open()
 
+        # Protect against PHP-237
+        if field_name == "length":
+            return self._delegate._file.get(field_name, 0)
+        return self._delegate._file.get(field_name, None)
+
+    def a_getter(self: Any) -> Any:
+        if not self._file:
+            raise InvalidOperation(
+                "You must call GridOut.open() before accessing " "the %s property" % field_name
+            )
         # Protect against PHP-237
         if field_name == "length":
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
     docstring += "\n\nThis attribute is read-only."
-    return property(getter, doc=docstring)
+    if synchronous:
+        return property(s_getter, doc=docstring)
+    else:
+        return property(a_getter, doc=docstring)
 
 
 def _clear_entity_type_registry(entity: Any, **kwargs: Any) -> Any:
@@ -1533,7 +1539,10 @@ class GridOut(io.IOBase):
                 )
 
     def __getattr__(self, name: str) -> Any:
-        self.open()
+        if not self._file:
+            raise InvalidOperation(
+                "You must call AsyncGridOut.open() before accessing the %s property" % name
+            )
         if name in self._file:
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
