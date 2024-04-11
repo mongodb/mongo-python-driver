@@ -72,7 +72,7 @@ ocsp = [
 ]
 snappy = [
     "python-snappy;implementation_name!='pypy' or implementation_version>'7.3.11'",
-    "python-snappy<0.7.1;implementation_name=='pypy' and implementation_version<='7.3.11'"
+    "python-snappy<0.7.0;implementation_name=='pypy' and implementation_version<='7.3.11'"
 ]
 # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
 srv = []
