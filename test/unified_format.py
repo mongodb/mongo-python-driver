@@ -1800,8 +1800,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
                 actual_logs = [log for log in actual_logs if log["component"] in components]
-                if not client.get("ignoreExtraMessages", False):
-                    self.assertEqual(len(client["messages"]), len(actual_logs))
+                if client.get("ignoreExtraMessages", False):
+                    actual_logs = actual_logs[: len(client["messages"])]
+                self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
 
