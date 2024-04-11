@@ -1,601 +1,588 @@
 {
-    "description": "MONGODB-OIDC authentication with retry disabled",
-    "schemaVersion": "1.19",
-    "runOnRequirements": [
-      {
-        "minServerVersion": "7.0",
-        "auth": true,
-        "authMechanism": "MONGODB-OIDC"
+  "description": "MONGODB-OIDC authentication with retry disabled",
+  "schemaVersion": "1.19",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "7.0",
+      "auth": true,
+      "authMechanism": "MONGODB-OIDC"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "failPointClient",
+        "useMultipleMongoses": false
       }
-    ],
-    "createEntities": [
-      {
-        "client": {
-          "id": "failPointClient",
-          "useMultipleMongoses": false
-        }
-      },
-      {
-        "client": {
-          "id": "client0",
-          "uriOptions": {
-            "authMechanism": "MONGODB-OIDC",
-            "authMechanismProperties": {
-              "$$placeholder": 1
-            },
-            "retryReads": false,
-            "retryWrites": false
+    },
+    {
+      "client": {
+        "id": "client0",
+        "uriOptions": {
+          "authMechanism": "MONGODB-OIDC",
+          "authMechanismProperties": {
+            "$$placeholder": 1
           },
-          "observeEvents": [
-            "commandStartedEvent",
-            "commandSucceededEvent",
-            "commandFailedEvent"
+          "retryReads": false,
+          "retryWrites": false
+        },
+        "observeEvents": [
+          "commandStartedEvent",
+          "commandSucceededEvent",
+          "commandFailedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "test"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "collName"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "collName",
+      "databaseName": "test",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "A read operation should succeed",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": []
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "find"
+              }
+            }
           ]
         }
-      },
-      {
-        "database": {
-          "id": "database0",
+      ]
+    },
+    {
+      "description": "A write operation should succeed",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectEvents": [
+        {
           "client": "client0",
-          "databaseName": "test"
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "insert"
+              }
+            }
+          ]
         }
-      },
-      {
-        "collection": {
-          "id": "collection0",
-          "database": "database0",
-          "collectionName": "collName"
+      ]
+    },
+    {
+      "description": "Read commands should reauthenticate and retry when a ReauthenticationRequired error happens",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "find"
+                ],
+                "errorCode": 391
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": []
         }
-      }
-    ],
-    "initialData": [
-      {
-        "collectionName": "collName",
-        "databaseName": "test",
-        "documents": [
-  
-        ]
-      }
-    ],
-    "tests": [
-      {
-        "description": "A read operation should succeed",
-        "operations": [
-          {
-            "name": "find",
-            "object": "collection0",
-            "arguments": {
-              "filter": {
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
+                }
               }
             },
-            "expectResult": [
-  
-            ]
+            {
+              "commandFailedEvent": {
+                "commandName": "find"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "find"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Write commands should reauthenticate and retry when a ReauthenticationRequired error happens",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "errorCode": 391
+              }
+            }
           }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "find": "collName",
-                    "filter": {
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
                     }
-                  }
+                  ]
                 }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "find"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "A write operation should succeed",
-        "operations": [
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
-              }
-            }
-          }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "insert"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "Read commands should reauthenticate and retry when a ReauthenticationRequired error happens",
-        "operations": [
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                  "times": 1
-                },
-                "data": {
-                  "failCommands": [
-                    "find"
-                  ],
-                  "errorCode": 391
-                }
-              }
-            }
-          },
-          {
-            "name": "find",
-            "object": "collection0",
-            "arguments": {
-              "filter": {
               }
             },
-            "expectResult": [
-  
-            ]
-          }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "find": "collName",
-                    "filter": {
+            {
+              "commandFailedEvent": {
+                "commandName": "insert"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
                     }
-                  }
+                  ]
                 }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "insert"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Handshake with cached token should use speculative authentication",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
               },
-              {
-                "commandFailedEvent": {
-                  "commandName": "find"
-                }
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          },
+          "expectError": {
+            "isClientError": true
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
               },
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "find": "collName",
-                    "filter": {
+              "data": {
+                "failCommands": [
+                  "saslStart"
+                ],
+                "errorCode": 18
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
                     }
-                  }
+                  ]
                 }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "find"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "Write commands should reauthenticate and retry when a ReauthenticationRequired error happens",
-        "operations": [
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                  "times": 1
-                },
-                "data": {
-                  "failCommands": [
-                    "insert"
-                  ],
-                  "errorCode": 391
-                }
-              }
-            }
-          },
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
-              }
-            }
-          }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandFailedEvent": {
-                  "commandName": "insert"
-                }
-              },
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "insert"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "Handshake with cached token should use speculative authentication",
-        "operations": [
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                  "times": 1
-                },
-                "data": {
-                  "failCommands": [
-                    "insert"
-                  ],
-                  "closeConnection": true
-                }
-              }
-            }
-          },
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
               }
             },
-            "expectError": {
-              "isClientError": true
-            }
-          },
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": "alwaysOn",
-                "data": {
-                  "failCommands": [
-                    "saslStart"
-                  ],
-                  "errorCode": 20
-                }
-              }
-            }
-          },
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
-              }
-            }
-          }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandFailedEvent": {
-                  "commandName": "insert"
-                }
-              },
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "insert"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "Handshake without cached token should not use speculative authentication",
-        "operations": [
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": "alwaysOn",
-                "data": {
-                  "failCommands": [
-                    "saslStart"
-                  ],
-                  "errorCode": 20
-                }
-              }
-            }
-          },
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
+            {
+              "commandFailedEvent": {
+                "commandName": "insert"
               }
             },
-            "expectError": {
-              "errorCode": 20
-            }
-          }
-        ]
-      },
-      {
-        "description": "Read commands should fail if reauthentication fails",
-        "operations": [
-          {
-            "name": "find",
-            "object": "collection0",
-            "arguments": {
-              "filter": {
-              }
-            },
-            "expectResult": [
-  
-            ]
-          },
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                  "times": 2
-                },
-                "data": {
-                  "failCommands": [
-                    "find",
-                    "saslStart"
-                  ],
-                  "errorCode": 391
-                }
-              }
-            }
-          },
-          {
-            "name": "find",
-            "object": "collection0",
-            "arguments": {
-              "filter": {
-              }
-            },
-            "expectError": {
-              "errorCode": 391
-            }
-          }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "find": "collName",
-                    "filter": {
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
                     }
-                  }
+                  ]
                 }
-              },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "find"
-                }
-              },
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "find": "collName",
-                    "filter": {
-                    }
-                  }
-                }
-              },
-              {
-                "commandFailedEvent": {
-                  "commandName": "find"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "description": "Write commands should fail if reauthentication fails",
-        "operations": [
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 1,
-                "x": 1
-              }
-            }
-          },
-          {
-            "name": "failPoint",
-            "object": "testRunner",
-            "arguments": {
-              "client": "failPointClient",
-              "failPoint": {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                  "times": 2
-                },
-                "data": {
-                  "failCommands": [
-                    "insert",
-                    "saslStart"
-                  ],
-                  "errorCode": 391
-                }
-              }
-            }
-          },
-          {
-            "name": "insertOne",
-            "object": "collection0",
-            "arguments": {
-              "document": {
-                "_id": 2,
-                "x": 2
               }
             },
-            "expectError": {
-              "errorCode": 391
+            {
+              "commandSucceededEvent": {
+                "commandName": "insert"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Handshake without cached token should not use speculative authentication",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "saslStart"
+                ],
+                "errorCode": 18
+              }
             }
           }
-        ],
-        "expectEvents": [
-          {
-            "client": "client0",
-            "events": [
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 1,
-                        "x": 1
-                      }
-                    ]
-                  }
-                }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
+          },
+          "expectError": {
+            "errorCode": 18
+          }
+        }
+      ]
+    },
+    {
+      "description": "Read commands should fail if reauthentication fails",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": []
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 2
               },
-              {
-                "commandSucceededEvent": {
-                  "commandName": "insert"
-                }
-              },
-              {
-                "commandStartedEvent": {
-                  "command": {
-                    "insert": "collName",
-                    "documents": [
-                      {
-                        "_id": 2,
-                        "x": 2
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "commandFailedEvent": {
-                  "commandName": "insert"
+              "data": {
+                "failCommands": [
+                  "find",
+                  "saslStart"
+                ],
+                "errorCode": 391
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectError": {
+            "errorCode": 391
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
                 }
               }
-            ]
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "find"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "find"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Write commands should fail if reauthentication fails",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
+            }
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 2
+              },
+              "data": {
+                "failCommands": [
+                  "insert",
+                  "saslStart"
+                ],
+                "errorCode": 391
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 2,
+              "x": 2
+            }
+          },
+          "expectError": {
+            "errorCode": 391
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "x": 1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "insert"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
+                    {
+                      "_id": 2,
+                      "x": 2
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "insert"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

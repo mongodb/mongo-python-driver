@@ -498,6 +498,12 @@
       "credential": null
     },
     {
+      "description": "should throw an exception custom callback is chosen but no callback is provided (MONGODB-OIDC)",
+      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:custom",
+      "valid": false,
+      "credential": null
+    },
+    {
       "description": "should throw an exception if neither provider nor callbacks specified (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
       "valid": false,

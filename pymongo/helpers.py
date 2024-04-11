@@ -90,6 +90,9 @@ _RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
 # Server code raised when re-authentication is required
 _REAUTHENTICATION_REQUIRED_CODE: int = 391
 
+# Server code raised when authentication fails.
+_AUTHENTICATION_FAILURE_CODE: int = 18
+
 
 def _gen_index_name(keys: _IndexList) -> str:
     """Generate an index name from the set of fields it is over."""
