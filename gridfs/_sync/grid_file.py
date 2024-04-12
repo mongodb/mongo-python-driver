@@ -1157,6 +1157,22 @@ class GridIn:
             return self._file[name]
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        if IS_SYNC:
+            # For properties of this instance like _buffer, or descriptors set on
+            # the class like filename, use regular __setattr__
+            if name in self.__dict__ or name in self.__class__.__dict__:
+                object.__setattr__(self, name, value)
+            else:
+                # All other attributes are part of the document in db.fs.files.
+                # Store them to be sent to server on close() or if closed, send
+                # them now.
+                self._file[name] = value
+                if self._closed:
+                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+        else:
+            object.__setattr__(self, name, value)
+
     def set(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
         # the class like filename, use regular __setattr__

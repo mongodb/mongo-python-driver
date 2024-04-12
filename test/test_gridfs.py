@@ -346,7 +346,7 @@ class TestGridfs(IntegrationTest):
         one.close()
 
         # Attempt to upload a file with more chunks to the same _id.
-        with patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", DEFAULT_CHUNK_SIZE):
+        with patch("gridfs._sync.grid_file._UPLOAD_BUFFER_SIZE", DEFAULT_CHUNK_SIZE):
             two = self.fs.new_file(_id=123)
             self.assertRaises(FileExists, two.write, b"x" * DEFAULT_CHUNK_SIZE * 3)
         # Original file is still readable (no extra chunks were uploaded).
