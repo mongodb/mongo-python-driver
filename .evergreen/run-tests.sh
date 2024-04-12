@@ -254,11 +254,6 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
-    # Install all optional deps to ensure lazy imports are getting patched.
-    python -m pip install -q ".[aws,encryption,gssapi,ocsp,snappy,zstd]"
-    if [ "$OLD_PYPY" == "True" ]; then
-        pip install "python-snappy<0.7.0"
-    fi
     python -m pip install $GREEN_FRAMEWORK
 fi
 
