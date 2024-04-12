@@ -1770,15 +1770,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         def format_logs(log_list):
             client_to_log = defaultdict(list)
             for log in log_list:
-                data = json_util.loads(log.message)
-                client = data.pop("clientId")
-                client_to_log[client].append(
-                    {
-                        "level": log.levelname.lower(),
-                        "component": log.name.replace("pymongo.", "", 1),
-                        "data": data,
-                    }
-                )
+                if log.module != "ocsp_support":
+                    data = json_util.loads(log.message)
+                    client = data.pop("clientId")
+                    client_to_log[client].append(
+                        {
+                            "level": log.levelname.lower(),
+                            "component": log.name.replace("pymongo.", "", 1),
+                            "data": data,
+                        }
+                    )
             return client_to_log
 
         with self.assertLogs("pymongo", level="DEBUG") as cm:
