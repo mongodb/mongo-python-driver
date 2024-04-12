@@ -114,7 +114,7 @@ fi
 if [ "$COMPRESSORS" = "snappy" ]; then
     python -m pip install '.[snappy]'
     if [ "$OLD_PYPY" == "True" ]; then
-        pip install "snappy<0.7.0"
+        pip install "python-snappy<0.7.0"
     fi
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
@@ -257,7 +257,7 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
     # Install all optional deps to ensure lazy imports are getting patched.
     python -m pip install -q ".[aws,encryption,gssapi,ocsp,snappy,zstd]"
     if [ "$OLD_PYPY" == "True" ]; then
-        pip install "snappy<0.7.0"
+        pip install "python-snappy<0.7.0"
     fi
     python -m pip install $GREEN_FRAMEWORK
 fi
