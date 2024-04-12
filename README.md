@@ -1,3 +1,46 @@
+# Is the MongoDB Python Driver 4.6.3 release a real one?
+
+Created because this Git Repo has "Issues" disabled, and neither the
+MongoDB Security Team nor MongDB Support have responded asking whether
+the claimed recent "4.6.3" release is actually legit.
+
+The *documented* release process for this Python driver is here:
+
+  https://github.com/mongodb/mongo-python-driver/blob/master/RELEASE.md
+
+However, the MongoDB "4.6.3" release which GitHub Dependabot is telling
+people to upgrade to IS NOT listed where that says to check:
+
+  * MongoDB Release page:
+
+      https://www.mongodb.com/community/forums/tags/c/announcements/driver-releases/110/python
+
+    Nope.  Latest release listed is 4.6.2.
+
+
+  * GitHub Releases page for the repo:
+
+      https://github.com/mongodb/mongo-python-driver/releases
+
+    Nope.  Latest release listed is 4.6.2.
+
+
+In short, this looks like *some* part of the MongoDB packaging
+process may have been compromised.
+
+However, the MongoDB staff are unfortunately incapable of telling
+people whether it's legit or not.
+
+Seems like a pretty basic question eh?
+
+If anyone from the MongoDB team actually feels like responding to
+let their users know, our particular issue documenting our attempts
+to contact them is here:
+
+  https://github.com/getredash/redash/pull/6863
+
+---
+
 # PyMongo
 
 [![PyPI Version](https://img.shields.io/pypi/v/pymongo)](https://pypi.org/project/pymongo)
