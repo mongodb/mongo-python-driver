@@ -43,6 +43,7 @@ import multiprocessing as mp
 import os
 import sys
 import tempfile
+import threading
 import time
 import warnings
 from typing import Any, List, Optional
@@ -101,10 +102,19 @@ class Timer:
         self.interval = self.end - self.start
 
 
+def threaded(n_threads, func):
+    threads = [threading.Thread(target=func) for _ in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+
 class PerformanceTest:
     dataset: str
     data_size: int
     fail: Any
+    n_threads: int = 1
 
     @classmethod
     def setUpClass(cls):
@@ -118,7 +128,7 @@ class PerformanceTest:
         # Remove "Test" so that TestFlatEncoding is reported as "FlatEncoding".
         name = self.__class__.__name__[4:]
         median = self.percentile(50)
-        megabytes_per_sec = self.data_size / median / 1000000
+        megabytes_per_sec = (self.data_size * self.n_threads) / median / 1000000
         print(
             f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
             f"total time={duration:.3f}s, iterations={len(self.results)}"
@@ -128,7 +138,7 @@ class PerformanceTest:
                 "info": {
                     "test_name": name,
                     "args": {
-                        "threads": 1,
+                        "threads": self.n_threads,
                     },
                 },
                 "metrics": [
@@ -163,7 +173,10 @@ class PerformanceTest:
             i += 1
             self.before()
             with Timer() as timer:
-                self.do_task()
+                if self.n_threads == 1:
+                    self.do_task()
+                else:
+                    threaded(self.n_threads, self.do_task)
             self.after()
             results.append(timer.interval)
             duration = time.monotonic() - start
@@ -308,6 +321,10 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
             command("hello", True)
 
 
+class TestRunCommand8Threads(TestRunCommand):
+    n_threads = 8
+
+
 class TestDocument(PerformanceTest):
     def setUp(self):
         super().setUp()
@@ -356,6 +373,10 @@ class TestFindOneByID(FindTest, unittest.TestCase):
             find_one({"_id": _id})
 
 
+class TestFindOneByID8Threads(TestFindOneByID):
+    n_threads = 8
+
+
 class SmallDocInsertTest(TestDocument):
     dataset = "small_doc.json"
 
@@ -393,6 +414,10 @@ class TestLargeDocInsertOne(LargeDocInsertTest, unittest.TestCase):
 class TestFindManyAndEmptyCursor(FindTest, unittest.TestCase):
     def do_task(self):
         list(self.corpus.find())
+
+
+class TestFindManyAndEmptyCursor8Threads(TestFindManyAndEmptyCursor):
+    n_threads = 8
 
 
 class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):

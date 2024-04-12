@@ -71,7 +71,7 @@ ocsp = [
     "service_identity>=18.1.0",
 ]
 snappy = [
-    "python-snappy",
+    "python-snappy"
 ]
 # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
 srv = []

@@ -93,7 +93,10 @@
               "commandStartedEvent": {
                 "command": {
                   "getMore": {
-                    "$$type": "long"
+                    "$$type": [
+                      "int",
+                      "long"
+                    ]
                   },
                   "collection": "coll0"
                 },

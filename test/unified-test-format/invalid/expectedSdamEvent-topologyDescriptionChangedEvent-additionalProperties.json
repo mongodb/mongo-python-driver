@@ -1,6 +1,6 @@
 {
-  "description": "expectedCmapEvent-poolClearedEvent-interruptInUseConnections-type",
-  "schemaVersion": "1.11",
+  "description": "expectedSdamEvent-topologyDescriptionChangedEvent-additionalProperties",
+  "schemaVersion": "1.14",
   "tests": [
     {
       "description": "foo",
@@ -8,11 +8,11 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventType": "cmap",
+          "eventType": "sdam",
           "events": [
             {
-              "poolClearedEvent": {
-                "interruptInUseConnections": "foo"
+              "topologyDescriptionChangedEvent": {
+                "foo": "bar"
               }
             }
           ]

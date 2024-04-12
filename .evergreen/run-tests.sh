@@ -32,6 +32,9 @@ AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="${*:1}"
 PYTHON=$(which python)
+# TODO: Remove when we drop PyPy 3.8 support.
+OLD_PYPY=$(python -c "import sys; print(sys.implementation.name.lower() == 'pypy' and sys.implementation.version < (7, 3, 12))")
+
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
@@ -110,6 +113,9 @@ fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
     python -m pip install '.[snappy]'
+    if [ "$OLD_PYPY" == "True" ]; then
+        pip install "python-snappy<0.7.0"
+    fi
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     python -m pip install zstandard
@@ -250,6 +256,9 @@ fi
 if [ -n "$GREEN_FRAMEWORK" ]; then
     # Install all optional deps to ensure lazy imports are getting patched.
     python -m pip install -q ".[aws,encryption,gssapi,ocsp,snappy,zstd]"
+    if [ "$OLD_PYPY" == "True" ]; then
+        pip install "python-snappy<0.7.0"
+    fi
     python -m pip install $GREEN_FRAMEWORK
 fi
 
