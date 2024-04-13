@@ -300,7 +300,6 @@
     },
     {
       "description": "waitQueueSize should be included in connection pool created message when specified",
-      "skipReason": "PyMongo does not support waitQueueSize",
       "operations": [
         {
           "name": "createEntities",
@@ -379,7 +378,6 @@
     },
     {
       "description": "waitQueueMultiple should be included in connection pool created message when specified",
-      "skipReason": "PyMongo does not support waitQueueMultiple",
       "operations": [
         {
           "name": "createEntities",

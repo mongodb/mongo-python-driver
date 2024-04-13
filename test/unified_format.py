@@ -495,6 +495,10 @@ class EntityMapUtil:
                     kwargs["h"] = client_context.mongos_seeds()
             kwargs.update(spec.get("uriOptions", {}))
             server_api = spec.get("serverApi")
+            if "waitQueueSize" in kwargs:
+                raise unittest.SkipTest("PyMongo does not support waitQueueSize")
+            if "waitQueueMultiple" in kwargs:
+                raise unittest.SkipTest("PyMongo does not support waitQueueMultiple")
             if server_api:
                 kwargs["server_api"] = ServerApi(
                     server_api["version"],
