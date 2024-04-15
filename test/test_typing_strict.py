@@ -19,8 +19,8 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict
 
 import pymongo
-from pymongo._sync.collection import Collection
-from pymongo._sync.database import Database
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.database import Database
 
 
 def test_generic_arguments() -> None:

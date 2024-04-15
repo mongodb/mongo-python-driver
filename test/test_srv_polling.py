@@ -26,9 +26,9 @@ from test.utils import FunctionCallRecorder, wait_until
 
 import pymongo
 from pymongo import common
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
+from pymongo.synchronous.mongo_client import MongoClient
 
 WAIT_TIME = 0.1
 

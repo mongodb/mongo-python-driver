@@ -22,7 +22,7 @@ from codecs import utf_8_decode
 from collections import defaultdict
 from typing import Iterable, no_type_check
 
-from pymongo._sync.database import Database
+from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
@@ -44,12 +44,6 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
-from pymongo._sync.bulk import BulkWriteError
-from pymongo._sync.collection import Collection, ReturnDocument
-from pymongo._sync.command_cursor import CommandCursor
-from pymongo._sync.cursor import CursorType
-from pymongo._sync.message import _COMMAND_OVERHEAD, _gen_find_command
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     ConfigurationError,
     DocumentTooLarge,
@@ -70,6 +64,12 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
+from pymongo.synchronous.bulk import BulkWriteError
+from pymongo.synchronous.collection import Collection, ReturnDocument
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import CursorType
+from pymongo.synchronous.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 

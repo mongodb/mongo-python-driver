@@ -68,11 +68,6 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
-from pymongo._sync.change_stream import ChangeStream
-from pymongo._sync.client_session import ClientSession, TransactionOptions, _TxnState
-from pymongo._sync.collection import Collection
-from pymongo._sync.command_cursor import CommandCursor
-from pymongo._sync.database import Database
 from pymongo.encryption import ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
@@ -128,6 +123,11 @@ from pymongo.server_api import ServerApi
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.change_stream import ChangeStream
+from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.database import Database
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern

@@ -54,7 +54,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
     from bson.typings import _ReadableBuffer
-    from pymongo._async.pool import Connection
+    from pymongo.asynchronous.pool import Connection
     from pymongo.auth import MongoCredential
 
 

@@ -40,7 +40,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
@@ -63,6 +62,7 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

@@ -19,7 +19,7 @@ import re
 import sys
 from typing import Any, Iterable, List, Mapping, Union
 
-from pymongo._sync.command_cursor import CommandCursor
+from pymongo.synchronous.command_cursor import CommandCursor
 
 sys.path[0:0] = [""]
 
@@ -39,9 +39,6 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import auth, helpers
-from pymongo._sync.collection import Collection
-from pymongo._sync.database import Database
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     CollectionInvalid,
     ExecutionTimeout,
@@ -52,6 +49,9 @@ from pymongo.errors import (
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 

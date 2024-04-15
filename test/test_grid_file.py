@@ -22,7 +22,7 @@ import sys
 import zipfile
 from io import BytesIO
 
-from pymongo._sync.database import Database
+from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
@@ -31,7 +31,8 @@ from test.utils import EventListener, rs_or_single_client
 
 from bson.objectid import ObjectId
 from gridfs import GridFS
-from gridfs._sync.grid_file import (
+from gridfs.errors import NoFile
+from gridfs.synchronous.grid_file import (
     _SEEK_CUR,
     _SEEK_END,
     DEFAULT_CHUNK_SIZE,
@@ -39,10 +40,9 @@ from gridfs._sync.grid_file import (
     GridOut,
     GridOutCursor,
 )
-from gridfs.errors import NoFile
 from pymongo import MongoClient
-from pymongo._sync.message import _CursorAddress
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
+from pymongo.synchronous.message import _CursorAddress
 
 
 class TestGridFileNoConnect(unittest.TestCase):

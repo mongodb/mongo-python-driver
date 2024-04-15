@@ -17,7 +17,7 @@ replacements = {
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
     "a_wrap_socket": "wrap_socket",
-    "_async": "_sync",
+    "asynchronous": "synchronous",
     "anext": "next",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
@@ -34,20 +34,22 @@ replacements = {
 
 async_files = [
     "./pymongo/_async/" + f
-    for f in listdir("./pymongo/_async")
-    if isfile(join("./pymongo/_async", f))
+    for f in listdir("pymongo/asynchronous")
+    if isfile(join("pymongo/asynchronous", f))
 ]
 
 gridfs_files = [
-    "./gridfs/_async/" + f for f in listdir("./gridfs/_async") if isfile(join("./gridfs/_async", f))
+    "./gridfs/_async/" + f
+    for f in listdir("gridfs/asynchronous")
+    if isfile(join("gridfs/asynchronous", f))
 ]
 
 unasync_files(
     async_files,
     [
         Rule(
-            fromdir="/pymongo/_async/",
-            todir="/pymongo/_sync/",
+            fromdir="/pymongo/asynchronous/",
+            todir="/pymongo/synchronous/",
             additional_replacements=replacements,
         )
     ],
@@ -57,14 +59,14 @@ unasync_files(
     gridfs_files,
     [
         Rule(
-            fromdir="/gridfs/_async/",
-            todir="/gridfs/_sync/",
+            fromdir="/gridfs/asynchronous/",
+            todir="/gridfs/synchronous/",
             additional_replacements=replacements,
         )
     ],
 )
 
-with open("./gridfs/_sync/grid_file.py", "r+") as f:
+with open("gridfs/synchronous/grid_file.py", "r+") as f:
     lines = f.readlines()
     is_sync = [line for line in lines if line.startswith("IS_SYNC = ")][0]
     index = lines.index(is_sync)

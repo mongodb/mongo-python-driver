@@ -21,7 +21,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 """
 from __future__ import annotations
 
-from gridfs._async.grid_file import (
+from gridfs.asynchronous.grid_file import (
     DEFAULT_CHUNK_SIZE,
     AsyncGridFS,
     AsyncGridFSBucket,
@@ -29,14 +29,14 @@ from gridfs._async.grid_file import (
     AsyncGridOut,
     AsyncGridOutCursor,
 )
-from gridfs._sync.grid_file import (
+from gridfs.errors import NoFile
+from gridfs.synchronous.grid_file import (
     GridFS,
     GridFSBucket,
     GridIn,
     GridOut,
     GridOutCursor,
 )
-from gridfs.errors import NoFile
 
 __all__ = [
     "AsyncGridFS",

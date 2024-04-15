@@ -43,8 +43,6 @@ from unittest.mock import patch
 
 from bson import Timestamp, json_util
 from pymongo import MongoClient, common, monitoring
-from pymongo._sync.settings import TopologySettings
-from pymongo._sync.topology import Topology, _ErrorContext
 from pymongo.errors import (
     AutoReconnect,
     ConfigurationError,
@@ -55,6 +53,8 @@ from pymongo.errors import (
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _check_command_response, _check_write_command_response
 from pymongo.server_description import SERVER_TYPE, ServerDescription
+from pymongo.synchronous.settings import TopologySettings
+from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 

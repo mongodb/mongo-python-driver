@@ -33,7 +33,6 @@ from test.utils import (
 from test.utils_spec_runner import SpecRunner
 
 from pymongo import DESCENDING
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -43,6 +42,7 @@ from pymongo.errors import (
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "read_write_concern")

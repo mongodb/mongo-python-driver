@@ -84,15 +84,6 @@ from bson.codec_options import (
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo import event_loggers, monitoring
-from pymongo._sync import message
-from pymongo._sync.client_options import ClientOptions
-from pymongo._sync.command_cursor import CommandCursor
-from pymongo._sync.cursor import Cursor, CursorType
-from pymongo._sync.database import Database
-from pymongo._sync.mongo_client import MongoClient, _detect_external_db
-from pymongo._sync.pool import _METADATA, DOCKER_ENV_PATH, ENV_VAR_K8S, Connection, PoolOptions
-from pymongo._sync.settings import TOPOLOGY_TYPE
-from pymongo._sync.topology import _ErrorContext
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.driver_info import DriverInfo
@@ -114,6 +105,21 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
+from pymongo.synchronous import message
+from pymongo.synchronous.client_options import ClientOptions
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor, CursorType
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient, _detect_external_db
+from pymongo.synchronous.pool import (
+    _METADATA,
+    DOCKER_ENV_PATH,
+    ENV_VAR_K8S,
+    Connection,
+    PoolOptions,
+)
+from pymongo.synchronous.settings import TOPOLOGY_TYPE
+from pymongo.synchronous.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 

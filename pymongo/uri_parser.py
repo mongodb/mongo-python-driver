@@ -31,7 +31,7 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from pymongo._async.client_options import _parse_ssl_options
+from pymongo.asynchronous.client_options import _parse_ssl_options
 from pymongo.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
     SRV_SERVICE_NAME,

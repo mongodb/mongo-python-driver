@@ -36,7 +36,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
-    from pymongo._async.bulk import _Bulk
+    from pymongo.asynchronous.bulk import _Bulk
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
 _IndexList = Union[

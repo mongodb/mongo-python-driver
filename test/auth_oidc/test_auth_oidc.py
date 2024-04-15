@@ -33,7 +33,6 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
-from pymongo._sync.cursor import CursorType
 from pymongo.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
@@ -41,6 +40,7 @@ from pymongo.auth_oidc import (
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
+from pymongo.synchronous.cursor import CursorType
 from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()

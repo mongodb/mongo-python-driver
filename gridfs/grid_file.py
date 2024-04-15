@@ -4,7 +4,7 @@ import os
 from typing import Any, Optional
 
 from pymongo import ASCENDING
-from pymongo._async.client_session import ClientSession
+from pymongo.asynchronous.client_session import ClientSession
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import InvalidOperation
 

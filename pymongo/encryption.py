@@ -54,11 +54,11 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
-from pymongo._async.collection import AsyncCollection
-from pymongo._async.cursor import AsyncCursor
-from pymongo._async.database import AsyncDatabase
-from pymongo._async.mongo_client import AsyncMongoClient
-from pymongo._async.pool import PoolOptions, _configured_socket, _raise_connection_failure
+from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts

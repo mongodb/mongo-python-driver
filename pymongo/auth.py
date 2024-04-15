@@ -48,7 +48,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
 if TYPE_CHECKING:
-    from pymongo._async.pool import Connection
+    from pymongo.asynchronous.pool import Connection
     from pymongo.hello import Hello
 
 HAVE_KERBEROS = True

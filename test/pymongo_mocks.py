@@ -21,12 +21,12 @@ from functools import partial
 from test import client_context
 
 from pymongo import common
-from pymongo._sync.mongo_client import MongoClient
-from pymongo._sync.monitor import Monitor
-from pymongo._sync.pool import Pool
 from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitor import Monitor
+from pymongo.synchronous.pool import Pool
 
 
 class MockPool(Pool):

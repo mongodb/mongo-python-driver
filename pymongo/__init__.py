@@ -87,11 +87,10 @@ TEXT = "text"
 """
 
 from pymongo import _csot
-from pymongo._async.collection import ReturnDocument
-from pymongo._async.cursor import CursorType
-from pymongo._async.mongo_client import AsyncMongoClient
-from pymongo._sync.mongo_client import MongoClient
 from pymongo._version import __version__, get_version_string, version_tuple
+from pymongo.asynchronous.collection import ReturnDocument
+from pymongo.asynchronous.cursor import CursorType
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.operations import (
     DeleteMany,
@@ -103,6 +102,7 @@ from pymongo.operations import (
     UpdateOne,
 )
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 version = __version__

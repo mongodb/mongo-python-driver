@@ -29,8 +29,8 @@ import uuid
 from threading import Thread
 from typing import Any, Dict, Mapping
 
-from pymongo._sync.collection import Collection
 from pymongo.daemon import _spawn_daemon
+from pymongo.synchronous.collection import Collection
 
 sys.path[0:0] = [""]
 
@@ -68,8 +68,6 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference, encryption
-from pymongo._sync.cursor import CursorType
-from pymongo._sync.mongo_client import MongoClient
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
@@ -85,6 +83,8 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+from pymongo.synchronous.cursor import CursorType
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}

@@ -37,7 +37,7 @@ from bson.datetime_ms import DatetimeConversion, DatetimeMS
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.regex import Regex
-from pymongo._sync.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 
 # Ensure the C extensions are installed.
 assert bson.has_c()

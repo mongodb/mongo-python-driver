@@ -36,10 +36,6 @@ from bson import encode
 from bson.raw_bson import RawBSONDocument
 from gridfs import GridFS, GridFSBucket
 from pymongo import WriteConcern
-from pymongo._sync import client_session
-from pymongo._sync.client_session import TransactionOptions
-from pymongo._sync.command_cursor import CommandCursor
-from pymongo._sync.cursor import Cursor
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
@@ -50,6 +46,10 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous import client_session
+from pymongo.synchronous.client_session import TransactionOptions
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "legacy")

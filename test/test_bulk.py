@@ -19,7 +19,7 @@ import sys
 import uuid
 from typing import Any, Optional
 
-from pymongo._sync.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
@@ -34,7 +34,6 @@ from test.utils import (
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from pymongo._sync.collection import Collection
 from pymongo.common import partition_node
 from pymongo.errors import (
     BulkWriteError,
@@ -43,6 +42,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.operations import *
+from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 
 

@@ -28,9 +28,9 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
-from pymongo._sync.command_cursor import CommandCursor
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.write_concern import WriteConcern
 
 

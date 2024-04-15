@@ -21,7 +21,7 @@ import time
 from io import BytesIO
 from typing import Any, Callable, List, Set, Tuple
 
-from pymongo._sync.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
@@ -36,12 +36,12 @@ from test.utils import (
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
-from pymongo._sync.command_cursor import CommandCursor
-from pymongo._sync.cursor import Cursor
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor
 
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
