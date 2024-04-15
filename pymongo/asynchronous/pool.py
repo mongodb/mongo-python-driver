@@ -42,7 +42,8 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, auth, helpers
+from pymongo import __version__, _csot, helpers
+from pymongo.asynchronous import auth
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -94,10 +95,10 @@ from pymongo.ssl_support import HAS_SNI, SSLError
 if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
+    from pymongo.asynchronous.auth import MongoCredential, _AuthContext
     from pymongo.asynchronous.client_session import ClientSession
     from pymongo.asynchronous.message import _OpMsg, _OpReply
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
-    from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
         SnappyContext,

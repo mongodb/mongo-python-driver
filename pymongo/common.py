@@ -40,8 +40,8 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.auth import MECHANISMS
-from pymongo.auth_oidc import OIDCCallback
+from pymongo.asynchronous.auth import MECHANISMS
+from pymongo.asynchronous.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,

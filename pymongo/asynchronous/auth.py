@@ -36,8 +36,8 @@ from typing import (
 from urllib.parse import quote
 
 from bson.binary import Binary
-from pymongo.auth_aws import _authenticate_aws
-from pymongo.auth_oidc import (
+from pymongo.asynchronous.auth_aws import _authenticate_aws
+from pymongo.asynchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
     _OIDCAWSCallback,
@@ -261,7 +261,9 @@ def _authenticate_scram_start(
     return nonce, first_bare, cmd
 
 
-def _authenticate_scram(credentials: MongoCredential, conn: Connection, mechanism: str) -> None:
+async def _authenticate_scram(
+    credentials: MongoCredential, conn: Connection, mechanism: str
+) -> None:
     """Authenticate using SCRAM."""
     username = credentials.username
     if mechanism == "SCRAM-SHA-256":
@@ -325,7 +327,7 @@ def _authenticate_scram(credentials: MongoCredential, conn: Connection, mechanis
         "conversationId": res["conversationId"],
         "payload": Binary(client_final),
     }
-    res = conn.command(source, cmd)
+    res = await conn.command(source, cmd)
 
     parsed = _parse_scram_response(res["payload"])
     if not hmac.compare_digest(parsed[b"v"], server_sig):
@@ -339,7 +341,7 @@ def _authenticate_scram(credentials: MongoCredential, conn: Connection, mechanis
             "conversationId": res["conversationId"],
             "payload": Binary(b""),
         }
-        res = conn.command(source, cmd)
+        res = await conn.command(source, cmd)
         if not res["done"]:
             raise OperationFailure("SASL conversation failed to complete.")
 
@@ -383,7 +385,7 @@ def _canonicalize_hostname(hostname: str) -> str:
     return name[0].lower()
 
 
-def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using GSSAPI."""
     if not HAVE_KERBEROS:
         raise ConfigurationError(
@@ -449,7 +451,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
                 "payload": payload,
                 "autoAuthorize": 1,
             }
-            response = conn.command("$external", cmd)
+            response = await conn.command("$external", cmd)
 
             # Limit how many times we loop to catch protocol / library issues
             for _ in range(10):
@@ -464,7 +466,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
                     "conversationId": response["conversationId"],
                     "payload": payload,
                 }
-                response = conn.command("$external", cmd)
+                response = await conn.command("$external", cmd)
 
                 if result == kerberos.AUTH_GSS_COMPLETE:
                     break
@@ -485,7 +487,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
                 "conversationId": response["conversationId"],
                 "payload": payload,
             }
-            conn.command("$external", cmd)
+            await conn.command("$external", cmd)
 
         finally:
             kerberos.authGSSClientClean(ctx)
@@ -494,7 +496,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
         raise OperationFailure(str(exc)) from None
 
 
-def _authenticate_plain(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_plain(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using SASL PLAIN (RFC 4616)"""
     source = credentials.source
     username = credentials.username
@@ -506,10 +508,10 @@ def _authenticate_plain(credentials: MongoCredential, conn: Connection) -> None:
         "payload": Binary(payload),
         "autoAuthorize": 1,
     }
-    conn.command(source, cmd)
+    await conn.command(source, cmd)
 
 
-def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-X509."""
     ctx = conn.auth_ctx
     if ctx and ctx.speculate_succeeded():
@@ -517,25 +519,25 @@ def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
         return
 
     cmd = _X509Context(credentials, conn.address).speculate_command()
-    conn.command("$external", cmd)
+    await conn.command("$external", cmd)
 
 
-def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-CR."""
     source = credentials.source
     username = credentials.username
     password = credentials.password
     # Get a nonce
-    response = conn.command(source, {"getnonce": 1})
+    response = await conn.command(source, {"getnonce": 1})
     nonce = response["nonce"]
     key = _auth_key(nonce, username, password)
 
     # Actually authenticate
     query = {"authenticate": 1, "user": username, "nonce": nonce, "key": key}
-    conn.command(source, query)
+    await conn.command(source, query)
 
 
-def _authenticate_default(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_default(credentials: MongoCredential, conn: Connection) -> None:
     if conn.max_wire_version >= 7:
         if conn.negotiated_mechs:
             mechs = conn.negotiated_mechs
@@ -543,13 +545,15 @@ def _authenticate_default(credentials: MongoCredential, conn: Connection) -> Non
             source = credentials.source
             cmd = conn.hello_cmd()
             cmd["saslSupportedMechs"] = source + "." + credentials.username
-            mechs = conn.command(source, cmd, publish_events=False).get("saslSupportedMechs", [])
+            mechs = (await conn.command(source, cmd, publish_events=False)).get(
+                "saslSupportedMechs", []
+            )
         if "SCRAM-SHA-256" in mechs:
-            return _authenticate_scram(credentials, conn, "SCRAM-SHA-256")
+            return await _authenticate_scram(credentials, conn, "SCRAM-SHA-256")
         else:
-            return _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
+            return await _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
     else:
-        return _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
+        return await _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
 
 
 _AUTH_MAP: Mapping[str, Callable[..., None]] = {
@@ -634,13 +638,13 @@ _SPECULATIVE_AUTH_MAP: Mapping[str, Any] = {
 }
 
 
-def authenticate(
+async def authenticate(
     credentials: MongoCredential, conn: Connection, reauthenticate: bool = False
 ) -> None:
     """Authenticate connection."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
     if mechanism == "MONGODB-OIDC":
-        _authenticate_oidc(credentials, conn, reauthenticate)
+        await _authenticate_oidc(credentials, conn, reauthenticate)
     else:
-        auth_func(credentials, conn)
+        await auth_func(credentials, conn)

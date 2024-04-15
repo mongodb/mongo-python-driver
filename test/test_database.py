@@ -38,7 +38,8 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
-from pymongo import auth, helpers
+from pymongo import helpers
+from pymongo.asynchronous import auth
 from pymongo.errors import (
     CollectionInvalid,
     ExecutionTimeout,

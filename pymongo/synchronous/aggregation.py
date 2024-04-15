@@ -38,8 +38,8 @@ class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.
 
     Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.Collection.aggregate`, or
-    :meth:`pymongo.database.Database.aggregate` instead.
+    :meth:`pymongo.collection.AsyncCollection.aggregate`, or
+    :meth:`pymongo.database.AsyncDatabase.aggregate` instead.
     """
 
     def __init__(
@@ -56,7 +56,7 @@ class _AggregationCommand:
     ) -> None:
         if "explain" in options:
             raise ConfigurationError(
-                "The explain option is not supported. Use Database.command instead."
+                "The explain option is not supported. Use AsyncDatabase.command instead."
             )
 
         self._target = target
@@ -110,7 +110,7 @@ class _AggregationCommand:
         raise NotImplementedError
 
     def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> Collection:
-        """The Collection used for the aggregate command cursor."""
+        """The AsyncCollection used for the aggregate command cursor."""
         raise NotImplementedError
 
     @property
@@ -214,7 +214,7 @@ class _CollectionAggregationCommand(_AggregationCommand):
         return self._target.full_name
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
-        """The Collection used for the aggregate command cursor."""
+        """The AsyncCollection used for the aggregate command cursor."""
         return self._target
 
     @property
@@ -247,8 +247,8 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         return self._target
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection:
-        """The Collection used for the aggregate command cursor."""
-        # Collection level aggregate may not always return the "ns" field
+        """The AsyncCollection used for the aggregate command cursor."""
+        # AsyncCollection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level
         # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.
         _, collname = cursor.get("ns", self._cursor_namespace).split(".", 1)

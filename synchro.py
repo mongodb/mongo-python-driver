@@ -33,13 +33,13 @@ replacements = {
 }
 
 async_files = [
-    "./pymongo/_async/" + f
+    "./pymongo/asynchronous/" + f
     for f in listdir("pymongo/asynchronous")
     if isfile(join("pymongo/asynchronous", f))
 ]
 
 gridfs_files = [
-    "./gridfs/_async/" + f
+    "./gridfs/asynchronous/" + f
     for f in listdir("gridfs/asynchronous")
     if isfile(join("gridfs/asynchronous", f))
 ]

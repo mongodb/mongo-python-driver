@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context
 
 from bson.codec_options import CodecOptions
-from pymongo.encryption import _HAVE_PYMONGOCRYPT, ClientEncryption, EncryptionError
+from pymongo.synchronous.encryption import _HAVE_PYMONGOCRYPT, ClientEncryption, EncryptionError
 
 
 class TestonDemandGCPCredentials(IntegrationTest):

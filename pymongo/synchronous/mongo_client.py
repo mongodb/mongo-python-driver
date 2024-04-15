@@ -306,7 +306,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
-            from pymongo.encryption import _Encrypter
+            from pymongo.synchronous.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
         self._timeout = self._options.timeout

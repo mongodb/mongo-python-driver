@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
+from pymongo.asynchronous.auth import MongoCredential, _build_credentials_tuple
 from pymongo.asynchronous.pool import PoolOptions
-from pymongo.auth import MongoCredential, _build_credentials_tuple
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners

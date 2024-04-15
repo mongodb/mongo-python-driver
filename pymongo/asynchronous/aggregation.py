@@ -25,9 +25,9 @@ from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import ClientSession
-    from pymongo.asynchronous.collection import AsyncCollection, Collection
-    from pymongo.asynchronous.command_cursor import AsyncCommandCursor, CommandCursor
-    from pymongo.asynchronous.database import AsyncDatabase, Database
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+    from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.server import Server
     from pymongo.read_preferences import _ServerMode
@@ -38,8 +38,8 @@ class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.
 
     Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.Collection.aggregate`, or
-    :meth:`pymongo.database.Database.aggregate` instead.
+    :meth:`pymongo.collection.AsyncCollection.aggregate`, or
+    :meth:`pymongo.database.AsyncDatabase.aggregate` instead.
     """
 
     def __init__(
@@ -56,7 +56,7 @@ class _AggregationCommand:
     ) -> None:
         if "explain" in options:
             raise ConfigurationError(
-                "The explain option is not supported. Use Database.command instead."
+                "The explain option is not supported. Use AsyncDatabase.command instead."
             )
 
         self._target = target
@@ -109,12 +109,12 @@ class _AggregationCommand:
         """The namespace in which the aggregate command is run."""
         raise NotImplementedError
 
-    def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> Collection:
-        """The Collection used for the aggregate command cursor."""
+    def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> AsyncCollection:
+        """The AsyncCollection used for the aggregate command cursor."""
         raise NotImplementedError
 
     @property
-    def _database(self) -> Database:
+    def _database(self) -> AsyncDatabase:
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
@@ -134,7 +134,7 @@ class _AggregationCommand:
         server: Server,
         conn: Connection,
         read_preference: _ServerMode,
-    ) -> CommandCursor[_DocumentType]:
+    ) -> AsyncCommandCursor[_DocumentType]:
         # Serialize command.
         cmd = {"aggregate": self._aggregation_target, "pipeline": self._pipeline}
         cmd.update(self._options)
@@ -214,7 +214,7 @@ class _CollectionAggregationCommand(_AggregationCommand):
         return self._target.full_name
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
-        """The Collection used for the aggregate command cursor."""
+        """The AsyncCollection used for the aggregate command cursor."""
         return self._target
 
     @property
@@ -247,8 +247,8 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         return self._target
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
-        """The Collection used for the aggregate command cursor."""
-        # Collection level aggregate may not always return the "ns" field
+        """The AsyncCollection used for the aggregate command cursor."""
+        # AsyncCollection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level
         # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.
         _, collname = cursor.get("ns", self._cursor_namespace).split(".", 1)

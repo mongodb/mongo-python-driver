@@ -33,7 +33,7 @@ from test.utils import EventListener
 from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
-from pymongo.auth_oidc import (
+from pymongo.asynchronous.auth_oidc import (
     OIDCCallback,
     OIDCCallbackResult,
 )

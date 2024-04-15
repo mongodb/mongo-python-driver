@@ -34,7 +34,7 @@ from test.utils import (
 )
 
 from pymongo import MongoClient, monitoring
-from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
+from pymongo.asynchronous.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference

@@ -41,7 +41,7 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, auth, helpers
+from pymongo import __version__, _csot, helpers
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -88,12 +88,12 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
+from pymongo.synchronous import auth
 from pymongo.synchronous.client_session import _validate_session_write_concern
 
 if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.auth import MongoCredential, _AuthContext
     from pymongo.compression_support import (
         CompressionSettings,
         SnappyContext,
@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
+    from pymongo.synchronous.auth import MongoCredential, _AuthContext
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.message import _OpMsg, _OpReply
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
