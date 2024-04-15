@@ -95,8 +95,6 @@ class TestSrvPolling(unittest.TestCase):
     CONNECTION_STRING = "mongodb+srv://test1.test.build.10gen.cc"
 
     def setUp(self):
-        if not _HAVE_DNSPYTHON:
-            raise unittest.SkipTest("SRV polling tests require the dnspython module")
         # Patch timeouts to ensure short rescan SRV interval.
         self.client_knobs = client_knobs(
             heartbeat_frequency=WAIT_TIME,
@@ -150,6 +148,7 @@ class TestSrvPolling(unittest.TestCase):
         return True
 
     def run_scenario(self, dns_response, expect_change):
+        self.assertEqual(_HAVE_DNSPYTHON, True)
         if callable(dns_response):
             dns_resolver_response = dns_response
         else:

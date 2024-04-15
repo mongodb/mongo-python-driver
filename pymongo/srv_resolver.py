@@ -26,9 +26,12 @@ from pymongo.errors import ConfigurationError
 if TYPE_CHECKING:
     from dns import resolver
 else:
-    resolver = lazy_import("dns.resolver")
+    try:
+        resolver = lazy_import("dns.resolver")
 
-_HAVE_DNSPYTHON = True
+        _HAVE_DNSPYTHON = True
+    except ImportError:
+        _HAVE_DNSPYTHON = False
 
 
 # dnspython can return bytes or str from various parts

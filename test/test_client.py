@@ -110,7 +110,6 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
@@ -455,7 +454,6 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
         from pymongo.srv_resolver import _resolve
@@ -1755,7 +1753,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             coll.insert_many([{} for _ in range(5)])
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_service_name_from_kwargs(self):
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
@@ -1776,7 +1773,6 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_srv_max_hosts_kwarg(self):
         client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
@@ -1786,11 +1782,6 @@ class TestClient(IntegrationTest):
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
-
-    @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
-    def test_srv_no_dnspython_error(self):
-        with self.assertRaisesRegex(ConfigurationError, 'The "dnspython" module must be'):
-            MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
 
     @unittest.skipIf(
         client_context.load_balancer or client_context.serverless,
