@@ -62,10 +62,10 @@ from gridfs import GridFSBucket
 from pymongo import MongoClient
 
 # Spec says to use at least 1 minute cumulative execution time and up to 100 iterations or 5 minutes but that
-# makes the benchmarks too slow. Instead, we use at least 30 seconds and at most 60 seconds.
+# makes the benchmarks too slow. Instead, we use at least 30 seconds and at most 3 minutes.
 NUM_ITERATIONS = 100
 MIN_ITERATION_TIME = 30
-MAX_ITERATION_TIME = 60
+MAX_ITERATION_TIME = 180
 NUM_DOCS = 10000
 # When debugging or prototyping it's often useful to run the benchmarks locally, set FASTBENCH=1 to run quickly.
 if bool(os.getenv("FASTBENCH")):
