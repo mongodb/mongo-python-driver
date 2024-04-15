@@ -129,6 +129,9 @@ GCP_CREDS = {
 }
 KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 
+# Ensure Evergreen metadata doesn't result in truncation
+os.environ.setdefault("MONGOB_LOG_MAX_DOCUMENT_LENGTH", "2000")
+
 
 def is_server_resolvable():
     """Returns True if 'server' is resolvable."""
