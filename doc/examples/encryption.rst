@@ -603,7 +603,7 @@ An application using GCP credentials would look like:
     }
     client_encryption.create_data_key("gcp", master_key)
 
-The driver will query the `VM instance metadata <https://cloud.google.com/compute/docs/metadata/default-metadata-values>`_ to obtain credentials.
+The driver will query the `VM instance metadata <https://cloud.google.com/compute/docs/metadata/querying-metadata>`_ to obtain credentials.
 
 An application using Azure credentials would look like, this time using
 :class:`~pymongo.encryption_options.AutoEncryptionOpts`:

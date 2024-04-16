@@ -439,8 +439,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             primary (e.g. w=3 means write to the primary and wait until
             replicated to **two** secondaries). Passing w=0 **disables write
             acknowledgement** and all other write concern options.
-          - `wTimeoutMS`: (integer) Used in conjunction with `w`. Specify a value
-            in milliseconds to control how long to wait for write propagation
+          - `wTimeoutMS`: **DEPRECATED** (integer) Used in conjunction with `w`.
+            Specify a value in milliseconds to control how long to wait for write propagation
             to complete. If replication does not complete in the given
             timeframe, a timeout exception is raised. Passing wTimeoutMS=0
             will cause **write operations to wait indefinitely**.
@@ -717,6 +717,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            Not::
 
                client.__my_database__
+
+        .. versionchanged:: 4.7
+            Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
         """
         doc_class = document_class or dict
         self.__init_kwargs: dict[str, Any] = {
