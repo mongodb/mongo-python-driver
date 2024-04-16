@@ -40,6 +40,11 @@ jobs:
       - name: Run typecheck
         run: |
           tox -m typecheck
+      - run: |
+          sudo apt-get install -y cppcheck
+      - run: |
+          cppcheck --force bson
+          cppcheck pymongo
 
   build:
     # supercharge/mongodb-github-action requires containers so we don't test other platforms
@@ -128,6 +133,26 @@ jobs:
       - name: Build docs
         run: |
           tox -m doc
+
+  typing:
+    name: Typing Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.7", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{matrix.python}}"
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+      - name: Install dependencies
+        run: |
+          pip install -q tox
+      - name: Run typecheck
+        run: |
+          tox -m typecheck
 
   make_sdist:
     runs-on: ubuntu-latest
