@@ -879,8 +879,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-    def _init_background(self) -> None:
+    def _init_background(self, old_pid=None) -> None:
         self._topology = Topology(self._topology_settings)
+        # Seed the topology with the old one's pid so we can detect clients
+        # that are opened before a fork and used after.
+        self._topology._pid = old_pid
 
         def target() -> bool:
             client = self_ref()
@@ -903,7 +906,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
-        self._init_background()
+        self._init_background(self._topology._pid)
 
     def _duplicate(self, **kwargs: Any) -> MongoClient:
         args = self.__init_kwargs.copy()
@@ -921,7 +924,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = self._topology.select_server(writable_server_selector, _Op.TEST)
+        server = self._get_topology().select_server(writable_server_selector, _Op.TEST)
 
         return getattr(server.description, attr_name)
 
