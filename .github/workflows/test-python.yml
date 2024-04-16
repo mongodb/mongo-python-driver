@@ -132,7 +132,7 @@ jobs:
           pip install -q tox
       - name: Build docs
         run: |
-          tox -m doc
+          tox -m linkcheck
 
   typing:
     name: Typing Tests
