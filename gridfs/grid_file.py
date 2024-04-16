@@ -118,7 +118,7 @@ def _grid_out_property(field_name: str, docstring: str) -> Any:
 
     def getter(self: Any) -> Any:
         if warn_str:
-            warnings.warn(docstring, stacklevel=2, category=DeprecationWarning)
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         self._ensure_file()
 
         # Protect against PHP-237
