@@ -328,13 +328,13 @@ Removed :meth:`pymongo.database.Database.collection_names`. Use
 :meth:`~pymongo.database.Database.list_collection_names` instead. Code like
 this::
 
-    names = client.collection_names()
-    non_system_names = client.collection_names(include_system_collections=False)
+    names = client.db.collection_names()
+    non_system_names = client.db.collection_names(include_system_collections=False)
 
 can be changed to this::
 
-    names = client.list_collection_names()
-    non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
+    names = client.db.list_collection_names()
+    non_system_names = client.db.list_collection_names(filter={"name": {"$regex": "^(?!system\\.)"}})
 
 Database.current_op is removed
 ..............................
