@@ -57,14 +57,14 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/PyCQA/doc8
-  rev: v1.1.1
+  rev: v1.0.0
   hooks:
     - id: doc8
       args: ["--ignore=D001"]  # ignore line length
       stages: [manual]
 
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.27.0
+  rev: 0.23.3
   hooks:
     - id: check-jsonschema
       name: "Check GitHub Workflows"
@@ -74,7 +74,7 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/ariebovenberg/slotscheck
-  rev: v0.17.0
+  rev: v0.16.5
   hooks:
   - id: slotscheck
     files: \.py$
@@ -83,7 +83,7 @@ repos:
     args: ["--no-strict-imports"]
 
 - repo: https://github.com/codespell-project/codespell
-  rev: "v2.2.6"
+  rev: "v2.2.5"
   hooks:
   - id: codespell
     # Examples of errors or updates to justify the exceptions:
