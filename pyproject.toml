@@ -115,6 +115,8 @@ filterwarnings = [
     "module:Unsupported compressor:UserWarning",
     "module:zlibcompressionlevel must be:UserWarning",
     "module:Wire protocol compression with:UserWarning",
+    "module:GridIn property:DeprecationWarning",
+    "module:GridOut property:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
