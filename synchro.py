@@ -30,6 +30,9 @@ replacements = {
     "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
     "_a_grid_in_property": "_grid_in_property",
     "_a_grid_out_property": "_grid_out_property",
+    "AsyncMongoCryptCallback": "MongoCryptCallback",
+    "AsyncExplicitEncrypter": "ExplicitEncrypter",
+    "AsyncAutoEncrypter": "AutoEncrypter",
 }
 
 async_files = [

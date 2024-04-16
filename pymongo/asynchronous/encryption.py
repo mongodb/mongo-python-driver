@@ -36,12 +36,16 @@ from typing import (
 )
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.asynchronous.auto_encrypter import AsyncAutoEncrypter  # type:ignore[import]
+    from pymongocrypt.asynchronous.explicit_encrypter import (
+        AsyncExplicitEncrypter,  # type:ignore[import]
+    )
+    from pymongocrypt.asynchronous.state_machine import (
+        AsyncMongoCryptCallback,  # type:ignore[import]
+    )
     from pymongocrypt.binding import lib  # type:ignore[import]
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
-    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
@@ -107,90 +111,7 @@ def _wrap_encryption_errors() -> Iterator[None]:
         raise EncryptionError(exc) from exc
 
 
-async def mark_command_async(callback, database: str, cmd: bytes) -> bytes:
-    """Mark a command for encryption.
-
-    :param database: The database on which to run this command.
-    :param cmd: The BSON command to run.
-
-    :return: The marked command response from mongocryptd.
-    """
-    self = callback
-    if not self._spawned and not self.opts._mongocryptd_bypass_spawn:
-        self.spawn()
-    # Database.command only supports mutable mappings so we need to decode
-    # the raw BSON command first.
-    inflated_cmd = _inflate_bson(cmd, DEFAULT_RAW_BSON_OPTIONS)
-    assert self.mongocryptd_client is not None
-    try:
-        res = await self.mongocryptd_client[database].command(
-            inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
-        )
-    except ServerSelectionTimeoutError:
-        if self.opts._mongocryptd_bypass_spawn:
-            raise
-        self.spawn()
-        res = await self.mongocryptd_client[database].command(
-            inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
-        )
-    return res.raw
-
-
-async def run_state_machine_async(ctx, callback):
-    """Run the libmongocrypt state machine until completion.
-    :Parameters:
-      - `ctx`: A :class:`MongoCryptContext`.
-    :Returns:
-      The completed libmongocrypt operation.
-    """
-    while True:
-        state = ctx.state
-        # Check for terminal states first.
-        if state == lib.MONGOCRYPT_CTX_ERROR:
-            ctx._raise_from_status()
-        elif state == lib.MONGOCRYPT_CTX_READY:
-            return ctx.finish()
-        elif state == lib.MONGOCRYPT_CTX_DONE:
-            return None
-
-        if state == lib.MONGOCRYPT_CTX_NEED_MONGO_COLLINFO:
-            list_colls_filter = ctx.mongo_operation()
-            coll_info = callback.collection_info(ctx.database, list_colls_filter)
-            if coll_info:
-                ctx.add_mongo_operation_result(coll_info)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_MONGO_MARKINGS:
-            mongocryptd_cmd = ctx.mongo_operation()
-            result = await ctx.mark_command_async(callback, ctx.database, mongocryptd_cmd)
-            ctx.add_mongo_operation_result(result)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_MONGO_KEYS:
-            key_filter = ctx.mongo_operation()
-            for key in callback.fetch_keys(key_filter):
-                ctx.add_mongo_operation_result(key)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_KMS:
-            for kms_ctx in ctx.kms_contexts():
-                with kms_ctx:
-                    callback.kms_request(kms_ctx)
-            ctx.complete_kms()
-        else:
-            raise MongoCryptError(f"unknown state: {state}")
-
-
-async def encrypt_async(auto_encrypter, database, cmd):
-    """Encrypt a MongoDB command.
-    :Parameters:
-      - `database`: The database for this command.
-      - `cmd`: A MongoDB command as BSON.
-    :Returns:
-      The encrypted command.
-    """
-    with auto_encrypter.mongocrypt.encryption_context(database, cmd) as ctx:
-        return await run_state_machine_async(ctx, auto_encrypter.callback)
-
-
-class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
+class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
         client: Optional[AsyncMongoClient[_DocumentTypeArg]],
@@ -459,7 +380,7 @@ class _Encrypter:
         io_callbacks = _EncryptionIO(  # type:ignore[misc]
             metadata_client, key_vault_coll, mongocryptd_client, opts
         )
-        self._auto_encrypter = AutoEncrypter(
+        self._auto_encrypter = AsyncAutoEncrypter(
             io_callbacks,
             MongoCryptOptions(
                 opts._kms_providers,
@@ -473,7 +394,7 @@ class _Encrypter:
         )
         self._closed = False
 
-    def encrypt(
+    async def encrypt(
         self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
     ) -> dict[str, Any]:
         """Encrypt a MongoDB command.
@@ -487,29 +408,11 @@ class _Encrypter:
         self._check_closed()
         encoded_cmd = _dict_to_bson(cmd, False, codec_options)
         with _wrap_encryption_errors():
-            encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
+            encrypted_cmd = await self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
-    async def encrypt_async(
-        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
-    ) -> dict[str, Any]:
-        """Encrypt a MongoDB command.
-
-        :param database: The database for this command.
-        :param cmd: A command document.
-        :param codec_options: The CodecOptions to use while encoding `cmd`.
-
-        :return: The encrypted command to execute.
-        """
-        self._check_closed()
-        encoded_cmd = _dict_to_bson(cmd, False, codec_options)
-        with _wrap_encryption_errors():
-            encrypted_cmd = await encrypt_async(self._auto_encrypter, database, encoded_cmd)
-            # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-            return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
-
-    def decrypt(self, response: bytes) -> Optional[bytes]:
+    async def decrypt(self, response: bytes) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
         :param response: A MongoDB command response as BSON.
@@ -518,18 +421,18 @@ class _Encrypter:
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            return cast(bytes, self._auto_encrypter.decrypt(response))
+            return cast(bytes, await self._auto_encrypter.decrypt(response))
 
     def _check_closed(self) -> None:
         if self._closed:
             raise InvalidOperation("Cannot use MongoClient after close")
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Cleanup resources."""
         self._closed = True
-        self._auto_encrypter.close()
+        await self._auto_encrypter.close()
         if self._internal_client:
-            self._internal_client.close()
+            await self._internal_client.close()
             self._internal_client = None
 
 
@@ -683,7 +586,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
             None, key_vault_coll, None, opts
         )
-        self._encryption = ExplicitEncrypter(
+        self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
         # Use the same key vault collection as the callback.
@@ -757,7 +660,7 @@ class ClientEncryption(Generic[_DocumentType]):
         for i, field in enumerate(encrypted_fields["fields"]):
             if isinstance(field, dict) and field.get("keyId") is None:
                 try:
-                    encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
+                    encrypted_fields["fields"][i]["keyId"] = await self.create_data_key(
                         kms_provider=kms_provider,  # type:ignore[arg-type]
                         master_key=master_key,
                     )
@@ -773,7 +676,7 @@ class ClientEncryption(Generic[_DocumentType]):
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 
-    def create_data_key(
+    async def create_data_key(
         self,
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
@@ -853,7 +756,7 @@ class ClientEncryption(Generic[_DocumentType]):
         with _wrap_encryption_errors():
             return cast(
                 Binary,
-                self._encryption.create_data_key(
+                await self._encryption.create_data_key(
                     kms_provider,
                     master_key=master_key,
                     key_alt_names=key_alt_names,
@@ -861,7 +764,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 ),
             )
 
-    def _encrypt_helper(
+    async def _encrypt_helper(
         self,
         value: Any,
         algorithm: str,
@@ -891,7 +794,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 codec_options=self._codec_options,
             )
         with _wrap_encryption_errors():
-            encrypted_doc = self._encryption.encrypt(
+            encrypted_doc = await self._encryption.encrypt(
                 value=doc,
                 algorithm=algorithm,
                 key_id=key_id,
@@ -903,7 +806,7 @@ class ClientEncryption(Generic[_DocumentType]):
             )
             return decode(encrypted_doc)["v"]
 
-    def encrypt(
+    async def encrypt(
         self,
         value: Any,
         algorithm: str,
@@ -942,7 +845,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         return cast(
             Binary,
-            self._encrypt_helper(
+            await self._encrypt_helper(
                 value=value,
                 algorithm=algorithm,
                 key_id=key_id,
@@ -954,7 +857,7 @@ class ClientEncryption(Generic[_DocumentType]):
             ),
         )
 
-    def encrypt_expression(
+    async def encrypt_expression(
         self,
         expression: Mapping[str, Any],
         algorithm: str,
@@ -993,7 +896,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         return cast(
             RawBSONDocument,
-            self._encrypt_helper(
+            await self._encrypt_helper(
                 value=expression,
                 algorithm=algorithm,
                 key_id=key_id,
@@ -1005,7 +908,7 @@ class ClientEncryption(Generic[_DocumentType]):
             ),
         )
 
-    def decrypt(self, value: Binary) -> Any:
+    async def decrypt(self, value: Binary) -> Any:
         """Decrypt an encrypted value.
 
         :param value` (Binary): The encrypted value, a
@@ -1019,7 +922,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         with _wrap_encryption_errors():
             doc = encode({"v": value})
-            decrypted_doc = self._encryption.decrypt(doc)
+            decrypted_doc = await self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
     async def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
@@ -1169,7 +1072,7 @@ class ClientEncryption(Generic[_DocumentType]):
             raise ConfigurationError("A provider must be given if a master_key is given")
         self._check_closed()
         with _wrap_encryption_errors():
-            raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
+            raw_result = await self._encryption.rewrap_many_data_key(filter, provider, master_key)
             if raw_result is None:
                 return RewrapManyDataKeyResult()
 

@@ -107,89 +107,6 @@ def _wrap_encryption_errors() -> Iterator[None]:
         raise EncryptionError(exc) from exc
 
 
-def mark_command_async(callback, database: str, cmd: bytes) -> bytes:
-    """Mark a command for encryption.
-
-    :param database: The database on which to run this command.
-    :param cmd: The BSON command to run.
-
-    :return: The marked command response from mongocryptd.
-    """
-    self = callback
-    if not self._spawned and not self.opts._mongocryptd_bypass_spawn:
-        self.spawn()
-    # Database.command only supports mutable mappings so we need to decode
-    # the raw BSON command first.
-    inflated_cmd = _inflate_bson(cmd, DEFAULT_RAW_BSON_OPTIONS)
-    assert self.mongocryptd_client is not None
-    try:
-        res = self.mongocryptd_client[database].command(
-            inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
-        )
-    except ServerSelectionTimeoutError:
-        if self.opts._mongocryptd_bypass_spawn:
-            raise
-        self.spawn()
-        res = self.mongocryptd_client[database].command(
-            inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
-        )
-    return res.raw
-
-
-def run_state_machine_async(ctx, callback):
-    """Run the libmongocrypt state machine until completion.
-    :Parameters:
-      - `ctx`: A :class:`MongoCryptContext`.
-    :Returns:
-      The completed libmongocrypt operation.
-    """
-    while True:
-        state = ctx.state
-        # Check for terminal states first.
-        if state == lib.MONGOCRYPT_CTX_ERROR:
-            ctx._raise_from_status()
-        elif state == lib.MONGOCRYPT_CTX_READY:
-            return ctx.finish()
-        elif state == lib.MONGOCRYPT_CTX_DONE:
-            return None
-
-        if state == lib.MONGOCRYPT_CTX_NEED_MONGO_COLLINFO:
-            list_colls_filter = ctx.mongo_operation()
-            coll_info = callback.collection_info(ctx.database, list_colls_filter)
-            if coll_info:
-                ctx.add_mongo_operation_result(coll_info)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_MONGO_MARKINGS:
-            mongocryptd_cmd = ctx.mongo_operation()
-            result = ctx.mark_command_async(callback, ctx.database, mongocryptd_cmd)
-            ctx.add_mongo_operation_result(result)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_MONGO_KEYS:
-            key_filter = ctx.mongo_operation()
-            for key in callback.fetch_keys(key_filter):
-                ctx.add_mongo_operation_result(key)
-            ctx.complete_mongo_operation()
-        elif state == lib.MONGOCRYPT_CTX_NEED_KMS:
-            for kms_ctx in ctx.kms_contexts():
-                with kms_ctx:
-                    callback.kms_request(kms_ctx)
-            ctx.complete_kms()
-        else:
-            raise MongoCryptError(f"unknown state: {state}")
-
-
-def encrypt_async(auto_encrypter, database, cmd):
-    """Encrypt a MongoDB command.
-    :Parameters:
-      - `database`: The database for this command.
-      - `cmd`: A MongoDB command as BSON.
-    :Returns:
-      The encrypted command.
-    """
-    with auto_encrypter.mongocrypt.encryption_context(database, cmd) as ctx:
-        return run_state_machine_async(ctx, auto_encrypter.callback)
-
-
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
@@ -252,7 +169,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             conn = _configured_socket((host, port), opts)
             try:
                 sendall(conn, message)
-                # conn.sendall(message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
@@ -487,24 +403,6 @@ class _Encrypter:
         encoded_cmd = _dict_to_bson(cmd, False, codec_options)
         with _wrap_encryption_errors():
             encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
-            # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-            return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
-
-    def encrypt_async(
-        self, database: str, cmd: Mapping[str, Any], codec_options: CodecOptions[_DocumentTypeArg]
-    ) -> dict[str, Any]:
-        """Encrypt a MongoDB command.
-
-        :param database: The database for this command.
-        :param cmd: A command document.
-        :param codec_options: The CodecOptions to use while encoding `cmd`.
-
-        :return: The encrypted command to execute.
-        """
-        self._check_closed()
-        encoded_cmd = _dict_to_bson(cmd, False, codec_options)
-        with _wrap_encryption_errors():
-            encrypted_cmd = encrypt_async(self._auto_encrypter, database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
