@@ -879,7 +879,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-    def _init_background(self, old_pid=None) -> None:
+    def _init_background(self, old_pid: Optional[int] = None) -> None:
         self._topology = Topology(self._topology_settings)
         # Seed the topology with the old one's pid so we can detect clients
         # that are opened before a fork and used after.

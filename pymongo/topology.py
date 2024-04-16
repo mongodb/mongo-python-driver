@@ -197,7 +197,7 @@ class Topology:
             else:
                 kwargs = {"stacklevel": 6}
             # Ignore B028 warning for missing stacklevel.
-            warnings.warn(  # noqa: B028
+            warnings.warn(  # type: ignore[call-overload] # noqa: B028
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"

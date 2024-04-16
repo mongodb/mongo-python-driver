@@ -44,7 +44,9 @@ class TestFork(IntegrationTest):
         with self.client._MongoClient__lock:
 
             def target():
-                self.client.admin.command("ping")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self.client.admin.command("ping")
 
             with self.fork(target):
                 pass
