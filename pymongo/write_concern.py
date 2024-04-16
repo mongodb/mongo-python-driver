@@ -54,7 +54,7 @@ class WriteConcern:
 
 
     .. versionchanged:: 4.7
-        Deprecated :param:`wtimeout`, use :meth:`~pymongo.timeout`.
+        Deprecated parameter ``wtimeout``, use :meth:`~pymongo.timeout`.
     """
 
     __slots__ = ("__document", "__acknowledged", "__server_default")
