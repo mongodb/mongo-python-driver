@@ -26,6 +26,7 @@ import sys
 import textwrap
 import traceback
 import uuid
+import warnings
 from threading import Thread
 from typing import Any, Dict, Mapping
 
@@ -348,7 +349,9 @@ class TestClientSimple(EncryptionIntegrationTest):
         self.addCleanup(client.close)
 
         def target():
-            client.admin.command("ping")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                client.admin.command("ping")
 
         with self.fork(target):
             target()

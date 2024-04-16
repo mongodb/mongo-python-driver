@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+import warnings
 from multiprocessing import Pipe
 
 sys.path[0:0] = [""]
@@ -43,7 +44,9 @@ class TestFork(IntegrationTest):
         with self.client._MongoClient__lock:
 
             def target():
-                self.client.admin.command("ping")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self.client.admin.command("ping")
 
             with self.fork(target):
                 pass
@@ -72,7 +75,11 @@ class TestFork(IntegrationTest):
         parent_cursor_exc = self.client._kill_cursors_executor
 
         def target():
-            self.client.admin.command("ping")
+            # Catch the fork warning and send to the parent for assertion.
+            with warnings.catch_warnings(record=True) as ctx:
+                warnings.simplefilter("always")
+                self.client.admin.command("ping")
+                child_conn.send(str(ctx[0]))
             child_conn.send(self.client._topology._pid)
             child_conn.send(
                 (
@@ -83,6 +90,8 @@ class TestFork(IntegrationTest):
 
         with self.fork(target):
             self.assertEqual(self.client._topology._pid, init_id)
+            fork_warning = parent_conn.recv()
+            self.assertIn("MongoClient opened before fork", fork_warning)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
             passed, msg = parent_conn.recv()

@@ -20,9 +20,11 @@ import logging
 import os
 import queue
 import random
+import sys
 import time
 import warnings
 import weakref
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
 from pymongo import _csot, common, helpers, periodic_executor
@@ -68,6 +70,9 @@ if TYPE_CHECKING:
     from bson import ObjectId
     from pymongo.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
+
+
+_pymongo_dir = str(Path(__file__).parent)
 
 
 def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
@@ -187,12 +192,17 @@ class Topology:
             self._pid = pid
         elif pid != self._pid:
             self._pid = pid
-            warnings.warn(
+            if sys.version_info[:2] >= (3, 12):
+                kwargs = {"skip_file_prefixes": (_pymongo_dir,)}
+            else:
+                kwargs = {"stacklevel": 6}
+            # Ignore B028 warning for missing stacklevel.
+            warnings.warn(  # type: ignore[call-overload] # noqa: B028
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"
                 "is-pymongo-fork-safe",
-                stacklevel=2,
+                **kwargs,
             )
             with self._lock:
                 # Close servers and clear the pools.

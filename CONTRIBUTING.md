@@ -200,7 +200,7 @@ the pages will re-render and the browser will automatically refresh.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
     and the `<class_name>` to test a full module. For example:
-    `tox -m test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
+    `tox -m test -- test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
 
 ## Running Load Balancer Tests Locally
