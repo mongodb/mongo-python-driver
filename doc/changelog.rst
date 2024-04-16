@@ -43,7 +43,8 @@ PyMongo 4.7 brings a number of improvements including:
   creating vector search indexes in MongoDB Atlas.
 - Fixed a bug where ``read_concern`` and ``write_concern`` were improperly added to
   :meth:`~pymongo.collection.Collection.list_search_indexes` queries.
-
+- Deprecated :attr:`pymongo.write_concern.WriteConcern.wtimeout` and :attr:`pymongo.mongo_client.MongoClient.wTimeoutMS`.
+  Use :meth:`~pymongo.timeout` instead.
 
 Unavoidable breaking changes
 ............................
