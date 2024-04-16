@@ -28,7 +28,6 @@ from test.utils import wait_until
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.uri_parser import parse_uri, split_hosts
 
 
@@ -65,8 +64,6 @@ class TestDNSSharded(unittest.TestCase):
 
 def create_test(test_case):
     def run_test(self):
-        if not _HAVE_DNSPYTHON:
-            raise unittest.SkipTest("DNS tests require the dnspython module")
         uri = test_case["uri"]
         seeds = test_case.get("seeds")
         num_seeds = test_case.get("numSeeds", len(seeds or []))
@@ -161,7 +158,6 @@ create_tests(TestDNSSharded)
 
 
 class TestParsingErrors(unittest.TestCase):
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS tests require the dnspython module")
     def test_invalid_host(self):
         self.assertRaisesRegex(
             ConfigurationError,
@@ -190,7 +186,6 @@ class TestParsingErrors(unittest.TestCase):
 
 
 class TestCaseInsensitive(IntegrationTest):
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS tests require the dnspython module")
     def test_connect_case_insensitive(self):
         client = MongoClient("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
         self.addCleanup(client.close)
