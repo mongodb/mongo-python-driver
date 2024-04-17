@@ -139,7 +139,8 @@ by this python implementation.\n
 
 def parse_reqs_file(fname):
     with open(fname) as fid:
-        return fid.readlines()
+        lines = [li.strip() for li in fid.readlines()]
+    return [li for li in lines if li and not li.startswith("#")]
 
 
 dependencies = parse_reqs_file("requirements.txt")
