@@ -475,7 +475,7 @@ the ``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable.
 
 
     uri = os.environ["MONGODB_URI"]
-    props = dict(OIDC_CALLBACK=MyCallback())
+    props = {"OIDC_CALLBACK": MyCallback()}
     c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
     c.test.test.insert_one({})
     c.close()
