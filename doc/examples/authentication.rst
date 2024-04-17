@@ -417,7 +417,7 @@ managed identity, and ``<audience>`` is the url-encoded ``audience`` `configured
 
     uri = os.environ["MONGODB_URI"]
 
-    props = dict(ENVIRONMENT="azure", TOKEN_RESOURCE="<audience>")
+    props = {"ENVIRONMENT": "azure", "TOKEN_RESOURCE": "<audience>"}
     c = MongoClient(
         uri,
         username="<client_id>",
