@@ -1053,8 +1053,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if "unpin after TransientTransactionError error on" in spec["description"]:
             self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-        # if "withTransaction commits after callback returns" in spec["description"]:
-        #     self.skipTest("Skipping TransientTransactionError pending PYTHON-4303")
         if "unpin on successful abort" in spec["description"]:
             self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
 
