@@ -130,7 +130,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import _Address
+from pymongo.typings import ClusterTime, _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -623,6 +623,18 @@ class EntityMapUtil:
         except InvalidOperation:
             # session has been closed.
             return self._session_lsids[session_name]
+
+    def entities(self):
+        return self._entities
+
+    def advance_cluster_times(self, cluster_time: Optional[ClusterTime] = None):
+        if cluster_time is not None:
+            self._cluster_time = cluster_time
+        elif getattr(self, "_cluster_time", None) is None:
+            self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
+        for entity in self.entities():
+            if isinstance(entity, ClientSession):
+                entity.advance_cluster_time(self._cluster_time)
 
 
 binary_types = (Binary, bytes)
@@ -1511,6 +1523,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _testOperation_createEntities(self, spec):
         self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
+        self.entity_map.advance_cluster_times()
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1874,13 +1887,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         if "initialData" in self.TEST_SPEC:
             self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
-            # advance cluster times of session entities,
-            # to ensure consistency in transactions against a sharded deployment,
-            cluster_time = self.client.admin.command("ping").get("$clusterTime")
-            if cluster_time:
-                for entity in self.entity_map._entities.values():
-                    if isinstance(entity, ClientSession):
-                        entity.advance_cluster_time(cluster_time)
+            self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]
