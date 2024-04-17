@@ -149,8 +149,19 @@ def _merge_command(
 
 def _raise_bulk_write_error(full_result: _DocumentOut) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
+    # retryWrites on MMAPv1 should raise an actionable error.
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])
+        err = full_result["writeErrors"][0]
+        code = err["code"]
+        msg = err["errmsg"]
+        if code == 20 and msg.startswith("Transaction numbers"):
+            errmsg = (
+                "This MongoDB deployment does not support "
+                "retryable writes. Please add retryWrites=false "
+                "to your connection string."
+            )
+            raise OperationFailure(errmsg, code, full_result)
     raise BulkWriteError(full_result)
 
 
