@@ -392,7 +392,7 @@ MONGODB-OIDC
 The `MONGODB-OIDC authentication mechanism`_ is available in MongoDB 7.0+ on Linux platforms.
 
 The MONGODB-OIDC mechanism authenticates using an OpenID Connect (OIDC) access token.
-The driver supports OIDC for  workload identity, defined as an identity you assign to a software workload
+The driver supports OIDC for workload identity, defined as an identity you assign to a software workload
 (such as an application, service, script, or container) to authenticate and access other services and resources.
 
 Credentials can be configured through the MongoDB URI or as arguments to
