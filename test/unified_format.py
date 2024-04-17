@@ -1880,7 +1880,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         if "initialData" in self.TEST_SPEC:
             self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
-            # advance cluster times of session entities
+            # advance cluster times of session entities,
+            # to ensure consistency in transactions against a sharded deployment,
             cluster_time = self.client.admin.command("ping").get("$clusterTime")
             if cluster_time:
                 for entity in self.entity_map._entities.values():
