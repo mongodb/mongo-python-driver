@@ -385,35 +385,30 @@ would be::
 .. _EC2 instance: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html
 .. _environment variables: https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
 
-
 MONGODB-OIDC
 ------------
 .. versionadded:: 4.7
 
-The MONGODB-OIDC authentication mechanism is available in MongoDB 7.0+ Enterprise Edition on Linux platforms and Atlas.
+The `MONGODB-OIDC authentication mechanism`_ is available in MongoDB 7.0+ on Linux platforms.
 
-<TODO> link to server docs and Atlas docs
+The MONGODB-OIDC mechanism authenticates using an OpenID Connect (OIDC) access token.
+The driver supports OIDC for  workload identity, defined as an identity you assign to a software workload
+(such as an application, service, script, or container) to authenticate and access other services and resources.
 
-The MONGODB-OIDC mechanism authenticates using an OpenID Connect access token.  The driver supports the
-workload <TODO>...
-
-Credentials can be configured through the MongoDB URI or as arguments to the ``MongoClient``.
+MONGODB-OIDC credentials can be configured through the MongoDB URI or as arguments to ``MongoClient``.
 
 Built-in Support
 ~~~~~~~~~~~~~~~~
 
 The driver has built-in support for Azure IMDS and GCP IMDS environments.  Other environments
-are supported with the ``OIDC_CALLBACK``.
+are supported with `Custom Callbacks`_.
 
 Azure IMDS
 ^^^^^^^^^^
 
-For an application running on an Azure VM or otherwise using the Azure Internal Metadata Service,
+For an application running on an Azure VM or otherwise using the `Azure Internal Metadata Service`_,
 you can use the built-in support for Azure, where "<client_id>" below is the client id of the Azure
-managed identity, and ``<audience>`` is the url-encoded ``audience`` configured on your
-MongoDB deployment.
-
-TODO: link to Azure IMDS docs.
+managed identity, and ``<audience>`` is the url-encoded ``audience`` `configured on your MongoDB deployment`_.
 
 .. code-block:: python
 
@@ -437,11 +432,9 @@ VM, ``username`` can be omitted.
 GCP IMDS
 ^^^^^^^^
 
-For an application running on an GCP VM or otherwise using the GCP Internal Metadata Service,
+For an application running on an GCP VM or otherwise using the `GCP Internal Metadata Service`_,
 you can use the built-in support for GCP, where ``<audience>`` below is the url-encoded ``audience``
-configured on your MongoDB deployment.
-
-TODO: link to GCP IMDS docs.
+`configured on your MongoDB deployment`_.
 
 .. code-block:: python
 
@@ -458,19 +451,14 @@ TODO: link to GCP IMDS docs.
 Custom Callbacks
 ~~~~~~~~~~~~~~~~
 
-For environments that are not directly supported by the driver, you can use :class:`pymongo.auth_oidc.OIDCCallback`.
+For environments that are not directly supported by the driver, you can use :class:`~pymongo.auth_oidc.OIDCCallback`.
 Some examples are given below.
 
 AWS EKS
 ^^^^^^^
 
-TODO: add this link
-https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
-
-For an EKS Cluster with a configured IAM OIDC provider, the token can be read from a path given by
+For an EKS Cluster with a configured `IAM OIDC provider`_, the token can be read from a path given by
 the ``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable.
-
-You can use an ``OIDCCallback`` to return the token::
 
 .. code-block:: python
 
@@ -492,15 +480,14 @@ You can use an ``OIDCCallback`` to return the token::
     c.close()
 
 
-Azure Functions/ASE/AKS
-^^^^^^^^^^^^^^^^^^^^^^^
+Other Azure Environments
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-For applications running on Azure Functions, ASE, or AKS, you can use the ``azure-identity`` package
+For applications running on Azure Functions, App Service Environment (ASE), or
+Azure Kubernetes Service (AKS), you can use the `azure-identity package`_
 to fetch the credentials.  This example assumes you have set environment variables for
-the ``audience`` configured on your MongoDB deployment, and for the client id of the Azure
+the ``audience`` `configured on your MongoDB deployment`_, and for the client id of the Azure
 managed identity.
-
-TODO: link to azure identity docs.
 
 .. code-block:: python
 
@@ -529,6 +516,32 @@ TODO: link to azure identity docs.
 GCP GKE
 ^^^^^^^
 
-Todo: link to GCP GKE docs
+For a Google Kubernetes Engine cluster with a `configured service account`_, the token can be read from the standard
+service account token file location.
 
-/var/run/secrets/kubernetes.io/serviceaccount/token
+.. code-block:: python
+
+    import os
+    from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+
+
+    class MyCallback(OIDCCallback):
+        def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+            with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as fid:
+                token = fid.read()
+            return OIDCCallbackResult(access_token=token)
+
+
+    uri = os.environ["MONGODB_URI"]
+    props = dict(OIDC_CALLBACK=MyCallback())
+    c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
+    c.test.test.insert_one({})
+    c.close()
+
+.. _MONGODB-OIDC authentication mechanism: https://www.mongodb.com/docs/manual/core/security-oidc/
+.. _Azure Internal Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service
+.. _configured on your MongoDB deployment: https://www.mongodb.com/docs/manual/reference/parameters/#mongodb-parameter-param.oidcIdentityProviders
+.. _GCP Internal Metadata Service: https://cloud.google.com/compute/docs/metadata/querying-metadata
+.. _IAM OIDC provider: https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
+.. _azure-identity package: https://pypi.org/project/azure-identity/
+.. _configured service account: https://cloud.google.com/kubernetes-engine/docs/how-to/service-accounts
