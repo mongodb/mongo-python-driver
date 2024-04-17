@@ -395,7 +395,8 @@ The MONGODB-OIDC mechanism authenticates using an OpenID Connect (OIDC) access t
 The driver supports OIDC for  workload identity, defined as an identity you assign to a software workload
 (such as an application, service, script, or container) to authenticate and access other services and resources.
 
-MONGODB-OIDC credentials can be configured through the MongoDB URI or as arguments to ``MongoClient``.
+Credentials can be configured through the MongoDB URI or as arguments to
+:class:`~pymongo.mongo_client.MongoClient`.
 
 Built-in Support
 ~~~~~~~~~~~~~~~~

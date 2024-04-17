@@ -29,6 +29,7 @@ Sub-modules:
 .. toctree::
    :maxdepth: 2
 
+   auth_oidc
    change_stream
    client_options
    client_session
