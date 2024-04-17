@@ -1,0 +1,3 @@
+pymongo-auth-aws>=1.1.0,<2.0.0
+pymongocrypt>=1.6.0,<2.0.0
+certifi;os.name=='nt' or sys_platform=='darwin'

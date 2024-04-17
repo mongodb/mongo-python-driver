@@ -1,0 +1,5 @@
+sphinx>=5.3,<8
+sphinx_rtd_theme>=2,<3
+readthedocs-sphinx-search~=0.3
+sphinxcontrib-shellcheck>=1,<2
+furo==2023.9.10
