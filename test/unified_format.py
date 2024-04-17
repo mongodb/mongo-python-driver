@@ -1053,8 +1053,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if "unpin after TransientTransactionError error on" in spec["description"]:
             self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-        if "withTransaction commits after callback returns" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4303")
+        # if "withTransaction commits after callback returns" in spec["description"]:
+        #     self.skipTest("Skipping TransientTransactionError pending PYTHON-4303")
         if "unpin on successful abort" in spec["description"]:
             self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
 
@@ -1881,6 +1881,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
+        # advance cluster times of any session entities
+        cluster_time = self.client.admin.command("ping").get("$clusterTime")
+        if cluster_time:
+            for entity in self.entity_map._entities.values():
+                if isinstance(entity, ClientSession):
+                    entity.advance_cluster_time(cluster_time)
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]
