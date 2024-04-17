@@ -1880,13 +1880,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData
-        self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
-        # advance cluster times of any session entities
-        cluster_time = self.client.admin.command("ping").get("$clusterTime")
-        if cluster_time:
-            for entity in self.entity_map._entities.values():
-                if isinstance(entity, ClientSession):
-                    entity.advance_cluster_time(cluster_time)
+        if "initialData" in self.TEST_SPEC:
+            self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
+            # advance cluster times of session entities
+            cluster_time = self.client.admin.command("ping").get("$clusterTime")
+            if cluster_time:
+                for entity in self.entity_map._entities.values():
+                    if isinstance(entity, ClientSession):
+                        entity.advance_cluster_time(cluster_time)
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]
