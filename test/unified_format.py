@@ -1050,12 +1050,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-
-        if "unpin after TransientTransactionError error on" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-        if "unpin on successful abort" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
