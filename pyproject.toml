@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymongo"
-dynamic = ["version"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "Python driver for MongoDB <http://www.mongodb.org>"
 readme = "README.md"
 license = {file="LICENSE"}
@@ -39,48 +39,6 @@ classifiers = [
     "Topic :: Database",
     "Typing :: Typed",
 ]
-dependencies = [
-    "dnspython>=1.16.0,<3.0.0",
-]
-
-[project.optional-dependencies]
-aws = [
-    "pymongo-auth-aws>=1.1.0,<2.0.0",
-]
-encryption = [
-    "pymongo[aws]",
-    "pymongocrypt>=1.6.0,<2.0.0",
-    "certifi;os.name=='nt' or sys_platform=='darwin'",
-]
-gssapi = [
-    "pykerberos;os.name!='nt'",
-    "winkerberos>=0.5.0;os.name=='nt'"
-]
-# PyOpenSSL 17.0.0 introduced support for OCSP. 17.1.0 introduced
-# a related feature we need. 17.2.0 fixes a bug
-# in set_default_verify_paths we should really avoid.
-# service_identity 18.1.0 introduced support for IP addr matching.
-# Fallback to certifi on Windows if we can't load CA certs from the system
-# store and just use certifi on macOS.
-# https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
-ocsp = [
-    "certifi;os.name=='nt' or sys_platform=='darwin'",
-    "pyopenssl>=17.2.0",
-    "requests<3.0.0",
-    "cryptography>=2.5",
-    "service_identity>=18.1.0",
-]
-snappy = [
-    "python-snappy"
-]
-# PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
-srv = []
-tls = []
-# PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
-zstd = [
-    "zstandard",
-]
-test = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://www.mongodb.org"
