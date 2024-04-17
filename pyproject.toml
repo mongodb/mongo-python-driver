@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymongo"
-dynamic = ["version"]
+dynamic = ["version", "dependencies"]
 description = "Python driver for MongoDB <http://www.mongodb.org>"
 readme = "README.md"
 license = {file="LICENSE"}
