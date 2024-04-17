@@ -509,7 +509,7 @@ managed identity.
           return OIDCCallbackResult(access_token=token)
 
 
-  props = dict(OIDC_CALLBACK=MyCallback())
+  props = {"OIDC_CALLBACK": MyCallback()}
   c = MongoClient(uri, authMechanismProperties=props)
   c.test.test.insert_one({})
   c.close()
