@@ -117,7 +117,7 @@ class TestChangeStreamBase(IntegrationTest):
     def kill_change_stream_cursor(self, change_stream):
         """Cause a cursor not found error on the next getMore."""
         cursor = change_stream._cursor
-        address = _CursorAddress(cursor.address, cursor._CommandCursor__ns)
+        address = _CursorAddress(cursor.address, cursor._ns)
         client = self.watched_collection().database.client
         client._close_cursor_now(cursor.cursor_id, address)
 
@@ -136,7 +136,7 @@ class APITestsMixin:
             self.assertEqual(1000, change_stream._max_await_time_ms)
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, CommandCursor)
-            self.assertEqual(1000, change_stream._cursor._CommandCursor__max_await_time_ms)
+            self.assertEqual(1000, change_stream._cursor._max_await_time_ms)
             self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
             _ = change_stream.next()
             resume_token = change_stream.resume_token

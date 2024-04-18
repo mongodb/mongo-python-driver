@@ -817,7 +817,7 @@ class ChangeStreamsWCustomTypesTestMixin:
     def kill_change_stream_cursor(self, change_stream):
         # Cause a cursor not found error on the next getMore.
         cursor = change_stream._cursor
-        address = _CursorAddress(cursor.address, cursor._CommandCursor__ns)
+        address = _CursorAddress(cursor.address, cursor._ns)
         client = self.input_target.database.client
         client._close_cursor_now(cursor.cursor_id, address)
 
