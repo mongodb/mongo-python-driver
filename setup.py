@@ -137,43 +137,26 @@ by this python implementation.\n
     ext_modules = []
 
 
-dependencies = [
-    "dnspython>=1.16.0,<3.0.0",
-]
+def parse_reqs_file(fname):
+    with open(fname) as fid:
+        lines = [li.strip() for li in fid.readlines()]
+    return [li for li in lines if li and not li.startswith("#")]
+
+
+dependencies = parse_reqs_file("requirements.txt")
 
 extras_require = dict(
-    aws=[
-        "pymongo-auth-aws>=1.1.0,<2.0.0",
-    ],
-    encryption=[
-        "pymongo[aws]",
-        "pymongocrypt>=1.6.0,<2.0.0",
-        "certifi;os.name=='nt' or sys_platform=='darwin'",
-    ],
-    gssapi=["pykerberos;os.name!='nt'", "winkerberos>=0.5.0;os.name=='nt'"],
-    # PyOpenSSL 17.0.0 introduced support for OCSP. 17.1.0 introduced
-    # a related feature we need. 17.2.0 fixes a bug
-    # in set_default_verify_paths we should really avoid.
-    # service_identity 18.1.0 introduced support for IP addr matching.
-    # Fallback to certifi on Windows if we can't load CA certs from the system
-    # store and just use certifi on macOS.
-    # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
-    ocsp=[
-        "certifi;os.name=='nt' or sys_platform=='darwin'",
-        "pyopenssl>=17.2.0",
-        "requests<3.0.0",
-        "cryptography>=2.5",
-        "service_identity>=18.1.0",
-    ],
-    snappy=["python-snappy"],
+    aws=parse_reqs_file("requirements/aws.txt"),
+    encryption=parse_reqs_file("requirements/encryption.txt"),
+    gssapi=parse_reqs_file("requirements/gssapi.txt"),
+    ocsp=parse_reqs_file("requirements/ocsp.txt"),
+    snappy=parse_reqs_file("requirements/snappy.txt"),
     # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
     srv=[],
     tls=[],
     # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
-    zstd=[
-        "zstandard",
-    ],
-    test=["pytest>=7"],
+    zstd=parse_reqs_file("requirements/zstd.txt"),
+    test=parse_reqs_file("requirements/test.txt"),
 )
 
 setup(
