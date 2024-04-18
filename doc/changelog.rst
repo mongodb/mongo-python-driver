@@ -83,7 +83,7 @@ Unavoidable breaking changes
   If you are relying on any kind of monkey-patching of the standard library, you may need to explicitly import those external libraries in addition
   to ``pymongo`` before applying the patch.  Note that we test with ``gevent`` and ``eventlet`` patching, and those continue to work.
 
-- The minimum required ``dnspython`` is 2.6.1 due to `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
+- The minimum required ``dnspython`` is 2.6.1 (on Python 3.8+) due to `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
 - The "aws" extra now requires minimum version of ``1.1.0`` for ``pymongo_auth_aws``.
 
 Changes in Version 4.6.3
