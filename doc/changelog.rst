@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 4.6.3
+------------------------
+
+PyMongo 4.6.3 fixes the following bug:
+
+- Fixed a potential memory access violation when decoding invalid bson.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=38360
+
 Changes in Version 4.6.2
 ------------------------
 
@@ -9,12 +24,28 @@ PyMongo 4.6.2 fixes the following bug:
 - Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
   could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
 
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37906
+
 Changes in Version 4.6.1
 ------------------------
 
 PyMongo 4.6.1 fixes the following bug:
 
 - Ensure retryable read ``OperationFailure`` errors re-raise exception when 0 or NoneType error code is provided.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37138
 
 Changes in Version 4.6
 ----------------------
@@ -47,6 +78,14 @@ PyMongo 4.6 brings a number of improvements including:
   when connected to load balanced MongoDB clusters or Serverless clusters.
 - Added the :ref:`network-compression-example` documentation page.
 - Added more timeout information to network errors.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36542
 
 Changes in Version 4.5
 ----------------------
