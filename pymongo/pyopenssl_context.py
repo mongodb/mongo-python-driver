@@ -454,12 +454,12 @@ class SSLContext:
             if self.check_hostname and server_hostname is not None:
                 try:
                     if _is_ip_address(server_hostname):
-                        _service_identity_pyopenssl.verify_ip_address(ssl_conn, server_hostname)
+                        _verify_ip_address(ssl_conn, server_hostname)
                     else:
-                        _service_identity_pyopenssl.verify_hostname(ssl_conn, server_hostname)
+                        _verify_hostname(ssl_conn, server_hostname)
                 except (
-                    _service_identity.SICertificateError,
-                    _service_identity.SIVerificationError,
+                    _SICertificateError,
+                    _SIVerificationError,
                 ) as exc:
                     raise _CertificateError(str(exc)) from None
         return ssl_conn

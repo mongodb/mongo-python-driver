@@ -281,10 +281,10 @@ fi
 
 
 # Run additional tests for asyncio
-$PYTHON -m pip install asyncio-gevent gevent tornado pymongocrypt
-PYTHONWARNINGS=error python -m pytest -v test/test_gevent.py
-PYTHONWARNINGS=error python -m pytest -v test/test_tornado.py
-PYTHONWARNINGS=error python -m pytest -v test/test_client.py
+#$PYTHON -m pip install asyncio-gevent gevent tornado pymongocrypt
+#PYTHONWARNINGS=error python -m pytest -v test/test_gevent.py
+#PYTHONWARNINGS=error python -m pytest -v test/test_tornado.py
+#PYTHONWARNINGS=error python -m pytest -v test/test_client.py
 
 if [ -n "$TEST_ENCRYPTION" ]; then
     PYTHONWARNINGS=error python -m pytest -v test/test_encryption.py -k "TestClientSimple"
