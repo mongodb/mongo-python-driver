@@ -36,12 +36,15 @@ from typing import (
 )
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
-    from pymongocrypt.binding import lib  # type:ignore[import]
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
-    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
+    from pymongocrypt.synchronous.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.synchronous.explicit_encrypter import (
+        ExplicitEncrypter,  # type:ignore[import]
+    )
+    from pymongocrypt.synchronous.state_machine import (
+        MongoCryptCallback,  # type:ignore[import]
+    )
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:

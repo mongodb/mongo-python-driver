@@ -43,7 +43,6 @@ try:
     from pymongocrypt.asynchronous.state_machine import (
         AsyncMongoCryptCallback,  # type:ignore[import]
     )
-    from pymongocrypt.binding import lib  # type:ignore[import]
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
 
