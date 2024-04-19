@@ -41,7 +41,7 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, helpers
+from pymongo import __version__, _csot
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -69,7 +69,6 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import _handle_reauth
 from pymongo.lock import _Condition, _create_lock, _Lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
@@ -88,8 +87,9 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
-from pymongo.synchronous import auth
+from pymongo.synchronous import auth, helpers
 from pymongo.synchronous.client_session import _validate_session_write_concern
+from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
     from bson import CodecOptions

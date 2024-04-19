@@ -51,8 +51,8 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import _check_command_response, _check_write_command_response
 from pymongo.server_description import SERVER_TYPE, ServerDescription
+from pymongo.synchronous.helpers import _check_command_response, _check_write_command_response
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE

@@ -60,7 +60,6 @@ from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
     common,
-    helpers,
     periodic_executor,
     uri_parser,
 )
@@ -87,6 +86,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import (
     client_session,
     database,
+    helpers,
     message,
 )
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream

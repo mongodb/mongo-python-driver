@@ -39,7 +39,7 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import helpers
+from pymongo.asynchronous import helpers
 from pymongo.asynchronous.message import (
     _CursorAddress,
     _GetMore,

@@ -42,9 +42,10 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, helpers
-from pymongo.asynchronous import auth
+from pymongo import __version__, _csot
+from pymongo.asynchronous import auth, helpers
 from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
@@ -72,7 +73,6 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import _handle_reauth
 from pymongo.lock import _ACondition, _ALock, _create_lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,

@@ -52,12 +52,12 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.helpers import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import _check_write_command_response
 
 IS_SYNC = True
 

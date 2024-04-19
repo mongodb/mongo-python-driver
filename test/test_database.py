@@ -38,7 +38,6 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
-from pymongo import helpers
 from pymongo.asynchronous import auth
 from pymongo.errors import (
     CollectionInvalid,
@@ -50,6 +49,7 @@ from pymongo.errors import (
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous import helpers
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient

@@ -46,9 +46,9 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
 from pymongo.synchronous.message import (
     _DELETE,
     _INSERT,

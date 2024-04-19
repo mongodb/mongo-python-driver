@@ -34,8 +34,8 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers, ssl_support
-from pymongo.asynchronous import message
+from pymongo import _csot, ssl_support
+from pymongo.asynchronous import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (

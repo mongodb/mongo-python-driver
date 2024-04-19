@@ -25,7 +25,8 @@ import warnings
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, helpers, periodic_executor
+from pymongo import _csot, common, periodic_executor
+from pymongo.asynchronous import helpers
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool, PoolOptions

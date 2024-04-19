@@ -39,7 +39,6 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -48,6 +47,7 @@ from pymongo.common import (
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _create_lock, _Lock
 from pymongo.response import PinnedResponse
+from pymongo.synchronous import helpers
 from pymongo.synchronous.message import (
     _CursorAddress,
     _GetMore,

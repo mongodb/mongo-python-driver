@@ -28,9 +28,9 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.helpers import _check_command_response, _handle_reauth
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.response import PinnedResponse, Response
+from pymongo.synchronous.helpers import _check_command_response, _handle_reauth
 from pymongo.synchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
 
 if TYPE_CHECKING:

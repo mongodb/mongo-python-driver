@@ -54,6 +54,7 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.errors import (
     ConfigurationError,
     CursorNotFound,
@@ -65,7 +66,6 @@ from pymongo.errors import (
     ProtocolError,
 )
 from pymongo.hello import HelloCompat
-from pymongo.helpers import _handle_reauth
 from pymongo.logger import (
     _COMMAND_LOGGER,
     _CommandStatusMessage,
