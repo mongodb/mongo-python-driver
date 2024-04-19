@@ -46,6 +46,10 @@ PyMongo 4.7 brings a number of improvements including:
 - Deprecated :attr:`pymongo.write_concern.WriteConcern.wtimeout` and :attr:`pymongo.mongo_client.MongoClient.wTimeoutMS`.
   Use :meth:`~pymongo.timeout` instead.
 
+.. warning:: PyMongo depends on ``dnspython``, which released version 2.6.1 with a fix for
+   `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.  We do not explicitly require
+   that version, but we strongly recommend that you install at last that version in your environment.
+
 Unavoidable breaking changes
 ............................
 
