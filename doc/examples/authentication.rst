@@ -443,7 +443,7 @@ you can use the built-in support for GCP, where ``<audience>`` below is the url-
 
     uri = os.environ["MONGODB_URI"]
 
-    props = {"ENVIRONMENT": "gcp", "TOKEN_RESOURCE": "<audience>")
+    props = {"ENVIRONMENT": "gcp", "TOKEN_RESOURCE": "<audience>"}
     c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
     c.test.test.insert_one({})
     c.close()
