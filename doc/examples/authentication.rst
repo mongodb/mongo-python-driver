@@ -384,3 +384,165 @@ would be::
 .. _Assume Role: https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
 .. _EC2 instance: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html
 .. _environment variables: https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
+
+MONGODB-OIDC
+------------
+.. versionadded:: 4.7
+
+The `MONGODB-OIDC authentication mechanism`_ is available in MongoDB 7.0+ on Linux platforms.
+
+The MONGODB-OIDC mechanism authenticates using an OpenID Connect (OIDC) access token.
+The driver supports OIDC for workload identity, defined as an identity you assign to a software workload
+(such as an application, service, script, or container) to authenticate and access other services and resources.
+
+Credentials can be configured through the MongoDB URI or as arguments to
+:class:`~pymongo.mongo_client.MongoClient`.
+
+Built-in Support
+~~~~~~~~~~~~~~~~
+
+The driver has built-in support for Azure IMDS and GCP IMDS environments.  Other environments
+are supported with `Custom Callbacks`_.
+
+Azure IMDS
+^^^^^^^^^^
+
+For an application running on an Azure VM or otherwise using the `Azure Internal Metadata Service`_,
+you can use the built-in support for Azure, where "<client_id>" below is the client id of the Azure
+managed identity, and ``<audience>`` is the url-encoded ``audience`` `configured on your MongoDB deployment`_.
+
+.. code-block:: python
+
+    import os
+
+    uri = os.environ["MONGODB_URI"]
+
+    props = {"ENVIRONMENT": "azure", "TOKEN_RESOURCE": "<audience>"}
+    c = MongoClient(
+        uri,
+        username="<client_id>",
+        authMechanism="MONGODB-OIDC",
+        authMechanismProperties=props,
+    )
+    c.test.test.insert_one({})
+    c.close()
+
+If the application is running on an Azure VM and only one managed identity is associated with the
+VM, ``username`` can be omitted.
+
+GCP IMDS
+^^^^^^^^
+
+For an application running on an GCP VM or otherwise using the `GCP Internal Metadata Service`_,
+you can use the built-in support for GCP, where ``<audience>`` below is the url-encoded ``audience``
+`configured on your MongoDB deployment`_.
+
+.. code-block:: python
+
+    import os
+
+    uri = os.environ["MONGODB_URI"]
+
+    props = {"ENVIRONMENT": "gcp", "TOKEN_RESOURCE": "<audience>"}
+    c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
+    c.test.test.insert_one({})
+    c.close()
+
+
+Custom Callbacks
+~~~~~~~~~~~~~~~~
+
+For environments that are not directly supported by the driver, you can use :class:`~pymongo.auth_oidc.OIDCCallback`.
+Some examples are given below.
+
+AWS EKS
+^^^^^^^
+
+For an EKS Cluster with a configured `IAM OIDC provider`_, the token can be read from a path given by
+the ``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable.
+
+.. code-block:: python
+
+    import os
+    from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+
+
+    class MyCallback(OIDCCallback):
+        def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+            with open(os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]) as fid:
+                token = fid.read()
+            return OIDCCallbackResult(access_token=token)
+
+
+    uri = os.environ["MONGODB_URI"]
+    props = {"OIDC_CALLBACK": MyCallback()}
+    c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
+    c.test.test.insert_one({})
+    c.close()
+
+
+Other Azure Environments
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+For applications running on Azure Functions, App Service Environment (ASE), or
+Azure Kubernetes Service (AKS), you can use the `azure-identity package`_
+to fetch the credentials.  This example assumes you have set environment variables for
+the ``audience`` `configured on your MongoDB deployment`_, and for the client id of the Azure
+managed identity.
+
+.. code-block:: python
+
+  import os
+  from azure.identity import DefaultAzureCredential
+  from pymongo import MongoClient
+  from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+
+  audience = os.environ["AZURE_AUDIENCE"]
+  client_id = os.environ["AZURE_IDENTITY_CLIENT_ID"]
+  uri = os.environ["MONGODB_URI"]
+
+
+  class MyCallback(OIDCCallback):
+      def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+          credential = DefaultAzureCredential(managed_identity_client_id=client_id)
+          token = credential.get_token(f"{audience}/.default").token
+          return OIDCCallbackResult(access_token=token)
+
+
+  props = {"OIDC_CALLBACK": MyCallback()}
+  c = MongoClient(uri, authMechanismProperties=props)
+  c.test.test.insert_one({})
+  c.close()
+
+GCP GKE
+^^^^^^^
+
+For a Google Kubernetes Engine cluster with a `configured service account`_, the token can be read from the standard
+service account token file location.
+
+.. code-block:: python
+
+    import os
+    from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+
+
+    class MyCallback(OIDCCallback):
+        def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+            with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as fid:
+                token = fid.read()
+            return OIDCCallbackResult(access_token=token)
+
+
+    uri = os.environ["MONGODB_URI"]
+    props = {"OIDC_CALLBACK": MyCallback()}
+    c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
+    c.test.test.insert_one({})
+    c.close()
+
+.. _MONGODB-OIDC authentication mechanism: https://www.mongodb.com/docs/manual/core/security-oidc/
+.. _Azure Internal Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service
+.. _configured on your MongoDB deployment: https://www.mongodb.com/docs/manual/reference/parameters/#mongodb-parameter-param.oidcIdentityProviders
+.. _GCP Internal Metadata Service: https://cloud.google.com/compute/docs/metadata/querying-metadata
+.. _IAM OIDC provider: https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
+.. _azure-identity package: https://pypi.org/project/azure-identity/
+.. _configured service account: https://cloud.google.com/kubernetes-engine/docs/how-to/service-accounts
