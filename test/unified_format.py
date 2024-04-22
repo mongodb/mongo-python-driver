@@ -428,11 +428,11 @@ class EntityMapUtil:
     """
 
     def __init__(self, test_class):
-        self._cluster_time = None
         self._entities: Dict[str, Any] = {}
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
+        self._cluster_time: Optional[ClusterTime] = None
 
     def __contains__(self, item):
         return item in self._entities
@@ -625,10 +625,9 @@ class EntityMapUtil:
             # session has been closed.
             return self._session_lsids[session_name]
 
-    def advance_cluster_times(self, cluster_time: Optional[ClusterTime] = None):
-        if cluster_time is not None:
-            self._cluster_time = cluster_time
-        elif getattr(self, "_cluster_time", None) is None:
+    def advance_cluster_times(self):
+        """Manually synchronize entities when desired"""
+        if self._cluster_time is None:
             self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
         for entity in self._entities:
             if isinstance(entity, ClientSession):
