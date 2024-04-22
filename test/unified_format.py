@@ -428,6 +428,7 @@ class EntityMapUtil:
     """
 
     def __init__(self, test_class):
+        self._cluster_time = None
         self._entities: Dict[str, Any] = {}
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
@@ -624,15 +625,12 @@ class EntityMapUtil:
             # session has been closed.
             return self._session_lsids[session_name]
 
-    def entities(self):
-        return self._entities
-
     def advance_cluster_times(self, cluster_time: Optional[ClusterTime] = None):
         if cluster_time is not None:
             self._cluster_time = cluster_time
         elif getattr(self, "_cluster_time", None) is None:
             self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
-        for entity in self.entities():
+        for entity in self._entities:
             if isinstance(entity, ClientSession):
                 entity.advance_cluster_time(self._cluster_time)
 
