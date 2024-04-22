@@ -950,7 +950,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         class CustomCallback(OIDCCallback):
             count = 0
 
-            def fetch(self, a):
+            def fetch(self, _):
                 self.count += 1
                 if self.count == 1:
                     access_token = get_token()
@@ -989,7 +989,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         class CustomCallback(OIDCCallback):
             count = 0
 
-            def fetch(self, a):
+            def fetch(self, _):
                 self.count += 1
                 if self.count == 1:
                     access_token = get_token()
