@@ -130,7 +130,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import ClusterTime, _Address
+from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -432,7 +432,7 @@ class EntityMapUtil:
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
-        self._cluster_time: Optional[ClusterTime] = None
+        self._cluster_time: Mapping[str, Any] = {}
 
     def __contains__(self, item):
         return item in self._entities
@@ -625,9 +625,9 @@ class EntityMapUtil:
             # session has been closed.
             return self._session_lsids[session_name]
 
-    def advance_cluster_times(self):
+    def advance_cluster_times(self) -> None:
         """Manually synchronize entities when desired"""
-        if self._cluster_time is None:
+        if not self._cluster_time:
             self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
         for entity in self._entities:
             if isinstance(entity, ClientSession):
