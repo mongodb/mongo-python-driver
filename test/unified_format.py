@@ -1883,7 +1883,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData
         if "initialData" in self.TEST_SPEC:
-            self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
+            self.insert_initial_data(self.TEST_SPEC["initialData"])
+            self._cluster_time = self.client.admin.command("ping").get("$clusterTime")
             self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
