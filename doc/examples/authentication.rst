@@ -510,7 +510,7 @@ managed identity.
 
 
   props = {"OIDC_CALLBACK": MyCallback()}
-  c = MongoClient(uri, authMechanismProperties=props)
+  c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
   c.test.test.insert_one({})
   c.close()
 
