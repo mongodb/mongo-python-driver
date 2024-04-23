@@ -1062,8 +1062,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
-        if "unpin after TransientTransactionError error on" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
         if self.IS_SERVERLESS_PROXY is not None and (
             "errors during the initial connection hello are ignored" in spec["description"]
             or "pinned connection is released after a transient network commit error"
