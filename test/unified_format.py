@@ -629,7 +629,7 @@ class EntityMapUtil:
         """Manually synchronize entities when desired"""
         if not self._cluster_time:
             self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
-        for entity in self._entities:
+        for entity in self._entities.values():
             if isinstance(entity, ClientSession):
                 entity.advance_cluster_time(self._cluster_time)
 
