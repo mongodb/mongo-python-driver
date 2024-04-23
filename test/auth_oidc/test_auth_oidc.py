@@ -920,7 +920,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_4_reauthentication(self):
+    def test_4_1_reauthentication_succeds(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
@@ -938,6 +938,84 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Verify that the callback was called 2 times (once during the connection
         # handshake, and again during reauthentication).
         self.assertEqual(self.request_called, 2)
+
+        # Close the client.
+        client.close()
+
+    def test_4_2_read_commands_fail_if_reauthentication_fails(self):
+        # Create a ``MongoClient`` whose OIDC callback returns one good token and then
+        # bad tokens after the first call.
+        get_token = self.get_token
+
+        class CustomCallback(OIDCCallback):
+            count = 0
+
+            def fetch(self, _):
+                self.count += 1
+                if self.count == 1:
+                    access_token = get_token()
+                else:
+                    access_token = "bad value"
+                return OIDCCallbackResult(access_token=access_token)
+
+        callback = CustomCallback()
+        client = self.create_client(request_cb=callback)
+
+        # Perform a read operation that succeeds.
+        client.test.test.find_one()
+
+        # Set a fail point for the find command.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a ``find`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Verify that the callback was called 2 times.
+        self.assertEqual(callback.count, 2)
+
+        # Close the client.
+        client.close()
+
+    def test_4_3_write_commands_fail_if_reauthentication_fails(self):
+        # Create a ``MongoClient`` whose OIDC callback returns one good token and then
+        # bad token after the first call.
+        get_token = self.get_token
+
+        class CustomCallback(OIDCCallback):
+            count = 0
+
+            def fetch(self, _):
+                self.count += 1
+                if self.count == 1:
+                    access_token = get_token()
+                else:
+                    access_token = "bad value"
+                return OIDCCallbackResult(access_token=access_token)
+
+        callback = CustomCallback()
+        client = self.create_client(request_cb=callback)
+
+        # Perform an insert operation that succeeds.
+        client.test.test.insert_one({})
+
+        # Set a fail point for the find command.
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["insert"], "errorCode": 391},
+            }
+        ):
+            # Perform a ``insert`` operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.insert_one({})
+
+        # Verify that the callback was called 2 times.
+        self.assertEqual(callback.count, 2)
 
         # Close the client.
         client.close()
