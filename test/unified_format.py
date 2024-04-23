@@ -630,7 +630,7 @@ class EntityMapUtil:
         if not self._cluster_time:
             self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
         for entity in self._entities.values():
-            if isinstance(entity, ClientSession):
+            if isinstance(entity, ClientSession) and self._cluster_time:
                 entity.advance_cluster_time(self._cluster_time)
 
 
