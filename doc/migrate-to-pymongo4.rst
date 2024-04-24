@@ -637,11 +637,9 @@ Collection.group is removed
 ...........................
 
 Removed :meth:`pymongo.collection.Collection.group`. This method was
-deprecated in PyMongo 3.5. MongoDB 4.2 removed the `group command`_.
+deprecated in PyMongo 3.5. MongoDB 4.2 removed the group command.
 Use :meth:`~pymongo.collection.Collection.aggregate` with the ``$group`` stage
 instead.
-
-.. _group command: https://mongodb.com/docs/manual/reference/command/group/
 
 Collection.map_reduce and Collection.inline_map_reduce are removed
 ..................................................................
@@ -940,9 +938,7 @@ Collection.parallel_scan is removed
 ...................................
 
 Removed :meth:`~pymongo.collection.Collection.parallel_scan`. MongoDB 4.2
-removed the `parallelCollectionScan command`_.  There is no replacement.
-
-.. _parallelCollectionScan command: https://mongodb.com/docs/manual/reference/command/parallelCollectionScan/
+removed the parallelCollectionScan command.  There is no replacement.
 
 pymongo.message helpers are removed
 ...................................
