@@ -540,6 +540,36 @@
       }
     },
     {
+      "description": "should accept a url-encoded TOKEN_RESOURCE (MONGODB-OIDC)",
+      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:mongodb%253A//test-cluster",
+      "valid": true,
+      "credential": {
+        "username": "user",
+        "password": null,
+        "source": "$external",
+        "mechanism": "MONGODB-OIDC",
+        "mechanism_properties": {
+          "ENVIRONMENT": "azure",
+          "TOKEN_RESOURCE": "mongodb%253A//test-cluster"
+        }
+      }
+    },
+    {
+      "description": "should url-encode a TOKEN_RESOURCE (MONGODB-OIDC)",
+      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:a$b",
+      "valid": true,
+      "credential": {
+        "username": "user",
+        "password": null,
+        "source": "$external",
+        "mechanism": "MONGODB-OIDC",
+        "mechanism_properties": {
+          "ENVIRONMENT": "azure",
+          "TOKEN_RESOURCE": "a%24b"
+        }
+      }
+    },
+    {
       "description": "should accept a username and throw an error for a password with azure provider (MONGODB-OIDC)",
       "uri": "mongodb://user:pass@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:foo",
       "valid": false,
