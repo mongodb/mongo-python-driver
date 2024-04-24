@@ -455,32 +455,6 @@ Custom Callbacks
 For environments that are not directly supported by the driver, you can use :class:`~pymongo.auth_oidc.OIDCCallback`.
 Some examples are given below.
 
-AWS EKS
-^^^^^^^
-
-For an EKS Cluster with a configured `IAM OIDC provider`_, the token can be read from a path given by
-the ``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable.
-
-.. code-block:: python
-
-    import os
-    from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
-
-
-    class MyCallback(OIDCCallback):
-        def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-            with open(os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]) as fid:
-                token = fid.read()
-            return OIDCCallbackResult(access_token=token)
-
-
-    uri = os.environ["MONGODB_URI"]
-    props = {"OIDC_CALLBACK": MyCallback()}
-    c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
-    c.test.test.insert_one({})
-    c.close()
-
-
 Other Azure Environments
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -510,7 +484,7 @@ managed identity.
 
 
   props = {"OIDC_CALLBACK": MyCallback()}
-  c = MongoClient(uri, authMechanismProperties=props)
+  c = MongoClient(uri, authMechanism="MONGODB-OIDC", authMechanismProperties=props)
   c.test.test.insert_one({})
   c.close()
 
@@ -543,6 +517,5 @@ service account token file location.
 .. _Azure Internal Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service
 .. _configured on your MongoDB deployment: https://www.mongodb.com/docs/manual/reference/parameters/#mongodb-parameter-param.oidcIdentityProviders
 .. _GCP Internal Metadata Service: https://cloud.google.com/compute/docs/metadata/querying-metadata
-.. _IAM OIDC provider: https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
 .. _azure-identity package: https://pypi.org/project/azure-identity/
 .. _configured service account: https://cloud.google.com/kubernetes-engine/docs/how-to/service-accounts
