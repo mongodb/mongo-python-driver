@@ -6,18 +6,26 @@ Changes in Version 4.7
 
 PyMongo 4.7 brings a number of improvements including:
 
-- Added the :class:`pymongo.hello.Hello.connection_id`,
-  :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
-  :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
-  :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
-- Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
+- Added support for ``MONGODB-OIDC`` authentication.  The MONGODB-OIDC mechanism authenticates
+  using an OpenID Connect (OIDC) access token.
+  The driver supports OIDC for workload identity, defined as an identity you assign to a software workload
+  (such as an application, service, script, or container) to authenticate and access other services and resources.
+  Please see :doc:`examples/authentication` for more information.
+- Added support for Python's `native logging library <https://docs.python.org/3/howto/logging.html>`_,
+  enabling developers to customize the verbosity of log messages for their applications.
+  Please see :doc:`examples/logging` for more information.
 - Significantly improved the performance of encoding BSON documents to JSON.
-- Support for named KMS providers for client side field level encryption.
+- Added support for named KMS providers for client side field level encryption.
   Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
   The KMS provider is now expanded to support name suffixes (e.g. local:myname).
   Named KMS providers enables more than one of each KMS provider type to be configured.
   See the docstring for :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
   Note that named KMS providers requires pymongocrypt >=1.9 and libmongocrypt >=1.9.
+- Added the :class:`pymongo.hello.Hello.connection_id`,
+  :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
+  :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
+  :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
+- Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
 - :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
   :meth:`~pymongo.encryption.ClientEncryption.encrypt_expression` now allow ``key_id``
   to be passed in as a :class:`uuid.UUID`.
