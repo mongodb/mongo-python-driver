@@ -432,6 +432,7 @@ class EntityMapUtil:
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
+        self._cluster_time: Mapping[str, Any] = {}
 
     def __contains__(self, item):
         return item in self._entities
@@ -623,6 +624,14 @@ class EntityMapUtil:
         except InvalidOperation:
             # session has been closed.
             return self._session_lsids[session_name]
+
+    def advance_cluster_times(self) -> None:
+        """Manually synchronize entities when desired"""
+        if not self._cluster_time:
+            self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
+        for entity in self._entities.values():
+            if isinstance(entity, ClientSession) and self._cluster_time:
+                entity.advance_cluster_time(self._cluster_time)
 
 
 binary_types = (Binary, bytes)
@@ -1050,14 +1059,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-
-        if "unpin after TransientTransactionError error on" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-        if "withTransaction commits after callback returns" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4303")
-        if "unpin on successful abort" in spec["description"]:
-            self.skipTest("Skipping TransientTransactionError pending PYTHON-4227")
-
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
@@ -1519,6 +1520,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _testOperation_createEntities(self, spec):
         self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
+        self.entity_map.advance_cluster_times()
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1880,7 +1882,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData
-        self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
+        if "initialData" in self.TEST_SPEC:
+            self.insert_initial_data(self.TEST_SPEC["initialData"])
+            self._cluster_time = self.client.admin.command("ping").get("$clusterTime")
+            self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]
