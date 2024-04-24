@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
     url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"
     url += f"?audience={resource}"
-    headers = {"Metadata-Flavor": "Google", "Accept": "application/json"}
+    headers = {"Metadata-Flavor": "Google"}
     request = Request(url, headers=headers)  # noqa: S310
     try:
         with urlopen(request, timeout=timeout) as response:  # noqa: S310
