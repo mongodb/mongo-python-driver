@@ -33,7 +33,7 @@ from typing import (
     Optional,
     cast,
 )
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from bson.binary import Binary
 from pymongo.auth_aws import _authenticate_aws
@@ -173,6 +173,8 @@ def _build_credentials_tuple(
         human_callback = properties.get("OIDC_HUMAN_CALLBACK")
         environ = properties.get("ENVIRONMENT")
         token_resource = properties.get("TOKEN_RESOURCE", "")
+        if unquote(token_resource) == token_resource:
+            token_resource = quote(token_resource)
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
