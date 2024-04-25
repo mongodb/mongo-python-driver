@@ -571,7 +571,7 @@
     },
     {
       "description": "should handle a complicated url-encoded TOKEN_RESOURCE (MONGODB-OIDC)",
-      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:abc%2Cdef%3Aghi",
+      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:abc%2Cd%25ef%3Ag%26hi",
       "valid": true,
       "credential": {
         "username": "user",
@@ -580,7 +580,7 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "ENVIRONMENT": "azure",
-          "TOKEN_RESOURCE": "abc,def:ghi"
+          "TOKEN_RESOURCE": "abc,d%ef:g&hi"
         }
       }
     },
