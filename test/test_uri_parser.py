@@ -504,19 +504,29 @@ class TestURI(unittest.TestCase):
         self.assertEqual(options, res["options"])
 
     def test_redact_AWS_SESSION_TOKEN(self):
-        unquoted_colon = "token:"
+        token = "token"
         uri = (
             "mongodb://user:password@localhost/?authMechanism=MONGODB-AWS"
-            "&authMechanismProperties=AWS_SESSION_TOKEN:" + unquoted_colon
+            "&authMechanismProperties=AWS_SESSION_TOKEN-" + token
         )
         with self.assertRaisesRegex(
             ValueError,
-            "auth mechanism properties must be key:value pairs like "
-            "SERVICE_NAME:mongodb, not AWS_SESSION_TOKEN:<redacted token>"
-            ", did you forget to percent-escape the token with "
-            "quote_plus?",
+            "auth mechanism properties must be key:value pairs like AWS_SESSION_TOKEN:<token>",
         ):
             parse_uri(uri)
+
+    def test_handle_colon(self):
+        token = "token:foo"
+        uri = (
+            "mongodb://user:password@localhost/?authMechanism=MONGODB-AWS"
+            "&authMechanismProperties=AWS_SESSION_TOKEN:" + token
+        )
+        res = parse_uri(uri)
+        options = {
+            "authmechanism": "MONGODB-AWS",
+            "authMechanismProperties": {"AWS_SESSION_TOKEN": token},
+        }
+        self.assertEqual(options, res["options"])
 
     def test_special_chars(self):
         user = "user@ /9+:?~!$&'()*+,;="
