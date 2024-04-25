@@ -33,7 +33,7 @@ from typing import (
     Optional,
     cast,
 )
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 from bson.binary import Binary
 from pymongo.auth_aws import _authenticate_aws
@@ -138,7 +138,7 @@ def _build_credentials_tuple(
             raise ValueError("authentication source must be $external or None for GSSAPI")
         properties = extra.get("authmechanismproperties", {})
         service_name = properties.get("SERVICE_NAME", "mongodb")
-        canonicalize = properties.get("CANONICALIZE_HOST_NAME", False)
+        canonicalize = bool(properties.get("CANONICALIZE_HOST_NAME", False))
         service_realm = properties.get("SERVICE_REALM")
         props = GSSAPIProperties(
             service_name=service_name,
@@ -173,8 +173,6 @@ def _build_credentials_tuple(
         human_callback = properties.get("OIDC_HUMAN_CALLBACK")
         environ = properties.get("ENVIRONMENT")
         token_resource = properties.get("TOKEN_RESOURCE", "")
-        if unquote(token_resource) == token_resource:
-            token_resource = quote(token_resource)
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -227,6 +225,7 @@ def _build_credentials_tuple(
             human_callback=human_callback,
             environment=environ,
             allowed_hosts=allowed_hosts,
+            token_resource=token_resource,
             username=user,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())

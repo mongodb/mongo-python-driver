@@ -73,25 +73,8 @@ def create_test(test_case):
                 expected = credential["mechanism_properties"]
                 if expected is not None:
                     actual = credentials.mechanism_properties
-                    for key, _val in expected.items():
-                        if "SERVICE_NAME" in expected:
-                            self.assertEqual(actual.service_name, expected["SERVICE_NAME"])
-                        elif "CANONICALIZE_HOST_NAME" in expected:
-                            self.assertEqual(
-                                actual.canonicalize_host_name, expected["CANONICALIZE_HOST_NAME"]
-                            )
-                        elif "SERVICE_REALM" in expected:
-                            self.assertEqual(actual.service_realm, expected["SERVICE_REALM"])
-                        elif "AWS_SESSION_TOKEN" in expected:
-                            self.assertEqual(
-                                actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
-                            )
-                        elif "ENVIRONMENT" in expected:
-                            self.assertEqual(actual.environment, expected["ENVIRONMENT"])
-                        elif "callback" in expected:
-                            self.assertEqual(actual.callback, expected["callback"])
-                        else:
-                            self.fail(f"Unhandled property: {key}")
+                    for key, value in expected.items():
+                        self.assertEqual(getattr(actual, key.lower()), value)
                 else:
                     if credential["mechanism"] == "MONGODB-AWS":
                         self.assertIsNone(credentials.mechanism_properties.aws_session_token)

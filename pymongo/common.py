@@ -454,7 +454,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
     value = validate_string(option, value)
     for opt in value.split(","):
         try:
-            key, val = opt.split(":")
+            key, _, val = opt.partition(":")
         except ValueError:
             # Try not to leak the token.
             if "AWS_SESSION_TOKEN" in opt:
