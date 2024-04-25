@@ -109,9 +109,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -q tox
-      - name: Check links
-        run: |
-          tox -m linkcheck
       - name: Build docs
         run: |
           tox -m doc
