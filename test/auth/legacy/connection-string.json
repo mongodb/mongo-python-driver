@@ -541,7 +541,7 @@
     },
     {
       "description": "should accept a url-encoded TOKEN_RESOURCE (MONGODB-OIDC)",
-      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:mongodb%253A//test-cluster",
+      "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:mongodb%3A%2F%2Ftest-cluster",
       "valid": true,
       "credential": {
         "username": "user",
@@ -550,7 +550,7 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "ENVIRONMENT": "azure",
-          "TOKEN_RESOURCE": "mongodb%253A//test-cluster"
+          "TOKEN_RESOURCE": "mongodb://test-cluster"
         }
       }
     },
@@ -565,7 +565,7 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "ENVIRONMENT": "azure",
-          "TOKEN_RESOURCE": "mongodb%253A//test-cluster"
+          "TOKEN_RESOURCE": "mongodb://test-cluster"
         }
       }
     },
@@ -580,7 +580,7 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "ENVIRONMENT": "azure",
-          "TOKEN_RESOURCE": "abc%2Cdef%3Aghi"
+          "TOKEN_RESOURCE": "abc,def:ghi"
         }
       }
     },
@@ -595,7 +595,7 @@
         "mechanism": "MONGODB-OIDC",
         "mechanism_properties": {
           "ENVIRONMENT": "azure",
-          "TOKEN_RESOURCE": "a%24b"
+          "TOKEN_RESOURCE": "a$b"
         }
       }
     },

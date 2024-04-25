@@ -52,12 +52,7 @@ def create_test(test_case):
                 warnings.simplefilter("default")
                 self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
-            props = {}
-            if credential:
-                props = credential["mechanism_properties"] or {}
-                if props.get("CALLBACK"):
-                    props["callback"] = SampleHumanCallback()
-            client = MongoClient(uri, connect=False, authmechanismproperties=props)
+            client = MongoClient(uri, connect=False)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
