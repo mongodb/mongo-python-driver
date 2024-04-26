@@ -17,23 +17,17 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional, Union
 
-from pymongo._lazy_import import lazy_import
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
-if TYPE_CHECKING:
+try:
     from dns import resolver
 
     _HAVE_DNSPYTHON = True
-else:
-    try:
-        resolver = lazy_import("dns.resolver")
-
-        _HAVE_DNSPYTHON = True
-    except ImportError:
-        _HAVE_DNSPYTHON = False
+except ImportError:
+    _HAVE_DNSPYTHON = False
 
 
 # dnspython can return bytes or str from various parts
