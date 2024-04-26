@@ -29,6 +29,4 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
-echo "MONGODB_URI=$MONGODB_URI"
-echo $MONGODB_URI | grep -U $'\015' && echo "yup!"
 bash ./.evergreen/tox.sh -m test-eg -- "${@:1}"
