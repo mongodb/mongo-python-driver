@@ -345,6 +345,12 @@ class TestSrvPolling(unittest.TestCase):
                 AssertionError, self.assert_nodelist_change, modified, client, timeout=WAIT_TIME / 2
             )
 
+    def test_import_dns_resolver(self):
+        # Regression test for PYTHON-4407
+        import dns.resolver
+
+        self.assertTrue(hasattr(dns.resolver, "resolve"))
+
 
 if __name__ == "__main__":
     unittest.main()
