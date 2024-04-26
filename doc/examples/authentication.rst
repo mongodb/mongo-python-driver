@@ -408,9 +408,9 @@ Azure IMDS
 ^^^^^^^^^^
 
 For an application running on an Azure VM or otherwise using the `Azure Internal Metadata Service`_,
-you can use the built-in support for Azure. If using an Azure Managed Identity, the "<client_id>" is
-the Client ID.  If using a Service Principal (such as an Enterprise Application), the "<client_id>" is
-Application Id of the Enterprise Application.  The ``<audience>`` value is the ``audience``
+you can use the built-in support for Azure. If using an Azure managed identity, the "<client_id>" is
+the client ID.  If using a service principal to represent an enterprise application, the "<client_id>" is
+the application ID of the service principal. The ``<audience>`` value is the ``audience``
 `configured on your MongoDB deployment`_.
 
 .. code-block:: python
