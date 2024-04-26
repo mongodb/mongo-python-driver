@@ -59,6 +59,7 @@ class OIDCTestBase(unittest.TestCase):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
         cls.uri_multiple = os.environ.get("MONGODB_URI_MULTI")
         print(repr(os.environ["MONGODB_URI"]))
+        sys.exit(1)
         cls.uri_admin = os.environ["MONGODB_URI"].replace("\r", "")
 
     def setUp(self):
