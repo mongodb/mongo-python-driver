@@ -21,6 +21,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
+from urllib.parse import quote
 
 import bson
 from bson.binary import Binary
@@ -72,6 +73,7 @@ class _OIDCProperties:
     human_callback: Optional[OIDCCallback] = field(default=None)
     environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
+    token_resource: Optional[str] = field(default=None)
     username: str = ""
 
 
@@ -126,7 +128,7 @@ class _OIDCTestCallback(OIDCCallback):
 
 class _OIDCAzureCallback(OIDCCallback):
     def __init__(self, token_resource: str) -> None:
-        self.token_resource = token_resource
+        self.token_resource = quote(token_resource)
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
@@ -137,7 +139,7 @@ class _OIDCAzureCallback(OIDCCallback):
 
 class _OIDCGCPCallback(OIDCCallback):
     def __init__(self, token_resource: str) -> None:
-        self.token_resource = token_resource
+        self.token_resource = quote(token_resource)
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         resp = _get_gcp_response(self.token_resource, context.timeout_seconds)
