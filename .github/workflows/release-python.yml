@@ -77,9 +77,9 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build cp312 windows wheels
-        if: ${{ matrix.buildplat[0] == 'windows-2019' }}
+        if: startsWith(${{ matrix.buildplat[0]}}, 'windows')
         env:
-          CIBW_BUILD: "cp312-${{ buildplat[1] }}"
+          CIBW_BUILD: "cp312-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 x86_64 wheels
