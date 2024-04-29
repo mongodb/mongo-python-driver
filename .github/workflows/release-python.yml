@@ -76,48 +76,25 @@ jobs:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
+      - name: Build manylinux1 x86_64 Wheel
+        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' }}
+        env:
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
+          CIBW_BUILD: ${{ matrix.buildplat[2] }}
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Build manylinux1 i686 Wheel
+        if: ${{ matrix.buildplat[1] == 'manylinux_i686' }}
+        env:
+          CIBW_MANYLINUX_I686_IMAGE: manylinux1
+          CIBW_BUILD: ${{ matrix.buildplat[2] }}
+        run: python -m cibuildwheel --output-dir wheelhouse
+
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
           if-no-files-found: error
-
-  build_manylinux1_wheels:
-    runs-on: ubuntu-latest
-    strategy:
-      # Ensure that a wheel builder finishes even if another fails
-      fail-fast: false
-      matrix:
-        buildplat: ["manylinux_x86_64", "manylinux_i686"]
-    steps:
-    - name: Checkout pymongo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - uses: actions/setup-python@v5
-      with:
-        cache: 'pip'
-        cache-dependency-path: 'pyproject.toml'
-        allow-prereleases: true
-
-    - name: Install cibuildwheel
-      run: |
-        python -m pip install -U pip
-        python -m pip install "cibuildwheel>=2.4,<3"
-
-    - name: Build ${{ matrix.buildplat }}
-      env:
-        CIBW_BUILD: "cp37-${{ matrix.buildplat }} cp38-${{ matrix.buildplat }} cp39-${{ matrix.buildplat }}"
-        CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-        CIBW_MANYLINUX_I686_IMAGE: manylinux1
-      run: python -m cibuildwheel --output-dir wheelhouse
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: wheel-manylinux1-${{ matrix.buildplat }}
-        path: ./wheelhouse/*.whl
-        if-no-files-found: error
 
   make_sdist:
     name: Make SDist
