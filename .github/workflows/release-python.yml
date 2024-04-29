@@ -34,8 +34,8 @@ jobs:
         - [ubuntu-20.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
         - [ubuntu-20.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
         - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
-        - [windows-2019, "win_amd6", "cp3*-win_amd64 cp312-win_am64"]
-        - [windows-2019, "win32", "cp3*-win32 cp312-win_32"]
+        - [windows-2019, "win_amd6", "cp37-win_amd64 cp38-win_amd64 cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64"]
+        - [windows-2019, "win32", "cp37-win32 cp38-win32 cp39-win32 cp310-win32 cp311-win32 cp312-win32"]
         - [macos-11, "macos-intel", "cp37-macosx_* cp38-macosx_* cp39-macosx_*"]
         - [macos-14, "macos-arm", "cp310-macosx_* cp311-macosx_* cp312-macosx_*"]
 
