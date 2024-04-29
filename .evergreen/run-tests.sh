@@ -150,7 +150,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     # TODO: Test with 'pip install pymongocrypt'
     if [ ! -d "libmongocrypt_git" ]; then
       # TODO: Remove branch and fork once PR merged
-      git clone -b PYTHON-4364 https://github.com/NoahStapp/libmongocrypt.git libmongocrypt_git
+      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
     fi
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
