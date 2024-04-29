@@ -91,6 +91,15 @@ jobs:
           CIBW_BUILD:  "cp37-manylinux_i686 cp38-manylinux_i686 cp39-manylinux_i686"
         run: python -m cibuildwheel --output-dir wheelhouse
 
+      - name: Assert all versions in wheelhouse
+        run: |
+          ls wheelhouse/*cp37*.whl
+          ls wheelhouse/*cp38*.whl
+          ls wheelhouse/*cp39*.whl
+          ls wheelhouse/*cp310*.whl
+          ls wheelhouse/*cp311*.whl
+          ls wheelhouse/*cp312*.whl
+
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.buildplat[1] }}
