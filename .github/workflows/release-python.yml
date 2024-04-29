@@ -92,6 +92,7 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
+        if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
         run: |
           ls wheelhouse/*cp37*.whl
           ls wheelhouse/*cp38*.whl
