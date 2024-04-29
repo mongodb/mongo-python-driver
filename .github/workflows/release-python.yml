@@ -61,7 +61,7 @@ jobs:
         # Note: the default manylinux is manylinux2014
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=2.4,<3"
+          python -m pip install "cibuildwheel>=2.17,<3"
 
       - name: Build wheels
         if: ${{ matrix.buildplat[0] != 'macos-14' }}
@@ -74,12 +74,6 @@ jobs:
         if: ${{ matrix.buildplat[0] == 'macos-14' }}
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build cp312 windows wheels
-        if: ${{ startsWith(matrix.buildplat[0], 'windows') }}
-        env:
-          CIBW_BUILD: "cp312-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 x86_64 wheels
