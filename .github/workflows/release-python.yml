@@ -20,7 +20,7 @@ defaults:
 
 jobs:
   build_wheels:
-    name: Build wheel for ${{ matrix.buildplat[1] }}
+    name: Build wheels for ${{ matrix.buildplat[1] }}
     runs-on: ${{ matrix.buildplat[0] }}
     strategy:
       # Ensure that a wheel builder finishes even if another fails
@@ -63,31 +63,31 @@ jobs:
           python -m pip install -U pip
           python -m pip install "cibuildwheel>=2.4,<3"
 
-      - name: Build wheel
+      - name: Build wheels
         if: ${{ matrix.buildplat[0] != 'macos-14' }}
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
           MACOS_TEST_SKIP: "*arm64"
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Build wheel on M1
+      - name: Build wheels on M1
         if: ${{ matrix.buildplat[0] == 'macos-14' }}
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Build manylinux1 x86_64 Wheel
+      - name: Build manylinux1 x86_64 wheels
         if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' }}
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_BUILD: ${{ matrix.buildplat[2] }}
+          CIBW_BUILD: "cp37-manylinux_x86_64 cp38-manylinux_x86_64 cp39-manylinux_x86_64"
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Build manylinux1 i686 Wheel
+      - name: Build manylinux1 i686 wheels
         if: ${{ matrix.buildplat[1] == 'manylinux_i686' }}
         env:
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: ${{ matrix.buildplat[2] }}
+          CIBW_BUILD:  "cp37-manylinux_i686 cp38-manylinux_i686 cp39-manylinux_i686"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v4
