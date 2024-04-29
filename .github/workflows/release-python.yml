@@ -128,7 +128,7 @@ jobs:
 
   collect_dist:
     runs-on: ubuntu-latest
-    needs: [build_wheels, build_manylinux1_wheels, make_sdist]
+    needs: [build_wheels, make_sdist]
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
