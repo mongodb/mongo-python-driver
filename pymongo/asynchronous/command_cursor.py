@@ -15,7 +15,6 @@
 """CommandCursor class to iterate over command results."""
 from __future__ import annotations
 
-import asyncio
 from collections import deque
 from typing import (
     TYPE_CHECKING,
@@ -46,6 +45,8 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import ClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.pool import Connection
+
+IS_SYNC = False
 
 
 class AsyncCommandCursor(Generic[_DocumentType]):
@@ -79,8 +80,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._explicit_session = explicit_session
         self._killed = self._id == 0
         self._comment = comment
-        if self._killed:
-            self._end_session_entry()
+        if IS_SYNC and self._killed:
+            self._end_session(True)
 
         if "ns" in cursor_info:  # noqa: SIM401
             self._ns = cursor_info["ns"]
@@ -92,25 +93,9 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
 
-    def _end_session_entry(self):
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self._end_session(True))
-            else:
-                loop.run_until_complete(self._end_session(True))
-        except Exception:
-            pass
-
     def __del__(self) -> None:
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self._die())
-            else:
-                loop.run_until_complete(self._die())
-        except Exception:
-            pass
+        if IS_SYNC:
+            self._die(True)
 
     def batch_size(self, batch_size: int) -> AsyncCommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch

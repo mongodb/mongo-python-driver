@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server import Server
     from pymongo.typings import _DocumentType, _Pipeline
 
+IS_SYNC = True
+
 
 class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.

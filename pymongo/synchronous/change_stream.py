@@ -39,6 +39,8 @@ from pymongo.synchronous.aggregation import (
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
+IS_SYNC = True
+
 # The change streams spec considers the following server errors from the
 # getMore command non-resumable. All other getMore errors are resumable.
 _RESUMABLE_GETMORE_ERRORS = frozenset(

@@ -89,6 +89,8 @@ from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern, validate_boolean
 
+IS_SYNC = True
+
 T = TypeVar("T")
 
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}

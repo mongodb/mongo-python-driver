@@ -46,6 +46,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection, Pool
     from pymongo.typings import _DocumentOut
 
+IS_SYNC = True
+
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 

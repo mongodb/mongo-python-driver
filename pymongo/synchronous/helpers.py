@@ -52,6 +52,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.cursor import _Hint
     from pymongo.typings import _DocumentOut
 
+IS_SYNC = True
+
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES: frozenset = frozenset(
     [

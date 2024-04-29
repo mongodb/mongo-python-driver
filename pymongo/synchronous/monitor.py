@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.settings import TopologySettings
     from pymongo.synchronous.topology import Topology
 
+IS_SYNC = True
+
 
 def _sanitize(error: Exception) -> None:
     """PYTHON-2433 Clear error traceback info."""

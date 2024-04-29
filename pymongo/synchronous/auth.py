@@ -65,6 +65,8 @@ except ImportError:
         HAVE_KERBEROS = False
 
 
+IS_SYNC = True
+
 MECHANISMS = frozenset(
     [
         "GSSAPI",

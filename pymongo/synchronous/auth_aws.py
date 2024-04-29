@@ -57,6 +57,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.auth import MongoCredential
     from pymongo.synchronous.pool import Connection
 
+IS_SYNC = True
+
 
 class _AwsSaslContext(AwsSaslContext):  # type: ignore
     # Dependency injection:

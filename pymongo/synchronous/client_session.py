@@ -179,6 +179,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server import Server
     from pymongo.typings import ClusterTime, _Address
 
+IS_SYNC = True
+
 
 class SessionOptions:
     """Options for a new :class:`ClientSession`.

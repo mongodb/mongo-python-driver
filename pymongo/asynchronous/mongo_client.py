@@ -138,6 +138,8 @@ T = TypeVar("T")
 _WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
 _ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
 
+IS_SYNC = False
+
 
 class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     HOST = "localhost"
@@ -301,7 +303,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._init_background()
 
-        if connect:
+        if IS_SYNC and connect:
             self._fetch_topology()
 
         self._encrypter = None

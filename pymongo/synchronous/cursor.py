@@ -15,9 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 from __future__ import annotations
 
-import asyncio
 import copy
-import inspect
 import warnings
 from collections import deque
 from typing import (
@@ -68,6 +66,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
+
+IS_SYNC = True
 
 
 # These errors mean that the server has already killed the cursor so there is
@@ -335,16 +335,7 @@ class Cursor(Generic[_DocumentType]):
         return self._retrieved
 
     def __del__(self) -> None:
-        if inspect.iscoroutinefunction(self._die):
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(self._die())
-                else:
-                    loop.run_until_complete(self._die())
-            except Exception:
-                pass
-        else:
+        if IS_SYNC:
             self._die()
 
     def clone(self) -> Cursor[_DocumentType]:

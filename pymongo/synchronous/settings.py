@@ -28,6 +28,8 @@ from pymongo.synchronous import monitor, pool
 from pymongo.synchronous.pool import Pool, PoolOptions
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
+IS_SYNC = True
+
 
 class TopologySettings:
     def __init__(

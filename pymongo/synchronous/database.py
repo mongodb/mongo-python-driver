@@ -55,6 +55,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server import Server
     from pymongo.write_concern import WriteConcern
 
+IS_SYNC = True
+
 
 def _check_name(name: str) -> None:
     """Check if a database name is valid."""

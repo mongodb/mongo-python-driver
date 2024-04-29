@@ -86,6 +86,9 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _DocumentOut
 
+
+IS_SYNC = False
+
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 

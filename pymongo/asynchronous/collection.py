@@ -90,6 +90,8 @@ from pymongo.results import (
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern, validate_boolean
 
+IS_SYNC = False
+
 T = TypeVar("T")
 
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}

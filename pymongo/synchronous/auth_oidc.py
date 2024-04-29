@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.auth import MongoCredential
     from pymongo.synchronous.pool import Connection
 
+IS_SYNC = True
+
 
 @dataclass
 class OIDCIdPInfo:

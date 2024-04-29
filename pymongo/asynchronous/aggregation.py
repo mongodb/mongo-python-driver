@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _DocumentType, _Pipeline
 
+IS_SYNC = False
+
 
 class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.

@@ -86,6 +86,9 @@ if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection
     from pymongo.typings import _Address, _DocumentOut
 
+
+IS_SYNC = True
+
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 

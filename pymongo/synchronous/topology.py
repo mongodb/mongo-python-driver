@@ -70,6 +70,8 @@ if TYPE_CHECKING:
     from pymongo.synchronous.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
 
+IS_SYNC = True
+
 
 def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
     q = queue_ref()
