@@ -36,8 +36,7 @@ jobs:
         - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
         - [windows-2019, "win_amd6", "cp3*-win_amd64"]
         - [windows-2019, "win32", "cp3*-win32"]
-        - [macos-11, "macos-intel", "cp37-macosx_* cp38-macosx_* cp39-macosx_*"]
-        - [macos-14, "macos-arm", "cp310-macosx_* cp311-macosx_* cp312-macosx_*"]
+        - [macos-14, "macos", "cp*-macosx_*"]
 
     steps:
       - name: Checkout pymongo
@@ -65,30 +64,16 @@ jobs:
           python -m pip install "cibuildwheel>=2.17,<3"
 
       - name: Build wheels
-        if: ${{ matrix.buildplat[0] != 'macos-14' }}
-        env:
-          CIBW_BUILD: ${{ matrix.buildplat[2] }}
-          MACOS_TEST_SKIP: "*arm64"
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build wheels on M1
-        if: ${{ matrix.buildplat[0] == 'macos-14' }}
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Build manylinux1 x86_64 wheels
-        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' }}
+      - name: Build manylinux1 wheels
+        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_BUILD: "cp37-manylinux_x86_64 cp38-manylinux_x86_64 cp39-manylinux_x86_64"
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build manylinux1 i686 wheels
-        if: ${{ matrix.buildplat[1] == 'manylinux_i686' }}
-        env:
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD:  "cp37-manylinux_i686 cp38-manylinux_i686 cp39-manylinux_i686"
+          CIBW_BUILD: "cp37-${{ matrix.buildplat[1] }} cp38-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
