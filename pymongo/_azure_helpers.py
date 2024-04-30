@@ -32,7 +32,6 @@ def _get_azure_response(
         url += f"&client_id={client_id}"
     headers = {"Metadata": "true", "Accept": "application/json"}
     request = Request(url, headers=headers)  # noqa: S310
-    print("fetching url", url)  # noqa: T201
     try:
         with urlopen(request, timeout=timeout) as response:  # noqa: S310
             status = response.status

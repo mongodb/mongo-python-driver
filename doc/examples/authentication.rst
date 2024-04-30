@@ -408,8 +408,10 @@ Azure IMDS
 ^^^^^^^^^^
 
 For an application running on an Azure VM or otherwise using the `Azure Internal Metadata Service`_,
-you can use the built-in support for Azure, where "<client_id>" below is the client id of the Azure
-managed identity, and ``<audience>`` is the url-encoded ``audience`` `configured on your MongoDB deployment`_.
+you can use the built-in support for Azure. If using an Azure managed identity, the "<client_id>" is
+the client ID.  If using a service principal to represent an enterprise application, the "<client_id>" is
+the application ID of the service principal. The ``<audience>`` value is the ``audience``
+`configured on your MongoDB deployment`_.
 
 .. code-block:: python
 
@@ -430,11 +432,24 @@ managed identity, and ``<audience>`` is the url-encoded ``audience`` `configured
 If the application is running on an Azure VM and only one managed identity is associated with the
 VM, ``username`` can be omitted.
 
+If providing the ``TOKEN_RESOURCE`` as part of a connection string, it can be given as follows.
+If the ``TOKEN_RESOURCE`` contains any of the following characters [``,``, ``+``, ``&``], then
+it MUST be url-encoded.
+
+.. code-block:: python
+
+    import os
+
+    uri = f'{os.environ["MONGODB_URI"]}?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:<audience>'
+    c = MongoClient(uri)
+    c.test.test.insert_one({})
+    c.close()
+
 GCP IMDS
 ^^^^^^^^
 
 For an application running on an GCP VM or otherwise using the `GCP Internal Metadata Service`_,
-you can use the built-in support for GCP, where ``<audience>`` below is the url-encoded ``audience``
+you can use the built-in support for GCP, where ``<audience>`` below is the ``audience``
 `configured on your MongoDB deployment`_.
 
 .. code-block:: python
@@ -448,6 +463,18 @@ you can use the built-in support for GCP, where ``<audience>`` below is the url-
     c.test.test.insert_one({})
     c.close()
 
+If providing the ``TOKEN_RESOURCE`` as part of a connection string, it can be given as follows.
+If the ``TOKEN_RESOURCE`` contains any of the following characters [``,``, ``+``, ``&``], then
+it MUST be url-encoded.
+
+.. code-block:: python
+
+    import os
+
+    uri = f'{os.environ["MONGODB_URI"]}?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:<audience>'
+    c = MongoClient(uri)
+    c.test.test.insert_one({})
+    c.close()
 
 Custom Callbacks
 ~~~~~~~~~~~~~~~~

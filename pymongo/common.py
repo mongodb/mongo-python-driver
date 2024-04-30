@@ -453,26 +453,21 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
 
     value = validate_string(option, value)
     for opt in value.split(","):
-        try:
-            key, val = opt.split(":")
-        except ValueError:
-            # Try not to leak the token.
-            if "AWS_SESSION_TOKEN" in opt:
-                opt = (  # noqa: PLW2901
-                    "AWS_SESSION_TOKEN:<redacted token>, did you forget "
-                    "to percent-escape the token with quote_plus?"
-                )
-            raise ValueError(
-                "auth mechanism properties must be "
-                "key:value pairs like SERVICE_NAME:"
-                f"mongodb, not {opt}."
-            ) from None
+        key, _, val = opt.partition(":")
         if key not in _MECHANISM_PROPS:
+            # Try not to leak the token.
+            if "AWS_SESSION_TOKEN" in key:
+                raise ValueError(
+                    "auth mechanism properties must be "
+                    "key:value pairs like AWS_SESSION_TOKEN:<token>"
+                )
+
             raise ValueError(
                 f"{key} is not a supported auth "
                 "mechanism property. Must be one of "
                 f"{tuple(_MECHANISM_PROPS)}."
             )
+
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
         else:
