@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 4.7.1
+-------------------------
+
+Version 4.7.1 fixes a bug introduced in 4.7.0:
+
+- Fixed a bug where PyMongo would cause an ``AttributeError`` if ``dns.resolver`` was imported and referenced
+  after PyMongo was imported.
+- Clarified the behavior of the ``TOKEN_RESOURCE`` auth mechanism property for ``MONGODB-OIDC``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39680
+
 Changes in Version 4.7
 ------------------------
 
