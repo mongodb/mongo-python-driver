@@ -311,7 +311,7 @@ async def async_send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
         socket.setblocking(True)
 
 
-async def async_sendall(socket: socket.socket, buf: bytes, _) -> None:
+async def async_sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
     socket.setblocking(False)
     timeout = socket.gettimeout()
     socket.settimeout(0.0)
@@ -680,7 +680,7 @@ def command(
     return response_doc  # type: ignore[return-value]
 
 
-def sendall(socket: socket.socket, buf: bytes, _) -> None:
+def sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
     socket.sendall(buf)
 
 
