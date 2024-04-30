@@ -8,7 +8,7 @@ Version 4.7.1 fixes a bug introduced in 4.7.0:
 
 - Fixed a bug where PyMongo would cause an ``AttributeError`` if ``dns.resolver`` was imported and referenced
   after PyMongo was imported.
-- Clarified the behavior of the ``TOKEN_RESOURCE`` auth mechanism property for ``MONGODB-OIDC`.
+- Clarified the behavior of the ``TOKEN_RESOURCE`` auth mechanism property for ``MONGODB-OIDC``.
 
 Issues Resolved
 ...............
