@@ -342,6 +342,9 @@ static long long millis_from_datetime(PyObject* datetime) {
 static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
     // Allocate a new DatetimeMS object.
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     PyObject* dt;
     PyObject* ll_millis;
@@ -480,6 +483,9 @@ static int _load_python_objects(PyObject* module) {
     PyObject* re_compile = NULL;
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
+    if (!state) {
+        return 1;
+    }
 
     /* Cache commonly used attribute names to improve performance. */
     if (!((state->_type_marker_str = PyUnicode_FromString("_type_marker")) &&
@@ -638,6 +644,9 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t
     PyObject* type_registry_obj = NULL;
     struct module_state *state = GETSTATE(self);
     long type_marker;
+    if (!state) {
+        return 0;
+    }
 
     options->unicode_decode_error_handler = NULL;
 
@@ -853,14 +862,18 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     const codec_options_t* options,
                                     unsigned char in_custom_call,
                                     unsigned char in_fallback_call) {
-    struct module_state *state = GETSTATE(self);
     PyObject* new_value = NULL;
     int retval;
     int is_list;
+    long type;
+    struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return 0;
+    }
     /*
      * Use _type_marker attribute instead of PyObject_IsInstance for better perf.
      */
-    long type = _type_marker(value, state->_type_marker_str);
+    type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
         return 0;
     }
@@ -1501,6 +1514,9 @@ int write_dict(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     long type_marker;
     int is_dict = PyDict_Check(dict);
+    if (!state) {
+        return 0;
+    }
 
     if (!is_dict) {
         /* check for RawBSONDocument */
@@ -1638,6 +1654,9 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* raw_bson_document_bytes_obj;
     long type_marker;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "ObO|b", &dict, &check_keys,
                           &options_obj, &top_level) &&
@@ -1689,6 +1708,9 @@ static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     PyObject* database = NULL;
     PyObject* ret = NULL;
     int db_present = 0;
+    if (!state) {
+        return NULL;
+    }
 
     /* Decoding for DBRefs */
     if (PyMapping_HasKey(value, state->_dollar_ref_str) && PyMapping_HasKey(value, state->_dollar_id_str)) { /* DBRef */
@@ -1743,6 +1765,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned max, const codec_options_t* options, int raw_array) {
     struct module_state *state = GETSTATE(self);
     PyObject* value = NULL;
+    if (!state) {
+        return NULL;
+    }
     switch (type) {
     case 1:
         {
@@ -2269,6 +2294,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             uint32_t c_w_s_size;
             uint32_t code_size;
             uint32_t scope_size;
+            uint32_t len;
             PyObject* code;
             PyObject* scope;
 
@@ -2287,7 +2313,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             memcpy(&code_size, buffer + *position, 4);
             code_size = BSON_UINT32_FROM_LE(code_size);
             /* code_w_scope length + code length + code + scope length */
-            if (!code_size || max < code_size || max < 4 + 4 + code_size + 4) {
+            len = 4 + 4 + code_size + 4;
+            if (!code_size || max < code_size || max < len || len < code_size) {
                 goto invalid;
             }
             *position += 4;
@@ -2305,12 +2332,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
             memcpy(&scope_size, buffer + *position, 4);
             scope_size = BSON_UINT32_FROM_LE(scope_size);
-            if (scope_size < BSON_MIN_SIZE) {
-                Py_DECREF(code);
-                goto invalid;
-            }
             /* code length + code + scope length + scope */
-            if ((4 + code_size + 4 + scope_size) != c_w_s_size) {
+            len = 4 + 4 + code_size + scope_size;
+            if (scope_size < BSON_MIN_SIZE || len != c_w_s_size || len < scope_size) {
                 Py_DECREF(code);
                 goto invalid;
             }

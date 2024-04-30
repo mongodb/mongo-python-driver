@@ -76,6 +76,7 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     NotPrimaryError,
+    OperationFailure,
     PyMongoError,
 )
 from pymongo.monitoring import (
@@ -163,13 +164,18 @@ for provider_name, provider_data in [
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
-PROVIDER_NAME = os.environ.get("OIDC_PROVIDER_NAME", "aws")
-if PROVIDER_NAME == "aws":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"PROVIDER_NAME": "aws"}
-elif PROVIDER_NAME == "azure":
+OIDC_ENV = os.environ.get("OIDC_ENV", "test")
+if OIDC_ENV == "test":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}
+elif OIDC_ENV == "azure":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "PROVIDER_NAME": "azure",
-        "TOKEN_AUDIENCE": os.environ["AZUREOIDC_AUDIENCE"],
+        "ENVIRONMENT": "azure",
+        "TOKEN_RESOURCE": os.environ["AZUREOIDC_RESOURCE"],
+    }
+elif OIDC_ENV == "gcp":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
+        "ENVIRONMENT": "gcp",
+        "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
     }
 
 
@@ -426,6 +432,7 @@ class EntityMapUtil:
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
+        self._cluster_time: Mapping[str, Any] = {}
 
     def __contains__(self, item):
         return item in self._entities
@@ -489,6 +496,10 @@ class EntityMapUtil:
                     kwargs["h"] = client_context.mongos_seeds()
             kwargs.update(spec.get("uriOptions", {}))
             server_api = spec.get("serverApi")
+            if "waitQueueSize" in kwargs:
+                raise unittest.SkipTest("PyMongo does not support waitQueueSize")
+            if "waitQueueMultiple" in kwargs:
+                raise unittest.SkipTest("PyMongo does not support waitQueueMultiple")
             if server_api:
                 kwargs["server_api"] = ServerApi(
                     server_api["version"],
@@ -613,6 +624,14 @@ class EntityMapUtil:
         except InvalidOperation:
             # session has been closed.
             return self._session_lsids[session_name]
+
+    def advance_cluster_times(self) -> None:
+        """Manually synchronize entities when desired"""
+        if not self._cluster_time:
+            self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
+        for entity in self._entities.values():
+            if isinstance(entity, ClientSession) and self._cluster_time:
+                entity.advance_cluster_time(self._cluster_time)
 
 
 binary_types = (Binary, bytes)
@@ -808,84 +827,79 @@ class MatchEvaluatorUtil:
             self.test.assertEqual(expectation, actual)
             return None
 
-    def assertHasDatabaseName(self, spec, actual):
-        if "databaseName" in spec:
-            self.test.assertEqual(spec["databaseName"], actual.database_name)
-
-    def assertHasServiceId(self, spec, actual):
-        if "hasServiceId" in spec:
-            if spec.get("hasServiceId"):
-                self.test.assertIsNotNone(actual.service_id)
-                self.test.assertIsInstance(actual.service_id, ObjectId)
-            else:
-                self.test.assertIsNone(actual.service_id)
-
-    def assertHasInterruptInUseConnections(self, spec, actual):
-        if "interruptInUseConnections" in spec:
-            self.test.assertEqual(
-                spec.get("interruptInUseConnections"), actual.interrupt_connections
-            )
-        else:
-            self.test.assertIsInstance(actual.interrupt_connections, bool)
-
-    def assertHasServerConnectionId(self, spec, actual):
-        if "hasServerConnectionId" in spec:
-            if spec.get("hasServerConnectionId"):
-                self.test.assertIsNotNone(actual.server_connection_id)
-                self.test.assertIsInstance(actual.server_connection_id, int)
-            else:
-                self.test.assertIsNone(actual.server_connection_id)
-
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
-        if "type" in spec:
-            self.test.assertEqual(actual.server_type_name, spec["type"])
-        if "error" in spec:
-            self.test.process_error(actual.error, spec["error"])
-        if "minWireVersion" in spec:
-            self.test.assertEqual(actual.min_wire_version, spec["minWireVersion"])
-        if "maxWireVersion" in spec:
-            self.test.assertEqual(actual.max_wire_version, spec["maxWireVersion"])
-        if "topologyVersion" in spec:
-            self.test.assertEqual(actual.topology_version, spec["topologyVersion"])
+        for field, expected in spec.items():
+            field = camel_to_snake(field)
+            if field == "type":
+                field = "server_type_name"
+            self.test.assertEqual(getattr(actual, field), expected)
 
-    def match_event(self, event_type, expectation, actual):
+    def match_topology_description(self, actual: TopologyDescription, spec: dict) -> None:
+        for field, expected in spec.items():
+            field = camel_to_snake(field)
+            if field == "type":
+                field = "topology_type_name"
+            self.test.assertEqual(getattr(actual, field), expected)
+
+    def match_event_fields(self, actual: Any, spec: dict) -> None:
+        for field, expected in spec.items():
+            if field == "command" and isinstance(actual, CommandStartedEvent):
+                command = spec["command"]
+                if command:
+                    self.match_result(command, actual.command)
+                continue
+            if field == "reply" and isinstance(actual, CommandSucceededEvent):
+                reply = spec["reply"]
+                if reply:
+                    self.match_result(reply, actual.reply)
+                continue
+            if field == "hasServiceId":
+                if spec["hasServiceId"]:
+                    self.test.assertIsNotNone(actual.service_id)
+                    self.test.assertIsInstance(actual.service_id, ObjectId)
+                else:
+                    self.test.assertIsNone(actual.service_id)
+                continue
+            if field == "hasServerConnectionId":
+                if spec["hasServerConnectionId"]:
+                    self.test.assertIsNotNone(actual.server_connection_id)
+                    self.test.assertIsInstance(actual.server_connection_id, int)
+                else:
+                    self.test.assertIsNone(actual.server_connection_id)
+                continue
+            if field in ("previousDescription", "newDescription"):
+                if isinstance(actual, ServerDescriptionChangedEvent):
+                    self.match_server_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                    continue
+                if isinstance(actual, TopologyDescriptionChangedEvent):
+                    self.match_topology_description(
+                        getattr(actual, camel_to_snake(field)), spec[field]
+                    )
+                    continue
+
+            if field == "interruptInUseConnections":
+                field = "interrupt_connections"
+            else:
+                field = camel_to_snake(field)
+            self.test.assertEqual(getattr(actual, field), expected)
+
+    def match_event(self, expectation, actual):
         name, spec = next(iter(expectation.items()))
-
-        # every command event has the commandName field
-        if event_type == "command":
-            command_name = spec.get("commandName")
-            if command_name:
-                self.test.assertEqual(command_name, actual.command_name)
-
         if name == "commandStartedEvent":
             self.test.assertIsInstance(actual, CommandStartedEvent)
-            command = spec.get("command")
-            if command:
-                self.match_result(command, actual.command)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandSucceededEvent":
             self.test.assertIsInstance(actual, CommandSucceededEvent)
-            reply = spec.get("reply")
-            if reply:
-                self.match_result(reply, actual.reply)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "commandFailedEvent":
             self.test.assertIsInstance(actual, CommandFailedEvent)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasDatabaseName(spec, actual)
-            self.assertHasServerConnectionId(spec, actual)
         elif name == "poolCreatedEvent":
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == "poolReadyEvent":
             self.test.assertIsInstance(actual, PoolReadyEvent)
         elif name == "poolClearedEvent":
             self.test.assertIsInstance(actual, PoolClearedEvent)
-            self.assertHasServiceId(spec, actual)
-            self.assertHasInterruptInUseConnections(spec, actual)
+            self.test.assertIsInstance(actual.interrupt_connections, bool)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "connectionCreatedEvent":
@@ -894,42 +908,28 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ConnectionReadyEvent)
         elif name == "connectionClosedEvent":
             self.test.assertIsInstance(actual, ConnectionClosedEvent)
-            if "reason" in spec:
-                self.test.assertEqual(actual.reason, spec["reason"])
         elif name == "connectionCheckOutStartedEvent":
             self.test.assertIsInstance(actual, ConnectionCheckOutStartedEvent)
         elif name == "connectionCheckOutFailedEvent":
             self.test.assertIsInstance(actual, ConnectionCheckOutFailedEvent)
-            if "reason" in spec:
-                self.test.assertEqual(actual.reason, spec["reason"])
         elif name == "connectionCheckedOutEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
         elif name == "connectionCheckedInEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
         elif name == "serverDescriptionChangedEvent":
             self.test.assertIsInstance(actual, ServerDescriptionChangedEvent)
-            if "previousDescription" in spec:
-                self.match_server_description(
-                    actual.previous_description, spec["previousDescription"]
-                )
-            if "newDescription" in spec:
-                self.match_server_description(actual.new_description, spec["newDescription"])
         elif name == "serverHeartbeatStartedEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "serverHeartbeatSucceededEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatSucceededEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "serverHeartbeatFailedEvent":
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
-            if "awaited" in spec:
-                self.test.assertEqual(actual.awaited, spec["awaited"])
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
+
+        self.match_event_fields(actual, spec)
 
 
 def coerce_result(opname, result):
@@ -945,11 +945,14 @@ def coerce_result(opname, result):
     if opname in ("deleteOne", "deleteMany"):
         return {"deletedCount": result.deleted_count}
     if opname in ("updateOne", "updateMany", "replaceOne"):
-        return {
+        value = {
             "matchedCount": result.matched_count,
             "modifiedCount": result.modified_count,
             "upsertedCount": 0 if result.upserted_id is None else 1,
         }
+        if result.upserted_id is not None:
+            value["upsertedId"] = result.upserted_id
+        return value
     return result
 
 
@@ -963,10 +966,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.19")
+    SCHEMA_VERSION = Version.from_string("1.20")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    mongos_clients: list[MongoClient] = []
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -1011,6 +1015,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
+        # Handle mongos_clients for transactions tests.
+        cls.mongos_clients = []
+        if (
+            client_context.supports_transactions()
+            and not client_context.load_balancer
+            and not client_context.serverless
+        ):
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
             if "retryable-writes" in cls.TEST_SPEC["description"]:
@@ -1030,6 +1044,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+        self.IS_SERVERLESS_PROXY = os.environ.get("IS_SERVERLESS_PROXY")
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
@@ -1044,13 +1059,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-
-        if "unpin after TransientTransactionError error on" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
         if "unpin after non-transient error on abort" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
+        if self.IS_SERVERLESS_PROXY is not None and (
+            "errors during the initial connection hello are ignored" in spec["description"]
+            or "pinned connection is released after a transient network commit error"
+            in spec["description"]
+        ):
+            self.skipTest("waiting on CLOUDP-202309")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1160,6 +1177,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
 
+        return exception
+
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
@@ -1221,6 +1240,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cursor.batch_size(batch_size)
 
         return cursor
+
+    def kill_all_sessions(self):
+        if getattr(self, "client", None) is None:
+            return
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            try:
+                client.admin.command("killAllSessions", [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
@@ -1379,7 +1410,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if opargs:
             arguments = parse_spec_options(copy.deepcopy(opargs))
             prepare_spec_arguments(
-                spec, arguments, camel_to_snake(opname), self.entity_map, self.run_operations
+                spec,
+                arguments,
+                camel_to_snake(opname),
+                self.entity_map,
+                self.run_operations_and_throw,
             )
         else:
             arguments = {}
@@ -1437,7 +1472,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
             if ignore and isinstance(exc, (PyMongoError,)):
-                return None
+                return exc
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
@@ -1485,6 +1520,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _testOperation_createEntities(self, spec):
         self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
+        self.entity_map.advance_cluster_times()
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1561,7 +1597,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         count = 0
         for actual in actual_events:
             try:
-                self.match_evaluator.match_event("all", event, actual)
+                self.match_evaluator.match_event(event, actual)
             except AssertionError:
                 continue
             else:
@@ -1692,6 +1728,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 self.run_entity_operation(op)
 
+    def run_operations_and_throw(self, spec):
+        for op in spec:
+            if op["object"] == "testRunner":
+                self.run_special_operation(op)
+            else:
+                result = self.run_entity_operation(op)
+                if isinstance(result, Exception):
+                    raise result
+
     def check_events(self, spec):
         for event_spec in spec:
             client_name = event_spec["client"]
@@ -1709,10 +1754,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertEqual(actual_events, [])
                 continue
 
-            self.assertEqual(len(actual_events), len(events), actual_events)
+            if len(actual_events) != len(events):
+                expected = "\n".join(str(e) for e in events)
+                actual = "\n".join(str(a) for a in actual_events)
+                self.assertEqual(
+                    len(actual_events),
+                    len(events),
+                    f"expected events:\n{expected}\nactual events:\n{actual}",
+                )
 
             for idx, expected_event in enumerate(events):
-                self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
+                self.match_evaluator.match_event(expected_event, actual_events[idx])
 
             if has_server_connection_id:
                 assert server_connection_id is not None
@@ -1724,6 +1776,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         def format_logs(log_list):
             client_to_log = defaultdict(list)
             for log in log_list:
+                if log.module == "ocsp_support":
+                    continue
                 data = json_util.loads(log.message)
                 client = data.pop("clientId")
                 client_to_log[client].append(
@@ -1746,6 +1800,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
                 actual_logs = [log for log in actual_logs if log["component"] in components]
+                if client.get("ignoreExtraMessages", False):
+                    actual_logs = actual_logs[: len(client["messages"])]
                 self.assertEqual(len(client["messages"]), len(actual_logs))
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
@@ -1780,6 +1836,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
+
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
             attempts = 3
@@ -1820,7 +1882,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData
-        self.insert_initial_data(self.TEST_SPEC.get("initialData", []))
+        if "initialData" in self.TEST_SPEC:
+            self.insert_initial_data(self.TEST_SPEC["initialData"])
+            self._cluster_time = self.client.admin.command("ping").get("$clusterTime")
+            self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]

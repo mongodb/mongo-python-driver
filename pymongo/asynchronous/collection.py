@@ -79,6 +79,7 @@ from pymongo.operations import (
     _IndexList,
     _Op,
 )
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
@@ -88,7 +89,7 @@ from pymongo.results import (
     UpdateResult,
 )
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
-from pymongo.write_concern import WriteConcern, validate_boolean
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 IS_SYNC = False
 
@@ -2771,7 +2772,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             pipeline = [{"$listSearchIndexes": {"name": name}}]
 
         coll = self.with_options(
-            codec_options=DEFAULT_CODEC_OPTIONS, read_preference=ReadPreference.PRIMARY
+            codec_options=DEFAULT_CODEC_OPTIONS,
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=DEFAULT_WRITE_CONCERN,
+            read_concern=DEFAULT_READ_CONCERN,
         )
         cmd = _CollectionAggregationCommand(
             coll,
@@ -2779,6 +2783,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             pipeline,
             kwargs,
             explicit_session=session is not None,
+            comment=comment,
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
@@ -2817,7 +2822,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 4.5
         """
         if not isinstance(model, SearchIndexModel):
-            model = SearchIndexModel(model["definition"], model.get("name"))
+            model = SearchIndexModel(**model)
         return await self._create_search_indexes([model], session, comment, **kwargs)[0]
 
     async def create_search_indexes(

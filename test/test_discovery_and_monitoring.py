@@ -20,8 +20,6 @@ import socketserver
 import sys
 import threading
 
-from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
-
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
@@ -51,6 +49,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.hello import Hello, HelloCompat
+from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.synchronous.helpers import _check_command_response, _check_write_command_response
 from pymongo.synchronous.settings import TopologySettings
@@ -408,17 +407,21 @@ class MockTCPHandler(socketserver.BaseRequestHandler):
         self.request.close()
 
 
-class TestHeartbeatStartOrdering(unittest.TestCase):
-    def start_server(self, events):
-        server = socketserver.TCPServer(("localhost", 9999), MockTCPHandler)
-        server.events = events
-        server.handle_request()
-        server.server_close()
+class TCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
 
+    def handle_request_and_shutdown(self):
+        self.handle_request()
+        self.server_close()
+
+
+class TestHeartbeatStartOrdering(unittest.TestCase):
     def test_heartbeat_start_ordering(self):
         events = []
         listener = HeartbeatEventsListListener(events)
-        server_thread = threading.Thread(target=self.start_server, args=(events,))
+        server = TCPServer(("localhost", 9999), MockTCPHandler)
+        server.events = events
+        server_thread = threading.Thread(target=server.handle_request_and_shutdown)
         server_thread.start()
         _c = MongoClient(
             "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)

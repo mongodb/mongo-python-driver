@@ -21,11 +21,14 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
+from urllib.parse import quote
 
 import bson
 from bson.binary import Binary
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
+from pymongo._gcp_helpers import _get_gcp_response
+from pymongo.asynchronous.helpers import _AUTHENTICATION_FAILURE_CODE
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
@@ -38,13 +41,14 @@ IS_SYNC = False
 @dataclass
 class OIDCIdPInfo:
     issuer: str
-    clientId: str
+    clientId: Optional[str] = field(default=None)
     requestScopes: Optional[list[str]] = field(default=None)
 
 
 @dataclass
 class OIDCCallbackContext:
     timeout_seconds: float
+    username: str
     version: int
     refresh_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
@@ -69,8 +73,10 @@ class OIDCCallback(abc.ABC):
 class _OIDCProperties:
     callback: Optional[OIDCCallback] = field(default=None)
     human_callback: Optional[OIDCCallback] = field(default=None)
-    provider_name: Optional[str] = field(default=None)
+    environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
+    token_resource: Optional[str] = field(default=None)
+    username: str = ""
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -93,7 +99,7 @@ def _get_authenticator(
     properties = credentials.mechanism_properties
 
     # Validate that the address is allowed.
-    if not properties.provider_name:
+    if not properties.environment:
         found = False
         allowed_hosts = properties.allowed_hosts
         for patt in allowed_hosts:
@@ -111,6 +117,17 @@ def _get_authenticator(
     return credentials.cache.data
 
 
+class _OIDCTestCallback(OIDCCallback):
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+        token_file = os.environ.get("OIDC_TOKEN_FILE")
+        if not token_file:
+            raise RuntimeError(
+                'MONGODB-OIDC with an "test" provider requires "OIDC_TOKEN_FILE" to be set'
+            )
+        with open(token_file) as fid:
+            return OIDCCallbackResult(access_token=fid.read().strip())
+
+
 class _OIDCAWSCallback(OIDCCallback):
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
         token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
@@ -123,15 +140,23 @@ class _OIDCAWSCallback(OIDCCallback):
 
 
 class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_audience: str, username: Optional[str]) -> None:
-        self.token_audience = token_audience
-        self.username = username
+    def __init__(self, token_resource: str) -> None:
+        self.token_resource = quote(token_resource)
 
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_audience, self.username, context.timeout_seconds)
+        resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
         return OIDCCallbackResult(
             access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
         )
+
+
+class _OIDCGCPCallback(OIDCCallback):
+    def __init__(self, token_resource: str) -> None:
+        self.token_resource = quote(token_resource)
+
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+        resp = _get_gcp_response(self.token_resource, context.timeout_seconds)
+        return OIDCCallbackResult(access_token=resp["access_token"])
 
 
 @dataclass
@@ -180,30 +205,43 @@ class _OIDCAuthenticator:
 
     async def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If
-        # authentication fails, it's possible the cached access token is expired. In
-        # that case, invalidate the access token, fetch a new access token, and try
-        # to authenticate again.
+        # authentication fails with error code 18, invalidate the access token,
+        # fetch a new access token, and try to authenticate again. If authentication
+        # fails for any other reason, raise the error to the user.
         if self.access_token:
             try:
                 return await self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    return await self._authenticate_machine(conn)
+                raise
         return await self._sasl_start_jwt(conn)
 
     async def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         # If we have a cached access token, try a JwtStepRequest.
+        # authentication fails with error code 18, invalidate the access token,
+        # and try to authenticate again.  If authentication fails for any other
+        # reason, raise the error to the user.
         if self.access_token:
             try:
                 return await self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    return await self._authenticate_human(conn)
+                raise
 
         # If we have a cached refresh token, try a JwtStepRequest with that.
+        # If authentication fails with error code 18, invalidate the access and
+        # refresh tokens, and try to authenticate again. If authentication fails for
+        # any other reason, raise the error to the user.
         if self.refresh_token:
             try:
                 return await self._sasl_start_jwt(conn)
-            except Exception:  # noqa: S110
-                pass
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    self.refresh_token = None
+                    return await self._authenticate_human(conn)
+                raise
 
         # Start a new Two-Step SASL conversation.
         # Run a PrincipalStepRequest to get the IdpInfo.
@@ -257,6 +295,7 @@ class _OIDCAuthenticator:
                     version=CALLBACK_VERSION,
                     refresh_token=self.refresh_token,
                     idp_info=self.idp_info,
+                    username=self.properties.username,
                 )
                 resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
@@ -272,9 +311,15 @@ class _OIDCAuthenticator:
     ) -> Mapping[str, Any]:
         try:
             return await conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
-        except OperationFailure:
-            self._invalidate(conn)
+        except OperationFailure as e:
+            if self._is_auth_error(e):
+                self._invalidate(conn)
             raise
+
+    def _is_auth_error(self, err: Exception) -> bool:
+        if not isinstance(err, OperationFailure):
+            return False
+        return err.code == _AUTHENTICATION_FAILURE_CODE
 
     def _invalidate(self, conn: Connection) -> None:
         # Ignore the invalidation if a token gen id is given and is less than our

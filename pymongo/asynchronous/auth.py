@@ -40,9 +40,10 @@ from pymongo.asynchronous.auth_aws import _authenticate_aws
 from pymongo.asynchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
-    _OIDCAWSCallback,
     _OIDCAzureCallback,
+    _OIDCGCPCallback,
     _OIDCProperties,
+    _OIDCTestCallback,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
@@ -139,7 +140,7 @@ def _build_credentials_tuple(
             raise ValueError("authentication source must be $external or None for GSSAPI")
         properties = extra.get("authmechanismproperties", {})
         service_name = properties.get("SERVICE_NAME", "mongodb")
-        canonicalize = properties.get("CANONICALIZE_HOST_NAME", False)
+        canonicalize = bool(properties.get("CANONICALIZE_HOST_NAME", False))
         service_realm = properties.get("SERVICE_REALM")
         props = GSSAPIProperties(
             service_name=service_name,
@@ -172,8 +173,8 @@ def _build_credentials_tuple(
         properties = extra.get("authmechanismproperties", {})
         callback = properties.get("OIDC_CALLBACK")
         human_callback = properties.get("OIDC_HUMAN_CALLBACK")
-        provider_name = properties.get("PROVIDER_NAME")
-        token_audience = properties.get("TOKEN_AUDIENCE", "")
+        environ = properties.get("ENVIRONMENT")
+        token_resource = properties.get("TOKEN_RESOURCE", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -184,41 +185,50 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
-        msg = "authentication with MONGODB-OIDC requires providing either a callback or a provider_name"
+        msg = (
+            "authentication with MONGODB-OIDC requires providing either a callback or a environment"
+        )
         if passwd is not None:
             msg = "password is not supported by MONGODB-OIDC"
             raise ConfigurationError(msg)
         if callback or human_callback:
-            if provider_name is not None:
+            if environ is not None:
                 raise ConfigurationError(msg)
             if callback and human_callback:
                 msg = "cannot set both OIDC_CALLBACK and OIDC_HUMAN_CALLBACK"
                 raise ConfigurationError(msg)
-        elif provider_name is not None:
-            if provider_name == "aws":
+        elif environ is not None:
+            if environ == "test":
                 if user is not None:
-                    msg = "AWS provider for MONGODB-OIDC does not support username"
+                    msg = "test environment for MONGODB-OIDC does not support username"
                     raise ConfigurationError(msg)
-                callback = _OIDCAWSCallback()
-            elif provider_name == "azure":
+                callback = _OIDCTestCallback()
+            elif environ == "azure":
                 passwd = None
-                if not token_audience:
+                if not token_resource:
                     raise ConfigurationError(
-                        "Azure provider for MONGODB-OIDC requires a TOKEN_AUDIENCE auth mechanism property"
+                        "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
-                callback = _OIDCAzureCallback(token_audience, user)
+                callback = _OIDCAzureCallback(token_resource)
+            elif environ == "gcp":
+                passwd = None
+                if not token_resource:
+                    raise ConfigurationError(
+                        "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                    )
+                callback = _OIDCGCPCallback(token_resource)
             else:
-                raise ConfigurationError(
-                    f"unrecognized provider_name for MONGODB-OIDC: {provider_name}"
-                )
+                raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:
             raise ConfigurationError(msg)
 
         oidc_props = _OIDCProperties(
             callback=callback,
             human_callback=human_callback,
-            provider_name=provider_name,
+            environment=environ,
             allowed_hosts=allowed_hosts,
+            token_resource=token_resource,
+            username=user,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 

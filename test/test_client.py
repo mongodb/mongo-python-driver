@@ -104,16 +104,14 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.synchronous import message
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.mongo_client import MongoClient, _detect_external_db
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import (
     _METADATA,
-    DOCKER_ENV_PATH,
     ENV_VAR_K8S,
     Connection,
     PoolOptions,
@@ -463,7 +461,6 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
         from pymongo.srv_resolver import _resolve
@@ -604,34 +601,6 @@ class ClientUnitTest(unittest.TestCase):
                     MongoClient(host)
             with self.assertWarns(UserWarning):
                 MongoClient(multi_host)
-
-    def test_detect_external_db(self):
-        hosts = [
-            "normalhost.com",
-            "host.cosmos.AZURE.com",
-            "host.docdb.amazonaws.com",
-            "host.docdb-elastic.amazonaws.com",
-        ]
-        with self.assertLogs("pymongo", level="INFO") as cm:
-            for host in hosts:
-                _detect_external_db(host)
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
-            self.assertEqual(len(logs), 3)
-            self.assertEqual(
-                logs[0],
-                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
-            )
-            self.assertEqual(
-                logs[1],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
-            self.assertEqual(
-                logs[2],
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
 
 
 class TestClient(IntegrationTest):
@@ -1812,7 +1781,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             coll.insert_many([{} for _ in range(5)])
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_service_name_from_kwargs(self):
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
@@ -1833,7 +1801,6 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
 
-    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_srv_max_hosts_kwarg(self):
         client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
@@ -1843,11 +1810,6 @@ class TestClient(IntegrationTest):
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
-
-    @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
-    def test_srv_no_dnspython_error(self):
-        with self.assertRaisesRegex(ConfigurationError, 'The "dnspython" module must be'):
-            MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
 
     @unittest.skipIf(
         client_context.load_balancer or client_context.serverless,

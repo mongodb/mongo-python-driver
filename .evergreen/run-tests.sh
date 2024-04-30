@@ -32,7 +32,11 @@ AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="${*:1}"
 PYTHON=$(which python)
+# TODO: Remove when we drop PyPy 3.8 support.
+OLD_PYPY=$(python -c "import sys; print(sys.implementation.name.lower() == 'pypy' and sys.implementation.version < (7, 3, 12))")
+
 export PIP_QUIET=1  # Quiet by default
+export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
@@ -109,6 +113,9 @@ fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
     python -m pip install '.[snappy]'
+    if [ "$OLD_PYPY" == "True" ]; then
+        pip install "python-snappy<0.7.0"
+    fi
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     python -m pip install zstandard
@@ -121,7 +128,7 @@ fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
-    python -m pip install --prefer-binary '.[encryption]'
+    python -m pip install '.[encryption]'
 
     # Install libmongocrypt if necessary.
     if [ ! -d "libmongocrypt" ]; then
@@ -221,7 +228,7 @@ fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_oidc/test_auth_oidc.py"
+    TEST_ARGS="test/auth_oidc/test_auth_oidc.py $TEST_ARGS"
 fi
 
 if [ -n "$PERF_TEST" ]; then
@@ -248,7 +255,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
-     python -m pip install $GREEN_FRAMEWORK
+    python -m pip install $GREEN_FRAMEWORK
 fi
 
 # Show the installed packages

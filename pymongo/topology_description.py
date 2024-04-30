@@ -265,8 +265,14 @@ class TopologyDescription:
     def _apply_local_threshold(self, selection: Optional[Selection]) -> list[ServerDescription]:
         if not selection:
             return []
+        round_trip_times: list[float] = []
+        for server in selection.server_descriptions:
+            if server.round_trip_time is None:
+                config_err_msg = f"round_trip_time for server {server.address} is unexpectedly None: {self}, servers: {selection.server_descriptions}"
+                raise ConfigurationError(config_err_msg)
+            round_trip_times.append(server.round_trip_time)
         # Round trip time in seconds.
-        fastest = min(cast(float, s.round_trip_time) for s in selection.server_descriptions)
+        fastest = min(round_trip_times)
         threshold = self._topology_settings.local_threshold_ms / 1000.0
         return [
             s

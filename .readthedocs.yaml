@@ -16,7 +16,7 @@ python:
       # Install pymongo itself.
       - method: pip
         path: .
-      - requirements: doc/docs-requirements.txt
+      - requirements: requirements/docs.txt
 
 build:
   os: ubuntu-22.04

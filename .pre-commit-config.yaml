@@ -93,4 +93,4 @@ repos:
     # - test/test_bson.py:267: isnt ==> isn't
     # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
     # - test/test_client.py:188: te ==> the, be, we, to
-    args: ["-L", "fle,fo,infinit,isnt,nin,te"]
+    args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]

@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 from test import unittest
 from test.test_client import IntegrationTest
 from unittest.mock import patch
@@ -28,19 +29,21 @@ class TestLogger(IntegrationTest):
         docs = [{"x": "y"} for _ in range(100)]
         db = self.db
 
-        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-            db.test.insert_many(docs)
+        with patch.dict("os.environ"):
+            os.environ.pop("MONGOB_LOG_MAX_DOCUMENT_LENGTH", None)
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                db.test.insert_many(docs)
 
-            cmd_started_log = json_util.loads(cm.records[0].message)
-            self.assertEqual(len(cmd_started_log["command"]), _DEFAULT_DOCUMENT_LENGTH + 3)
+                cmd_started_log = json_util.loads(cm.records[0].message)
+                self.assertEqual(len(cmd_started_log["command"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
-            cmd_succeeded_log = json_util.loads(cm.records[1].message)
-            self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
+                cmd_succeeded_log = json_util.loads(cm.records[1].message)
+                self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
-        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-            list(db.test.find({}))
-            cmd_succeeded_log = json_util.loads(cm.records[1].message)
-            self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                list(db.test.find({}))
+                cmd_succeeded_log = json_util.loads(cm.records[1].message)
+                self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
     def test_configured_truncation_limit(self):
         cmd = {"hello": True}

@@ -26,14 +26,12 @@ from test.unified_format import generate_test_classes
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "command_logging")
 
-
 globals().update(
     generate_test_classes(
         _TEST_PATH,
         module=__name__,
     )
 )
-
 
 if __name__ == "__main__":
     unittest.main()

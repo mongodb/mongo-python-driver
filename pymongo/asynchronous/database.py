@@ -46,8 +46,6 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
-    import bson
-    import bson.codec_options
     from pymongo.asynchronous.client_session import ClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import Connection
@@ -76,7 +74,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         self,
         client: AsyncMongoClient[_DocumentType],
         name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -154,7 +152,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -238,7 +236,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     def get_collection(
         self,
         name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -465,7 +463,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     async def create_collection(
         self,
         name: str,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
+        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -803,7 +801,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
+        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -932,7 +930,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
+        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         max_await_time_ms: Optional[int] = None,

@@ -9,3 +9,8 @@ updates:
       actions:
         patterns:
           - "*"
+  # Python
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"

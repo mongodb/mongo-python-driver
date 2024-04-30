@@ -28,7 +28,6 @@ from test import clear_warning_registry, unittest
 
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
 from pymongo.compression_support import _HAVE_SNAPPY
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.uri_parser import SRV_SCHEME, parse_uri
 
 CONN_STRING_TEST_PATH = os.path.join(
@@ -98,8 +97,6 @@ def create_test(test, test_workdir):
         compressors = (test.get("options") or {}).get("compressors", [])
         if "snappy" in compressors and not _HAVE_SNAPPY:
             self.skipTest("This test needs the snappy module.")
-        if test["uri"].startswith(SRV_SCHEME) and not _HAVE_DNSPYTHON:
-            self.skipTest("This test needs dnspython package.")
         valid = True
         warning = False
         expected_warning = test.get("warning", False)

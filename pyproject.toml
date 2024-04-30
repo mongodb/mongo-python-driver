@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymongo"
-dynamic = ["version"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "Python driver for MongoDB <http://www.mongodb.org>"
 readme = "README.md"
 license = {file="LICENSE"}
@@ -39,53 +39,11 @@ classifiers = [
     "Topic :: Database",
     "Typing :: Typed",
 ]
-dependencies = [
-    "dnspython>=1.16.0,<3.0.0",
-]
-
-[project.optional-dependencies]
-aws = [
-    "pymongo-auth-aws<2.0.0",
-]
-encryption = [
-    "pymongo[aws]",
-    "pymongocrypt>=1.6.0,<2.0.0",
-    "certifi;os.name=='nt' or sys_platform=='darwin'",
-]
-gssapi = [
-    "pykerberos;os.name!='nt'",
-    "winkerberos>=0.5.0;os.name=='nt'"
-]
-# PyOpenSSL 17.0.0 introduced support for OCSP. 17.1.0 introduced
-# a related feature we need. 17.2.0 fixes a bug
-# in set_default_verify_paths we should really avoid.
-# service_identity 18.1.0 introduced support for IP addr matching.
-# Fallback to certifi on Windows if we can't load CA certs from the system
-# store and just use certifi on macOS.
-# https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
-ocsp = [
-    "certifi;os.name=='nt' or sys_platform=='darwin'",
-    "pyopenssl>=17.2.0",
-    "requests<3.0.0",
-    "cryptography>=2.5",
-    "service_identity>=18.1.0",
-]
-snappy = [
-    "python-snappy",
-]
-# PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
-srv = []
-tls = []
-# PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
-zstd = [
-    "zstandard",
-]
-test = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://www.mongodb.org"
 Documentation = "https://pymongo.readthedocs.io"
-Source = "https://github.com/mongodb/pymongo"
+Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.setuptools.dynamic]
@@ -115,6 +73,8 @@ filterwarnings = [
     "module:Unsupported compressor:UserWarning",
     "module:zlibcompressionlevel must be:UserWarning",
     "module:Wire protocol compression with:UserWarning",
+    "module:GridIn property:DeprecationWarning",
+    "module:GridOut property:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
@@ -127,7 +87,6 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.7"
 strict = true
 show_error_codes = true
 pretty = true
@@ -136,6 +95,10 @@ disable_error_code = ["type-arg", "no-any-return"]
 [[tool.mypy.overrides]]
 module = ["test.*"]
 disable_error_code = ["no-untyped-def", "no-untyped-call"]
+
+[[tool.mypy.overrides]]
+module = ["service_identity.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py37"
@@ -204,6 +167,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]
+"tools/*.py" = ["T201"]
 "green_framework_test.py" = ["T201"]
 
 [tool.coverage.run]

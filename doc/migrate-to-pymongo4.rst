@@ -328,13 +328,13 @@ Removed :meth:`pymongo.database.Database.collection_names`. Use
 :meth:`~pymongo.database.Database.list_collection_names` instead. Code like
 this::
 
-    names = client.collection_names()
-    non_system_names = client.collection_names(include_system_collections=False)
+    names = client.db.collection_names()
+    non_system_names = client.db.collection_names(include_system_collections=False)
 
 can be changed to this::
 
-    names = client.list_collection_names()
-    non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
+    names = client.db.list_collection_names()
+    non_system_names = client.db.list_collection_names(filter={"name": {"$regex": "^(?!system\\.)"}})
 
 Database.current_op is removed
 ..............................
@@ -637,11 +637,9 @@ Collection.group is removed
 ...........................
 
 Removed :meth:`pymongo.collection.Collection.group`. This method was
-deprecated in PyMongo 3.5. MongoDB 4.2 removed the `group command`_.
+deprecated in PyMongo 3.5. MongoDB 4.2 removed the group command.
 Use :meth:`~pymongo.collection.Collection.aggregate` with the ``$group`` stage
 instead.
-
-.. _group command: https://mongodb.com/docs/manual/reference/command/group/
 
 Collection.map_reduce and Collection.inline_map_reduce are removed
 ..................................................................
@@ -940,9 +938,7 @@ Collection.parallel_scan is removed
 ...................................
 
 Removed :meth:`~pymongo.collection.Collection.parallel_scan`. MongoDB 4.2
-removed the `parallelCollectionScan command`_.  There is no replacement.
-
-.. _parallelCollectionScan command: https://mongodb.com/docs/manual/reference/command/parallelCollectionScan/
+removed the parallelCollectionScan command.  There is no replacement.
 
 pymongo.message helpers are removed
 ...................................

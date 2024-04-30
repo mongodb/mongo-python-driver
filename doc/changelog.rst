@@ -1,23 +1,48 @@
 Changelog
 =========
 
+Changes in Version 4.7.1
+-------------------------
+
+Version 4.7.1 fixes a bug introduced in 4.7.0:
+
+- Fixed a bug where PyMongo would cause an ``AttributeError`` if ``dns.resolver`` was imported and referenced
+  after PyMongo was imported.
+- Clarified the behavior of the ``TOKEN_RESOURCE`` auth mechanism property for ``MONGODB-OIDC``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39680
+
 Changes in Version 4.7
 ------------------------
 
 PyMongo 4.7 brings a number of improvements including:
 
-- Added the :class:`pymongo.hello.Hello.connection_id`,
-  :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
-  :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
-  :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
-- Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
+- Added support for ``MONGODB-OIDC`` authentication.  The MONGODB-OIDC mechanism authenticates
+  using an OpenID Connect (OIDC) access token.
+  The driver supports OIDC for workload identity, defined as an identity you assign to a software workload
+  (such as an application, service, script, or container) to authenticate and access other services and resources.
+  Please see :doc:`examples/authentication` for more information.
+- Added support for Python's `native logging library <https://docs.python.org/3/howto/logging.html>`_,
+  enabling developers to customize the verbosity of log messages for their applications.
+  Please see :doc:`examples/logging` for more information.
 - Significantly improved the performance of encoding BSON documents to JSON.
-- Support for named KMS providers for client side field level encryption.
+- Added support for named KMS providers for client side field level encryption.
   Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
   The KMS provider is now expanded to support name suffixes (e.g. local:myname).
   Named KMS providers enables more than one of each KMS provider type to be configured.
   See the docstring for :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
   Note that named KMS providers requires pymongocrypt >=1.9 and libmongocrypt >=1.9.
+- Added the :class:`pymongo.hello.Hello.connection_id`,
+  :attr:`pymongo.monitoring.CommandStartedEvent.server_connection_id`,
+  :attr:`pymongo.monitoring.CommandSucceededEvent.server_connection_id`, and
+  :attr:`pymongo.monitoring.CommandFailedEvent.server_connection_id` properties.
+- Fixed a bug where inflating a :class:`~bson.raw_bson.RawBSONDocument` containing a :class:`~bson.code.Code` would cause an error.
 - :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
   :meth:`~pymongo.encryption.ClientEncryption.encrypt_expression` now allow ``key_id``
   to be passed in as a :class:`uuid.UUID`.
@@ -39,7 +64,16 @@ PyMongo 4.7 brings a number of improvements including:
 - Added the :attr:`pymongo.monitoring.ConnectionCheckedOutEvent.duration`,
   :attr:`pymongo.monitoring.ConnectionCheckOutFailedEvent.duration`, and
   :attr:`pymongo.monitoring.ConnectionReadyEvent.duration` properties.
+- Added the ``type`` and ``kwargs`` arguments to :class:`~pymongo.operations.SearchIndexModel` to enable
+  creating vector search indexes in MongoDB Atlas.
+- Fixed a bug where ``read_concern`` and ``write_concern`` were improperly added to
+  :meth:`~pymongo.collection.Collection.list_search_indexes` queries.
+- Deprecated :attr:`pymongo.write_concern.WriteConcern.wtimeout` and :attr:`pymongo.mongo_client.MongoClient.wTimeoutMS`.
+  Use :meth:`~pymongo.timeout` instead.
 
+.. warning:: PyMongo depends on ``dnspython``, which released version 2.6.1 with a fix for
+   `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.  We do not explicitly require
+   that version, but we strongly recommend that you install at least that version in your environment.
 
 Unavoidable breaking changes
 ............................
@@ -74,6 +108,27 @@ Unavoidable breaking changes
     >>> dict_to_SON(data_as_dict)
     SON([('driver', SON([('name', 'PyMongo'), ('version', '4.7.0.dev0')])), ('os', SON([('type', 'Darwin'), ('name', 'Darwin'), ('architecture', 'arm64'), ('version', '14.3')])), ('platform', 'CPython 3.11.6.final.0')])
 
+- PyMongo now uses `lazy imports <https://docs.python.org/3/library/importlib.html#implementing-lazy-imports>`_ for external dependencies.
+  If you are relying on any kind of monkey-patching of the standard library, you may need to explicitly import those external libraries in addition
+  to ``pymongo`` before applying the patch.  Note that we test with ``gevent`` and ``eventlet`` patching, and those continue to work.
+
+- The "aws" extra now requires minimum version of ``1.1.0`` for ``pymongo_auth_aws``.
+
+Changes in Version 4.6.3
+------------------------
+
+PyMongo 4.6.3 fixes the following bug:
+
+- Fixed a potential memory access violation when decoding invalid bson.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=38360
+
 Changes in Version 4.6.2
 ------------------------
 
@@ -82,12 +137,28 @@ PyMongo 4.6.2 fixes the following bug:
 - Fixed a bug appearing in Python 3.12 where "RuntimeError: can't create new thread at interpreter shutdown"
   could be written to stderr when a MongoClient's thread starts as the python interpreter is shutting down.
 
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37906
+
 Changes in Version 4.6.1
 ------------------------
 
 PyMongo 4.6.1 fixes the following bug:
 
 - Ensure retryable read ``OperationFailure`` errors re-raise exception when 0 or NoneType error code is provided.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37138
 
 Changes in Version 4.6
 ----------------------
@@ -120,6 +191,14 @@ PyMongo 4.6 brings a number of improvements including:
   when connected to load balanced MongoDB clusters or Serverless clusters.
 - Added the :ref:`network-compression-example` documentation page.
 - Added more timeout information to network errors.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.6 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36542
 
 Changes in Version 4.5
 ----------------------

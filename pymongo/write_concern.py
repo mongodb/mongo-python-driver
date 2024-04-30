@@ -38,9 +38,9 @@ class WriteConcern:
           replicated to **two** secondaries). **w=0 disables acknowledgement
           of write operations and can not be used with other write concern
           options.**
-    :param wtimeout: (integer) Used in conjunction with `w`. Specify a value
-          in milliseconds to control how long to wait for write propagation
-          to complete. If replication does not complete in the given
+    :param wtimeout: (integer) **DEPRECATED** Used in conjunction with `w`.
+          Specify a value in milliseconds to control how long to wait for write
+          propagation to complete. If replication does not complete in the given
           timeframe, a timeout exception is raised.
     :param j: If ``True`` block until write operations have been committed
           to the journal. Cannot be used in combination with `fsync`. Write
@@ -51,6 +51,10 @@ class WriteConcern:
           server is running with journaling, this acts the same as the `j`
           option, blocking until write operations have been committed to the
           journal. Cannot be used in combination with `j`.
+
+
+    .. versionchanged:: 4.7
+        Deprecated parameter ``wtimeout``, use :meth:`~pymongo.timeout`.
     """
 
     __slots__ = ("__document", "__acknowledged", "__server_default")

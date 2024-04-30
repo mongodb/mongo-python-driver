@@ -20,11 +20,25 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import client_context, unittest
 from test.unified_format import generate_test_classes
+
+
+@client_context.require_no_mmap
+def setUpModule():
+    pass
+
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "unified")
+
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
+
+# Location of JSON test specifications for transactions-convenient-api.
+TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "transactions-convenient-api", "unified"
+)
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))

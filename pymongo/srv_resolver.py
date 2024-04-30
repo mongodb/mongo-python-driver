@@ -19,15 +19,15 @@ import ipaddress
 import random
 from typing import Any, Optional, Union
 
+from pymongo.common import CONNECT_TIMEOUT
+from pymongo.errors import ConfigurationError
+
 try:
     from dns import resolver
 
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
-
-from pymongo.common import CONNECT_TIMEOUT
-from pymongo.errors import ConfigurationError
 
 
 # dnspython can return bytes or str from various parts

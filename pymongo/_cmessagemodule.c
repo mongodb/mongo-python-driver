@@ -68,8 +68,6 @@ static int buffer_write_bytes_ssize_t(buffer_t buffer, const char* data, Py_ssiz
 
 static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
-    struct module_state *state = GETSTATE(self);
-
     int request_id = rand();
     unsigned int flags;
     char* collection_name = NULL;
@@ -84,6 +82,10 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     buffer_t buffer = NULL;
     int length_location, message_length;
     PyObject* result = NULL;
+    struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "Iet#iiOOO",
                           &flags,
@@ -216,8 +218,6 @@ fail:
  * only checked *after* generating the entire message.
  */
 static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
-    struct module_state *state = GETSTATE(self);
-
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
     unsigned int flags;
@@ -234,6 +234,10 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     int max_doc_size = 0;
     PyObject* result = NULL;
     PyObject* iterator = NULL;
+    struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     /*flags, command, identifier, docs, opts*/
     if (!(PyArg_ParseTuple(args, "IOet#OO",
@@ -540,6 +544,9 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "bOObOO",
                           &op, &command, &docs, &ack,
@@ -594,6 +601,9 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "bOObOO",
                           &op, &command, &docs, &ack,
@@ -867,6 +877,9 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        return NULL;
+    }
 
     if (!(PyArg_ParseTuple(args, "et#bOOOO", "utf-8",
                           &ns, &ns_len, &op, &command, &docs,
@@ -983,6 +996,9 @@ _cmessage_exec(PyObject *m)
     }
 
     state = GETSTATE(m);
+    if (state == NULL) {
+        goto fail;
+    }
     state->_cbson = _cbson;
     if (!((state->_max_bson_size_str = PyUnicode_FromString("max_bson_size")) &&
         (state->_max_message_size_str = PyUnicode_FromString("max_message_size")) &&

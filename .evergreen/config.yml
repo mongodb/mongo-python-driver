@@ -417,6 +417,9 @@ functions:
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
           fi
+          if [ -n "${IS_SERVERLESS_PROXY}" ]; then
+            export IS_SERVERLESS_PROXY=1
+          fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
           fi
@@ -524,7 +527,7 @@ functions:
           AWS_ROLE_SESSION_NAME="test" \
             .evergreen/run-mongodb-aws-test.sh web-identity
 
-  "run oidc auth test with aws credentials":
+  "run oidc auth test with test credentials":
     - command: subprocess.exec
       type: test
       params:
@@ -987,6 +990,54 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - oidc-auth-test-azure-latest
+
+  - name: testgcpoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          binary: bash
+          env:
+            GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-gcp-latest
+
+  - name: testoidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - func: "assume ec2 role"
+      - command: subprocess.exec
+        params:
+          binary: bash
+          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-latest
 
   - name: test_aws_lambda_task_group
     setup_group:
@@ -1910,11 +1961,6 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: "oidc-auth-test-latest"
-      commands:
-        - func: "assume ec2 role"
-        - func: "run oidc auth test with aws credentials"
-
     - name: load-balancer-test
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1923,6 +1969,10 @@ tasks:
             LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
+
+    - name: "oidc-auth-test-latest"
+      commands:
+      - func: "run oidc auth test with test credentials"
 
     - name: "oidc-auth-test-azure-latest"
       commands:
@@ -1937,8 +1987,27 @@ tasks:
             git commit -m "add files"
             export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
             git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
-            export AZUREOIDC_TEST_CMD="source ./env.sh && export OIDC_PROVIDER_NAME=azure && ./.evergreen/run-mongodb-oidc-test.sh"
+            export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+
+    - name: "oidc-auth-test-gcp-latest"
+      commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            cd src
+            git add .
+            git commit -m "add files"
+            export GCPOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
+            git archive -o $GCPOIDC_DRIVERS_TAR_FILE HEAD
+            # Define the command to run on the VM.
+            # Ensure that we source the environment file created for us, set up any other variables we need,
+            # and then run our test suite on the vm.
+            export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -2053,6 +2122,7 @@ tasks:
 
     - name: "assign-pr-reviewer"
       tags: ["pr"]
+      allowed_requesters: ["patch", "github_pr"]
       commands:
         - command: shell.exec
           type: test
@@ -2066,6 +2136,21 @@ tasks:
               export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
               echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
+
+    - name: "check-import-time"
+      tags: ["pr"]
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            shell: "bash"
+            working_dir: src
+            script: |
+              ${PREPARE_SHELL}
+              set -x
+              export BASE_SHA=${revision}
+              export HEAD_SHA=${github_commit}
+              bash .evergreen/run-import-time-test.sh
 
 axes:
   # Choice of distro
@@ -2478,6 +2563,7 @@ axes:
         variables:
           test_serverless: true
           VAULT_NAME: "serverless_next"
+          IS_SERVERLESS_PROXY: true
         batchtime: 10080  # 7 days
 
 buildvariants:
@@ -2952,15 +3038,23 @@ buildvariants:
 - matrix_name: "oidc-auth-test"
   matrix_spec:
     platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
-  display_name: "MONGODB-OIDC Auth ${platform}"
+  display_name: "OIDC Auth ${platform}"
   tasks:
-    - name: "oidc-auth-test-latest"
+    - name: testoidc_task_group
+      batchtime: 20160 # 14 days
 
 - name: testazureoidc-variant
-  display_name: "Azure OIDC"
-  run_on: ubuntu2004-small
+  display_name: "OIDC Auth Azure"
+  run_on: ubuntu2204-small
   tasks:
     - name: testazureoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+
+- name: testgcpoidc-variant
+  display_name: "OIDC Auth GCP"
+  run_on: ubuntu2204-small
+  tasks:
+    - name: testgcpoidc_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"
@@ -3040,6 +3134,12 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: "assign-pr-reviewer"
+
+- name: rhel8-import-time
+  display_name: Import Time Check
+  run_on: rhel87-small
+  tasks:
+    - name: "check-import-time"
 
 - name: Release
   display_name: Release

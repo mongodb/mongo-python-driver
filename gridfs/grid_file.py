@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+import warnings
+from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import ASCENDING
-from pymongo.asynchronous.client_session import ClientSession
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import InvalidOperation
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.client_session import ClientSession
 
 _SEEK_SET = os.SEEK_SET
 _SEEK_CUR = os.SEEK_CUR
@@ -83,8 +86,15 @@ def _grid_in_property(
     closed_only: Optional[bool] = False,
 ) -> Any:
     """Create a GridIn property."""
+    warn_str = ""
+    if docstring.startswith("DEPRECATED,"):
+        warn_str = (
+            f"GridIn property '{field_name}' is deprecated and will be removed in PyMongo 5.0"
+        )
 
     def getter(self: Any) -> Any:
+        if warn_str:
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         if closed_only and not self._closed:
             raise AttributeError("can only get %r on a closed file" % field_name)
         # Protect against PHP-237
@@ -93,6 +103,8 @@ def _grid_in_property(
         return self._file.get(field_name, None)
 
     def setter(self: Any, value: Any) -> Any:
+        if warn_str:
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         if self._closed:
             self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {field_name: value}})
         self._file[field_name] = value
@@ -114,8 +126,15 @@ def _grid_in_property(
 
 def _grid_out_property(field_name: str, docstring: str) -> Any:
     """Create a GridOut property."""
+    warn_str = ""
+    if docstring.startswith("DEPRECATED,"):
+        warn_str = (
+            f"GridOut property '{field_name}' is deprecated and will be removed in PyMongo 5.0"
+        )
 
     def getter(self: Any) -> Any:
+        if warn_str:
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         self.open()
 
         # Protect against PHP-237
