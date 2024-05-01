@@ -95,7 +95,7 @@ class CommandCursor(Generic[_DocumentType]):
 
     def __del__(self) -> None:
         if IS_SYNC:
-            self._die(True)
+            self._die(False)
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch

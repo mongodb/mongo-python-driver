@@ -857,7 +857,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._init_background()
 
         if IS_SYNC and connect:
-            self._fetch_topology()
+            self._get_topology()
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -1369,12 +1369,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     next = __next__
 
-    def _fetch_topology(self) -> Topology:
-        self._topology.open()
-        with self._lock:
-            self._kill_cursors_executor.open()
-        return self._topology
-
     def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.
 
@@ -1532,15 +1526,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        try:
-            if self._topology_task is not None:
-                return self._topology_task
-            else:
-                self._topology_task = self._fetch_topology()
-        except AttributeError:
-            self._topology_task = self._fetch_topology()
-
-        return self._topology_task
+        self._topology.open()
+        with self._lock:
+            self._kill_cursors_executor.open()
+        return self._topology
 
     @contextlib.contextmanager
     def _checkout(self, server: Server, session: Optional[ClientSession]) -> Iterator[Connection]:

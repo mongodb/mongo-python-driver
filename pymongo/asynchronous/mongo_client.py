@@ -857,7 +857,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._init_background()
 
         if IS_SYNC and connect:
-            self._fetch_topology()
+            self._get_topology()
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -1369,12 +1369,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     next = __next__
 
-    async def _fetch_topology(self) -> Topology:
-        await self._topology.open()
-        async with self._lock:
-            self._kill_cursors_executor.open()
-        return self._topology
-
     async def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.
 
@@ -1524,7 +1518,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         await self._topology.close()
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
-            self._encrypter.close()
+            await self._encrypter.close()
 
     async def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.
@@ -1532,15 +1526,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        try:
-            if self._topology_task is not None:
-                return await self._topology_task
-            else:
-                self._topology_task = self._fetch_topology()
-        except AttributeError:
-            self._topology_task = self._fetch_topology()
-
-        return await self._topology_task
+        await self._topology.open()
+        async with self._lock:
+            self._kill_cursors_executor.open()
+        return self._topology
 
     @contextlib.asynccontextmanager
     async def _checkout(
