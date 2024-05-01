@@ -34,14 +34,14 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.asynchronous.auth_oidc import (
-    OIDCCallback,
-    OIDCCallbackResult,
-)
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
-from pymongo.synchronous.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+from pymongo.synchronous.auth_oidc import (
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+)
 from pymongo.synchronous.cursor import CursorType
 from pymongo.uri_parser import parse_uri
 
