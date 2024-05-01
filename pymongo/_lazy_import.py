@@ -26,9 +26,15 @@ def lazy_import(name: str) -> ModuleType:
     try:
         spec = importlib.util.find_spec(name)
     except ValueError:
-        raise ModuleNotFoundError(name=name) from None
+        try:
+            raise ModuleNotFoundError(name=name) from None
+        except TypeError:  # Workaround for PYTHON-4424
+            raise ModuleNotFoundError() from None
     if spec is None:
-        raise ModuleNotFoundError(name=name)
+        try:
+            raise ModuleNotFoundError(name=name)
+        except TypeError:  # Workaround for PYTHON-4424
+            raise ModuleNotFoundError() from None
     assert spec is not None
     loader = importlib.util.LazyLoader(spec.loader)  # type:ignore[arg-type]
     spec.loader = loader
