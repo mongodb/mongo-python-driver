@@ -4,7 +4,7 @@ Python 3 FAQ
 What Python 3 versions are supported?
 -------------------------------------
 
-PyMongo supports CPython 3.7+ and PyPy3.8+.
+PyMongo supports CPython 3.8+ and PyPy3.9+.
 
 Are there any PyMongo behavior changes with Python 3?
 -----------------------------------------------------
