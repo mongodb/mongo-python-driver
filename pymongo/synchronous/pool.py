@@ -1318,15 +1318,15 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if HAS_SNI:
-            if hasattr(ssl_context, "wrap_socket"):
+            if IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
-                ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
+                ssl_sock = ssl_context.a_wrap_socket(sock, server_hostname=host)
         else:
-            if hasattr(ssl_context, "wrap_socket"):
+            if IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock)
             else:
-                ssl_sock = ssl_context.wrap_socket(sock)
+                ssl_sock = ssl_context.a_wrap_socket(sock)
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -1733,69 +1733,6 @@ class Pool:
             raise
 
         return conn
-
-    @contextlib.contextmanager
-    def _s_checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Iterator[Connection]:
-        listeners = self.opts._event_listeners
-        checkout_started_time = time.monotonic()
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_check_out_started(self.address)
-            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    clientId=self._client_id,
-                    message=_ConnectionStatusMessage.CHECKOUT_STARTED,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                )
-
-        conn = self._s_get_conn(checkout_started_time, handler=handler)
-
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            duration = time.monotonic() - checkout_started_time
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-            if _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    clientId=self._client_id,
-                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=conn.id,
-                    durationMS=duration,
-                )
-        try:
-            with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-            yield conn
-        except BaseException:
-            # Exception in caller. Ensure the connection gets returned.
-            # Note that when pinned is True, the session owns the
-            # connection and it is responsible for checking the connection
-            # back into the pool.
-            pinned = conn.pinned_txn or conn.pinned_cursor
-            if handler:
-                # Perform SDAM error handling rules while the connection is
-                # still checked out.
-                exc_type, exc_val, _ = sys.exc_info()
-                handler._s_handle(exc_type, exc_val)
-            if not pinned and conn.active:
-                self._s_checkin(conn)
-            raise
-        if conn.pinned_txn:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ntxns += 1
-        elif conn.pinned_cursor:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ncursors += 1
-        elif conn.active:
-            self._s_checkin(conn)
 
     @contextlib.contextmanager
     def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:

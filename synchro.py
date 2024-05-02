@@ -16,7 +16,6 @@ replacements = {
     "async_command": "command",
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
-    "a_wrap_socket": "wrap_socket",
     "asynchronous": "synchronous",
     "anext": "next",
     "_ALock": "_Lock",

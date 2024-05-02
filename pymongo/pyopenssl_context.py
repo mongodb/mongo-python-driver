@@ -25,7 +25,6 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
-import _asyncio
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
@@ -55,6 +54,11 @@ try:
     _HAVE_CERTIFI = True
 except ImportError:
     _HAVE_CERTIFI = False
+
+try:
+    import _asyncio as asyncio
+except ImportError:
+    import asyncio
 
 PROTOCOL_SSLv23 = _SSL.SSLv23_METHOD
 # Always available
@@ -381,7 +385,7 @@ class SSLContext:
         object.
         """
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
-        loop = _asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
         if session:
             ssl_conn.set_session(session)
         if server_side is True:
