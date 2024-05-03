@@ -73,7 +73,7 @@ jobs:
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: "cp38-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }} cp310-${{ matrix.buildplat[1] }}"
+          CIBW_BUILD: "cp38-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
