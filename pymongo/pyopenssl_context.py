@@ -17,6 +17,7 @@ context.
 """
 from __future__ import annotations
 
+import asyncio
 import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
@@ -54,11 +55,6 @@ try:
     _HAVE_CERTIFI = True
 except ImportError:
     _HAVE_CERTIFI = False
-
-try:
-    import _asyncio as asyncio
-except ImportError:
-    import asyncio
 
 PROTOCOL_SSLv23 = _SSL.SSLv23_METHOD
 # Always available
