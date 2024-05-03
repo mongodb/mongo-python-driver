@@ -1348,6 +1348,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-8.0-standalone"
+      tags: ["8.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-8.0-replica_set"
+      tags: ["8.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-8.0-sharded_cluster"
+      tags: ["8.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-7.0-standalone"
       tags: ["7.0", "standalone"]
       commands:
@@ -1925,6 +1952,24 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
+    - name: "aws-auth-test-8.0"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "8.0"
+        - func: "assume ec2 role"
+        - func: "get aws auth secrets"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
+        - func: "run aws ECS auth test"
+
     - name: "aws-auth-test-rapid"
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -2311,6 +2356,10 @@ axes:
         display_name: "MongoDB 7.0"
         variables:
           VERSION: "7.0"
+      - id: "8.0"
+        display_name: "MongoDB 8.0"
+        variables:
+          VERSION: "8.0"
       - id: "latest"
         display_name: "MongoDB latest"
         variables:
@@ -2593,6 +2642,7 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
+    - ".8.0"
     - ".7.0"
     - ".6.0"
     - ".5.0"
@@ -2609,6 +2659,7 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".latest"
+    - ".8.0"
     - ".7.0"
     - ".6.0"
     - ".5.0"
@@ -2633,6 +2684,7 @@ buildvariants:
         add_tasks: &encryption-server-versions
           - ".rapid"
           - ".latest"
+          - ".8.0"
           - ".7.0"
           - ".6.0"
           - ".5.0"
@@ -2662,6 +2714,7 @@ buildvariants:
   tasks: &all-server-versions
     - ".rapid"
     - ".latest"
+    - ".8.0"
     - ".7.0"
     - ".6.0"
     - ".5.0"
@@ -2850,6 +2903,7 @@ buildvariants:
       then:
         add_tasks:
           - "test-latest-standalone"
+          - "test-8.0-standalone"
           - "test-7.0-standalone"
           - "test-6.0-standalone"
           - "test-5.0-standalone"
@@ -3002,7 +3056,7 @@ buildvariants:
   matrix_spec:
     platform: rhel8
     python-version: ["3.7", "3.10", "pypy3.8", "pypy3.10"]
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -3014,7 +3068,7 @@ buildvariants:
   matrix_spec:
     platform: windows-64-vsMulti-small
     python-version-windows: ["3.7", "3.10"]
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
@@ -3026,7 +3080,7 @@ buildvariants:
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
     platform: macos-1014
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${mongodb-version}"
@@ -3067,6 +3121,7 @@ buildvariants:
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-6.0"
     - name: "aws-auth-test-7.0"
+    - name: "aws-auth-test-8.0"
     - name: "aws-auth-test-rapid"
     - name: "aws-auth-test-latest"
 
@@ -3079,6 +3134,7 @@ buildvariants:
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-6.0"
     - name: "aws-auth-test-7.0"
+    - name: "aws-auth-test-8.0"
     - name: "aws-auth-test-rapid"
     - name: "aws-auth-test-latest"
 
@@ -3092,13 +3148,14 @@ buildvariants:
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-6.0"
     - name: "aws-auth-test-7.0"
+    - name: "aws-auth-test-8.0"
     - name: "aws-auth-test-rapid"
     - name: "aws-auth-test-latest"
 
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: rhel8
-    mongodb-version: ["6.0", "7.0", "rapid", "latest"]
+    mongodb-version: ["6.0", "7.0", "8.0", "rapid", "latest"]
     auth-ssl: "*"
     python-version: "*"
     loadbalancer: "*"
