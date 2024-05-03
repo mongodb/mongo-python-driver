@@ -5,7 +5,8 @@
     {
       "minServerVersion": "7.0",
       "auth": true,
-      "authMechanism": "MONGODB-OIDC"
+      "authMechanism": "MONGODB-OIDC",
+      "serverless": "forbid"
     }
   ],
   "createEntities": [
