@@ -23,12 +23,17 @@ def lazy_import(name: str) -> ModuleType:
 
     From https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
     """
+    # Workaround for PYTHON-4424.
+    if "__compiled__" in globals():
+        return importlib.import_module(name)
     try:
         spec = importlib.util.find_spec(name)
     except ValueError:
-        raise ModuleNotFoundError(name=name) from None
+        # Note: this cannot be ModuleNotFoundError, see PYTHON-4424.
+        raise ImportError(name=name) from None
     if spec is None:
-        raise ModuleNotFoundError(name=name)
+        # Note: this cannot be ModuleNotFoundError, see PYTHON-4424.
+        raise ImportError(name=name)
     assert spec is not None
     loader = importlib.util.LazyLoader(spec.loader)  # type:ignore[arg-type]
     spec.loader = loader

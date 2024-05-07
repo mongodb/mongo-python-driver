@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.7", "3.11", "pypy-3.8"]
+        python-version: ["3.8", "3.11", "pypy-3.9"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.7", "3.11"]
+        python: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -162,7 +162,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: '3.7'
+          python-version: '3.8'
       - name: Build SDist
         shell: bash
         run: |
@@ -194,7 +194,7 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: '3.7'
+            python-version: '3.8'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
         - name: Run Test
