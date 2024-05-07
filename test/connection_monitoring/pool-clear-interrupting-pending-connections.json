@@ -17,7 +17,7 @@
       ],
       "closeConnection": false,
       "blockConnection": true,
-      "blockTimeMS": 10000
+      "blockTimeMS": 20000
     }
   },
   "poolOptions": {
