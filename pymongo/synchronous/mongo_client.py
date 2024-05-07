@@ -57,10 +57,7 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import (
-    _csot,
-    periodic_executor,
-)
+from pymongo import _csot, helpers_constants, periodic_executor
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -2206,7 +2203,7 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
             # Do not consult writeConcernError for pre-4.4 mongos.
             if isinstance(exc, WriteConcernError) and is_mongos:
                 pass
-            elif code in helpers._RETRYABLE_ERROR_CODES:
+            elif code in helpers_constants._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
     # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
@@ -2362,7 +2359,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_code = getattr(exc, "code", None)
                         if self._is_not_eligible_for_retry() or (
                             isinstance(exc, OperationFailure)
-                            and exc_code not in helpers._RETRYABLE_ERROR_CODES
+                            and exc_code not in helpers_constants._RETRYABLE_ERROR_CODES
                         ):
                             raise
                         self._retrying = True

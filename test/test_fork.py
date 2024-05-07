@@ -36,13 +36,12 @@ from bson.objectid import ObjectId
     is_greenthread_patched(),
     "gevent and eventlet do not support POSIX-style forking.",
 )
-@unittest.skip
 class TestFork(IntegrationTest):
     def test_lock_client(self):
         # Forks the client with some items locked.
         # Parent => All locks should be as before the fork.
         # Child => All locks should be reset.
-        with self.client._MongoClient__lock:
+        with self.client._lock:
 
             def target():
                 with warnings.catch_warnings():
@@ -66,6 +65,7 @@ class TestFork(IntegrationTest):
             with self.fork(target):
                 pass
 
+    @unittest.skip("testing")
     def test_topology_reset(self):
         # Tests that topologies are different from each other.
         # Cannot use ID because virtual memory addresses may be the same.

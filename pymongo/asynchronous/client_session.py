@@ -157,7 +157,6 @@ from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
-from pymongo.asynchronous.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.asynchronous.operations import _Op
 from pymongo.errors import (
     ConfigurationError,
@@ -167,6 +166,7 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
+from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE

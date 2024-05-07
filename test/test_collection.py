@@ -20,7 +20,7 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
-from typing import Iterable, no_type_check
+from typing import Any, Iterable, no_type_check
 
 from pymongo.synchronous.database import Database
 
@@ -41,6 +41,7 @@ from test.utils import (
 from bson import encode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
@@ -1516,12 +1517,12 @@ class TestCollection(IntegrationTest):
 
         # Test that batchSize is handled properly.
         cursor = db.test.aggregate([], batchSize=5)
-        self.assertEqual(5, len(cursor._data))  # type: ignore
+        self.assertEqual(5, len(cursor._data))
         # Force a getMore
-        cursor._data.clear()  # type: ignore
+        cursor._data.clear()
         next(cursor)
         # batchSize - 1
-        self.assertEqual(4, len(cursor._data))  # type: ignore
+        self.assertEqual(4, len(cursor._data))
         # Exhaust the cursor. There shouldn't be any errors.
         for _doc in cursor:
             pass

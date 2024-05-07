@@ -164,11 +164,11 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
+from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.cursor import _ConnectionManager
-from pymongo.synchronous.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.synchronous.operations import _Op
 from pymongo.write_concern import WriteConcern
 

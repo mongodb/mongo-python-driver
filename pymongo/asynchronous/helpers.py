@@ -46,6 +46,7 @@ from pymongo.errors import (
     _wtimeout_error,
 )
 from pymongo.hello import HelloCompat
+from pymongo.helpers_constants import _NOT_PRIMARY_CODES, _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.cursor import _Hint
@@ -53,47 +54,6 @@ if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
 IS_SYNC = False
-
-# From the SDAM spec, the "node is shutting down" codes.
-_SHUTDOWN_CODES: frozenset = frozenset(
-    [
-        11600,  # InterruptedAtShutdown
-        91,  # ShutdownInProgress
-    ]
-)
-# From the SDAM spec, the "not primary" error codes are combined with the
-# "node is recovering" error codes (of which the "node is shutting down"
-# errors are a subset).
-_NOT_PRIMARY_CODES: frozenset = (
-    frozenset(
-        [
-            10058,  # LegacyNotPrimary <=3.2 "not primary" error code
-            10107,  # NotWritablePrimary
-            13435,  # NotPrimaryNoSecondaryOk
-            11602,  # InterruptedDueToReplStateChange
-            13436,  # NotPrimaryOrSecondary
-            189,  # PrimarySteppedDown
-        ]
-    )
-    | _SHUTDOWN_CODES
-)
-# From the retryable writes spec.
-_RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
-    [
-        7,  # HostNotFound
-        6,  # HostUnreachable
-        89,  # NetworkTimeout
-        9001,  # SocketException
-        262,  # ExceededTimeLimit
-        134,  # ReadConcernMajorityNotAvailableYet
-    ]
-)
-
-# Server code raised when re-authentication is required
-_REAUTHENTICATION_REQUIRED_CODE: int = 391
-
-# Server code raised when authentication fails.
-_AUTHENTICATION_FAILURE_CODE: int = 18
 
 
 def _gen_index_name(keys: _IndexList) -> str:

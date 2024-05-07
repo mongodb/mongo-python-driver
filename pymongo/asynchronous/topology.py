@@ -27,8 +27,8 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, periodic_executor
-from pymongo.asynchronous import common, helpers
+from pymongo import _csot, helpers_constants, periodic_executor
+from pymongo.asynchronous import common
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool, PoolOptions
@@ -791,8 +791,8 @@ class Topology:
                 # Default error code if one does not exist.
                 default = 10107 if isinstance(error, NotPrimaryError) else None
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
-            if err_code in helpers._NOT_PRIMARY_CODES:
-                is_shutting_down = err_code in helpers._SHUTDOWN_CODES
+            if err_code in helpers_constants._NOT_PRIMARY_CODES:
+                is_shutting_down = err_code in helpers_constants._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))

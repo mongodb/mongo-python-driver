@@ -42,7 +42,7 @@ from pymongo.asynchronous.common import (
     validate_ok_for_replace,
     validate_ok_for_update,
 )
-from pymongo.asynchronous.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
+from pymongo.asynchronous.helpers import _get_wce_doc
 from pymongo.asynchronous.message import (
     _DELETE,
     _INSERT,
@@ -57,6 +57,7 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 

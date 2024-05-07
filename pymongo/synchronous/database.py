@@ -56,7 +56,6 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server import Server
     from pymongo.write_concern import WriteConcern
 
-
 IS_SYNC = True
 
 

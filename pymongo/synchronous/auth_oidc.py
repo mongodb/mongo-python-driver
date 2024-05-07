@@ -29,7 +29,7 @@ from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
 from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.synchronous.helpers import _AUTHENTICATION_FAILURE_CODE
+from pymongo.helpers_constants import _AUTHENTICATION_FAILURE_CODE
 
 if TYPE_CHECKING:
     from pymongo.synchronous.auth import MongoCredential

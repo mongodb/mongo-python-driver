@@ -64,7 +64,7 @@ class TestCursor(IntegrationTest):
         )
 
         cursor2 = copy.deepcopy(cursor)
-        self.assertEqual(cursor._spec, cursor2._spec)  # type: ignore
+        self.assertEqual(cursor._spec, cursor2._spec)
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
@@ -146,9 +146,9 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, coll.find().allow_disk_use, "baz")
 
         cursor = coll.find().allow_disk_use(True)
-        self.assertEqual(True, cursor._allow_disk_use)  # type: ignore
+        self.assertEqual(True, cursor._allow_disk_use)
         cursor = coll.find().allow_disk_use(False)
-        self.assertEqual(False, cursor._allow_disk_use)  # type: ignore
+        self.assertEqual(False, cursor._allow_disk_use)
 
     def test_max_time_ms(self):
         db = self.db
@@ -162,15 +162,15 @@ class TestCursor(IntegrationTest):
         coll.find().max_time_ms(1)
 
         cursor = coll.find().max_time_ms(999)
-        self.assertEqual(999, cursor._max_time_ms)  # type: ignore
+        self.assertEqual(999, cursor._max_time_ms)
         cursor = coll.find().max_time_ms(10).max_time_ms(1000)
-        self.assertEqual(1000, cursor._max_time_ms)  # type: ignore
+        self.assertEqual(1000, cursor._max_time_ms)
 
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
-        self.assertEqual(999, c2._max_time_ms)  # type: ignore
-        self.assertTrue("$maxTimeMS" in cursor._query_spec())  # type: ignore
-        self.assertTrue("$maxTimeMS" in c2._query_spec())  # type: ignore
+        self.assertEqual(999, c2._max_time_ms)
+        self.assertTrue("$maxTimeMS" in cursor._query_spec())
+        self.assertTrue("$maxTimeMS" in c2._query_spec())
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
@@ -887,16 +887,16 @@ class TestCursor(IntegrationTest):
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
-        self.assertTrue("cursor2" in cursor._projection)
+        self.assertTrue(cursor._projection and "cursor2" in cursor._projection)
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
         cursor3._projection["cursor3"] = False
-        self.assertFalse("cursor3" in cursor._projection)
+        self.assertFalse(cursor._projection and "cursor3" in cursor._projection)
 
         cursor4 = cursor.clone()
         cursor4._projection["cursor4"] = False
-        self.assertFalse("cursor4" in cursor._projection)
+        self.assertFalse(cursor._projection and "cursor4" in cursor._projection)
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}

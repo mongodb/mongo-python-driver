@@ -25,6 +25,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncGenerator,
+    Dict,
     Generic,
     Iterator,
     Mapping,
@@ -93,7 +94,7 @@ _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to C
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
-    document_class=dict[str, Any], uuid_representation=STANDARD
+    document_class=Dict[str, Any], uuid_representation=STANDARD
 )
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.

@@ -88,11 +88,13 @@ TEXT = "text"
 
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
-from pymongo.asynchronous.collection import ReturnDocument
-from pymongo.asynchronous.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.asynchronous.cursor import CursorType
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import (
+
+# isort: off
+from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
+from pymongo.synchronous.cursor import CursorType
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,
@@ -101,8 +103,10 @@ from pymongo.asynchronous.operations import (
     UpdateMany,
     UpdateOne,
 )
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+# isort: on
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 version = __version__
