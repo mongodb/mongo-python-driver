@@ -42,6 +42,7 @@ from pymongo.asynchronous.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.message import (
     _CursorAddress,
     _GetMore,

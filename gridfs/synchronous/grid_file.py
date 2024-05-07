@@ -56,7 +56,7 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.common import validate_string
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.helpers import _check_write_command_response
+from pymongo.synchronous.helpers import _check_write_command_response, next
 
 IS_SYNC = True
 

@@ -310,3 +310,8 @@ def _handle_reauth(func: F) -> F:
             raise
 
     return cast(F, inner)
+
+
+def next(cls: Any) -> Any:
+    """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
+    return cls.__next__()

@@ -45,6 +45,7 @@ from pymongo.synchronous.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.message import (
     _CursorAddress,
     _GetMore,
