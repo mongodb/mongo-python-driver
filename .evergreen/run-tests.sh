@@ -156,7 +156,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     if [ ! -d "libmongocrypt_git" ]; then
-      # TODO: Remove branch and fork once PR merged
       git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
     fi
     python -m pip install ./libmongocrypt_git/bindings/python
@@ -284,15 +283,4 @@ fi
 # Handle coverage post actions.
 if [ -n "$COVERAGE" ]; then
     rm -rf .pytest_cache
-fi
-
-
-# Run additional tests for asyncio
-#$PYTHON -m pip install asyncio-gevent gevent tornado pymongocrypt
-#PYTHONWARNINGS=error python -m pytest -v test/test_gevent.py
-#PYTHONWARNINGS=error python -m pytest -v test/test_tornado.py
-#PYTHONWARNINGS=error python -m pytest -v test/test_client.py
-
-if [ -n "$TEST_ENCRYPTION" ]; then
-    PYTHONWARNINGS=error python -m pytest -v test/test_encryption.py -k "TestClientSimple"
 fi
