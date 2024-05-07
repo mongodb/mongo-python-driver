@@ -27,7 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, periodic_executor
+from pymongo import _csot, periodic_executor
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -54,7 +54,7 @@ from pymongo.server_selectors import (
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous import helpers
+from pymongo.synchronous import common, helpers
 from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.synchronous.monitor import SrvMonitor
 from pymongo.synchronous.pool import Pool, PoolOptions
@@ -146,7 +146,7 @@ class Topology:
         self._opened = False
         self._closed = False
         self._lock = _Lock(_create_lock())
-        self._condition = _Condition(self._settings.condition_class(self._lock))
+        self._condition = _Condition(self._settings.condition_class(self._lock))  # type: ignore[arg-type]
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None

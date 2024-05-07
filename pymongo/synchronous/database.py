@@ -34,24 +34,28 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
-from pymongo import _csot, common
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
+from pymongo import _csot
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
-from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.synchronous import common
 from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.synchronous.change_stream import DatabaseChangeStream
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.common import _ecoc_coll_name, _esc_coll_name
+from pymongo.synchronous.operations import _Op
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    import bson
+    import bson.codec_options
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
     from pymongo.write_concern import WriteConcern
+
 
 IS_SYNC = True
 
@@ -801,7 +805,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
+        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -917,7 +921,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 check,
                 allowable_errors,
                 read_preference,
-                opts,
+                opts,  # type: ignore[arg-type]
                 session=session,
                 **kwargs,
             )

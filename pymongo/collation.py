@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Union
 
-from pymongo import common
+from pymongo.asynchronous import common
 from pymongo.write_concern import validate_boolean
 
 

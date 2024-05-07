@@ -29,7 +29,7 @@ from typing import (
 
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
-from pymongo import common
+from pymongo.asynchronous import common
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference, _AggWritePref, _ServerMode
 from pymongo.server_description import ServerDescription

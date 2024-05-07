@@ -24,7 +24,7 @@ from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
+    AsyncGenerator,
     Generic,
     Iterator,
     Mapping,
@@ -37,11 +37,11 @@ from typing import (
 
 try:
     from pymongocrypt.asynchronous.auto_encrypter import AsyncAutoEncrypter  # type:ignore[import]
-    from pymongocrypt.asynchronous.explicit_encrypter import (
-        AsyncExplicitEncrypter,  # type:ignore[import]
+    from pymongocrypt.asynchronous.explicit_encrypter import (  # type:ignore[import]
+        AsyncExplicitEncrypter,
     )
-    from pymongocrypt.asynchronous.state_machine import (
-        AsyncMongoCryptCallback,  # type:ignore[import]
+    from pymongocrypt.asynchronous.state_machine import (  # type:ignore[import]
+        AsyncMongoCryptCallback,
     )
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
@@ -58,13 +58,15 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.common import CONNECT_TIMEOUT
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.operations import UpdateOne
 from pymongo.asynchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
-from pymongo.common import CONNECT_TIMEOUT
+from pymongo.asynchronous.uri_parser import parse_host
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -74,12 +76,10 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.network import BLOCKING_IO_ERRORS, async_sendall
-from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
-from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -93,7 +93,7 @@ _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to C
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
-    document_class=Dict[str, Any], uuid_representation=STANDARD
+    document_class=dict[str, Any], uuid_representation=STANDARD
 )
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
@@ -250,7 +250,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             )
         return res.raw
 
-    async def fetch_keys(self, filter: bytes) -> Iterator[bytes]:
+    async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes, None]:
         """Yields one or more keys from the key vault.
 
         :param filter: The filter to pass to find.
@@ -258,8 +258,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :return: A generator which yields the requested keys from the key vault.
         """
         assert self.key_vault_coll is not None
-        async with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
-            for key in cursor:
+        async with await self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
+            async for key in cursor:
                 yield key.raw
 
     async def insert_data_key(self, data_key: bytes) -> Binary:
@@ -289,7 +289,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         """
         return encode(doc)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release resources.
 
         Note it is not safe to call this method from __del__ or any GC hooks.
@@ -297,7 +297,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         self.client_ref = None
         self.key_vault_coll = None
         if self.mongocryptd_client:
-            self.mongocryptd_client.close()
+            await self.mongocryptd_client.close()
             self.mongocryptd_client = None
 
 
@@ -1093,17 +1093,17 @@ class ClientEncryption(Generic[_DocumentType]):
         result = await self._key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
 
-    def __enter__(self) -> ClientEncryption[_DocumentType]:
+    async def __aenter__(self) -> ClientEncryption[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
 
     def _check_closed(self) -> None:
         if self._encryption is None:
             raise InvalidOperation("Cannot use closed ClientEncryption")
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release resources.
 
         Note that using this class in a with-statement will automatically call
@@ -1115,7 +1115,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         """
         if self._io_callbacks:
-            self._io_callbacks.close()
+            await self._io_callbacks.close()
             self._encryption.close()
             self._io_callbacks = None
             self._encryption = None

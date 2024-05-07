@@ -27,8 +27,8 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, periodic_executor
-from pymongo.asynchronous import helpers
+from pymongo import _csot, periodic_executor
+from pymongo.asynchronous import common, helpers
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool, PoolOptions
@@ -146,7 +146,7 @@ class Topology:
         self._opened = False
         self._closed = False
         self._lock = _ALock(_create_lock())
-        self._condition = _ACondition(self._settings.condition_class(self._lock))
+        self._condition = _ACondition(self._settings.condition_class(self._lock))  # type: ignore[arg-type]
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
@@ -480,7 +480,7 @@ class Topology:
             td_old.topology_type == TOPOLOGY_TYPE.Unknown
             and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
         ):
-            self._srv_monitor.close()
+            await self._srv_monitor.close()
 
         # Clear the pool from a failed heartbeat.
         if reset_pool:
@@ -656,7 +656,7 @@ class Topology:
 
             # Stop SRV polling thread.
             if self._srv_monitor:
-                self._srv_monitor.close()
+                await self._srv_monitor.close()
 
             self._opened = False
             self._closed = True
@@ -717,7 +717,7 @@ class Topology:
 
             # Start the SRV polling thread.
             if self._srv_monitor and (self.description.topology_type in SRV_POLLING_TOPOLOGIES):
-                await self._srv_monitor.open()
+                self._srv_monitor.open()
 
             if self._settings.load_balanced:
                 # Emit initial SDAM events for load balancer mode.

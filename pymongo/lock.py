@@ -71,7 +71,7 @@ class _ALock:
         self._lock.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self.release()
 
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
@@ -153,7 +153,7 @@ class _Lock:
         self._lock.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self.release()
 
 

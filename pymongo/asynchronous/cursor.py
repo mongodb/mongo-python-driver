@@ -38,6 +38,10 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo.asynchronous import helpers
+from pymongo.asynchronous.common import (
+    validate_is_document_type,
+    validate_is_mapping,
+)
 from pymongo.asynchronous.message import (
     _CursorAddress,
     _GetMore,
@@ -47,14 +51,10 @@ from pymongo.asynchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
+from pymongo.asynchronous.response import PinnedResponse
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import (
-    validate_is_document_type,
-    validate_is_mapping,
-)
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _ALock, _create_lock
-from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
@@ -336,7 +336,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
     def __del__(self) -> None:
         if IS_SYNC:
-            self._die()
+            self._die()  # type: ignore[unused-coroutine]
 
     def clone(self) -> AsyncCursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -670,44 +670,47 @@ class AsyncCursor(Generic[_DocumentType]):
 
         :param index: An integer or slice index to be applied to this cursor
         """
-        self._check_okay_to_chain()
-        self._empty = False
-        if isinstance(index, slice):
-            if index.step is not None:
-                raise IndexError("Cursor instances do not support slice steps")
+        if IS_SYNC:
+            self._check_okay_to_chain()
+            self._empty = False
+            if isinstance(index, slice):
+                if index.step is not None:
+                    raise IndexError("Cursor instances do not support slice steps")
 
-            skip = 0
-            if index.start is not None:
-                if index.start < 0:
+                skip = 0
+                if index.start is not None:
+                    if index.start < 0:
+                        raise IndexError("Cursor instances do not support negative indices")
+                    skip = index.start
+
+                if index.stop is not None:
+                    limit = index.stop - skip
+                    if limit < 0:
+                        raise IndexError(
+                            "stop index must be greater than start index for slice %r" % index
+                        )
+                    if limit == 0:
+                        self._empty = True
+                else:
+                    limit = 0
+
+                self._skip = skip
+                self._limit = limit
+                return self
+
+            if isinstance(index, int):
+                if index < 0:
                     raise IndexError("Cursor instances do not support negative indices")
-                skip = index.start
-
-            if index.stop is not None:
-                limit = index.stop - skip
-                if limit < 0:
-                    raise IndexError(
-                        "stop index must be greater than start index for slice %r" % index
-                    )
-                if limit == 0:
-                    self._empty = True
-            else:
-                limit = 0
-
-            self._skip = skip
-            self._limit = limit
-            return self
-
-        if isinstance(index, int):
-            if index < 0:
-                raise IndexError("Cursor instances do not support negative indices")
-            clone = self.clone()
-            clone.skip(index + self._skip)
-            clone.limit(-1)  # use a hard limit
-            clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
-            for doc in clone:
-                return doc
-            raise IndexError("no such item for Cursor instance")
-        raise TypeError("index %r cannot be applied to Cursor instances" % index)
+                clone = self.clone()
+                clone.skip(index + self._skip)
+                clone.limit(-1)  # use a hard limit
+                clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
+                for doc in clone:  # type: ignore[attr-defined]
+                    return doc
+                raise IndexError("no such item for Cursor instance")
+            raise TypeError("index %r cannot be applied to Cursor instances" % index)
+        else:
+            raise IndexError("AsyncCursor does not support indexing")
 
     def max_scan(self, max_scan: Optional[int]) -> AsyncCursor[_DocumentType]:
         """**DEPRECATED** - Limit the number of documents to scan when
@@ -1304,7 +1307,7 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             raise StopAsyncIteration
 
-    async def __anext__(self):
+    async def __anext__(self) -> _DocumentType:
         return await self.next()
 
     def __aiter__(self) -> AsyncCursor[_DocumentType]:
@@ -1351,13 +1354,13 @@ class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
             _convert_raw_document_lists_to_streams(raw_response[0])
         return cast(List["_DocumentOut"], raw_response)
 
-    def explain(self) -> _DocumentType:
+    async def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
         clone = self._clone(deepcopy=True, base=AsyncCursor(self.collection))
-        return clone.explain()
+        return await clone.explain()
 
     def __getitem__(self, index: Any) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

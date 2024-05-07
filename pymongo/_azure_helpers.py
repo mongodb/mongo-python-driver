@@ -19,7 +19,7 @@ import json
 from typing import Any, Optional
 
 
-async def _get_azure_response(
+def _get_azure_response(
     resource: str, client_id: Optional[str] = None, timeout: float = 5
 ) -> dict[str, Any]:
     # Deferred import to save overall import time.

@@ -21,7 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterator,
+    ContextManager,
     Optional,
     Union,
 )
@@ -29,9 +29,9 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.response import PinnedResponse, Response
 from pymongo.synchronous.helpers import _check_command_response, _handle_reauth
 from pymongo.synchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.synchronous.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -319,7 +319,9 @@ class Server:
 
         return response
 
-    def checkout(self, handler: Optional[_MongoClientErrorHandler] = None) -> Iterator[Connection]:
+    def checkout(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> ContextManager[Connection]:
         return self.pool.checkout(handler)
 
     @property

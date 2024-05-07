@@ -48,8 +48,8 @@ from pymongo.errors import (
 from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
-    from pymongo.operations import _IndexList
     from pymongo.synchronous.cursor import _Hint
+    from pymongo.synchronous.operations import _IndexList
     from pymongo.typings import _DocumentOut
 
 IS_SYNC = True

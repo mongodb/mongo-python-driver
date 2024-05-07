@@ -402,7 +402,7 @@ class _Query:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
+            cmd = await client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd)
@@ -552,7 +552,7 @@ class _GetMore:
         # Support auto encryption
         client = self.client
         if client._encrypter and not client._encrypter._bypass_auto_encryption:
-            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
+            cmd = await client._encrypter.encrypt(self.db, cmd, self.codec_options)
         # Support CSOT
         if apply_timeout:
             conn.apply_timeout(client, cmd=None)

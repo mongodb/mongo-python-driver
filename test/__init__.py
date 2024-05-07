@@ -45,15 +45,14 @@ from urllib.parse import quote_plus
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo import common
-from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous import message
+from pymongo.synchronous import common, message
+from pymongo.synchronous.common import partition_node
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.uri_parser import parse_uri
 
 if HAVE_SSL:
     import ssl

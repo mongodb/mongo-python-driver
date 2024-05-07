@@ -38,14 +38,13 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import (
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import _create_lock, _Lock
+from pymongo.synchronous import helpers
+from pymongo.synchronous.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock, _Lock
-from pymongo.response import PinnedResponse
-from pymongo.synchronous import helpers
 from pymongo.synchronous.message import (
     _CursorAddress,
     _GetMore,
@@ -55,6 +54,7 @@ from pymongo.synchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
+from pymongo.synchronous.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
@@ -336,7 +336,7 @@ class Cursor(Generic[_DocumentType]):
 
     def __del__(self) -> None:
         if IS_SYNC:
-            self._die()
+            self._die()  # type: ignore[unused-coroutine]
 
     def clone(self) -> Cursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -668,44 +668,47 @@ class Cursor(Generic[_DocumentType]):
 
         :param index: An integer or slice index to be applied to this cursor
         """
-        self._check_okay_to_chain()
-        self._empty = False
-        if isinstance(index, slice):
-            if index.step is not None:
-                raise IndexError("Cursor instances do not support slice steps")
+        if IS_SYNC:
+            self._check_okay_to_chain()
+            self._empty = False
+            if isinstance(index, slice):
+                if index.step is not None:
+                    raise IndexError("Cursor instances do not support slice steps")
 
-            skip = 0
-            if index.start is not None:
-                if index.start < 0:
+                skip = 0
+                if index.start is not None:
+                    if index.start < 0:
+                        raise IndexError("Cursor instances do not support negative indices")
+                    skip = index.start
+
+                if index.stop is not None:
+                    limit = index.stop - skip
+                    if limit < 0:
+                        raise IndexError(
+                            "stop index must be greater than start index for slice %r" % index
+                        )
+                    if limit == 0:
+                        self._empty = True
+                else:
+                    limit = 0
+
+                self._skip = skip
+                self._limit = limit
+                return self
+
+            if isinstance(index, int):
+                if index < 0:
                     raise IndexError("Cursor instances do not support negative indices")
-                skip = index.start
-
-            if index.stop is not None:
-                limit = index.stop - skip
-                if limit < 0:
-                    raise IndexError(
-                        "stop index must be greater than start index for slice %r" % index
-                    )
-                if limit == 0:
-                    self._empty = True
-            else:
-                limit = 0
-
-            self._skip = skip
-            self._limit = limit
-            return self
-
-        if isinstance(index, int):
-            if index < 0:
-                raise IndexError("Cursor instances do not support negative indices")
-            clone = self.clone()
-            clone.skip(index + self._skip)
-            clone.limit(-1)  # use a hard limit
-            clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
-            for doc in clone:
-                return doc
-            raise IndexError("no such item for Cursor instance")
-        raise TypeError("index %r cannot be applied to Cursor instances" % index)
+                clone = self.clone()
+                clone.skip(index + self._skip)
+                clone.limit(-1)  # use a hard limit
+                clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
+                for doc in clone:  # type: ignore[attr-defined]
+                    return doc
+                raise IndexError("no such item for Cursor instance")
+            raise TypeError("index %r cannot be applied to Cursor instances" % index)
+        else:
+            raise IndexError("SyncCursor does not support indexing")
 
     def max_scan(self, max_scan: Optional[int]) -> Cursor[_DocumentType]:
         """**DEPRECATED** - Limit the number of documents to scan when
@@ -1302,7 +1305,7 @@ class Cursor(Generic[_DocumentType]):
         else:
             raise StopIteration
 
-    def __next__(self):
+    def __next__(self) -> _DocumentType:
         return self.next()
 
     def __iter__(self) -> Cursor[_DocumentType]:

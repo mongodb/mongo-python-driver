@@ -64,7 +64,7 @@ class PeriodicExecutor:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
-    def _run_async(self):
+    def _run_async(self) -> None:
         asyncio.run(self._a_run())
 
     def open(self) -> None:

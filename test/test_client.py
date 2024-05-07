@@ -37,7 +37,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pymongo.operations import _Op
+from pymongo.synchronous.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -84,7 +84,6 @@ from bson.codec_options import (
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo import event_loggers, monitoring
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -107,6 +106,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import message
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient

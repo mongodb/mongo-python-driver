@@ -30,7 +30,6 @@ from typing import (
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.response import PinnedResponse
 from pymongo.synchronous.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
 from pymongo.synchronous.message import (
     _CursorAddress,
@@ -39,6 +38,7 @@ from pymongo.synchronous.message import (
     _OpReply,
     _RawBatchGetMore,
 )
+from pymongo.synchronous.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class CommandCursor(Generic[_DocumentType]):
         self._killed = self._id == 0
         self._comment = comment
         if IS_SYNC and self._killed:
-            self._end_session(True)
+            self._end_session(True)  # type: ignore[unused-coroutine]
 
         if "ns" in cursor_info:  # noqa: SIM401
             self._ns = cursor_info["ns"]
@@ -95,7 +95,7 @@ class CommandCursor(Generic[_DocumentType]):
 
     def __del__(self) -> None:
         if IS_SYNC:
-            self._die(False)
+            self._die(False)  # type: ignore[unused-coroutine]
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -127,7 +127,7 @@ class CommandCursor(Generic[_DocumentType]):
         return len(self._data) > 0
 
     @property
-    def _post_batch_resume_token(self) -> CommandCursor[Mapping[str, Any]]:
+    def _post_batch_resume_token(self) -> Optional[Mapping[str, Any]]:
         """Retrieve the postBatchResumeToken from the response to a
         changeStream aggregate or getMore.
         """
@@ -321,7 +321,7 @@ class CommandCursor(Generic[_DocumentType]):
 
         raise StopIteration
 
-    def __next__(self):
+    def __next__(self) -> _DocumentType:
         return self.next()
 
     def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:

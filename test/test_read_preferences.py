@@ -22,7 +22,7 @@ import random
 import sys
 from typing import Any
 
-from pymongo.operations import _Op
+from pymongo.synchronous.operations import _Op
 
 sys.path[0:0] = [""]
 

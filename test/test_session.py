@@ -35,13 +35,13 @@ from test.utils import (
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
-from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
-from pymongo.common import _MAX_END_SESSIONS
+from pymongo import ASCENDING, monitoring
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.common import _MAX_END_SESSIONS
 from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.operations import IndexModel, InsertOne, UpdateOne
 
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.

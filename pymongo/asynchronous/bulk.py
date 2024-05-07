@@ -34,8 +34,14 @@ from typing import (
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from pymongo import _csot, common
+from pymongo import _csot
+from pymongo.asynchronous import common
 from pymongo.asynchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.asynchronous.common import (
+    validate_is_document_type,
+    validate_ok_for_replace,
+    validate_ok_for_update,
+)
 from pymongo.asynchronous.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
 from pymongo.asynchronous.message import (
     _DELETE,
@@ -44,11 +50,6 @@ from pymongo.asynchronous.message import (
     _BulkWriteContext,
     _EncryptedBulkWriteContext,
     _randint,
-)
-from pymongo.common import (
-    validate_is_document_type,
-    validate_ok_for_replace,
-    validate_ok_for_update,
 )
 from pymongo.errors import (
     BulkWriteError,
@@ -451,7 +452,7 @@ class _Bulk:
             )
 
         client = self.collection.database.client
-        await client._retryable_write(
+        _ = await client._retryable_write(
             self.is_retryable,
             retryable_bulk,
             session,

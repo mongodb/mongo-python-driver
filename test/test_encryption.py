@@ -69,7 +69,6 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -82,11 +81,12 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
-from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.synchronous import encryption
 from pymongo.synchronous.cursor import CursorType
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 
 KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}

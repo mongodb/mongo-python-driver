@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    AsyncGenerator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -44,8 +44,7 @@ from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot
 from pymongo.asynchronous import auth, helpers
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.common import (
+from pymongo.asynchronous.common import (
     MAX_BSON_SIZE,
     MAX_CONNECTING,
     MAX_IDLE_TIME_SEC,
@@ -57,6 +56,7 @@ from pymongo.common import (
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
 )
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
@@ -1078,7 +1078,7 @@ class Connection:
         helpers._check_command_response(result, self.max_wire_version)
         return result
 
-    def authenticate(self, reauthenticate: bool = False) -> None:
+    async def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -1093,7 +1093,7 @@ class Connection:
         if not self.ready:
             creds = self.opts._credentials
             if creds:
-                auth.authenticate(creds, self, reauthenticate=reauthenticate)
+                await auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:
                 assert self.listeners is not None
@@ -1323,12 +1323,12 @@ async def _configured_socket(
             if IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
-                ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)
+                ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
         else:
             if IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock)
             else:
-                ssl_sock = await ssl_context.a_wrap_socket(sock)
+                ssl_sock = await ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -1451,7 +1451,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = _ACondition(threading.Condition(self.lock))
+        self.size_cond = _ACondition(threading.Condition(self.lock))  # type: ignore[arg-type]
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1459,7 +1459,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(self.lock)
+        self._max_connecting_cond = threading.Condition(self.lock)  # type: ignore[arg-type]
         self._amax_connecting_cond = _ACondition(self._max_connecting_cond)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
@@ -1731,7 +1731,7 @@ class Pool:
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
 
-            conn.authenticate()
+            await conn.authenticate()
         except BaseException:
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
@@ -1741,7 +1741,7 @@ class Pool:
     @contextlib.asynccontextmanager
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncIterator[Connection]:
+    ) -> AsyncGenerator[Connection, None]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected

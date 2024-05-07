@@ -35,8 +35,12 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, ssl_support
-from pymongo.asynchronous import helpers, message
-from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.asynchronous import helpers as _async_helpers
+from pymongo.asynchronous import message as _async_message
+from pymongo.asynchronous.common import MAX_MESSAGE_SIZE
+from pymongo.asynchronous.message import _UNPACK_REPLY as _ASYNC_UNPACK_REPLY
+from pymongo.asynchronous.message import _OpMsg as _Async_OpMsg
+from pymongo.asynchronous.message import _OpReply as _Async_OpReply
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
     NotPrimaryError,
@@ -47,17 +51,23 @@ from pymongo.errors import (
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
+from pymongo.synchronous import helpers as _sync_helpers
+from pymongo.synchronous import message as _sync_message
 from pymongo.synchronous.message import _UNPACK_REPLY, _OpMsg, _OpReply
 
 if TYPE_CHECKING:
     from bson import CodecOptions
-    from pymongo.asynchronous.client_session import ClientSession
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.client_session import ClientSession as _AsyncClientSession
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
+    from pymongo.asynchronous.pool import Connection as _AsyncConnection
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
+    from pymongo.synchronous.pool import Connection
     from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
@@ -65,14 +75,14 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 async def async_command(
-    conn: Connection,
+    conn: _AsyncConnection,
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
-    session: Optional[ClientSession],
-    client: Optional[MongoClient],
+    session: Optional[_AsyncClientSession],
+    client: Optional[AsyncMongoClient],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     address: Optional[_Address] = None,
@@ -123,7 +133,7 @@ async def async_command(
     orig = spec
     if is_mongos and not use_op_msg:
         assert read_preference is not None
-        spec = message._maybe_add_read_preference(spec, read_preference)
+        spec = _async_message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec["readConcern"] = read_concern.document
@@ -141,7 +151,7 @@ async def async_command(
         compression_ctx = None
 
     if client and client._encrypter and not client._encrypter._bypass_auto_encryption:
-        spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
+        spec = orig = await client._encrypter.encrypt(dbname, spec, codec_options)
 
     # Support CSOT
     if client:
@@ -151,20 +161,22 @@ async def async_command(
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
-        request_id, msg, size, max_doc_size = message._op_msg(
+        request_id, msg, size, max_doc_size = _async_message._op_msg(
             flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
         if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            message._raise_document_too_large(name, size, max_bson_size)
+            _async_message._raise_document_too_large(name, size, max_bson_size)
     else:
-        request_id, msg, size = message._query(
+        request_id, msg, size = _async_message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
 
-    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
-        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+    if max_bson_size is not None and size > max_bson_size + _async_message._COMMAND_OVERHEAD:
+        _async_message._raise_document_too_large(
+            name, size, max_bson_size + _async_message._COMMAND_OVERHEAD
+        )
     if client is not None:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -211,7 +223,7 @@ async def async_command(
             if client:
                 await client._process_response(response_doc, session)
             if check:
-                helpers._check_command_response(
+                _async_helpers._check_command_response(
                     response_doc,
                     conn.max_wire_version,
                     allowable_errors,
@@ -222,7 +234,7 @@ async def async_command(
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
-            failure = message._convert_exception(exc)
+            failure = _async_message._convert_exception(exc)
         if client is not None:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -300,7 +312,7 @@ async def async_command(
     return response_doc  # type: ignore[return-value]
 
 
-async def async_send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
+async def async_send(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> int:
     socket.setblocking(False)
     timeout = socket.gettimeout()
     socket.settimeout(0.0)
@@ -311,13 +323,13 @@ async def async_send(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
         socket.setblocking(True)
 
 
-async def async_sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
+async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
     socket.setblocking(False)
     timeout = socket.gettimeout()
     socket.settimeout(0.0)
     loop = asyncio.get_event_loop()
     try:
-        await asyncio.wait_for(loop.sock_sendall(socket, buf), timeout=timeout)
+        await asyncio.wait_for(loop.sock_sendall(socket, buf), timeout=timeout)  # type: ignore[arg-type]
     finally:
         socket.settimeout(timeout)
         socket.setblocking(True)
@@ -327,8 +339,8 @@ _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
 async def async_receive_message(
-    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
-) -> Union[_OpReply, _OpMsg]:
+    conn: _AsyncConnection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+) -> Union[_Async_OpReply, _Async_OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
@@ -366,10 +378,10 @@ async def async_receive_message(
         data = await _async_receive_data_on_socket(conn, length - 16, deadline)
 
     try:
-        unpack_reply = _UNPACK_REPLY[op_code]
+        unpack_reply = _ASYNC_UNPACK_REPLY[op_code]
     except KeyError:
         raise ProtocolError(
-            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
+            f"Got opcode {op_code!r} but expected {_ASYNC_UNPACK_REPLY.keys()!r}"
         ) from None
     return unpack_reply(data)
 
@@ -377,7 +389,7 @@ async def async_receive_message(
 _POLL_TIMEOUT = 0.5
 
 
-async def async_wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
+async def async_wait_for_read(conn: _AsyncConnection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     sock = conn.conn
     timed_out = False
@@ -416,7 +428,7 @@ BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 async def _async_receive_data_on_socket(
-    conn: Connection, length: int, deadline: Optional[float]
+    conn: _AsyncConnection, length: int, deadline: Optional[float]
 ) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)
@@ -503,7 +515,7 @@ def command(
     orig = spec
     if is_mongos and not use_op_msg:
         assert read_preference is not None
-        spec = message._maybe_add_read_preference(spec, read_preference)
+        spec = _sync_message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec["readConcern"] = read_concern.document
@@ -531,20 +543,22 @@ def command(
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
-        request_id, msg, size, max_doc_size = message._op_msg(
+        request_id, msg, size, max_doc_size = _sync_message._op_msg(
             flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
         if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            message._raise_document_too_large(name, size, max_bson_size)
+            _sync_message._raise_document_too_large(name, size, max_bson_size)
     else:
-        request_id, msg, size = message._query(
+        request_id, msg, size = _sync_message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
 
-    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
-        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+    if max_bson_size is not None and size > max_bson_size + _sync_message._COMMAND_OVERHEAD:
+        _sync_message._raise_document_too_large(
+            name, size, max_bson_size + _sync_message._COMMAND_OVERHEAD
+        )
     if client is not None:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -591,7 +605,7 @@ def command(
             if client:
                 client._process_response(response_doc, session)
             if check:
-                helpers._check_command_response(
+                _sync_helpers._check_command_response(
                     response_doc,
                     conn.max_wire_version,
                     allowable_errors,
@@ -602,7 +616,7 @@ def command(
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
-            failure = message._convert_exception(exc)
+            failure = _sync_message._convert_exception(exc)
         if client is not None:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -680,7 +694,7 @@ def command(
     return response_doc  # type: ignore[return-value]
 
 
-def sendall(socket: socket.socket, buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
+def sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
     socket.sendall(buf)
 
 

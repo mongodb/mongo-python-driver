@@ -19,8 +19,9 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    AsyncContextManager,
     Callable,
+    Coroutine,
     Generic,
     Iterable,
     Iterator,
@@ -40,8 +41,8 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, _csot, common
-from pymongo.asynchronous import helpers, message
+from pymongo import ASCENDING, _csot
+from pymongo.asynchronous import common, helpers, message
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -52,21 +53,14 @@ from pymongo.asynchronous.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
 )
+from pymongo.asynchronous.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.asynchronous.cursor import (
     AsyncCursor,
     AsyncRawBatchCursor,
 )
 from pymongo.asynchronous.helpers import _check_write_command_response
 from pymongo.asynchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.collation import validate_collation_or_none
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.errors import (
-    ConfigurationError,
-    InvalidName,
-    InvalidOperation,
-    OperationFailure,
-)
-from pymongo.operations import (
+from pymongo.asynchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,
@@ -78,6 +72,13 @@ from pymongo.operations import (
     _IndexKeyHint,
     _IndexList,
     _Op,
+)
+from pymongo.collation import validate_collation_or_none
+from pymongo.errors import (
+    ConfigurationError,
+    InvalidName,
+    InvalidOperation,
+    OperationFailure,
 )
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -532,7 +533,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> AsyncIterator[Connection]:
+    ) -> AsyncContextManager[Connection]:
         return await self._database.client._conn_for_writes(session, operation)
 
     async def _command(
@@ -2292,7 +2293,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def _retryable_non_cursor_read(
         self,
-        func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
+        func: Callable[
+            [Optional[ClientSession], Server, Connection, Optional[_ServerMode]],
+            Coroutine[Any, Any, T],
+        ],
         session: Optional[ClientSession],
         operation: str,
     ) -> T:
@@ -2658,7 +2662,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions = CodecOptions(SON)
         coll = cast(
-            self[MutableMapping[str, Any]],
+            AsyncCollection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -2823,7 +2827,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(model, SearchIndexModel):
             model = SearchIndexModel(**model)
-        return await self._create_search_indexes([model], session, comment, **kwargs)[0]
+        return (await self._create_search_indexes([model], session, comment, **kwargs))[0]
 
     async def create_search_indexes(
         self,

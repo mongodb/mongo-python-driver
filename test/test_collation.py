@@ -29,7 +29,7 @@ from pymongo.collation import (
     CollationStrength,
 )
 from pymongo.errors import ConfigurationError
-from pymongo.operations import (
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,

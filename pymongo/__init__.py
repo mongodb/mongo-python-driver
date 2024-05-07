@@ -89,10 +89,10 @@ TEXT = "text"
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
 from pymongo.asynchronous.collection import ReturnDocument
+from pymongo.asynchronous.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.asynchronous.cursor import CursorType
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.operations import (
+from pymongo.asynchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,

@@ -23,16 +23,7 @@ import socket
 import typing
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Mapping,
-    MutableMapping,
-    Optional,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Mapping, MutableMapping, Optional, cast
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -247,7 +238,7 @@ def _xor(fir: bytes, sec: bytes) -> bytes:
     return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
 
 
-def _parse_scram_response(response: bytes) -> Dict[bytes, bytes]:
+def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:
     """Split a scram response into key, value pairs."""
     return dict(
         typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))
@@ -300,7 +291,7 @@ async def _authenticate_scram(
         res = ctx.speculative_authenticate
     else:
         nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)
-        res = conn.command(source, cmd)
+        res = await conn.command(source, cmd)
 
     assert res is not None
     server_first = res["payload"]
@@ -568,7 +559,7 @@ async def _authenticate_default(credentials: MongoCredential, conn: Connection) 
         return await _authenticate_scram(credentials, conn, "SCRAM-SHA-1")
 
 
-_AUTH_MAP: Mapping[str, Callable[..., None]] = {
+_AUTH_MAP: Mapping[str, Callable[..., Coroutine[Any, Any, None]]] = {
     "GSSAPI": _authenticate_gssapi,
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,

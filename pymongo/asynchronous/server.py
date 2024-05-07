@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    AsyncContextManager,
     Callable,
     Optional,
     Union,
@@ -29,9 +29,9 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo.asynchronous.helpers import _check_command_response, _handle_reauth
 from pymongo.asynchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.asynchronous.response import PinnedResponse, Response
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -78,7 +78,7 @@ class Server:
         Multiple calls have no effect.
         """
         if not self._pool.opts.load_balanced:
-            await self._monitor.open()
+            self._monitor.open()
 
     async def reset(self, service_id: Optional[ObjectId] = None) -> None:
         """Clear the connection pool."""
@@ -321,7 +321,7 @@ class Server:
 
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncIterator[Connection]:
+    ) -> AsyncContextManager[Connection]:
         return self.pool.checkout(handler)
 
     @property

@@ -142,8 +142,8 @@ from collections.abc import Mapping as _Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncContextManager,
     Callable,
-    ContextManager,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -158,6 +158,7 @@ from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
 from pymongo.asynchronous.helpers import _RETRYABLE_ERROR_CODES
+from pymongo.asynchronous.operations import _Op
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -166,7 +167,6 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
@@ -365,10 +365,10 @@ class _TransactionContext:
     def __init__(self, session: ClientSession):
         self.__session = session
 
-    def __enter__(self) -> _TransactionContext:
+    async def __aenter__(self) -> _TransactionContext:
         return self
 
-    def __exit__(
+    async def __aexit__(
         self,
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
@@ -376,9 +376,9 @@ class _TransactionContext:
     ) -> None:
         if self.__session.in_transaction:
             if exc_val is None:
-                self.__session.commit_transaction()
+                await self.__session.commit_transaction()
             else:
-                self.__session.abort_transaction()
+                await self.__session.abort_transaction()
 
 
 class _TxnState:
@@ -554,16 +554,16 @@ class ClientSession:
         return self._options
 
     @property
-    def session_id(self) -> Mapping[str, Any]:
+    async def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
-        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        await self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
 
     @property
-    def _transaction_id(self) -> Int64:
+    async def _transaction_id(self) -> Int64:
         """The current transaction id for the underlying server session."""
-        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        await self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.transaction_id
 
     @property
@@ -732,7 +732,7 @@ class ClientSession:
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
         max_commit_time_ms: Optional[int] = None,
-    ) -> ContextManager:
+    ) -> AsyncContextManager:
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.

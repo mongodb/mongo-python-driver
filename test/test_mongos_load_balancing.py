@@ -18,7 +18,7 @@ from __future__ import annotations
 import sys
 import threading
 
-from pymongo.operations import _Op
+from pymongo.synchronous.operations import _Op
 
 sys.path[0:0] = [""]
 

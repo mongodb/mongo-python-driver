@@ -20,6 +20,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ContextManager,
     Generic,
     Iterable,
     Iterator,
@@ -39,16 +40,42 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, _csot, common
+from pymongo import ASCENDING, _csot
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.operations import (
+from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
+from pymongo.synchronous import common, helpers, message
+from pymongo.synchronous.aggregation import (
+    _CollectionAggregationCommand,
+    _CollectionRawAggregationCommand,
+)
+from pymongo.synchronous.bulk import _Bulk
+from pymongo.synchronous.change_stream import CollectionChangeStream
+from pymongo.synchronous.command_cursor import (
+    CommandCursor,
+    RawBatchCommandCursor,
+)
+from pymongo.synchronous.common import _ecoc_coll_name, _esc_coll_name
+from pymongo.synchronous.cursor import (
+    Cursor,
+    RawBatchCursor,
+)
+from pymongo.synchronous.helpers import _check_write_command_response
+from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,
@@ -61,32 +88,6 @@ from pymongo.operations import (
     _IndexList,
     _Op,
 )
-from pymongo.read_concern import DEFAULT_READ_CONCERN
-from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import (
-    BulkWriteResult,
-    DeleteResult,
-    InsertManyResult,
-    InsertOneResult,
-    UpdateResult,
-)
-from pymongo.synchronous import helpers, message
-from pymongo.synchronous.aggregation import (
-    _CollectionAggregationCommand,
-    _CollectionRawAggregationCommand,
-)
-from pymongo.synchronous.bulk import _Bulk
-from pymongo.synchronous.change_stream import CollectionChangeStream
-from pymongo.synchronous.command_cursor import (
-    CommandCursor,
-    RawBatchCommandCursor,
-)
-from pymongo.synchronous.cursor import (
-    Cursor,
-    RawBatchCursor,
-)
-from pymongo.synchronous.helpers import _check_write_command_response
-from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
@@ -531,7 +532,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> Iterator[Connection]:
+    ) -> ContextManager[Connection]:
         return self._database.client._conn_for_writes(session, operation)
 
     def _command(
@@ -2285,7 +2286,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _retryable_non_cursor_read(
         self,
-        func: Callable[[Optional[ClientSession], Server, Connection, Optional[_ServerMode]], T],
+        func: Callable[
+            [Optional[ClientSession], Server, Connection, Optional[_ServerMode]],
+            T,
+        ],
         session: Optional[ClientSession],
         operation: str,
     ) -> T:
@@ -2651,7 +2655,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions = CodecOptions(SON)
         coll = cast(
-            self[MutableMapping[str, Any]],
+            Collection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -2816,7 +2820,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(model, SearchIndexModel):
             model = SearchIndexModel(**model)
-        return self._create_search_indexes([model], session, comment, **kwargs)[0]
+        return (self._create_search_indexes([model], session, comment, **kwargs))[0]
 
     def create_search_indexes(
         self,

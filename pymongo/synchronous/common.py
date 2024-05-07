@@ -40,8 +40,6 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.asynchronous.auth import MECHANISMS
-from pymongo.asynchronous.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -52,10 +50,14 @@ from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
+from pymongo.synchronous.auth import MECHANISMS
+from pymongo.synchronous.auth_oidc import OIDCCallback
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.synchronous.client_session import ClientSession
+
+IS_SYNC = True
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -635,7 +637,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     """Validate the driver keyword arg."""
     if value is None:
         return value
-    from pymongo.encryption_options import AutoEncryptionOpts
+    from pymongo.synchronous.encryption_options import AutoEncryptionOpts
 
     if not isinstance(value, AutoEncryptionOpts):
         raise TypeError(f"{option} must be an instance of AutoEncryptionOpts")

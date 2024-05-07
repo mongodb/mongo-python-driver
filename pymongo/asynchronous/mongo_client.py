@@ -39,8 +39,10 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    AsyncContextManager,
+    AsyncGenerator,
     Callable,
+    Coroutine,
     FrozenSet,
     Generic,
     Mapping,
@@ -58,22 +60,22 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
-    common,
     periodic_executor,
-    uri_parser,
 )
-from pymongo.asynchronous import (
-    client_session,
-    database,
-    helpers,
-    message,
-)
+from pymongo.asynchronous import client_session, common, database, helpers, message, uri_parser
 from pymongo.asynchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.asynchronous.client_options import ClientOptions
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.operations import _Op
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.uri_parser import (
+    _check_options,
+    _handle_option_deprecations,
+    _handle_security_options,
+    _normalize_options,
+)
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -90,7 +92,6 @@ from pymongo.errors import (
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
-from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -102,12 +103,6 @@ from pymongo.typings import (
     _DocumentType,
     _DocumentTypeArg,
     _Pipeline,
-)
-from pymongo.uri_parser import (
-    _check_options,
-    _handle_option_deprecations,
-    _handle_security_options,
-    _normalize_options,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
@@ -121,21 +116,23 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.cursor import _ConnectionManager
     from pymongo.asynchronous.message import _CursorAddress, _GetMore, _Query
     from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.response import Response
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
-    from pymongo.response import Response
     from pymongo.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
-        from collections.abc import Generator
+        pass
     else:
         # Deprecated since version 3.9: collections.abc.Generator now supports [].
-        from typing import Generator
+        pass
 
 T = TypeVar("T")
 
-_WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
-_ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
+_WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], Coroutine[Any, Any, T]]
+_ReadCall = Callable[
+    [Optional["ClientSession"], "Server", "Connection", _ServerMode], Coroutine[Any, Any, T]
+]
 
 IS_SYNC = False
 
@@ -857,7 +854,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._init_background()
 
         if IS_SYNC and connect:
-            self._get_topology()
+            self._get_topology()  # type: ignore[unused-coroutine]
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -1355,11 +1352,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             write_concern=DEFAULT_WRITE_CONCERN,
         )
 
-    def __enter__(self) -> AsyncMongoClient[_DocumentType]:
+    async def __aenter__(self) -> AsyncMongoClient[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
 
     # See PYTHON-3084.
     __iter__ = None
@@ -1534,7 +1531,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.asynccontextmanager
     async def _checkout(
         self, server: Server, session: Optional[ClientSession]
-    ) -> AsyncIterator[Connection]:
+    ) -> AsyncGenerator[Connection, None]:
         in_txn = session and session.in_transaction
         async with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1573,7 +1570,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
         operation_id: Optional[int] = None,
-    ):
+    ) -> Server:
         """Select a server to run an operation on this client.
 
         :Parameters:
@@ -1588,14 +1585,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             topology = await self._get_topology()
             if session and not session.in_transaction:
                 await session._transaction.reset()
-            address = address or (session and session._pinned_address)
+            if not address and session:
+                address = session._pinned_address
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
                 server = await topology.select_server_by_address(
                     address, operation, operation_id=operation_id
                 )
                 if not server:
-                    raise AutoReconnect("server %s:%d no longer available" % address)
+                    raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
                 server = await topology.select_server(
                     server_selector,
@@ -1613,14 +1611,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> AsyncIterator[Connection]:
+    ) -> AsyncContextManager[Connection]:
         server = await self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
     @contextlib.asynccontextmanager
     async def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[ClientSession]
-    ) -> AsyncIterator[tuple[Connection, _ServerMode]]:
+    ) -> AsyncGenerator[tuple[Connection, _ServerMode], None]:
         assert read_preference is not None, "read_preference must not be None"
         # Get a connection for a server matching the read preference, and yield
         # conn with the effective read preference. The Server Selection
@@ -1647,7 +1645,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         operation: str,
-    ) -> AsyncIterator[tuple[Connection, _ServerMode]]:
+    ) -> AsyncContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         _ = await self._get_topology()
         server = await self._select_server(read_preference, session, operation)
@@ -2016,7 +2014,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.asynccontextmanager
     async def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
-    ) -> Generator[Optional[client_session.ClientSession], None, None]:
+    ) -> AsyncGenerator[Optional[client_session.ClientSession], None, None]:
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.ClientSession):
@@ -2138,7 +2136,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def drop_database(
         self,
-        name_or_database: Union[str, database.Database[_DocumentTypeArg]],
+        name_or_database: Union[str, database.AsyncDatabase[_DocumentTypeArg]],
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> None:
@@ -2170,7 +2168,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         """
         name = name_or_database
-        if isinstance(name, database.Database):
+        if isinstance(name, database.AsyncDatabase):
             name = name.name
 
         if not isinstance(name, str):

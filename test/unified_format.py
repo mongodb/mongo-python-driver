@@ -68,7 +68,6 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -115,7 +114,6 @@ from pymongo.monitoring import (
     _ServerEvent,
     _ServerHeartbeatEvent,
 )
-from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -129,6 +127,8 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.encryption import ClientEncryption
+from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT
+from pymongo.synchronous.operations import SearchIndexModel
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern

@@ -54,7 +54,8 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.operations import (
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     InsertOne,
@@ -62,7 +63,6 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

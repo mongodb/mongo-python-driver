@@ -20,10 +20,9 @@ import traceback
 from typing import Any, Collection, Optional, Type, Union
 
 from bson.objectid import ObjectId
-from pymongo import common
-from pymongo.asynchronous import monitor, pool
+from pymongo.asynchronous import common, monitor, pool
+from pymongo.asynchronous.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.asynchronous.pool import Pool, PoolOptions
-from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.errors import ConfigurationError
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector

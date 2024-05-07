@@ -45,10 +45,10 @@ from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
-from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.cursor import Cursor, CursorType
+from pymongo.synchronous.operations import _IndexList
 from pymongo.write_concern import WriteConcern
 
 

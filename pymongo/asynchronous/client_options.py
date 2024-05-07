@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
-from pymongo import common
+from pymongo.asynchronous import common
 from pymongo.asynchronous.auth import MongoCredential, _build_credentials_tuple
 from pymongo.asynchronous.pool import PoolOptions
 from pymongo.compression_support import CompressionSettings
@@ -36,7 +36,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
-    from pymongo.encryption_options import AutoEncryptionOpts
+    from pymongo.asynchronous.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
 

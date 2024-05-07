@@ -21,8 +21,9 @@ import time
 import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
-from pymongo import common, periodic_executor
+from pymongo import periodic_executor
 from pymongo._csot import MovingMinimum
+from pymongo.asynchronous import common
 from pymongo.asynchronous.pool import _is_faas
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
@@ -93,7 +94,7 @@ class MonitorBase:
         """GC safe close."""
         self._executor.close()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close and stop monitoring.
 
         open() restarts the monitor after closing.
@@ -167,7 +168,7 @@ class Monitor(MonitorBase):
         # If this monitor is closed directly before (or during) this open()
         # call, the _RttMonitor will not be closed. Checking if this monitor
         # was closed directly after resolves the race.
-        await self._rtt_monitor.open()
+        self._rtt_monitor.open()
         if self._executor._stopped:
             await self._rtt_monitor.close()
 
@@ -350,7 +351,7 @@ class SrvMonitor(MonitorBase):
                 await self._topology.on_srv_update(self._seedlist)
             except ReferenceError:
                 # Topology was garbage-collected.
-                self.close()
+                await self.close()
 
     def _get_seedlist(self) -> Optional[list[tuple[str, Any]]]:
         """Poll SRV records for a seedlist.

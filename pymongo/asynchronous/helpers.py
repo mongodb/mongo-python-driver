@@ -49,7 +49,7 @@ from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.cursor import _Hint
-    from pymongo.operations import _IndexList
+    from pymongo.asynchronous.operations import _IndexList
     from pymongo.typings import _DocumentOut
 
 IS_SYNC = False
@@ -320,7 +320,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _handle_reauth(func: F) -> F:
-    def inner(*args: Any, **kwargs: Any) -> Any:
+    async def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
         from pymongo.asynchronous.message import _BulkWriteContext
         from pymongo.asynchronous.pool import Connection
@@ -343,7 +343,7 @@ def _handle_reauth(func: F) -> F:
                         conn = arg.conn
                         break
                 if conn:
-                    conn.authenticate(reauthenticate=True)
+                    await conn.authenticate(reauthenticate=True)
                 else:
                     raise
                 return func(*args, **kwargs)

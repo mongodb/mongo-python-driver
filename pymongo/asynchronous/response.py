@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.pool import Connection
     from pymongo.typings import _Address, _DocumentOut
 
+IS_SYNC = False
+
 
 class Response:
     __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")

@@ -40,15 +40,14 @@ from gridfs.grid_file import (
     _a_grid_in_property,
     _a_grid_out_property,
     _clear_entity_type_registry,
-    _disallow_transactions,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
 from pymongo.asynchronous.client_session import ClientSession
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.common import validate_string
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _check_write_command_response
-from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -60,6 +59,11 @@ from pymongo.errors import (
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
 IS_SYNC = False
+
+
+def _disallow_transactions(session: Optional[ClientSession]) -> None:
+    if session and session.in_transaction:
+        raise InvalidOperation("GridFS does not support multi-document transactions")
 
 
 class AsyncGridFS:
@@ -1315,7 +1319,7 @@ class AsyncGridIn:
                     raise TypeError(
                         "must specify an encoding for file in order to write str"
                     ) from None
-            read = io.BytesIO(data).read
+            read = io.BytesIO(data).read  # type: ignore[assignment]
 
         if inspect.iscoroutinefunction(read):
             await self._write_async(read)
@@ -1329,15 +1333,15 @@ class AsyncGridIn:
                     except BaseException:
                         await self.abort()
                         raise
-                    self._buffer.write(to_write)
-                    if len(to_write) < space:
+                    self._buffer.write(to_write)  # type: ignore
+                    if len(to_write) < space:  # type: ignore
                         return  # EOF or incomplete
                 await self._flush_buffer()
             to_write = read(self.chunk_size)
-            while to_write and len(to_write) == self.chunk_size:
+            while to_write and len(to_write) == self.chunk_size:  # type: ignore
                 await self._flush_data(to_write)
                 to_write = read(self.chunk_size)
-            self._buffer.write(to_write)
+            self._buffer.write(to_write)  # type: ignore
 
     async def _write_async(self, read: Any) -> None:
         if self._buffer.tell() > 0:
@@ -1487,7 +1491,7 @@ class AsyncGridOut(io.IOBase):
 
     def __getattr__(self, name: str) -> Any:
         if IS_SYNC:
-            self.open()
+            self.open()  # type: ignore[unused-coroutine]
         elif not self._file:
             raise InvalidOperation(
                 "You must call AsyncGridOut.open() before accessing the %s property" % name
@@ -1605,7 +1609,7 @@ class AsyncGridOut(io.IOBase):
         """Return the current position of this file."""
         return self._position
 
-    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
+    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:  # type: ignore[override]
         """Set the current position of this file.
 
         :param pos: the position (or offset if using relative
@@ -1668,7 +1672,7 @@ class AsyncGridOut(io.IOBase):
         """
         return self
 
-    async def close(self) -> None:
+    async def close(self) -> None:  # type: ignore[override]
         """Make GridOut more generically file-like."""
         if self._chunk_iter:
             await self._chunk_iter.close()

@@ -22,8 +22,8 @@ from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from pymongo.operations import _Op
 from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.operations import _Op
 
 
 class TestResetAndRequestCheck(unittest.TestCase):

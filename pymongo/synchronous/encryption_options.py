@@ -24,13 +24,15 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 from bson import int64
-from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import _parse_kms_tls_options
+from pymongo.synchronous.common import validate_is_mapping
+from pymongo.synchronous.uri_parser import _parse_kms_tls_options
 
 if TYPE_CHECKING:
-    from pymongo.mongo_client import MongoClient
+    from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.typings import _DocumentTypeArg
+
+IS_SYNC = True
 
 
 class AutoEncryptionOpts:

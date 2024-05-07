@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import sys
 
-from pymongo.operations import _Op
+from pymongo.synchronous.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -26,13 +26,13 @@ from test.pymongo_mocks import DummyMonitor
 from test.utils import MockPool, wait_until
 
 from bson.objectid import ObjectId
-from pymongo import common
 from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
 from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous import common
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import PoolOptions
 from pymongo.synchronous.server import Server

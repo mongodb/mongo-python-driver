@@ -34,18 +34,21 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
-from pymongo import _csot, common
+from pymongo import _csot
+from pymongo.asynchronous import common
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import DatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
+from pymongo.asynchronous.common import _ecoc_coll_name, _esc_coll_name
+from pymongo.asynchronous.operations import _Op
 from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
-from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    import bson
+    import bson.codec_options
     from pymongo.asynchronous.client_session import ClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import Connection
@@ -286,7 +289,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             read_concern,
         )
 
-    def _get_encrypted_fields(
+    async def _get_encrypted_fields(
         self, kwargs: Mapping[str, Any], coll_name: str, ask_db: bool
     ) -> Optional[Mapping[str, Any]]:
         encrypted_fields = kwargs.get("encryptedFields")
@@ -308,7 +311,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 ),
             )
         if ask_db and self.client.options.auto_encryption_opts:
-            options = self[coll_name].options()
+            options = await self[coll_name].options()
             if options.get("encryptedFields"):
                 return cast(Mapping[str, Any], deepcopy(options["encryptedFields"]))
         return None
@@ -584,7 +587,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
-        encrypted_fields = self._get_encrypted_fields(kwargs, name, False)
+        encrypted_fields = await self._get_encrypted_fields(kwargs, name, False)
         if encrypted_fields:
             common.validate_is_mapping("encryptedFields", encrypted_fields)
             kwargs["encryptedFields"] = encrypted_fields
@@ -801,7 +804,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
+        codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -919,7 +922,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 check,
                 allowable_errors,
                 read_preference,
-                opts,
+                opts,  # type: ignore[arg-type]
                 session=session,
                 **kwargs,
             )
@@ -1294,7 +1297,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
-        encrypted_fields = self._get_encrypted_fields(
+        encrypted_fields = await self._get_encrypted_fields(
             {"encryptedFields": encrypted_fields},
             name,
             True,

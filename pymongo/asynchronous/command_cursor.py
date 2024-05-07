@@ -37,8 +37,8 @@ from pymongo.asynchronous.message import (
     _OpReply,
     _RawBatchGetMore,
 )
+from pymongo.asynchronous.response import PinnedResponse
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._killed = self._id == 0
         self._comment = comment
         if IS_SYNC and self._killed:
-            self._end_session(True)
+            self._end_session(True)  # type: ignore[unused-coroutine]
 
         if "ns" in cursor_info:  # noqa: SIM401
             self._ns = cursor_info["ns"]
@@ -95,7 +95,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
     def __del__(self) -> None:
         if IS_SYNC:
-            self._die(False)
+            self._die(False)  # type: ignore[unused-coroutine]
 
     def batch_size(self, batch_size: int) -> AsyncCommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -127,7 +127,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         return len(self._data) > 0
 
     @property
-    def _post_batch_resume_token(self) -> AsyncCommandCursor[Mapping[str, Any]]:
+    def _post_batch_resume_token(self) -> Optional[Mapping[str, Any]]:
         """Retrieve the postBatchResumeToken from the response to a
         changeStream aggregate or getMore.
         """
@@ -321,7 +321,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         raise StopAsyncIteration
 
-    async def __anext__(self):
+    async def __anext__(self) -> _DocumentType:
         return await self.next()
 
     async def _try_next(self, get_more_allowed: bool) -> Optional[_DocumentType]:

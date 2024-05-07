@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
 from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
-from pymongo import _csot, common
+from pymongo import _csot
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (
     ConnectionFailure,
@@ -30,13 +30,14 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
-from pymongo.operations import _Op
+from pymongo.synchronous import common
 from pymongo.synchronous.aggregation import (
     _AggregationCommand,
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.operations import _Op
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 IS_SYNC = True
@@ -154,7 +155,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._timeout = self._target._timeout
         self._show_expanded_events = show_expanded_events
 
-    def _initialize_cursor(self):
+    def _initialize_cursor(self) -> None:
         # Initialize cursor.
         self._cursor = self._create_cursor()
 

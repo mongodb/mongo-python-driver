@@ -29,14 +29,16 @@ from typing import (
 
 from bson.raw_bson import RawBSONDocument
 from pymongo.asynchronous import helpers
+from pymongo.asynchronous.common import validate_is_mapping, validate_list
 from pymongo.asynchronous.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import validate_is_mapping, validate_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.bulk import _Bulk
+
+IS_SYNC = False
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
 _IndexList = Union[

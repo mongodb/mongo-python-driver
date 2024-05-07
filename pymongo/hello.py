@@ -21,7 +21,7 @@ import itertools
 from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
-from pymongo import common
+from pymongo.asynchronous import common
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
 

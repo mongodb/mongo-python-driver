@@ -31,21 +31,22 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from pymongo.asynchronous.client_options import _parse_ssl_options
-from pymongo.common import (
+from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.synchronous.client_options import _parse_ssl_options
+from pymongo.synchronous.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
     SRV_SERVICE_NAME,
     URI_OPTIONS_DEPRECATION_MAP,
     _CaseInsensitiveDictionary,
     get_validated_options,
 )
-from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
 
+IS_SYNC = True
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"

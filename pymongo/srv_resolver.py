@@ -19,7 +19,7 @@ import ipaddress
 import random
 from typing import Any, Optional, Union
 
-from pymongo.common import CONNECT_TIMEOUT
+from pymongo.asynchronous.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 try:

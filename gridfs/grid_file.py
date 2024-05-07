@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from pymongo import ASCENDING
-from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.asynchronous.common import MAX_MESSAGE_SIZE
 from pymongo.errors import InvalidOperation
-
-if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import ClientSession
 
 _SEEK_SET = os.SEEK_SET
 _SEEK_CUR = os.SEEK_CUR
@@ -150,8 +147,3 @@ def _clear_entity_type_registry(entity: Any, **kwargs: Any) -> Any:
     """Clear the given database/collection object's type registry."""
     codecopts = entity.codec_options.with_options(type_registry=None)
     return entity.with_options(codec_options=codecopts, **kwargs)
-
-
-def _disallow_transactions(session: Optional[ClientSession]) -> None:
-    if session and session.in_transaction:
-        raise InvalidOperation("GridFS does not support multi-document transactions")

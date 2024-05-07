@@ -40,9 +40,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ContextManager,
     FrozenSet,
+    Generator,
     Generic,
-    Iterator,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -58,9 +59,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import (
     _csot,
-    common,
     periodic_executor,
-    uri_parser,
 )
 from pymongo.errors import (
     AutoReconnect,
@@ -78,22 +77,23 @@ from pymongo.errors import (
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _Lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.monitoring import ConnectionClosedReason
-from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import (
-    client_session,
-    database,
-    helpers,
-    message,
-)
+from pymongo.synchronous import client_session, common, database, helpers, message, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.operations import _Op
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.uri_parser import (
+    _check_options,
+    _handle_option_deprecations,
+    _handle_security_options,
+    _normalize_options,
+)
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
     ClusterTime,
@@ -103,12 +103,6 @@ from pymongo.typings import (
     _DocumentTypeArg,
     _Pipeline,
 )
-from pymongo.uri_parser import (
-    _check_options,
-    _handle_option_deprecations,
-    _handle_security_options,
-    _normalize_options,
-)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
@@ -117,20 +111,20 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.read_concern import ReadConcern
-    from pymongo.response import Response
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor import _ConnectionManager
     from pymongo.synchronous.message import _CursorAddress, _GetMore, _Query
     from pymongo.synchronous.pool import Connection
+    from pymongo.synchronous.response import Response
     from pymongo.synchronous.server import Server
 
     if sys.version_info[:2] >= (3, 9):
-        from collections.abc import Generator
+        pass
     else:
         # Deprecated since version 3.9: collections.abc.Generator now supports [].
-        from typing import Generator
+        pass
 
 T = TypeVar("T")
 
@@ -857,7 +851,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._init_background()
 
         if IS_SYNC and connect:
-            self._get_topology()
+            self._get_topology()  # type: ignore[unused-coroutine]
 
         self._encrypter = None
         if self._options.auto_encryption_opts:
@@ -1532,7 +1526,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology
 
     @contextlib.contextmanager
-    def _checkout(self, server: Server, session: Optional[ClientSession]) -> Iterator[Connection]:
+    def _checkout(
+        self, server: Server, session: Optional[ClientSession]
+    ) -> Generator[Connection, None]:
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1571,7 +1567,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
         operation_id: Optional[int] = None,
-    ):
+    ) -> Server:
         """Select a server to run an operation on this client.
 
         :Parameters:
@@ -1586,14 +1582,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             topology = self._get_topology()
             if session and not session.in_transaction:
                 session._transaction.reset()
-            address = address or (session and session._pinned_address)
+            if not address and session:
+                address = session._pinned_address
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
                 server = topology.select_server_by_address(
                     address, operation, operation_id=operation_id
                 )
                 if not server:
-                    raise AutoReconnect("server %s:%d no longer available" % address)
+                    raise AutoReconnect("server %s:%s no longer available" % address)  # noqa: UP031
             else:
                 server = topology.select_server(
                     server_selector,
@@ -1611,14 +1608,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _conn_for_writes(
         self, session: Optional[ClientSession], operation: str
-    ) -> Iterator[Connection]:
+    ) -> ContextManager[Connection]:
         server = self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
     @contextlib.contextmanager
     def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[ClientSession]
-    ) -> Iterator[tuple[Connection, _ServerMode]]:
+    ) -> Generator[tuple[Connection, _ServerMode], None]:
         assert read_preference is not None, "read_preference must not be None"
         # Get a connection for a server matching the read preference, and yield
         # conn with the effective read preference. The Server Selection
@@ -1645,7 +1642,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         operation: str,
-    ) -> Iterator[tuple[Connection, _ServerMode]]:
+    ) -> ContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
         server = self._select_server(read_preference, session, operation)

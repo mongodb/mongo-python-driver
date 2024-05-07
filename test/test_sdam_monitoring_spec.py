@@ -32,11 +32,11 @@ from test.utils import (
 
 from bson.json_util import object_hook
 from pymongo import MongoClient, monitoring
-from pymongo.common import clean_node
 from pymongo.errors import ConnectionFailure, NotPrimaryError
 from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.common import clean_node
 from pymongo.synchronous.monitor import Monitor
 from pymongo.topology_description import TOPOLOGY_TYPE
 
