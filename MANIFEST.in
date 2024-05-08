@@ -21,6 +21,7 @@ include doc/make.bat
 include doc/static/periodic-executor-refs.dot
 recursive-include requirements *.txt
 recursive-include tools *.py
+recursive-include tools *.sh
 include tools/README.rst
 include green_framework_test.py
 recursive-include test *.pem
