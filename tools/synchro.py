@@ -4,7 +4,7 @@ import re
 from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files
+from unasync import Rule, unasync_files  # type: ignore[import]
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -64,7 +64,7 @@ sync_gridfs_files = [
 ]
 
 
-def apply_is_sync(files: list[str]):
+def apply_is_sync(files: list[str]) -> None:
     for file in files:
         with open(file, "r+") as f:
             lines = f.readlines()
@@ -77,17 +77,18 @@ def apply_is_sync(files: list[str]):
             f.truncate()
 
 
-def translate_coroutine_types(files: list[str]):
+def translate_coroutine_types(files: list[str]) -> None:
     for file in files:
         with open(file, "r+") as f:
             lines = f.readlines()
             coroutine_types = [line for line in lines if "Coroutine[" in line]
             for type in coroutine_types:
                 res = re.search(r"Coroutine\[([A-z]+), ([A-z]+), ([A-z]+)\]", type)
-                old = res[0]
-                index = lines.index(type)
-                new = type.replace(old, res.group(3))
-                lines[index] = new
+                if res:
+                    old = res[0]
+                    index = lines.index(type)
+                    new = type.replace(old, res.group(3))
+                    lines[index] = new
 
             f.seek(0)
             f.writelines(lines)
@@ -107,7 +108,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
     )
 
 
-def main():
+def main() -> None:
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     apply_is_sync(sync_files + sync_gridfs_files)
