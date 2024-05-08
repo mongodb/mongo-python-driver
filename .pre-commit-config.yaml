@@ -17,6 +17,17 @@ repos:
     exclude: .patch
     exclude_types: [json]
 
+- repo: local
+  hooks:
+    - id: synchro
+      name: synchro
+      entry: bash ./tools/synchro.sh
+      language: python
+      require_serial: true
+      additional_dependencies:
+        - ruff==0.1.3
+        - unasync
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.1.3

@@ -49,7 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 version = {attr = "pymongo._version.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["bson","gridfs", "pymongo"]
+include = ["bson","gridfs", "gridfs.asynchronous", "gridfs.synchronous", "pymongo", "pymongo.asynchronous", "pymongo.synchronous"]
 
 [tool.setuptools.package-data]
 bson=["py.typed", "*.pyi"]
