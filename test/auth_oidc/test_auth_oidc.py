@@ -824,26 +824,17 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_2_4_oidc_callback_returns_invalid_data(self):
-        # Create a MongoClient configured with an OIDC callback that returns data not conforming to the OIDCCredential with extra fields.
-        class CustomCallback(OIDCCallback):
-            count = 0
-
-            def fetch(self, a):
-                self.count += 1
-                return OIDCCallbackResult(access_token="bad value")
-
-        client = self.create_client(request_cb=CustomCallback())
-        # Perform a ``find`` operation that fails.
-        with self.assertRaises(OperationFailure):
-            client.test.test.find_one()
-        # Close the client.
-        client.close()
-
-    def test_2_5_invalid_client_configuration_with_callback(self):
+    def test_2_4_invalid_client_configuration_with_callback(self):
         # Create a MongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
         request_cb = self.create_request_cb()
         props: Dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
+        # Assert it returns a client configuration error.
+        with self.assertRaises(ConfigurationError):
+            self.create_client(authmechanismproperties=props)
+
+    def test_2_5_invalid_use_of_ALLOWED_HOSTS(self):
+        # Create an OIDC configured client with auth mechanism properties `{"ENVIRONMENT": "azure", "ALLOWED_HOSTS": []}`.
+        props: Dict = {"ENVIRONMENT": "azure", "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
