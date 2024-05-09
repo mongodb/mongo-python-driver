@@ -107,7 +107,10 @@ from pymongo.synchronous.operations import (
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 # isort: on
-import pymongo.synchronous  # noqa: F401
+import pymongo.synchronous
+
+# This is required to break an implicit import issue, can go away in 5.0
+import pymongo.synchronous.encryption  # noqa: F401
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 

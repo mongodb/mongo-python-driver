@@ -66,14 +66,15 @@ sync_gridfs_files = [
 
 def process_files(files: list[str]) -> None:
     for file in files:
-        with open(file, "r+") as f:
-            lines = f.readlines()
-            lines = apply_is_sync(lines)
-            lines = translate_coroutine_types(lines)
-            lines = remove_async_sleeps(lines)
-            f.seek(0)
-            f.writelines(lines)
-            f.truncate()
+        if "__init__" not in file:
+            with open(file, "r+") as f:
+                lines = f.readlines()
+                lines = apply_is_sync(lines)
+                lines = translate_coroutine_types(lines)
+                lines = remove_async_sleeps(lines)
+                f.seek(0)
+                f.writelines(lines)
+                f.truncate()
 
 
 def apply_is_sync(lines: list[str]) -> list[str]:
