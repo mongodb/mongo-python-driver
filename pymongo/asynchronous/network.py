@@ -47,7 +47,7 @@ from pymongo.errors import (
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.network import (
+from pymongo.network_layer import (
     _POLL_TIMEOUT,
     _UNPACK_COMPRESSION_HEADER,
     _UNPACK_HEADER,

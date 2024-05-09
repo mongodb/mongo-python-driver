@@ -69,7 +69,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import sendall
+from pymongo.network_layer import sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE

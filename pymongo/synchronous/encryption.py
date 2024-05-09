@@ -67,7 +67,7 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-from pymongo.network import BLOCKING_IO_ERRORS, sendall
+from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context

@@ -25,7 +25,7 @@ from typing import Any, Iterable, Mapping, NoReturn, Optional, cast
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
-from gridfs.grid_file import (
+from gridfs.grid_file_shared import (
     _C_INDEX,
     _CHUNK_OVERHEAD,
     _F_INDEX,
