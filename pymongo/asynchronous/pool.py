@@ -57,6 +57,7 @@ from pymongo.asynchronous.common import (
     WAIT_QUEUE_TIMEOUT,
 )
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.network import command, receive_message
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
@@ -84,7 +85,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import async_command, async_receive_message, async_sendall
+from pymongo.network import async_sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -985,7 +986,7 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return await async_command(
+            return await command(
                 self,
                 dbname,
                 spec,
@@ -1037,7 +1038,7 @@ class Connection:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await async_receive_message(self, request_id, self.max_message_size)
+            return await receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 

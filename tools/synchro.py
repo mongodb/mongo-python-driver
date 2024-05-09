@@ -64,35 +64,41 @@ sync_gridfs_files = [
 ]
 
 
-def apply_is_sync(files: list[str]) -> None:
+def process_files(files: list[str]) -> None:
     for file in files:
         with open(file, "r+") as f:
             lines = f.readlines()
-            is_sync = next(iter([line for line in lines if line.startswith("IS_SYNC = ")]))
-            index = lines.index(is_sync)
-            is_sync = is_sync.replace("False", "True")
-            lines[index] = is_sync
+            lines = apply_is_sync(lines)
+            lines = translate_coroutine_types(lines)
+            lines = remove_async_sleeps(lines)
             f.seek(0)
             f.writelines(lines)
             f.truncate()
 
 
-def translate_coroutine_types(files: list[str]) -> None:
-    for file in files:
-        with open(file, "r+") as f:
-            lines = f.readlines()
-            coroutine_types = [line for line in lines if "Coroutine[" in line]
-            for type in coroutine_types:
-                res = re.search(r"Coroutine\[([A-z]+), ([A-z]+), ([A-z]+)\]", type)
-                if res:
-                    old = res[0]
-                    index = lines.index(type)
-                    new = type.replace(old, res.group(3))
-                    lines[index] = new
+def apply_is_sync(lines: list[str]) -> list[str]:
+    is_sync = next(iter([line for line in lines if line.startswith("IS_SYNC = ")]))
+    index = lines.index(is_sync)
+    is_sync = is_sync.replace("False", "True")
+    lines[index] = is_sync
+    return lines
 
-            f.seek(0)
-            f.writelines(lines)
-            f.truncate()
+
+def translate_coroutine_types(lines: list[str]) -> list[str]:
+    coroutine_types = [line for line in lines if "Coroutine[" in line]
+    for type in coroutine_types:
+        res = re.search(r"Coroutine\[([A-z]+), ([A-z]+), ([A-z]+)\]", type)
+        if res:
+            old = res[0]
+            index = lines.index(type)
+            new = type.replace(old, res.group(3))
+            lines[index] = new
+    return lines
+
+
+def remove_async_sleeps(lines: list[str]) -> list[str]:
+    sleeps = [line for line in lines if "asyncio.sleep(0)" in line]
+    return [line for line in lines if line not in sleeps]
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:
@@ -111,8 +117,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 def main() -> None:
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
-    apply_is_sync(sync_files + sync_gridfs_files)
-    translate_coroutine_types(sync_files + sync_gridfs_files)
+    process_files(sync_files + sync_gridfs_files)
 
 
 if __name__ == "__main__":

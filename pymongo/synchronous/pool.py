@@ -69,7 +69,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     _EventListeners,
 )
-from pymongo.network import command, receive_message, sendall
+from pymongo.network import sendall
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -90,6 +90,7 @@ from pymongo.synchronous.common import (
     WAIT_QUEUE_TIMEOUT,
 )
 from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.network import command, receive_message
 
 if TYPE_CHECKING:
     from bson import CodecOptions
