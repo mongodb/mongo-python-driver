@@ -41,14 +41,14 @@ from gridfs.synchronous.grid_file import (
 )
 
 # Export synchronous modules as top-level gridfs modules for compatibility
-sync_modules = {}
-for name in sys.modules:
-    if name.startswith("gridfs.synchronous."):
-        full_name = "{}.{}".format("gridfs", name.rsplit(".")[-1])
-        sync_modules[full_name] = name
+_sync_modules = {}
+for _name in sys.modules:
+    if _name.startswith("gridfs.synchronous."):
+        _full_name = "{}.{}".format("gridfs", _name.rsplit(".")[-1])
+        _sync_modules[_full_name] = _name
 
-for module in sync_modules:
-    sys.modules[module] = sys.modules[sync_modules[module]]
+for _module in _sync_modules:
+    sys.modules[_module] = sys.modules[_sync_modules[_module]]
 
 __all__ = [
     "AsyncGridFS",

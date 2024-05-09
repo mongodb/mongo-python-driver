@@ -107,19 +107,19 @@ from pymongo.synchronous.operations import (
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 # isort: on
+import pymongo.synchronous  # noqa: F401
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous import *  # noqa: F403
 from pymongo.write_concern import WriteConcern
 
 # Export synchronous modules as top-level pymongo modules for compatibility
-sync_modules = {}
-for name in sys.modules:
-    if name.startswith("pymongo.synchronous."):
-        full_name = "{}.{}".format("pymongo", name.rsplit(".")[-1])
-        sync_modules[full_name] = name
+_sync_modules = {}
+for _name in sys.modules:
+    if _name.startswith("pymongo.synchronous."):
+        _full_name = "{}.{}".format("pymongo", _name.rsplit(".")[-1])
+        _sync_modules[_full_name] = _name
 
-for module in sync_modules:
-    sys.modules[module] = sys.modules[sync_modules[module]]
+for _module in _sync_modules:
+    sys.modules[_module] = sys.modules[_sync_modules[_module]]
 
 version = __version__
 """Current version of PyMongo."""
