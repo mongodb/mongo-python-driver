@@ -2605,6 +2605,7 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
+    @client_context.require_version_max(7, 9, 99)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")

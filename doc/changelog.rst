@@ -6,6 +6,22 @@ Changes in Version 4.8.0
 
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
 
+Changes in Version 4.7.2
+-------------------------
+
+Version 4.7.2 fixes a bug introduced in 4.7.0:
+
+- Fixed a bug where PyMongo could not be used with the Nuitka compiler.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39710
+
+
 Changes in Version 4.7.1
 -------------------------
 
