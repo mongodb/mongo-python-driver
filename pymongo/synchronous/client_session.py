@@ -501,7 +501,7 @@ class ClientSession:
         options: SessionOptions,
         implicit: bool,
     ) -> None:
-        # An MongoClient, a _ServerSession, a SessionOptions, and a set.
+        # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient = client
         self._server_session = server_session
         self._options = options

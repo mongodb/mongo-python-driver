@@ -1309,7 +1309,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         See also the MongoDB documentation on the `validate command`_.
 
-        :param name_or_collection: An Collection object or the name of a
+        :param name_or_collection: A Collection object or the name of a
             collection to validate.
         :param scandata: Do extra checks beyond checking the overall
             structure of the collection.

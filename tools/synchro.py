@@ -131,9 +131,15 @@ def translate_docstrings(lines: list[str]) -> list[str]:
             if k in lines[i]:
                 if "an Async" in lines[i]:
                     lines[i] = lines[i].replace("an Async", "a Async")
+                if "An Async" in lines[i]:
+                    lines[i] = lines[i].replace("An Async", "A Async")
                 if "an asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("an asynchronous", "a")
+                if "An asynchronous" in lines[i]:
+                    lines[i] = lines[i].replace("An asynchronous", "A")
                 lines[i] = lines[i].replace(k, replacements[k])
+            if "Sync" in lines[i] and replacements[k] in lines[i]:
+                lines[i] = lines[i].replace("Sync", "")
 
     return lines
 

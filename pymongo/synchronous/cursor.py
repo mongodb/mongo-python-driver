@@ -633,7 +633,7 @@ class Cursor(Generic[_DocumentType]):
                 raise IndexError("no such item for Cursor instance")
             raise TypeError("index %r cannot be applied to Cursor instances" % index)
         else:
-            raise IndexError("SyncCursor does not support indexing")
+            raise IndexError("Cursor does not support indexing")
 
     def max_scan(self, max_scan: Optional[int]) -> Cursor[_DocumentType]:
         """**DEPRECATED** - Limit the number of documents to scan when
@@ -1244,7 +1244,7 @@ class Cursor(Generic[_DocumentType]):
 
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):
-    """An synchronous cursor / iterator over raw batches of BSON data from a query result."""
+    """A cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore

@@ -497,9 +497,9 @@ class ClientEncryption(Generic[_DocumentType]):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
-        vault collection that cannot be done directly on a AsyncMongoClient. Similar
-        to configuring auto encryption on a AsyncMongoClient, it is constructed with
-        a AsyncMongoClient (to a MongoDB cluster containing the key vault
+        vault collection that cannot be done directly on an AsyncMongoClient. Similar
+        to configuring auto encryption on an AsyncMongoClient, it is constructed with
+        an AsyncMongoClient (to a MongoDB cluster containing the key vault
         collection), KMS provider configuration, and keyVaultNamespace. It
         provides an API for explicitly encrypting and decrypting values, and
         creating data keys. It does not provide an API to query keys from the
@@ -540,7 +540,7 @@ class ClientEncryption(Generic[_DocumentType]):
             and decryption. Data keys are stored as documents in this MongoDB
             collection. Data keys are protected with encryption by a KMS
             provider.
-        :param key_vault_client: A AsyncMongoClient connected to a MongoDB cluster
+        :param key_vault_client: An AsyncMongoClient connected to a MongoDB cluster
             containing the `key_vault_namespace` collection.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a

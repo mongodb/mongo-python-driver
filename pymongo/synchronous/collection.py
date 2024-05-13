@@ -134,7 +134,7 @@ if TYPE_CHECKING:
 
 
 class Collection(common.BaseObject, Generic[_DocumentType]):
-    """An synchronous Mongo collection."""
+    """A Mongo collection."""
 
     def __init__(
         self,

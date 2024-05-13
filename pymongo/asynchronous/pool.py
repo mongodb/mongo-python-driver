@@ -462,7 +462,7 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
 
 
 class PoolOptions:
-    """Read only connection pool options for a AsyncMongoClient.
+    """Read only connection pool options for an AsyncMongoClient.
 
     Should not be instantiated directly by application developers. Access
     a client's pool options via

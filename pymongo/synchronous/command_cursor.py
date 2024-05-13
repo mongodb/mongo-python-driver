@@ -51,7 +51,7 @@ IS_SYNC = True
 
 
 class CommandCursor(Generic[_DocumentType]):
-    """An synchronous cursor / iterator over command cursors."""
+    """A cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
 
