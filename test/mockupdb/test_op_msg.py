@@ -19,7 +19,7 @@ from collections import namedtuple
 from mockupdb import OP_MSG_FLAGS, MockupDB, OpMsg, OpMsgReply, going
 
 from pymongo import MongoClient, WriteConcern
-from pymongo.synchronous.cursor import CursorType
+from pymongo.cursor_shared import CursorType
 from pymongo.synchronous.operations import DeleteOne, InsertOne, UpdateOne
 
 Operation = namedtuple("Operation", ["name", "function", "request", "reply"])

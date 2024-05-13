@@ -114,7 +114,7 @@ class AutoEncryptionOpts:
             provider.
         :param key_vault_client: By default, the key vault collection
             is assumed to reside in the same MongoDB cluster as the encrypted
-            MongoClient. Use this option to route data key queries to a
+            AsyncMongoClient. Use this option to route data key queries to a
             separate MongoDB cluster.
         :param schema_map: Map of collection namespace ("db.coll") to
             JSON Schema.  By default, a collection's JSONSchema is periodically
@@ -138,7 +138,7 @@ class AutoEncryptionOpts:
             to the *local* mongocryptd process. Defaults to
             ``'mongodb://localhost:27020'``.
         :param mongocryptd_bypass_spawn: If ``True``, the encrypted
-            MongoClient will not attempt to spawn the mongocryptd process.
+            AsyncMongoClient will not attempt to spawn the mongocryptd process.
             Defaults to ``False``.
         :param mongocryptd_spawn_path: Used for spawning the
             mongocryptd process. Defaults to ``'mongocryptd'`` and spawns
@@ -151,7 +151,7 @@ class AutoEncryptionOpts:
         :param kms_tls_options:  A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
             Accepts the same TLS options as
-            :class:`pymongo.mongo_client.MongoClient`. For example, to
+            :class:`pymongo.mongo_client.AsyncMongoClient`. For example, to
             override the system default CA file::
 
               kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}

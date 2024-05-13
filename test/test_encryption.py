@@ -69,6 +69,7 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -82,7 +83,6 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.synchronous import encryption
-from pymongo.synchronous.cursor import CursorType
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.synchronous.mongo_client import MongoClient

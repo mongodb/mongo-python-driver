@@ -63,6 +63,27 @@ sync_gridfs_files = [
     if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
+docstring_translate_files = [
+    _pymongo_dest_base + f
+    for f in [
+        "aggregation.py",
+        "change_stream.py",
+        "collection.py",
+        "command_cursor.py",
+        "cursor.py",
+        "client_options.py",
+        "client_session.py",
+        "database.py",
+        "encryption.py",
+        "encryption_options.py",
+        "mongo_client.py",
+        "network.py",
+        "operations.py",
+        "pool.py",
+        "topology.py",
+    ]
+]
+
 
 def process_files(files: list[str]) -> None:
     for file in files:
@@ -72,6 +93,8 @@ def process_files(files: list[str]) -> None:
                 lines = apply_is_sync(lines)
                 lines = translate_coroutine_types(lines)
                 lines = remove_async_sleeps(lines)
+                if file in docstring_translate_files:
+                    lines = translate_docstrings(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -100,6 +123,19 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
 def remove_async_sleeps(lines: list[str]) -> list[str]:
     sleeps = [line for line in lines if "asyncio.sleep(0)" in line]
     return [line for line in lines if line not in sleeps]
+
+
+def translate_docstrings(lines: list[str]) -> list[str]:
+    for i in range(len(lines)):
+        for k in replacements:
+            if k in lines[i]:
+                if "an Async" in lines[i]:
+                    lines[i] = lines[i].replace("an Async", "a Async")
+                if "an asynchronous" in lines[i]:
+                    lines[i] = lines[i].replace("an asynchronous", "a")
+                lines[i] = lines[i].replace(k, replacements[k])
+
+    return lines
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

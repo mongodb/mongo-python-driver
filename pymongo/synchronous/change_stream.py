@@ -298,8 +298,8 @@ class ChangeStream(Generic[_DocumentType]):
             try:
                 resume_token = None
                 pipeline = [{'$match': {'operationType': 'insert'}}]
-                with db.collection.watch(pipeline) as stream:
-                    for insert_change in stream:
+                async with db.collection.watch(pipeline) as stream:
+                    async for insert_change in stream:
                         print(insert_change)
                         resume_token = stream.resume_token
             except pymongo.errors.PyMongoError:
@@ -313,9 +313,9 @@ class ChangeStream(Generic[_DocumentType]):
                     # Use the interrupted ChangeStream's resume token to create
                     # a new ChangeStream. The new stream will continue from the
                     # last seen insert change without missing any events.
-                    with db.collection.watch(
+                    async with db.collection.watch(
                             pipeline, resume_after=resume_token) as stream:
-                        for insert_change in stream:
+                        async for insert_change in stream:
                             print(insert_change)
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
@@ -347,9 +347,9 @@ class ChangeStream(Generic[_DocumentType]):
         This method returns the next change document without waiting
         indefinitely for the next change. For example::
 
-            with db.collection.watch() as stream:
+            async with db.collection.watch() as stream:
                 while stream.alive:
-                    change = stream.try_next()
+                    change = await stream.try_next()
                     # Note that the ChangeStream's resume token may be updated
                     # even when no changes are returned.
                     print("Current resume token: %r" % (stream.resume_token,))
@@ -360,7 +360,7 @@ class ChangeStream(Generic[_DocumentType]):
                     # Sleep for a while before trying again to avoid flooding
                     # the server with getMore requests when no changes are
                     # available.
-                    time.sleep(10)
+                    asyncio.sleep(10)
 
         If no change document is cached locally then this method runs a single
         getMore command. If the getMore yields any documents, the next

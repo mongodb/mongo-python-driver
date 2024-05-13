@@ -185,7 +185,7 @@ class Topology:
         .. warning:: Topology is shared among multiple threads and is protected
           by mutual exclusion. Using Topology from a process other than the one
           that initialized it will emit a warning and may result in deadlock. To
-          prevent this from happening, MongoClient must be created after any
+          prevent this from happening, AsyncMongoClient must be created after any
           forking.
 
         """
@@ -200,7 +200,7 @@ class Topology:
                 kwargs = {"stacklevel": 6}
             # Ignore B028 warning for missing stacklevel.
             warnings.warn(  # type: ignore[call-overload] # noqa: B028
-                "MongoClient opened before fork. May not be entirely fork-safe, "
+                "AsyncMongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"
                 "is-pymongo-fork-safe",
@@ -553,7 +553,7 @@ class Topology:
 
     async def get_primary(self) -> Optional[_Address]:
         """Return primary's address or None."""
-        # Implemented here in Topology instead of MongoClient, so it can lock.
+        # Implemented here in Topology instead of AsyncMongoClient, so it can lock.
         async with self._lock:
             topology_type = self._description.topology_type
             if topology_type != TOPOLOGY_TYPE.ReplicaSetWithPrimary:
@@ -565,7 +565,7 @@ class Topology:
         self, selector: Callable[[Selection], Selection]
     ) -> set[_Address]:
         """Return set of replica set member addresses."""
-        # Implemented here in Topology instead of MongoClient, so it can lock.
+        # Implemented here in Topology instead of AsyncMongoClient, so it can lock.
         async with self._lock:
             topology_type = self._description.topology_type
             if topology_type not in (
@@ -705,7 +705,7 @@ class Topology:
         Hold the lock when calling this.
         """
         if self._closed:
-            raise InvalidOperation("Cannot use MongoClient after close")
+            raise InvalidOperation("Cannot use AsyncMongoClient after close")
 
         if not self._opened:
             self._opened = True
@@ -966,7 +966,7 @@ class Topology:
         return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
     def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
-        """The properties to use for MongoClient/Topology equality checks."""
+        """The properties to use for AsyncMongoClient/Topology equality checks."""
         ts = self._settings
         return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn, ts.srv_service_name)
 

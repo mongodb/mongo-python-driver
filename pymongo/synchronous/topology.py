@@ -200,7 +200,7 @@ class Topology:
                 kwargs = {"stacklevel": 6}
             # Ignore B028 warning for missing stacklevel.
             warnings.warn(  # type: ignore[call-overload] # noqa: B028
-                "MongoClient opened before fork. May not be entirely fork-safe, "
+                "SyncMongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://pymongo.readthedocs.io/en/stable/faq.html#"
                 "is-pymongo-fork-safe",

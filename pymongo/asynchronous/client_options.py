@@ -184,10 +184,10 @@ def _parse_pool_options(
 
 
 class ClientOptions:
-    """Read only configuration options for a MongoClient.
+    """Read only configuration options for an AsyncMongoClient.
 
     Should not be instantiated directly by application developers. Access
-    a client's options via :attr:`pymongo.mongo_client.MongoClient.options`
+    a client's options via :attr:`pymongo.mongo_client.AsyncMongoClient.options`
     instead.
     """
 

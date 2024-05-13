@@ -86,7 +86,7 @@ class InsertOne(Generic[_DocumentType]):
     def __init__(self, document: _DocumentType) -> None:
         """Create an InsertOne instance.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param document: The document to insert. If the document is missing an
             _id field one will be added.
@@ -122,7 +122,7 @@ class DeleteOne:
     ) -> None:
         """Create a DeleteOne instance.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param filter: A query that matches the document to delete.
         :param collation: An instance of
@@ -130,7 +130,7 @@ class DeleteOne:
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
 
@@ -186,7 +186,7 @@ class DeleteMany:
     ) -> None:
         """Create a DeleteMany instance.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param filter: A query that matches the documents to delete.
         :param collation: An instance of
@@ -194,7 +194,7 @@ class DeleteMany:
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
 
@@ -252,7 +252,7 @@ class ReplaceOne(Generic[_DocumentType]):
     ) -> None:
         """Create a ReplaceOne instance.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param filter: A query that matches the document to replace.
         :param replacement: The new document.
@@ -263,7 +263,7 @@ class ReplaceOne(Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
 
@@ -404,7 +404,7 @@ class UpdateOne(_UpdateOp):
     ) -> None:
         """Represents an update_one operation.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param filter: A query that matches the document to update.
         :param update: The modifications to apply.
@@ -417,7 +417,7 @@ class UpdateOne(_UpdateOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
 
@@ -461,7 +461,7 @@ class UpdateMany(_UpdateOp):
     ) -> None:
         """Create an UpdateMany instance.
 
-        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.bulk_write`.
 
         :param filter: A query that matches the documents to update.
         :param update: The modifications to apply.
@@ -474,7 +474,7 @@ class UpdateMany(_UpdateOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
 
@@ -510,7 +510,7 @@ class IndexModel:
     def __init__(self, keys: _IndexKeyHint, **kwargs: Any) -> None:
         """Create an Index instance.
 
-        For use with :meth:`~pymongo.collection.Collection.create_indexes`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.create_indexes`.
 
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
@@ -599,7 +599,7 @@ class SearchIndexModel:
     ) -> None:
         """Create a Search Index instance.
 
-        For use with :meth:`~pymongo.collection.Collection.create_search_index` and :meth:`~pymongo.collection.Collection.create_search_indexes`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.create_search_index` and :meth:`~pymongo.collection.AsyncCollection.create_search_indexes`.
 
         :param definition: The definition for this index.
         :param name: The name for this index, if present.

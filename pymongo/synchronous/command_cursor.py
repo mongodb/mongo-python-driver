@@ -29,8 +29,9 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.synchronous.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
+from pymongo.synchronous.cursor import _ConnectionManager
 from pymongo.synchronous.message import (
     _CursorAddress,
     _GetMore,
@@ -50,7 +51,7 @@ IS_SYNC = True
 
 
 class CommandCursor(Generic[_DocumentType]):
-    """A cursor / iterator over command cursors."""
+    """An synchronous cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
 
@@ -164,7 +165,7 @@ class CommandCursor(Generic[_DocumentType]):
         Even if :attr:`alive` is ``True``, :meth:`next` can raise
         :exc:`StopIteration`. Best to use a for loop::
 
-            for doc in collection.aggregate(pipeline):
+            async for doc in collection.aggregate(pipeline):
                 print(doc)
 
         .. note:: :attr:`alive` can be True while iterating a cursor from

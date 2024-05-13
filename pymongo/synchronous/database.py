@@ -25,7 +25,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    TypeVar,
     Union,
     cast,
     overload,
@@ -35,7 +34,8 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
+from pymongo.database_shared import _check_name, _CodecDocumentType
+from pymongo.errors import CollectionInvalid, InvalidOperation
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous import common
 from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
@@ -57,19 +57,6 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 IS_SYNC = True
-
-
-def _check_name(name: str) -> None:
-    """Check if a database name is valid."""
-    if not name:
-        raise InvalidName("database name cannot be the empty string")
-
-    for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
-        if invalid_char in name:
-            raise InvalidName("database names cannot contain the character %r" % invalid_char)
-
-
-_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
 class Database(common.BaseObject, Generic[_DocumentType]):
@@ -326,7 +313,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def __bool__(self) -> NoReturn:
         raise NotImplementedError(
-            "Database objects do not implement truth "
+            f"{type(self).__name__} objects do not implement truth "
             "value testing or bool(). Please compare "
             "with None instead: database is not None"
         )
@@ -357,8 +344,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. code-block:: python
 
-           with db.watch() as stream:
-               for change in stream:
+           async with db.watch() as stream:
+               async for change in stream:
                    print(change)
 
         The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
@@ -373,8 +360,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    for insert_change in stream:
+                async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    async for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
@@ -823,23 +810,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         For example, a command like ``{buildinfo: 1}`` can be sent
         using:
 
-        >>> db.command("buildinfo")
+        >>> await db.command("buildinfo")
         OR
-        >>> db.command({"buildinfo": 1})
+        >>> await db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> db.command("count", collection_name)
+        >>> await db.command("count", collection_name)
         OR
-        >>> db.command({"count": collection_name})
+        >>> await db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> db.command("count", collection_name, query=query)
+        >>> await db.command("count", collection_name, query=query)
         OR
-        >>> db.command({"count": collection_name, "query": query})
+        >>> await db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).
@@ -1322,7 +1309,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         See also the MongoDB documentation on the `validate command`_.
 
-        :param name_or_collection: A Collection object or the name of a
+        :param name_or_collection: An Collection object or the name of a
             collection to validate.
         :param scandata: Do extra checks beyond checking the overall
             structure of the collection.

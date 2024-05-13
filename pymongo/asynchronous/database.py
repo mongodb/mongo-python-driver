@@ -25,7 +25,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    TypeVar,
     Union,
     cast,
     overload,
@@ -42,7 +41,8 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.asynchronous.operations import _Op
-from pymongo.errors import CollectionInvalid, InvalidName, InvalidOperation
+from pymongo.database_shared import _check_name, _CodecDocumentType
+from pymongo.errors import CollectionInvalid, InvalidOperation
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -57,19 +57,6 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 IS_SYNC = False
-
-
-def _check_name(name: str) -> None:
-    """Check if a database name is valid."""
-    if not name:
-        raise InvalidName("database name cannot be the empty string")
-
-    for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
-        if invalid_char in name:
-            raise InvalidName("database names cannot contain the character %r" % invalid_char)
-
-
-_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
 class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
@@ -88,7 +75,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
         `name` is not a valid database name.
 
-        :param client: A :class:`~pymongo.mongo_client.MongoClient` instance.
+        :param client: A :class:`~pymongo.mongo_client.AsyncMongoClient` instance.
         :param name: The database name.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
@@ -116,8 +103,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
-           :class:`~pymongo.database.Database` no longer returns an instance
-           of :class:`~pymongo.collection.Collection` for attribute names
+           :class:`~pymongo.database.AsyncDatabase` no longer returns an instance
+           of :class:`~pymongo.collection.AsyncCollection` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
                db['__my_collection__']
@@ -145,12 +132,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def client(self) -> AsyncMongoClient[_DocumentType]:
-        """The client instance for this :class:`Database`."""
+        """The client instance for this :class:`AsyncDatabase`."""
         return self._client
 
     @property
     def name(self) -> str:
-        """The name of this :class:`Database`."""
+        """The name of this :class:`AsyncDatabase`."""
         return self._name
 
     def with_options(
@@ -173,19 +160,19 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`Collection`
+            default) the :attr:`codec_options` of this :class:`AsyncCollection`
             is used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Collection` is used. See :mod:`~pymongo.read_preferences`
+            :class:`AsyncCollection` is used. See :mod:`~pymongo.read_preferences`
             for options.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`Collection`
+            default) the :attr:`write_concern` of this :class:`AsyncCollection`
             is used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`Collection`
+            default) the :attr:`read_concern` of this :class:`AsyncCollection`
             is used.
 
         .. versionadded:: 3.8
@@ -244,12 +231,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
     ) -> AsyncCollection[_DocumentType]:
-        """Get a :class:`~pymongo.collection.Collection` with the given name
+        """Get a :class:`~pymongo.collection.AsyncCollection` with the given name
         and options.
 
-        Useful for creating a :class:`~pymongo.collection.Collection` with
+        Useful for creating a :class:`~pymongo.collection.AsyncCollection` with
         different codec options, read preference, and/or write concern from
-        this :class:`Database`.
+        this :class:`AsyncDatabase`.
 
           >>> db.read_preference
           Primary()
@@ -265,19 +252,19 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param name: The name of the collection - a string.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`Database` is
+            default) the :attr:`codec_options` of this :class:`AsyncDatabase` is
             used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Database` is used. See :mod:`~pymongo.read_preferences`
+            :class:`AsyncDatabase` is used. See :mod:`~pymongo.read_preferences`
             for options.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`Database` is
+            default) the :attr:`write_concern` of this :class:`AsyncDatabase` is
             used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`Database` is
+            default) the :attr:`read_concern` of this :class:`AsyncDatabase` is
             used.
         """
         return AsyncCollection(
@@ -326,7 +313,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     def __bool__(self) -> NoReturn:
         raise NotImplementedError(
-            "Database objects do not implement truth "
+            f"{type(self).__name__} objects do not implement truth "
             "value testing or bool(). Please compare "
             "with None instead: database is not None"
         )
@@ -357,8 +344,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. code-block:: python
 
-           with db.watch() as stream:
-               for change in stream:
+           async with db.watch() as stream:
+               async for change in stream:
                    print(change)
 
         The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
@@ -373,8 +360,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    for insert_change in stream:
+                async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    async for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
@@ -474,7 +461,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> AsyncCollection[_DocumentType]:
-        """Create a new :class:`~pymongo.collection.Collection` in this
+        """Create a new :class:`~pymongo.collection.AsyncCollection` in this
         database.
 
         Normally collection creation is automatic. This method should
@@ -485,18 +472,18 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param name: the name of the collection to create
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`Database` is
+            default) the :attr:`codec_options` of this :class:`AsyncDatabase` is
             used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Database` is used.
+            :class:`AsyncDatabase` is used.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`Database` is
+            default) the :attr:`write_concern` of this :class:`AsyncDatabase` is
             used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`Database` is
+            default) the :attr:`read_concern` of this :class:`AsyncDatabase` is
             used.
         :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
@@ -641,7 +628,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead.
 
-        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
+        .. note:: The :attr:`~pymongo.database.AsyncDatabase.write_concern` of
            this collection is automatically applied to this operation.
 
         :param pipeline: a list of aggregation pipeline stages
@@ -669,7 +656,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. ``"$$var"``). This option is
             only supported on MongoDB >= 5.0.
 
-        :return: A :class:`~pymongo.command_cursor.CommandCursor` over the result
+        :return: A :class:`~pymongo.command_cursor.AsyncCommandCursor` over the result
           set.
 
         .. versionadded:: 3.9
@@ -823,23 +810,23 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         For example, a command like ``{buildinfo: 1}`` can be sent
         using:
 
-        >>> db.command("buildinfo")
+        >>> await db.command("buildinfo")
         OR
-        >>> db.command({"buildinfo": 1})
+        >>> await db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> db.command("count", collection_name)
+        >>> await db.command("count", collection_name)
         OR
-        >>> db.command({"count": collection_name})
+        >>> await db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> db.command("count", collection_name, query=query)
+        >>> await db.command("count", collection_name, query=query)
         OR
-        >>> db.command({"count": collection_name, "query": query})
+        >>> await db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).
@@ -871,7 +858,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             be added to the command document before it is sent
 
 
-        .. note:: :meth:`command` does **not** obey this Database's
+        .. note:: :meth:`command` does **not** obey this AsyncDatabase's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
            ``read_preference`` and ``codec_options`` parameters instead.
 
@@ -972,7 +959,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param kwargs: additional keyword arguments will
           be added to the command document before it is sent
 
-        .. note:: :meth:`command` does **not** obey this Database's
+        .. note:: :meth:`command` does **not** obey this AsyncDatabase's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
            ``read_preference`` and ``codec_options`` parameters instead.
 
@@ -1107,7 +1094,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             options differ by server version.
 
 
-        :return: An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+        :return: An instance of :class:`~pymongo.command_cursor.AsyncCommandCursor`.
 
         .. versionadded:: 3.6
         """
@@ -1153,7 +1140,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             options differ by server version.
 
 
-        :return: An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+        :return: An instance of :class:`~pymongo.command_cursor.AsyncCommandCursor`.
 
         .. versionadded:: 3.6
         """
@@ -1329,7 +1316,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         See also the MongoDB documentation on the `validate command`_.
 
-        :param name_or_collection: A Collection object or the name of a
+        :param name_or_collection: An AsyncCollection object or the name of a
             collection to validate.
         :param scandata: Do extra checks beyond checking the overall
             structure of the collection.
@@ -1418,7 +1405,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             command.
         :param kwargs: any additional keyword arguments
             are the same as the arguments to
-            :meth:`~pymongo.collection.Collection.find`.
+            :meth:`~pymongo.collection.AsyncCollection.find`.
 
 
         .. versionchanged:: 4.1

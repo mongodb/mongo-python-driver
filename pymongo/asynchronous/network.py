@@ -104,7 +104,7 @@ async def command(
     :param read_preference: a read preference
     :param codec_options: a CodecOptions instance
     :param session: optional ClientSession instance.
-    :param client: optional MongoClient instance for updating $clusterTime.
+    :param client: optional AsyncMongoClient instance for updating $clusterTime.
     :param check: raise OperationFailure if there are errors
     :param allowable_errors: errors to ignore if `check` is True
     :param address: the (host, port) of `conn`

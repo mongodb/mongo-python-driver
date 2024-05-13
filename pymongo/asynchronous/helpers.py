@@ -49,8 +49,8 @@ from pymongo.hello import HelloCompat
 from pymongo.helpers_constants import _NOT_PRIMARY_CODES, _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.cursor import _Hint
     from pymongo.asynchronous.operations import _IndexList
+    from pymongo.cursor_shared import _Hint
     from pymongo.typings import _DocumentOut
 
 IS_SYNC = False

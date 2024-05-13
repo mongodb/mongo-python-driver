@@ -462,7 +462,7 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
 
 
 class PoolOptions:
-    """Read only connection pool options for a MongoClient.
+    """Read only connection pool options for a AsyncMongoClient.
 
     Should not be instantiated directly by application developers. Access
     a client's pool options via
@@ -536,7 +536,7 @@ class PoolOptions:
         if appname:
             self.__metadata["application"] = {"name": appname}
 
-        # Combine the "driver" MongoClient option with PyMongo's info, like:
+        # Combine the "driver" AsyncMongoClient option with PyMongo's info, like:
         # {
         #    'driver': {
         #        'name': 'PyMongo|MyDriver',
@@ -960,7 +960,7 @@ class Connection:
             ``writeConcernError`` field in the command response.
         :param collation: The collation for this command.
         :param session: optional ClientSession instance.
-        :param client: optional MongoClient for gossipping $clusterTime.
+        :param client: optional AsyncMongoClient for gossipping $clusterTime.
         :param retryable_write: True if this command is a retryable write.
         :param publish_events: Should we publish events for this command?
         :param user_fields: Response fields that should be decoded
@@ -1120,7 +1120,9 @@ class Connection:
         """
         if session:
             if session._client is not client:
-                raise InvalidOperation("Can only use session with the MongoClient that started it")
+                raise InvalidOperation(
+                    "Can only use session with the AsyncMongoClient that started it"
+                )
 
     def close_conn(self, reason: Optional[str]) -> None:
         """Close this connection with a reason."""

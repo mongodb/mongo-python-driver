@@ -23,11 +23,11 @@ Causally Consistent Reads
 
   with client.start_session(causal_consistency=True) as session:
       collection = client.db.collection
-      collection.update_one({"_id": 1}, {"$set": {"x": 10}}, session=session)
+      await collection.update_one({"_id": 1}, {"$set": {"x": 10}}, session=session)
       secondary_c = collection.with_options(read_preference=ReadPreference.SECONDARY)
 
       # A secondary read waits for replication of the write.
-      secondary_c.find_one({"_id": 1}, session=session)
+      await secondary_c.find_one({"_id": 1}, session=session)
 
 If `causal_consistency` is True (the default), read operations that use
 the session are causally after previous read and write operations. Using a
@@ -54,15 +54,15 @@ operation:
   orders = client.db.orders
   inventory = client.db.inventory
   with client.start_session() as session:
-      with session.start_transaction():
-          orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
-          inventory.update_one(
+      async with session.start_transaction():
+          await orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
+          await inventory.update_one(
               {"sku": "abc123", "qty": {"$gte": 100}},
               {"$inc": {"qty": -100}},
               session=session,
           )
 
-Upon normal completion of ``with session.start_transaction()`` block, the
+Upon normal completion of ``async with session.start_transaction()`` block, the
 transaction automatically calls :meth:`ClientSession.commit_transaction`.
 If the block exits with an exception, the transaction automatically calls
 :meth:`ClientSession.abort_transaction`.
@@ -102,7 +102,7 @@ Snapshot Reads
 
 MongoDB 5.0 adds support for snapshot reads. Snapshot reads are requested by
 passing the ``snapshot`` option to
-:meth:`~pymongo.mongo_client.MongoClient.start_session`.
+:meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
 If ``snapshot`` is True, all read operations that use this session read data
 from the same snapshot timestamp. The server chooses the latest
 majority-committed snapshot timestamp when executing the first read operation
@@ -114,8 +114,8 @@ replica set secondaries.
 
   # Each read using this session reads data from the same point in time.
   with client.start_session(snapshot=True) as session:
-      order = orders.find_one({"sku": "abc123"}, session=session)
-      inventory = inventory.find_one({"sku": "abc123"}, session=session)
+      order = await orders.find_one({"sku": "abc123"}, session=session)
+      inventory = await inventory.find_one({"sku": "abc123"}, session=session)
 
 Snapshot Reads Limitations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -123,11 +123,11 @@ Snapshot Reads Limitations
 Snapshot reads sessions are incompatible with ``causal_consistency=True``.
 Only the following read operations are supported in a snapshot reads session:
 
-- :meth:`~pymongo.collection.Collection.find`
-- :meth:`~pymongo.collection.Collection.find_one`
-- :meth:`~pymongo.collection.Collection.aggregate`
-- :meth:`~pymongo.collection.Collection.count_documents`
-- :meth:`~pymongo.collection.Collection.distinct` (on unsharded collections)
+- :meth:`~pymongo.collection.AsyncCollection.find`
+- :meth:`~pymongo.collection.AsyncCollection.find_one`
+- :meth:`~pymongo.collection.AsyncCollection.aggregate`
+- :meth:`~pymongo.collection.AsyncCollection.count_documents`
+- :meth:`~pymongo.collection.AsyncCollection.distinct` (on unsharded collections)
 
 Classes
 =======
@@ -251,14 +251,14 @@ class TransactionOptions:
     :param read_concern: The
         :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
         If ``None`` (the default) the :attr:`read_preference` of
-        the :class:`MongoClient` is used.
+        the :class:`AsyncMongoClient` is used.
     :param write_concern: The
         :class:`~pymongo.write_concern.WriteConcern` to use for this
         transaction. If ``None`` (the default) the :attr:`read_preference` of
-        the :class:`MongoClient` is used.
+        the :class:`AsyncMongoClient` is used.
     :param read_preference: The read preference to use. If
         ``None`` (the default) the :attr:`read_preference` of this
-        :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+        :class:`AsyncMongoClient` is used. See :mod:`~pymongo.read_preferences`
         for options. Transactions which read must use
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
     :param max_commit_time_ms: The maximum amount of time to allow a
@@ -491,7 +491,7 @@ class ClientSession:
 
     Should not be initialized directly by application developers - to create a
     :class:`ClientSession`, call
-    :meth:`~pymongo.mongo_client.MongoClient.start_session`.
+    :meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
     """
 
     def __init__(
@@ -501,7 +501,7 @@ class ClientSession:
         options: SessionOptions,
         implicit: bool,
     ) -> None:
-        # A MongoClient, a _ServerSession, a SessionOptions, and a set.
+        # An AsyncMongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: AsyncMongoClient = client
         self._server_session = server_session
         self._options = options
@@ -543,7 +543,7 @@ class ClientSession:
 
     @property
     def client(self) -> AsyncMongoClient:
-        """The :class:`~pymongo.mongo_client.MongoClient` this session was
+        """The :class:`~pymongo.mongo_client.AsyncMongoClient` this session was
         created from.
         """
         return self._client
@@ -603,24 +603,24 @@ class ClientSession:
         This method starts a transaction on this session, executes ``callback``
         once, and then commits the transaction. For example::
 
-          def callback(session):
+          async def callback(session):
               orders = session.client.db.orders
               inventory = session.client.db.inventory
-              orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
-              inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
+              await orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
+              await inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
                                    {"$inc": {"qty": -100}}, session=session)
 
           with client.start_session() as session:
-              session.with_transaction(callback)
+              await session.with_transaction(callback)
 
         To pass arbitrary arguments to the ``callback``, wrap your callable
         with a ``lambda`` like this::
 
-          def callback(session, custom_arg, custom_kwarg=None):
+          async def callback(session, custom_arg, custom_kwarg=None):
               # Transaction operations...
 
           with client.start_session() as session:
-              session.with_transaction(
+              await session.with_transaction(
                   lambda s: callback(s, "custom_arg", custom_kwarg=1))
 
         In the event of an exception, ``with_transaction`` may retry the commit
@@ -674,7 +674,7 @@ class ClientSession:
             transaction.
         :param read_preference: The read preference to use for this
             transaction. If ``None`` (the default) the :attr:`read_preference`
-            of this :class:`Database` is used. See
+            of this :class:`AsyncDatabase` is used. See
             :mod:`~pymongo.read_preferences` for options.
 
         :return: The return value of the ``callback``.

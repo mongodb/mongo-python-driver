@@ -28,7 +28,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Union,
     cast,
     overload,
@@ -38,6 +37,7 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo.collation import validate_collation_or_none
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _create_lock, _Lock
 from pymongo.synchronous import helpers
@@ -71,76 +71,6 @@ if TYPE_CHECKING:
 IS_SYNC = True
 
 
-# These errors mean that the server has already killed the cursor so there is
-# no need to send killCursors.
-_CURSOR_CLOSED_ERRORS = frozenset(
-    [
-        43,  # CursorNotFound
-        175,  # QueryPlanKilled
-        237,  # CursorKilled
-        # On a tailable cursor, the following errors mean the capped collection
-        # rolled over.
-        # MongoDB 2.6:
-        # {'$err': 'Runner killed during getMore', 'code': 28617, 'ok': 0}
-        28617,
-        # MongoDB 3.0:
-        # {'$err': 'getMore executor error: UnknownError no details available',
-        #  'code': 17406, 'ok': 0}
-        17406,
-        # MongoDB 3.2 + 3.4:
-        # {'ok': 0.0, 'errmsg': 'GetMore command executor error:
-        #  CappedPositionLost: CollectionScan died due to failure to restore
-        #  tailable cursor position. Last seen record id: RecordId(3)',
-        #  'code': 96}
-        96,
-        # MongoDB 3.6+:
-        # {'ok': 0.0, 'errmsg': 'errmsg: "CollectionScan died due to failure to
-        #  restore tailable cursor position. Last seen record id: RecordId(3)"',
-        #  'code': 136, 'codeName': 'CappedPositionLost'}
-        136,
-    ]
-)
-
-_QUERY_OPTIONS = {
-    "tailable_cursor": 2,
-    "secondary_okay": 4,
-    "oplog_replay": 8,
-    "no_timeout": 16,
-    "await_data": 32,
-    "exhaust": 64,
-    "partial": 128,
-}
-
-
-class CursorType:
-    NON_TAILABLE = 0
-    """The standard cursor type."""
-
-    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
-    """The tailable cursor type.
-
-    Tailable cursors are only for use with capped collections. They are not
-    closed when the last data is retrieved but are kept open and the cursor
-    location marks the final document position. If more data is received
-    iteration of the cursor will continue from the last document received.
-    """
-
-    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
-    """A tailable cursor with the await option set.
-
-    Creates a tailable cursor that will wait for a few seconds after returning
-    the full result set so that it can capture and return additional data added
-    during the query.
-    """
-
-    EXHAUST = _QUERY_OPTIONS["exhaust"]
-    """An exhaust cursor.
-
-    MongoDB will stream batched results to the client without waiting for the
-    client to request each batch, reducing latency.
-    """
-
-
 class _ConnectionManager:
     """Used with exhaust cursors to ensure the connection is returned."""
 
@@ -158,12 +88,6 @@ class _ConnectionManager:
         if self.conn:
             self.conn.unpin()
             self.conn = None
-
-
-_Sort = Union[
-    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
-]
-_Hint = Union[str, _Sort]
 
 
 class Cursor(Generic[_DocumentType]):
@@ -597,7 +521,7 @@ class Cursor(Generic[_DocumentType]):
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
+        :attr:`~pymongo.cursor_shared.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
@@ -782,27 +706,27 @@ class Cursor(Generic[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
-            for doc in collection.find().sort('field', pymongo.ASCENDING):
+            async for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
-            for doc in collection.find().sort([
+            async for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
         Text search results can be sorted by relevance::
 
-            cursor = db.test.find(
+            cursor = await db.test.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
-            for doc in cursor:
+            async for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -901,7 +825,7 @@ class Cursor(Generic[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
@@ -974,7 +898,7 @@ class Cursor(Generic[_DocumentType]):
 
         With regular cursors, simply use a for loop instead of :attr:`alive`::
 
-            for doc in collection.find():
+            async for doc in collection.find():
                 print(doc)
 
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
@@ -1320,7 +1244,7 @@ class Cursor(Generic[_DocumentType]):
 
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):
-    """A cursor / iterator over raw batches of BSON data from a query result."""
+    """An synchronous cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore

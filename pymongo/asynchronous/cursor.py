@@ -28,7 +28,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Union,
     cast,
     overload,
@@ -54,6 +53,7 @@ from pymongo.asynchronous.message import (
 )
 from pymongo.asynchronous.response import PinnedResponse
 from pymongo.collation import validate_collation_or_none
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _ALock, _create_lock
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
@@ -69,76 +69,6 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
 
 IS_SYNC = False
-
-
-# These errors mean that the server has already killed the cursor so there is
-# no need to send killCursors.
-_CURSOR_CLOSED_ERRORS = frozenset(
-    [
-        43,  # CursorNotFound
-        175,  # QueryPlanKilled
-        237,  # CursorKilled
-        # On a tailable cursor, the following errors mean the capped collection
-        # rolled over.
-        # MongoDB 2.6:
-        # {'$err': 'Runner killed during getMore', 'code': 28617, 'ok': 0}
-        28617,
-        # MongoDB 3.0:
-        # {'$err': 'getMore executor error: UnknownError no details available',
-        #  'code': 17406, 'ok': 0}
-        17406,
-        # MongoDB 3.2 + 3.4:
-        # {'ok': 0.0, 'errmsg': 'GetMore command executor error:
-        #  CappedPositionLost: CollectionScan died due to failure to restore
-        #  tailable cursor position. Last seen record id: RecordId(3)',
-        #  'code': 96}
-        96,
-        # MongoDB 3.6+:
-        # {'ok': 0.0, 'errmsg': 'errmsg: "CollectionScan died due to failure to
-        #  restore tailable cursor position. Last seen record id: RecordId(3)"',
-        #  'code': 136, 'codeName': 'CappedPositionLost'}
-        136,
-    ]
-)
-
-_QUERY_OPTIONS = {
-    "tailable_cursor": 2,
-    "secondary_okay": 4,
-    "oplog_replay": 8,
-    "no_timeout": 16,
-    "await_data": 32,
-    "exhaust": 64,
-    "partial": 128,
-}
-
-
-class CursorType:
-    NON_TAILABLE = 0
-    """The standard cursor type."""
-
-    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
-    """The tailable cursor type.
-
-    Tailable cursors are only for use with capped collections. They are not
-    closed when the last data is retrieved but are kept open and the cursor
-    location marks the final document position. If more data is received
-    iteration of the cursor will continue from the last document received.
-    """
-
-    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
-    """A tailable cursor with the await option set.
-
-    Creates a tailable cursor that will wait for a few seconds after returning
-    the full result set so that it can capture and return additional data added
-    during the query.
-    """
-
-    EXHAUST = _QUERY_OPTIONS["exhaust"]
-    """An exhaust cursor.
-
-    MongoDB will stream batched results to the client without waiting for the
-    client to request each batch, reducing latency.
-    """
 
 
 class _ConnectionManager:
@@ -158,12 +88,6 @@ class _ConnectionManager:
         if self.conn:
             await self.conn.unpin()
             self.conn = None
-
-
-_Sort = Union[
-    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
-]
-_Hint = Union[str, _Sort]
 
 
 class AsyncCursor(Generic[_DocumentType]):
@@ -200,7 +124,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
-        :meth:`~pymongo.collection.Collection.find` instead.
+        :meth:`~pymongo.collection.AsyncCollection.find` instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -325,8 +249,8 @@ class AsyncCursor(Generic[_DocumentType]):
 
     @property
     def collection(self) -> AsyncCollection[_DocumentType]:
-        """The :class:`~pymongo.collection.Collection` that this
-        :class:`Cursor` is iterating.
+        """The :class:`~pymongo.collection.AsyncCollection` that this
+        :class:`AsyncCursor` is iterating.
         """
         return self._collection
 
@@ -342,7 +266,7 @@ class AsyncCursor(Generic[_DocumentType]):
     def clone(self) -> AsyncCursor[_DocumentType]:
         """Get a clone of this cursor.
 
-        Returns a new Cursor instance with options matching those that have
+        Returns a new AsyncCursor instance with options matching those that have
         been set on the current instance. The clone will be completely
         unevaluated, even if the current instance has been partially or
         completely evaluated.
@@ -511,7 +435,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """Limits the number of results to be returned by this cursor.
 
         Raises :exc:`TypeError` if `limit` is not an integer. Raises
-        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`AsyncCursor`
         has already been used. The last `limit` applied to this cursor
         takes precedence. A limit of ``0`` is equivalent to no limit.
 
@@ -542,7 +466,7 @@ class AsyncCursor(Generic[_DocumentType]):
         Raises :exc:`TypeError` if `batch_size` is not an integer.
         Raises :exc:`ValueError` if `batch_size` is less than ``0``.
         Raises :exc:`~pymongo.errors.InvalidOperation` if this
-        :class:`Cursor` has already been used. The last `batch_size`
+        :class:`AsyncCursor` has already been used. The last `batch_size`
         applied to this cursor takes precedence.
 
         :param batch_size: The size of each batch of results requested.
@@ -561,7 +485,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         Raises :exc:`TypeError` if `skip` is not an integer. Raises
         :exc:`ValueError` if `skip` is less than ``0``. Raises
-        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor` has
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`AsyncCursor` has
         already been used. The last `skip` applied to this cursor takes
         precedence.
 
@@ -583,7 +507,7 @@ class AsyncCursor(Generic[_DocumentType]):
         is ``None`` no limit is applied.
 
         Raises :exc:`TypeError` if `max_time_ms` is not an integer or ``None``.
-        Raises :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
+        Raises :exc:`~pymongo.errors.InvalidOperation` if this :class:`AsyncCursor`
         has already been used.
 
         :param max_time_ms: the time limit after which the operation is aborted
@@ -597,12 +521,12 @@ class AsyncCursor(Generic[_DocumentType]):
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> AsyncCursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
+        :attr:`~pymongo.cursor_shared.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
         ``None``. Raises :exc:`~pymongo.errors.InvalidOperation` if this
-        :class:`Cursor` has already been used.
+        :class:`AsyncCursor` has already been used.
 
         .. note:: `max_await_time_ms` requires server version **>= 3.2**
 
@@ -634,7 +558,7 @@ class AsyncCursor(Generic[_DocumentType]):
     ) -> Union[_DocumentType, AsyncCursor[_DocumentType]]:
         """Get a single document or a slice of documents from this cursor.
 
-        .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each
+        .. warning:: A :class:`~AsyncCursor` is not a Python :class:`list`. Each
           index access or slice requires that a new query be run using skip
           and limit. Do not iterate the cursor using index accesses.
           The following example is **extremely inefficient** and may return
@@ -784,27 +708,27 @@ class AsyncCursor(Generic[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
-            for doc in collection.find().sort('field', pymongo.ASCENDING):
+            async for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
-            for doc in collection.find().sort([
+            async for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
         Text search results can be sorted by relevance::
 
-            cursor = db.test.find(
+            cursor = await db.test.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
-            for doc in cursor:
+            async for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -831,7 +755,7 @@ class AsyncCursor(Generic[_DocumentType]):
           `explain command
           <https://mongodb.com/docs/manual/reference/command/explain/>`_,
           ``allPlansExecution``. To use a different verbosity use
-          :meth:`~pymongo.database.Database.command` to run the explain
+          :meth:`~pymongo.database.AsyncDatabase.command` to run the explain
           command directly.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
@@ -866,7 +790,7 @@ class AsyncCursor(Generic[_DocumentType]):
         already been used.
 
         `index` should be an index as passed to
-        :meth:`~pymongo.collection.Collection.create_index`
+        :meth:`~pymongo.collection.AsyncCollection.create_index`
         (e.g. ``[('field', ASCENDING)]``) or the name of the index.
         If `index` is ``None`` any existing hint for this query is
         cleared. The last hint applied to this cursor takes precedence
@@ -903,13 +827,13 @@ class AsyncCursor(Generic[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
         :class:`str`. Raises :class:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. Only the last call to
-        :meth:`where` applied to a :class:`Cursor` has any effect.
+        :meth:`where` applied to a :class:`AsyncCursor` has any effect.
 
         .. note:: MongoDB 4.4 drops support for :class:`~bson.code.Code`
           with scope variables. Consider using `$expr`_ instead.
@@ -939,7 +863,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         Raises :exc:`TypeError` if `collation` is not an instance of
         :class:`~pymongo.collation.Collation` or a ``dict``. Raises
-        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor` has
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`AsyncCursor` has
         already been used. Only the last collation applied to this cursor has
         any effect.
 
@@ -974,9 +898,9 @@ class AsyncCursor(Generic[_DocumentType]):
         since they will stop iterating even though they *may* return more
         results in the future.
 
-        With regular cursors, simply use a for loop instead of :attr:`alive`::
+        With regular cursors, simply use an asynchronous for loop instead of :attr:`alive`::
 
-            for doc in collection.find():
+            async for doc in collection.find():
                 print(doc)
 
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
@@ -1114,13 +1038,13 @@ class AsyncCursor(Generic[_DocumentType]):
         :class:`str`.
 
         The :meth:`distinct` method obeys the
-        :attr:`~pymongo.collection.Collection.read_preference` of the
-        :class:`~pymongo.collection.Collection` instance on which
-        :meth:`~pymongo.collection.Collection.find` was called.
+        :attr:`~pymongo.collection.AsyncCollection.read_preference` of the
+        :class:`~pymongo.collection.AsyncCollection` instance on which
+        :meth:`~pymongo.collection.AsyncCollection.find` was called.
 
         :param key: name of key for which we want to get the distinct values
 
-        .. seealso:: :meth:`pymongo.collection.Collection.distinct`
+        .. seealso:: :meth:`pymongo.collection.AsyncCollection.distinct`
         """
         options: dict[str, Any] = {}
         if self._spec:
@@ -1322,7 +1246,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
 
 class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
-    """A cursor / iterator over raw batches of BSON data from a query result."""
+    """An asynchronous cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore
@@ -1333,7 +1257,7 @@ class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.Collection.find_raw_batches`
+        see :meth:`~pymongo.collection.AsyncCollection.find_raw_batches`
         instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.

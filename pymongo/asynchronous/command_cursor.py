@@ -29,7 +29,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo.asynchronous.cursor import _CURSOR_CLOSED_ERRORS, _ConnectionManager
+from pymongo.asynchronous.cursor import _ConnectionManager
 from pymongo.asynchronous.message import (
     _CursorAddress,
     _GetMore,
@@ -38,6 +38,7 @@ from pymongo.asynchronous.message import (
     _RawBatchGetMore,
 )
 from pymongo.asynchronous.response import PinnedResponse
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
@@ -50,7 +51,7 @@ IS_SYNC = False
 
 
 class AsyncCommandCursor(Generic[_DocumentType]):
-    """A cursor / iterator over command cursors."""
+    """An asynchronous cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
 
@@ -164,7 +165,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         Even if :attr:`alive` is ``True``, :meth:`next` can raise
         :exc:`StopIteration`. Best to use a for loop::
 
-            for doc in collection.aggregate(pipeline):
+            async for doc in collection.aggregate(pipeline):
                 print(doc)
 
         .. note:: :attr:`alive` can be True while iterating a cursor from
@@ -375,7 +376,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.Collection.aggregate_raw_batches`
+        see :meth:`~pymongo.collection.AsyncCollection.aggregate_raw_batches`
         instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.

@@ -234,7 +234,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         """
         if not self._spawned and not self.opts._mongocryptd_bypass_spawn:
             self.spawn()
-        # Database.command only supports mutable mappings so we need to decode
+        # AsyncDatabase.command only supports mutable mappings so we need to decode
         # the raw BSON command first.
         inflated_cmd = _inflate_bson(cmd, DEFAULT_RAW_BSON_OPTIONS)
         assert self.mongocryptd_client is not None
@@ -335,7 +335,7 @@ class _Encrypter:
     def __init__(self, client: AsyncMongoClient[_DocumentTypeArg], opts: AutoEncryptionOpts):
         """Create a _Encrypter for a client.
 
-        :param client: The encrypted MongoClient.
+        :param client: The encrypted AsyncMongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
         if opts._schema_map is None:
@@ -428,7 +428,7 @@ class _Encrypter:
 
     def _check_closed(self) -> None:
         if self._closed:
-            raise InvalidOperation("Cannot use MongoClient after close")
+            raise InvalidOperation("Cannot use AsyncMongoClient after close")
 
     async def close(self) -> None:
         """Cleanup resources."""
@@ -497,13 +497,13 @@ class ClientEncryption(Generic[_DocumentType]):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
-        vault collection that cannot be done directly on a MongoClient. Similar
-        to configuring auto encryption on a MongoClient, it is constructed with
-        a MongoClient (to a MongoDB cluster containing the key vault
+        vault collection that cannot be done directly on a AsyncMongoClient. Similar
+        to configuring auto encryption on a AsyncMongoClient, it is constructed with
+        a AsyncMongoClient (to a MongoDB cluster containing the key vault
         collection), KMS provider configuration, and keyVaultNamespace. It
         provides an API for explicitly encrypting and decrypting values, and
         creating data keys. It does not provide an API to query keys from the
-        key vault collection, as this can be done directly on the MongoClient.
+        key vault collection, as this can be done directly on the AsyncMongoClient.
 
         See :ref:`explicit-client-side-encryption` for an example.
 
@@ -540,18 +540,18 @@ class ClientEncryption(Generic[_DocumentType]):
             and decryption. Data keys are stored as documents in this MongoDB
             collection. Data keys are protected with encryption by a KMS
             provider.
-        :param key_vault_client: A MongoClient connected to a MongoDB cluster
+        :param key_vault_client: A AsyncMongoClient connected to a MongoDB cluster
             containing the `key_vault_namespace` collection.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
             value for encryption and decoding the decrypted BSON value. This
             should be the same CodecOptions instance configured on the
-            MongoClient, Database, or Collection used to access application
+            AsyncMongoClient, AsyncDatabase, or AsyncCollection used to access application
             data.
         :param kms_tls_options: A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
             Accepts the same TLS options as
-            :class:`pymongo.mongo_client.MongoClient`. For example, to
+            :class:`pymongo.mongo_client.AsyncMongoClient`. For example, to
             override the system default CA file::
 
               kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
@@ -649,7 +649,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method.
-        See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
+        See the documentation for :meth:`~pymongo.database.AsyncDatabase.create_collection` for all valid options.
 
         :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
 
