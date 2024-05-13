@@ -352,8 +352,7 @@ class ClientContext:
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info: Any = self.client.admin.command("buildInfo")
-            if "dataLake" in build_info:
+            if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = self._connect(host, port, username=db_user, password=db_pwd)
