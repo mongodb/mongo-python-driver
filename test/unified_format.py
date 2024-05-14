@@ -1061,6 +1061,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ):
             if client_context.version >= Version("8.0"):
                 self.skipTest("waiting on PYTHON-4088")
+        if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
+            if client_context.version >= Version("8.0"):
+                self.skipTest("waiting on PYTHON-4088")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
