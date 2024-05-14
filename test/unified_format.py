@@ -1061,6 +1061,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ):
             if client_context.version[0] == 8:
                 self.skipTest("waiting on PYTHON-4088")
+        if (
+            "clear with interruptInUseConnections = true closes pending connections"
+            in spec["description"]
+        ):
+            self.skipTest("waiting on PYTHON-4414")
         if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
             if client_context.version[0] == 8:
                 self.skipTest("waiting on PYTHON-4088")
