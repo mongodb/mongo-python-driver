@@ -129,6 +129,7 @@ def translate_docstrings(lines: list[str]) -> list[str]:
     for i in range(len(lines)):
         for k in replacements:
             if k in lines[i]:
+                # This sequence of replacements fixes the grammar issues caused by translating async -> sync
                 if "an Async" in lines[i]:
                     lines[i] = lines[i].replace("an Async", "a Async")
                 if "An Async" in lines[i]:

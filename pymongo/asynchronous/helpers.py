@@ -286,7 +286,7 @@ def _handle_reauth(func: F) -> F:
         from pymongo.asynchronous.pool import Connection
 
         try:
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
         except OperationFailure as exc:
             if no_reauth:
                 raise

@@ -47,7 +47,6 @@ async def async_send(socket: Union[socket.socket, _sslConn], buf: bytes, flags: 
 
 
 async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
-    socket.setblocking(False)
     timeout = socket.gettimeout()
     socket.settimeout(0.0)
     loop = asyncio.get_event_loop()
@@ -55,7 +54,6 @@ async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flag
         await asyncio.wait_for(loop.sock_sendall(socket, buf), timeout=timeout)  # type: ignore[arg-type]
     finally:
         socket.settimeout(timeout)
-        socket.setblocking(True)
 
 
 def sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001

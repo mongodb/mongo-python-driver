@@ -47,7 +47,10 @@ class _ALock:
     def __init__(self, lock: threading.Lock) -> None:
         self._lock = lock
 
-    async def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        return self._lock.acquire(blocking=blocking, timeout=timeout)
+
+    async def a_acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
         if timeout > 0:
             tstart = time.monotonic()
         while True:
@@ -64,7 +67,7 @@ class _ALock:
         self._lock.release()
 
     async def __aenter__(self) -> _ALock:
-        await self.acquire()
+        await self.a_acquire()
         return self
 
     def __enter__(self) -> _ALock:
