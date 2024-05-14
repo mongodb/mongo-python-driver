@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch oidc-8-0 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -989,7 +989,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-azure-latest
+      - oidc-auth-test-azure
 
   - name: testgcpoidc_task_group
     setup_group:
@@ -1013,7 +1013,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-gcp-latest
+      - oidc-auth-test-gcp
 
   - name: testoidc_task_group
     setup_group:
@@ -1037,7 +1037,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-latest
+      - oidc-auth-test
 
   - name: test_aws_lambda_task_group
     setup_group:
@@ -2015,11 +2015,11 @@ tasks:
         - func: "run load-balancer"
         - func: "run tests"
 
-    - name: "oidc-auth-test-latest"
+    - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
 
-    - name: "oidc-auth-test-azure-latest"
+    - name: "oidc-auth-test-azure"
       commands:
       - command: shell.exec
         params:
@@ -2035,7 +2035,7 @@ tasks:
             export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
-    - name: "oidc-auth-test-gcp-latest"
+    - name: "oidc-auth-test-gcp"
       commands:
       - command: shell.exec
         params:
