@@ -358,6 +358,9 @@ class CommandCursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
+    def to_list(self) -> list[_DocumentType]:
+        return [x for x in self]
+
 
 class RawBatchCommandCursor(CommandCursor[_DocumentType]):
     _getmore_class = _RawBatchGetMore

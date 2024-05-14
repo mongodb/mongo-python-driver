@@ -1242,6 +1242,9 @@ class Cursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
+    def to_list(self) -> list[_DocumentType]:
+        return [x for x in self]
+
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):
     """A cursor / iterator over raw batches of BSON data from a query result."""

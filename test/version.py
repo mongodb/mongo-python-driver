@@ -80,6 +80,13 @@ class Version(tuple):
             return cls.from_version_array(info["versionArray"])
         return cls.from_string(info["version"])
 
+    @classmethod
+    async def async_from_client(cls, client):
+        info = await client.server_info()
+        if "versionArray" in info:
+            return cls.from_version_array(info["versionArray"])
+        return cls.from_string(info["version"])
+
     def at_least(self, *other_version):
         return self >= Version(*other_version)
 
