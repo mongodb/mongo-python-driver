@@ -1121,6 +1121,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support timeoutMode")
 
     def process_error(self, exception, spec):
+        if isinstance(exception, unittest.SkipTest):
+            raise
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
         is_timeout_error = spec.get("isTimeoutError")
