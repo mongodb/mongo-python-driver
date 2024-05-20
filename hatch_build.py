@@ -8,8 +8,6 @@ import warnings
 from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
-from scikit_build_core.builder.builder import archs_to_tags, get_archs
-from scikit_build_core.builder.wheel_tag import WheelTag
 from scikit_build_core.cmake import CMake
 
 warning_message = """
@@ -108,8 +106,7 @@ class CustomHook(BuildHookInterface):
             )
 
         # Ensure wheel is marked as binary and contains the binary files.
-        tags = WheelTag.compute_best(archs_to_tags(get_archs(os.environ)))
-        build_data["tag"] = str(tags)
+        build_data["infer_tag"] = True
         build_data["pure_python"] = False
         if os.name == "nt":
             patt = ".pyd"
