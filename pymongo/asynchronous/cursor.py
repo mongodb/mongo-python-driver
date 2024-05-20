@@ -1245,7 +1245,7 @@ class AsyncCursor(Generic[_DocumentType]):
         await self.close()
 
     async def to_list(self) -> list[_DocumentType]:
-        return [x async for x in self]
+        return [x async for x in self]  # noqa: C416,RUF100
 
 
 class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):

@@ -359,7 +359,7 @@ class CommandCursor(Generic[_DocumentType]):
         self.close()
 
     def to_list(self) -> list[_DocumentType]:
-        return [x for x in self]
+        return [x for x in self]  # noqa: C416,RUF100
 
 
 class RawBatchCommandCursor(CommandCursor[_DocumentType]):
