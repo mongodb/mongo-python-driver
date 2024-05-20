@@ -49,6 +49,7 @@ from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
 from pymongo.asynchronous.bulk import BulkWriteError
 from pymongo.asynchronous.collection import AsyncCollection, ReturnDocument
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.asynchronous.operations import *
