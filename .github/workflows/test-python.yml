@@ -33,7 +33,7 @@ jobs:
           tox -m lint-manual
       - name: Run compilation
         run: |
-          pip install -e .
+          pip install -v -e .
           python tools/fail_if_no_c.py
       - name: Run typecheck
         run: |
