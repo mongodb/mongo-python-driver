@@ -15,16 +15,18 @@
 """Current version of PyMongo."""
 from __future__ import annotations
 
-from typing import Tuple, Union
+import re
+from typing import List, Tuple, Union
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 8, 0, ".dev0")
+__version__ = "4.8.0.dev1"
 
-
-def get_version_string() -> str:
-    if isinstance(version_tuple[-1], str):
-        return ".".join(map(str, version_tuple[:-1])) + version_tuple[-1]
-    return ".".join(map(str, version_tuple))
-
-
-__version__: str = get_version_string()
+pattern = r"(?P<major>\d+).(?P<minor>\d+).(?P<patch>\d+)(?P<rest>.*)"
+match = re.match(pattern, __version__)
+if match:
+    parts: List[Union[int, str]] = [int(match[part]) for part in ["major", "minor", "patch"]]
+    if match["rest"]:
+        parts.append(match["rest"])
+else:
+    parts = []
+version_info: Tuple[Union[int, str], ...] = tuple(parts)
 version = __version__

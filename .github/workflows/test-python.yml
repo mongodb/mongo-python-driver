@@ -31,9 +31,6 @@ jobs:
       - name: Run linters
         run: |
           tox -m lint-manual
-      - name: Check Manifest
-        run: |
-          tox -m manifest
       - name: Run compilation
         run: |
           pip install -e .
