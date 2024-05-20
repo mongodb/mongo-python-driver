@@ -187,7 +187,7 @@ class ChangeStream(Generic[_DocumentType]):
             else:
                 options["resumeAfter"] = resume_token
 
-        if self._start_at_operation_time is not None:
+        elif self._start_at_operation_time is not None:
             options["startAtOperationTime"] = self._start_at_operation_time
 
         if self._show_expanded_events:

@@ -989,7 +989,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-azure-latest
+      - oidc-auth-test-azure
 
   - name: testgcpoidc_task_group
     setup_group:
@@ -1013,7 +1013,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-gcp-latest
+      - oidc-auth-test-gcp
 
   - name: testoidc_task_group
     setup_group:
@@ -1026,6 +1026,9 @@ task_groups:
         params:
           binary: bash
           include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+          env:
+            # PYTHON-4447
+            MONGODB_VERSION: "8.0"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
     teardown_task:
@@ -1037,7 +1040,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - oidc-auth-test-latest
+      - oidc-auth-test
 
   - name: test_aws_lambda_task_group
     setup_group:
@@ -1095,7 +1098,7 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release-mac-1100"
+    - name: "release-mac"
       tags: ["release_tag"]
       run_on: macos-1100
       commands:
@@ -1116,15 +1119,6 @@ tasks:
               VERSION: "3.9"
               ENSURE_UNIVERSAL2: "1"
         - func: "upload release"
-        - func: "build release"
-          vars:
-              VERSION: "3.8"
-        - func: "upload release"
-
-    - name: "release-mac-1014"
-      tags: ["release_tag"]
-      run_on: macos-1014
-      commands:
         - func: "build release"
           vars:
               VERSION: "3.8"
@@ -2015,13 +2009,14 @@ tasks:
         - func: "run load-balancer"
         - func: "run tests"
 
-    - name: "oidc-auth-test-latest"
+    - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
 
-    - name: "oidc-auth-test-azure-latest"
+    - name: "oidc-auth-test-azure"
       commands:
       - command: shell.exec
+        type: test
         params:
           shell: bash
           script: |-
@@ -2035,9 +2030,10 @@ tasks:
             export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
-    - name: "oidc-auth-test-gcp-latest"
+    - name: "oidc-auth-test-gcp"
       commands:
       - command: shell.exec
+        type: test
         params:
           shell: bash
           script: |-
@@ -2202,13 +2198,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: macos-1014
-        display_name: "macOS 10.14"
-        run_on: macos-1014
-        variables:
-          skip_EC2_auth_test: true
-          skip_ECS_auth_test: true
-          skip_web_identity_auth_test: true
       - id: macos-1100
         display_name: "macOS 11.00"
         run_on: macos-1100
@@ -2619,12 +2608,12 @@ buildvariants:
     platform:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos-1014
+      - macos-1100
     auth: "*"
     ssl: "*"
   exclude_spec:
     # No point testing with SSL without auth.
-    - platform: macos-1014
+    - platform: macos-1100
       auth: "noauth"
       ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2733,7 +2722,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
-    platform: macos-1014
+    platform: macos-1100
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -3067,7 +3056,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
-    platform: macos-1014
+    platform: macos-1100
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -3115,7 +3104,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
-    platform: [macos-1014]
+    platform: [macos-1100]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"
