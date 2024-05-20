@@ -30,11 +30,11 @@ import pymongo  # noqa: E402
 
 if not pymongo.has_c() or not bson.has_c():
     try:
-        pass
+        from pymongo import _cmessage  # noqa: F401
     except Exception as e:
         print(e)
     try:
-        pass
+        from bson import _cbson  # noqa: F401
     except Exception as e:
         print(e)
     sys.exit("could not load C extensions")
