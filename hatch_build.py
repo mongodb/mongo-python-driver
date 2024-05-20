@@ -8,6 +8,9 @@ import warnings
 from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+from scikit_build_core.builder.builder import archs_to_tags, get_archs
+from scikit_build_core.builder.wheel_tag import WheelTag
+from scikit_build_core.cmake import CMake
 
 warning_message = """
 ********************************************************************
@@ -81,12 +84,15 @@ class CustomHook(BuildHookInterface):
             return
 
         # Handle CMake invocation.
+        cmake = CMake.default_search(env=os.environ)
         try:
             cmake_build = here / "cmake_build"
-            cmake_build.mkdir(parents=True)
-            subprocess.check_call(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=cmake_build)
-            subprocess.check_call(["cmake", "build", "."], cwd=cmake_build)
-            subprocess.check_call(["cmake", "--install", cmake_build, "--prefix", str(here)])
+            cmake_build.mkdir(parents=True, exist_ok=True)
+            subprocess.check_call([cmake, "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=str(cmake_build))
+            subprocess.check_call([cmake, "--build", "."], cwd=str(cmake_build))
+            subprocess.check_call(
+                [cmake, "--install", ".", "--prefix", str(here)], cwd=str(cmake_build)
+            )
         except Exception:
             if os.environ.get("PYMONGO_C_EXT_MUST_BUILD"):
                 raise
@@ -102,7 +108,8 @@ class CustomHook(BuildHookInterface):
             )
 
         # Ensure wheel is marked as binary and contains the binary files.
-        build_data["infer_tag"] = True
+        tags = WheelTag.compute_best(archs_to_tags(get_archs(os.environ)))
+        build_data["tag"] = str(tags)
         build_data["pure_python"] = False
         if os.name == "nt":
             patt = ".pyd"
