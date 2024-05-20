@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from test import async_setup, async_teardown
+from test.asynchronous import async_setup, async_teardown
 
 import pytest_asyncio
 

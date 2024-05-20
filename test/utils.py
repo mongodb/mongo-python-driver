@@ -28,7 +28,8 @@ import unittest
 import warnings
 from collections import abc, defaultdict
 from functools import partial
-from test import async_client_context, client_context, db_pwd, db_user
+from test import client_context, db_pwd, db_user
+from test.asynchronous import async_client_context
 from typing import Any, List
 
 from bson import json_util
