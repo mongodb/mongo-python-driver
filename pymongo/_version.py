@@ -28,5 +28,5 @@ if match:
         parts.append(match["rest"])
 else:
     parts = []
-version_info: Tuple[Union[int, str], ...] = tuple(parts)
+version_tuple: Tuple[Union[int, str], ...] = tuple(parts)
 version = __version__
