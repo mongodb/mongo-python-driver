@@ -29,6 +29,14 @@ import bson  # noqa: E402
 import pymongo  # noqa: E402
 
 if not pymongo.has_c() or not bson.has_c():
+    try:
+        pass
+    except Exception as e:
+        print(e)
+    try:
+        pass
+    except Exception as e:
+        print(e)
     sys.exit("could not load C extensions")
 
 if os.environ.get("ENSURE_UNIVERSAL2") == "1":
