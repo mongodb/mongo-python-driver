@@ -82,8 +82,8 @@ class CustomHook(BuildHookInterface):
             return
 
         # Handle CMake invocation.
-        cmake = CMake.default_search(env=os.environ)
         try:
+            cmake = CMake.default_search(env=os.environ)
             cmake_build = here / "cmake_build"
             cmake_build.mkdir(parents=True, exist_ok=True)
             subprocess.check_call([cmake, "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=str(cmake_build))
