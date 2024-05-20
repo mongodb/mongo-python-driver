@@ -93,7 +93,7 @@ class CustomHook(BuildHookInterface):
             e = sys.exc_info()[1]
             sys.stdout.write("%s\n" % str(e))
             warnings.warn(
-                self.warning_message
+                warning_message
                 % (
                     "Extension modules",
                     "There was an issue with your platform configuration - see above.",
