@@ -1030,6 +1030,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "retryable-writes" in cls.TEST_SPEC["description"]:
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
+    @classmethod
+    def tearDownClass(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super().tearDownClass()
+
     def setUp(self):
         super().setUp()
         # process schemaVersion
