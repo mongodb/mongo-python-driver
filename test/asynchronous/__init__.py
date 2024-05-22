@@ -141,7 +141,7 @@ class AsyncClientContext:
         return opts
 
     @property
-    def uri(self):
+    async def uri(self):
         """Return the MongoClient URI for creating a duplicate client."""
         opts = async_client_context.default_client_options.copy()
         opts.pop("server_api", None)  # Cannot be set from the URI
@@ -155,7 +155,7 @@ class AsyncClientContext:
         auth_part = ""
         if async_client_context.auth_enabled:
             auth_part = f"{quote_plus(db_user)}:{quote_plus(db_pwd)}@"
-        return f"mongodb://{auth_part}{self.pair}/?{opts_part}"
+        return f"mongodb://{auth_part}{await self.pair}/?{opts_part}"
 
     @property
     async def hello(self):
@@ -458,7 +458,11 @@ class AsyncClientContext:
                         return await f(*args, **kwargs)
                     else:
                         return f(*args, **kwargs)
-                raise SkipTest(msg)
+                if "self.pair" in msg:
+                    new_msg = msg.replace("self.pair", await self.pair)
+                else:
+                    new_msg = msg
+                raise SkipTest(new_msg)
 
             return wrap
 
@@ -481,7 +485,7 @@ class AsyncClientContext:
         """Run a test only if we can connect to MongoDB."""
         return self._require(
             lambda: True,  # _require checks if we're connected
-            f"Cannot connect to MongoDB on {self.pair}",
+            "Cannot connect to MongoDB on self.pair",
             func=func,
         )
 
@@ -489,7 +493,7 @@ class AsyncClientContext:
         """Run a test only if we are connected to Atlas Data Lake."""
         return self._require(
             lambda: self.is_data_lake,
-            f"Not connected to Atlas Data Lake on {self.pair}",
+            "Not connected to Atlas Data Lake on self.pair",
             func=func,
         )
 
