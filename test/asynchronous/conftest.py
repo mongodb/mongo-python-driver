@@ -4,6 +4,8 @@ from test.asynchronous import async_setup, async_teardown
 
 import pytest_asyncio
 
+IS_SYNC = False
+
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def test_setup_and_teardown():

@@ -76,6 +76,8 @@ from pymongo.results import (
 )
 from pymongo.write_concern import WriteConcern
 
+IS_SYNC = False
+
 
 class TestCollectionNoConnect(unittest.TestCase):
     """Test Collection features on a client that does not connect."""
@@ -130,7 +132,10 @@ class TestCollectionNoConnect(unittest.TestCase):
         if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
-            msg = "'AsyncCollection' object is not iterable"
+            if IS_SYNC:
+                msg = "'Collection' object is not iterable"
+            else:
+                msg = "'AsyncCollection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -139,10 +144,10 @@ class TestCollectionNoConnect(unittest.TestCase):
         self.assertEqual(coll[0].name, "coll.0")
         self.assertEqual(coll[{}].name, "coll.{}")
         # next fails
-        with self.assertRaisesRegex(TypeError, "'AsyncCollection' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, msg):
             _ = next(coll)
         # .next() fails
-        with self.assertRaisesRegex(TypeError, "'AsyncCollection' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, msg):
             _ = coll.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(coll, Iterable)
@@ -158,7 +163,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        asyncio.run(AsyncTestCollection.async_tearDownClass())
+        if IS_SYNC:
+            cls.db.drop_collection("test_large_limit")  # type: ignore[unused-coroutine]
+        else:
+            asyncio.run(cls.async_tearDownClass())
 
     @classmethod
     async def async_tearDownClass(cls):

@@ -53,13 +53,34 @@ replacements = {
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
     "AsyncContextManager": "ContextManager",
+    "AsyncClientContext": "ClientContext",
+    "AsyncTestCollection": "TestCollection",
+    "AsyncIntegrationTest": "IntegrationTest",
+    "AsyncPyMongoTestCase": "PyMongoTestCase",
+    "async_client_context": "client_context",
+    "async_setup": "setup",
+    "asyncSetUp": "setUp",
+    "asyncTearDown": "tearDown",
+    "async_teardown": "teardown",
+    "pytest_asyncio": "pytest",
+    "async_wait_until": "wait_until",
+    "addAsyncCleanup": "addCleanup",
+    "async_setup_class": "setup_class",
+    "IsolatedAsyncioTestCase": "TestCase",
+    "async_get_pool": "get_pool",
+    "async_is_mongos": "is_mongos",
+    "async_rs_or_single_client": "rs_or_single_client",
+    "async_single_client": "single_client",
+    "async_from_client": "from_client",
 }
 
 _pymongo_base = "./pymongo/asynchronous/"
 _gridfs_base = "./gridfs/asynchronous/"
+_test_base = "./test/asynchronous/"
 
 _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
+_test_dest_base = "./test/synchronous/"
 
 
 async_files = [
@@ -69,6 +90,8 @@ async_files = [
 gridfs_files = [
     _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
 ]
+
+test_files = [_test_base + f for f in listdir(_test_base) if (Path(_test_base) / f).is_file()]
 
 sync_files = [
     _pymongo_dest_base + f
@@ -81,6 +104,11 @@ sync_gridfs_files = [
     for f in listdir(_gridfs_dest_base)
     if (Path(_gridfs_dest_base) / f).is_file()
 ]
+
+sync_test_files = [
+    _test_dest_base + f for f in listdir(_test_dest_base) if (Path(_test_dest_base) / f).is_file()
+]
+
 
 docstring_translate_files = [
     _pymongo_dest_base + f
@@ -106,7 +134,7 @@ docstring_translate_files = [
 
 def process_files(files: list[str]) -> None:
     for file in files:
-        if "__init__" not in file:
+        if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
                 lines = f.readlines()
                 lines = apply_is_sync(lines)
@@ -180,7 +208,8 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 def main() -> None:
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
-    process_files(sync_files + sync_gridfs_files)
+    unasync_directory(test_files, _test_base, _test_dest_base, replacements)
+    process_files(sync_files + sync_gridfs_files + sync_test_files)
 
 
 if __name__ == "__main__":

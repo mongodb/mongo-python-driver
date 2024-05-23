@@ -54,8 +54,8 @@ from test import (
     sanitize_reply,
 )
 
-from pymongo import AsyncMongoClient
-from pymongo.asynchronous.database import AsyncDatabase
+from pymongo import MongoClient
+from pymongo.synchronous.database import Database
 
 try:
     import ipaddress
@@ -63,7 +63,7 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
 from typing import Any, Callable, Dict, Generator, no_type_check
@@ -85,11 +85,11 @@ from pymongo.synchronous.uri_parser import parse_uri
 if HAVE_SSL:
     import ssl
 
-IS_SYNC = False
+IS_SYNC = True
 
 
-class AsyncClientContext:
-    client: AsyncMongoClient
+class ClientContext:
+    client: MongoClient
 
     MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
 
@@ -132,10 +132,10 @@ class AsyncClientContext:
     @property
     def client_options(self):
         """Return the MongoClient options for creating a duplicate client."""
-        opts = async_client_context.default_client_options.copy()
+        opts = client_context.default_client_options.copy()
         opts["host"] = host
         opts["port"] = port
-        if async_client_context.auth_enabled:
+        if client_context.auth_enabled:
             opts["username"] = db_user
             opts["password"] = db_pwd
         if self.replica_set_name:
@@ -143,9 +143,9 @@ class AsyncClientContext:
         return opts
 
     @property
-    async def uri(self):
+    def uri(self):
         """Return the MongoClient URI for creating a duplicate client."""
-        opts = async_client_context.default_client_options.copy()
+        opts = client_context.default_client_options.copy()
         opts.pop("server_api", None)  # Cannot be set from the URI
         opts_parts = []
         for opt, val in opts.items():
@@ -155,28 +155,28 @@ class AsyncClientContext:
             opts_parts.append(f"{opt}={quote_plus(strval)}")
         opts_part = "&".join(opts_parts)
         auth_part = ""
-        if async_client_context.auth_enabled:
+        if client_context.auth_enabled:
             auth_part = f"{quote_plus(db_user)}:{quote_plus(db_pwd)}@"
-        pair = await self.pair
+        pair = self.pair
         return f"mongodb://{auth_part}{pair}/?{opts_part}"
 
     @property
-    async def hello(self):
+    def hello(self):
         if not self._hello:
             if self.serverless or self.load_balancer:
-                self._hello = await self.client.admin.command(HelloCompat.CMD)
+                self._hello = self.client.admin.command(HelloCompat.CMD)
             else:
-                self._hello = await self.client.admin.command(HelloCompat.LEGACY_CMD)
+                self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
         return self._hello
 
-    async def _connect(self, host, port, **kwargs):
+    def _connect(self, host, port, **kwargs):
         kwargs.update(self.default_client_options)
-        client: AsyncMongoClient = pymongo.AsyncMongoClient(
+        client: MongoClient = pymongo.MongoClient(
             host, port, serverSelectionTimeoutMS=5000, **kwargs
         )
         try:
             try:
-                await client.admin.command("ping")  # Can we connect?
+                client.admin.command("ping")  # Can we connect?
             except pymongo.errors.OperationFailure as exc:
                 # SERVER-32063
                 self.connection_attempts.append(
@@ -185,29 +185,29 @@ class AsyncClientContext:
             else:
                 self.connection_attempts.append(f"successfully connected client {client!r}")
             # If connected, then return client with default timeout
-            return pymongo.AsyncMongoClient(host, port, **kwargs)
+            return pymongo.MongoClient(host, port, **kwargs)
         except pymongo.errors.ConnectionFailure as exc:
             self.connection_attempts.append(f"failed to connect client {client!r}: {exc}")
             return None
         finally:
-            await client.close()
+            client.close()
 
-    async def _init_client(self):
-        self.client = await self._connect(host, port)
+    def _init_client(self):
+        self.client = self._connect(host, port)
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info: Any = await self.client.admin.command("buildInfo")
+            build_info: Any = self.client.admin.command("buildInfo")
             if "dataLake" in build_info:
                 self.is_data_lake = True
                 self.auth_enabled = True
-                self.client = await self._connect(host, port, username=db_user, password=db_pwd)
+                self.client = self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
-            self.client = await self._connect(host, port, **TLS_OPTIONS)
+            self.client = self._connect(host, port, **TLS_OPTIONS)
             if self.client:
                 self.tls = True
                 self.default_client_options.update(TLS_OPTIONS)
@@ -220,7 +220,7 @@ class AsyncClientContext:
                 self.auth_enabled = True
             else:
                 try:
-                    self.cmd_line = await self.client.admin.command("getCmdLineOpts")
+                    self.cmd_line = self.client.admin.command("getCmdLineOpts")
                 except pymongo.errors.OperationFailure as e:
                     assert e.details is not None
                     msg = e.details.get("errmsg", "")
@@ -238,7 +238,7 @@ class AsyncClientContext:
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
 
-                self.client = await self._connect(
+                self.client = self._connect(
                     host,
                     port,
                     username=db_user,
@@ -248,17 +248,17 @@ class AsyncClientContext:
                 )
 
                 # May not have this if OperationFailure was raised earlier.
-                self.cmd_line = await self.client.admin.command("getCmdLineOpts")
+                self.cmd_line = self.client.admin.command("getCmdLineOpts")
 
             if self.serverless:
                 self.server_status = {}
             else:
-                self.server_status = await self.client.admin.command("serverStatus")
+                self.server_status = self.client.admin.command("serverStatus")
                 if self.storage_engine == "mmapv1":
                     # MMAPv1 does not support retryWrites=True.
                     self.default_client_options["retryWrites"] = False
 
-            hello = await self.hello
+            hello = self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello
 
             if "setName" in hello:
@@ -266,7 +266,7 @@ class AsyncClientContext:
                 self.is_rs = True
                 if self.auth_enabled:
                     # It doesn't matter which member we use as the seed here.
-                    self.client = pymongo.AsyncMongoClient(
+                    self.client = pymongo.MongoClient(
                         host,
                         port,
                         username=db_user,
@@ -275,13 +275,13 @@ class AsyncClientContext:
                         **self.default_client_options,
                     )
                 else:
-                    self.client = pymongo.AsyncMongoClient(
+                    self.client = pymongo.MongoClient(
                         host, port, replicaSet=self.replica_set_name, **self.default_client_options
                     )
 
                 # Get the authoritative hello result from the primary.
                 self._hello = None
-                hello = await self.hello
+                hello = self.hello
                 nodes = [partition_node(node.lower()) for node in hello.get("hosts", [])]
                 nodes.extend([partition_node(node.lower()) for node in hello.get("passives", [])])
                 nodes.extend([partition_node(node.lower()) for node in hello.get("arbiters", [])])
@@ -289,7 +289,7 @@ class AsyncClientContext:
             else:
                 self.nodes = {(host, port)}
             self.w = len(hello.get("hosts", [])) or 1
-            self.version = await Version.async_from_client(self.client)
+            self.version = Version.from_client(self.client)
 
             if self.serverless:
                 self.server_parameters = {
@@ -299,7 +299,7 @@ class AsyncClientContext:
                 self.test_commands_enabled = True
                 self.has_ipv6 = False
             else:
-                self.server_parameters = await self.client.admin.command("getParameter", "*")
+                self.server_parameters = self.client.admin.command("getParameter", "*")
                 assert self.cmd_line is not None
                 if self.server_parameters["enableTestCommands"]:
                     self.test_commands_enabled = True
@@ -313,53 +313,51 @@ class AsyncClientContext:
                             self.test_commands_enabled = True
                     self.has_ipv6 = self._server_started_with_ipv6()
 
-            self.is_mongos = (await self.hello).get("msg") == "isdbgrid"
+            self.is_mongos = (self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
-                address = await self.client.address
+                address = self.client.address
                 self.mongoses.append(address)
                 if not self.serverless:
                     # Check for another mongos on the next port.
                     assert address is not None
                     next_address = address[0], address[1] + 1
-                    mongos_client = await self._connect(
-                        *next_address, **self.default_client_options
-                    )
+                    mongos_client = self._connect(*next_address, **self.default_client_options)
                     if mongos_client:
-                        hello = await mongos_client.admin.command(HelloCompat.LEGACY_CMD)
+                        hello = mongos_client.admin.command(HelloCompat.LEGACY_CMD)
                         if hello.get("msg") == "isdbgrid":
                             self.mongoses.append(next_address)
 
-    async def init(self):
+    def init(self):
         with self.conn_lock:
             if not self.client and not self.connection_attempts:
-                await self._init_client()
+                self._init_client()
 
     def connection_attempt_info(self):
         return "\n".join(self.connection_attempts)
 
     @property
-    async def host(self):
+    def host(self):
         if self.is_rs and not IS_SRV:
-            primary = await self.client.primary
+            primary = self.client.primary
             return str(primary[0]) if primary is not None else host
         return host
 
     @property
-    async def port(self):
+    def port(self):
         if self.is_rs and not IS_SRV:
-            primary = await self.client.primary
+            primary = self.client.primary
             return primary[1] if primary is not None else port
         return port
 
     @property
-    async def pair(self):
-        return "%s:%d" % (await self.host, await self.port)
+    def pair(self):
+        return "%s:%d" % (self.host, self.port)
 
     @property
-    async def has_secondaries(self):
+    def has_secondaries(self):
         if not self.client:
             return False
-        return bool(len(await self.client.secondaries))
+        return bool(len(self.client.secondaries))
 
     @property
     def storage_engine(self):
@@ -375,9 +373,9 @@ class AsyncClientContext:
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
         return auth_type in auth_mechs
 
-    async def _check_user_provided(self):
+    def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""
-        client: AsyncMongoClient = pymongo.AsyncMongoClient(
+        client: MongoClient = pymongo.MongoClient(
             host,
             port,
             username=db_user,
@@ -396,7 +394,7 @@ class AsyncClientContext:
             else:
                 raise
         finally:
-            await client.close()
+            client.close()
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
@@ -416,7 +414,7 @@ class AsyncClientContext:
         argv = self.cmd_line["argv"]
         return "--auth" in argv or "--keyFile" in argv
 
-    async def _server_started_with_ipv6(self):
+    def _server_started_with_ipv6(self):
         if not socket.has_ipv6:
             return False
 
@@ -430,7 +428,7 @@ class AsyncClientContext:
 
         # The server was started with --ipv6. Is there an IPv6 route to it?
         try:
-            for info in socket.getaddrinfo(await self.host, await self.port):
+            for info in socket.getaddrinfo(self.host, self.port):
                 if info[0] == socket.AF_INET6:
                     return True
         except OSError:
@@ -446,24 +444,24 @@ class AsyncClientContext:
                 wraps_async = False
 
             @wraps(f)
-            async def wrap(*args, **kwargs):
-                await self.init()
+            def wrap(*args, **kwargs):
+                self.init()
                 # Always raise SkipTest if we can't connect to MongoDB
                 if not self.connected:
-                    pair = await self.pair
+                    pair = self.pair
                     raise SkipTest(f"Cannot connect to MongoDB on {pair}")
-                if iscoroutinefunction(condition) and await condition():
+                if iscoroutinefunction(condition) and condition():
                     if wraps_async:
-                        return await f(*args, **kwargs)
+                        return f(*args, **kwargs)
                     else:
                         return f(*args, **kwargs)
                 elif condition():
                     if wraps_async:
-                        return await f(*args, **kwargs)
+                        return f(*args, **kwargs)
                     else:
                         return f(*args, **kwargs)
                 if "self.pair" in msg:
-                    new_msg = msg.replace("self.pair", await self.pair)
+                    new_msg = msg.replace("self.pair", self.pair)
                 else:
                     new_msg = msg
                 raise SkipTest(new_msg)
@@ -482,8 +480,8 @@ class AsyncClientContext:
         kwargs["writeConcern"] = {"w": self.w}
         return _create_user(self.client[dbname], user, pwd, roles, **kwargs)
 
-    async def drop_user(self, dbname, user):
-        await self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
+    def drop_user(self, dbname, user):
+        self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
 
     def require_connection(self, func):
         """Run a test only if we can connect to MongoDB."""
@@ -553,17 +551,17 @@ class AsyncClientContext:
         `count` secondaries.
         """
 
-        async def sec_count():
-            return 0 if not self.client else len(await self.client.secondaries)
+        def sec_count():
+            return 0 if not self.client else len(self.client.secondaries)
 
         return self._require(lambda: sec_count() >= count, "Not enough secondaries available")
 
     @property
-    async def supports_secondary_read_pref(self):
+    def supports_secondary_read_pref(self):
         if self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = await self.client.config.shards.find_one()["host"]  # type:ignore[index]
+            shard = self.client.config.shards.find_one()["host"]  # type:ignore[index]
             num_members = shard.count(",") + 1
             return num_members > 1
         return False
@@ -643,7 +641,7 @@ class AsyncClientContext:
         """Run a test only if the server supports change streams."""
         return self.require_no_mmap(self.require_no_standalone(self.require_no_serverless(func)))
 
-    async def is_topology_type(self, topologies):
+    def is_topology_type(self, topologies):
         unknown = set(topologies) - {
             "single",
             "replicaset",
@@ -664,7 +662,7 @@ class AsyncClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = await (await async_client_context.client.config.shards.find()).to_list()
+            shards = (client_context.client.config.shards.find()).to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -682,8 +680,8 @@ class AsyncClientContext:
         """
         topologies = topologies or []
 
-        async def _is_valid_topology():
-            return await self.is_topology_type(topologies)
+        def _is_valid_topology():
+            return self.is_topology_type(topologies)
 
         return self._require(_is_valid_topology, "Cluster type not in %s" % (topologies))
 
@@ -816,34 +814,34 @@ class AsyncClientContext:
         return self.version.at_least(4, 1, 10)
 
     @property
-    async def max_bson_size(self):
-        return (await self.hello)["maxBsonObjectSize"]
+    def max_bson_size(self):
+        return (self.hello)["maxBsonObjectSize"]
 
     @property
-    async def max_write_batch_size(self):
-        return (await self.hello)["maxWriteBatchSize"]
+    def max_write_batch_size(self):
+        return (self.hello)["maxWriteBatchSize"]
 
 
 # Reusable client context
-async_client_context = AsyncClientContext()
+client_context = ClientContext()
 
 
-class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
+class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
 
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
-    @asynccontextmanager
-    async def fail_point(self, command_args):
+    @contextmanager
+    def fail_point(self, command_args):
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
-        await async_client_context.client.admin.command(cmd_on)
+        client_context.client.admin.command(cmd_on)
         try:
             yield
         finally:
-            await async_client_context.client.admin.command(
+            client_context.client.admin.command(
                 "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
             )
 
@@ -905,11 +903,11 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
-class AsyncIntegrationTest(AsyncPyMongoTestCase):
+class IntegrationTest(PyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
 
-    client: AsyncMongoClient[dict]
-    db: AsyncDatabase
+    client: MongoClient[dict]
+    db: Database
     credentials: Dict[str, str]
 
     @classmethod
@@ -920,39 +918,39 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
-    @async_client_context.require_connection
-    async def _setup_class(cls):
-        if async_client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
+    @client_context.require_connection
+    def _setup_class(cls):
+        if client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
-        if async_client_context.serverless and not getattr(cls, "RUN_ON_SERVERLESS", False):
+        if client_context.serverless and not getattr(cls, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
-        cls.client = async_client_context.client
+        cls.client = client_context.client
         cls.db = cls.client.pymongo_test
-        if async_client_context.auth_enabled:
+        if client_context.auth_enabled:
             cls.credentials = {"username": db_user, "password": db_pwd}
         else:
             cls.credentials = {}
 
-    async def cleanup_colls(self, *collections):
+    def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:
             c = self.client[c.database.name][c.name]
-            await c.delete_many({})
-            await c.drop_indexes()
+            c.delete_many({})
+            c.drop_indexes()
 
     def patch_system_certs(self, ca_certs):
         patcher = SystemCertsPatcher(ca_certs)
         self.addCleanup(patcher.disable)
 
 
-async def async_setup():
-    await async_client_context.init()
+def setup():
+    client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
 
 
-async def async_teardown():
+def teardown():
     global_knobs.disable()
     garbage = []
     for g in gc.garbage:
@@ -961,16 +959,16 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    c = async_client_context.client
+    c = client_context.client
     if c:
-        if not async_client_context.is_data_lake:
-            await c.drop_database("pymongo-pooling-tests")
-            await c.drop_database("pymongo_test")
-            await c.drop_database("pymongo_test1")
-            await c.drop_database("pymongo_test2")
-            await c.drop_database("pymongo_test_mike")
-            await c.drop_database("pymongo_test_bernie")
-        await c.close()
+        if not client_context.is_data_lake:
+            c.drop_database("pymongo-pooling-tests")
+            c.drop_database("pymongo_test")
+            c.drop_database("pymongo_test1")
+            c.drop_database("pymongo_test2")
+            c.drop_database("pymongo_test_mike")
+            c.drop_database("pymongo_test_bernie")
+        c.close()
 
     print_running_clients()
 

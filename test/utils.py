@@ -15,6 +15,7 @@
 """Utilities for testing pymongo"""
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import copy
 import functools
@@ -920,7 +921,7 @@ async def async_wait_until(predicate, success_description, timeout=10):
         if time.time() - start > timeout:
             raise AssertionError("Didn't ever %s" % success_description)
 
-        time.sleep(interval)
+        await asyncio.sleep(interval)
 
 
 def repl_set_step_down(client, **kwargs):
