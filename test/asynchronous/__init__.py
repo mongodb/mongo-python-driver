@@ -915,7 +915,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
     @classmethod
     def setUpClass(cls):
         if IS_SYNC:
-            cls._setup_class()  # type: ignore[attr-defined]
+            cls._setup_class()
         else:
             asyncio.run(cls._setup_class())
 
