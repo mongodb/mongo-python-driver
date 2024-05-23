@@ -25,7 +25,7 @@ __all__ = [
     "HASHED",
     "TEXT",
     "version_tuple",
-    "__version__",
+    "get_version_string" "__version__",
     "version",
     "ReturnDocument",
     "MAX_SUPPORTED_WIRE_VERSION",
