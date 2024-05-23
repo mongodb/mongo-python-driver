@@ -30,3 +30,7 @@ else:
     parts = []
 version_tuple: Tuple[Union[int, str], ...] = tuple(parts)
 version = __version__
+
+
+def get_version_string() -> str:
+    return __version__
