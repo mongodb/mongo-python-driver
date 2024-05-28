@@ -212,12 +212,12 @@ elif sys.platform == "darwin":
     }
 elif sys.platform == "win32":
     _METADATA["os"] = {
-        "type": platform.system(),
-        # "Windows XP", "Windows 7", "Windows 10", etc.
-        "name": " ".join((platform.system(), platform.release())),
-        "architecture": platform.machine(),
-        # Windows patch level (e.g. 5.1.2600-SP3)
-        "version": "-".join(platform.win32_ver()[1:3]),
+        "type": "Windows",
+        "name": "Windows",
+        # Avoid using platform calls, see PYTHON-4455.
+        "architecture": os.environ.get("PROCESSOR_ARCHITECTURE") or platform.machine(),
+        # Windows patch level (e.g. 10-0-17763).
+        "version": "-".join(map(str, sys.getwindowsversion()[:3])),
     }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
