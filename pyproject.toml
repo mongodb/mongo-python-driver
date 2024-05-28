@@ -136,6 +136,7 @@ select = [
   "UP",          # pyupgrade
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
+  "ASYNC",       # flake8-async
 ]
 ignore = [
   "PLR",    # Design related pylint codes
