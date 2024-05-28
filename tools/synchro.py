@@ -74,6 +74,12 @@ replacements = {
     "async_from_client": "from_client",
 }
 
+docstring_replacements = {
+    ("MongoClient", "connect"): """If ``True`` (the default), immediately
+            begin connecting to MongoDB in the background. Otherwise connect
+            on the first operation."""
+}
+
 _pymongo_base = "./pymongo/asynchronous/"
 _gridfs_base = "./gridfs/asynchronous/"
 _test_base = "./test/asynchronous/"
@@ -188,6 +194,12 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 lines[i] = lines[i].replace(k, replacements[k])
             if "Sync" in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
+    for i in range(len(lines)):
+        for k in docstring_replacements:
+            if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
+                lines[i] = lines[i].replace(
+                    f"**Not supported by {k[0]}**.", docstring_replacements[k]
+                )
 
     return lines
 

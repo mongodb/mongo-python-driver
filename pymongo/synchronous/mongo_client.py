@@ -244,7 +244,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
             aware (otherwise they will be naive)
-        :param connect: if ``True`` (the default), immediately
+        :param connect: If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
             on the first operation.
         :param type_registry: instance of
