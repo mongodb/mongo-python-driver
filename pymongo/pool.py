@@ -211,13 +211,14 @@ elif sys.platform == "darwin":
         "version": platform.mac_ver()[0],
     }
 elif sys.platform == "win32":
+    _ver = sys.getwindowsversion()
     _METADATA["os"] = {
         "type": "Windows",
         "name": "Windows",
         # Avoid using platform calls, see PYTHON-4455.
         "architecture": os.environ.get("PROCESSOR_ARCHITECTURE") or platform.machine(),
         # Windows patch level (e.g. 10-0-17763).
-        "version": "-".join(map(str, sys.getwindowsversion()[:3])),
+        "version": ".".join(map(str, _ver[:3])) + f"-SP{_ver[-1] or '0'}",
     }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
