@@ -37,6 +37,25 @@
       "options": {
         "tls": true
       }
+    },
+    {
+      "description": "Colon in a key value pair",
+      "uri": "mongodb://example.com?authMechanismProperties=TOKEN_RESOURCE:mongodb%3A%2F%2Ftest-cluster",
+      "valid": true,
+      "warning": false,
+      "hosts": [
+        {
+          "type": "hostname",
+          "host": "example.com",
+          "port": null
+        }
+      ],
+      "auth": null,
+      "options": {
+        "authmechanismProperties": {
+          "TOKEN_RESOURCE": "mongodb://test-cluster"
+        }
+      }
     }
   ]
 }
