@@ -74,7 +74,7 @@ replacements = {
     "async_from_client": "from_client",
 }
 
-docstring_replacements = {
+docstring_replacements: dict[tuple[str, str], str] = {
     ("MongoClient", "connect"): """If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
             on the first operation."""
@@ -195,10 +195,11 @@ def translate_docstrings(lines: list[str]) -> list[str]:
             if "Sync" in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
     for i in range(len(lines)):
-        for k in docstring_replacements:
+        for k in docstring_replacements:  # type: ignore[assignment]
             if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
                 lines[i] = lines[i].replace(
-                    f"**Not supported by {k[0]}**.", docstring_replacements[k]
+                    f"**Not supported by {k[0]}**.",
+                    docstring_replacements[k],  # type: ignore[index]
                 )
 
     return lines
