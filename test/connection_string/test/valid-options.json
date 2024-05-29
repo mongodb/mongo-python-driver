@@ -40,7 +40,7 @@
     },
     {
       "description": "Colon in a key value pair",
-      "uri": "mongodb://example.com?authMechanismProperties=TOKEN_RESOURCE:mongodb%3A%2F%2Ftest-cluster",
+      "uri": "mongodb://example.com?authMechanismProperties=TOKEN_RESOURCE:mongodb://test-cluster",
       "valid": true,
       "warning": false,
       "hosts": [
