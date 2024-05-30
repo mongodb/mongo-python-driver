@@ -95,7 +95,7 @@ def run_scenario_in_dir(target_workdir):
 def create_test(test, test_workdir):
     def run_scenario(self):
         compressors = (test.get("options") or {}).get("compressors", [])
-        if "snappy" in compressors and not _have_snappy:
+        if "snappy" in compressors and not _have_snappy():
             self.skipTest("This test needs the snappy module.")
         valid = True
         warning = False
