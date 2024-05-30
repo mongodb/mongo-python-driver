@@ -8,6 +8,20 @@ The handshake metadata for "os.name" on Windows has been simplified to "Windows"
 
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
 
+Changes in Version 4.7.3
+-------------------------
+
+The repr of ``bson.binary.Binary`` is now redacted when the subtype
+is SENSITIVE_SUBTYPE(8).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.3 release notes in JIRA:
+
 Changes in Version 4.7.2
 -------------------------
 

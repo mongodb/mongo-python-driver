@@ -364,4 +364,7 @@ class Binary(bytes):
         return not self == other
 
     def __repr__(self) -> str:
-        return f"Binary({bytes.__repr__(self)}, {self.__subtype})"
+        if self.__subtype == SENSITIVE_SUBTYPE:
+            return f"<Binary(REDACTED, {self.__subtype})>"
+        else:
+            return f"Binary({bytes.__repr__(self)}, {self.__subtype})"
