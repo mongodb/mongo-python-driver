@@ -17,8 +17,8 @@ import importlib.util
 import warnings
 from typing import Any, Iterable, Optional, Union
 
-from pymongo.common import _SENSITIVE_COMMANDS
 from pymongo.hello import HelloCompat
+from pymongo.helpers import _SENSITIVE_COMMANDS
 
 _HAVE_SNAPPY = importlib.util.find_spec("snappy") is not None
 _HAVE_ZLIB = importlib.util.find_spec("zlib") is not None

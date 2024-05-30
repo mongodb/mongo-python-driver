@@ -799,21 +799,6 @@ TIMEOUT_OPTIONS: list[str] = [
 
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
-# Note - to avoid bugs from forgetting which if these is all lowercase and
-# which are camelCase, and at the same time avoid having to add a test for
-# every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS: set = {
-    "authenticate",
-    "saslstart",
-    "saslcontinue",
-    "getnonce",
-    "createuser",
-    "updateuser",
-    "copydbgetnonce",
-    "copydbsaslstart",
-    "copydb",
-}
-
 
 def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
     """Validate optional authentication parameters."""
