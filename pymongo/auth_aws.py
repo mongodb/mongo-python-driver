@@ -15,7 +15,6 @@
 """MONGODB-AWS Authentication helpers."""
 from __future__ import annotations
 
-import importlib.util
 from typing import TYPE_CHECKING, Any, Mapping, Type
 
 import bson
@@ -27,19 +26,18 @@ if TYPE_CHECKING:
     from pymongo.auth import MongoCredential
     from pymongo.pool import Connection
 
-_HAVE_MONGODB_AWS = importlib.util.find_spec("pymongo_auth_aws") is not None
-
 
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
-    if not _HAVE_MONGODB_AWS:
+    try:
+        import pymongo_auth_aws  # type:ignore[import]
+    except ImportError:
         raise ConfigurationError(
             "MONGODB-AWS authentication requires pymongo-auth-aws: "
             "install with: python -m pip install 'pymongo[aws]'"
-        )
+        ) from None
 
-    # Delayed imports.
-    import pymongo_auth_aws  # type:ignore[import]
+    # Delayed import.
     from pymongo_auth_aws.auth import (  # type:ignore[import]
         set_cached_credentials,
         set_use_cached_credentials,

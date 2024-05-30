@@ -25,6 +25,7 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
+import cryptography.x509 as x509  # type:ignore[import]
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
@@ -39,7 +40,6 @@ from pymongo.write_concern import validate_boolean
 if TYPE_CHECKING:
     from ssl import VerifyMode
 
-    from cryptography.x509 import Certificate
 
 _T = TypeVar("_T")
 
@@ -179,7 +179,7 @@ class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self) -> None:
-        self.trusted_ca_certs: Optional[list[Certificate]] = None
+        self.trusted_ca_certs: Optional[list[x509.Certificate]] = None
         self.check_ocsp_endpoint: Optional[bool] = None
         self.ocsp_response_cache = _OCSPCache()
 
@@ -331,7 +331,6 @@ class SSLContext:
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
-        import cryptography.x509 as x509
 
         for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
             if encoding == "x509_asn":
@@ -401,7 +400,6 @@ class SSLContext:
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:
-                import service_identity
                 import service_identity.pyopenssl
 
                 try:

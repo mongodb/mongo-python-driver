@@ -15,7 +15,6 @@
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
 from __future__ import annotations
 
-import importlib.util
 import ipaddress
 import random
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -26,7 +25,14 @@ from pymongo.errors import ConfigurationError
 if TYPE_CHECKING:
     from dns import resolver
 
-_HAVE_DNSPYTHON = importlib.util.find_spec("dns") is not None
+
+def _have_dnspython() -> bool:
+    try:
+        import dns  # type:ignore[import]  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 # dnspython can return bytes or str from various parts

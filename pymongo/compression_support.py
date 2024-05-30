@@ -13,20 +13,42 @@
 # limitations under the License.
 from __future__ import annotations
 
-import importlib.util
 import warnings
 from typing import Any, Iterable, Optional, Union
 
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _SENSITIVE_COMMANDS
 
-_HAVE_SNAPPY = importlib.util.find_spec("snappy") is not None
-_HAVE_ZLIB = importlib.util.find_spec("zlib") is not None
-_HAVE_ZSTD = importlib.util.find_spec("zstandard") is not None
-
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
+
+
+def _have_snappy() -> bool:
+    try:
+        import snappy  # type:ignore[import]  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _have_zlib() -> bool:
+    try:
+        import zlib  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _have_zstd() -> bool:
+    try:
+        import zstandard  # type:ignore[import]  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[str]:
@@ -41,21 +63,21 @@ def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[s
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)
             warnings.warn(f"Unsupported compressor: {compressor}", stacklevel=2)
-        elif compressor == "snappy" and not _HAVE_SNAPPY:
+        elif compressor == "snappy" and not _have_snappy():
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with snappy is not available. "
                 "You must install the python-snappy module for snappy support.",
                 stacklevel=2,
             )
-        elif compressor == "zlib" and not _HAVE_ZLIB:
+        elif compressor == "zlib" and not _have_zlib():
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zlib is not available. "
                 "The zlib module is not available.",
                 stacklevel=2,
             )
-        elif compressor == "zstd" and not _HAVE_ZSTD:
+        elif compressor == "zstd" and not _have_zstd():
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zstandard is not available. "
