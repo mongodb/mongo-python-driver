@@ -44,7 +44,7 @@ def _have_zlib() -> bool:
 
 def _have_zstd() -> bool:
     try:
-        import zstandard  # type:ignore[import]  # noqa: F401
+        import zstandard  # noqa: F401
 
         return True
     except ImportError:
@@ -122,7 +122,7 @@ class SnappyContext:
 
     @staticmethod
     def compress(data: bytes) -> bytes:
-        import snappy  # type:ignore[import]
+        import snappy
 
         return snappy.compress(data)
 

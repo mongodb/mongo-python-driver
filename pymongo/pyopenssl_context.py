@@ -25,7 +25,7 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
-import cryptography.x509 as x509  # type:ignore[import]
+import cryptography.x509 as x509
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 

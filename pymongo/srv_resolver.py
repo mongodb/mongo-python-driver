@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 def _have_dnspython() -> bool:
     try:
-        import dns  # type:ignore[import]  # noqa: F401
+        import dns  # noqa: F401
 
         return True
     except ImportError:
