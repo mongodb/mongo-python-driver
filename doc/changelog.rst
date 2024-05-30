@@ -20,7 +20,7 @@ Issues Resolved
 See the `PyMongo 4.7.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 4.7.3 release notes in JIRA:
+.. _PyMongo 4.7.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39865
 
 Changes in Version 4.7.2
 -------------------------
