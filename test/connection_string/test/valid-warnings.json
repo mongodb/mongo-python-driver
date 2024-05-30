@@ -99,7 +99,13 @@
       "uri": "mongodb://example.com?authMechanismProperties=TOKEN_RESOURCE:mongodb://host1%2Chost2",
       "valid": true,
       "warning": true,
-      "hosts": null,
+      "hosts": [
+        {
+          "type": "hostname",
+          "host": "example.com",
+          "port": null
+        }
+      ],
       "auth": null,
       "options": null
     }
