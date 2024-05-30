@@ -26,6 +26,7 @@ from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
 import cryptography.x509 as x509
+import service_identity
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
@@ -400,13 +401,13 @@ class SSLContext:
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:
-                import service_identity.pyopenssl
+                from service_identity import pyopenssl
 
                 try:
                     if _is_ip_address(server_hostname):
-                        service_identity.pyopenssl.verify_ip_address(ssl_conn, server_hostname)
+                        pyopenssl.verify_ip_address(ssl_conn, server_hostname)
                     else:
-                        service_identity.pyopenssl.verify_hostname(ssl_conn, server_hostname)
+                        pyopenssl.verify_hostname(ssl_conn, server_hostname)
                 except (  # type:ignore[misc]
                     service_identity.SICertificateError,
                     service_identity.SIVerificationError,

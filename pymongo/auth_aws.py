@@ -31,11 +31,11 @@ def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
     """Authenticate using MONGODB-AWS."""
     try:
         import pymongo_auth_aws  # type:ignore[import]
-    except ImportError:
+    except ImportError as e:
         raise ConfigurationError(
             "MONGODB-AWS authentication requires pymongo-auth-aws: "
             "install with: python -m pip install 'pymongo[aws]'"
-        ) from None
+        ) from e
 
     # Delayed import.
     from pymongo_auth_aws.auth import (  # type:ignore[import]
