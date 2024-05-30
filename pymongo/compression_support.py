@@ -124,7 +124,7 @@ class ZstdContext:
     def compress(data: bytes) -> bytes:
         # ZstdCompressor is not thread safe.
         # TODO: Use a pool?
-        import zstandard  # type:ignore[import]
+        import zstandard
 
         return zstandard.ZstdCompressor().compress(data)
 
@@ -135,7 +135,7 @@ def decompress(data: bytes, compressor_id: int) -> bytes:
         # https://github.com/andrix/python-snappy/issues/65
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
-        import snappy  # type:ignore[import]
+        import snappy
 
         return snappy.uncompress(bytes(data))
     elif compressor_id == ZlibContext.compressor_id:
@@ -145,7 +145,7 @@ def decompress(data: bytes, compressor_id: int) -> bytes:
     elif compressor_id == ZstdContext.compressor_id:
         # ZstdDecompressor is not thread safe.
         # TODO: Use a pool?
-        import zstandard  # type:ignore[import]
+        import zstandard
 
         return zstandard.ZstdDecompressor().decompress(data)
     else:

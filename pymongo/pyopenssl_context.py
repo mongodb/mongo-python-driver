@@ -409,7 +409,7 @@ class SSLContext:
                         service_identity.pyopenssl.verify_ip_address(ssl_conn, server_hostname)
                     else:
                         service_identity.pyopenssl.verify_hostname(ssl_conn, server_hostname)
-                except (
+                except (  # type:ignore[misc]
                     service_identity.SICertificateError,
                     service_identity.SIVerificationError,
                 ) as exc:
