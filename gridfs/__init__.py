@@ -21,8 +21,6 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 """
 from __future__ import annotations
 
-import sys
-
 from gridfs.asynchronous.grid_file import (
     AsyncGridFS,
     AsyncGridFSBucket,
@@ -39,16 +37,6 @@ from gridfs.synchronous.grid_file import (
     GridOut,
     GridOutCursor,
 )
-
-# Export synchronous modules as top-level gridfs modules for compatibility
-_sync_modules = {}
-for _name in sys.modules:
-    if _name.startswith("gridfs.synchronous."):
-        _full_name = "{}.{}".format("gridfs", _name.rsplit(".")[-1])
-        _sync_modules[_full_name] = _name
-
-for _module in _sync_modules:
-    sys.modules[_module] = sys.modules[_sync_modules[_module]]
 
 __all__ = [
     "AsyncGridFS",

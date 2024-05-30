@@ -15,7 +15,6 @@
 """Python driver for MongoDB."""
 from __future__ import annotations
 
-import sys
 from typing import ContextManager, Optional
 
 __all__ = [
@@ -113,16 +112,6 @@ import pymongo.synchronous
 import pymongo.synchronous.encryption  # noqa: F401
 from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-
-# Export synchronous modules as top-level pymongo modules for compatibility
-_sync_modules = {}
-for _name in sys.modules:
-    if _name.startswith("pymongo.synchronous."):
-        _full_name = "{}.{}".format("pymongo", _name.rsplit(".")[-1])
-        _sync_modules[_full_name] = _name
-
-for _module in _sync_modules:
-    sys.modules[_module] = sys.modules[_sync_modules[_module]]
 
 version = __version__
 """Current version of PyMongo."""
