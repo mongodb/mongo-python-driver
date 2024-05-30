@@ -27,18 +27,18 @@ from test.utils import MockPool, wait_until
 
 from bson.objectid import ObjectId
 from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
-from pymongo.hello import Hello, HelloCompat
-from pymongo.read_preferences import ReadPreference, Secondary
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import common
+from pymongo.synchronous.hello import Hello, HelloCompat
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import PoolOptions
+from pymongo.synchronous.read_preferences import ReadPreference, Secondary
 from pymongo.synchronous.server import Server
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import any_server_selector, writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext, _filter_servers
-from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
 
 
 class SetNameDiscoverySettings(TopologySettings):

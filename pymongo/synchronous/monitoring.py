@@ -190,16 +190,18 @@ from collections import abc, namedtuple
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
-from pymongo.asynchronous.helpers import _handle_exception
-from pymongo.hello import Hello, HelloCompat
-from pymongo.typings import _Address, _DocumentOut
+from pymongo.synchronous.hello import Hello
+from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo.synchronous.helpers import _handle_exception
+from pymongo.synchronous.typings import _Address, _DocumentOut
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.server_description import ServerDescription
-    from pymongo.topology_description import TopologyDescription
+    from pymongo.synchronous.server_description import ServerDescription
+    from pymongo.synchronous.topology_description import TopologyDescription
 
+IS_SYNC = True
 
 _Listeners = namedtuple(
     "_Listeners",

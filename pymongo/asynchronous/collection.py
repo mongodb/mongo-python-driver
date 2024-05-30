@@ -49,6 +49,7 @@ from pymongo.asynchronous.aggregation import (
 )
 from pymongo.asynchronous.bulk import _Bulk
 from pymongo.asynchronous.change_stream import CollectionChangeStream
+from pymongo.asynchronous.collation import validate_collation_or_none
 from pymongo.asynchronous.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
@@ -73,7 +74,8 @@ from pymongo.asynchronous.operations import (
     _IndexList,
     _Op,
 )
-from pymongo.collation import validate_collation_or_none
+from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.asynchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
@@ -81,7 +83,6 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.read_concern import DEFAULT_READ_CONCERN
-from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
     BulkWriteResult,
     DeleteResult,
@@ -89,7 +90,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 IS_SYNC = False
@@ -127,10 +127,10 @@ if TYPE_CHECKING:
     import bson
     from pymongo.asynchronous.aggregation import _AggregationCommand
     from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.collation import Collation
     from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.server import Server
-    from pymongo.collation import Collation
     from pymongo.read_concern import ReadConcern
 
 

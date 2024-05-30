@@ -64,27 +64,27 @@ from pymongo.errors import (
     OperationFailure,
     ProtocolError,
 )
-from pymongo.hello import HelloCompat
-from pymongo.logger import (
+from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.logger import (
     _COMMAND_LOGGER,
     _CommandStatusMessage,
     _debug_log,
 )
-from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
-    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
-    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.synchronous.mongo_client import MongoClient
+    from pymongo.synchronous.monitoring import _EventListeners
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _Address, _DocumentOut
+    from pymongo.synchronous.read_preferences import _ServerMode
+    from pymongo.synchronous.typings import _Address, _DocumentOut
 
 
 IS_SYNC = True

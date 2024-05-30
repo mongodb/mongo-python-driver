@@ -34,6 +34,7 @@ from typing import (
 )
 
 from pymongo import ASCENDING
+from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.errors import (
     CursorNotFound,
     DuplicateKeyError,
@@ -45,13 +46,12 @@ from pymongo.errors import (
     WTimeoutError,
     _wtimeout_error,
 )
-from pymongo.hello import HelloCompat
 from pymongo.helpers_constants import _NOT_PRIMARY_CODES, _REAUTHENTICATION_REQUIRED_CODE
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.operations import _IndexList
+    from pymongo.asynchronous.typings import _DocumentOut
     from pymongo.cursor_shared import _Hint
-    from pymongo.typings import _DocumentOut
 
 IS_SYNC = False
 

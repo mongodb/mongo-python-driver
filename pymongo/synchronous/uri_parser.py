@@ -32,7 +32,6 @@ from typing import (
 from urllib.parse import unquote_plus
 
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 from pymongo.synchronous.client_options import _parse_ssl_options
 from pymongo.synchronous.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
@@ -41,7 +40,8 @@ from pymongo.synchronous.common import (
     _CaseInsensitiveDictionary,
     get_validated_options,
 )
-from pymongo.typings import _Address
+from pymongo.synchronous.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.synchronous.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext

@@ -111,7 +111,7 @@ import pymongo.synchronous
 
 # This is required to break an implicit import issue, can go away in 5.0
 import pymongo.synchronous.encryption  # noqa: F401
-from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 # Export synchronous modules as top-level pymongo modules for compatibility

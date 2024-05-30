@@ -40,7 +40,7 @@ from pymongo.synchronous.message import (
     _RawBatchGetMore,
 )
 from pymongo.synchronous.response import PinnedResponse
-from pymongo.typings import _Address, _DocumentOut, _DocumentType
+from pymongo.synchronous.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession

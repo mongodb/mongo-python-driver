@@ -30,7 +30,7 @@ from test.utils_selection_tests import create_selection_tests
 
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import writable_server_selector
+from pymongo.synchronous.server_selectors import writable_server_selector
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "max_staleness")

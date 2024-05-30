@@ -48,6 +48,7 @@ from pymongo.asynchronous.common import validate_string
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _check_write_command_response, anext
+from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -56,7 +57,6 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.read_preferences import ReadPreference, _ServerMode
 
 IS_SYNC = False
 

@@ -26,8 +26,8 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import MongoClient, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
-from pymongo.hello import HelloCompat
 from pymongo.synchronous import message
+from pymongo.synchronous.hello_compat import HelloCompat
 
 sys.path[0:0] = [""]
 

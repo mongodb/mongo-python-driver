@@ -56,21 +56,8 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     WaitQueueTimeoutError,
     _CertificateError,
 )
-from pymongo.hello import Hello, HelloCompat
 from pymongo.lock import _Condition, _create_lock, _Lock
-from pymongo.logger import (
-    _CONNECTION_LOGGER,
-    _ConnectionStatusMessage,
-    _debug_log,
-    _verbose_connection_error_reason,
-)
-from pymongo.monitoring import (
-    ConnectionCheckOutFailedReason,
-    ConnectionClosedReason,
-    _EventListeners,
-)
 from pymongo.network_layer import sendall
-from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
@@ -89,28 +76,42 @@ from pymongo.synchronous.common import (
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
 )
+from pymongo.synchronous.hello import Hello
+from pymongo.synchronous.hello_compat import HelloCompat
 from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.logger import (
+    _CONNECTION_LOGGER,
+    _ConnectionStatusMessage,
+    _debug_log,
+    _verbose_connection_error_reason,
+)
+from pymongo.synchronous.monitoring import (
+    ConnectionCheckOutFailedReason,
+    ConnectionClosedReason,
+    _EventListeners,
+)
 from pymongo.synchronous.network import command, receive_message
+from pymongo.synchronous.read_preferences import ReadPreference
 
 if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.compression_support import (
+    from pymongo.driver_info import DriverInfo
+    from pymongo.pyopenssl_context import SSLContext, _sslConn
+    from pymongo.read_concern import ReadConcern
+    from pymongo.server_api import ServerApi
+    from pymongo.synchronous.auth import MongoCredential, _AuthContext
+    from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.compression_support import (
         CompressionSettings,
         SnappyContext,
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.driver_info import DriverInfo
-    from pymongo.pyopenssl_context import SSLContext, _sslConn
-    from pymongo.read_concern import ReadConcern
-    from pymongo.read_preferences import _ServerMode
-    from pymongo.server_api import ServerApi
-    from pymongo.synchronous.auth import MongoCredential, _AuthContext
-    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.message import _OpMsg, _OpReply
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo.typings import ClusterTime, _Address, _CollationIn
+    from pymongo.synchronous.read_preferences import _ServerMode
+    from pymongo.synchronous.typings import ClusterTime, _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:

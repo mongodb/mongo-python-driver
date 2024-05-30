@@ -19,9 +19,9 @@ from collections.abc import Callable, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pymongo.asynchronous import common
-from pymongo.collation import validate_collation_or_none
+from pymongo.asynchronous.collation import validate_collation_or_none
+from pymongo.asynchronous.read_preferences import ReadPreference, _AggWritePref
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import ClientSession
@@ -29,9 +29,9 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.command_cursor import AsyncCommandCursor
     from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.read_preferences import _ServerMode
     from pymongo.asynchronous.server import Server
-    from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _DocumentType, _Pipeline
+    from pymongo.asynchronous.typings import _DocumentType, _Pipeline
 
 IS_SYNC = False
 

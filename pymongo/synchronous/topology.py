@@ -38,28 +38,28 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
-from pymongo.hello import Hello
 from pymongo.lock import _Condition, _create_lock, _Lock
-from pymongo.logger import (
+from pymongo.synchronous import common
+from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
+from pymongo.synchronous.hello import Hello
+from pymongo.synchronous.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
     _info_log,
     _ServerSelectionStatusMessage,
 )
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (
+from pymongo.synchronous.monitor import SrvMonitor
+from pymongo.synchronous.pool import Pool, PoolOptions
+from pymongo.synchronous.server import Server
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import (
     Selection,
     any_server_selector,
     arbiter_server_selector,
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous import common
-from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
-from pymongo.synchronous.monitor import SrvMonitor
-from pymongo.synchronous.pool import Pool, PoolOptions
-from pymongo.synchronous.server import Server
-from pymongo.topology_description import (
+from pymongo.synchronous.topology_description import (
     SRV_POLLING_TOPOLOGIES,
     TOPOLOGY_TYPE,
     TopologyDescription,
@@ -70,7 +70,7 @@ from pymongo.topology_description import (
 if TYPE_CHECKING:
     from bson import ObjectId
     from pymongo.synchronous.settings import TopologySettings
-    from pymongo.typings import ClusterTime, _Address
+    from pymongo.synchronous.typings import ClusterTime, _Address
 
 IS_SYNC = True
 

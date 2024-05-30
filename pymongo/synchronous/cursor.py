@@ -36,11 +36,11 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo.collation import validate_collation_or_none
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _create_lock, _Lock
 from pymongo.synchronous import helpers
+from pymongo.synchronous.collation import validate_collation_or_none
 from pymongo.synchronous.common import (
     validate_is_document_type,
     validate_is_mapping,
@@ -56,17 +56,17 @@ from pymongo.synchronous.message import (
     _RawBatchQuery,
 )
 from pymongo.synchronous.response import PinnedResponse
-from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+from pymongo.synchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
-    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
+    from pymongo.synchronous.read_preferences import _ServerMode
 
 IS_SYNC = True
 

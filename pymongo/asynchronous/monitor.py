@@ -24,14 +24,14 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 from pymongo import periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo.asynchronous import common
+from pymongo.asynchronous.hello import Hello
 from pymongo.asynchronous.pool import _is_faas
+from pymongo.asynchronous.read_preferences import MovingAverage
+from pymongo.asynchronous.server_description import ServerDescription
+from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
-from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
-from pymongo.read_preferences import MovingAverage
-from pymongo.server_description import ServerDescription
-from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.pool import Connection, Pool, _CancellationContext

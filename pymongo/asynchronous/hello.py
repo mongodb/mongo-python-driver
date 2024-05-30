@@ -22,16 +22,11 @@ from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
 from pymongo.asynchronous import common
+from pymongo.asynchronous.hello_compat import HelloCompat
+from pymongo.asynchronous.typings import ClusterTime, _DocumentType
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import ClusterTime, _DocumentType
 
-
-class HelloCompat:
-    CMD = "hello"
-    LEGACY_CMD = "ismaster"
-    PRIMARY = "isWritablePrimary"
-    LEGACY_PRIMARY = "ismaster"
-    LEGACY_ERROR = "not master"
+IS_SYNC = False
 
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:

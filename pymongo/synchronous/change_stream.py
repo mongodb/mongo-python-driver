@@ -22,7 +22,6 @@ from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (
     ConnectionFailure,
     CursorNotFound,
@@ -36,9 +35,10 @@ from pymongo.synchronous.aggregation import (
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
+from pymongo.synchronous.collation import validate_collation_or_none
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.operations import _Op
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.synchronous.typings import _CollationIn, _DocumentType, _Pipeline
 
 IS_SYNC = True
 

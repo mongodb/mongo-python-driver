@@ -54,9 +54,6 @@ from test import (
     sanitize_reply,
 )
 
-from pymongo import AsyncMongoClient
-from pymongo.asynchronous.database import AsyncDatabase
-
 try:
     import ipaddress
 
@@ -73,14 +70,14 @@ from urllib.parse import quote_plus
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.hello import HelloCompat
+from pymongo.asynchronous import common, message
+from pymongo.asynchronous.common import partition_node
+from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.hello_compat import HelloCompat
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous import common, message
-from pymongo.synchronous.common import partition_node
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.uri_parser import parse_uri
 
 if HAVE_SSL:
     import ssl

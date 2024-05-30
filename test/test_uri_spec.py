@@ -26,9 +26,9 @@ sys.path[0:0] = [""]
 
 from test import clear_warning_registry, unittest
 
-from pymongo.compression_support import _HAVE_SNAPPY
 from pymongo.synchronous.common import INTERNAL_URI_OPTION_NAME_MAP, validate
-from pymongo.synchronous.uri_parser import SRV_SCHEME, parse_uri
+from pymongo.synchronous.compression_support import _HAVE_SNAPPY
+from pymongo.synchronous.uri_parser import parse_uri
 
 CONN_STRING_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), os.path.join("connection_string", "test")

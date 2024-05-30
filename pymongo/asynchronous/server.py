@@ -28,10 +28,10 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo.asynchronous.helpers import _check_command_response, _handle_reauth
+from pymongo.asynchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.asynchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.asynchronous.response import PinnedResponse, Response
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -40,11 +40,11 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo.asynchronous.monitor import Monitor
+    from pymongo.asynchronous.monitoring import _EventListeners
     from pymongo.asynchronous.pool import Connection, Pool
-    from pymongo.monitoring import _EventListeners
-    from pymongo.read_preferences import _ServerMode
-    from pymongo.server_description import ServerDescription
-    from pymongo.typings import _DocumentOut
+    from pymongo.asynchronous.read_preferences import _ServerMode
+    from pymongo.asynchronous.server_description import ServerDescription
+    from pymongo.asynchronous.typings import _DocumentOut
 
 IS_SYNC = False
 

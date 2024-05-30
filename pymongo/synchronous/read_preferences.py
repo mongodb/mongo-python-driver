@@ -19,16 +19,18 @@ from __future__ import annotations
 from collections import abc
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
-from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import (
+from pymongo.synchronous import max_staleness_selectors
+from pymongo.synchronous.server_selectors import (
     member_with_tags_server_selector,
     secondary_with_tags_server_selector,
 )
 
 if TYPE_CHECKING:
-    from pymongo.server_selectors import Selection
-    from pymongo.topology_description import TopologyDescription
+    from pymongo.synchronous.server_selectors import Selection
+    from pymongo.synchronous.topology_description import TopologyDescription
+
+IS_SYNC = True
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1

@@ -29,6 +29,8 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
+IS_SYNC = False
+
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.

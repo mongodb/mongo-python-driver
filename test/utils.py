@@ -36,12 +36,17 @@ from typing import Any, List
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import AsyncMongoClient, monitoring, read_preferences
+from pymongo import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
-from pymongo.monitoring import (
+from pymongo.read_concern import ReadConcern
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous import monitoring, operations, read_preferences
+from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitoring import (
     _SENSITIVE_COMMANDS,
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
@@ -55,15 +60,10 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import any_server_selector, writable_server_selector
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import operations
-from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.operations import _Op
 from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
+from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.synchronous.server_selectors import any_server_selector, writable_server_selector
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.write_concern import WriteConcern
 

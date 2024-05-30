@@ -59,7 +59,6 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.read_concern import DEFAULT_READ_CONCERN
-from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
@@ -73,6 +72,7 @@ from pymongo.synchronous.helpers import next
 from pymongo.synchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.operations import *
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 IS_SYNC = True

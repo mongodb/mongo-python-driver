@@ -42,15 +42,15 @@ from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.asynchronous.auth import MECHANISMS
 from pymongo.asynchronous.auth_oidc import OIDCCallback
-from pymongo.compression_support import (
+from pymongo.asynchronous.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
 )
+from pymongo.asynchronous.monitoring import _validate_event_listeners
+from pymongo.asynchronous.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 

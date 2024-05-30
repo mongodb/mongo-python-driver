@@ -42,7 +42,6 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
-from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import common
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
 from pymongo.synchronous.common import (
@@ -59,12 +58,13 @@ from pymongo.synchronous.message import (
     _EncryptedBulkWriteContext,
     _randint,
 )
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
+    from pymongo.synchronous.typings import _DocumentOut, _DocumentType, _Pipeline
 
 IS_SYNC = True
 

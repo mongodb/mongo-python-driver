@@ -78,7 +78,18 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
-from pymongo.monitoring import (
+from pymongo.read_concern import ReadConcern
+from pymongo.results import BulkWriteResult
+from pymongo.server_api import ServerApi
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.change_stream import ChangeStream
+from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.encryption import ClientEncryption
+from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT
+from pymongo.synchronous.monitoring import (
     _SENSITIVE_COMMANDS,
     CommandFailedEvent,
     CommandListener,
@@ -114,22 +125,11 @@ from pymongo.monitoring import (
     _ServerEvent,
     _ServerHeartbeatEvent,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult
-from pymongo.server_api import ServerApi
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import Selection, writable_server_selector
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.change_stream import ChangeStream
-from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
-from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.encryption import ClientEncryption
-from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.synchronous.operations import SearchIndexModel
-from pymongo.topology_description import TopologyDescription
+from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import Selection, writable_server_selector
+from pymongo.synchronous.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 

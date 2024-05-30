@@ -29,10 +29,10 @@ from test.utils import MockPool, parse_read_preference
 
 from bson import json_util
 from pymongo.errors import AutoReconnect, ConfigurationError
-from pymongo.hello import Hello, HelloCompat
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.common import HEARTBEAT_FREQUENCY, clean_node
+from pymongo.synchronous.hello import Hello, HelloCompat
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
 

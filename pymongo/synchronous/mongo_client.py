@@ -72,33 +72,33 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _Lock, _release_locks
-from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
-from pymongo.monitoring import ConnectionClosedReason
-from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, common, database, helpers, message, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.synchronous.monitoring import ConnectionClosedReason
 from pymongo.synchronous.operations import _Op
+from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.synchronous.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
-from pymongo.synchronous.uri_parser import (
-    _check_options,
-    _handle_option_deprecations,
-    _handle_security_options,
-    _normalize_options,
-)
-from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import (
+from pymongo.synchronous.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.synchronous.typings import (
     ClusterTime,
     _Address,
     _CollationIn,
     _DocumentType,
     _DocumentTypeArg,
     _Pipeline,
+)
+from pymongo.synchronous.uri_parser import (
+    _check_options,
+    _handle_option_deprecations,
+    _handle_security_options,
+    _normalize_options,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
@@ -108,7 +108,6 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.read_concern import ReadConcern
-    from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor import _ConnectionManager
@@ -116,6 +115,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.response import Response
     from pymongo.synchronous.server import Server
+    from pymongo.synchronous.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
         pass

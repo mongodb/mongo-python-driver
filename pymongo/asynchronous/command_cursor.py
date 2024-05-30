@@ -38,9 +38,9 @@ from pymongo.asynchronous.message import (
     _RawBatchGetMore,
 )
 from pymongo.asynchronous.response import PinnedResponse
+from pymongo.asynchronous.typings import _Address, _DocumentOut, _DocumentType
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import ClientSession

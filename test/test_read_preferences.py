@@ -39,7 +39,10 @@ from test.version import Version
 
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.read_preferences import (
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.message import _maybe_add_read_preference
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.read_preferences import (
     MovingAverage,
     Nearest,
     Primary,
@@ -48,11 +51,8 @@ from pymongo.read_preferences import (
     Secondary,
     SecondaryPreferred,
 )
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import Selection, readable_server_selector
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.message import _maybe_add_read_preference
-from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import Selection, readable_server_selector
 from pymongo.write_concern import WriteConcern
 
 

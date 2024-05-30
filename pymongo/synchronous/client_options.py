@@ -18,27 +18,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
-from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _EventListener, _EventListeners
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import (
+from pymongo.ssl_support import get_ssl_context
+from pymongo.synchronous import common
+from pymongo.synchronous.auth import MongoCredential, _build_credentials_tuple
+from pymongo.synchronous.compression_support import CompressionSettings
+from pymongo.synchronous.monitoring import _EventListener, _EventListeners
+from pymongo.synchronous.pool import PoolOptions
+from pymongo.synchronous.read_preferences import (
     _ServerMode,
     make_read_preference,
     read_pref_mode_from_name,
 )
-from pymongo.server_selectors import any_server_selector
-from pymongo.ssl_support import get_ssl_context
-from pymongo.synchronous import common
-from pymongo.synchronous.auth import MongoCredential, _build_credentials_tuple
-from pymongo.synchronous.pool import PoolOptions
+from pymongo.synchronous.server_selectors import any_server_selector
 from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.synchronous.encryption_options import AutoEncryptionOpts
-    from pymongo.topology_description import _ServerSelector
+    from pymongo.synchronous.topology_description import _ServerSelector
 
 IS_SYNC = True
 

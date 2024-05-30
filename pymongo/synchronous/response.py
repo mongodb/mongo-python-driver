@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from pymongo.synchronous.message import _OpMsg, _OpReply
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _Address, _DocumentOut
+    from pymongo.synchronous.typings import _Address, _DocumentOut
 
 IS_SYNC = True
 

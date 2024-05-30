@@ -54,7 +54,14 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
+from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.logger import (
+    _COMMAND_LOGGER,
+    _CommandStatusMessage,
+    _debug_log,
+)
+from pymongo.asynchronous.read_preferences import ReadPreference
 from pymongo.errors import (
     ConfigurationError,
     CursorNotFound,
@@ -65,26 +72,19 @@ from pymongo.errors import (
     OperationFailure,
     ProtocolError,
 )
-from pymongo.hello import HelloCompat
-from pymongo.logger import (
-    _COMMAND_LOGGER,
-    _CommandStatusMessage,
-    _debug_log,
-)
-from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
+    from pymongo.asynchronous.monitoring import _EventListeners
     from pymongo.asynchronous.pool import Connection
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
-    from pymongo.monitoring import _EventListeners
+    from pymongo.asynchronous.read_preferences import _ServerMode
+    from pymongo.asynchronous.typings import _Address, _DocumentOut
     from pymongo.read_concern import ReadConcern
-    from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _DocumentOut
 
 
 IS_SYNC = False

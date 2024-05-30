@@ -83,8 +83,6 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import event_loggers, monitoring
-from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -98,27 +96,28 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.read_preferences import ReadPreference
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import message
+from pymongo.synchronous import event_loggers, message, monitoring
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.synchronous.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.synchronous.pool import (
     _METADATA,
     ENV_VAR_K8S,
     Connection,
     PoolOptions,
 )
+from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.synchronous.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.topology import _ErrorContext
-from pymongo.topology_description import TopologyDescription
+from pymongo.synchronous.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 
 
@@ -463,13 +462,13 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.srv_resolver import _resolve
+        from pymongo.synchronous.srv_resolver import _resolve
 
         patched_resolver = FunctionCallRecorder(_resolve)
-        pymongo.srv_resolver._resolve = patched_resolver
+        pymongo.synchronous.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():
-            pymongo.srv_resolver._resolve = _resolve
+            pymongo.synchronous.srv_resolver._resolve = _resolve
 
         self.addCleanup(reset_resolver)
 

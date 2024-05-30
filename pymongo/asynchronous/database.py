@@ -41,10 +41,10 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.asynchronous.operations import _Op
+from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.asynchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
-from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
@@ -151,7 +151,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
           >>> db1.read_preference
           Primary()
-          >>> from pymongo.read_preferences import Secondary
+          >>> from pymongo.asynchronous.read_preferences import Secondary
           >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()

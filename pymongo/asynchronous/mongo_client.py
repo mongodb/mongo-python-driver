@@ -64,9 +64,22 @@ from pymongo.asynchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.asynchronous.client_options import ClientOptions
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.asynchronous.monitoring import ConnectionClosedReason
 from pymongo.asynchronous.operations import _Op
+from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.asynchronous.server_selectors import writable_server_selector
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.asynchronous.typings import (
+    ClusterTime,
+    _Address,
+    _CollationIn,
+    _DocumentType,
+    _DocumentTypeArg,
+    _Pipeline,
+)
 from pymongo.asynchronous.uri_parser import (
     _check_options,
     _handle_option_deprecations,
@@ -87,20 +100,7 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
-from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
-from pymongo.monitoring import ConnectionClosedReason
-from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import (
-    ClusterTime,
-    _Address,
-    _CollationIn,
-    _DocumentType,
-    _DocumentTypeArg,
-    _Pipeline,
-)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
@@ -115,8 +115,8 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.response import Response
     from pymongo.asynchronous.server import Server
+    from pymongo.asynchronous.server_selectors import Selection
     from pymongo.read_concern import ReadConcern
-    from pymongo.server_selectors import Selection
 
     if sys.version_info[:2] >= (3, 9):
         pass

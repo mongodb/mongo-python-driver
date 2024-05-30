@@ -51,6 +51,7 @@ from pymongo.asynchronous.message import (
     _EncryptedBulkWriteContext,
     _randint,
 )
+from pymongo.asynchronous.read_preferences import ReadPreference
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -58,13 +59,12 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
-from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.pool import Connection
-    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
+    from pymongo.asynchronous.typings import _DocumentOut, _DocumentType, _Pipeline
 
 IS_SYNC = False
 

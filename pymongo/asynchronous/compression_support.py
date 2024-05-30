@@ -17,8 +17,8 @@ import warnings
 from typing import Any, Iterable, Optional, Union
 
 from pymongo._lazy_import import lazy_import
-from pymongo.hello import HelloCompat
-from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.asynchronous.hello_compat import HelloCompat
+from pymongo.asynchronous.monitoring import _SENSITIVE_COMMANDS
 
 try:
     snappy = lazy_import("snappy")
@@ -40,6 +40,8 @@ try:
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False
+
+IS_SYNC = False
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}

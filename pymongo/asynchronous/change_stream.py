@@ -28,9 +28,10 @@ from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
+from pymongo.asynchronous.collation import validate_collation_or_none
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.operations import _Op
-from pymongo.collation import validate_collation_or_none
+from pymongo.asynchronous.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.errors import (
     ConnectionFailure,
     CursorNotFound,
@@ -38,7 +39,6 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 IS_SYNC = False
 

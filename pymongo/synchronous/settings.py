@@ -21,11 +21,11 @@ from typing import Any, Collection, Optional, Type, Union
 
 from bson.objectid import ObjectId
 from pymongo.errors import ConfigurationError
-from pymongo.server_description import ServerDescription
 from pymongo.synchronous import common, monitor, pool
 from pymongo.synchronous.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.synchronous.pool import Pool, PoolOptions
-from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
 IS_SYNC = True
 

@@ -30,7 +30,7 @@ from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.typings import _DocumentTypeArg
+    from pymongo.asynchronous.typings import _DocumentTypeArg
 
 IS_SYNC = False
 

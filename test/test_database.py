@@ -48,11 +48,11 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import helpers
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 

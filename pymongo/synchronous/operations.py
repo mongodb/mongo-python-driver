@@ -28,11 +28,11 @@ from typing import (
 )
 
 from bson.raw_bson import RawBSONDocument
-from pymongo.collation import validate_collation_or_none
 from pymongo.synchronous import helpers
+from pymongo.synchronous.collation import validate_collation_or_none
 from pymongo.synchronous.common import validate_is_mapping, validate_list
 from pymongo.synchronous.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.synchronous.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:

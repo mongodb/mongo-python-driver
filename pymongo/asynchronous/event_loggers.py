@@ -30,7 +30,9 @@ from __future__ import annotations
 
 import logging
 
-from pymongo import monitoring
+from pymongo.asynchronous import monitoring
+
+IS_SYNC = False
 
 
 class CommandLogger(monitoring.CommandListener):

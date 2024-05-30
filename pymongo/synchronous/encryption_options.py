@@ -30,7 +30,7 @@ from pymongo.synchronous.uri_parser import _parse_kms_tls_options
 
 if TYPE_CHECKING:
     from pymongo.synchronous.mongo_client import MongoClient
-    from pymongo.typings import _DocumentTypeArg
+    from pymongo.synchronous.typings import _DocumentTypeArg
 
 IS_SYNC = True
 

@@ -23,7 +23,17 @@ import socket
 import typing
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Mapping, MutableMapping, Optional, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Mapping,
+    MutableMapping,
+    Optional,
+    cast,
+)
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -40,8 +50,8 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
 if TYPE_CHECKING:
+    from pymongo.asynchronous.hello import Hello
     from pymongo.asynchronous.pool import Connection
-    from pymongo.hello import Hello
 
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
@@ -238,7 +248,7 @@ def _xor(fir: bytes, sec: bytes) -> bytes:
     return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
 
 
-def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:
+def _parse_scram_response(response: bytes) -> Dict[bytes, bytes]:
     """Split a scram response into key, value pairs."""
     return dict(
         typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))

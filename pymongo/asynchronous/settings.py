@@ -23,9 +23,9 @@ from bson.objectid import ObjectId
 from pymongo.asynchronous import common, monitor, pool
 from pymongo.asynchronous.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.asynchronous.pool import Pool, PoolOptions
+from pymongo.asynchronous.server_description import ServerDescription
+from pymongo.asynchronous.topology_description import TOPOLOGY_TYPE, _ServerSelector
 from pymongo.errors import ConfigurationError
-from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
 IS_SYNC = False
 

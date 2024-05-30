@@ -158,6 +158,7 @@ from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
 from pymongo.asynchronous.operations import _Op
+from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -168,7 +169,6 @@ from pymongo.errors import (
 )
 from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
@@ -177,7 +177,7 @@ if TYPE_CHECKING:
 
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.server import Server
-    from pymongo.typings import ClusterTime, _Address
+    from pymongo.asynchronous.typings import ClusterTime, _Address
 
 IS_SYNC = False
 

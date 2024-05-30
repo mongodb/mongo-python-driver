@@ -79,8 +79,8 @@ from pymongo.synchronous.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.operations import UpdateOne
 from pymongo.synchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
+from pymongo.synchronous.typings import _DocumentType, _DocumentTypeArg
 from pymongo.synchronous.uri_parser import parse_host
-from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:

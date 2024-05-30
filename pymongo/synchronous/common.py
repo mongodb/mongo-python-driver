@@ -40,18 +40,18 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.compression_support import (
-    validate_compressors,
-    validate_zlib_compression_level,
-)
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
 from pymongo.synchronous.auth import MECHANISMS
 from pymongo.synchronous.auth_oidc import OIDCCallback
+from pymongo.synchronous.compression_support import (
+    validate_compressors,
+    validate_zlib_compression_level,
+)
+from pymongo.synchronous.monitoring import _validate_event_listeners
+from pymongo.synchronous.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:

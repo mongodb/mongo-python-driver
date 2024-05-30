@@ -47,14 +47,14 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.monitoring import (
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitoring import (
     CommandSucceededEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,

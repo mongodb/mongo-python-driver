@@ -39,9 +39,9 @@ from pymongo.asynchronous.common import (
     _CaseInsensitiveDictionary,
     get_validated_options,
 )
+from pymongo.asynchronous.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.asynchronous.typings import _Address
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
-from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext

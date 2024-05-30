@@ -33,15 +33,12 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot
-from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     ProtocolError,
     _OperationCancelled,
 )
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _POLL_TIMEOUT,
     _UNPACK_COMPRESSION_HEADER,
@@ -53,18 +50,21 @@ from pymongo.socket_checker import _errno_from_exception
 from pymongo.synchronous import helpers as _async_helpers
 from pymongo.synchronous import message as _async_message
 from pymongo.synchronous.common import MAX_MESSAGE_SIZE
+from pymongo.synchronous.compression_support import _NO_COMPRESSION, decompress
+from pymongo.synchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.synchronous.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.synchronous.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
     from bson import CodecOptions
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
-    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
-    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.synchronous.mongo_client import MongoClient
+    from pymongo.synchronous.monitoring import _EventListeners
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.synchronous.read_preferences import _ServerMode
+    from pymongo.synchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 IS_SYNC = True
