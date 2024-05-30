@@ -40,7 +40,7 @@ from pymongo.synchronous.common import (
     _CaseInsensitiveDictionary,
     get_validated_options,
 )
-from pymongo.synchronous.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.synchronous.srv_resolver import _have_dnspython, _SrvResolver
 from pymongo.synchronous.typings import _Address
 
 if TYPE_CHECKING:
@@ -473,7 +473,7 @@ def parse_uri(
         is_srv = False
         scheme_free = uri[SCHEME_LEN:]
     elif uri.startswith(SRV_SCHEME):
-        if not _HAVE_DNSPYTHON:
+        if not _have_dnspython():
             python_path = sys.executable or "python"
             raise ConfigurationError(
                 'The "dnspython" module must be '

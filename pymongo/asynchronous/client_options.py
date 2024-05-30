@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo.asynchronous import common
-from pymongo.asynchronous.auth import MongoCredential, _build_credentials_tuple
 from pymongo.asynchronous.compression_support import CompressionSettings
 from pymongo.asynchronous.monitoring import _EventListener, _EventListeners
 from pymongo.asynchronous.pool import PoolOptions
@@ -36,6 +35,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
+    from pymongo.asynchronous.auth import MongoCredential
     from pymongo.asynchronous.encryption_options import AutoEncryptionOpts
     from pymongo.asynchronous.topology_description import _ServerSelector
     from pymongo.pyopenssl_context import SSLContext
@@ -50,6 +50,8 @@ def _parse_credentials(
     mechanism = options.get("authmechanism", "DEFAULT" if username else None)
     source = options.get("authsource")
     if username or mechanism:
+        from pymongo.asynchronous.auth import _build_credentials_tuple
+
         return _build_credentials_tuple(mechanism, source, username, password, options, database)
     return None
 

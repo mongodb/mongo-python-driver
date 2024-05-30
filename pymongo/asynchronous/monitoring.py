@@ -194,6 +194,7 @@ from pymongo.asynchronous.hello import Hello
 from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.asynchronous.helpers import _handle_exception
 from pymongo.asynchronous.typings import _Address, _DocumentOut
+from pymongo.helpers_constants import _SENSITIVE_COMMANDS
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -507,22 +508,6 @@ def register(listener: _EventListener) -> None:
         _LISTENERS.topology_listeners.append(listener)
     if isinstance(listener, ConnectionPoolListener):
         _LISTENERS.cmap_listeners.append(listener)
-
-
-# Note - to avoid bugs from forgetting which if these is all lowercase and
-# which are camelCase, and at the same time avoid having to add a test for
-# every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS: set = {
-    "authenticate",
-    "saslstart",
-    "saslcontinue",
-    "getnonce",
-    "createuser",
-    "updateuser",
-    "copydbgetnonce",
-    "copydbsaslstart",
-    "copydb",
-}
 
 
 # The "hello" command is also deemed sensitive when attempting speculative

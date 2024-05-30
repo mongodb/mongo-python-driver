@@ -62,7 +62,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
-from pymongo.synchronous import auth, helpers
+from pymongo.synchronous import helpers
 from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.common import (
     MAX_BSON_SIZE,
@@ -864,6 +864,8 @@ class Connection:
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
+            from pymongo.synchronous import auth
+
             auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
@@ -1095,6 +1097,8 @@ class Connection:
         if not self.ready:
             creds = self.opts._credentials
             if creds:
+                from pymongo.synchronous import auth
+
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:

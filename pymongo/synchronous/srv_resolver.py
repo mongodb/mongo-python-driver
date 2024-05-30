@@ -17,19 +17,24 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pymongo.errors import ConfigurationError
 from pymongo.synchronous.common import CONNECT_TIMEOUT
 
-try:
+if TYPE_CHECKING:
     from dns import resolver
 
-    _HAVE_DNSPYTHON = True
-except ImportError:
-    _HAVE_DNSPYTHON = False
-
 IS_SYNC = True
+
+
+def _have_dnspython() -> bool:
+    try:
+        import dns  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 # dnspython can return bytes or str from various parts
@@ -42,6 +47,8 @@ def maybe_decode(text: Union[str, bytes]) -> str:
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
 def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
+    from dns import resolver
+
     if hasattr(resolver, "resolve"):
         # dnspython >= 2
         return resolver.resolve(*args, **kwargs)
@@ -83,6 +90,8 @@ class _SrvResolver:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
 
     def get_options(self) -> Optional[str]:
+        from dns import resolver
+
         try:
             results = _resolve(self.__fqdn, "TXT", lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):

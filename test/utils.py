@@ -39,6 +39,7 @@ from bson.son import SON
 from pymongo import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.helpers_constants import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.server_type import SERVER_TYPE
@@ -47,7 +48,6 @@ from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.hello_compat import HelloCompat
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.monitoring import (
-    _SENSITIVE_COMMANDS,
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,

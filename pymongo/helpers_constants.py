@@ -55,3 +55,18 @@ _REAUTHENTICATION_REQUIRED_CODE: int = 391
 
 # Server code raised when authentication fails.
 _AUTHENTICATION_FAILURE_CODE: int = 18
+
+# Note - to avoid bugs from forgetting which if these is all lowercase and
+# which are camelCase, and at the same time avoid having to add a test for
+# every command, use all lowercase here and test against command_name.lower().
+_SENSITIVE_COMMANDS: set = {
+    "authenticate",
+    "saslstart",
+    "saslcontinue",
+    "getnonce",
+    "createuser",
+    "updateuser",
+    "copydbgetnonce",
+    "copydbsaslstart",
+    "copydb",
+}

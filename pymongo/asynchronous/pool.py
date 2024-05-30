@@ -42,7 +42,7 @@ from typing import (
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import __version__, _csot
-from pymongo.asynchronous import auth, helpers
+from pymongo.asynchronous import helpers
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.common import (
     MAX_BSON_SIZE,
@@ -864,6 +864,8 @@ class Connection:
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
+            from pymongo.asynchronous import auth
+
             auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
@@ -1095,6 +1097,8 @@ class Connection:
         if not self.ready:
             creds = self.opts._credentials
             if creds:
+                from pymongo.asynchronous import auth
+
                 await auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:

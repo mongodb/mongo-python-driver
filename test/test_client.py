@@ -101,7 +101,7 @@ from pymongo.synchronous import event_loggers, message, monitoring
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
-from pymongo.synchronous.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
+from pymongo.synchronous.compression_support import _have_snappy, _have_zstd
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
@@ -1581,7 +1581,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
 
-        if not _HAVE_SNAPPY:
+        if not _have_snappy():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
                 uri = "mongodb://localhost:27017/?compressors=snappy"
@@ -1598,7 +1598,7 @@ class TestClient(IntegrationTest):
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ["snappy", "zlib"])
 
-        if not _HAVE_ZSTD:
+        if not _have_zstd():
             uri = "mongodb://localhost:27017/?compressors=zstd"
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)

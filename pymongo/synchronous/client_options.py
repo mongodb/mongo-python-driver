@@ -22,7 +22,6 @@ from pymongo.errors import ConfigurationError
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.synchronous import common
-from pymongo.synchronous.auth import MongoCredential, _build_credentials_tuple
 from pymongo.synchronous.compression_support import CompressionSettings
 from pymongo.synchronous.monitoring import _EventListener, _EventListeners
 from pymongo.synchronous.pool import PoolOptions
@@ -37,6 +36,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.pyopenssl_context import SSLContext
+    from pymongo.synchronous.auth import MongoCredential
     from pymongo.synchronous.encryption_options import AutoEncryptionOpts
     from pymongo.synchronous.topology_description import _ServerSelector
 
@@ -50,6 +50,8 @@ def _parse_credentials(
     mechanism = options.get("authmechanism", "DEFAULT" if username else None)
     source = options.get("authsource")
     if username or mechanism:
+        from pymongo.synchronous.auth import _build_credentials_tuple
+
         return _build_credentials_tuple(mechanism, source, username, password, options, database)
     return None
 
