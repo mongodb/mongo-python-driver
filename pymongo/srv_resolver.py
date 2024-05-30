@@ -15,19 +15,18 @@
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
 from __future__ import annotations
 
+import importlib.util
 import ipaddress
 import random
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
-try:
+if TYPE_CHECKING:
     from dns import resolver
 
-    _HAVE_DNSPYTHON = True
-except ImportError:
-    _HAVE_DNSPYTHON = False
+_HAVE_DNSPYTHON = importlib.util.find_spec("dns") is not None
 
 
 # dnspython can return bytes or str from various parts
@@ -40,6 +39,8 @@ def maybe_decode(text: Union[str, bytes]) -> str:
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
 def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
+    from dns import resolver
+
     if hasattr(resolver, "resolve"):
         # dnspython >= 2
         return resolver.resolve(*args, **kwargs)

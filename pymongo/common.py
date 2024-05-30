@@ -40,8 +40,6 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.auth import MECHANISMS
-from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -380,6 +378,8 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
+    from pymongo.auth import MECHANISMS
+
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
     return value
@@ -444,6 +444,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
+                from pymongo.auth_oidc import OIDCCallback
+
                 if not isinstance(value, OIDCCallback):
                     raise ValueError("callback must be an OIDCCallback object")
                 props[key] = value
@@ -796,6 +798,21 @@ TIMEOUT_OPTIONS: list[str] = [
 ]
 
 _AUTH_OPTIONS = frozenset(["authmechanismproperties"])
+
+# Note - to avoid bugs from forgetting which if these is all lowercase and
+# which are camelCase, and at the same time avoid having to add a test for
+# every command, use all lowercase here and test against command_name.lower().
+_SENSITIVE_COMMANDS: set = {
+    "authenticate",
+    "saslstart",
+    "saslcontinue",
+    "getnonce",
+    "createuser",
+    "updateuser",
+    "copydbgetnonce",
+    "copydbsaslstart",
+    "copydb",
+}
 
 
 def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
