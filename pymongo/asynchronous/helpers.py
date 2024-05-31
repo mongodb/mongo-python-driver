@@ -15,6 +15,7 @@
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 from __future__ import annotations
 
+import builtins
 import sys
 import traceback
 from collections import abc
@@ -314,4 +315,7 @@ def _handle_reauth(func: F) -> F:
 
 async def anext(cls: Any) -> Any:
     """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
-    return await cls.__anext__()
+    if sys.version_info >= (3, 10):
+        return await builtins.anext(cls)
+    else:
+        return await cls.__anext__()
