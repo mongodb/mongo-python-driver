@@ -2,6 +2,7 @@ include README.md
 include LICENSE
 include THIRD-PARTY-NOTICES
 include *.ini
+include sbom.json
 include requirements.txt
 exclude .coveragerc
 exclude .git-blame-ignore-revs
