@@ -80,6 +80,8 @@ docstring_replacements: dict[tuple[str, str], str] = {
             on the first operation."""
 }
 
+type_replacements = {"_Condition": "threading.Condition"}
+
 _pymongo_base = "./pymongo/asynchronous/"
 _gridfs_base = "./gridfs/asynchronous/"
 _test_base = "./test/asynchronous/"
@@ -145,9 +147,11 @@ def process_files(files: list[str]) -> None:
                 lines = f.readlines()
                 lines = apply_is_sync(lines)
                 lines = translate_coroutine_types(lines)
-                lines = remove_async_sleeps(lines)
+                lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
+                translate_locks(lines)
+                translate_types(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -173,9 +177,48 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
     return lines
 
 
-def remove_async_sleeps(lines: list[str]) -> list[str]:
-    sleeps = [line for line in lines if "asyncio.sleep(0)" in line]
-    return [line for line in lines if line not in sleeps]
+def translate_locks(lines: list[str]) -> list[str]:
+    lock_lines = [line for line in lines if "_Lock(" in line]
+    cond_lines = [line for line in lines if "_Condition(" in line]
+    for line in lock_lines:
+        res = re.search(r"_Lock\(([^()]*\(\))\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            lines[index] = line.replace(old, res[1])
+    for line in cond_lines:
+        res = re.search(r"_Condition\(([^()]*\([^()]*\))\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            lines[index] = line.replace(old, res[1])
+
+    return lines
+
+
+def translate_types(lines: list[str]) -> list[str]:
+    for k, v in type_replacements.items():
+        matches = [line for line in lines if k in line and "import" not in line]
+        for line in matches:
+            index = lines.index(line)
+            lines[index] = line.replace(k, v)
+    return lines
+
+
+def translate_async_sleeps(lines: list[str]) -> list[str]:
+    blocking_sleeps = [line for line in lines if "asyncio.sleep(0)" in line]
+    lines = [line for line in lines if line not in blocking_sleeps]
+    sleeps = [line for line in lines if "asyncio.sleep" in line]
+
+    for line in sleeps:
+        res = re.search(r"asyncio.sleep\(([^()]*)\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            new = f"time.sleep({res[1]})"
+            lines[index] = line.replace(old, new)
+
+    return lines
 
 
 def translate_docstrings(lines: list[str]) -> list[str]:

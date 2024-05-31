@@ -35,18 +35,7 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-async def async_send(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> int:
-    socket.setblocking(False)
-    timeout = socket.gettimeout()
-    socket.settimeout(0.0)
-    try:
-        return socket.send(buf, flags)
-    finally:
-        socket.settimeout(timeout)
-        socket.setblocking(True)
-
-
-async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
+async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes) -> None:
     timeout = socket.gettimeout()
     socket.settimeout(0.0)
     loop = asyncio.get_event_loop()
@@ -56,5 +45,5 @@ async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flag
         socket.settimeout(timeout)
 
 
-def sendall(socket: Union[socket.socket, _sslConn], buf: bytes, flags: int = 0) -> None:  # noqa: ARG001
+def sendall(socket: Union[socket.socket, _sslConn], buf: bytes) -> None:
     socket.sendall(buf)

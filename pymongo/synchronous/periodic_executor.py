@@ -23,7 +23,9 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo.lock import _ALock, _create_lock
+from pymongo.lock import _create_lock
+
+IS_SYNC = True
 
 
 class PeriodicExecutor:
@@ -34,7 +36,7 @@ class PeriodicExecutor:
         target: Any,
         name: Optional[str] = None,
     ):
-        """ "Run a target function periodically on a background thread.
+        """Run a target function periodically on a background thread.
 
         If the target's return value is false, the executor stops.
 
@@ -58,14 +60,12 @@ class PeriodicExecutor:
         self._skip_sleep = False
         self._thread_will_exit = False
         self._lock = _create_lock()
-        self._alock = _ALock(self._lock)
-        self._is_coroutine = asyncio.iscoroutinefunction(self._target)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
     def _run_async(self) -> None:
-        asyncio.run(self._a_run())
+        asyncio.run(self._run())  # type: ignore[func-returns-value]
 
     def open(self) -> None:
         """Start. Multiple calls have no effect.
@@ -94,10 +94,10 @@ class PeriodicExecutor:
             pass
 
         if not started:
-            if self._is_coroutine:
-                thread = threading.Thread(target=self._run_async, name=self._name)
-            else:
+            if IS_SYNC:
                 thread = threading.Thread(target=self._run, name=self._name)
+            else:
+                thread = threading.Thread(target=self._run_async, name=self._name)
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
@@ -137,39 +137,8 @@ class PeriodicExecutor:
     def skip_sleep(self) -> None:
         self._skip_sleep = True
 
-    async def _a_should_stop(self) -> bool:
-        async with self._alock:
-            if self._stopped:
-                self._thread_will_exit = True
-                return True
-            return False
-
-    async def _a_run(self) -> None:
-        while not await self._a_should_stop():
-            try:
-                if not await self._target():
-                    self._stopped = True
-                    break
-            except BaseException:
-                async with self._alock:
-                    self._stopped = True
-                    self._thread_will_exit = True
-
-                raise
-
-            if self._skip_sleep:
-                self._skip_sleep = False
-            else:
-                deadline = time.monotonic() + self._interval
-                while not self._stopped and time.monotonic() < deadline:
-                    await asyncio.sleep(self._min_interval)
-                    if self._event:
-                        break  # Early wake.
-
-            self._event = False
-
     def _should_stop(self) -> bool:
-        with self._alock:
+        with self._lock:
             if self._stopped:
                 self._thread_will_exit = True
                 return True

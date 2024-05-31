@@ -58,8 +58,16 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, helpers_constants, periodic_executor
-from pymongo.asynchronous import client_session, common, database, helpers, message, uri_parser
+from pymongo import _csot, helpers_constants
+from pymongo.asynchronous import (
+    client_session,
+    common,
+    database,
+    helpers,
+    message,
+    periodic_executor,
+    uri_parser,
+)
 from pymongo.asynchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.asynchronous.client_options import ClientOptions
 from pymongo.asynchronous.client_session import _EmptyServerSession
@@ -1668,7 +1676,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            async with operation.conn_mgr.alock:
+            async with operation.conn_mgr._alock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return await server.run_operation(
@@ -1901,7 +1909,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                async with conn_mgr.alock:  # TODO: ASYNC LOCK
+                async with conn_mgr._alock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None

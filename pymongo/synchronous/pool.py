@@ -56,7 +56,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     WaitQueueTimeoutError,
     _CertificateError,
 )
-from pymongo.lock import _Condition, _create_lock, _Lock
+from pymongo.lock import _create_lock
 from pymongo.network_layer import sendall
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -431,7 +431,7 @@ def _raise_connection_failure(
         raise AutoReconnect(msg) from error
 
 
-def _cond_wait(condition: _Condition, deadline: Optional[float]) -> bool:
+def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
     timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
 
@@ -1430,7 +1430,7 @@ class Pool:
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
-        self.lock = _Lock(_create_lock())
+        self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1455,7 +1455,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = _Condition(threading.Condition(self.lock))  # type: ignore[arg-type]
+        self.size_cond = threading.Condition(self.lock)  # type: ignore[arg-type]
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1464,7 +1464,6 @@ class Pool:
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
         self._max_connecting_cond = threading.Condition(self.lock)  # type: ignore[arg-type]
-        self._amax_connecting_cond = _Condition(self._max_connecting_cond)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
@@ -1547,7 +1546,7 @@ class Pool:
             if close:
                 self.state = PoolState.CLOSED
             # Clear the wait queue
-            self._amax_connecting_cond.notify_all()
+            self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
             if interrupt_connections:
@@ -1645,7 +1644,7 @@ class Pool:
                 self.requests += 1
             incremented = False
             try:
-                with self._amax_connecting_cond:
+                with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
                     if self._pending >= self._max_connecting:
@@ -1664,9 +1663,9 @@ class Pool:
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
-                    with self._amax_connecting_cond:
+                    with self._max_connecting_cond:
                         self._pending -= 1
-                        self._amax_connecting_cond.notify()
+                        self._max_connecting_cond.notify()
 
                 with self.size_cond:
                     self.requests -= 1
@@ -1909,14 +1908,14 @@ class Pool:
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
-                with self._amax_connecting_cond:
+                with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
-                        if not _cond_wait(self._amax_connecting_cond, deadline):
+                        if not _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self._max_connecting:
-                                self._amax_connecting_cond.notify()
+                                self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
                         self._raise_if_not_ready(checkout_started_time, emit_event=False)
@@ -1933,9 +1932,9 @@ class Pool:
                     try:
                         conn = self.connect(handler=handler)
                     finally:
-                        with self._amax_connecting_cond:
+                        with self._max_connecting_cond:
                             self._pending -= 1
-                            self._amax_connecting_cond.notify()
+                            self._max_connecting_cond.notify()
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.
@@ -2028,7 +2027,7 @@ class Pool:
                         conn.update_is_writable(bool(self.is_writable))
                         self.conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
-                        self._amax_connecting_cond.notify()
+                        self._max_connecting_cond.notify()
 
         with self.size_cond:
             if txn:

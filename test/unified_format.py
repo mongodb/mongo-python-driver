@@ -130,7 +130,7 @@ from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.synchronous.server_description import ServerDescription
 from pymongo.synchronous.server_selectors import Selection, writable_server_selector
 from pymongo.synchronous.topology_description import TopologyDescription
-from pymongo.typings import _Address
+from pymongo.synchronous.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)

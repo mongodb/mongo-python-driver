@@ -1467,8 +1467,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(self.lock)  # type: ignore[arg-type]
-        self._amax_connecting_cond = _ACondition(self._max_connecting_cond)
+        self._max_connecting_cond = _ACondition(threading.Condition(self.lock))  # type: ignore[arg-type]
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
@@ -1551,7 +1550,7 @@ class Pool:
             if close:
                 self.state = PoolState.CLOSED
             # Clear the wait queue
-            self._amax_connecting_cond.notify_all()
+            self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
             if interrupt_connections:
@@ -1651,7 +1650,7 @@ class Pool:
                 self.requests += 1
             incremented = False
             try:
-                async with self._amax_connecting_cond:
+                async with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
                     if self._pending >= self._max_connecting:
@@ -1670,9 +1669,9 @@ class Pool:
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
-                    async with self._amax_connecting_cond:
+                    async with self._max_connecting_cond:
                         self._pending -= 1
-                        self._amax_connecting_cond.notify()
+                        self._max_connecting_cond.notify()
 
                 async with self.size_cond:
                     self.requests -= 1
@@ -1915,14 +1914,14 @@ class Pool:
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
-                async with self._amax_connecting_cond:
+                async with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
-                        if not await _cond_wait(self._amax_connecting_cond, deadline):
+                        if not await _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self._max_connecting:
-                                self._amax_connecting_cond.notify()
+                                self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
                         self._raise_if_not_ready(checkout_started_time, emit_event=False)
@@ -1939,9 +1938,9 @@ class Pool:
                     try:
                         conn = await self.connect(handler=handler)
                     finally:
-                        async with self._amax_connecting_cond:
+                        async with self._max_connecting_cond:
                             self._pending -= 1
-                            self._amax_connecting_cond.notify()
+                            self._max_connecting_cond.notify()
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.
@@ -2034,7 +2033,7 @@ class Pool:
                         conn.update_is_writable(bool(self.is_writable))
                         self.conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
-                        self._amax_connecting_cond.notify()
+                        self._max_connecting_cond.notify()
 
         async with self.size_cond:
             if txn:

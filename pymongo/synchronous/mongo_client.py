@@ -57,7 +57,7 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, helpers_constants, periodic_executor
+from pymongo import _csot, helpers_constants
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -71,9 +71,17 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _Lock, _release_locks
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import client_session, common, database, helpers, message, uri_parser
+from pymongo.synchronous import (
+    client_session,
+    common,
+    database,
+    helpers,
+    message,
+    periodic_executor,
+    uri_parser,
+)
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.client_session import _EmptyServerSession
@@ -815,7 +823,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._options = options = ClientOptions(username, password, dbase, opts)
 
         self._default_database_name = dbase
-        self._lock = _Lock(_create_lock())
+        self._lock = _create_lock()
         self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -1667,7 +1675,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            with operation.conn_mgr.alock:
+            with operation.conn_mgr._alock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return server.run_operation(
@@ -1898,7 +1906,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                with conn_mgr.alock:  # TODO: ASYNC LOCK
+                with conn_mgr._alock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None

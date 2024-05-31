@@ -38,7 +38,7 @@ from bson.code import Code
 from bson.son import SON
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock, _Lock
+from pymongo.lock import _create_lock
 from pymongo.synchronous import helpers
 from pymongo.synchronous.collation import validate_collation_or_none
 from pymongo.synchronous.common import (
@@ -77,8 +77,7 @@ class _ConnectionManager:
     def __init__(self, conn: Connection, more_to_come: bool):
         self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
-        self._lock = _create_lock()
-        self.alock = _Lock(self._lock)
+        self._alock = _create_lock()
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come

@@ -360,7 +360,7 @@ class ChangeStream(Generic[_DocumentType]):
                     # Sleep for a while before trying again to avoid flooding
                     # the server with getMore requests when no changes are
                     # available.
-                    asyncio.sleep(10)
+                    time.sleep(10)
 
         If no change document is cached locally then this method runs a single
         getMore command. If the getMore yields any documents, the next
