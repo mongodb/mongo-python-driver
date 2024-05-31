@@ -6,7 +6,25 @@ Changes in Version 4.8.0
 
 The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
 
+The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
+
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
+
+Changes in Version 4.7.3
+-------------------------
+
+Version 4.7.3 has further fixes for lazily loading modules.
+
+- Use deferred imports instead of importlib lazy module loading.
+- Improve import time on Windows.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39865
 
 Changes in Version 4.7.2
 -------------------------

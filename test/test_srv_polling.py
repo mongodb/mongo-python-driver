@@ -28,7 +28,7 @@ import pymongo
 from pymongo import common
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
+from pymongo.srv_resolver import _have_dnspython
 
 WAIT_TIME = 0.1
 
@@ -148,7 +148,7 @@ class TestSrvPolling(unittest.TestCase):
         return True
 
     def run_scenario(self, dns_response, expect_change):
-        self.assertEqual(_HAVE_DNSPYTHON, True)
+        self.assertEqual(_have_dnspython(), True)
         if callable(dns_response):
             dns_resolver_response = dns_response
         else:

@@ -25,10 +25,11 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
+import cryptography.x509 as x509
+import service_identity
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
-from pymongo._lazy_import import lazy_import
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
@@ -37,14 +38,9 @@ from pymongo.socket_checker import SocketChecker as _SocketChecker
 from pymongo.socket_checker import _errno_from_exception
 from pymongo.write_concern import validate_boolean
 
-_x509 = lazy_import("cryptography.x509")
-_service_identity = lazy_import("service_identity")
-_service_identity_pyopenssl = lazy_import("service_identity.pyopenssl")
-
 if TYPE_CHECKING:
     from ssl import VerifyMode
 
-    from cryptography.x509 import Certificate
 
 _T = TypeVar("_T")
 
@@ -184,7 +180,7 @@ class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self) -> None:
-        self.trusted_ca_certs: Optional[list[Certificate]] = None
+        self.trusted_ca_certs: Optional[list[x509.Certificate]] = None
         self.check_ocsp_endpoint: Optional[bool] = None
         self.ocsp_response_cache = _OCSPCache()
 
@@ -336,11 +332,12 @@ class SSLContext:
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
+
         for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
             if encoding == "x509_asn":
                 if trust is True or oid in trust:
                     cert_store.add_cert(
-                        _crypto.X509.from_cryptography(_x509.load_der_x509_certificate(cert))
+                        _crypto.X509.from_cryptography(x509.load_der_x509_certificate(cert))
                     )
 
     def load_default_certs(self) -> None:
@@ -404,14 +401,16 @@ class SSLContext:
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:
+                from service_identity import pyopenssl
+
                 try:
                     if _is_ip_address(server_hostname):
-                        _service_identity_pyopenssl.verify_ip_address(ssl_conn, server_hostname)
+                        pyopenssl.verify_ip_address(ssl_conn, server_hostname)
                     else:
-                        _service_identity_pyopenssl.verify_hostname(ssl_conn, server_hostname)
-                except (
-                    _service_identity.SICertificateError,
-                    _service_identity.SIVerificationError,
+                        pyopenssl.verify_hostname(ssl_conn, server_hostname)
+                except (  # type:ignore[misc]
+                    service_identity.SICertificateError,
+                    service_identity.SIVerificationError,
                 ) as exc:
                     raise _CertificateError(str(exc)) from None
         return ssl_conn
