@@ -1344,8 +1344,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # always send primaryPreferred when directly connected to a repl set
         # member.
         # Thread safe: if the type is single it cannot change.
-        topology = self._get_topology()
-        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
+        # NOTE: We already opened the Topology when selecting a server so there's no need
+        # to call _get_topology() again.
+        single = self._topology.description.topology_type == TOPOLOGY_TYPE.Single
 
         with self._checkout(server, session) as conn:
             if single:
@@ -1365,7 +1366,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
     ) -> ContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
-        _ = self._get_topology()
         server = self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
 
