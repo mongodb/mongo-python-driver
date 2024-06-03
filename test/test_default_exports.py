@@ -69,6 +69,7 @@ class TestDefaultExports(unittest.TestCase):
 
     def test_pymongo_imports(self):
         import pymongo
+        from pymongo.auth import MECHANISMS
         from pymongo.auth_oidc import (
             OIDCCallback,
             OIDCCallbackContext,
