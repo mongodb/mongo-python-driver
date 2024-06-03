@@ -17,6 +17,7 @@ Version 4.7.3 has further fixes for lazily loading modules.
 
 - Use deferred imports instead of importlib lazy module loading.
 - Improve import time on Windows.
+- Reduce verbosity of "Waiting for suitable server to become available" log message from info to debug.
 
 Issues Resolved
 ...............
