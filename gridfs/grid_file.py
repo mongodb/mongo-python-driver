@@ -12,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Re-import of synchronous gridfs API compatibility."""
+"""Re-import of synchronous gridfs API for compatibility."""
 from __future__ import annotations
+
+from gridfs.synchronous.grid_file import *  # noqa: F403
