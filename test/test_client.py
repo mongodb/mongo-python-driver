@@ -1582,9 +1582,6 @@ class TestClient(IntegrationTest):
         self.assertEqual(opts.zlib_compression_level, -1)
 
         if not _have_snappy():
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning)
-                uri = "mongodb://localhost:27017/?compressors=snappy"
             client = MongoClient(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
