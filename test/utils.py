@@ -39,9 +39,9 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
+from pymongo.helpers import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
 from pymongo.monitoring import (
-    _SENSITIVE_COMMANDS,
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,

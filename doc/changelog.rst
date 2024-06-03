@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.7.3
+-------------------------
+
+Version 4.7.3 has further fixes for lazily loading modules.
+
+- Use deferred imports instead of importlib lazy module loading.
+- Improve import time on Windows.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39865
+
 Changes in Version 4.7.2
 -------------------------
 
