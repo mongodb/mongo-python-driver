@@ -16,3 +16,6 @@
 from __future__ import annotations
 
 from pymongo.synchronous.uri_parser import *  # noqa: F403
+from pymongo.synchronous.uri_parser import __doc__ as original_doc
+
+__doc__ = original_doc

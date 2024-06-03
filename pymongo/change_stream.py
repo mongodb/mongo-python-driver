@@ -16,3 +16,6 @@
 from __future__ import annotations
 
 from pymongo.synchronous.change_stream import *  # noqa: F403
+from pymongo.synchronous.change_stream import __doc__ as original_doc
+
+__doc__ = original_doc
