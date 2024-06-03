@@ -34,7 +34,6 @@ from pymongo.asynchronous.hello import Hello
 from pymongo.asynchronous.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
-    _info_log,
     _ServerSelectionStatusMessage,
 )
 from pymongo.asynchronous.monitor import SrvMonitor
@@ -308,7 +307,7 @@ class Topology:
                 )
 
             if not logged_waiting:
-                _info_log(
+                _debug_log(
                     _SERVER_SELECTION_LOGGER,
                     message=_ServerSelectionStatusMessage.WAITING,
                     selector=selector,
