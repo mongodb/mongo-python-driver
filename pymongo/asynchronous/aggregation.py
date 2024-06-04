@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.server import Server
     from pymongo.asynchronous.typings import _DocumentType, _Pipeline
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class _AggregationCommand:

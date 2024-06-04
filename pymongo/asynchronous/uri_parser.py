@@ -46,7 +46,7 @@ from pymongo.errors import ConfigurationError, InvalidURI
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
 
-IS_SYNC = False
+_IS_SYNC = False
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"

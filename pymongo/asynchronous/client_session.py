@@ -179,7 +179,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.server import Server
     from pymongo.asynchronous.typings import ClusterTime, _Address
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class SessionOptions:

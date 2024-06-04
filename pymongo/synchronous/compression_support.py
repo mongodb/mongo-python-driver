@@ -19,7 +19,7 @@ from typing import Any, Iterable, Optional, Union
 from pymongo.helpers_constants import _SENSITIVE_COMMANDS
 from pymongo.synchronous.hello_compat import HelloCompat
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}

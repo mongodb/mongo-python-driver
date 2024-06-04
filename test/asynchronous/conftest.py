@@ -4,7 +4,7 @@ from test.asynchronous import async_setup, async_teardown
 
 import pytest_asyncio
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

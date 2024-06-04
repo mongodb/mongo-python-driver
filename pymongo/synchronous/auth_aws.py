@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.auth import MongoCredential
     from pymongo.synchronous.pool import Connection
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:

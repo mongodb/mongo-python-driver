@@ -136,7 +136,7 @@ T = TypeVar("T")
 _WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
 _ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -855,7 +855,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._init_background()
 
-        if IS_SYNC and connect:
+        if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
         self._encrypter = None

@@ -87,7 +87,7 @@ if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
 
-IS_SYNC = False
+_IS_SYNC = False
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT

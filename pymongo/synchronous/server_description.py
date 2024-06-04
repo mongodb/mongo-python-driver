@@ -25,7 +25,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.hello import Hello
 from pymongo.synchronous.typings import ClusterTime, _Address
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class ServerDescription:

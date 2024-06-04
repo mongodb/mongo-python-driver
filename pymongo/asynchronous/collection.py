@@ -92,7 +92,7 @@ from pymongo.results import (
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
-IS_SYNC = False
+_IS_SYNC = False
 
 T = TypeVar("T")
 

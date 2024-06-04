@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.encryption_options import AutoEncryptionOpts
     from pymongo.synchronous.topology_description import _ServerSelector
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def _parse_credentials(

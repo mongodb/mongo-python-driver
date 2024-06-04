@@ -82,7 +82,7 @@ from pymongo.synchronous.uri_parser import parse_uri
 if HAVE_SSL:
     import ssl
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class ClientContext:
@@ -909,7 +909,7 @@ class IntegrationTest(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        if IS_SYNC:
+        if _IS_SYNC:
             cls._setup_class()
         else:
             asyncio.run(cls._setup_class())

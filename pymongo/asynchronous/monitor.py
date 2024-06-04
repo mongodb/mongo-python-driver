@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.asynchronous.topology import Topology
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 def _sanitize(error: Exception) -> None:

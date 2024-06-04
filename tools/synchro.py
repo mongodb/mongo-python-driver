@@ -158,7 +158,7 @@ def process_files(files: list[str]) -> None:
 
 
 def apply_is_sync(lines: list[str]) -> list[str]:
-    is_sync = next(iter([line for line in lines if line.startswith("IS_SYNC = ")]))
+    is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
     index = lines.index(is_sync)
     is_sync = is_sync.replace("False", "True")
     lines[index] = is_sync

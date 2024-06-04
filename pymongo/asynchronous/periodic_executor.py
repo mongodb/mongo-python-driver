@@ -25,7 +25,7 @@ from typing import Any, Optional
 
 from pymongo.lock import _ALock, _create_lock
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class PeriodicExecutor:
@@ -94,7 +94,7 @@ class PeriodicExecutor:
             pass
 
         if not started:
-            if IS_SYNC:
+            if _IS_SYNC:
                 thread = threading.Thread(target=self._run, name=self._name)
             else:
                 thread = threading.Thread(target=self._run_async, name=self._name)

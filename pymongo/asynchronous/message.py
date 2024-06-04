@@ -87,7 +87,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
 
 
-IS_SYNC = False
+_IS_SYNC = False
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648

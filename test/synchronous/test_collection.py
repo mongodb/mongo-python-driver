@@ -75,7 +75,7 @@ from pymongo.synchronous.operations import *
 from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class TestCollectionNoConnect(unittest.TestCase):
@@ -131,7 +131,7 @@ class TestCollectionNoConnect(unittest.TestCase):
         if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
-            if IS_SYNC:
+            if _IS_SYNC:
                 msg = "'Collection' object is not iterable"
             else:
                 msg = "'AsyncCollection' object is not iterable"
@@ -162,7 +162,7 @@ class TestCollection(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        if IS_SYNC:
+        if _IS_SYNC:
             cls.db.drop_collection("test_large_limit")  # type: ignore[unused-coroutine]
         else:
             asyncio.run(cls.async_tearDownClass())

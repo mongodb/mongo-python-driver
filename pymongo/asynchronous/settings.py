@@ -27,7 +27,7 @@ from pymongo.asynchronous.server_description import ServerDescription
 from pymongo.asynchronous.topology_description import TOPOLOGY_TYPE, _ServerSelector
 from pymongo.errors import ConfigurationError
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class TopologySettings:

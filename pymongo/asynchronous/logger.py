@@ -23,7 +23,7 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
 from pymongo.asynchronous.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class _CommandStatusMessage(str, enum.Enum):

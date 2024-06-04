@@ -68,7 +68,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.read_preferences import _ServerMode
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class _ConnectionManager:
@@ -259,7 +259,7 @@ class AsyncCursor(Generic[_DocumentType]):
         return self._retrieved
 
     def __del__(self) -> None:
-        if IS_SYNC:
+        if _IS_SYNC:
             self._die()  # type: ignore[unused-coroutine]
 
     def clone(self) -> AsyncCursor[_DocumentType]:
@@ -594,7 +594,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         :param index: An integer or slice index to be applied to this cursor
         """
-        if IS_SYNC:
+        if _IS_SYNC:
             self._check_okay_to_chain()
             self._empty = False
             if isinstance(index, slice):

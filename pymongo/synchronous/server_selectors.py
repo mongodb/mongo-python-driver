@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server_description import ServerDescription
     from pymongo.synchronous.topology_description import TopologyDescription
 
-IS_SYNC = True
+_IS_SYNC = True
 
 T = TypeVar("T")
 TagSet = Mapping[str, Any]

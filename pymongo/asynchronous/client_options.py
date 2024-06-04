@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.topology_description import _ServerSelector
     from pymongo.pyopenssl_context import SSLContext
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 def _parse_credentials(

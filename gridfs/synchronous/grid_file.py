@@ -58,7 +58,7 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import _check_write_command_response, next
 from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def _disallow_transactions(session: Optional[ClientSession]) -> None:
@@ -1162,7 +1162,7 @@ class GridIn:
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if IS_SYNC:
+        if _IS_SYNC:
             # For properties of this instance like _buffer, or descriptors set on
             # the class like filename, use regular __setattr__
             if name in self.__dict__ or name in self.__class__.__dict__:
@@ -1478,7 +1478,7 @@ class GridOut(io.IOBase):
                 )
 
     def __getattr__(self, name: str) -> Any:
-        if IS_SYNC:
+        if _IS_SYNC:
             self.open()  # type: ignore[unused-coroutine]
         elif not self._file:
             raise InvalidOperation(

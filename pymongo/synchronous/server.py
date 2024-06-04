@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server_description import ServerDescription
     from pymongo.synchronous.typings import _DocumentOut
 
-IS_SYNC = True
+_IS_SYNC = True
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 

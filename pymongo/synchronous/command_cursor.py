@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class CommandCursor(Generic[_DocumentType]):
@@ -81,7 +81,7 @@ class CommandCursor(Generic[_DocumentType]):
         self._explicit_session = explicit_session
         self._killed = self._id == 0
         self._comment = comment
-        if IS_SYNC and self._killed:
+        if _IS_SYNC and self._killed:
             self._end_session(True)  # type: ignore[unused-coroutine]
 
         if "ns" in cursor_info:  # noqa: SIM401
@@ -95,7 +95,7 @@ class CommandCursor(Generic[_DocumentType]):
             raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self) -> None:
-        if IS_SYNC:
+        if _IS_SYNC:
             self._die(False)  # type: ignore[unused-coroutine]
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:

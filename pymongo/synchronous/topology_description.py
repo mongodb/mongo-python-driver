@@ -37,7 +37,7 @@ from pymongo.synchronous.server_description import ServerDescription
 from pymongo.synchronous.server_selectors import Selection
 from pymongo.synchronous.typings import _Address
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.

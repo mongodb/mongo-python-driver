@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.auth import MongoCredential
     from pymongo.asynchronous.pool import Connection
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 @dataclass

@@ -82,7 +82,7 @@ from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 if HAVE_SSL:
     import ssl
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class AsyncClientContext:
@@ -911,7 +911,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        if IS_SYNC:
+        if _IS_SYNC:
             cls._setup_class()
         else:
             asyncio.run(cls._setup_class())

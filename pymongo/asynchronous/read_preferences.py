@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.server_selectors import Selection
     from pymongo.asynchronous.topology_description import TopologyDescription
 
-IS_SYNC = False
+_IS_SYNC = False
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1

@@ -37,7 +37,7 @@ from pymongo.asynchronous.typings import _Address
 from pymongo.errors import ConfigurationError
 from pymongo.server_type import SERVER_TYPE
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.

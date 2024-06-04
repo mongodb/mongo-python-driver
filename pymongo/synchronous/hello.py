@@ -26,7 +26,7 @@ from pymongo.synchronous import common
 from pymongo.synchronous.hello_compat import HelloCompat
 from pymongo.synchronous.typings import ClusterTime, _DocumentType
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:

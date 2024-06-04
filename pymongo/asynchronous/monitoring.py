@@ -202,7 +202,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.server_description import ServerDescription
     from pymongo.asynchronous.topology_description import TopologyDescription
 
-IS_SYNC = False
+_IS_SYNC = False
 
 _Listeners = namedtuple(
     "_Listeners",

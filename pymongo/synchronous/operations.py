@@ -38,7 +38,7 @@ from pymongo.write_concern import validate_boolean
 if TYPE_CHECKING:
     from pymongo.synchronous.bulk import _Bulk
 
-IS_SYNC = True
+_IS_SYNC = True
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
 _IndexList = Union[

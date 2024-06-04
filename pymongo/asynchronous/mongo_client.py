@@ -139,7 +139,7 @@ _ReadCall = Callable[
     [Optional["ClientSession"], "Server", "Connection", _ServerMode], Coroutine[Any, Any, T]
 ]
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -856,7 +856,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._init_background()
 
-        if IS_SYNC and connect:
+        if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
         self._encrypter = None

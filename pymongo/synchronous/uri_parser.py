@@ -46,7 +46,7 @@ from pymongo.synchronous.typings import _Address
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
 
-IS_SYNC = True
+_IS_SYNC = True
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"

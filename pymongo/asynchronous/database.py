@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):

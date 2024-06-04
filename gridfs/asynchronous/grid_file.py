@@ -58,7 +58,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 def _disallow_transactions(session: Optional[ClientSession]) -> None:
@@ -1172,7 +1172,7 @@ class AsyncGridIn:
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if IS_SYNC:
+        if _IS_SYNC:
             # For properties of this instance like _buffer, or descriptors set on
             # the class like filename, use regular __setattr__
             if name in self.__dict__ or name in self.__class__.__dict__:
@@ -1490,7 +1490,7 @@ class AsyncGridOut(io.IOBase):
                 )
 
     def __getattr__(self, name: str) -> Any:
-        if IS_SYNC:
+        if _IS_SYNC:
             self.open()  # type: ignore[unused-coroutine]
         elif not self._file:
             raise InvalidOperation(

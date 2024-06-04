@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.asynchronous.typings import ClusterTime, _Address
 
-IS_SYNC = False
+_IS_SYNC = False
 
 _pymongo_dir = str(Path(__file__).parent)
 

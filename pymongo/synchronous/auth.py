@@ -66,7 +66,7 @@ except ImportError:
         HAVE_KERBEROS = False
 
 
-IS_SYNC = True
+_IS_SYNC = True
 
 MECHANISMS = frozenset(
     [

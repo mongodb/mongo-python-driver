@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def command(

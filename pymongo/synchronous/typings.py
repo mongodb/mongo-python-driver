@@ -31,7 +31,7 @@ from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 if TYPE_CHECKING:
     from pymongo.synchronous.collation import Collation
 
-IS_SYNC = True
+_IS_SYNC = True
 
 # Common Shared Types.
 _Address = Tuple[str, Optional[int]]

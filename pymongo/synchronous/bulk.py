@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.typings import _DocumentOut, _DocumentType, _Pipeline
 
-IS_SYNC = True
+_IS_SYNC = True
 
 _DELETE_ALL: int = 0
 _DELETE_ONE: int = 1

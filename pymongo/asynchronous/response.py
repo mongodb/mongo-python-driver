@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.pool import Connection
     from pymongo.asynchronous.typings import _Address, _DocumentOut
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class Response:

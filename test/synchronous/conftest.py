@@ -4,7 +4,7 @@ from test.synchronous import setup, teardown
 
 import pytest
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 @pytest.fixture(scope="session", autouse=True)

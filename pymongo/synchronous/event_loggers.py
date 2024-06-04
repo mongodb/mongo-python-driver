@@ -32,7 +32,7 @@ import logging
 
 from pymongo.synchronous import monitoring
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class CommandLogger(monitoring.CommandListener):

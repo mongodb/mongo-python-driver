@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.server import Server
     from pymongo.write_concern import WriteConcern
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class Database(common.BaseObject, Generic[_DocumentType]):

@@ -91,7 +91,7 @@ from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
-IS_SYNC = True
+_IS_SYNC = True
 
 T = TypeVar("T")
 

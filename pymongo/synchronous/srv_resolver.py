@@ -25,7 +25,7 @@ from pymongo.synchronous.common import CONNECT_TIMEOUT
 if TYPE_CHECKING:
     from dns import resolver
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 def _have_dnspython() -> bool:

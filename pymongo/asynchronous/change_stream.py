@@ -40,7 +40,7 @@ from pymongo.errors import (
     PyMongoError,
 )
 
-IS_SYNC = False
+_IS_SYNC = False
 
 # The change streams spec considers the following server errors from the
 # getMore command non-resumable. All other getMore errors are resumable.

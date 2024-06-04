@@ -15,7 +15,7 @@
 """The HelloCompat class, placed here to break circular import issues."""
 from __future__ import annotations
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class HelloCompat:

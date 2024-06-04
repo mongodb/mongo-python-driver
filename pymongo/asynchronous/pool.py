@@ -130,7 +130,7 @@ except ImportError:
         """Dummy function for platforms that don't provide fcntl."""
 
 
-IS_SYNC = False
+_IS_SYNC = False
 
 _MAX_TCP_KEEPIDLE = 120
 _MAX_TCP_KEEPINTVL = 10
@@ -1328,12 +1328,12 @@ async def _configured_socket(
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if HAS_SNI:
-            if IS_SYNC:
+            if _IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
         else:
-            if IS_SYNC:
+            if _IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock)
             else:
                 ssl_sock = await ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]

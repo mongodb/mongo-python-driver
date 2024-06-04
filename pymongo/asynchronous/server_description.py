@@ -25,7 +25,7 @@ from pymongo.asynchronous.hello import Hello
 from pymongo.asynchronous.typings import ClusterTime, _Address
 from pymongo.server_type import SERVER_TYPE
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class ServerDescription:

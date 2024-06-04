@@ -55,7 +55,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_
 if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession
 
-IS_SYNC = True
+_IS_SYNC = True
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 

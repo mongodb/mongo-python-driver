@@ -27,7 +27,7 @@ from pymongo.synchronous.pool import Pool, PoolOptions
 from pymongo.synchronous.server_description import ServerDescription
 from pymongo.synchronous.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class TopologySettings:

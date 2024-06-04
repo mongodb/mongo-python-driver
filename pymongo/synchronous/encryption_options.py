@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.typings import _DocumentTypeArg
 
-IS_SYNC = True
+_IS_SYNC = True
 
 
 class AutoEncryptionOpts:

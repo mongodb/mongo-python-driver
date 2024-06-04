@@ -23,7 +23,7 @@ from typing import Any, Mapping, Optional, Union
 from pymongo.asynchronous import common
 from pymongo.write_concern import validate_boolean
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 class CollationStrength:

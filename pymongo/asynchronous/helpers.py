@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.typings import _DocumentOut
     from pymongo.cursor_shared import _Hint
 
-IS_SYNC = False
+_IS_SYNC = False
 
 
 def _gen_index_name(keys: _IndexList) -> str:
