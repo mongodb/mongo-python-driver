@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Tuple, Union
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 7, 3)
+version_tuple: Tuple[Union[int, str], ...] = (4, 7, 4, ".dev0")
 
 
 def get_version_string() -> str:
