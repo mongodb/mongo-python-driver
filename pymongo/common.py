@@ -454,8 +454,11 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         return props
 
     value = validate_string(option, value)
+    value = unquote_plus(value)
     for opt in value.split(","):
         key, _, val = opt.partition(":")
+        if not val:
+            raise ValueError("Malformed auth mechanism properties")
         if key not in _MECHANISM_PROPS:
             # Try not to leak the token.
             if "AWS_SESSION_TOKEN" in key:
@@ -473,7 +476,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
         else:
-            props[key] = unquote_plus(val)
+            props[key] = val
 
     return props
 

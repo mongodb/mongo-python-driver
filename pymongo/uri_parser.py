@@ -494,16 +494,11 @@ def parse_uri(
     collection = None
     options = _CaseInsensitiveDictionary()
 
-    host_part, _, path_part = scheme_free.partition("/")
-    if not host_part:
-        host_part = path_part
-        path_part = ""
-
-    if path_part:
-        dbase, _, opts = path_part.partition("?")
+    host_plus_db_part, _, opts = scheme_free.partition("?")
+    if "/" in host_plus_db_part:
+        host_part, _, dbase = host_plus_db_part.partition("/")
     else:
-        # There was no slash in scheme_free, check for a sole "?".
-        host_part, _, opts = host_part.partition("?")
+        host_part = host_plus_db_part
 
     if dbase:
         dbase = unquote_plus(dbase)
