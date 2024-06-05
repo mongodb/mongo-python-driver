@@ -34,6 +34,9 @@ class TestPyMongo(unittest.TestCase):
         self.assertEqual(get_version_tuple("4.8.0.dev1"), (4, 8, 0, ".dev1"))
         self.assertEqual(get_version_tuple("4.8.1"), (4, 8, 1))
         self.assertEqual(get_version_tuple("5.0.0rc1"), (5, 0, 0, "rc1"))
+        self.assertEqual(get_version_tuple("5.0"), (5, 0))
+        with self.assertRaises(ValueError):
+            get_version_tuple("5")
 
 
 if __name__ == "__main__":

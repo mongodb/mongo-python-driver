@@ -28,8 +28,10 @@ def get_version_tuple(version: str) -> Tuple[Union[int, str], ...]:
         parts: List[Union[int, str]] = [int(match[part]) for part in ["major", "minor", "patch"]]
         if match["rest"]:
             parts.append(match["rest"])
+    elif re.match(r"\d+.\d+", version):
+        parts = [int(part) for part in version.split(".")]
     else:
-        parts = []
+        raise ValueError("Could not parse version")
     return tuple(parts)
 
 
