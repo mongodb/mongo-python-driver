@@ -270,6 +270,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return AsyncCollection(
             self,
             name,
+            False,
             codec_options,
             read_preference,
             write_concern,
@@ -595,13 +596,14 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             coll = AsyncCollection(
                 self,
                 name,
+                False,
                 codec_options,
                 read_preference,
                 write_concern,
                 read_concern,
                 **kwargs,
             )
-            await coll._create(kwargs, s, **kwargs)
+            await coll._create(kwargs, s)
 
             return coll
 

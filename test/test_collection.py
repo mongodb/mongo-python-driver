@@ -197,6 +197,12 @@ class TestCollection(IntegrationTest):
             lambda: "create_test_no_wc" in db.list_collection_names(),
             "create create_test_no_wc collection",
         )
+        Collection(db, name="create_test_no_wc_with_create", create=True)
+        wait_until(
+            lambda: "create_test_no_wc_with_create" in db.list_collection_names(),
+            "create create_test_no_wc_with_create collection",
+        )
+
         # SERVER-33317
         if not client_context.is_mongos or not client_context.version.at_least(3, 7, 0):
             with self.assertRaises(OperationFailure):

@@ -140,10 +140,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         database: Database[_DocumentType],
         name: str,
+        create: Optional[bool] = False,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
+        session: Optional[ClientSession] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -164,8 +166,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :param database: the database to get a collection from
         :param name: the name of the collection to get
-        :param create: if ``True``, force collection
-            creation even without options being set
+        :param create: If ``True``, force collection
+            creation even without options being set.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) database.codec_options is used.
@@ -180,11 +182,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :param collation: An instance of
             :class:`~pymongo.collation.Collation`. If a collation is provided,
             it will be passed to the create collection command.
-        :param session: a
+        :param session: A
             :class:`~pymongo.client_session.ClientSession` that is used with
-            the create collection command
-        :param kwargs: additional keyword arguments will
-            be passed as options for the create collection command
+            the create collection command.
+        :param kwargs: Additional keyword arguments will
+            be passed as options for the create collection command.
 
         .. versionchanged:: 4.2
            Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
@@ -247,6 +249,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         )
         self._timeout = database.client.options.timeout
 
+        if create or kwargs:
+            if _IS_SYNC:
+                self._create(kwargs, session)  # type: ignore[unused-coroutine]
+            else:
+                raise ValueError("Collection does not support the `create` or `kwargs` arguments.")
+
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a sub-collection of this collection by name.
 
@@ -266,6 +274,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return Collection(
             self._database,
             f"{self._name}.{name}",
+            False,
             self.codec_options,
             self.read_preference,
             self.write_concern,
@@ -351,6 +360,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return Collection(
             self._database,
             self._name,
+            False,
             codec_options or self.codec_options,
             read_preference or self.read_preference,
             write_concern or self.write_concern,
@@ -632,10 +642,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         options: MutableMapping[str, Any],
         session: Optional[ClientSession],
-        **kwargs: Any,
     ) -> None:
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
-        encrypted_fields = kwargs.pop("encryptedFields", None)
+        collation = validate_collation_or_none(options.pop("collation", None))
+        encrypted_fields = options.pop("encryptedFields", None)
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
             opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}

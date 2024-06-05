@@ -270,6 +270,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return Collection(
             self,
             name,
+            False,
             codec_options,
             read_preference,
             write_concern,
@@ -595,13 +596,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             coll = Collection(
                 self,
                 name,
+                False,
                 codec_options,
                 read_preference,
                 write_concern,
                 read_concern,
                 **kwargs,
             )
-            coll._create(kwargs, s, **kwargs)
+            coll._create(kwargs, s)
 
             return coll
 

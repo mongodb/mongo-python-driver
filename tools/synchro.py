@@ -77,7 +77,14 @@ replacements = {
 docstring_replacements: dict[tuple[str, str], str] = {
     ("MongoClient", "connect"): """If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
-            on the first operation."""
+            on the first operation.""",
+    ("Collection", "create"): """If ``True``, force collection
+            creation even without options being set.""",
+    ("Collection", "session"): """A
+            :class:`~pymongo.client_session.ClientSession` that is used with
+            the create collection command.""",
+    ("Collection", "kwargs"): """Additional keyword arguments will
+            be passed as options for the create collection command.""",
 }
 
 type_replacements = {"_Condition": "threading.Condition"}
