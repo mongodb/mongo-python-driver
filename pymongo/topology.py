@@ -44,7 +44,6 @@ from pymongo.lock import _create_lock
 from pymongo.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
-    _info_log,
     _ServerSelectionStatusMessage,
 )
 from pymongo.monitor import SrvMonitor
@@ -306,7 +305,7 @@ class Topology:
                 )
 
             if not logged_waiting:
-                _info_log(
+                _debug_log(
                     _SERVER_SELECTION_LOGGER,
                     message=_ServerSelectionStatusMessage.WAITING,
                     selector=selector,

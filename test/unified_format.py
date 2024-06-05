@@ -1030,6 +1030,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "retryable-writes" in cls.TEST_SPEC["description"]:
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
+    @classmethod
+    def tearDownClass(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super().tearDownClass()
+
     def setUp(self):
         super().setUp()
         # process schemaVersion
@@ -1121,6 +1127,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support timeoutMode")
 
     def process_error(self, exception, spec):
+        if isinstance(exception, unittest.SkipTest):
+            raise
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
         is_timeout_error = spec.get("isTimeoutError")

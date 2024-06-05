@@ -41,7 +41,7 @@ from typing import (
 
 import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot, auth, helpers
+from pymongo import __version__, _csot, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -211,13 +211,14 @@ elif sys.platform == "darwin":
         "version": platform.mac_ver()[0],
     }
 elif sys.platform == "win32":
+    _ver = sys.getwindowsversion()
     _METADATA["os"] = {
-        "type": platform.system(),
-        # "Windows XP", "Windows 7", "Windows 10", etc.
-        "name": " ".join((platform.system(), platform.release())),
-        "architecture": platform.machine(),
-        # Windows patch level (e.g. 5.1.2600-SP3)
-        "version": "-".join(platform.win32_ver()[1:3]),
+        "type": "Windows",
+        "name": "Windows",
+        # Avoid using platform calls, see PYTHON-4455.
+        "architecture": os.environ.get("PROCESSOR_ARCHITECTURE") or platform.machine(),
+        # Windows patch level (e.g. 10.0.17763-SP0).
+        "version": ".".join(map(str, _ver[:3])) + f"-SP{_ver[-1] or '0'}",
     }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
@@ -859,6 +860,8 @@ class Connection:
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
+            from pymongo import auth
+
             auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
@@ -1090,6 +1093,8 @@ class Connection:
         if not self.ready:
             creds = self.opts._credentials
             if creds:
+                from pymongo import auth
+
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:
