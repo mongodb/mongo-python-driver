@@ -15,6 +15,7 @@
 """Re-import of synchronous Cursor API for compatibility."""
 from __future__ import annotations
 
+from pymongo.cursor_shared import *  # noqa: F403
 from pymongo.synchronous.cursor import *  # noqa: F403
 from pymongo.synchronous.cursor import __doc__ as original_doc
 
