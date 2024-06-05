@@ -8,6 +8,7 @@ exclude .git-blame-ignore-revs
 exclude .pre-commit-config.yaml
 exclude .readthedocs.yaml
 exclude CONTRIBUTING.md
+include sbom.json
 exclude RELEASE.md
 recursive-include doc *.rst
 recursive-include doc *.py
