@@ -601,7 +601,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_preference,
                 write_concern,
                 read_concern,
-                **kwargs,
             )
             coll._create(kwargs, s)
 

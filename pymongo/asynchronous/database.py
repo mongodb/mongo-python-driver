@@ -601,7 +601,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 read_preference,
                 write_concern,
                 read_concern,
-                **kwargs,
             )
             await coll._create(kwargs, s)
 

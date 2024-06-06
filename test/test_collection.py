@@ -197,10 +197,11 @@ class TestCollection(IntegrationTest):
             lambda: "create_test_no_wc" in db.list_collection_names(),
             "create create_test_no_wc collection",
         )
-        Collection(db, name="create_test_no_wc_with_create", create=True)
+        db.create_test_no_wc.drop()
+        Collection(db, name="create_test_no_wc", create=True)
         wait_until(
-            lambda: "create_test_no_wc_with_create" in db.list_collection_names(),
-            "create create_test_no_wc_with_create collection",
+            lambda: "create_test_no_wc" in db.list_collection_names(),
+            "create create_test_no_wc collection",
         )
 
         # SERVER-33317
