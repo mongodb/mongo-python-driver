@@ -22,7 +22,7 @@ from codecs import utf_8_decode
 from collections import defaultdict
 from typing import Any, Iterable, no_type_check
 
-from pymongo.database import Database
+from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
@@ -45,10 +45,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
-from pymongo.bulk import BulkWriteError
-from pymongo.collection import Collection, ReturnDocument
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import CursorType
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
     DocumentTooLarge,
@@ -60,17 +57,20 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
-from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
-from pymongo.mongo_client import MongoClient
-from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
-from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
 )
+from pymongo.synchronous.bulk import BulkWriteError
+from pymongo.synchronous.collection import Collection, ReturnDocument
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.operations import *
+from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 
@@ -192,17 +192,22 @@ class TestCollection(IntegrationTest):
             lambda: "create_test_no_wc" not in db.list_collection_names(),
             "drop create_test_no_wc collection",
         )
+        db.create_collection("create_test_no_wc")
+        wait_until(
+            lambda: "create_test_no_wc" in db.list_collection_names(),
+            "create create_test_no_wc collection",
+        )
+        db.create_test_no_wc.drop()
         Collection(db, name="create_test_no_wc", create=True)
         wait_until(
             lambda: "create_test_no_wc" in db.list_collection_names(),
             "create create_test_no_wc collection",
         )
+
         # SERVER-33317
         if not client_context.is_mongos or not client_context.version.at_least(3, 7, 0):
             with self.assertRaises(OperationFailure):
-                Collection(
-                    db, name="create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN, create=True
-                )
+                db.create_collection("create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN)
 
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection("test")
@@ -1519,12 +1524,12 @@ class TestCollection(IntegrationTest):
 
         # Test that batchSize is handled properly.
         cursor = db.test.aggregate([], batchSize=5)
-        self.assertEqual(5, len(cursor._CommandCursor__data))  # type: ignore
+        self.assertEqual(5, len(cursor._data))
         # Force a getMore
-        cursor._CommandCursor__data.clear()  # type: ignore
+        cursor._data.clear()
         next(cursor)
         # batchSize - 1
-        self.assertEqual(4, len(cursor._CommandCursor__data))  # type: ignore
+        self.assertEqual(4, len(cursor._data))
         # Exhaust the cursor. There shouldn't be any errors.
         for _doc in cursor:
             pass

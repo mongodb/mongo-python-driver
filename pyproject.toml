@@ -49,7 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 version = {attr = "pymongo._version.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["bson","gridfs", "pymongo"]
+include = ["bson","gridfs", "gridfs.asynchronous", "gridfs.synchronous", "pymongo", "pymongo.asynchronous", "pymongo.synchronous"]
 
 [tool.setuptools.package-data]
 bson=["py.typed", "*.pyi"]
@@ -99,6 +99,16 @@ disable_error_code = ["no-untyped-def", "no-untyped-call"]
 module = ["service_identity.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["pymongo.synchronous.*", "gridfs.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine"]
+
+[[tool.mypy.overrides]]
+module = ["pymongo.asynchronous.*"]
+warn_unused_ignores = false
+
+
 [tool.ruff]
 target-version = "py37"
 line-length = 100
@@ -126,6 +136,7 @@ select = [
   "UP",          # pyupgrade
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
+  "ASYNC",       # flake8-async
 ]
 ignore = [
   "PLR",    # Design related pylint codes

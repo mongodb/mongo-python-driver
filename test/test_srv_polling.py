@@ -25,10 +25,10 @@ from test import client_knobs, unittest
 from test.utils import FunctionCallRecorder, wait_until
 
 import pymongo
-from pymongo import common
 from pymongo.errors import ConfigurationError
-from pymongo.mongo_client import MongoClient
-from pymongo.srv_resolver import _have_dnspython
+from pymongo.synchronous import common
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.srv_resolver import _have_dnspython
 
 WAIT_TIME = 0.1
 
@@ -51,7 +51,9 @@ class SrvPollingKnobs:
 
     def enable(self):
         self.old_min_srv_rescan_interval = common.MIN_SRV_RESCAN_INTERVAL
-        self.old_dns_resolver_response = pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl
+        self.old_dns_resolver_response = (
+            pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl
+        )
 
         if self.min_srv_rescan_interval is not None:
             common.MIN_SRV_RESCAN_INTERVAL = self.min_srv_rescan_interval
@@ -71,15 +73,15 @@ class SrvPollingKnobs:
         else:
             patch_func = mock_get_hosts_and_min_ttl
 
-        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = patch_func  # type: ignore
+        pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl = patch_func  # type: ignore
 
     def __enter__(self):
         self.enable()
 
     def disable(self):
         common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval  # type: ignore
-        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
-            self.old_dns_resolver_response  # type: ignore
+        pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
+            self.old_dns_resolver_response
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -131,7 +133,10 @@ class TestSrvPolling(unittest.TestCase):
 
         def predicate():
             if set(expected_nodelist) == set(self.get_nodelist(client)):
-                return pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count >= 1
+                return (
+                    pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count
+                    >= 1
+                )
             return False
 
         wait_until(predicate, "Node list equals expected nodelist", timeout=timeout)
@@ -141,7 +146,7 @@ class TestSrvPolling(unittest.TestCase):
             msg = "Client nodelist %s changed unexpectedly (expected %s)"
             raise self.fail(msg % (nodelist, expected_nodelist))
         self.assertGreaterEqual(
-            pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count,  # type: ignore
+            pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count,  # type: ignore
             1,
             "resolver was never called",
         )

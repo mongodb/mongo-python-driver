@@ -1,0 +1,279 @@
+# Copyright 2024-Present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Synchronization of asynchronous modules.
+
+Used as part of our build system to generate synchronous code.
+"""
+
+from __future__ import annotations
+
+import re
+from os import listdir
+from pathlib import Path
+
+from unasync import Rule, unasync_files  # type: ignore[import]
+
+replacements = {
+    "AsyncCollection": "Collection",
+    "AsyncDatabase": "Database",
+    "AsyncCursor": "Cursor",
+    "AsyncMongoClient": "MongoClient",
+    "AsyncCommandCursor": "CommandCursor",
+    "AsyncRawBatchCursor": "RawBatchCursor",
+    "AsyncRawBatchCommandCursor": "RawBatchCommandCursor",
+    "async_command": "command",
+    "async_receive_message": "receive_message",
+    "async_sendall": "sendall",
+    "asynchronous": "synchronous",
+    "anext": "next",
+    "_ALock": "_Lock",
+    "_ACondition": "_Condition",
+    "AsyncGridFS": "GridFS",
+    "AsyncGridFSBucket": "GridFSBucket",
+    "AsyncGridIn": "GridIn",
+    "AsyncGridOut": "GridOut",
+    "AsyncGridOutCursor": "GridOutCursor",
+    "AsyncGridOutIterator": "GridOutIterator",
+    "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
+    "_a_grid_in_property": "_grid_in_property",
+    "_a_grid_out_property": "_grid_out_property",
+    "AsyncMongoCryptCallback": "MongoCryptCallback",
+    "AsyncExplicitEncrypter": "ExplicitEncrypter",
+    "AsyncAutoEncrypter": "AutoEncrypter",
+    "AsyncContextManager": "ContextManager",
+    "AsyncClientContext": "ClientContext",
+    "AsyncTestCollection": "TestCollection",
+    "AsyncIntegrationTest": "IntegrationTest",
+    "AsyncPyMongoTestCase": "PyMongoTestCase",
+    "async_client_context": "client_context",
+    "async_setup": "setup",
+    "asyncSetUp": "setUp",
+    "asyncTearDown": "tearDown",
+    "async_teardown": "teardown",
+    "pytest_asyncio": "pytest",
+    "async_wait_until": "wait_until",
+    "addAsyncCleanup": "addCleanup",
+    "async_setup_class": "setup_class",
+    "IsolatedAsyncioTestCase": "TestCase",
+    "async_get_pool": "get_pool",
+    "async_is_mongos": "is_mongos",
+    "async_rs_or_single_client": "rs_or_single_client",
+    "async_single_client": "single_client",
+    "async_from_client": "from_client",
+}
+
+docstring_replacements: dict[tuple[str, str], str] = {
+    ("MongoClient", "connect"): """If ``True`` (the default), immediately
+            begin connecting to MongoDB in the background. Otherwise connect
+            on the first operation.""",
+    ("Collection", "create"): """If ``True``, force collection
+            creation even without options being set.""",
+    ("Collection", "session"): """A
+            :class:`~pymongo.client_session.ClientSession` that is used with
+            the create collection command.""",
+    ("Collection", "kwargs"): """Additional keyword arguments will
+            be passed as options for the create collection command.""",
+}
+
+type_replacements = {"_Condition": "threading.Condition"}
+
+_pymongo_base = "./pymongo/asynchronous/"
+_gridfs_base = "./gridfs/asynchronous/"
+_test_base = "./test/asynchronous/"
+
+_pymongo_dest_base = "./pymongo/synchronous/"
+_gridfs_dest_base = "./gridfs/synchronous/"
+_test_dest_base = "./test/synchronous/"
+
+
+async_files = [
+    _pymongo_base + f for f in listdir(_pymongo_base) if (Path(_pymongo_base) / f).is_file()
+]
+
+gridfs_files = [
+    _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
+]
+
+test_files = [_test_base + f for f in listdir(_test_base) if (Path(_test_base) / f).is_file()]
+
+sync_files = [
+    _pymongo_dest_base + f
+    for f in listdir(_pymongo_dest_base)
+    if (Path(_pymongo_dest_base) / f).is_file()
+]
+
+sync_gridfs_files = [
+    _gridfs_dest_base + f
+    for f in listdir(_gridfs_dest_base)
+    if (Path(_gridfs_dest_base) / f).is_file()
+]
+
+sync_test_files = [
+    _test_dest_base + f for f in listdir(_test_dest_base) if (Path(_test_dest_base) / f).is_file()
+]
+
+
+docstring_translate_files = [
+    _pymongo_dest_base + f
+    for f in [
+        "aggregation.py",
+        "change_stream.py",
+        "collection.py",
+        "command_cursor.py",
+        "cursor.py",
+        "client_options.py",
+        "client_session.py",
+        "database.py",
+        "encryption.py",
+        "encryption_options.py",
+        "mongo_client.py",
+        "network.py",
+        "operations.py",
+        "pool.py",
+        "topology.py",
+    ]
+]
+
+
+def process_files(files: list[str]) -> None:
+    for file in files:
+        if "__init__" not in file or "__init__" and "test" in file:
+            with open(file, "r+") as f:
+                lines = f.readlines()
+                lines = apply_is_sync(lines)
+                lines = translate_coroutine_types(lines)
+                lines = translate_async_sleeps(lines)
+                if file in docstring_translate_files:
+                    lines = translate_docstrings(lines)
+                translate_locks(lines)
+                translate_types(lines)
+                f.seek(0)
+                f.writelines(lines)
+                f.truncate()
+
+
+def apply_is_sync(lines: list[str]) -> list[str]:
+    is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
+    index = lines.index(is_sync)
+    is_sync = is_sync.replace("False", "True")
+    lines[index] = is_sync
+    return lines
+
+
+def translate_coroutine_types(lines: list[str]) -> list[str]:
+    coroutine_types = [line for line in lines if "Coroutine[" in line]
+    for type in coroutine_types:
+        res = re.search(r"Coroutine\[([A-z]+), ([A-z]+), ([A-z]+)\]", type)
+        if res:
+            old = res[0]
+            index = lines.index(type)
+            new = type.replace(old, res.group(3))
+            lines[index] = new
+    return lines
+
+
+def translate_locks(lines: list[str]) -> list[str]:
+    lock_lines = [line for line in lines if "_Lock(" in line]
+    cond_lines = [line for line in lines if "_Condition(" in line]
+    for line in lock_lines:
+        res = re.search(r"_Lock\(([^()]*\(\))\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            lines[index] = line.replace(old, res[1])
+    for line in cond_lines:
+        res = re.search(r"_Condition\(([^()]*\([^()]*\))\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            lines[index] = line.replace(old, res[1])
+
+    return lines
+
+
+def translate_types(lines: list[str]) -> list[str]:
+    for k, v in type_replacements.items():
+        matches = [line for line in lines if k in line and "import" not in line]
+        for line in matches:
+            index = lines.index(line)
+            lines[index] = line.replace(k, v)
+    return lines
+
+
+def translate_async_sleeps(lines: list[str]) -> list[str]:
+    blocking_sleeps = [line for line in lines if "asyncio.sleep(0)" in line]
+    lines = [line for line in lines if line not in blocking_sleeps]
+    sleeps = [line for line in lines if "asyncio.sleep" in line]
+
+    for line in sleeps:
+        res = re.search(r"asyncio.sleep\(([^()]*)\)", line)
+        if res:
+            old = res[0]
+            index = lines.index(line)
+            new = f"time.sleep({res[1]})"
+            lines[index] = line.replace(old, new)
+
+    return lines
+
+
+def translate_docstrings(lines: list[str]) -> list[str]:
+    for i in range(len(lines)):
+        for k in replacements:
+            if k in lines[i]:
+                # This sequence of replacements fixes the grammar issues caused by translating async -> sync
+                if "an Async" in lines[i]:
+                    lines[i] = lines[i].replace("an Async", "a Async")
+                if "An Async" in lines[i]:
+                    lines[i] = lines[i].replace("An Async", "A Async")
+                if "an asynchronous" in lines[i]:
+                    lines[i] = lines[i].replace("an asynchronous", "a")
+                if "An asynchronous" in lines[i]:
+                    lines[i] = lines[i].replace("An asynchronous", "A")
+                lines[i] = lines[i].replace(k, replacements[k])
+            if "Sync" in lines[i] and replacements[k] in lines[i]:
+                lines[i] = lines[i].replace("Sync", "")
+    for i in range(len(lines)):
+        for k in docstring_replacements:  # type: ignore[assignment]
+            if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
+                lines[i] = lines[i].replace(
+                    f"**Not supported by {k[0]}**.",
+                    docstring_replacements[k],  # type: ignore[index]
+                )
+
+    return lines
+
+
+def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:
+    unasync_files(
+        files,
+        [
+            Rule(
+                fromdir=src,
+                todir=dest,
+                additional_replacements=replacements,
+            )
+        ],
+    )
+
+
+def main() -> None:
+    unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
+    unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
+    unasync_directory(test_files, _test_base, _test_dest_base, replacements)
+    process_files(sync_files + sync_gridfs_files + sync_test_files)
+
+
+if __name__ == "__main__":
+    main()

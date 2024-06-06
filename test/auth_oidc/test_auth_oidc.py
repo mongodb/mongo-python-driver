@@ -27,7 +27,6 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
-import pprint
 from test.unified_format import generate_test_classes
 from test.utils import EventListener
 
@@ -35,12 +34,16 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
-from pymongo.cursor import CursorType
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
-from pymongo.hello import HelloCompat
-from pymongo.operations import InsertOne
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.auth_oidc import (
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+)
+from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo.synchronous.operations import InsertOne
+from pymongo.synchronous.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"

@@ -27,7 +27,7 @@ import pymongo
 class TestPyMongo(unittest.TestCase):
     def test_mongo_client_alias(self):
         # Testing that pymongo module imports mongo_client.MongoClient
-        self.assertEqual(pymongo.MongoClient, pymongo.mongo_client.MongoClient)
+        self.assertEqual(pymongo.MongoClient, pymongo.synchronous.mongo_client.MongoClient)
 
 
 if __name__ == "__main__":

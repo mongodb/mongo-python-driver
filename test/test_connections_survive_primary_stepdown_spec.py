@@ -28,9 +28,9 @@ from test.utils import (
 )
 
 from bson import SON
-from pymongo import monitoring
-from pymongo.collection import Collection
 from pymongo.errors import NotPrimaryError
+from pymongo.synchronous import monitoring
+from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 
 

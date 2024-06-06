@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 import time
 from collections import deque
 from contextlib import AbstractContextManager
@@ -96,16 +97,27 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def apply(func: F) -> F:
-    """Apply the client's timeoutMS to this operation."""
+    """Apply the client's timeoutMS to this operation. Can wrap both asynchronous and synchronous methods"""
+    if inspect.iscoroutinefunction(func):
 
-    @functools.wraps(func)
-    def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-        if get_timeout() is None:
-            timeout = self._timeout
-            if timeout is not None:
-                with _TimeoutContext(timeout):
-                    return func(self, *args, **kwargs)
-        return func(self, *args, **kwargs)
+        @functools.wraps(func)
+        async def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            if get_timeout() is None:
+                timeout = self._timeout
+                if timeout is not None:
+                    with _TimeoutContext(timeout):
+                        return await func(self, *args, **kwargs)
+            return await func(self, *args, **kwargs)
+    else:
+
+        @functools.wraps(func)
+        def csot_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            if get_timeout() is None:
+                timeout = self._timeout
+                if timeout is not None:
+                    with _TimeoutContext(timeout):
+                        return func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
 
     return cast(F, csot_wrapper)
 

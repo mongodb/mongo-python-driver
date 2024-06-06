@@ -21,15 +21,15 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener, rs_or_single_client
 from typing import Any
 
-from pymongo.collation import (
+from pymongo.errors import ConfigurationError
+from pymongo.synchronous.collation import (
     Collation,
     CollationAlternate,
     CollationCaseFirst,
     CollationMaxVariable,
     CollationStrength,
 )
-from pymongo.errors import ConfigurationError
-from pymongo.operations import (
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,

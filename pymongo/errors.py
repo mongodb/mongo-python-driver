@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Un
 from bson.errors import InvalidDocument
 
 if TYPE_CHECKING:
-    from pymongo.typings import _DocumentOut
+    from pymongo.asynchronous.typings import _DocumentOut
 
 
 class PyMongoError(Exception):

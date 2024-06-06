@@ -12,7 +12,7 @@ import os
 from bson import has_c as has_bson_c
 from pymongo import MongoClient
 from pymongo import has_c as has_pymongo_c
-from pymongo.monitoring import (
+from pymongo.synchronous.monitoring import (
     CommandListener,
     ConnectionPoolListener,
     ServerHeartbeatListener,

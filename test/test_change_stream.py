@@ -40,14 +40,14 @@ from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
-from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
     ServerSelectionTimeoutError,
 )
-from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.message import _CursorAddress
 from pymongo.write_concern import WriteConcern
 
 
@@ -117,7 +117,7 @@ class TestChangeStreamBase(IntegrationTest):
     def kill_change_stream_cursor(self, change_stream):
         """Cause a cursor not found error on the next getMore."""
         cursor = change_stream._cursor
-        address = _CursorAddress(cursor.address, cursor._CommandCursor__ns)
+        address = _CursorAddress(cursor.address, cursor._ns)
         client = self.watched_collection().database.client
         client._close_cursor_now(cursor.cursor_id, address)
 
@@ -136,7 +136,7 @@ class APITestsMixin:
             self.assertEqual(1000, change_stream._max_await_time_ms)
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, CommandCursor)
-            self.assertEqual(1000, change_stream._cursor._CommandCursor__max_await_time_ms)
+            self.assertEqual(1000, change_stream._cursor._max_await_time_ms)
             self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
             _ = change_stream.next()
             resume_token = change_stream.resume_token
