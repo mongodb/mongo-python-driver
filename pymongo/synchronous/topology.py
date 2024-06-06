@@ -27,7 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, helpers_constants
+from pymongo import _csot, common, helpers_shared
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -38,27 +38,28 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
+from pymongo.hello import Hello
 from pymongo.lock import _create_lock
-from pymongo.synchronous import common, periodic_executor
-from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
-from pymongo.synchronous.hello import Hello
-from pymongo.synchronous.logger import (
+from pymongo.logger import (
     _SERVER_SELECTION_LOGGER,
     _debug_log,
     _ServerSelectionStatusMessage,
 )
-from pymongo.synchronous.monitor import SrvMonitor
-from pymongo.synchronous.pool import Pool, PoolOptions
-from pymongo.synchronous.server import Server
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.server_selectors import (
+from pymongo.pool_options import PoolOptions
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import (
     Selection,
     any_server_selector,
     arbiter_server_selector,
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous.topology_description import (
+from pymongo.synchronous import periodic_executor
+from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
+from pymongo.synchronous.monitor import SrvMonitor
+from pymongo.synchronous.pool import Pool
+from pymongo.synchronous.server import Server
+from pymongo.topology_description import (
     SRV_POLLING_TOPOLOGIES,
     TOPOLOGY_TYPE,
     TopologyDescription,
@@ -69,7 +70,7 @@ from pymongo.synchronous.topology_description import (
 if TYPE_CHECKING:
     from bson import ObjectId
     from pymongo.synchronous.settings import TopologySettings
-    from pymongo.synchronous.typings import ClusterTime, _Address
+    from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = True
 
@@ -788,8 +789,8 @@ class Topology:
                 # Default error code if one does not exist.
                 default = 10107 if isinstance(error, NotPrimaryError) else None
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
-            if err_code in helpers_constants._NOT_PRIMARY_CODES:
-                is_shutting_down = err_code in helpers_constants._SHUTDOWN_CODES
+            if err_code in helpers_shared._NOT_PRIMARY_CODES:
+                is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
                     self._process_change(ServerDescription(address, error=error))

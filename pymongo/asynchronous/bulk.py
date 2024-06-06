@@ -34,15 +34,8 @@ from typing import (
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from pymongo import _csot
-from pymongo.asynchronous import common
-from pymongo.asynchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.asynchronous.common import (
-    validate_is_document_type,
-    validate_ok_for_replace,
-    validate_ok_for_update,
-)
-from pymongo.asynchronous.helpers import _get_wce_doc
+from pymongo import _csot, common
+from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
 from pymongo.asynchronous.message import (
     _DELETE,
     _INSERT,
@@ -51,20 +44,25 @@ from pymongo.asynchronous.message import (
     _EncryptedBulkWriteContext,
     _randint,
 )
-from pymongo.asynchronous.read_preferences import ReadPreference
+from pymongo.common import (
+    validate_is_document_type,
+    validate_ok_for_replace,
+    validate_ok_for_update,
+)
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
+from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES, _get_wce_doc
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.typings import _DocumentOut, _DocumentType, _Pipeline
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _IS_SYNC = False
 
@@ -169,7 +167,7 @@ def _raise_bulk_write_error(full_result: _DocumentOut) -> NoReturn:
     raise BulkWriteError(full_result)
 
 
-class _Bulk:
+class _AsyncBulk:
     """The private guts of the bulk write API."""
 
     def __init__(
@@ -180,7 +178,7 @@ class _Bulk:
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
-        """Initialize a _Bulk instance."""
+        """Initialize a _AsyncBulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
@@ -319,8 +317,8 @@ class _Bulk:
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
-        session: Optional[ClientSession],
-        conn: Connection,
+        session: Optional[AsyncClientSession],
+        conn: AsyncConnection,
         op_id: int,
         retryable: bool,
         full_result: MutableMapping[str, Any],
@@ -335,8 +333,8 @@ class _Bulk:
             self.next_run = None
         run = self.current_run
 
-        # Connection.command validates the session, but we use
-        # Connection.write_command
+        # AsyncConnection.command validates the session, but we use
+        # AsyncConnection.write_command
         conn.validate_session(client, session)
         last_run = False
 
@@ -422,7 +420,7 @@ class _Bulk:
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         operation: str,
     ) -> dict[str, Any]:
         """Execute using write commands."""
@@ -440,7 +438,7 @@ class _Bulk:
         op_id = _randint()
 
         async def retryable_bulk(
-            session: Optional[ClientSession], conn: Connection, retryable: bool
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable: bool
         ) -> None:
             await self._execute_command(
                 generator,
@@ -466,7 +464,9 @@ class _Bulk:
             _raise_bulk_write_error(full_result)
         return full_result
 
-    async def execute_op_msg_no_results(self, conn: Connection, generator: Iterator[Any]) -> None:
+    async def execute_op_msg_no_results(
+        self, conn: AsyncConnection, generator: Iterator[Any]
+    ) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
         client = self.collection.database.client
@@ -505,7 +505,7 @@ class _Bulk:
 
     async def execute_command_no_results(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         generator: Iterator[Any],
         write_concern: WriteConcern,
     ) -> None:
@@ -541,7 +541,7 @@ class _Bulk:
 
     async def execute_no_results(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         generator: Iterator[Any],
         write_concern: WriteConcern,
     ) -> None:
@@ -573,7 +573,7 @@ class _Bulk:
     async def execute(
         self,
         write_concern: WriteConcern,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         operation: str,
     ) -> Any:
         """Execute operations."""

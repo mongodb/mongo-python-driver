@@ -63,24 +63,19 @@ except ImportError:
 from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
+from pymongo.common import partition_node
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous import common, message
-from pymongo.synchronous.common import partition_node
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.hello_compat import HelloCompat
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.uri_parser import parse_uri
-
-if HAVE_SSL:
-    import ssl
 
 _IS_SYNC = True
 

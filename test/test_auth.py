@@ -33,13 +33,13 @@ from test.utils import (
     single_client_noauth,
 )
 
-from pymongo import MongoClient
-from pymongo.asynchronous.auth import HAVE_KERBEROS, _build_credentials_tuple
+from pymongo import MongoClient, monitoring
+from pymongo.asynchronous.auth import HAVE_KERBEROS
+from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.errors import OperationFailure
+from pymongo.hello_compat import HelloCompat
+from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
-from pymongo.synchronous import monitoring
-from pymongo.synchronous.hello_compat import HelloCompat
-from pymongo.synchronous.read_preferences import ReadPreference
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get("GSSAPI_HOST")

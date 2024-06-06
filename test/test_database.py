@@ -38,6 +38,7 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
+from pymongo import helpers_shared
 from pymongo.asynchronous import auth
 from pymongo.errors import (
     CollectionInvalid,
@@ -48,11 +49,10 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.synchronous import helpers
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 
@@ -577,10 +577,10 @@ class TestDatabase(IntegrationTest):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
         # command document will have no 'ok' field. We should raise
         # OperationFailure instead of KeyError.
-        self.assertRaises(OperationFailure, helpers._check_command_response, {}, None)
+        self.assertRaises(OperationFailure, helpers_shared._check_command_response, {}, None)
 
         try:
-            helpers._check_command_response({"$err": "foo"}, None)
+            helpers_shared._check_command_response({"$err": "foo"}, None)
         except OperationFailure as e:
             self.assertEqual(e.args[0], "foo, full error: {'$err': 'foo'}")
         else:
@@ -594,7 +594,7 @@ class TestDatabase(IntegrationTest):
         }
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document, None)
+            helpers_shared._check_command_response(error_document, None)
 
         self.assertIn("inner", str(context.exception))
 
@@ -604,7 +604,7 @@ class TestDatabase(IntegrationTest):
         error_document = {"ok": 0, "errmsg": "outer", "raw": {"shard0/host0,host1": {}}}
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document, None)
+            helpers_shared._check_command_response(error_document, None)
 
         self.assertIn("outer", str(context.exception))
 
@@ -612,7 +612,7 @@ class TestDatabase(IntegrationTest):
         error_document = {"ok": 0, "errmsg": "outer", "raw": {"shard0/host0,host1": {"ok": 0}}}
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document, None)
+            helpers_shared._check_command_response(error_document, None)
 
         self.assertIn("outer", str(context.exception))
 

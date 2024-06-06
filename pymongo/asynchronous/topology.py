@@ -27,33 +27,12 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, helpers_constants
-from pymongo.asynchronous import common, periodic_executor
+from pymongo import _csot, common, helpers_shared
+from pymongo.asynchronous import periodic_executor
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
-from pymongo.asynchronous.hello import Hello
-from pymongo.asynchronous.logger import (
-    _SERVER_SELECTION_LOGGER,
-    _debug_log,
-    _ServerSelectionStatusMessage,
-)
 from pymongo.asynchronous.monitor import SrvMonitor
-from pymongo.asynchronous.pool import Pool, PoolOptions
+from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
-from pymongo.asynchronous.server_description import ServerDescription
-from pymongo.asynchronous.server_selectors import (
-    Selection,
-    any_server_selector,
-    arbiter_server_selector,
-    secondary_server_selector,
-    writable_server_selector,
-)
-from pymongo.asynchronous.topology_description import (
-    SRV_POLLING_TOPOLOGIES,
-    TOPOLOGY_TYPE,
-    TopologyDescription,
-    _updated_topology_description_srv_polling,
-    updated_topology_description,
-)
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -64,12 +43,34 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
+from pymongo.hello import Hello
 from pymongo.lock import _ACondition, _ALock, _create_lock
+from pymongo.logger import (
+    _SERVER_SELECTION_LOGGER,
+    _debug_log,
+    _ServerSelectionStatusMessage,
+)
+from pymongo.pool_options import PoolOptions
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import (
+    Selection,
+    any_server_selector,
+    arbiter_server_selector,
+    secondary_server_selector,
+    writable_server_selector,
+)
+from pymongo.topology_description import (
+    SRV_POLLING_TOPOLOGIES,
+    TOPOLOGY_TYPE,
+    TopologyDescription,
+    _updated_topology_description_srv_polling,
+    updated_topology_description,
+)
 
 if TYPE_CHECKING:
     from bson import ObjectId
     from pymongo.asynchronous.settings import TopologySettings
-    from pymongo.asynchronous.typings import ClusterTime, _Address
+    from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = False
 
@@ -790,8 +791,8 @@ class Topology:
                 # Default error code if one does not exist.
                 default = 10107 if isinstance(error, NotPrimaryError) else None
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
-            if err_code in helpers_constants._NOT_PRIMARY_CODES:
-                is_shutting_down = err_code in helpers_constants._SHUTDOWN_CODES
+            if err_code in helpers_shared._NOT_PRIMARY_CODES:
+                is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))

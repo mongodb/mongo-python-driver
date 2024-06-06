@@ -64,27 +64,27 @@ from pymongo.errors import (
     OperationFailure,
     ProtocolError,
 )
-from pymongo.synchronous.hello_compat import HelloCompat
-from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.logger import (
+from pymongo.hello_compat import HelloCompat
+from pymongo.logger import (
     _COMMAND_LOGGER,
     _CommandStatusMessage,
     _debug_log,
 )
-from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
-    from pymongo.synchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.synchronous.mongo_client import MongoClient
-    from pymongo.synchronous.monitoring import _EventListeners
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.read_preferences import _ServerMode
-    from pymongo.synchronous.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut
 
 
 _IS_SYNC = True
@@ -908,7 +908,7 @@ def _get_more(
 
 
 class _BulkWriteContext:
-    """A wrapper around Connection for use with write splitting functions."""
+    """A wrapper around AsyncConnection for use with write splitting functions."""
 
     __slots__ = (
         "db_name",
@@ -1012,7 +1012,7 @@ class _BulkWriteContext:
         docs: list[Mapping[str, Any]],
         client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
-        """A proxy for Connection.unack_write that handles event publishing."""
+        """A proxy for AsyncConnection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,

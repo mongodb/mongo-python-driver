@@ -28,23 +28,24 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.synchronous.helpers import _check_command_response, _handle_reauth
-from pymongo.synchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.helpers_shared import _check_command_response
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.response import PinnedResponse, Response
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
-from pymongo.synchronous.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
+    from pymongo.monitoring import _EventListeners
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_description import ServerDescription
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.monitoring import _EventListeners
     from pymongo.synchronous.pool import Connection, Pool
-    from pymongo.synchronous.read_preferences import _ServerMode
-    from pymongo.synchronous.server_description import ServerDescription
-    from pymongo.synchronous.typings import _DocumentOut
+    from pymongo.typings import _DocumentOut
 
 _IS_SYNC = True
 
@@ -121,7 +122,7 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :param conn: A Connection instance.
+        :param conn: A AsyncConnection instance.
         :param operation: A _Query or _GetMore object.
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.

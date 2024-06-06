@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from pymongo.synchronous.message import _OpMsg, _OpReply
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut
 
 _IS_SYNC = True
 
@@ -103,7 +103,7 @@ class PinnedResponse(Response):
 
         :param data:  A network response message.
         :param address: (host, port) of the source server.
-        :param conn: The Connection used for the initial query.
+        :param conn: The AsyncConnection used for the initial query.
         :param request_id: The request id of this operation.
         :param duration: The duration of the operation.
         :param from_command: If the response is the result of a db command.
@@ -117,7 +117,7 @@ class PinnedResponse(Response):
 
     @property
     def conn(self) -> Connection:
-        """The Connection used for the initial query.
+        """The AsyncConnection used for the initial query.
 
         The server will send batches on this socket, without waiting for
         getMores from the client, until the result set is exhausted or there

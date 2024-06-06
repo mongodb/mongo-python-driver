@@ -29,8 +29,8 @@ from test.utils import (
     wait_until,
 )
 
-from pymongo.synchronous import monitoring
-from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo import monitoring
+from pymongo.hello_compat import HelloCompat
 
 
 class TestStreamingProtocol(IntegrationTest):

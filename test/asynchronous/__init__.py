@@ -63,24 +63,19 @@ except ImportError:
 from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.asynchronous import common, message
-from pymongo.asynchronous.common import partition_node
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.uri_parser import parse_uri
+from pymongo.common import partition_node
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-
-if HAVE_SSL:
-    import ssl
 
 _IS_SYNC = False
 

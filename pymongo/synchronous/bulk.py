@@ -34,22 +34,21 @@ from typing import (
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from pymongo import _csot
+from pymongo import _csot, common
+from pymongo.common import (
+    validate_is_document_type,
+    validate_ok_for_replace,
+    validate_ok_for_update,
+)
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
-from pymongo.synchronous import common
+from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES, _get_wce_doc
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.common import (
-    validate_is_document_type,
-    validate_ok_for_replace,
-    validate_ok_for_update,
-)
-from pymongo.synchronous.helpers import _get_wce_doc
 from pymongo.synchronous.message import (
     _DELETE,
     _INSERT,
@@ -58,13 +57,12 @@ from pymongo.synchronous.message import (
     _EncryptedBulkWriteContext,
     _randint,
 )
-from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.typings import _DocumentOut, _DocumentType, _Pipeline
+    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _IS_SYNC = True
 
@@ -180,7 +178,7 @@ class _Bulk:
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
-        """Initialize a _Bulk instance."""
+        """Initialize a _AsyncBulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
@@ -335,8 +333,8 @@ class _Bulk:
             self.next_run = None
         run = self.current_run
 
-        # Connection.command validates the session, but we use
-        # Connection.write_command
+        # AsyncConnection.command validates the session, but we use
+        # AsyncConnection.write_command
         conn.validate_session(client, session)
         last_run = False
 

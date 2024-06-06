@@ -54,14 +54,7 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.logger import (
-    _COMMAND_LOGGER,
-    _CommandStatusMessage,
-    _debug_log,
-)
-from pymongo.asynchronous.read_preferences import ReadPreference
 from pymongo.errors import (
     ConfigurationError,
     CursorNotFound,
@@ -72,19 +65,26 @@ from pymongo.errors import (
     OperationFailure,
     ProtocolError,
 )
+from pymongo.hello_compat import HelloCompat
+from pymongo.logger import (
+    _COMMAND_LOGGER,
+    _CommandStatusMessage,
+    _debug_log,
+)
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.asynchronous.client_session import ClientSession
-    from pymongo.asynchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.monitoring import _EventListeners
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.read_preferences import _ServerMode
-    from pymongo.asynchronous.typings import _Address, _DocumentOut
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import _Address, _DocumentOut
 
 
 _IS_SYNC = False
@@ -217,7 +217,7 @@ def _gen_find_command(
     options: Optional[int],
     read_concern: ReadConcern,
     collation: Optional[Mapping[str, Any]] = None,
-    session: Optional[ClientSession] = None,
+    session: Optional[AsyncClientSession] = None,
     allow_disk_use: Optional[bool] = None,
 ) -> dict[str, Any]:
     """Generate a find command document."""
@@ -264,7 +264,7 @@ def _gen_get_more_command(
     batch_size: Optional[int],
     max_await_time_ms: Optional[int],
     comment: Optional[Any],
-    conn: Connection,
+    conn: AsyncConnection,
 ) -> dict[str, Any]:
     """Generate a getMore command document."""
     cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
@@ -319,7 +319,7 @@ class _Query:
         batch_size: int,
         read_concern: ReadConcern,
         collation: Optional[Mapping[str, Any]],
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         client: AsyncMongoClient,
         allow_disk_use: Optional[bool],
         exhaust: bool,
@@ -349,7 +349,7 @@ class _Query:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: Connection) -> bool:
+    def use_command(self, conn: AsyncConnection) -> bool:
         use_find_cmd = False
         if not self.exhaust:
             use_find_cmd = True
@@ -366,7 +366,7 @@ class _Query:
         return use_find_cmd
 
     async def as_command(
-        self, conn: Connection, apply_timeout: bool = False
+        self, conn: AsyncConnection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
@@ -410,7 +410,7 @@ class _Query:
         return self._as_command
 
     async def get_message(
-        self, read_preference: _ServerMode, conn: Connection, use_cmd: bool = False
+        self, read_preference: _ServerMode, conn: AsyncConnection, use_cmd: bool = False
     ) -> tuple[int, bytes, int]:
         """Get a query message, possibly setting the secondaryOk bit."""
         # Use the read_preference decided by _socket_from_server.
@@ -491,7 +491,7 @@ class _GetMore:
         cursor_id: int,
         codec_options: CodecOptions,
         read_preference: _ServerMode,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         client: AsyncMongoClient,
         max_await_time_ms: Optional[int],
         conn_mgr: Any,
@@ -518,7 +518,7 @@ class _GetMore:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: Connection) -> bool:
+    def use_command(self, conn: AsyncConnection) -> bool:
         use_cmd = False
         if not self.exhaust:
             use_cmd = True
@@ -530,7 +530,7 @@ class _GetMore:
         return use_cmd
 
     async def as_command(
-        self, conn: Connection, apply_timeout: bool = False
+        self, conn: AsyncConnection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
@@ -560,7 +560,7 @@ class _GetMore:
         return self._as_command
 
     async def get_message(
-        self, dummy0: Any, conn: Connection, use_cmd: bool = False
+        self, dummy0: Any, conn: AsyncConnection, use_cmd: bool = False
     ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
         ns = self.namespace()
@@ -581,7 +581,7 @@ class _GetMore:
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, conn: Connection) -> bool:
+    def use_command(self, conn: AsyncConnection) -> bool:
         # Compatibility checks.
         super().use_command(conn)
         if conn.max_wire_version >= 8:
@@ -593,7 +593,7 @@ class _RawBatchQuery(_Query):
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, conn: Connection) -> bool:
+    def use_command(self, conn: AsyncConnection) -> bool:
         # Compatibility checks.
         super().use_command(conn)
         if conn.max_wire_version >= 8:
@@ -908,7 +908,7 @@ def _get_more(
 
 
 class _BulkWriteContext:
-    """A wrapper around Connection for use with write splitting functions."""
+    """A wrapper around AsyncConnection for use with write splitting functions."""
 
     __slots__ = (
         "db_name",
@@ -929,10 +929,10 @@ class _BulkWriteContext:
         self,
         database_name: str,
         cmd_name: str,
-        conn: Connection,
+        conn: AsyncConnection,
         operation_id: int,
         listeners: _EventListeners,
-        session: ClientSession,
+        session: AsyncClientSession,
         op_type: int,
         codec: CodecOptions,
     ):
@@ -1012,7 +1012,7 @@ class _BulkWriteContext:
         docs: list[Mapping[str, Any]],
         client: AsyncMongoClient,
     ) -> Optional[Mapping[str, Any]]:
-        """A proxy for Connection.unack_write that handles event publishing."""
+        """A proxy for AsyncConnection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,

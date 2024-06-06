@@ -40,10 +40,9 @@ from test.utils import (
     wait_until,
 )
 
-from bson import encode
+from bson import RawBSONDocument, encode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
@@ -53,8 +52,6 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import *
-from pymongo.asynchronous.read_preferences import ReadPreference
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
@@ -67,7 +64,9 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
@@ -1642,7 +1641,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             with await self.db.test.aggregate([], {}):  # type:ignore
                 pass
 
-        with self.assertRaisesRegex(ValueError, "must be a ClientSession"):
+        with self.assertRaisesRegex(ValueError, "must be an AsyncClientSession"):
             await try_invalid_session()
 
     async def test_large_limit(self):

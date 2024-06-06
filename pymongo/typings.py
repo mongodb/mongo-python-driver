@@ -29,7 +29,14 @@ from typing import (
 from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.collation import Collation
+    from pymongo import AsyncMongoClient, MongoClient
+    from pymongo.asynchronous.bulk import _AsyncBulk
+    from pymongo.asynchronous.client_session import AsyncClientSession
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.collation import Collation
+    from pymongo.synchronous.bulk import _Bulk
+    from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.pool import Connection
 
 _IS_SYNC = False
 
@@ -41,9 +48,15 @@ ClusterTime = Mapping[str, Any]
 
 _T = TypeVar("_T")
 
+# Type hinting types for compatibility between async and sync classes
+_AgnosticClientSession = Union["AsyncClientSession", "ClientSession"]
+_AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]
+_AgnosticBulk = Union["_AsyncBulk", "_Bulk"]
+_AgnosticConnection = Union["AsyncConnection", "Connection"]
+
 
 def strip_optional(elem: Optional[_T]) -> _T:
-    """This function is to allow us to cast all of the elements of an iterator from Optional[_T] to _T
+    """This function is to allow us to cast all the elements of an iterator from Optional[_T] to _T
     while inside a list comprehension.
     """
     assert elem is not None
@@ -58,4 +71,6 @@ __all__ = [
     "_CollationIn",
     "_Pipeline",
     "strip_optional",
+    "_AgnosticClientSession",
+    "_AgnosticMongoClient",
 ]

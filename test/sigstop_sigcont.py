@@ -21,8 +21,8 @@ import sys
 
 sys.path[0:0] = [""]
 
+from pymongo import monitoring
 from pymongo.server_api import ServerApi
-from pymongo.synchronous import monitoring
 from pymongo.synchronous.mongo_client import MongoClient
 
 SERVER_API = None

@@ -42,6 +42,7 @@ from gridfs.grid_file_shared import (
     _grid_out_property,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
+from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -50,13 +51,13 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.helpers_shared import _check_write_command_response
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import validate_string
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.helpers import _check_write_command_response, next
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
@@ -163,7 +164,7 @@ class GridFS:
 
         :param file_id: ``"_id"`` of the file to get
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -205,7 +206,7 @@ class GridFS:
         :param version: version of the file to get (defaults
             to -1, the most recent version uploaded)
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
@@ -234,7 +235,10 @@ class GridFS:
             raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
     def get_last_version(
-        self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        filename: Optional[str] = None,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
     ) -> GridOut:
         """Get the most recent version of a file in GridFS by ``"filename"``
         or metadata fields.
@@ -244,7 +248,7 @@ class GridFS:
 
         :param filename: ``"filename"`` of the file to get, or `None`
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
@@ -269,7 +273,7 @@ class GridFS:
 
         :param file_id: ``"_id"`` of the file to delete
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -286,7 +290,7 @@ class GridFS:
         :class:`GridFS`.
 
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -325,7 +329,7 @@ class GridFS:
         :param args: any additional positional arguments are
             the same as the arguments to :meth:`find`.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
@@ -368,7 +372,7 @@ class GridFS:
         :meth:`~pymongo.collection.Collection.find`
         in :class:`~pymongo.collection.Collection`.
 
-        If a :class:`~pymongo.client_session.ClientSession` is passed to
+        If a :class:`~pymongo.client_session.AsyncClientSession` is passed to
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
@@ -436,7 +440,7 @@ class GridFS:
         :param document_or_id: query document, or _id of the
             document to check for
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: keyword arguments are used as a
             query document, if they're present.
 
@@ -554,7 +558,7 @@ class GridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -613,7 +617,7 @@ class GridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -670,7 +674,7 @@ class GridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -720,7 +724,7 @@ class GridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -751,7 +755,7 @@ class GridFSBucket:
 
         :param file_id: The _id of the file to be downloaded.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -786,7 +790,7 @@ class GridFSBucket:
         :param file_id: The _id of the file to be downloaded.
         :param destination: a file-like object implementing :meth:`write`.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -815,7 +819,7 @@ class GridFSBucket:
 
         :param file_id: The _id of the file to be deleted.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -855,7 +859,7 @@ class GridFSBucket:
         :meth:`~pymongo.collection.Collection.find`
         in :class:`~pymongo.collection.Collection`.
 
-        If a :class:`~pymongo.client_session.ClientSession` is passed to
+        If a :class:`~pymongo.client_session.AsyncClientSession` is passed to
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
@@ -898,7 +902,7 @@ class GridFSBucket:
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         :Note: Revision numbers are defined as follows:
 
@@ -957,7 +961,7 @@ class GridFSBucket:
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         :Note: Revision numbers are defined as follows:
 
@@ -996,7 +1000,7 @@ class GridFSBucket:
         :param file_id: The _id of the file to be renamed.
         :param new_filename: The new name of the file.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -1053,7 +1057,7 @@ class GridIn:
 
         :param root_collection: root collection to write to
         :param session: a
-            :class:`~pymongo.client_session.ClientSession` to use for all
+            :class:`~pymongo.client_session.AsyncClientSession` to use for all
             commands
         :param kwargs: Any: file level options (see above)
 
@@ -1408,7 +1412,7 @@ class GridOut(io.IOBase):
         :param file_document: file document from
             `root_collection.files`
         :param session: a
-            :class:`~pymongo.client_session.ClientSession` to use for all
+            :class:`~pymongo.client_session.AsyncClientSession` to use for all
             commands
 
         .. versionchanged:: 3.8

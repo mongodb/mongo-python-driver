@@ -31,15 +31,14 @@ from test.utils import (
 )
 
 from bson.json_util import object_hook
-from pymongo import MongoClient
+from pymongo import MongoClient, monitoring
+from pymongo.common import clean_node
 from pymongo.errors import ConnectionFailure, NotPrimaryError
-from pymongo.synchronous import monitoring
+from pymongo.hello import Hello
+from pymongo.server_description import ServerDescription
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import clean_node
-from pymongo.synchronous.hello import Hello
 from pymongo.synchronous.monitor import Monitor
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sdam_monitoring")

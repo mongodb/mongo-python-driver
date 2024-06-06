@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, cas
 from pymongo.server_type import SERVER_TYPE
 
 if TYPE_CHECKING:
-    from pymongo.synchronous.server_description import ServerDescription
-    from pymongo.synchronous.topology_description import TopologyDescription
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 T = TypeVar("T")
 TagSet = Mapping[str, Any]

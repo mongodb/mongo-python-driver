@@ -19,7 +19,7 @@ from mockupdb import Future, MockupDB, OpReply, going, wait_until
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 
 
 class TestNetworkDisconnectPrimary(unittest.TestCase):

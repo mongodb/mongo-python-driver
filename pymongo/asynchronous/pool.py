@@ -16,17 +16,14 @@ from __future__ import annotations
 
 import collections
 import contextlib
-import copy
 import logging
 import os
-import platform
 import socket
 import ssl
 import sys
 import threading
 import time
 import weakref
-from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -39,39 +36,18 @@ from typing import (
     Union,
 )
 
-import bson
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import __version__, _csot
-from pymongo.asynchronous import helpers
+from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.common import (
+from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.network import command, receive_message
+from pymongo.common import (
     MAX_BSON_SIZE,
-    MAX_CONNECTING,
-    MAX_IDLE_TIME_SEC,
     MAX_MESSAGE_SIZE,
-    MAX_POOL_SIZE,
     MAX_WIRE_VERSION,
     MAX_WRITE_BATCH_SIZE,
-    MIN_POOL_SIZE,
     ORDERED_TYPES,
-    WAIT_QUEUE_TIMEOUT,
 )
-from pymongo.asynchronous.hello import Hello
-from pymongo.asynchronous.hello_compat import HelloCompat
-from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.logger import (
-    _CONNECTION_LOGGER,
-    _ConnectionStatusMessage,
-    _debug_log,
-    _verbose_connection_error_reason,
-)
-from pymongo.asynchronous.monitoring import (
-    ConnectionCheckOutFailedReason,
-    ConnectionClosedReason,
-    _EventListeners,
-)
-from pymongo.asynchronous.network import command, receive_message
-from pymongo.asynchronous.read_preferences import ReadPreference
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
@@ -86,8 +62,22 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     WaitQueueTimeoutError,
     _CertificateError,
 )
+from pymongo.hello import Hello
+from pymongo.hello_compat import HelloCompat
 from pymongo.lock import _ACondition, _ALock, _create_lock
+from pymongo.logger import (
+    _CONNECTION_LOGGER,
+    _ConnectionStatusMessage,
+    _debug_log,
+    _verbose_connection_error_reason,
+)
+from pymongo.monitoring import (
+    ConnectionCheckOutFailedReason,
+    ConnectionClosedReason,
+)
 from pymongo.network_layer import async_sendall
+from pymongo.pool_options import PoolOptions
+from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
@@ -96,22 +86,19 @@ from pymongo.ssl_support import HAS_SNI, SSLError
 if TYPE_CHECKING:
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.auth import MongoCredential, _AuthContext
-    from pymongo.asynchronous.client_session import ClientSession
-    from pymongo.asynchronous.compression_support import (
-        CompressionSettings,
+    from pymongo.asynchronous.auth import _AuthContext
+    from pymongo.asynchronous.client_session import AsyncClientSession
+    from pymongo.asynchronous.message import _OpMsg, _OpReply
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
+    from pymongo.compression_support import (
         SnappyContext,
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.asynchronous.message import _OpMsg, _OpReply
-    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
-    from pymongo.asynchronous.read_preferences import _ServerMode
-    from pymongo.asynchronous.typings import ClusterTime, _Address, _CollationIn
-    from pymongo.driver_info import DriverInfo
-    from pymongo.pyopenssl_context import SSLContext, _sslConn
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
-    from pymongo.server_api import ServerApi
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import ClusterTime, _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -191,217 +178,6 @@ else:
         _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
 
 
-_METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
-
-if sys.platform.startswith("linux"):
-    # platform.linux_distribution was deprecated in Python 3.5
-    # and removed in Python 3.8. Starting in Python 3.5 it
-    # raises DeprecationWarning
-    # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
-    _name = platform.system()
-    _METADATA["os"] = {
-        "type": _name,
-        "name": _name,
-        "architecture": platform.machine(),
-        # Kernel version (e.g. 4.4.0-17-generic).
-        "version": platform.release(),
-    }
-elif sys.platform == "darwin":
-    _METADATA["os"] = {
-        "type": platform.system(),
-        "name": platform.system(),
-        "architecture": platform.machine(),
-        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
-        # kernel version.
-        "version": platform.mac_ver()[0],
-    }
-elif sys.platform == "win32":
-    _METADATA["os"] = {
-        "type": platform.system(),
-        # "Windows XP", "Windows 7", "Windows 10", etc.
-        "name": " ".join((platform.system(), platform.release())),
-        "architecture": platform.machine(),
-        # Windows patch level (e.g. 5.1.2600-SP3)
-        "version": "-".join(platform.win32_ver()[1:3]),
-    }
-elif sys.platform.startswith("java"):
-    _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA["os"] = {
-        # Linux, Windows 7, Mac OS X, etc.
-        "type": _name,
-        "name": _name,
-        # x86, x86_64, AMD64, etc.
-        "architecture": _arch,
-        # Linux kernel version, OSX version, etc.
-        "version": _ver,
-    }
-else:
-    # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
-    _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
-    _METADATA["os"] = {
-        "type": platform.system(),
-        "name": " ".join([part for part in _aliased[:2] if part]),
-        "architecture": platform.machine(),
-        "version": _aliased[2],
-    }
-
-if platform.python_implementation().startswith("PyPy"):
-    _METADATA["platform"] = " ".join(
-        (
-            platform.python_implementation(),
-            ".".join(map(str, sys.pypy_version_info)),  # type: ignore
-            "(Python %s)" % ".".join(map(str, sys.version_info)),
-        )
-    )
-elif sys.platform.startswith("java"):
-    _METADATA["platform"] = " ".join(
-        (
-            platform.python_implementation(),
-            ".".join(map(str, sys.version_info)),
-            "(%s)" % " ".join((platform.system(), platform.release())),
-        )
-    )
-else:
-    _METADATA["platform"] = " ".join(
-        (platform.python_implementation(), ".".join(map(str, sys.version_info)))
-    )
-
-DOCKER_ENV_PATH = "/.dockerenv"
-ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
-
-RUNTIME_NAME_DOCKER = "docker"
-ORCHESTRATOR_NAME_K8S = "kubernetes"
-
-
-def get_container_env_info() -> dict[str, str]:
-    """Returns the runtime and orchestrator of a container.
-    If neither value is present, the metadata client.env.container field will be omitted."""
-    container = {}
-
-    if Path(DOCKER_ENV_PATH).exists():
-        container["runtime"] = RUNTIME_NAME_DOCKER
-    if os.getenv(ENV_VAR_K8S):
-        container["orchestrator"] = ORCHESTRATOR_NAME_K8S
-
-    return container
-
-
-def _is_lambda() -> bool:
-    if os.getenv("AWS_LAMBDA_RUNTIME_API"):
-        return True
-    env = os.getenv("AWS_EXECUTION_ENV")
-    if env:
-        return env.startswith("AWS_Lambda_")
-    return False
-
-
-def _is_azure_func() -> bool:
-    return bool(os.getenv("FUNCTIONS_WORKER_RUNTIME"))
-
-
-def _is_gcp_func() -> bool:
-    return bool(os.getenv("K_SERVICE") or os.getenv("FUNCTION_NAME"))
-
-
-def _is_vercel() -> bool:
-    return bool(os.getenv("VERCEL"))
-
-
-def _is_faas() -> bool:
-    return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
-
-
-def _getenv_int(key: str) -> Optional[int]:
-    """Like os.getenv but returns an int, or None if the value is missing/malformed."""
-    val = os.getenv(key)
-    if not val:
-        return None
-    try:
-        return int(val)
-    except ValueError:
-        return None
-
-
-def _metadata_env() -> dict[str, Any]:
-    env: dict[str, Any] = {}
-    container = get_container_env_info()
-    if container:
-        env["container"] = container
-    # Skip if multiple (or no) envs are matched.
-    if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
-        return env
-    if _is_lambda():
-        env["name"] = "aws.lambda"
-        region = os.getenv("AWS_REGION")
-        if region:
-            env["region"] = region
-        memory_mb = _getenv_int("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
-        if memory_mb is not None:
-            env["memory_mb"] = memory_mb
-    elif _is_azure_func():
-        env["name"] = "azure.func"
-    elif _is_gcp_func():
-        env["name"] = "gcp.func"
-        region = os.getenv("FUNCTION_REGION")
-        if region:
-            env["region"] = region
-        memory_mb = _getenv_int("FUNCTION_MEMORY_MB")
-        if memory_mb is not None:
-            env["memory_mb"] = memory_mb
-        timeout_sec = _getenv_int("FUNCTION_TIMEOUT_SEC")
-        if timeout_sec is not None:
-            env["timeout_sec"] = timeout_sec
-    elif _is_vercel():
-        env["name"] = "vercel"
-        region = os.getenv("VERCEL_REGION")
-        if region:
-            env["region"] = region
-    return env
-
-
-_MAX_METADATA_SIZE = 512
-
-
-# See: https://github.com/mongodb/specifications/blob/5112bcc/source/mongodb-handshake/handshake.rst#limitations
-def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
-    """Perform metadata truncation."""
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
-        return
-    # 1. Omit fields from env except env.name.
-    env_name = metadata.get("env", {}).get("name")
-    if env_name:
-        metadata["env"] = {"name": env_name}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
-        return
-    # 2. Omit fields from os except os.type.
-    os_type = metadata.get("os", {}).get("type")
-    if os_type:
-        metadata["os"] = {"type": os_type}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
-        return
-    # 3. Omit the env document entirely.
-    metadata.pop("env", None)
-    encoded_size = len(bson.encode(metadata))
-    if encoded_size <= _MAX_METADATA_SIZE:
-        return
-    # 4. Truncate platform.
-    overflow = encoded_size - _MAX_METADATA_SIZE
-    plat = metadata.get("platform", "")
-    if plat:
-        plat = plat[:-overflow]
-    if plat:
-        metadata["platform"] = plat
-    else:
-        metadata.pop("platform", None)
-
-
-# If the first getaddrinfo call of this interpreter's life is on a thread,
-# while the main thread holds the import lock, getaddrinfo deadlocks trying
-# to import the IDNA codec. Import it here, where presumably we're on the
-# main thread, to avoid the deadlock. See PYTHON-607.
-"foo".encode("idna")
-
-
 def _raise_connection_failure(
     address: Any,
     error: Exception,
@@ -462,238 +238,6 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
     return result
 
 
-class PoolOptions:
-    """Read only connection pool options for an AsyncMongoClient.
-
-    Should not be instantiated directly by application developers. Access
-    a client's pool options via
-    :attr:`~pymongo.client_options.ClientOptions.pool_options` instead::
-
-      pool_opts = client.options.pool_options
-      pool_opts.max_pool_size
-      pool_opts.min_pool_size
-
-    """
-
-    __slots__ = (
-        "__max_pool_size",
-        "__min_pool_size",
-        "__max_idle_time_seconds",
-        "__connect_timeout",
-        "__socket_timeout",
-        "__wait_queue_timeout",
-        "__ssl_context",
-        "__tls_allow_invalid_hostnames",
-        "__event_listeners",
-        "__appname",
-        "__driver",
-        "__metadata",
-        "__compression_settings",
-        "__max_connecting",
-        "__pause_enabled",
-        "__server_api",
-        "__load_balanced",
-        "__credentials",
-    )
-
-    def __init__(
-        self,
-        max_pool_size: int = MAX_POOL_SIZE,
-        min_pool_size: int = MIN_POOL_SIZE,
-        max_idle_time_seconds: Optional[int] = MAX_IDLE_TIME_SEC,
-        connect_timeout: Optional[float] = None,
-        socket_timeout: Optional[float] = None,
-        wait_queue_timeout: Optional[int] = WAIT_QUEUE_TIMEOUT,
-        ssl_context: Optional[SSLContext] = None,
-        tls_allow_invalid_hostnames: bool = False,
-        event_listeners: Optional[_EventListeners] = None,
-        appname: Optional[str] = None,
-        driver: Optional[DriverInfo] = None,
-        compression_settings: Optional[CompressionSettings] = None,
-        max_connecting: int = MAX_CONNECTING,
-        pause_enabled: bool = True,
-        server_api: Optional[ServerApi] = None,
-        load_balanced: Optional[bool] = None,
-        credentials: Optional[MongoCredential] = None,
-    ):
-        self.__max_pool_size = max_pool_size
-        self.__min_pool_size = min_pool_size
-        self.__max_idle_time_seconds = max_idle_time_seconds
-        self.__connect_timeout = connect_timeout
-        self.__socket_timeout = socket_timeout
-        self.__wait_queue_timeout = wait_queue_timeout
-        self.__ssl_context = ssl_context
-        self.__tls_allow_invalid_hostnames = tls_allow_invalid_hostnames
-        self.__event_listeners = event_listeners
-        self.__appname = appname
-        self.__driver = driver
-        self.__compression_settings = compression_settings
-        self.__max_connecting = max_connecting
-        self.__pause_enabled = pause_enabled
-        self.__server_api = server_api
-        self.__load_balanced = load_balanced
-        self.__credentials = credentials
-        self.__metadata = copy.deepcopy(_METADATA)
-        if appname:
-            self.__metadata["application"] = {"name": appname}
-
-        # Combine the "driver" AsyncMongoClient option with PyMongo's info, like:
-        # {
-        #    'driver': {
-        #        'name': 'PyMongo|MyDriver',
-        #        'version': '4.2.0|1.2.3',
-        #    },
-        #    'platform': 'CPython 3.8.0|MyPlatform'
-        # }
-        if driver:
-            if driver.name:
-                self.__metadata["driver"]["name"] = "{}|{}".format(
-                    _METADATA["driver"]["name"],
-                    driver.name,
-                )
-            if driver.version:
-                self.__metadata["driver"]["version"] = "{}|{}".format(
-                    _METADATA["driver"]["version"],
-                    driver.version,
-                )
-            if driver.platform:
-                self.__metadata["platform"] = "{}|{}".format(_METADATA["platform"], driver.platform)
-
-        env = _metadata_env()
-        if env:
-            self.__metadata["env"] = env
-
-        _truncate_metadata(self.__metadata)
-
-    @property
-    def _credentials(self) -> Optional[MongoCredential]:
-        """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
-        return self.__credentials
-
-    @property
-    def non_default_options(self) -> dict[str, Any]:
-        """The non-default options this pool was created with.
-
-        Added for CMAP's :class:`PoolCreatedEvent`.
-        """
-        opts = {}
-        if self.__max_pool_size != MAX_POOL_SIZE:
-            opts["maxPoolSize"] = self.__max_pool_size
-        if self.__min_pool_size != MIN_POOL_SIZE:
-            opts["minPoolSize"] = self.__min_pool_size
-        if self.__max_idle_time_seconds != MAX_IDLE_TIME_SEC:
-            assert self.__max_idle_time_seconds is not None
-            opts["maxIdleTimeMS"] = self.__max_idle_time_seconds * 1000
-        if self.__wait_queue_timeout != WAIT_QUEUE_TIMEOUT:
-            assert self.__wait_queue_timeout is not None
-            opts["waitQueueTimeoutMS"] = self.__wait_queue_timeout * 1000
-        if self.__max_connecting != MAX_CONNECTING:
-            opts["maxConnecting"] = self.__max_connecting
-        return opts
-
-    @property
-    def max_pool_size(self) -> float:
-        """The maximum allowable number of concurrent connections to each
-        connected server. Requests to a server will block if there are
-        `maxPoolSize` outstanding connections to the requested server.
-        Defaults to 100. Cannot be 0.
-
-        When a server's pool has reached `max_pool_size`, operations for that
-        server block waiting for a socket to be returned to the pool. If
-        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
-        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
-        By default ``waitQueueTimeoutMS`` is not set.
-        """
-        return self.__max_pool_size
-
-    @property
-    def min_pool_size(self) -> int:
-        """The minimum required number of concurrent connections that the pool
-        will maintain to each connected server. Default is 0.
-        """
-        return self.__min_pool_size
-
-    @property
-    def max_connecting(self) -> int:
-        """The maximum number of concurrent connection creation attempts per
-        pool. Defaults to 2.
-        """
-        return self.__max_connecting
-
-    @property
-    def pause_enabled(self) -> bool:
-        return self.__pause_enabled
-
-    @property
-    def max_idle_time_seconds(self) -> Optional[int]:
-        """The maximum number of seconds that a connection can remain
-        idle in the pool before being removed and replaced. Defaults to
-        `None` (no limit).
-        """
-        return self.__max_idle_time_seconds
-
-    @property
-    def connect_timeout(self) -> Optional[float]:
-        """How long a connection can take to be opened before timing out."""
-        return self.__connect_timeout
-
-    @property
-    def socket_timeout(self) -> Optional[float]:
-        """How long a send or receive on a socket can take before timing out."""
-        return self.__socket_timeout
-
-    @property
-    def wait_queue_timeout(self) -> Optional[int]:
-        """How long a thread will wait for a socket from the pool if the pool
-        has no free sockets.
-        """
-        return self.__wait_queue_timeout
-
-    @property
-    def _ssl_context(self) -> Optional[SSLContext]:
-        """An SSLContext instance or None."""
-        return self.__ssl_context
-
-    @property
-    def tls_allow_invalid_hostnames(self) -> bool:
-        """If True skip ssl.match_hostname."""
-        return self.__tls_allow_invalid_hostnames
-
-    @property
-    def _event_listeners(self) -> Optional[_EventListeners]:
-        """An instance of pymongo.monitoring._EventListeners."""
-        return self.__event_listeners
-
-    @property
-    def appname(self) -> Optional[str]:
-        """The application name, for sending with hello in server handshake."""
-        return self.__appname
-
-    @property
-    def driver(self) -> Optional[DriverInfo]:
-        """Driver name and version, for sending with hello in handshake."""
-        return self.__driver
-
-    @property
-    def _compression_settings(self) -> Optional[CompressionSettings]:
-        return self.__compression_settings
-
-    @property
-    def metadata(self) -> dict[str, Any]:
-        """A dict of metadata about the application, driver, os, and platform."""
-        return self.__metadata.copy()
-
-    @property
-    def server_api(self) -> Optional[ServerApi]:
-        """A pymongo.server_api.ServerApi or None."""
-        return self.__server_api
-
-    @property
-    def load_balanced(self) -> Optional[bool]:
-        """True if this Pool is configured in load balanced mode."""
-        return self.__load_balanced
-
-
 class _CancellationContext:
     def __init__(self) -> None:
         self._cancelled = False
@@ -708,7 +252,7 @@ class _CancellationContext:
         return self._cancelled
 
 
-class Connection:
+class AsyncConnection:
     """Store a connection with some metadata.
 
     :param conn: a raw connection object
@@ -926,7 +470,7 @@ class Connection:
         self.more_to_come = reply.more_to_come
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
-        helpers._check_command_response(response_doc, self.max_wire_version)
+        helpers_shared._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
     @_handle_reauth
@@ -942,7 +486,7 @@ class Connection:
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
         collation: Optional[_CollationIn] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         client: Optional[AsyncMongoClient] = None,
         retryable_write: bool = False,
         publish_events: bool = True,
@@ -962,7 +506,7 @@ class Connection:
         :param parse_write_concern_error: Whether to parse the
             ``writeConcernError`` field in the command response.
         :param collation: The collation for this command.
-        :param session: optional ClientSession instance.
+        :param session: optional AsyncClientSession instance.
         :param client: optional AsyncMongoClient for gossipping $clusterTime.
         :param retryable_write: True if this command is a retryable write.
         :param publish_events: Should we publish events for this command?
@@ -1079,7 +623,7 @@ class Connection:
         result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
-        helpers._check_command_response(result, self.max_wire_version)
+        helpers_shared._check_command_response(result, self.max_wire_version)
         return result
 
     async def authenticate(self, reauthenticate: bool = False) -> None:
@@ -1117,7 +661,7 @@ class Connection:
                     )
 
     def validate_session(
-        self, client: Optional[AsyncMongoClient], session: Optional[ClientSession]
+        self, client: Optional[AsyncMongoClient], session: Optional[AsyncClientSession]
     ) -> None:
         """Validate this session before use with client.
 
@@ -1169,7 +713,7 @@ class Connection:
     def send_cluster_time(
         self,
         command: MutableMapping[str, Any],
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         client: Optional[AsyncMongoClient],
     ) -> None:
         """Add $clusterTime."""
@@ -1229,7 +773,7 @@ class Connection:
         return hash(self.conn)
 
     def __repr__(self) -> str:
-        return "Connection({}){} at {}".format(
+        return "AsyncConnection({}){} at {}".format(
             repr(self.conn),
             self.closed and " CLOSED" or "",
             id(self),
@@ -1420,7 +964,7 @@ class Pool:
         """
         :param address: a (hostname, port) tuple
         :param options: a PoolOptions instance
-        :param handshake: whether to call hello for each new Connection
+        :param handshake: whether to call hello for each new AsyncConnection
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -1490,7 +1034,7 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: set[Connection] = set()
+        self.__pinned_sockets: set[AsyncConnection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
@@ -1677,8 +1221,8 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
-        """Connect to Mongo and return a new Connection.
+    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
+        """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.
 
@@ -1728,7 +1272,7 @@ class Pool:
 
             raise
 
-        conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = AsyncConnection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         async with self.lock:
             self.active_contexts.add(conn.cancel_context)
         try:
@@ -1748,10 +1292,10 @@ class Pool:
     @contextlib.asynccontextmanager
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncGenerator[Connection, None]:
+    ) -> AsyncGenerator[AsyncConnection, None]:
         """Get a connection from the pool. Use with a "with" statement.
 
-        Returns a :class:`Connection` object wrapping a connected
+        Returns a :class:`AsyncConnection` object wrapping a connected
         :class:`socket.socket`.
 
         This method should always be used in a with-statement::
@@ -1850,8 +1394,8 @@ class Pool:
 
     async def _get_conn(
         self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Connection:
-        """Get or create a Connection. Can raise ConnectionFailure."""
+    ) -> AsyncConnection:
+        """Get or create a AsyncConnection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
@@ -1872,7 +1416,7 @@ class Pool:
                         message=_ConnectionStatusMessage.CHECKOUT_FAILED,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
-                        reason="Connection pool was closed",
+                        reason="AsyncConnection pool was closed",
                         error=ConnectionCheckOutFailedReason.POOL_CLOSED,
                         durationMS=duration,
                     )
@@ -1973,7 +1517,7 @@ class Pool:
         conn.active = True
         return conn
 
-    async def checkin(self, conn: Connection) -> None:
+    async def checkin(self, conn: AsyncConnection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
 
         :param conn: The connection to check into the pool.
@@ -2045,7 +1589,7 @@ class Pool:
             self.operation_count -= 1
             self.size_cond.notify()
 
-    def _perished(self, conn: Connection) -> bool:
+    def _perished(self, conn: AsyncConnection) -> bool:
         """Return True and close the connection if it is "perished".
 
         This side-effecty function checks if this socket has been idle for

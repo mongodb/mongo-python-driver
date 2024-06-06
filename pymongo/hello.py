@@ -21,10 +21,10 @@ import itertools
 from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
-from pymongo.asynchronous import common
-from pymongo.asynchronous.hello_compat import HelloCompat
-from pymongo.asynchronous.typings import ClusterTime, _DocumentType
+from pymongo import common
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_type import SERVER_TYPE
+from pymongo.typings import ClusterTime, _DocumentType
 
 _IS_SYNC = False
 

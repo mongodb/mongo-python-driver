@@ -27,11 +27,12 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo.asynchronous.helpers import _check_command_response, _handle_reauth
-from pymongo.asynchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
-from pymongo.asynchronous.response import PinnedResponse, Response
 from pymongo.errors import NotPrimaryError, OperationFailure
+from pymongo.helpers_shared import _check_command_response
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -40,11 +41,11 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo.asynchronous.monitor import Monitor
-    from pymongo.asynchronous.monitoring import _EventListeners
-    from pymongo.asynchronous.pool import Connection, Pool
-    from pymongo.asynchronous.read_preferences import _ServerMode
-    from pymongo.asynchronous.server_description import ServerDescription
-    from pymongo.asynchronous.typings import _DocumentOut
+    from pymongo.asynchronous.pool import AsyncConnection, Pool
+    from pymongo.monitoring import _EventListeners
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _IS_SYNC = False
 
@@ -108,7 +109,7 @@ class Server:
     @_handle_reauth
     async def run_operation(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
@@ -121,7 +122,7 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :param conn: A Connection instance.
+        :param conn: A AsyncConnection instance.
         :param operation: A _Query or _GetMore object.
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.
@@ -321,7 +322,7 @@ class Server:
 
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncContextManager[Connection]:
+    ) -> AsyncContextManager[AsyncConnection]:
         return self.pool.checkout(handler)
 
     @property

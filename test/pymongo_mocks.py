@@ -20,13 +20,14 @@ import weakref
 from functools import partial
 from test import client_context
 
+from pymongo import common
 from pymongo.errors import AutoReconnect, NetworkTimeout
-from pymongo.synchronous import common
-from pymongo.synchronous.hello import Hello, HelloCompat
+from pymongo.hello import Hello
+from pymongo.hello_compat import HelloCompat
+from pymongo.server_description import ServerDescription
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import Pool
-from pymongo.synchronous.server_description import ServerDescription
 
 
 class MockPool(Pool):

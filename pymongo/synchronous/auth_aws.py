@@ -23,7 +23,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
     from bson.typings import _ReadableBuffer
-    from pymongo.synchronous.auth import MongoCredential
+    from pymongo.auth_shared import MongoCredential
     from pymongo.synchronous.pool import Connection
 
 _IS_SYNC = True

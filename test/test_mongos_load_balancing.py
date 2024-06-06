@@ -18,7 +18,7 @@ from __future__ import annotations
 import sys
 import threading
 
-from pymongo.synchronous.operations import _Op
+from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -27,8 +27,8 @@ from test.pymongo_mocks import MockClient
 from test.utils import connected, wait_until
 
 from pymongo.errors import AutoReconnect, InvalidOperation
-from pymongo.synchronous.server_selectors import writable_server_selector
-from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
+from pymongo.server_selectors import writable_server_selector
+from pymongo.topology_description import TOPOLOGY_TYPE
 
 
 @client_context.require_connection

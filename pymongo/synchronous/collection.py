@@ -40,41 +40,17 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, _csot
+from pymongo import ASCENDING, _csot, common, helpers_shared
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
     InvalidOperation,
     OperationFailure,
 )
-from pymongo.read_concern import DEFAULT_READ_CONCERN
-from pymongo.results import (
-    BulkWriteResult,
-    DeleteResult,
-    InsertManyResult,
-    InsertOneResult,
-    UpdateResult,
-)
-from pymongo.synchronous import common, helpers, message
-from pymongo.synchronous.aggregation import (
-    _CollectionAggregationCommand,
-    _CollectionRawAggregationCommand,
-)
-from pymongo.synchronous.bulk import _Bulk
-from pymongo.synchronous.change_stream import CollectionChangeStream
-from pymongo.synchronous.collation import validate_collation_or_none
-from pymongo.synchronous.command_cursor import (
-    CommandCursor,
-    RawBatchCommandCursor,
-)
-from pymongo.synchronous.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.synchronous.cursor import (
-    Cursor,
-    RawBatchCursor,
-)
-from pymongo.synchronous.helpers import _check_write_command_response
-from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.synchronous.operations import (
+from pymongo.helpers_shared import _check_write_command_response
+from pymongo.operations import (
     DeleteMany,
     DeleteOne,
     IndexModel,
@@ -87,8 +63,32 @@ from pymongo.synchronous.operations import (
     _IndexList,
     _Op,
 )
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
+from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
+from pymongo.synchronous import message
+from pymongo.synchronous.aggregation import (
+    _CollectionAggregationCommand,
+    _CollectionRawAggregationCommand,
+)
+from pymongo.synchronous.bulk import _Bulk
+from pymongo.synchronous.change_stream import CollectionChangeStream
+from pymongo.synchronous.command_cursor import (
+    CommandCursor,
+    RawBatchCommandCursor,
+)
+from pymongo.synchronous.cursor import (
+    Cursor,
+    RawBatchCursor,
+)
+from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 _IS_SYNC = True
@@ -124,10 +124,10 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
+    from pymongo.collation import Collation
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.aggregation import _AggregationCommand
     from pymongo.synchronous.client_session import ClientSession
-    from pymongo.synchronous.collation import Collation
     from pymongo.synchronous.database import Database
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
@@ -989,7 +989,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
         command = {"update": self.name, "ordered": ordered, "updates": [update_doc]}
         if let is not None:
@@ -1470,7 +1470,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
                 )
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers_shared._index_document(hint)
             delete_doc["hint"] = hint
         command = {"delete": self.name, "ordered": ordered, "deletes": [delete_doc]}
 
@@ -2086,7 +2086,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
         cmd = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
         if "hint" in kwargs and not isinstance(kwargs["hint"], str):
-            kwargs["hint"] = helpers._index_document(kwargs["hint"])
+            kwargs["hint"] = helpers_shared._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
@@ -2419,7 +2419,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         name = index_or_name
         if isinstance(index_or_name, list):
-            name = helpers._gen_index_name(index_or_name)
+            name = helpers_shared._gen_index_name(index_or_name)
 
         if not isinstance(name, str):
             raise TypeError("index_or_name must be an instance of str or list")
@@ -3148,15 +3148,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd["let"] = let
         cmd.update(kwargs)
         if projection is not None:
-            cmd["fields"] = helpers._fields_list_to_dict(projection, "projection")
+            cmd["fields"] = helpers_shared._fields_list_to_dict(projection, "projection")
         if sort is not None:
-            cmd["sort"] = helpers._index_document(sort)
+            cmd["sort"] = helpers_shared._index_document(sort)
         if upsert is not None:
             validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):
-                hint = helpers._index_document(hint)
+                hint = helpers_shared._index_document(hint)
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 

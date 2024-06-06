@@ -21,8 +21,7 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pymongo.asynchronous.message import _OpMsg, _OpReply
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.typings import _Address, _DocumentOut
+    from pymongo.typings import _Address, _AgnosticConnection, _DocumentOut
 
 _IS_SYNC = False
 
@@ -92,7 +91,7 @@ class PinnedResponse(Response):
         self,
         data: Union[_OpMsg, _OpReply],
         address: _Address,
-        conn: Connection,
+        conn: _AgnosticConnection,
         request_id: int,
         duration: Optional[timedelta],
         from_command: bool,
@@ -103,7 +102,7 @@ class PinnedResponse(Response):
 
         :param data:  A network response message.
         :param address: (host, port) of the source server.
-        :param conn: The Connection used for the initial query.
+        :param conn: The AsyncConnection/Connection used for the initial query.
         :param request_id: The request id of this operation.
         :param duration: The duration of the operation.
         :param from_command: If the response is the result of a db command.
@@ -116,8 +115,8 @@ class PinnedResponse(Response):
         self._more_to_come = more_to_come
 
     @property
-    def conn(self) -> Connection:
-        """The Connection used for the initial query.
+    def conn(self) -> _AgnosticConnection:
+        """The AsyncConnection/Connection used for the initial query.
 
         The server will send batches on this socket, without waiting for
         getMores from the client, until the result set is exhausted or there

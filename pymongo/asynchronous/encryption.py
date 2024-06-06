@@ -59,16 +59,13 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.common import CONNECT_TIMEOUT
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import UpdateOne
-from pymongo.asynchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
-from pymongo.asynchronous.typings import _DocumentType, _DocumentTypeArg
-from pymongo.asynchronous.uri_parser import parse_host
+from pymongo.asynchronous.pool import _configured_socket, _raise_connection_failure
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -78,9 +75,13 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, async_sendall
+from pymongo.operations import UpdateOne
+from pymongo.pool_options import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
+from pymongo.typings import _DocumentType, _DocumentTypeArg
+from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -381,7 +382,10 @@ class _Encrypter:
         )
 
         io_callbacks = _EncryptionIO(  # type:ignore[misc]
-            metadata_client, key_vault_coll, mongocryptd_client, opts
+            metadata_client,
+            key_vault_coll,  # type:ignore[arg-type]
+            mongocryptd_client,
+            opts,
         )
         self._auto_encrypter = AsyncAutoEncrypter(
             io_callbacks,

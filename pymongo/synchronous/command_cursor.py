@@ -31,6 +31,7 @@ from typing import (
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.response import PinnedResponse
 from pymongo.synchronous.cursor import _ConnectionManager
 from pymongo.synchronous.message import (
     _CursorAddress,
@@ -39,8 +40,7 @@ from pymongo.synchronous.message import (
     _OpReply,
     _RawBatchGetMore,
 )
-from pymongo.synchronous.response import PinnedResponse
-from pymongo.synchronous.typings import _Address, _DocumentOut, _DocumentType
+from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession
