@@ -231,7 +231,7 @@ class AutoEncryptionOpts:
 
 
 class RangeOpts:
-    """Options to configure encrypted queries using the rangePreview algorithm."""
+    """Options to configure encrypted queries using the range algorithm."""
 
     def __init__(
         self,
@@ -240,9 +240,7 @@ class RangeOpts:
         max: Optional[Any] = None,
         precision: Optional[int] = None,
     ) -> None:
-        """Options to configure encrypted queries using the rangePreview algorithm.
-
-        .. note:: This feature is experimental only, and not intended for public use.
+        """Options to configure encrypted queries using the range algorithm.
 
         :param sparsity: An integer.
         :param min: A BSON scalar value corresponding to the type being queried.

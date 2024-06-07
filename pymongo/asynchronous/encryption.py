@@ -475,11 +475,9 @@ class QueryType(str, enum.Enum):
     EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
 
-    RANGEPREVIEW = "rangePreview"
+    RANGE = "range"
     """Used to encrypt a value for a range query.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
 """
 
 
