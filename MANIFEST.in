@@ -2,6 +2,7 @@ include README.md
 include LICENSE
 include THIRD-PARTY-NOTICES
 include *.ini
+include sbom.json
 include requirements.txt
 exclude .coveragerc
 exclude .git-blame-ignore-revs
@@ -21,6 +22,7 @@ include doc/make.bat
 include doc/static/periodic-executor-refs.dot
 recursive-include requirements *.txt
 recursive-include tools *.py
+recursive-include tools *.sh
 include tools/README.rst
 include green_framework_test.py
 recursive-include test *.pem

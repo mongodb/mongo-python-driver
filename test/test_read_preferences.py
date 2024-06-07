@@ -22,7 +22,7 @@ import random
 import sys
 from typing import Any
 
-from pymongo.operations import _Op
+from pymongo.synchronous.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -39,9 +39,10 @@ from test.version import Version
 
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.message import _maybe_add_read_preference
-from pymongo.mongo_client import MongoClient
-from pymongo.read_preferences import (
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.message import _maybe_add_read_preference
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.read_preferences import (
     MovingAverage,
     Nearest,
     Primary,
@@ -50,9 +51,8 @@ from pymongo.read_preferences import (
     Secondary,
     SecondaryPreferred,
 )
-from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import Selection, readable_server_selector
-from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.server_description import ServerDescription
+from pymongo.synchronous.server_selectors import Selection, readable_server_selector
 from pymongo.write_concern import WriteConcern
 
 
@@ -299,6 +299,12 @@ class ReadPrefTester(MongoClient):
         with context as (conn, read_preference):
             self.record_a_read(conn.address)
             yield conn, read_preference
+
+    async def _socket_for_reads_async(self, read_preference, session):
+        context = await super()._socket_for_reads_async(read_preference, session)
+        async with context as (sock_info, read_preference):
+            self.record_a_read(sock_info.address)
+            return await super()._socket_for_reads_async(read_preference, session)
 
     def record_a_read(self, address):
         server = self._get_topology().select_server_by_address(address, _Op.TEST, 0)

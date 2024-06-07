@@ -30,8 +30,8 @@ import warnings
 from threading import Thread
 from typing import Any, Dict, Mapping
 
-from pymongo.collection import Collection
 from pymongo.daemon import _spawn_daemon
+from pymongo.synchronous.collection import Collection
 
 sys.path[0:0] = [""]
 
@@ -68,10 +68,8 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
-from pymongo import ReadPreference, encryption
-from pymongo.cursor import CursorType
-from pymongo.encryption import Algorithm, ClientEncryption, QueryType
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
+from pymongo import ReadPreference
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -84,15 +82,18 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteError,
 )
-from pymongo.mongo_client import MongoClient
-from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+from pymongo.synchronous import encryption
+from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 
 KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 def get_client_opts(client):
-    return client._MongoClient__options
+    return client.options
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):

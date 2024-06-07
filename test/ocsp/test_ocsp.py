@@ -41,11 +41,7 @@ else:
 
 
 def _connect(options):
-    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS={}&tlsCAFile={}&{}").format(
-        TIMEOUT_MS,
-        CA_FILE,
-        options,
-    )
+    uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS={TIMEOUT_MS}&tlsCAFile={CA_FILE}&{options}"
     print(uri)
     client = pymongo.MongoClient(uri)
     client.admin.command("ping")

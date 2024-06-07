@@ -21,7 +21,7 @@ from mockupdb import MockupDB, OpMsg, going
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.read_preferences import (
+from pymongo.synchronous.read_preferences import (
     Nearest,
     Primary,
     PrimaryPreferred,
