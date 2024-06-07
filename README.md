@@ -96,7 +96,7 @@ package that is incompatible with PyMongo.
 
 ## Dependencies
 
-PyMongo supports CPython 3.7+ and PyPy3.7+.
+PyMongo supports CPython 3.8+ and PyPy3.9+.
 
 Required dependencies:
 

@@ -247,9 +247,9 @@ python -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    # coverage 7.3 dropped support for Python 3.7, keep in sync with combine-coverage.sh.
+    # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
-    python -m pip install pytest-cov "coverage>=5,<7.3"
+    python -m pip install pytest-cov "coverage>=5,<=7.5"
     TEST_ARGS="$TEST_ARGS --cov"
 fi
 
