@@ -136,32 +136,8 @@ by this python implementation.\n
     )
     ext_modules = []
 
-
-def parse_reqs_file(fname):
-    with open(fname) as fid:
-        lines = [li.strip() for li in fid.readlines()]
-    return [li for li in lines if li and not li.startswith("#")]
-
-
-dependencies = parse_reqs_file("requirements.txt")
-
-extras_require = dict(
-    aws=parse_reqs_file("requirements/aws.txt"),
-    encryption=parse_reqs_file("requirements/encryption.txt"),
-    gssapi=parse_reqs_file("requirements/gssapi.txt"),
-    ocsp=parse_reqs_file("requirements/ocsp.txt"),
-    snappy=parse_reqs_file("requirements/snappy.txt"),
-    # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
-    srv=[],
-    tls=[],
-    # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
-    zstd=parse_reqs_file("requirements/zstd.txt"),
-    test=parse_reqs_file("requirements/test.txt"),
-)
-
 setup(
     cmdclass={"build_ext": custom_build_ext},
-    install_requires=dependencies,
-    extras_require=extras_require,
     ext_modules=ext_modules,
+    packages=["bson", "pymongo", "gridfs"],
 )  # type:ignore

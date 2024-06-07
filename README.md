@@ -78,12 +78,6 @@ PyMongo can be installed with [pip](http://pypi.python.org/pypi/pip):
 python -m pip install pymongo
 ```
 
-Or `easy_install` from [setuptools](http://pypi.python.org/pypi/setuptools):
-
-```bash
-python -m easy_install pymongo
-```
-
 You can also download the project source and do:
 
 ```bash
