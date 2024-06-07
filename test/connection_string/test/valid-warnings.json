@@ -93,6 +93,21 @@
       ],
       "auth": null,
       "options": null
+    },
+    {
+      "description": "Comma in a key value pair causes a warning",
+      "uri": "mongodb://example.com?authMechanismProperties=TOKEN_RESOURCE:mongodb://host1%2Chost2",
+      "valid": true,
+      "warning": true,
+      "hosts": [
+        {
+          "type": "hostname",
+          "host": "example.com",
+          "port": null
+        }
+      ],
+      "auth": null,
+      "options": null
     }
   ]
 }

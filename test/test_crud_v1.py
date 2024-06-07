@@ -29,11 +29,14 @@ from test.utils import (
     drop_collections,
 )
 
-from pymongo import WriteConcern, operations
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo import WriteConcern
 from pymongo.errors import PyMongoError
-from pymongo.operations import (
+from pymongo.read_concern import ReadConcern
+from pymongo.results import BulkWriteResult, _WriteResult
+from pymongo.synchronous import operations
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.operations import (
     DeleteMany,
     DeleteOne,
     InsertOne,
@@ -41,8 +44,6 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult, _WriteResult
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "crud", "v1")

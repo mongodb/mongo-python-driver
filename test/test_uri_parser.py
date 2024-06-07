@@ -28,7 +28,7 @@ from test import unittest
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.uri_parser import (
+from pymongo.synchronous.uri_parser import (
     parse_uri,
     parse_userinfo,
     split_hosts,
@@ -474,9 +474,9 @@ class TestURI(unittest.TestCase):
         res = {"tls": True, "appname": "myapp"}
         self.assertEqual(res, parse_uri(uri)["options"])
 
-    def test_unquote_after_parsing(self):
-        quoted_val = "val%21%40%23%24%25%5E%26%2A%28%29_%2B%2C%3A+etc"
-        unquoted_val = "val!@#$%^&*()_+,: etc"
+    def test_unquote_during_parsing(self):
+        quoted_val = "val%21%40%23%24%25%5E%26%2A%28%29_%2B%3A+etc"
+        unquoted_val = "val!@#$%^&*()_+: etc"
         uri = (
             "mongodb://user:password@localhost/?authMechanism=MONGODB-AWS"
             "&authMechanismProperties=AWS_SESSION_TOKEN:" + quoted_val
@@ -511,7 +511,7 @@ class TestURI(unittest.TestCase):
         )
         with self.assertRaisesRegex(
             ValueError,
-            "auth mechanism properties must be key:value pairs like AWS_SESSION_TOKEN:<token>",
+            "Malformed auth mechanism properties",
         ):
             parse_uri(uri)
 

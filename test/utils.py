@@ -15,6 +15,7 @@
 """Utilities for testing pymongo"""
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import copy
 import functools
@@ -29,19 +30,24 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
+from test.asynchronous import async_client_context
 from typing import Any, List
 
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import MongoClient, monitoring, operations, read_preferences
-from pymongo.collection import ReturnDocument
-from pymongo.cursor import CursorType
+from pymongo import AsyncMongoClient
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.hello import HelloCompat
-from pymongo.helpers import _SENSITIVE_COMMANDS
+from pymongo.helpers_constants import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
-from pymongo.monitoring import (
+from pymongo.read_concern import ReadConcern
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous import monitoring, operations, read_preferences
+from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.hello_compat import HelloCompat
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
@@ -54,13 +60,11 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.operations import _Op
-from pymongo.pool import _CancellationContext, _PoolGeneration
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import any_server_selector, writable_server_selector
-from pymongo.server_type import SERVER_TYPE
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.operations import _Op
+from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
+from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.synchronous.server_selectors import any_server_selector, writable_server_selector
+from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.write_concern import WriteConcern
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
@@ -594,6 +598,33 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
     return MongoClient(uri, port, **client_options)
 
 
+async def _async_mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
+    """Create a new client over SSL/TLS if necessary."""
+    host = host or await async_client_context.host
+    port = port or await async_client_context.port
+    client_options: dict = async_client_context.default_client_options.copy()
+    if async_client_context.replica_set_name and not directConnection:
+        client_options["replicaSet"] = async_client_context.replica_set_name
+    if directConnection is not None:
+        client_options["directConnection"] = directConnection
+    client_options.update(kwargs)
+
+    uri = _connection_string(host)
+    auth_mech = kwargs.get("authMechanism", "")
+    if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
+        # Only add the default username or password if one is not provided.
+        res = parse_uri(uri)
+        if (
+            not res["username"]
+            and not res["password"]
+            and "username" not in client_options
+            and "password" not in client_options
+        ):
+            client_options["username"] = db_user
+            client_options["password"] = db_pwd
+    return AsyncMongoClient(uri, port, **client_options)
+
+
 def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Make a direct connection. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
@@ -628,6 +659,52 @@ def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoCli
     Authenticates if necessary.
     """
     return _mongo_client(h, p, **kwargs)
+
+
+async def async_single_client_noauth(
+    h: Any = None, p: Any = None, **kwargs: Any
+) -> AsyncMongoClient[dict]:
+    """Make a direct connection. Don't authenticate."""
+    return await _async_mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
+
+
+async def async_single_client(
+    h: Any = None, p: Any = None, **kwargs: Any
+) -> AsyncMongoClient[dict]:
+    """Make a direct connection, and authenticate if necessary."""
+    return await _async_mongo_client(h, p, directConnection=True, **kwargs)
+
+
+async def async_rs_client_noauth(
+    h: Any = None, p: Any = None, **kwargs: Any
+) -> AsyncMongoClient[dict]:
+    """Connect to the replica set. Don't authenticate."""
+    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
+
+
+async def async_rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient[dict]:
+    """Connect to the replica set and authenticate if necessary."""
+    return await _async_mongo_client(h, p, **kwargs)
+
+
+async def async_rs_or_single_client_noauth(
+    h: Any = None, p: Any = None, **kwargs: Any
+) -> AsyncMongoClient[dict]:
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Like rs_or_single_client, but does not authenticate.
+    """
+    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
+
+
+async def async_rs_or_single_client(
+    h: Any = None, p: Any = None, **kwargs: Any
+) -> AsyncMongoClient[Any]:
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Authenticates if necessary.
+    """
+    return await _async_mongo_client(h, p, **kwargs)
 
 
 def ensure_all_connected(client: MongoClient) -> None:
@@ -821,6 +898,32 @@ def wait_until(predicate, success_description, timeout=10):
         time.sleep(interval)
 
 
+async def async_wait_until(predicate, success_description, timeout=10):
+    """Wait up to 10 seconds (by default) for predicate to be true.
+
+    E.g.:
+
+        wait_until(lambda: client.primary == ('a', 1),
+                   'connect to the primary')
+
+    If the lambda-expression isn't true after 10 seconds, we raise
+    AssertionError("Didn't ever connect to the primary").
+
+    Returns the predicate's first true value.
+    """
+    start = time.time()
+    interval = min(float(timeout) / 100, 0.1)
+    while True:
+        retval = await predicate()
+        if retval:
+            return retval
+
+        if time.time() - start > timeout:
+            raise AssertionError("Didn't ever %s" % success_description)
+
+        await asyncio.sleep(interval)
+
+
 def repl_set_step_down(client, **kwargs):
     """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
     cmd = SON([("replSetStepDown", 1)])
@@ -833,6 +936,11 @@ def repl_set_step_down(client, **kwargs):
 
 def is_mongos(client):
     res = client.admin.command(HelloCompat.LEGACY_CMD)
+    return res.get("msg", "") == "isdbgrid"
+
+
+async def async_is_mongos(client):
+    res = await client.admin.command(HelloCompat.LEGACY_CMD)
     return res.get("msg", "") == "isdbgrid"
 
 
@@ -888,7 +996,14 @@ class DeprecationFilter:
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology.select_server(writable_server_selector, _Op.TEST)
+    server = topology._select_server(writable_server_selector, _Op.TEST)
+    return server.pool
+
+
+async def async_get_pool(client):
+    """Get the standalone, primary, or mongos pool."""
+    topology = await client._get_topology()
+    server = await topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
@@ -897,6 +1012,16 @@ def get_pools(client):
     return [
         server.pool
         for server in client._get_topology().select_servers(any_server_selector, _Op.TEST)
+    ]
+
+
+async def async_get_pools(client):
+    """Get all pools."""
+    return [
+        server.pool
+        async for server in await (await client._get_topology()).select_servers(
+            any_server_selector, _Op.TEST
+        )
     ]
 
 

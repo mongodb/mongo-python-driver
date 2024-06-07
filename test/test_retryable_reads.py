@@ -43,8 +43,8 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunner
 
-from pymongo.mongo_client import MongoClient
-from pymongo.monitoring import (
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.monitoring import (
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,

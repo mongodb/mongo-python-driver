@@ -40,7 +40,7 @@ from test.utils import (
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
-from pymongo import MongoClient, common, monitoring
+from pymongo import MongoClient
 from pymongo.errors import (
     AutoReconnect,
     ConfigurationError,
@@ -48,14 +48,15 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
 )
-from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import _check_command_response, _check_write_command_response
-from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
-from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
-from pymongo.topology_description import TOPOLOGY_TYPE
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous import common, monitoring
+from pymongo.synchronous.hello import Hello, HelloCompat
+from pymongo.synchronous.helpers import _check_command_response, _check_write_command_response
+from pymongo.synchronous.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
+from pymongo.synchronous.server_description import SERVER_TYPE, ServerDescription
+from pymongo.synchronous.settings import TopologySettings
+from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
+from pymongo.synchronous.uri_parser import parse_uri
 
 # Location of JSON test specifications.
 SDAM_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
@@ -286,8 +287,8 @@ class TestIgnoreStaleErrors(IntegrationTest):
             barrier.wait()
             raise AutoReconnect("mock Connection.command error")
 
-        for sock in pool.conns:
-            sock.command = mock_command
+        for conn in pool.conns:
+            conn.command = mock_command
 
         def insert_command(i):
             try:

@@ -22,7 +22,7 @@ from mockupdb import CommandBase, MockupDB, going
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient, ReadPreference
-from pymongo.read_preferences import (
+from pymongo.synchronous.read_preferences import (
     _MONGOS_MODES,
     make_read_preference,
     read_pref_mode_from_name,

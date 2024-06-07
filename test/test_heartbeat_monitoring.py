@@ -23,8 +23,8 @@ from test import IntegrationTest, client_knobs, unittest
 from test.utils import HeartbeatEventListener, MockPool, single_client, wait_until
 
 from pymongo.errors import ConnectionFailure
-from pymongo.hello import Hello, HelloCompat
-from pymongo.monitor import Monitor
+from pymongo.synchronous.hello import Hello, HelloCompat
+from pymongo.synchronous.monitor import Monitor
 
 
 class TestHeartbeatMonitoring(IntegrationTest):

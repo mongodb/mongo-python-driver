@@ -28,7 +28,7 @@ from pymongo._version import get_version_tuple
 class TestPyMongo(unittest.TestCase):
     def test_mongo_client_alias(self):
         # Testing that pymongo module imports mongo_client.MongoClient
-        self.assertEqual(pymongo.MongoClient, pymongo.mongo_client.MongoClient)
+        self.assertEqual(pymongo.MongoClient, pymongo.synchronous.mongo_client.MongoClient)
 
     def test_get_version_tuple(self):
         self.assertEqual(get_version_tuple("4.8.0.dev1"), (4, 8, 0, ".dev1"))
