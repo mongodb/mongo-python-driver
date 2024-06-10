@@ -236,6 +236,7 @@ class RangeOpts:
     def __init__(
         self,
         sparsity: int,
+        trim_factor: int,
         min: Optional[Any] = None,
         max: Optional[Any] = None,
         precision: Optional[int] = None,
@@ -243,6 +244,7 @@ class RangeOpts:
         """Options to configure encrypted queries using the range algorithm.
 
         :param sparsity: An integer.
+        :param trim_factor: An integer.
         :param min: A BSON scalar value corresponding to the type being queried.
         :param max: A BSON scalar value corresponding to the type being queried.
         :param precision: An integer, may only be set for double or decimal128 types.
@@ -252,6 +254,7 @@ class RangeOpts:
         self.min = min
         self.max = max
         self.sparsity = sparsity
+        self.trim_factor = trim_factor
         self.precision = precision
 
     @property
@@ -259,6 +262,7 @@ class RangeOpts:
         doc = {}
         for k, v in [
             ("sparsity", int64.Int64(self.sparsity)),
+            ("trim_factor", self.trim_factor),
             ("precision", self.precision),
             ("min", self.min),
             ("max", self.max),

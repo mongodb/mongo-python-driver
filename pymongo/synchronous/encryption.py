@@ -832,7 +832,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
@@ -884,7 +884,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries.
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
