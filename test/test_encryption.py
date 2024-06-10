@@ -2765,41 +2765,51 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                         algorithm=Algorithm.RANGEPREVIEW,
                         contention_factor=0,
                         range_opts=RangeOpts(
-                            min=cast_func(0), max=cast_func(200), sparsity=1, precision=2
+                            min=cast_func(0),
+                            max=cast_func(200),
+                            sparsity=1,
+                            trim_factor=1,
+                            precision=2,
                         ),
                     )
 
     def test_double_no_precision(self):
-        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1), float)
+        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1, trim_factor=1), float)
 
     def test_double_precision(self):
         self.run_test_cases(
             "DoublePrecision",
-            RangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
+            RangeOpts(min=0.0, max=200.0, sparsity=1, trim_factor=1, precision=2),
             float,
         )
 
     def test_decimal_no_precision(self):
         self.run_test_cases(
-            "DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x))
+            "DecimalNoPrecision", RangeOpts(sparsity=1, trim_factor=1), lambda x: Decimal128(str(x))
         )
 
     def test_decimal_precision(self):
         self.run_test_cases(
             "DecimalPrecision",
-            RangeOpts(min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2),
+            RangeOpts(
+                min=Decimal128("0.0"),
+                max=Decimal128("200.0"),
+                sparsity=1,
+                trim_factor=1,
+                precision=2,
+            ),
             lambda x: Decimal128(str(x)),
         )
 
     def test_datetime(self):
         self.run_test_cases(
             "Date",
-            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
+            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1, trim_factor=1),
             lambda x: DatetimeMS(x).as_datetime(),
         )
 
     def test_int(self):
-        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
+        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1, trim_factor=1), int)
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
