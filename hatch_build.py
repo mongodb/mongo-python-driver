@@ -19,7 +19,7 @@ class CustomHook(BuildHookInterface):
         here = Path(__file__).parent.resolve()
         sys.path.insert(0, str(here))
 
-        subprocess.check_call([sys.executable, "setup.py", "build_ext", "-i"])
+        subprocess.check_call([sys.executable, "_setup.py", "build_ext", "-i"])
 
         # Ensure wheel is marked as binary and contains the binary files.
         build_data["infer_tag"] = True
