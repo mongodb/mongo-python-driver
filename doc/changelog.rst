@@ -4,11 +4,19 @@ Changelog
 Changes in Version 4.8.0
 -------------------------
 
-The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
-
-The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
-
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
+
+PyMongo 4.8 brings a number of improvements including:
+
+- The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
+- The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
+- A new asynchronous API with full asyncio support.
+
+Unavoidable breaking changes
+............................
+
+- Since we are now using ``hatch`` as our build backend, we no longer have a ``setup.py`` file
+  and require installation using ``pip``.
 
 Changes in Version 4.7.3
 -------------------------
