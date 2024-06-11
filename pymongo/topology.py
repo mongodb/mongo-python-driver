@@ -669,23 +669,14 @@ class Topology:
 
     def pop_all_sessions(self) -> list[_ServerSession]:
         """Pop all session ids from the pool."""
-        with self._lock:
-            return self._session_pool.pop_all()
+        return self._session_pool.pop_all()
 
     def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
-        with self._lock:
-            return self._session_pool.get_server_session(session_timeout_minutes)
+        return self._session_pool.get_server_session(session_timeout_minutes)
 
-    def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
-        if lock:
-            with self._lock:
-                self._session_pool.return_server_session(
-                    server_session, self._description.logical_session_timeout_minutes
-                )
-        else:
-            # Called from a __del__ method, can't use a lock.
-            self._session_pool.return_server_session_no_lock(server_session)
+    def return_server_session(self, server_session: _ServerSession) -> None:
+        self._session_pool.return_server_session(server_session)
 
     def _new_selection(self) -> Selection:
         """A Selection object, initially including all known servers.

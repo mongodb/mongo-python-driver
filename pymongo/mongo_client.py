@@ -907,6 +907,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
         self._init_background(self._topology._pid)
+        # Reset the session pool to avoid duplicate sessions in the child process.
+        self._topology._session_pool.reset()
 
     def _duplicate(self, **kwargs: Any) -> MongoClient:
         args = self.__init_kwargs.copy()
@@ -1679,7 +1681,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if cursor_id or conn_mgr:
                 self._close_cursor_soon(cursor_id, address, conn_mgr)
         if session and not explicit_session:
-            session._end_session(lock=locks_allowed)
+            session.end_session()
 
     def _close_cursor_soon(
         self,
@@ -1838,12 +1840,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
     def _return_server_session(
-        self, server_session: Union[_ServerSession, _EmptyServerSession], lock: bool
+        self, server_session: Union[_ServerSession, _EmptyServerSession]
     ) -> None:
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
-        return self._topology.return_server_session(server_session, lock)
+        return self._topology.return_server_session(server_session)
 
     def _ensure_session(self, session: Optional[ClientSession] = None) -> Optional[ClientSession]:
         """If provided session is None, lend a temporary session."""
