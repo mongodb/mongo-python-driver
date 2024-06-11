@@ -2602,11 +2602,10 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         client_encryption.close()
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(7, 0, -1)
-    @client_context.require_version_max(7, 9, 99)
+    @client_context.require_version_min(8, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -2634,8 +2633,8 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         find_payload = self.client_encryption.encrypt_expression(
             expression=expression,
             key_id=key_id or self.key1_id,
-            algorithm=Algorithm.RANGEPREVIEW,
-            query_type=QueryType.RANGEPREVIEW,
+            algorithm=Algorithm.RANGE,
+            query_type=QueryType.RANGE,
             contention_factor=0,
             range_opts=range_opts,
         )
@@ -2656,7 +2655,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             return self.client_encryption.encrypt(
                 cast_func(i),
                 key_id=self.key1_id,
-                algorithm=Algorithm.RANGEPREVIEW,
+                algorithm=Algorithm.RANGE,
                 contention_factor=0,
                 range_opts=range_opts,
             )
@@ -2668,7 +2667,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         insert_payload = self.client_encryption.encrypt(
             cast_func(6),
             key_id=self.key1_id,
-            algorithm=Algorithm.RANGEPREVIEW,
+            algorithm=Algorithm.RANGE,
             contention_factor=0,
             range_opts=range_opts,
         )
@@ -2735,7 +2734,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 self.client_encryption.encrypt(
                     cast_func(201),
                     key_id=self.key1_id,
-                    algorithm=Algorithm.RANGEPREVIEW,
+                    algorithm=Algorithm.RANGE,
                     contention_factor=0,
                     range_opts=range_opts,
                 )
@@ -2747,7 +2746,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 self.client_encryption.encrypt(
                     6 if cast_func != int else float(6),
                     key_id=self.key1_id,
-                    algorithm=Algorithm.RANGEPREVIEW,
+                    algorithm=Algorithm.RANGE,
                     contention_factor=0,
                     range_opts=range_opts,
                 )
@@ -2762,7 +2761,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     self.client_encryption.encrypt(
                         cast_func(6),
                         key_id=self.key1_id,
-                        algorithm=Algorithm.RANGEPREVIEW,
+                        algorithm=Algorithm.RANGE,
                         contention_factor=0,
                         range_opts=RangeOpts(
                             min=cast_func(0),

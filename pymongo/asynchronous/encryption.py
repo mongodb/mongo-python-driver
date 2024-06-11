@@ -456,13 +456,10 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.2
     """
-    RANGEPREVIEW = "RangePreview"
-    """RangePreview.
+    RANGE = "Range"
+    """Range.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
-
-    .. versionadded:: 4.4
+    .. versionadded:: 4.8
     """
 
 
