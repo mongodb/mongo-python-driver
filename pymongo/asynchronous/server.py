@@ -117,7 +117,7 @@ class Server:
             explain = False
             cmd, db = operation.as_command(conn)
         if operation.session:
-            await operation.session._apply_to(cmd, False, operation.read_preference, conn)
+            operation.session._apply_to(cmd, False, operation.read_preference, conn)
             # Explain does not support readConcern.
             if is_query and not explain and not operation.session.in_transaction:
                 operation.session._update_read_concern(cmd, conn)

@@ -897,6 +897,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
         self._init_background()
+        # Reset the session pool to avoid duplicate sessions in the child process.
+        self._topology._session_pool.reset()
 
     def _duplicate(self, **kwargs: Any) -> AsyncMongoClient:
         args = self._init_kwargs.copy()
@@ -1505,7 +1507,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        session_ids = await self._topology.pop_all_sessions()
+        session_ids = self._topology.pop_all_sessions()
         if session_ids:
             await self._end_sessions(session_ids)
         # Stop the periodic task thread and then send pending killCursor
@@ -2003,13 +2005,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             else:
                 helpers_shared._handle_exception()
 
-    async def _return_server_session(
-        self, server_session: Union[_ServerSession, _EmptyServerSession], lock: bool
+    def _return_server_session(
+        self, server_session: Union[_ServerSession, _EmptyServerSession]
     ) -> None:
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
-        return await self._topology.return_server_session(server_session, lock)
+        return self._topology.return_server_session(server_session)
 
     @contextlib.asynccontextmanager
     async def _tmp_session(

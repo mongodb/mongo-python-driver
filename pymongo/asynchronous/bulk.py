@@ -378,7 +378,7 @@ class _AsyncBulk:
                     if retryable and not self.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    await session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.

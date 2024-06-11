@@ -15,6 +15,7 @@
 """Collection level utilities for Mongo."""
 from __future__ import annotations
 
+import warnings
 from collections import abc
 from typing import (
     TYPE_CHECKING,
@@ -247,6 +248,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         if create or kwargs:
             if _IS_SYNC:
+                warnings.warn(
+                    "The `create` and `kwargs` arguments to Collection are deprecated and will be removed in PyMongo 5.0",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
                 self._create(kwargs, session)  # type: ignore[unused-coroutine]
             else:
                 raise ValueError(
