@@ -47,15 +47,17 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES, _get_wce_doc
-from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.message import (
+from pymongo.message import (
     _DELETE,
     _INSERT,
     _UPDATE,
+    _randint,
+)
+from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.message import (
     _BulkWriteContext,
     _EncryptedBulkWriteContext,
-    _randint,
 )
 from pymongo.write_concern import WriteConcern
 

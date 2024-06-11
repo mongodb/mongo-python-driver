@@ -40,7 +40,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, _csot, common, helpers_shared
+from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -50,6 +50,7 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_shared import _check_write_command_response
+from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -72,7 +73,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.synchronous import message
 from pymongo.synchronous.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -87,7 +87,6 @@ from pymongo.synchronous.cursor import (
     Cursor,
     RawBatchCursor,
 )
-from pymongo.synchronous.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 

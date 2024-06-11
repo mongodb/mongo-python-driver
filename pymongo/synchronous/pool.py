@@ -91,12 +91,12 @@ if TYPE_CHECKING:
         ZlibContext,
         ZstdContext,
     )
+    from pymongo.message import _OpMsg, _OpReply
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
-    from pymongo.synchronous.message import _OpMsg, _OpReply
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.typings import ClusterTime, _Address, _CollationIn
     from pymongo.write_concern import WriteConcern

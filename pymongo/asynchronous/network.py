@@ -33,9 +33,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers_shared
-from pymongo.asynchronous import message
-from pymongo.asynchronous.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo import _csot, helpers_shared, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
@@ -45,6 +43,7 @@ from pymongo.errors import (
     _OperationCancelled,
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _POLL_TIMEOUT,

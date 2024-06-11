@@ -88,13 +88,13 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.auth import _AuthContext
     from pymongo.asynchronous.client_session import AsyncClientSession
-    from pymongo.asynchronous.message import _OpMsg, _OpReply
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo.compression_support import (
         SnappyContext,
         ZlibContext,
         ZstdContext,
     )
+    from pymongo.message import _OpMsg, _OpReply
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode

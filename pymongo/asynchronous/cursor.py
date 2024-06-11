@@ -38,15 +38,6 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import helpers_shared
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.message import (
-    _CursorAddress,
-    _GetMore,
-    _OpMsg,
-    _OpReply,
-    _Query,
-    _RawBatchGetMore,
-    _RawBatchQuery,
-)
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -55,6 +46,15 @@ from pymongo.common import (
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _ALock, _create_lock
+from pymongo.message import (
+    _CursorAddress,
+    _GetMore,
+    _OpMsg,
+    _OpReply,
+    _Query,
+    _RawBatchGetMore,
+    _RawBatchQuery,
+)
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
@@ -1104,7 +1104,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
 
         cmd_name = operation.name
         docs = response.docs

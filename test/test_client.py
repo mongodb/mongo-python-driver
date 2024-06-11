@@ -83,7 +83,7 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import event_loggers, monitoring
+from pymongo import event_loggers, message, monitoring
 from pymongo.client_options import ClientOptions
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
 from pymongo.compression_support import _have_snappy, _have_zstd
@@ -106,7 +106,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import message
+from pymongo.synchronous import message as message_old
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
@@ -1458,7 +1458,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(AutoReconnect):
             client = rs_client(connect=False, serverSelectionTimeoutMS=100)
             client._run_operation(
-                operation=message._GetMore(
+                operation=message_old._GetMore(
                     "pymongo_test",
                     "collection",
                     101,

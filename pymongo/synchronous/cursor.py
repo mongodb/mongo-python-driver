@@ -45,9 +45,7 @@ from pymongo.common import (
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _create_lock
-from pymongo.response import PinnedResponse
-from pymongo.synchronous.helpers import next
-from pymongo.synchronous.message import (
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
@@ -56,6 +54,8 @@ from pymongo.synchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
+from pymongo.response import PinnedResponse
+from pymongo.synchronous.helpers import next
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
@@ -1102,7 +1102,7 @@ class Cursor(Generic[_DocumentType]):
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
 
         cmd_name = operation.name
         docs = response.docs

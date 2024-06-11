@@ -32,7 +32,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers_shared
+from pymongo import _csot, helpers_shared, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
@@ -42,6 +42,7 @@ from pymongo.errors import (
     _OperationCancelled,
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _POLL_TIMEOUT,
@@ -51,8 +52,6 @@ from pymongo.network_layer import (
     sendall,
 )
 from pymongo.socket_checker import _errno_from_exception
-from pymongo.synchronous import message
-from pymongo.synchronous.message import _UNPACK_REPLY, _OpMsg, _OpReply
 
 if TYPE_CHECKING:
     from bson import CodecOptions

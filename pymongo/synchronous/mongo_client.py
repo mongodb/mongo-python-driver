@@ -74,12 +74,13 @@ from pymongo.errors import (
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import client_session, database, message, periodic_executor
+from pymongo.synchronous import client_session, database, periodic_executor
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
@@ -113,7 +114,6 @@ if TYPE_CHECKING:
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor import _ConnectionManager
-    from pymongo.synchronous.message import _CursorAddress, _GetMore, _Query
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
 
@@ -1703,7 +1703,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             operation.read_preference,
             operation.session,
             address=address,
-            retryable=isinstance(operation, message._Query),
+            retryable=isinstance(operation, _Query),
             operation=operation.name,
         )
 

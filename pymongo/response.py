@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.asynchronous.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg, _OpReply
     from pymongo.typings import _Address, _AgnosticConnection, _DocumentOut
 
 _IS_SYNC = False

@@ -53,8 +53,8 @@ from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from gridfs import GridIn, GridOut
 from pymongo.errors import DuplicateKeyError
+from pymongo.message import _CursorAddress
 from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.message import _CursorAddress
 
 
 class DecimalEncoder(TypeEncoder):

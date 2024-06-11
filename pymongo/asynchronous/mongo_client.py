@@ -59,7 +59,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, uri_parser
-from pymongo.asynchronous import client_session, database, message, periodic_executor
+from pymongo.asynchronous import client_session, database, periodic_executor
 from pymongo.asynchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
@@ -81,6 +81,7 @@ from pymongo.errors import (
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -111,7 +112,6 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
     from pymongo.asynchronous.cursor import _ConnectionManager
-    from pymongo.asynchronous.message import _CursorAddress, _GetMore, _Query
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
@@ -1706,7 +1706,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation.read_preference,
             operation.session,
             address=address,
-            retryable=isinstance(operation, message._Query),
+            retryable=isinstance(operation, _Query),
             operation=operation.name,
         )
 

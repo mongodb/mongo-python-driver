@@ -57,6 +57,7 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
@@ -69,7 +70,6 @@ from pymongo.results import (
 from pymongo.synchronous.bulk import BulkWriteError
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 

@@ -31,15 +31,15 @@ from typing import (
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.response import PinnedResponse
-from pymongo.synchronous.cursor import _ConnectionManager
-from pymongo.synchronous.message import (
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
     _OpReply,
     _RawBatchGetMore,
 )
+from pymongo.response import PinnedResponse
+from pymongo.synchronous.cursor import _ConnectionManager
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
@@ -260,7 +260,7 @@ class CommandCursor(Generic[_DocumentType]):
 
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
         if response.from_command:
             cursor = response.docs[0]["cursor"]
             documents = cursor["nextBatch"]

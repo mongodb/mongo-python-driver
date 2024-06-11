@@ -30,9 +30,9 @@ from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers_shared import _check_command_response
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -106,6 +106,32 @@ class Server:
         """Check the server's state soon."""
         self._monitor.request_check()
 
+    def operation_to_command(
+        self, operation: Union[_Query, _GetMore], conn: Connection, apply_timeout: bool = False
+    ) -> tuple[dict[str, Any], str]:
+        is_query = isinstance(operation, _Query)
+        if is_query:
+            explain = "$explain" in operation.spec
+            cmd, db = operation.as_command()
+        else:
+            explain = False
+            cmd, db = operation.as_command(conn)
+        if operation.session:
+            operation.session._apply_to(cmd, False, operation.read_preference, conn)
+            # Explain does not support readConcern.
+            if is_query and not explain and not operation.session.in_transaction:
+                operation.session._update_read_concern(cmd, conn)
+        # Support auto encryption
+        if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
+            cmd = operation.client._encrypter.encrypt(operation.db, cmd, operation.codec_options)
+
+        conn.add_server_api(cmd)
+        conn.send_cluster_time(cmd, operation.session, operation.client)
+        # Support CSOT
+        if apply_timeout:
+            conn.apply_timeout(operation.client, cmd=cmd if is_query else None)
+        return cmd, db
+
     @_handle_reauth
     def run_operation(
         self,
@@ -122,26 +148,26 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :param conn: A AsyncConnection instance.
+        :param conn: An AsyncConnection instance.
         :param operation: A _Query or _GetMore object.
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.
         :param unpack_res: A callable that decodes the wire protocol response.
+        :param client: An AsyncMongoClient instance.
         """
-        duration = None
         assert listeners is not None
         publish = listeners.enabled_for_commands
         start = datetime.now()
 
         use_cmd = operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        cmd, dbn = self.operation_to_command(operation, conn, use_cmd)
         if more_to_come:
             request_id = 0
         else:
             message = operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
-        cmd, dbn = operation.as_command(conn)
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -160,7 +186,6 @@ class Server:
             )
 
         if publish:
-            cmd, dbn = operation.as_command(conn)
             if "$db" not in cmd:
                 cmd["$db"] = dbn
             assert listeners is not None
