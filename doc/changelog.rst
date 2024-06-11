@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.9.0
 -------------------------
 
-PyMongo 4.8 brings a number of improvements including:
+PyMongo 4.9 brings a number of improvements including:
 
 - A new asynchronous API with full asyncio support.
 
