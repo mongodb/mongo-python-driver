@@ -528,7 +528,7 @@ class ClientSession:
                 # is in the committed state when the session is discarded.
                 self._unpin()
             finally:
-                self._client._return_server_session(self._server_session, lock)
+                self._client._return_server_session(self._server_session)
                 self._server_session = None
 
     def _check_ended(self) -> None:
@@ -1099,7 +1099,7 @@ class _ServerSession:
 class _ServerSessionPool(collections.deque):
     """Pool of _ServerSession objects.
 
-    This class is not thread-safe, access it while holding the Topology lock.
+    This class is thread-safe.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -1112,8 +1112,11 @@ class _ServerSessionPool(collections.deque):
 
     def pop_all(self) -> list[_ServerSession]:
         ids = []
-        while self:
-            ids.append(self.pop().session_id)
+        while True:
+            try:
+                ids.append(self.pop().session_id)
+            except IndexError:
+                break
         return ids
 
     def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
@@ -1125,23 +1128,17 @@ class _ServerSessionPool(collections.deque):
         self._clear_stale(session_timeout_minutes)
 
         # The most recently used sessions are on the left.
-        while self:
-            s = self.popleft()
+        while True:
+            try:
+                s = self.popleft()
+            except IndexError:
+                break
             if not s.timed_out(session_timeout_minutes):
                 return s
 
         return _ServerSession(self.generation)
 
-    def return_server_session(
-        self, server_session: _ServerSession, session_timeout_minutes: Optional[int]
-    ) -> None:
-        if session_timeout_minutes is not None:
-            self._clear_stale(session_timeout_minutes)
-            if server_session.timed_out(session_timeout_minutes):
-                return
-        self.return_server_session_no_lock(server_session)
-
-    def return_server_session_no_lock(self, server_session: _ServerSession) -> None:
+    def return_server_session(self, server_session: _ServerSession) -> None:
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
         if server_session.generation == self.generation and not server_session.dirty:
@@ -1149,9 +1146,12 @@ class _ServerSessionPool(collections.deque):
 
     def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
         # Clear stale sessions. The least recently used are on the right.
-        while self:
-            if self[-1].timed_out(session_timeout_minutes):
-                self.pop()
-            else:
+        while True:
+            try:
+                s = self.pop()
+            except IndexError:
+                break
+            if not s.timed_out(session_timeout_minutes):
+                self.append(s)
                 # The remaining sessions also haven't timed out.
                 break
