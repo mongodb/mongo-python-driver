@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.9.0
+-------------------------
+
+PyMongo 4.8 brings a number of improvements including:
+
+- A new asynchronous API with full asyncio support.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
+
+
 Changes in Version 4.8.0
 -------------------------
 
@@ -10,13 +26,20 @@ PyMongo 4.8 brings a number of improvements including:
 
 - The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
 - The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
-- A new asynchronous API with full asyncio support.
 
 Unavoidable breaking changes
 ............................
 
 - Since we are now using ``hatch`` as our build backend, we no longer have a ``setup.py`` file
   and require installation using ``pip``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.8 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37057
 
 Changes in Version 4.7.3
 -------------------------
