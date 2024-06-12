@@ -458,13 +458,10 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.2
     """
-    RANGEPREVIEW = "RangePreview"
-    """RangePreview.
+    RANGE = "Range"
+    """Range.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
-
-    .. versionadded:: 4.4
+    .. versionadded:: 4.8
     """
 
 
@@ -477,11 +474,9 @@ class QueryType(str, enum.Enum):
     EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
 
-    RANGEPREVIEW = "rangePreview"
+    RANGE = "range"
     """Used to encrypt a value for a range query.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
 """
 
 
@@ -838,9 +833,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.8
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
@@ -890,9 +889,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
+
+        .. versionchanged:: 4.8
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.

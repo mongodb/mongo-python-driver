@@ -2602,11 +2602,10 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         client_encryption.close()
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(7, 0, -1)
-    @client_context.require_version_max(7, 9, 99)
+    @client_context.require_version_min(8, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -2634,8 +2633,8 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         find_payload = self.client_encryption.encrypt_expression(
             expression=expression,
             key_id=key_id or self.key1_id,
-            algorithm=Algorithm.RANGEPREVIEW,
-            query_type=QueryType.RANGEPREVIEW,
+            algorithm=Algorithm.RANGE,
+            query_type=QueryType.RANGE,
             contention_factor=0,
             range_opts=range_opts,
         )
@@ -2656,7 +2655,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             return self.client_encryption.encrypt(
                 cast_func(i),
                 key_id=self.key1_id,
-                algorithm=Algorithm.RANGEPREVIEW,
+                algorithm=Algorithm.RANGE,
                 contention_factor=0,
                 range_opts=range_opts,
             )
@@ -2668,7 +2667,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         insert_payload = self.client_encryption.encrypt(
             cast_func(6),
             key_id=self.key1_id,
-            algorithm=Algorithm.RANGEPREVIEW,
+            algorithm=Algorithm.RANGE,
             contention_factor=0,
             range_opts=range_opts,
         )
@@ -2735,7 +2734,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 self.client_encryption.encrypt(
                     cast_func(201),
                     key_id=self.key1_id,
-                    algorithm=Algorithm.RANGEPREVIEW,
+                    algorithm=Algorithm.RANGE,
                     contention_factor=0,
                     range_opts=range_opts,
                 )
@@ -2747,7 +2746,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 self.client_encryption.encrypt(
                     6 if cast_func != int else float(6),
                     key_id=self.key1_id,
-                    algorithm=Algorithm.RANGEPREVIEW,
+                    algorithm=Algorithm.RANGE,
                     contention_factor=0,
                     range_opts=range_opts,
                 )
@@ -2762,44 +2761,54 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     self.client_encryption.encrypt(
                         cast_func(6),
                         key_id=self.key1_id,
-                        algorithm=Algorithm.RANGEPREVIEW,
+                        algorithm=Algorithm.RANGE,
                         contention_factor=0,
                         range_opts=RangeOpts(
-                            min=cast_func(0), max=cast_func(200), sparsity=1, precision=2
+                            min=cast_func(0),
+                            max=cast_func(200),
+                            sparsity=1,
+                            trim_factor=1,
+                            precision=2,
                         ),
                     )
 
     def test_double_no_precision(self):
-        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1), float)
+        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1, trim_factor=1), float)
 
     def test_double_precision(self):
         self.run_test_cases(
             "DoublePrecision",
-            RangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
+            RangeOpts(min=0.0, max=200.0, sparsity=1, trim_factor=1, precision=2),
             float,
         )
 
     def test_decimal_no_precision(self):
         self.run_test_cases(
-            "DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x))
+            "DecimalNoPrecision", RangeOpts(sparsity=1, trim_factor=1), lambda x: Decimal128(str(x))
         )
 
     def test_decimal_precision(self):
         self.run_test_cases(
             "DecimalPrecision",
-            RangeOpts(min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2),
+            RangeOpts(
+                min=Decimal128("0.0"),
+                max=Decimal128("200.0"),
+                sparsity=1,
+                trim_factor=1,
+                precision=2,
+            ),
             lambda x: Decimal128(str(x)),
         )
 
     def test_datetime(self):
         self.run_test_cases(
             "Date",
-            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
+            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1, trim_factor=1),
             lambda x: DatetimeMS(x).as_datetime(),
         )
 
     def test_int(self):
-        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
+        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1, trim_factor=1), int)
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
