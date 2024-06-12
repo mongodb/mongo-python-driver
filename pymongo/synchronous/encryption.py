@@ -829,9 +829,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Index options for `range` queries.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.8
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
@@ -881,9 +885,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Index options for `range` queries.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
+
+        .. versionchanged:: 4.8
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
