@@ -109,29 +109,14 @@ class Server:
     async def operation_to_command(
         self, operation: Union[_Query, _GetMore], conn: AsyncConnection, apply_timeout: bool = False
     ) -> tuple[dict[str, Any], str]:
-        is_query = isinstance(operation, _Query)
-        if is_query:
-            explain = "$explain" in operation.spec
-            cmd, db = operation.as_command()
-        else:
-            explain = False
-            cmd, db = operation.as_command(conn)
-        if operation.session:
-            operation.session._apply_to(cmd, False, operation.read_preference, conn)
-            # Explain does not support readConcern.
-            if is_query and not explain and not operation.session.in_transaction:
-                operation.session._update_read_concern(cmd, conn)
+        cmd, db = operation.as_command(conn, apply_timeout)
         # Support auto encryption
         if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
-            cmd = await operation.client._encrypter.encrypt(
+            cmd = await operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
                 operation.db, cmd, operation.codec_options
             )
+        operation.update_command(cmd)
 
-        conn.add_server_api(cmd)
-        conn.send_cluster_time(cmd, operation.session, operation.client)
-        # Support CSOT
-        if apply_timeout:
-            conn.apply_timeout(operation.client, cmd=cmd if is_query else None)
         return cmd, db
 
     @_handle_reauth
@@ -223,7 +208,7 @@ class Server:
             )
             if use_cmd:
                 first = docs[0]
-                await operation.client._process_response(first, operation.session)
+                await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
                 _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             duration = datetime.now() - start
@@ -306,7 +291,7 @@ class Server:
             )
 
         # Decrypt response.
-        client = operation.client
+        client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
                 decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -314,7 +299,7 @@ class Server:
 
         response: Response
 
-        if client._should_pin_cursor(operation.session) or operation.exhaust:
+        if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
             conn.pin_cursor()
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the

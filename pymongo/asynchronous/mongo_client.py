@@ -1670,13 +1670,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if operation.conn_mgr:
             server = await self._select_server(
                 operation.read_preference,
-                operation.session,
+                operation.session,  # type: ignore[arg-type]
                 operation.name,
                 address=address,
             )
 
             async with operation.conn_mgr._alock:
-                async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
+                async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return await server.run_operation(
                         operation.conn_mgr.conn,
@@ -1706,7 +1706,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return await self._retryable_read(
             _cmd,
             operation.read_preference,
-            operation.session,
+            operation.session,  # type: ignore[arg-type]
             address=address,
             retryable=isinstance(operation, _Query),
             operation=operation.name,

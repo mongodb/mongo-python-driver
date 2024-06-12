@@ -38,7 +38,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def _handle_reauth(func: F) -> F:
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
-        from pymongo.synchronous.message import _BulkWriteContext
+        from pymongo.message import _BulkWriteContext
         from pymongo.synchronous.pool import Connection
 
         try:
@@ -56,7 +56,7 @@ def _handle_reauth(func: F) -> F:
                         conn = arg
                         break
                     if isinstance(arg, _BulkWriteContext):
-                        conn = arg.conn
+                        conn = arg.conn  # type: ignore[assignment]
                         break
                 if conn:
                     conn.authenticate(reauthenticate=True)

@@ -21,8 +21,10 @@ MongoDB.
 """
 from __future__ import annotations
 
+import datetime
 import random
 import struct
+from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -40,9 +42,12 @@ from bson import CodecOptions, _dict_to_bson
 from bson.int64 import Int64
 from bson.raw_bson import (
     _RAW_ARRAY_BSON_OPTIONS,
+    DEFAULT_RAW_BSON_OPTIONS,
     RawBSONDocument,
+    _inflate_bson,
 )
 from pymongo.hello_compat import HelloCompat
+from pymongo.monitoring import _EventListeners
 
 try:
     from pymongo import _cmessage  # type: ignore[attr-defined]
@@ -55,6 +60,7 @@ from pymongo.errors import (
     CursorNotFound,
     DocumentTooLarge,
     ExecutionTimeout,
+    InvalidOperation,
     NotPrimaryError,
     OperationFailure,
     ProtocolError,
@@ -62,12 +68,16 @@ from pymongo.errors import (
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import AsyncClientSession
-    from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.read_concern import ReadConcern
-    from pymongo.typings import _Address, _AgnosticClientSession, _AgnosticConnection
+    from pymongo.typings import (
+        _Address,
+        _AgnosticClientSession,
+        _AgnosticConnection,
+        _AgnosticMongoClient,
+        _DocumentOut,
+    )
+
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -502,8 +512,8 @@ class _Query:
         batch_size: int,
         read_concern: ReadConcern,
         collation: Optional[Mapping[str, Any]],
-        session: Optional[AsyncClientSession],
-        client: AsyncMongoClient,
+        session: Optional[_AgnosticClientSession],
+        client: _AgnosticMongoClient,
         allow_disk_use: Optional[bool],
         exhaust: bool,
     ):
@@ -532,7 +542,7 @@ class _Query:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: AsyncConnection) -> bool:
+    def use_command(self, conn: _AgnosticConnection) -> bool:
         use_find_cmd = False
         if not self.exhaust:
             use_find_cmd = True
@@ -545,10 +555,15 @@ class _Query:
                 "with a max wire version of %d." % (self.read_concern.level, conn.max_wire_version)
             )
 
-        conn.validate_session(self.client, self.session)
+        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
         return use_find_cmd
 
-    def as_command(self, dummy0: Optional[Any] = None) -> tuple[dict[str, Any], str]:
+    def update_command(self, cmd: dict[str, Any]) -> None:
+        self._as_command = cmd, self.db
+
+    def as_command(
+        self, conn: _AgnosticConnection, apply_timeout: bool = False
+    ) -> tuple[dict[str, Any], str]:
         """Return a find command document for this query."""
         # We use the command twice: on the wire and for command monitoring.
         # Generate it once, for speed and to avoid repeating side-effects.
@@ -572,11 +587,21 @@ class _Query:
         if explain:
             self.name = "explain"
             cmd = {"explain": cmd}
+        conn.add_server_api(cmd)
+        if self.session:
+            self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]
+            # Explain does not support readConcern.
+            if not explain and not self.session.in_transaction:
+                self.session._update_read_concern(cmd, conn)  # type: ignore[arg-type]
+        conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
+        # Support CSOT
+        if apply_timeout:
+            conn.apply_timeout(self.client, cmd=cmd)  # type: ignore[arg-type]
         self._as_command = cmd, self.db
         return self._as_command
 
     def get_message(
-        self, read_preference: _ServerMode, conn: AsyncConnection, use_cmd: bool = False
+        self, read_preference: _ServerMode, conn: _AgnosticConnection, use_cmd: bool = False
     ) -> tuple[int, bytes, int]:
         """Get a query message, possibly setting the secondaryOk bit."""
         # Use the read_preference decided by _socket_from_server.
@@ -591,7 +616,7 @@ class _Query:
         spec = self.spec
 
         if use_cmd:
-            spec = self.as_command(None)[0]
+            spec = self.as_command(conn)[0]
             request_id, msg, size, _ = _op_msg(
                 0,
                 spec,
@@ -657,8 +682,8 @@ class _GetMore:
         cursor_id: int,
         codec_options: CodecOptions,
         read_preference: _ServerMode,
-        session: Optional[AsyncClientSession],
-        client: AsyncMongoClient,
+        session: Optional[_AgnosticClientSession],
+        client: _AgnosticMongoClient,
         max_await_time_ms: Optional[int],
         conn_mgr: Any,
         exhaust: bool,
@@ -684,7 +709,7 @@ class _GetMore:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: AsyncConnection) -> bool:
+    def use_command(self, conn: _AgnosticConnection) -> bool:
         use_cmd = False
         if not self.exhaust:
             use_cmd = True
@@ -692,10 +717,15 @@ class _GetMore:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_cmd = True
 
-        conn.validate_session(self.client, self.session)
+        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
         return use_cmd
 
-    def as_command(self, conn: AsyncConnection) -> tuple[dict[str, Any], str]:
+    def update_command(self, cmd: dict[str, Any]) -> None:
+        self._as_command = cmd, self.db
+
+    def as_command(
+        self, conn: _AgnosticConnection, apply_timeout: bool = False
+    ) -> tuple[dict[str, Any], str]:
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
         if self._as_command is not None:
@@ -709,11 +739,18 @@ class _GetMore:
             self.comment,
             conn,
         )
+        if self.session:
+            self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]
+        conn.add_server_api(cmd)
+        conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
+        # Support CSOT
+        if apply_timeout:
+            conn.apply_timeout(self.client, cmd=None)  # type: ignore[arg-type]
         self._as_command = cmd, self.db
         return self._as_command
 
     def get_message(
-        self, dummy0: Any, conn: AsyncConnection, use_cmd: bool = False
+        self, dummy0: Any, conn: _AgnosticConnection, use_cmd: bool = False
     ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
         ns = self.namespace()
@@ -734,7 +771,7 @@ class _GetMore:
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, conn: AsyncConnection) -> bool:
+    def use_command(self, conn: _AgnosticConnection) -> bool:
         # Compatibility checks.
         super().use_command(conn)
         if conn.max_wire_version >= 8:
@@ -746,7 +783,7 @@ class _RawBatchQuery(_Query):
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, conn: AsyncConnection) -> bool:
+    def use_command(self, conn: _AgnosticConnection) -> bool:
         # Compatibility checks.
         super().use_command(conn)
         if conn.max_wire_version >= 8:
@@ -1083,3 +1120,414 @@ _OP_MSG_MAP = {
     _UPDATE: b"updates\x00",
     _DELETE: b"deletes\x00",
 }
+
+
+class _BulkWriteContext:
+    """A wrapper around AsyncConnection for use with write splitting functions."""
+
+    __slots__ = (
+        "db_name",
+        "conn",
+        "op_id",
+        "name",
+        "field",
+        "publish",
+        "start_time",
+        "listeners",
+        "session",
+        "compress",
+        "op_type",
+        "codec",
+    )
+
+    def __init__(
+        self,
+        database_name: str,
+        cmd_name: str,
+        conn: _AgnosticConnection,
+        operation_id: int,
+        listeners: _EventListeners,
+        session: _AgnosticClientSession,
+        op_type: int,
+        codec: CodecOptions,
+    ):
+        self.db_name = database_name
+        self.conn = conn
+        self.op_id = operation_id
+        self.listeners = listeners
+        self.publish = listeners.enabled_for_commands
+        self.name = cmd_name
+        self.field = _FIELD_MAP[self.name]
+        self.start_time = datetime.datetime.now()
+        self.session = session
+        self.compress = bool(conn.compression_context)
+        self.op_type = op_type
+        self.codec = codec
+
+    def batch_command(
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
+        namespace = self.db_name + ".$cmd"
+        request_id, msg, to_send = _do_batched_op_msg(
+            namespace, self.op_type, cmd, docs, self.codec, self
+        )
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+        return request_id, msg, to_send
+
+    @property
+    def max_bson_size(self) -> int:
+        """A proxy for SockInfo.max_bson_size."""
+        return self.conn.max_bson_size
+
+    @property
+    def max_message_size(self) -> int:
+        """A proxy for SockInfo.max_message_size."""
+        if self.compress:
+            # Subtract 16 bytes for the message header.
+            return self.conn.max_message_size - 16
+        return self.conn.max_message_size
+
+    @property
+    def max_write_batch_size(self) -> int:
+        """A proxy for SockInfo.max_write_batch_size."""
+        return self.conn.max_write_batch_size
+
+    @property
+    def max_split_size(self) -> int:
+        """The maximum size of a BSON command before batch splitting."""
+        return self.max_bson_size
+
+    def _start(
+        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
+    ) -> MutableMapping[str, Any]:
+        """Publish a CommandStartedEvent."""
+        cmd[self.field] = docs
+        self.listeners.publish_command_start(
+            cmd,
+            self.db_name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+        )
+        return cmd
+
+    def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandSucceededEvent."""
+        self.listeners.publish_command_success(
+            duration,
+            reply,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
+
+    def _fail(self, request_id: int, failure: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandFailedEvent."""
+        self.listeners.publish_command_failure(
+            duration,
+            failure,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
+
+
+class _EncryptedBulkWriteContext(_BulkWriteContext):
+    __slots__ = ()
+
+    def batch_command(
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[int, dict[str, Any], list[Mapping[str, Any]]]:
+        namespace = self.db_name + ".$cmd"
+        msg, to_send = _encode_batched_write_command(
+            namespace, self.op_type, cmd, docs, self.codec, self
+        )
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+
+        # Chop off the OP_QUERY header to get a properly batched write command.
+        cmd_start = msg.index(b"\x00", 4) + 9
+        outgoing = _inflate_bson(memoryview(msg)[cmd_start:], DEFAULT_RAW_BSON_OPTIONS)
+        return -1, outgoing, to_send
+
+    @property
+    def max_split_size(self) -> int:
+        """Reduce the batch splitting size."""
+        return _MAX_SPLIT_SIZE_ENC
+
+
+# From the Client Side Encryption spec:
+# Because automatic encryption increases the size of commands, the driver
+# MUST split bulk writes at a reduced size limit before undergoing automatic
+# encryption. The write payload MUST be split at 2MiB (2097152).
+_MAX_SPLIT_SIZE_ENC = 2097152
+
+
+def _batched_op_msg_impl(
+    operation: int,
+    command: Mapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+    buf: _BytesIO,
+) -> tuple[list[Mapping[str, Any]], int]:
+    """Create a batched OP_MSG write."""
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
+    max_message_size = ctx.max_message_size
+
+    flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
+    # Flags
+    buf.write(flags)
+
+    # Type 0 Section
+    buf.write(b"\x00")
+    buf.write(_dict_to_bson(command, False, opts))
+
+    # Type 1 Section
+    buf.write(b"\x01")
+    size_location = buf.tell()
+    # Save space for size
+    buf.write(b"\x00\x00\x00\x00")
+    try:
+        buf.write(_OP_MSG_MAP[operation])
+    except KeyError:
+        raise InvalidOperation("Unknown command") from None
+
+    to_send = []
+    idx = 0
+    for doc in docs:
+        # Encode the current operation
+        value = _dict_to_bson(doc, False, opts)
+        doc_length = len(value)
+        new_message_size = buf.tell() + doc_length
+        # Does first document exceed max_message_size?
+        doc_too_large = idx == 0 and (new_message_size > max_message_size)
+        # When OP_MSG is used unacknowledged we have to check
+        # document size client side or applications won't be notified.
+        # Otherwise we let the server deal with documents that are too large
+        # since ordered=False causes those documents to be skipped instead of
+        # halting the bulk write operation.
+        unacked_doc_too_large = not ack and (doc_length > max_bson_size)
+        if doc_too_large or unacked_doc_too_large:
+            write_op = list(_FIELD_MAP.keys())[operation]
+            _raise_document_too_large(write_op, len(value), max_bson_size)
+        # We have enough data, return this batch.
+        if new_message_size > max_message_size:
+            break
+        buf.write(value)
+        to_send.append(doc)
+        idx += 1
+        # We have enough documents, return this batch.
+        if idx == max_write_batch_size:
+            break
+
+    # Write type 1 section size
+    length = buf.tell()
+    buf.seek(size_location)
+    buf.write(_pack_int(length - size_location))
+
+    return to_send, length
+
+
+def _encode_batched_op_msg(
+    operation: int,
+    command: Mapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+) -> tuple[bytes, list[Mapping[str, Any]]]:
+    """Encode the next batched insert, update, or delete operation
+    as OP_MSG.
+    """
+    buf = _BytesIO()
+
+    to_send, _ = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf)
+    return buf.getvalue(), to_send
+
+
+if _use_c:
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
+
+
+def _batched_op_msg_compressed(
+    operation: int,
+    command: Mapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
+    """Create the next batched insert, update, or delete operation
+    with OP_MSG, compressed.
+    """
+    data, to_send = _encode_batched_op_msg(operation, command, docs, ack, opts, ctx)
+
+    assert ctx.conn.compression_context is not None
+    request_id, msg = _compress(2013, data, ctx.conn.compression_context)
+    return request_id, msg, to_send
+
+
+def _batched_op_msg(
+    operation: int,
+    command: Mapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
+    """OP_MSG implementation entry point."""
+    buf = _BytesIO()
+
+    # Save space for message length and request id
+    buf.write(_ZERO_64)
+    # responseTo, opCode
+    buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
+
+    to_send, length = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf)
+
+    # Header - request id and message length
+    buf.seek(4)
+    request_id = _randint()
+    buf.write(_pack_int(request_id))
+    buf.seek(0)
+    buf.write(_pack_int(length))
+
+    return request_id, buf.getvalue(), to_send
+
+
+if _use_c:
+    _batched_op_msg = _cmessage._batched_op_msg
+
+
+def _do_batched_op_msg(
+    namespace: str,
+    operation: int,
+    command: MutableMapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]]]:
+    """Create the next batched insert, update, or delete operation
+    using OP_MSG.
+    """
+    command["$db"] = namespace.split(".", 1)[0]
+    if "writeConcern" in command:
+        ack = bool(command["writeConcern"].get("w", 1))
+    else:
+        ack = True
+    if ctx.conn.compression_context:
+        return _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx)
+    return _batched_op_msg(operation, command, docs, ack, opts, ctx)
+
+
+# End OP_MSG -----------------------------------------------------
+
+
+def _encode_batched_write_command(
+    namespace: str,
+    operation: int,
+    command: MutableMapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+) -> tuple[bytes, list[Mapping[str, Any]]]:
+    """Encode the next batched insert, update, or delete command."""
+    buf = _BytesIO()
+
+    to_send, _ = _batched_write_command_impl(namespace, operation, command, docs, opts, ctx, buf)
+    return buf.getvalue(), to_send
+
+
+if _use_c:
+    _encode_batched_write_command = _cmessage._encode_batched_write_command
+
+
+def _batched_write_command_impl(
+    namespace: str,
+    operation: int,
+    command: MutableMapping[str, Any],
+    docs: list[Mapping[str, Any]],
+    opts: CodecOptions,
+    ctx: _BulkWriteContext,
+    buf: _BytesIO,
+) -> tuple[list[Mapping[str, Any]], int]:
+    """Create a batched OP_QUERY write command."""
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
+    # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
+    # Server guarantees there is enough room: SERVER-10643.
+    max_cmd_size = max_bson_size + _COMMAND_OVERHEAD
+    max_split_size = ctx.max_split_size
+
+    # No options
+    buf.write(_ZERO_32)
+    # Namespace as C string
+    buf.write(namespace.encode("utf8"))
+    buf.write(_ZERO_8)
+    # Skip: 0, Limit: -1
+    buf.write(_SKIPLIM)
+
+    # Where to write command document length
+    command_start = buf.tell()
+    buf.write(bson.encode(command))
+
+    # Start of payload
+    buf.seek(-1, 2)
+    # Work around some Jython weirdness.
+    buf.truncate()
+    try:
+        buf.write(_OP_MAP[operation])
+    except KeyError:
+        raise InvalidOperation("Unknown command") from None
+
+    # Where to write list document length
+    list_start = buf.tell() - 4
+    to_send = []
+    idx = 0
+    for doc in docs:
+        # Encode the current operation
+        key = str(idx).encode("utf8")
+        value = _dict_to_bson(doc, False, opts)
+        # Is there enough room to add this document? max_cmd_size accounts for
+        # the two trailing null bytes.
+        doc_too_large = len(value) > max_cmd_size
+        if doc_too_large:
+            write_op = list(_FIELD_MAP.keys())[operation]
+            _raise_document_too_large(write_op, len(value), max_bson_size)
+        enough_data = idx >= 1 and (buf.tell() + len(key) + len(value)) >= max_split_size
+        enough_documents = idx >= max_write_batch_size
+        if enough_data or enough_documents:
+            break
+        buf.write(_BSONOBJ)
+        buf.write(key)
+        buf.write(_ZERO_8)
+        buf.write(value)
+        to_send.append(doc)
+        idx += 1
+
+    # Finalize the current OP_QUERY message.
+    # Close list and command documents
+    buf.write(_ZERO_16)
+
+    # Write document lengths and request id
+    length = buf.tell()
+    buf.seek(list_start)
+    buf.write(_pack_int(length - list_start - 1))
+    buf.seek(command_start)
+    buf.write(_pack_int(length - command_start))
+
+    return to_send, length

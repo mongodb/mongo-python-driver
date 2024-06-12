@@ -554,14 +554,14 @@ class AsyncClientSession:
         return self._options
 
     @property
-    async def session_id(self) -> Mapping[str, Any]:
+    def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
         self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
 
     @property
-    async def _transaction_id(self) -> Int64:
+    def _transaction_id(self) -> Int64:
         """The current transaction id for the underlying server session."""
         self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.transaction_id

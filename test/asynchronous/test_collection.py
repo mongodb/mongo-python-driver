@@ -50,7 +50,6 @@ from pymongo.asynchronous.bulk import BulkWriteError
 from pymongo.asynchronous.collection import AsyncCollection, ReturnDocument
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
@@ -64,6 +63,7 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
