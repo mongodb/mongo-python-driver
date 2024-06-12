@@ -862,6 +862,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
+        self._opened = False
         self._init_background()
 
         if connect:
@@ -1245,9 +1246,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        self._topology.open()
-        with self.__lock:
-            self._kill_cursors_executor.open()
+        if not self._opened:
+            self._topology.open()
+            with self._lock:
+                self._kill_cursors_executor.open()
+            self._opened = True
         return self._topology
 
     @contextlib.contextmanager
