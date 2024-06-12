@@ -15,6 +15,7 @@
 """Support for SSL in PyMongo."""
 from __future__ import annotations
 
+import warnings
 from typing import Optional
 
 from pymongo.errors import ConfigurationError
@@ -23,7 +24,17 @@ HAVE_SSL = True
 
 try:
     import pymongo.pyopenssl_context as _ssl
-except ImportError:
+except (ImportError, AttributeError) as exc:
+    if isinstance(exc, AttributeError):
+        warnings.warn(
+            "Failed to use the installed version of PyOpenSSL. "
+            "Falling back to stdlib ssl, disabling OCSP support. "
+            "This is likely caused by incompatible versions "
+            "of PyOpenSSL < 23.2.0 and cryptography >= 42.0.0. "
+            "Try updating PyOpenSSL >= 23.2.0 to enable OCSP.",
+            UserWarning,
+            stacklevel=2,
+        )
     try:
         import pymongo.ssl_context as _ssl  # type: ignore[no-redef]
     except ImportError:
