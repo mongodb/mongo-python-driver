@@ -1248,7 +1248,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if not self._opened:
             self._topology.open()
-            with self._lock:
+            with self.__lock:
                 self._kill_cursors_executor.open()
             self._opened = True
         return self._topology
