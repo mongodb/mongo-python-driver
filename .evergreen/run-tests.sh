@@ -113,7 +113,6 @@ if [ "$COMPRESSORS" = "snappy" ]; then
     if [ "$OLD_PYPY" == "True" ]; then
         pip install "python-snappy<0.7.0"
     fi
-    PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     python -m pip install zstandard
 fi
