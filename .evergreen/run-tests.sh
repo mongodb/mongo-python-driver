@@ -31,9 +31,6 @@ set -o xtrace
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_ARGS="${*:1}"
-PYTHON=$(which python)
-# TODO: Remove when we drop PyPy 3.8 support.
-OLD_PYPY=$(python -c "import sys; print(sys.implementation.name.lower() == 'pypy' and sys.implementation.version < (7, 3, 12))")
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
@@ -237,7 +234,7 @@ if [ -n "$PERF_TEST" ]; then
     TEST_ARGS="test/performance/perf_test.py"
 fi
 
-echo "Running $AUTH tests over $SSL with python $PYTHON"
+echo "Running $AUTH tests over $SSL with python $(which python)"
 python -c 'import sys; print(sys.version)'
 
 
@@ -246,7 +243,7 @@ python -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
+PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
