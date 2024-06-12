@@ -147,7 +147,7 @@ docstring_translate_files = [
         "pool.py",
         "topology.py",
     ]
-]
+] + [_gridfs_dest_base + f for f in ["grid_file.py"]]
 
 
 def process_files(files: list[str]) -> None:
