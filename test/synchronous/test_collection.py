@@ -45,6 +45,7 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
+from pymongo.bulk_shared import BulkWriteError
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
@@ -67,7 +68,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.synchronous.bulk import BulkWriteError
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import next
