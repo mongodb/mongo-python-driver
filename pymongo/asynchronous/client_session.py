@@ -528,7 +528,7 @@ class ClientSession:
                 # is in the committed state when the session is discarded.
                 await self._unpin()
             finally:
-                await self._client._return_server_session(self._server_session, lock)
+                self._client._return_server_session(self._server_session)
                 self._server_session = None
 
     def _check_ended(self) -> None:
@@ -557,13 +557,13 @@ class ClientSession:
     async def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
-        await self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
 
     @property
     async def _transaction_id(self) -> Int64:
         """The current transaction id for the underlying server session."""
-        await self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.transaction_id
 
     @property
@@ -979,16 +979,16 @@ class ClientSession:
             return self._transaction.opts.read_preference
         return None
 
-    async def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
+    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
-            self._server_session = await self._client._topology.get_server_session(
+            self._server_session = self._client._topology.get_server_session(
                 logical_session_timeout_minutes
             )
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
-    async def _apply_to(
+    def _apply_to(
         self,
         command: MutableMapping[str, Any],
         is_retryable: bool,
@@ -1000,7 +1000,7 @@ class ClientSession:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
             return
         self._check_ended()
-        await self._materialize(conn.logical_session_timeout_minutes)
+        self._materialize(conn.logical_session_timeout_minutes)
         if self.options.snapshot:
             self._update_read_concern(command, conn)
 
@@ -1103,7 +1103,7 @@ class _ServerSession:
 class _ServerSessionPool(collections.deque):
     """Pool of _ServerSession objects.
 
-    This class is not thread-safe, access it while holding the Topology lock.
+    This class is thread-safe.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -1116,8 +1116,11 @@ class _ServerSessionPool(collections.deque):
 
     def pop_all(self) -> list[_ServerSession]:
         ids = []
-        while self:
-            ids.append(self.pop().session_id)
+        while True:
+            try:
+                ids.append(self.pop().session_id)
+            except IndexError:
+                break
         return ids
 
     def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
@@ -1129,23 +1132,17 @@ class _ServerSessionPool(collections.deque):
         self._clear_stale(session_timeout_minutes)
 
         # The most recently used sessions are on the left.
-        while self:
-            s = self.popleft()
+        while True:
+            try:
+                s = self.popleft()
+            except IndexError:
+                break
             if not s.timed_out(session_timeout_minutes):
                 return s
 
         return _ServerSession(self.generation)
 
-    def return_server_session(
-        self, server_session: _ServerSession, session_timeout_minutes: Optional[int]
-    ) -> None:
-        if session_timeout_minutes is not None:
-            self._clear_stale(session_timeout_minutes)
-            if server_session.timed_out(session_timeout_minutes):
-                return
-        self.return_server_session_no_lock(server_session)
-
-    def return_server_session_no_lock(self, server_session: _ServerSession) -> None:
+    def return_server_session(self, server_session: _ServerSession) -> None:
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
         if server_session.generation == self.generation and not server_session.dirty:
@@ -1153,9 +1150,12 @@ class _ServerSessionPool(collections.deque):
 
     def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
         # Clear stale sessions. The least recently used are on the right.
-        while self:
-            if self[-1].timed_out(session_timeout_minutes):
-                self.pop()
-            else:
+        while True:
+            try:
+                s = self.pop()
+            except IndexError:
+                break
+            if not s.timed_out(session_timeout_minutes):
+                self.append(s)
                 # The remaining sessions also haven't timed out.
                 break

@@ -394,7 +394,7 @@ class _Query:
         session = self.session
         conn.add_server_api(cmd)
         if session:
-            await session._apply_to(cmd, False, self.read_preference, conn)
+            session._apply_to(cmd, False, self.read_preference, conn)
             # Explain does not support readConcern.
             if not explain and not session.in_transaction:
                 session._update_read_concern(cmd, conn)
@@ -546,7 +546,7 @@ class _GetMore:
             conn,
         )
         if self.session:
-            await self.session._apply_to(cmd, False, self.read_preference, conn)
+            self.session._apply_to(cmd, False, self.read_preference, conn)
         conn.add_server_api(cmd)
         conn.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption

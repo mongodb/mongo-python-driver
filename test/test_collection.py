@@ -198,7 +198,11 @@ class TestCollection(IntegrationTest):
             "create create_test_no_wc collection",
         )
         db.create_test_no_wc.drop()
-        Collection(db, name="create_test_no_wc", create=True)
+        with self.assertWarns(
+            DeprecationWarning,
+            msg="The `create` and `kwargs` arguments to Collection are deprecated and will be removed in PyMongo 5.0",
+        ):
+            Collection(db, name="create_test_no_wc", create=True)
         wait_until(
             lambda: "create_test_no_wc" in db.list_collection_names(),
             "create create_test_no_wc collection",
