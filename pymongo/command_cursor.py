@@ -73,7 +73,7 @@ class CommandCursor(Generic[_DocumentType]):
         self.__killed = self.__id == 0
         self.__comment = comment
         if self.__killed:
-            self.__end_session(True)
+            self.__end_session()
 
         if "ns" in cursor_info:  # noqa: SIM401
             self.__ns = cursor_info["ns"]
@@ -112,9 +112,9 @@ class CommandCursor(Generic[_DocumentType]):
             self.__session = None
         self.__sock_mgr = None
 
-    def __end_session(self, synchronous: bool) -> None:
+    def __end_session(self) -> None:
         if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
+            self.__session.end_session()
             self.__session = None
 
     def close(self) -> None:
