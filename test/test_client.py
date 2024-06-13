@@ -30,7 +30,6 @@ import subprocess
 import sys
 import threading
 import time
-import warnings
 from typing import Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
@@ -617,7 +616,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -628,7 +627,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket, two
@@ -642,7 +641,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
             client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             # When the reaper runs at the same time as the get_socket,
@@ -656,7 +655,7 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn_one:
                 pass
             # Assert that the pool does not close connections prematurely.
@@ -673,12 +672,12 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
             client = rs_or_single_client()
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "pool initialized with 10 connections",
@@ -697,7 +696,7 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -711,7 +710,7 @@ class TestClient(IntegrationTest):
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology()._select_server(readable_server_selector, _Op.TEST)
+            server = client._get_topology().select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
@@ -1180,9 +1179,7 @@ class TestClient(IntegrationTest):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
+        client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
 
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
@@ -1195,20 +1192,14 @@ class TestClient(IntegrationTest):
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
+        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
         # Test invalid timeout in URI ignored and set to default.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
+        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
+        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     def test_waitQueueTimeoutMS(self):
@@ -1550,16 +1541,12 @@ class TestClient(IntegrationTest):
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar"
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient(uri, connect=False)
+        client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar,zlib"
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient(uri, connect=False)
+        client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
@@ -1567,16 +1554,12 @@ class TestClient(IntegrationTest):
         # According to the connection string spec, unsupported values
         # just raise a warning and are ignored.
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=10"
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient(uri, connect=False)
+        client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-2"
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            client = MongoClient(uri, connect=False)
+        client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
@@ -1598,9 +1581,7 @@ class TestClient(IntegrationTest):
 
         if not _have_zstd():
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning)
-                client = MongoClient(uri, connect=False)
+            client = MongoClient(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
         else:
