@@ -896,6 +896,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # this closure. When the client is freed, stop the executor soon.
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
+        self._opened = False
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)
