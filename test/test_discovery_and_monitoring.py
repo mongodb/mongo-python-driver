@@ -49,7 +49,6 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.hello_compat import HelloCompat
 from pymongo.helpers_shared import _check_command_response, _check_write_command_response
 from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
 from pymongo.server_description import SERVER_TYPE, ServerDescription

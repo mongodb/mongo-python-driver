@@ -30,7 +30,7 @@ from test.utils import (
 )
 
 from pymongo import monitoring
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 
 
 class TestStreamingProtocol(IntegrationTest):

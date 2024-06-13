@@ -46,7 +46,7 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 from pymongo.monitoring import _EventListeners
 
 try:

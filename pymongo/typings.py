@@ -29,13 +29,14 @@ from typing import (
 from bson.typings import _DocumentOut, _DocumentType, _DocumentTypeArg
 
 if TYPE_CHECKING:
-    from pymongo import AsyncMongoClient, MongoClient
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.collation import Collation
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
 
 _IS_SYNC = False

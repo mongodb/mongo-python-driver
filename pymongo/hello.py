@@ -22,7 +22,6 @@ from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
 from pymongo import common
-from pymongo.hello_compat import HelloCompat
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
 
@@ -55,6 +54,14 @@ def _get_server_type(doc: Mapping[str, Any]) -> int:
         return SERVER_TYPE.Mongos
     else:
         return SERVER_TYPE.Standalone
+
+
+class HelloCompat:
+    CMD = "hello"
+    LEGACY_CMD = "ismaster"
+    PRIMARY = "isWritablePrimary"
+    LEGACY_PRIMARY = "ismaster"
+    LEGACY_ERROR = "not master"
 
 
 class Hello(Generic[_DocumentType]):

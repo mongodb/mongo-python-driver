@@ -20,7 +20,7 @@ import sys
 
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import ServerSelectionTimeoutError
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings

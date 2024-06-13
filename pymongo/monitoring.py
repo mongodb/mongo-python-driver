@@ -190,8 +190,7 @@ from collections import abc, namedtuple
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
-from pymongo.hello import Hello
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS, _handle_exception
 from pymongo.typings import _Address, _DocumentOut
 

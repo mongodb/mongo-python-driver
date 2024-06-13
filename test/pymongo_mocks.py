@@ -22,8 +22,7 @@ from test import client_context
 
 from pymongo import common
 from pymongo.errors import AutoReconnect, NetworkTimeout
-from pymongo.hello import Hello
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.monitor import Monitor

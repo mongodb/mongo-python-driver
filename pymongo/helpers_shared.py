@@ -42,7 +42,7 @@ from pymongo.errors import (
     WTimeoutError,
     _wtimeout_error,
 )
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
     from pymongo.cursor_shared import _Hint

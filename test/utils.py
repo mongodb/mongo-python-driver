@@ -39,7 +39,7 @@ from bson.son import SON
 from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
 from pymongo.monitoring import (

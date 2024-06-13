@@ -71,7 +71,7 @@ import pymongo
 import pymongo.errors
 from bson.son import SON
 from pymongo.common import partition_node
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.synchronous.database import Database

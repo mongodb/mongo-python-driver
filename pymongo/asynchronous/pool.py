@@ -62,8 +62,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     WaitQueueTimeoutError,
     _CertificateError,
 )
-from pymongo.hello import Hello
-from pymongo.hello_compat import HelloCompat
+from pymongo.hello import Hello, HelloCompat
 from pymongo.lock import _ACondition, _ALock, _create_lock
 from pymongo.logger import (
     _CONNECTION_LOGGER,
