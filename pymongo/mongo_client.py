@@ -904,6 +904,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # this closure. When the client is freed, stop the executor soon.
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
+        self._opened = False
 
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
