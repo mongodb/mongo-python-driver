@@ -532,6 +532,7 @@ class ClientSession:
                 self._server_session = None
 
     def _end_implicit_session(self) -> None:
+        # Implicit sessions can't be part of transactions or pinned connections
         if self._server_session is not None:
             self._client._return_server_session(self._server_session)
             self._server_session = None
