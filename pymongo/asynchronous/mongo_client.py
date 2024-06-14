@@ -854,6 +854,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
+        self._opened = False
         self._init_background()
 
         if _IS_SYNC and connect:
@@ -895,13 +896,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # this closure. When the client is freed, stop the executor soon.
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
+        self._opened = False
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)
 
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
-        self._init_background()
+        self._init_background(self._topology._pid)
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
 
@@ -1382,7 +1384,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = await self._topology.select_server(writable_server_selector, _Op.TEST)
+        server = await (await self._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
 
         return getattr(server.description, attr_name)
 
@@ -1528,9 +1532,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        await self._topology.open()
-        async with self._lock:
-            self._kill_cursors_executor.open()
+        if not self._opened:
+            await self._topology.open()
+            async with self._lock:
+                self._kill_cursors_executor.open()
+            self._opened = True
         return self._topology
 
     @contextlib.asynccontextmanager
@@ -1631,9 +1637,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # always send primaryPreferred when directly connected to a repl set
         # member.
         # Thread safe: if the type is single it cannot change.
-        topology = await self._get_topology()
-        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
-
+        # NOTE: We already opened the Topology when selecting a server so there's no need
+        # to call _get_topology() again.
+        single = self._topology.description.topology_type == TOPOLOGY_TYPE.Single
         async with self._checkout(server, session) as conn:
             if single:
                 if conn.is_repl and not (session and session.in_transaction):
@@ -1652,7 +1658,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
     ) -> AsyncContextManager[tuple[Connection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
-        _ = await self._get_topology()
         server = await self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
 
