@@ -65,7 +65,6 @@ class TestFork(IntegrationTest):
             with self.fork(target):
                 pass
 
-    @unittest.skip("testing")
     def test_topology_reset(self):
         # Tests that topologies are different from each other.
         # Cannot use ID because virtual memory addresses may be the same.
