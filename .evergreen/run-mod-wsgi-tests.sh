@@ -21,7 +21,7 @@ PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(
 # Ensure the C extensions are installed.
 ${PYTHON_BINARY} -m venv .venv
 source .venv/bin/activate
-python -m pip install -e .
+python -m pip install --system-site-packages -e .
 
 export MOD_WSGI_SO=/opt/python/mod_wsgi/python_version/$PYTHON_VERSION/mod_wsgi_version/$MOD_WSGI_VERSION/mod_wsgi.so
 export PYTHONHOME=/opt/python/$PYTHON_VERSION
