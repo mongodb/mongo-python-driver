@@ -58,7 +58,7 @@ functions:
 
            export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
            export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-           export UPLOAD_BUCKET="${project}"
+           export UPLOAD_BUCKET=mongo-python-driver-previous
 
            cat <<EOT > expansion.yml
            CURRENT_VERSION: "$CURRENT_VERSION"
@@ -103,10 +103,11 @@ functions:
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
   "upload coverage" :
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file:  src/.coverage
         optional: true
         # Upload the coverage report for all tasks in a single build to the same directory.
@@ -117,14 +118,14 @@ functions:
         display_name: "Raw Coverage Report"
 
   "download and merge coverage" :
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
         silent: true
         working_dir: "src"
         script: |
-          export AWS_ACCESS_KEY_ID=${aws_key}
-          export AWS_SECRET_ACCESS_KEY=${aws_secret}
-
           # Download all the task coverage files.
           aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/ coverage/
     - command: shell.exec
@@ -139,14 +140,10 @@ functions:
         silent: true
         working_dir: "src"
         script: |
-           export AWS_ACCESS_KEY_ID=${aws_key}
-           export AWS_SECRET_ACCESS_KEY=${aws_secret}
            aws s3 cp htmlcov/ s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file:  src/htmlcov/index.html
         remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/index.html
         bucket: mciuploads
@@ -172,10 +169,11 @@ functions:
         include:
           - "./**.core"
           - "./**.mdmp" # Windows: minidumps
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: mongo-coredumps.tgz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
         bucket: mciuploads
@@ -185,8 +183,6 @@ functions:
         optional: true
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: mongodb-logs.tar.gz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
         bucket: mciuploads
@@ -195,8 +191,6 @@ functions:
         display_name: "mongodb-logs.tar.gz"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: drivers-tools/.evergreen/orchestration/server.log
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
         bucket: mciuploads
@@ -211,10 +205,11 @@ functions:
         source_dir: ${PROJECT_DIRECTORY}/
         include:
           - "./**"
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: working-dir.tar.gz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
         bucket: mciuploads
@@ -232,8 +227,6 @@ functions:
           - "*.lock"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: drivers-dir.tar.gz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
         bucket: mciuploads
@@ -791,10 +784,11 @@ functions:
         source_dir: "src/dist"
         include:
           - "*"
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: release-files.tgz
         remote_file: ${UPLOAD_BUCKET}/release/${revision}/${task_id}-${execution}-release-files.tar.gz
         bucket: mciuploads
@@ -803,13 +797,13 @@ functions:
         display_name: Release files
 
   "download and merge releases":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
         silent: true
         script: |
-          export AWS_ACCESS_KEY_ID=${aws_key}
-          export AWS_SECRET_ACCESS_KEY=${aws_secret}
-
           # Download all the task coverage files.
           aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/release/${revision}/ release/
     - command: shell.exec
@@ -845,8 +839,6 @@ functions:
           - "*"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
         local_file: release-files-all.tgz
         remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
         bucket: mciuploads
