@@ -95,8 +95,7 @@ class CommandCursor(Generic[_DocumentType]):
             raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self) -> None:
-        if _IS_SYNC:
-            self._die(False)  # type: ignore[unused-coroutine]
+        self._die_no_lock()
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -198,8 +197,7 @@ class CommandCursor(Generic[_DocumentType]):
             return self._session
         return None
 
-    def _die(self, synchronous: bool = False) -> None:
-        """Closes this cursor."""
+    def _prepare_to_die(self) -> tuple[int, Optional[_CursorAddress]]:
         already_killed = self._killed
         self._killed = True
         if self._id and not already_killed:
@@ -210,8 +208,22 @@ class CommandCursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        self._collection.database.client._cleanup_cursor(
-            synchronous,
+        return cursor_id, address
+
+    def _die_no_lock(self) -> None:
+        """Closes this cursor without acquiring a lock."""
+        cursor_id, address = self._prepare_to_die()
+        self._collection.database.client._cleanup_cursor_no_lock(
+            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+        )
+        if not self._explicit_session:
+            self._session = None
+        self._sock_mgr = None
+
+    def _die_lock(self) -> None:
+        """Closes this cursor."""
+        cursor_id, address = self._prepare_to_die()
+        self._collection.database.client._cleanup_cursor_lock(
             cursor_id,
             address,
             self._sock_mgr,
@@ -229,7 +241,7 @@ class CommandCursor(Generic[_DocumentType]):
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        self._die(True)
+        self._die_lock()
 
     def _send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
@@ -243,7 +255,7 @@ class CommandCursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
             if exc.timeout:
-                self._die(False)
+                self._die_no_lock()
             else:
                 # Return the session and pinned connection, if necessary.
                 self.close()
@@ -305,7 +317,7 @@ class CommandCursor(Generic[_DocumentType]):
                 )
             )
         else:  # Cursor id is zero nothing else to return
-            self._die(True)
+            self._die_lock()
 
         return len(self._data)
 

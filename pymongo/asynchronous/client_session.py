@@ -531,6 +531,11 @@ class ClientSession:
                 self._client._return_server_session(self._server_session)
                 self._server_session = None
 
+    def _end_implicit_session(self) -> None:
+        if self._server_session is not None:
+            self._client._return_server_session(self._server_session)
+            self._server_session = None
+
     def _check_ended(self) -> None:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")

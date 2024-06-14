@@ -1856,48 +1856,63 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         async with self._tmp_session(session) as s:
             return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
-    async def _cleanup_cursor(
+    def _cleanup_cursor_no_lock(
         self,
-        locks_allowed: bool,
         cursor_id: int,
         address: Optional[_CursorAddress],
         conn_mgr: _ConnectionManager,
         session: Optional[ClientSession],
         explicit_session: bool,
     ) -> None:
-        """Cleanup a cursor from cursor.close() or __del__.
+        """Cleanup a cursor from __del__ without locking.
+
+        This method handles cleanup for Cursors/CommandCursors including any
+        pinned connection attached at the time the cursor
+        was garbage collected.
+
+        :param cursor_id: The cursor id which may be 0.
+        :param address: The _CursorAddress.
+        :param conn_mgr: The _ConnectionManager for the pinned connection or None.
+        """
+        # The cursor will be closed later in a different session.
+        if cursor_id or conn_mgr:
+            self._close_cursor_soon(cursor_id, address, conn_mgr)
+        if session and not explicit_session:
+            session._end_implicit_session()
+
+    async def _cleanup_cursor_lock(
+        self,
+        cursor_id: int,
+        address: Optional[_CursorAddress],
+        conn_mgr: _ConnectionManager,
+        session: Optional[ClientSession],
+        explicit_session: bool,
+    ) -> None:
+        """Cleanup a cursor from cursor.close() using a lock.
 
         This method handles cleanup for Cursors/CommandCursors including any
         pinned connection or implicit session attached at the time the cursor
         was closed or garbage collected.
 
-        :param locks_allowed: True if we are allowed to acquire locks.
         :param cursor_id: The cursor id which may be 0.
         :param address: The _CursorAddress.
         :param conn_mgr: The _ConnectionManager for the pinned connection or None.
         :param session: The cursor's session.
         :param explicit_session: True if the session was passed explicitly.
         """
-        if locks_allowed:
-            if cursor_id:
-                if conn_mgr and conn_mgr.more_to_come:
-                    # If this is an exhaust cursor and we haven't completely
-                    # exhausted the result set we *must* close the socket
-                    # to stop the server from sending more data.
-                    assert conn_mgr.conn is not None
-                    conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
-                else:
-                    await self._close_cursor_now(
-                        cursor_id, address, session=session, conn_mgr=conn_mgr
-                    )
-            if conn_mgr:
-                await conn_mgr.close()
-        else:
-            # The cursor will be closed later in a different session.
-            if cursor_id or conn_mgr:
-                self._close_cursor_soon(cursor_id, address, conn_mgr)
+        if cursor_id:
+            if conn_mgr and conn_mgr.more_to_come:
+                # If this is an exhaust cursor and we haven't completely
+                # exhausted the result set we *must* close the socket
+                # to stop the server from sending more data.
+                assert conn_mgr.conn is not None
+                conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
+            else:
+                await self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
+        if conn_mgr:
+            await conn_mgr.close()
         if session and not explicit_session:
-            await session._end_session(lock=locks_allowed)
+            session._end_implicit_session()
 
     async def _close_cursor_now(
         self,
@@ -1977,7 +1992,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
-                await self._cleanup_cursor(True, cursor_id, address, conn_mgr, None, False)
+                await self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
