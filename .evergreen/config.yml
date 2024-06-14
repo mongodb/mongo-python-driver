@@ -58,7 +58,7 @@ functions:
 
            export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
            export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-           export UPLOAD_BUCKET=mongo-python-driver-previous
+           export UPLOAD_BUCKET=${project}
 
            cat <<EOT > expansion.yml
            CURRENT_VERSION: "$CURRENT_VERSION"
