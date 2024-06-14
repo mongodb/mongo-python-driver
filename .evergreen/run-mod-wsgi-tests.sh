@@ -19,7 +19,7 @@ fi
 PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(val) for val in sys.version_info[:2]))")
 
 # Ensure the C extensions are installed.
-${PYTHON_BINARY} setup.py build_ext -i
+${PYTHON_BINARY} -m pip install -e .
 
 export MOD_WSGI_SO=/opt/python/mod_wsgi/python_version/$PYTHON_VERSION/mod_wsgi_version/$MOD_WSGI_VERSION/mod_wsgi.so
 export PYTHONHOME=/opt/python/$PYTHON_VERSION
