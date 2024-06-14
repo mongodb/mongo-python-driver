@@ -81,8 +81,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._explicit_session = explicit_session
         self._killed = self._id == 0
         self._comment = comment
-        if _IS_SYNC and self._killed:
-            self._end_session(True)  # type: ignore[unused-coroutine]
+        if self._killed:
+            self._end_session()
 
         if "ns" in cursor_info:  # noqa: SIM401
             self._ns = cursor_info["ns"]
@@ -234,9 +234,9 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             self._session = None
         self._sock_mgr = None
 
-    async def _end_session(self, synchronous: bool) -> None:
+    def _end_session(self) -> None:
         if self._session and not self._explicit_session:
-            await self._session._end_session(lock=synchronous)
+            self._session._end_implicit_session()
             self._session = None
 
     async def close(self) -> None:
