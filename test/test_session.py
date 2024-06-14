@@ -185,7 +185,6 @@ class TestSession(IntegrationTest):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
-        raise unittest.SkipTest("temporary skip")
         lsid_set = set()
         failures = 0
         for _ in range(5):
@@ -297,8 +296,8 @@ class TestSession(IntegrationTest):
         client = self.client
         ops: list = [
             (client.server_info, [], {}),
-            # (client.list_database_names, [], {}),
-            # (client.drop_database, ["pymongo_test"], {}),
+            (client.list_database_names, [], {}),
+            (client.drop_database, ["pymongo_test"], {}),
         ]
 
         self._test_ops(client, *ops)
