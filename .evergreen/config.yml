@@ -106,6 +106,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
@@ -124,6 +125,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: shell.exec
       params:
         silent: true
@@ -178,6 +180,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
@@ -223,6 +226,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
@@ -808,6 +812,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
@@ -824,6 +829,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
+        duration_seconds: 3600
     - command: shell.exec
       params:
         silent: true
