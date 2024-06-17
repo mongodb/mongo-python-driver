@@ -676,7 +676,7 @@ class ClientContext:
         if self._fips_enabled is not None:
             return self._fips_enabled
         try:
-            subprocess.check_call(["fips-mode-setup", "--is-enabled"]).decode("utf-8")
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
             self._fips_enabled = True
         except subprocess.SubprocessError:
             raise
