@@ -277,6 +277,7 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self._fips_enabled = None
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -668,6 +669,23 @@ class ClientContext:
         """Run a test only if the server is running with auth enabled."""
         return self._require(
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
+        )
+
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            output = subprocess.check_output(["fips-mode-setup", "--check"]).decode("utf-8")
+            self._fips_enabled = "FIPS mode is enabled" in output
+        except subprocess.CompletedProcess:
+            self._fips_enabled = False
+        return self._fips_enabled
+
+    def require_no_fips(self, func):
+        """Run a test only if the server is running with auth enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_no_auth(self, func):
