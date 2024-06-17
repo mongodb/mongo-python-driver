@@ -406,6 +406,7 @@ class TestSCRAM(IntegrationTest):
         else:
             self.assertEqual(started, ["saslStart", "saslContinue", "saslContinue"])
 
+    @client_context.require_no_fips
     def test_scram(self):
         # Step 1: create users
         client_context.create_user(

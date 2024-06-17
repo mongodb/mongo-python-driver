@@ -524,6 +524,17 @@ class ClientContext:
             # Raised if self.server_status is None.
             return None
 
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
+            self._fips_enabled = True
+        except subprocess.SubprocessError:
+            self._fips_enabled = False
+        return self._fips_enabled
+
     def check_auth_type(self, auth_type):
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
         return auth_type in auth_mechs
@@ -670,18 +681,6 @@ class ClientContext:
         return self._require(
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
         )
-
-    @property
-    def fips_enabled(self):
-        if self._fips_enabled is not None:
-            return self._fips_enabled
-        try:
-            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
-            self._fips_enabled = True
-        except subprocess.SubprocessError:
-            raise
-            self._fips_enabled = False
-        return self._fips_enabled
 
     def require_no_fips(self, func):
         """Run a test only if the server is running with auth enabled."""

@@ -400,6 +400,7 @@ class TestCMAP(IntegrationTest):
         failed_event = listener.events[3]
         self.assertEqual(failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
+    @client_context.require_no_fips
     def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
         client = single_client_noauth(
