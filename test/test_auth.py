@@ -344,6 +344,7 @@ class TestSCRAMSHA1(IntegrationTest):
         client_context.drop_user("pymongo_test", "user")
         super().tearDown()
 
+    @client_context.require_no_fips
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
 
@@ -405,6 +406,7 @@ class TestSCRAM(IntegrationTest):
         else:
             self.assertEqual(started, ["saslStart", "saslContinue", "saslContinue"])
 
+    @client_context.require_no_fips
     def test_scram(self):
         # Step 1: create users
         client_context.create_user(
