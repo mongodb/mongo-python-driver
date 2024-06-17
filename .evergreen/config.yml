@@ -962,7 +962,7 @@ task_groups:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
-    teardown_group_can_fail_task: true
+    teardown_task_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
