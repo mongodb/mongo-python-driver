@@ -531,7 +531,7 @@ class ClientContext:
         try:
             subprocess.check_call(["fips-mode-setup", "--is-enabled"])
             self._fips_enabled = True
-        except subprocess.SubprocessError:
+        except (subprocess.SubprocessError, FileNotFoundError):
             self._fips_enabled = False
         return self._fips_enabled
 
