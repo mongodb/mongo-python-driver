@@ -98,7 +98,8 @@ def _ragged_eof(exc: BaseException) -> bool:
     return exc.args == (-1, "Unexpected EOF")
 
 
-_executor = ThreadPoolExecutor(max_workers=1)
+# TODO: Make max_workers = MAX_CONNECTING
+_executor = ThreadPoolExecutor(max_workers=2)
 
 
 # https://github.com/pyca/pyopenssl/issues/168
