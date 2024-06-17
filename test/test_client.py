@@ -1016,6 +1016,7 @@ class TestClient(IntegrationTest):
             MongoClient("http://localhost")
 
     @client_context.require_auth
+    @client_context.require_no_fips
     def test_auth_from_uri(self):
         host, port = client_context.host, client_context.port
         client_context.create_user("admin", "admin", "pass")
@@ -1072,6 +1073,7 @@ class TestClient(IntegrationTest):
             rs_or_single_client_noauth(username="ad min", password="foo").server_info()
 
     @client_context.require_auth
+    @client_context.require_no_fips
     def test_lazy_auth_raises_operation_failure(self):
         lazy_client = rs_or_single_client_noauth(
             f"mongodb://user:wrong@{client_context.host}/pymongo_test", connect=False
