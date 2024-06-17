@@ -259,8 +259,7 @@ class AsyncCursor(Generic[_DocumentType]):
         return self._retrieved
 
     def __del__(self) -> None:
-        if _IS_SYNC:
-            self._die()  # type: ignore[unused-coroutine]
+        self._die_no_lock()
 
     def clone(self) -> AsyncCursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -996,14 +995,7 @@ class AsyncCursor(Generic[_DocumentType]):
                 y[key] = value
         return y
 
-    async def _die(self, synchronous: bool = False) -> None:
-        """Closes this cursor."""
-        try:
-            already_killed = self._killed
-        except AttributeError:
-            # ___init__ did not run to completion (or at all).
-            return
-
+    def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:
         self._killed = True
         if self._id and not already_killed:
             cursor_id = self._id
@@ -1013,8 +1005,34 @@ class AsyncCursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        await self._collection.database.client._cleanup_cursor(
-            synchronous,
+        return cursor_id, address
+
+    def _die_no_lock(self) -> None:
+        """Closes this cursor without acquiring a lock."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        self._collection.database.client._cleanup_cursor_no_lock(
+            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+        )
+        if not self._explicit_session:
+            self._session = None
+        self._sock_mgr = None
+
+    async def _die_lock(self) -> None:
+        """Closes this cursor."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        await self._collection.database.client._cleanup_cursor_lock(
             cursor_id,
             address,
             self._sock_mgr,
@@ -1027,7 +1045,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
     async def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        await self._die(True)
+        await self._die_lock()
 
     async def distinct(self, key: str) -> list:
         """Get a list of distinct values for `key` among all documents
@@ -1080,7 +1098,7 @@ class AsyncCursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
             if exc.timeout:
-                await self._die(False)
+                self._die_no_lock()
             else:
                 await self.close()
             # If this is a tailable cursor the error is likely
