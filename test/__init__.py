@@ -683,7 +683,7 @@ class ClientContext:
         )
 
     def require_no_fips(self, func):
-        """Run a test only if the server is running with auth enabled."""
+        """Run a test only if the host does not have FIPS enabled."""
         return self._require(
             lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
