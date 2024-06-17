@@ -431,6 +431,7 @@ class TestDatabase(IntegrationTest):
     def test_cursor_command_invalid(self):
         self.assertRaises(InvalidOperation, self.db.cursor_command, "usersInfo", "test")
 
+    @client_context.require_no_fips
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
         self.assertRaises(TypeError, auth._password_digest, True)

@@ -962,7 +962,7 @@ task_groups:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
-    teardown_group_can_fail_task: true
+    teardown_task_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
     - testazurekms-task
@@ -2220,9 +2220,9 @@ axes:
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
-      - id: rhel80-fips
-        display_name: "RHEL 8.0 FIPS"
-        run_on: rhel80-fips
+      - id: rhel92-fips
+        display_name: "RHEL 9.2 FIPS"
+        run_on: rhel92-fips
         batchtime: 10080  # 7 days
       - id: ubuntu-22.04
         display_name: "Ubuntu 22.04"
@@ -2596,7 +2596,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel80-fips
+      - rhel92-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
