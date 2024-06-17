@@ -92,6 +92,8 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
+          env
+          exit 1
           set -o xtrace
           rm -rf $DRIVERS_TOOLS
           if [ "${project}" = "drivers-tools" ]; then
