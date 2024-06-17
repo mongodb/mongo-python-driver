@@ -2220,9 +2220,9 @@ axes:
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
-      - id: rhel80-fips
-        display_name: "RHEL 8.0 FIPS"
-        run_on: rhel80-fips
+      - id: rhel92-fips
+        display_name: "RHEL 9.2 FIPS"
+        run_on: rhel92-fips
         batchtime: 10080  # 7 days
       - id: ubuntu-22.04
         display_name: "Ubuntu 22.04"
