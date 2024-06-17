@@ -2596,7 +2596,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel80-fips
+      - rhel92-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
