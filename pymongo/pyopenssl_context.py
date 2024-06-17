@@ -22,6 +22,7 @@ import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
 import time as _time
+from concurrent.futures import ThreadPoolExecutor
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
@@ -95,6 +96,9 @@ BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509Look
 def _ragged_eof(exc: BaseException) -> bool:
     """Return True if the OpenSSL.SSL.SysCallError is a ragged EOF."""
     return exc.args == (-1, "Unexpected EOF")
+
+
+_executor = ThreadPoolExecutor(max_workers=1)
 
 
 # https://github.com/pyca/pyopenssl/issues/168
@@ -391,7 +395,7 @@ class SSLContext:
                 ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
             if self.verify_mode != _stdlibssl.CERT_NONE:
                 # Request a stapled OCSP response.
-                await loop.run_in_executor(None, ssl_conn.request_ocsp)
+                await loop.run_in_executor(_executor, ssl_conn.request_ocsp)
             ssl_conn.set_connect_state()
         # If this wasn't true the caller of wrap_socket would call
         # do_handshake()
@@ -399,7 +403,7 @@ class SSLContext:
             # XXX: If we do hostname checking in a callback we can get rid
             # of this call to do_handshake() since the handshake
             # will happen automatically later.
-            await loop.run_in_executor(None, ssl_conn.do_handshake)
+            await loop.run_in_executor(_executor, ssl_conn.do_handshake)
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:
