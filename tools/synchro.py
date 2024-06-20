@@ -146,6 +146,7 @@ docstring_translate_files = [
         "operations.py",
         "pool.py",
         "topology.py",
+        "server.py",
     ]
 ] + [_gridfs_dest_base + f for f in ["grid_file.py"]]
 

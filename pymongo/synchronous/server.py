@@ -135,12 +135,12 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :param conn: An AsyncConnection instance.
+        :param conn: A Connection instance.
         :param operation: A _Query or _GetMore object.
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.
         :param unpack_res: A callable that decodes the wire protocol response.
-        :param client: An AsyncMongoClient instance.
+        :param client: A MongoClient instance.
         """
         assert listeners is not None
         publish = listeners.enabled_for_commands

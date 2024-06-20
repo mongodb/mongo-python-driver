@@ -616,7 +616,7 @@ class EntityMapUtil:
         session = self[session_name]
         if not isinstance(session, ClientSession):
             self.test.fail(
-                f"Expected entity {session_name} to be of type AsyncClientSession, got {type(session)}"
+                f"Expected entity {session_name} to be of type ClientSession, got {type(session)}"
             )
 
         try:

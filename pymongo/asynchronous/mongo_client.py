@@ -1883,7 +1883,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         cursor_id: int,
         address: Optional[_CursorAddress],
         conn_mgr: _ConnectionManager,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         explicit_session: bool,
     ) -> None:
         """Cleanup a cursor from cursor.close() using a lock.
