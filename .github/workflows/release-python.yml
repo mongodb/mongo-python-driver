@@ -16,7 +16,7 @@ on:
 
 env:
   # Changes per repo
-  PRODUCT_NAME: mongo-python-driver
+  PRODUCT_NAME: PyMongo
   # Changes per branch
   SILK_ASSET_GROUP: mongodb-python-driver
 
