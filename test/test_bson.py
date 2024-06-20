@@ -23,6 +23,7 @@ import mmap
 import os
 import pickle
 import re
+import struct
 import sys
 import tempfile
 import uuid
@@ -488,6 +489,33 @@ class TestBSON(unittest.TestCase):
             b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00"
             b"\x00",
         )
+
+    def test_bad_code(self):
+        # Assert that decoding invalid Code with scope does not include a field name.
+        def generate_payload(length: int) -> bytes:
+            string_size = length - 0x1E
+
+            return bytes.fromhex(
+                struct.pack("<I", length).hex()  # payload size
+                + "0f"  # type "code with scope"
+                + "3100"  # key (cstring)
+                + "0a000000"  # c_w_s_size
+                + "04000000"  # code_size
+                + "41004200"  # code (cstring)
+                + "feffffff"  # scope_size
+                + "02"  # type "string"
+                + "3200"  # key (cstring)
+                + struct.pack("<I", string_size).hex()  # string size
+                + "00" * string_size  # value (cstring)
+                # next bytes is a field name for type \x00
+                # type \x00 is invalid so bson throws an exception
+            )
+
+        for i in range(100):
+            payload = generate_payload(0x54F + i)
+            with self.assertRaisesRegex(InvalidBSON, "invalid") as ctx:
+                bson.decode(payload)
+            self.assertNotIn("fieldname", str(ctx.exception))
 
     def test_unknown_type(self):
         # Repr value differs with major python version
