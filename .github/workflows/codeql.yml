@@ -5,6 +5,11 @@ on:
     branches: [ "master", "v*"]
     tags: ['*']
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
   schedule:
     - cron: '17 10 * * 2'
 
@@ -35,6 +40,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref }}
     - uses: actions/setup-python@v3
 
     # Initializes the CodeQL tools for scanning.
