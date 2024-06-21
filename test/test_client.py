@@ -361,6 +361,25 @@ class ClientUnitTest(unittest.TestCase):
         )
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
+        # Test truncating driver info metadata.
+        client = MongoClient(driver=DriverInfo(name="s" * 512))
+        options = client.options
+        self.assertLess(
+            len(options.pool_options.metadata["driver"]["name"]),
+            len(_METADATA["driver"]["name"]) + 514,
+        )
+        client.admin.command("isMaster")
+        client = MongoClient(driver=DriverInfo(name="s" * 512, version="s" * 512))
+        options = client.options
+        self.assertLess(
+            len(options.pool_options.metadata["driver"]["name"]),
+            len(_METADATA["driver"]["name"]) + 514,
+        )
+        self.assertLess(
+            len(options.pool_options.metadata["driver"]["version"]),
+            len(_METADATA["driver"]["version"]) + 514,
+        )
+        client.admin.command("isMaster")
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
