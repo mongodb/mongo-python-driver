@@ -403,7 +403,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     if driver:
         # Truncate driver version.
         driver_version = driver.get("version")[:-overflow]
-        if driver_version:
+        if len(driver_version) >= len(_METADATA["driver"]["version"]):
             metadata["driver"]["version"] = driver_version
         else:
             metadata["driver"]["version"] = _METADATA["driver"]["version"]
@@ -413,7 +413,10 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         # Truncate driver name.
         overflow = encoded_size - _MAX_METADATA_SIZE
         driver_name = driver.get("name")[:-overflow]
-        metadata["driver"]["name"] = driver_name
+        if len(driver_name) >= len(_METADATA["driver"]["name"]):
+            metadata["driver"]["name"] = driver_name
+        else:
+            metadata["driver"]["name"] = _METADATA["driver"]["name"]
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
