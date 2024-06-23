@@ -58,14 +58,12 @@ functions:
 
            export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
            export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-           export UPLOAD_BUCKET=${project}/${branch_name}
 
            cat <<EOT > expansion.yml
            CURRENT_VERSION: "$CURRENT_VERSION"
            DRIVERS_TOOLS: "$DRIVERS_TOOLS"
            MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"
            MONGODB_BINARIES: "$MONGODB_BINARIES"
-           UPLOAD_BUCKET: "$UPLOAD_BUCKET"
            PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
            PREPARE_SHELL: |
               set -o errexit
@@ -73,7 +71,6 @@ functions:
               export DRIVERS_TOOLS="$DRIVERS_TOOLS"
               export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
               export MONGODB_BINARIES="$MONGODB_BINARIES"
-              export UPLOAD_BUCKET="$UPLOAD_BUCKET"
               export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
@@ -114,7 +111,7 @@ functions:
         local_file:  src/.coverage
         optional: true
         # Upload the coverage report for all tasks in a single build to the same directory.
-        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
+        remote_file: coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: text/html
@@ -130,7 +127,7 @@ functions:
         working_dir: "src"
         script: |
           # Download all the task coverage files.
-          aws s3 cp --recursive s3://${aws_bucket}/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/ coverage/
+          aws s3 cp --recursive s3://${aws_bucket}/coverage/${revision}/${version_id}/coverage/ coverage/
     - command: shell.exec
       params:
         working_dir: "src"
@@ -143,7 +140,7 @@ functions:
         silent: true
         working_dir: "src"
         script: |
-           aws s3 cp htmlcov/ s3://${aws_bucket}/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
+           aws s3 cp htmlcov/ s3://${aws_bucket}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
     - command: s3.put
       params:
@@ -151,7 +148,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file:  src/htmlcov/index.html
-        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/index.html
+        remote_file: coverage/${revision}/${version_id}/htmlcov/index.html
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: text/html
@@ -184,7 +181,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: mongo-coredumps.tgz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/gzip}
@@ -196,7 +193,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: mongodb-logs.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
@@ -207,7 +204,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: drivers-tools/.evergreen/orchestration/server.log
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|text/plain}
@@ -229,7 +226,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: working-dir.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
@@ -249,7 +246,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: drivers-dir.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
@@ -814,7 +811,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: release-files.tgz
-        remote_file: ${UPLOAD_BUCKET}/release/${revision}/${task_id}-${execution}-release-files.tar.gz
+        remote_file: release/${revision}/${task_id}-${execution}-release-files.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/gzip}
@@ -829,7 +826,7 @@ functions:
         silent: true
         script: |
           # Download all the task coverage files.
-          aws s3 cp --recursive s3://${aws_bucket}/${UPLOAD_BUCKET}/release/${revision}/ release/
+          aws s3 cp --recursive s3://${aws_bucket}/release/${revision}/ release/
     - command: shell.exec
       params:
         shell: "bash"
@@ -867,7 +864,7 @@ functions:
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: release-files-all.tgz
-        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
+        remote_file: release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
         bucket: ${aws_bucket}
         permissions: public-read
         content_type: ${content_type|application/gzip}
