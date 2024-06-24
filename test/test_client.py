@@ -36,6 +36,7 @@ from unittest.mock import patch
 
 import pytest
 
+import bson
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -100,7 +101,7 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool_options import _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -359,6 +360,25 @@ class ClientUnitTest(unittest.TestCase):
         )
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
+        # Test truncating driver info metadata.
+        client = MongoClient(
+            driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
+            connect=False,
+        )
+        options = client.options
+        self.assertLessEqual(
+            len(bson.encode(options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        client = MongoClient(
+            driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
+            connect=False,
+        )
+        options = client.options
+        self.assertLessEqual(
+            len(bson.encode(options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
