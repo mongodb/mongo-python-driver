@@ -364,14 +364,18 @@ class ClientUnitTest(unittest.TestCase):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # Test truncating driver info metadata.
-        client = MongoClient(driver=DriverInfo(name="s" * _MAX_METADATA_SIZE))
+        client = MongoClient(
+            driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
+            connect=False,
+        )
         options = client.options
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
         client = MongoClient(
-            driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE)
+            driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
+            connect=False,
         )
         options = client.options
         self.assertLessEqual(
