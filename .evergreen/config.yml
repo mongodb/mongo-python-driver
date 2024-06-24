@@ -123,7 +123,6 @@ functions:
         role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
-        silent: true
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
@@ -138,7 +137,6 @@ functions:
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
-        silent: true
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
