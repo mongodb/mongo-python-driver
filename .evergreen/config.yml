@@ -58,14 +58,12 @@ functions:
 
            export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
            export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-           export UPLOAD_BUCKET="${project}"
 
            cat <<EOT > expansion.yml
            CURRENT_VERSION: "$CURRENT_VERSION"
            DRIVERS_TOOLS: "$DRIVERS_TOOLS"
            MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"
            MONGODB_BINARIES: "$MONGODB_BINARIES"
-           UPLOAD_BUCKET: "$UPLOAD_BUCKET"
            PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
            PREPARE_SHELL: |
               set -o errexit
@@ -73,7 +71,6 @@ functions:
               export DRIVERS_TOOLS="$DRIVERS_TOOLS"
               export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
               export MONGODB_BINARIES="$MONGODB_BINARIES"
-              export UPLOAD_BUCKET="$UPLOAD_BUCKET"
               export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
@@ -103,30 +100,35 @@ functions:
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
   "upload coverage" :
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file:  src/.coverage
         optional: true
         # Upload the coverage report for all tasks in a single build to the same directory.
-        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
-        bucket: mciuploads
+        remote_file: coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: text/html
         display_name: "Raw Coverage Report"
 
   "download and merge coverage" :
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
         silent: true
         working_dir: "src"
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
-          export AWS_ACCESS_KEY_ID=${aws_key}
-          export AWS_SECRET_ACCESS_KEY=${aws_secret}
-
           # Download all the task coverage files.
-          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/ coverage/
+          aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
     - command: shell.exec
       params:
         working_dir: "src"
@@ -138,24 +140,27 @@ functions:
       params:
         silent: true
         working_dir: "src"
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
-           export AWS_ACCESS_KEY_ID=${aws_key}
-           export AWS_SECRET_ACCESS_KEY=${aws_secret}
-           aws s3 cp htmlcov/ s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
+           aws s3 cp htmlcov/ s3://${bucket_name}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file:  src/htmlcov/index.html
-        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/index.html
-        bucket: mciuploads
+        remote_file: coverage/${revision}/${version_id}/htmlcov/index.html
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: text/html
         display_name: "Coverage Report HTML"
 
 
   "upload mo artifacts":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
         script: |
@@ -174,37 +179,43 @@ functions:
           - "./**.mdmp" # Windows: minidumps
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: mongo-coredumps.tgz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
-        bucket: mciuploads
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/gzip}
         display_name: Core Dumps - Execution
         optional: true
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: mongodb-logs.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
-        bucket: mciuploads
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "mongodb-logs.tar.gz"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: drivers-tools/.evergreen/orchestration/server.log
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
-        bucket: mciuploads
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|text/plain}
         display_name: "orchestration.log"
 
   "upload working dir":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: archive.targz_pack
       params:
         target: "working-dir.tar.gz"
@@ -213,11 +224,12 @@ functions:
           - "./**"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: working-dir.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
-        bucket: mciuploads
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "working-dir.tar.gz"
@@ -232,11 +244,12 @@ functions:
           - "*.lock"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: drivers-dir.tar.gz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
-        bucket: mciuploads
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "drivers-dir.tar.gz"
@@ -785,6 +798,9 @@ functions:
           VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
 
   "upload release":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: archive.targz_pack
       params:
         target: "release-files.tgz"
@@ -793,25 +809,27 @@ functions:
           - "*"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: release-files.tgz
-        remote_file: ${UPLOAD_BUCKET}/release/${revision}/${task_id}-${execution}-release-files.tar.gz
-        bucket: mciuploads
+        remote_file: release/${revision}/${task_id}-${execution}-release-files.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/gzip}
         display_name: Release files
 
   "download and merge releases":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
     - command: shell.exec
       params:
         silent: true
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
-          export AWS_ACCESS_KEY_ID=${aws_key}
-          export AWS_SECRET_ACCESS_KEY=${aws_secret}
-
           # Download all the task coverage files.
-          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/release/${revision}/ release/
+          aws s3 cp --recursive s3://${bucket_name}/release/${revision}/ release/
     - command: shell.exec
       params:
         shell: "bash"
@@ -845,11 +863,12 @@ functions:
           - "*"
     - command: s3.put
       params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: release-files-all.tgz
-        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
-        bucket: mciuploads
+        remote_file: release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/gzip}
         display_name: Release files all
@@ -2108,7 +2127,7 @@ tasks:
             script: |
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test-eg
 
     - name: testazurekms-task
