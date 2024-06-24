@@ -152,7 +152,7 @@ def process_files(files: list[str]) -> None:
         if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
                 lines = f.readlines()
-                lines = apply_is_sync(lines)
+                lines = apply_is_sync(lines, file)
                 lines = translate_coroutine_types(lines)
                 lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
@@ -164,11 +164,17 @@ def process_files(files: list[str]) -> None:
                 f.truncate()
 
 
-def apply_is_sync(lines: list[str]) -> list[str]:
-    is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
-    index = lines.index(is_sync)
-    is_sync = is_sync.replace("False", "True")
-    lines[index] = is_sync
+def apply_is_sync(lines: list[str], file: str) -> list[str]:
+    try:
+        is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
+        index = lines.index(is_sync)
+        is_sync = is_sync.replace("False", "True")
+        lines[index] = is_sync
+    except StopIteration as e:
+        print(
+            f"Missing _IS_SYNC at top of async file {file.replace('synchronous', 'asynchronous')}"
+        )
+        raise e
     return lines
 
 
