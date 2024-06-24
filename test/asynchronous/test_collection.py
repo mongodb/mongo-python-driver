@@ -40,9 +40,10 @@ from test.utils import (
     wait_until,
 )
 
-from bson import RawBSONDocument, encode
+from bson import encode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT

@@ -2040,7 +2040,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.AsyncClientSession):
-                raise ValueError("'session' argument must be a AsyncClientSession or None.")
+                raise ValueError("'session' argument must be an AsyncClientSession or None.")
             # Don't call end_session.
             yield session
             return

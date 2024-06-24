@@ -39,9 +39,10 @@ from test.utils import (
     wait_until,
 )
 
-from bson import RawBSONDocument, encode
+from bson import encode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
@@ -133,7 +134,7 @@ class TestCollectionNoConnect(unittest.TestCase):
             if _IS_SYNC:
                 msg = "'Collection' object is not iterable"
             else:
-                msg = "'AsyncCollection' object is not iterable"
+                msg = "'Collection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -1616,7 +1617,7 @@ class TestCollection(IntegrationTest):
             with self.db.test.aggregate([], {}):  # type:ignore
                 pass
 
-        with self.assertRaisesRegex(ValueError, "must be an AsyncClientSession"):
+        with self.assertRaisesRegex(ValueError, "must be a ClientSession"):
             try_invalid_session()
 
     def test_large_limit(self):
