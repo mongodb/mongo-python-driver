@@ -112,7 +112,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
-    import sys
     from types import TracebackType
 
     from bson.objectid import ObjectId
@@ -126,11 +125,6 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.server_selectors import Selection
     from pymongo.read_concern import ReadConcern
 
-    if sys.version_info[:2] >= (3, 9):
-        pass
-    else:
-        # Deprecated since version 3.9: collections.abc.Generator now supports [].
-        pass
 
 T = TypeVar("T")
 

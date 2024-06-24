@@ -313,9 +313,10 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-def next(cls: Any) -> Any:
-    """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
-    if sys.version_info >= (3, 10):
-        return builtins.next(cls)
-    else:
+if sys.version_info >= (3, 10):
+    next = builtins.next
+else:
+
+    def next(cls: Any) -> Any:
+        """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
         return cls.__next__()
