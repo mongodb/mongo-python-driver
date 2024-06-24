@@ -91,7 +91,7 @@ class _Bulk:
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
-        """Initialize a _AsyncBulk instance."""
+        """Initialize a _Bulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
@@ -323,7 +323,7 @@ class _Bulk:
         docs: list[Mapping[str, Any]],
         client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
-        """A proxy for AsyncConnection.unack_write that handles event publishing."""
+        """A proxy for Connection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -403,6 +403,56 @@ class _Bulk:
             bwc.start_time = datetime.datetime.now()
         return result  # type: ignore[return-value]
 
+    def _execute_batch_unack(
+        self,
+        bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
+        cmd: dict[str, Any],
+        ops: list[Mapping[str, Any]],
+        client: MongoClient,
+    ) -> list[Mapping[str, Any]]:
+        if self.is_encrypted:
+            _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
+            bwc.conn.command(  # type: ignore[misc]
+                bwc.db_name,
+                batched_cmd,  # type: ignore[arg-type]
+                write_concern=WriteConcern(w=0),
+                session=bwc.session,  # type: ignore[arg-type]
+                client=client,  # type: ignore[arg-type]
+            )
+        else:
+            request_id, msg, to_send = bwc.batch_command(cmd, ops)
+            # Though this isn't strictly a "legacy" write, the helper
+            # handles publishing commands and sending our message
+            # without receiving a result. Send 0 for max_doc_size
+            # to disable size checking. Size checking is handled while
+            # the documents are encoded to BSON.
+            self.unack_write(bwc, cmd, request_id, msg, 0, to_send, client)  # type: ignore[arg-type]
+
+        return to_send
+
+    def _execute_batch(
+        self,
+        bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
+        cmd: dict[str, Any],
+        ops: list[Mapping[str, Any]],
+        client: MongoClient,
+    ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
+        if self.is_encrypted:
+            _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
+            result = bwc.conn.command(  # type: ignore[misc]
+                bwc.db_name,
+                batched_cmd,  # type: ignore[arg-type]
+                codec_options=bwc.codec,
+                session=bwc.session,  # type: ignore[arg-type]
+                client=client,  # type: ignore[arg-type]
+            )
+        else:
+            request_id, msg, to_send = bwc.batch_command(cmd, ops)
+            result = self.write_command(bwc, cmd, request_id, msg, to_send, client)  # type: ignore[arg-type]
+        client._process_response(result, bwc.session)  # type: ignore[arg-type]
+
+        return result, to_send  # type: ignore[return-value]
+
     def _execute_command(
         self,
         generator: Iterator[Any],
@@ -423,8 +473,8 @@ class _Bulk:
             self.next_run = None
         run = self.current_run
 
-        # AsyncConnection.command validates the session, but we use
-        # AsyncConnection.write_command
+        # Connection.command validates the session, but we use
+        # Connection.write_command
         conn.validate_session(client, session)
         last_run = False
 
@@ -475,19 +525,7 @@ class _Bulk:
 
                 # Run as many ops as possible in one command.
                 if write_concern.acknowledged:
-                    if self.is_encrypted:
-                        _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
-                        result = bwc.conn.command(
-                            bwc.db_name,
-                            batched_cmd,
-                            codec_options=bwc.codec,
-                            session=bwc.session,
-                            client=client,
-                        )
-                    else:
-                        request_id, msg, to_send = bwc.batch_command(cmd, ops)
-                        result = self.write_command(bwc, cmd, request_id, msg, to_send, client)
-                        client._process_response(result, bwc.session)
+                    result, to_send = self._execute_batch(bwc, cmd, ops, client)
 
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get("writeConcernError", {})
@@ -507,23 +545,7 @@ class _Bulk:
                     if self.ordered and "writeErrors" in result:
                         break
                 else:
-                    if self.is_encrypted:
-                        _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
-                        bwc.conn.command(
-                            bwc.db_name,
-                            batched_cmd,
-                            write_concern=WriteConcern(w=0),
-                            session=bwc.session,
-                            client=client,
-                        )
-                    else:
-                        request_id, msg, to_send = bwc.batch_command(cmd, ops)
-                        # Though this isn't strictly a "legacy" write, the helper
-                        # handles publishing commands and sending our message
-                        # without receiving a result. Send 0 for max_doc_size
-                        # to disable size checking. Size checking is handled while
-                        # the documents are encoded to BSON.
-                        self.unack_write(bwc, cmd, request_id, msg, 0, to_send, client)
+                    to_send = self._execute_batch_unack(bwc, cmd, ops, client)
 
                 run.idx_offset += len(to_send)
 
@@ -574,7 +596,7 @@ class _Bulk:
             retryable_bulk,
             session,
             operation,
-            bulk=self,
+            bulk=self,  # type: ignore[arg-type]
             operation_id=op_id,
         )
 
@@ -615,18 +637,7 @@ class _Bulk:
                 conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                if self.is_encrypted:
-                    _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
-                    bwc.conn.command(
-                        bwc.db_name,
-                        batched_cmd,
-                        write_concern=WriteConcern(w=0),
-                        session=bwc.session,
-                        client=client,
-                    )
-                else:
-                    request_id, msg, to_send = bwc.batch_command(cmd, ops)
-                    self.unack_write(bwc, cmd, request_id, msg, 0, to_send, client)
+                to_send = self._execute_batch_unack(bwc, cmd, ops, client)
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 

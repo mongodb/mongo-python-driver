@@ -47,7 +47,7 @@ def _handle_reauth(func: F) -> F:
             if no_reauth:
                 raise
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                # Look for an argument that either is a AsyncConnection
+                # Look for an argument that either is a Connection
                 # or has a connection attribute, so we can trigger
                 # a reauth.
                 conn = None
@@ -69,7 +69,7 @@ def _handle_reauth(func: F) -> F:
 
 
 def next(cls: Any) -> Any:
-    """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
+    """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
     if sys.version_info >= (3, 10):
         return builtins.next(cls)
     else:
