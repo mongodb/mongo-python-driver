@@ -125,6 +125,7 @@ functions:
       params:
         silent: true
         working_dir: "src"
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Download all the task coverage files.
           aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
@@ -139,6 +140,7 @@ functions:
       params:
         silent: true
         working_dir: "src"
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
            aws s3 cp htmlcov/ s3://${bucket_name}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
@@ -824,6 +826,7 @@ functions:
     - command: shell.exec
       params:
         silent: true
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Download all the task coverage files.
           aws s3 cp --recursive s3://${bucket_name}/release/${revision}/ release/
