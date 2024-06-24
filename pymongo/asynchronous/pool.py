@@ -394,6 +394,29 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata["platform"] = plat
     else:
         metadata.pop("platform", None)
+    encoded_size = len(bson.encode(metadata))
+    if encoded_size <= _MAX_METADATA_SIZE:
+        return
+    # 5. Truncate driver info.
+    overflow = encoded_size - _MAX_METADATA_SIZE
+    driver = metadata.get("driver", {})
+    if driver:
+        # Truncate driver version.
+        driver_version = driver.get("version")[:-overflow]
+        if len(driver_version) >= len(_METADATA["driver"]["version"]):
+            metadata["driver"]["version"] = driver_version
+        else:
+            metadata["driver"]["version"] = _METADATA["driver"]["version"]
+        encoded_size = len(bson.encode(metadata))
+        if encoded_size <= _MAX_METADATA_SIZE:
+            return
+        # Truncate driver name.
+        overflow = encoded_size - _MAX_METADATA_SIZE
+        driver_name = driver.get("name")[:-overflow]
+        if len(driver_name) >= len(_METADATA["driver"]["name"]):
+            metadata["driver"]["name"] = driver_name
+        else:
+            metadata["driver"]["name"] = _METADATA["driver"]["name"]
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
