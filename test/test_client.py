@@ -36,7 +36,6 @@ from unittest.mock import patch
 
 import pytest
 
-import bson
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -73,6 +72,7 @@ from test.utils import (
     wait_until,
 )
 
+import bson
 import pymongo
 from bson import encode
 from bson.codec_options import (

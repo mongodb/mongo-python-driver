@@ -50,6 +50,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.hatch.version]
 path = "pymongo/_version.py"
+validate-bump = false
 
 [tool.hatch.build.targets.wheel]
 packages = ["bson","gridfs", "pymongo"]
