@@ -194,14 +194,9 @@ else:
 _METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
 
 if sys.platform.startswith("linux"):
-    # platform.linux_distribution was deprecated in Python 3.5
-    # and removed in Python 3.8. Starting in Python 3.5 it
-    # raises DeprecationWarning
-    # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
-    _name = platform.system()
     _METADATA["os"] = {
-        "type": _name,
-        "name": _name,
+        "type": platform.system(),
+        "name": platform.system(),
         "architecture": platform.machine(),
         # Kernel version (e.g. 4.4.0-17-generic).
         "version": platform.release(),
