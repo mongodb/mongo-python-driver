@@ -518,7 +518,6 @@ class PoolOptions:
         "__server_api",
         "__load_balanced",
         "__credentials",
-        "__is_monitor",
     )
 
     def __init__(
@@ -540,7 +539,6 @@ class PoolOptions:
         server_api: Optional[ServerApi] = None,
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
-        is_monitor: Optional[bool] = False,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -560,7 +558,6 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
-        self.__is_monitor = is_monitor
         if appname:
             self.__metadata["application"] = {"name": appname}
 
@@ -720,11 +717,6 @@ class PoolOptions:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
 
-    @property
-    def is_monitor(self) -> Optional[bool]:
-        """True if this Pool is owned by a Monitor."""
-        return self.__is_monitor
-
 
 class _CancellationContext:
     def __init__(self) -> None:
@@ -770,7 +762,7 @@ class Connection:
         self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
-        self.enabled_for_logging = pool.enabled_for_cmap
+        self.enabled_for_logging = pool.enabled_for_logging
         self.compression_settings = pool.opts._compression_settings
         self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
         self.socket_checker: SocketChecker = SocketChecker()
@@ -1485,7 +1477,7 @@ class Pool:
             and self.opts._event_listeners is not None
             and self.opts._event_listeners.enabled_for_cmap
         )
-        self.enabled_for_logging = self.handshake and not self.opts.is_monitor
+        self.enabled_for_logging = self.handshake
 
         # The first portion of the wait queue.
         # Enforces: maxPoolSize

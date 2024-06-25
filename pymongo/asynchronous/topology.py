@@ -885,7 +885,6 @@ class Topology:
             driver=options.driver,
             pause_enabled=False,
             server_api=options.server_api,
-            is_monitor=True,
         )
 
         return self._settings.pool_class(
