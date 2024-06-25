@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/bin/bash -eu
 
-python ./tools/synchro.py || exit 1
+python ./tools/synchro.py
 python -m ruff check pymongo/synchronous/ gridfs/synchronous/ test/synchronous --fix --silent
 python -m ruff format pymongo/synchronous/ gridfs/synchronous/ test/synchronous --silent
