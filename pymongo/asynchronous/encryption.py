@@ -385,9 +385,9 @@ class _Encrypter:
         )
         self._auto_encrypter = AsyncAutoEncrypter(
             io_callbacks,
-            MongoCryptOptions(
-                opts._kms_providers,
-                schema_map,
+            _create_mongocrypt_options(
+                kms_providers=opts._kms_providers,
+                schema_map=schema_map,
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
@@ -473,9 +473,15 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
     RANGE = "range"
-    """Used to encrypt a value for a range query.
+    """Used to encrypt a value for a range query."""
 
-"""
+
+def _create_mongocrypt_options(**kwargs):
+    opts = MongoCryptOptions(**kwargs)
+    # Opt into range V2 encryption.
+    if hasattr(opts, "enable_range_v2"):
+        opts.enable_range_v2 = True
+    return opts
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -585,7 +591,8 @@ class ClientEncryption(Generic[_DocumentType]):
             None, key_vault_coll, None, opts
         )
         self._encryption = AsyncExplicitEncrypter(
-            self._io_callbacks, MongoCryptOptions(kms_providers, None)
+            self._io_callbacks,
+            _create_mongocrypt_options(kms_providers=kms_providers, schema_map=None),
         )
         # Use the same key vault collection as the callback.
         assert self._io_callbacks.key_vault_coll is not None
