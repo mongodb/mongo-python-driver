@@ -40,8 +40,6 @@ if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
 
-_IS_SYNC = False
-
 
 def _parse_credentials(
     username: str, password: str, database: Optional[str], options: Mapping[str, Any]

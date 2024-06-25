@@ -23,8 +23,6 @@ from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 
-_IS_SYNC = False
-
 
 class _CommandStatusMessage(str, enum.Enum):
     STARTED = "Command started"

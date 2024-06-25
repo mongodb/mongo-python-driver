@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from pymongo.server_selectors import Selection
     from pymongo.topology_description import TopologyDescription
 
-_IS_SYNC = False
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1

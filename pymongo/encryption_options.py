@@ -31,8 +31,6 @@ from pymongo.uri_parser import _parse_kms_tls_options
 if TYPE_CHECKING:
     from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg
 
-_IS_SYNC = False
-
 
 class AutoEncryptionOpts:
     """Options to configure automatic client-side field level encryption."""

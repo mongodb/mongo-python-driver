@@ -37,8 +37,6 @@ from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _Address
 
-_IS_SYNC = False
-
 
 # Enumeration for various kinds of MongoDB cluster topologies.
 class _TopologyType(NamedTuple):

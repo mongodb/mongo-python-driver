@@ -25,8 +25,6 @@ from pymongo.hello import Hello
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _Address
 
-_IS_SYNC = False
-
 
 class ServerDescription:
     """Immutable representation of one server.

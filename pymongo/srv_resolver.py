@@ -25,8 +25,6 @@ from pymongo.errors import ConfigurationError
 if TYPE_CHECKING:
     from dns import resolver
 
-_IS_SYNC = False
-
 
 def _have_dnspython() -> bool:
     try:

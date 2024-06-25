@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
 
-_IS_SYNC = False
 
 # Common Shared Types.
 _Address = Tuple[str, Optional[int]]

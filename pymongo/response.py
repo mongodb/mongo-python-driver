@@ -23,8 +23,6 @@ if TYPE_CHECKING:
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.typings import _Address, _AgnosticConnection, _DocumentOut
 
-_IS_SYNC = False
-
 
 class Response:
     __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")

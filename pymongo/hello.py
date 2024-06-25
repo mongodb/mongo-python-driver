@@ -25,8 +25,6 @@ from pymongo import common
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
 
-_IS_SYNC = False
-
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:
     """Determine the server type from a hello response."""

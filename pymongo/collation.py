@@ -23,8 +23,6 @@ from typing import Any, Mapping, Optional, Union
 from pymongo import common
 from pymongo.write_concern import validate_boolean
 
-_IS_SYNC = False
-
 
 class CollationStrength:
     """

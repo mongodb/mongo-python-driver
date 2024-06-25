@@ -32,8 +32,6 @@ import logging
 
 from pymongo import monitoring
 
-_IS_SYNC = False
-
 
 class CommandLogger(monitoring.CommandListener):
     """A simple listener that logs command events.

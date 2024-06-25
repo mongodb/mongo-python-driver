@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     from pymongo.operations import _IndexList
     from pymongo.typings import _DocumentOut
 
-_IS_SYNC = False
 
 # From the SDAM spec, the "node is shutting down" codes.
 
