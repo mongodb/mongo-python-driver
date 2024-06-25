@@ -206,4 +206,5 @@ jobs:
             which python
             pip install -e ".[test]"
             pytest -v
+            pytest -v test/synchronous/
             pytest -v test/asynchronous/
