@@ -476,7 +476,7 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for a range query."""
 
 
-def _create_mongocrypt_options(**kwargs):
+def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
     opts = MongoCryptOptions(**kwargs)
     # Opt into range V2 encryption.
     if hasattr(opts, "enable_range_v2"):
