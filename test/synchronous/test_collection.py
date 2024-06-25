@@ -27,8 +27,11 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import unittest
-from test.synchronous import IntegrationTest, client_context
+from test import (  # TODO: migrate all test/__init__.py imports to generated test/synchronous/__init__.py
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,

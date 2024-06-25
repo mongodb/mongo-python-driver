@@ -28,7 +28,10 @@ from pymongo.asynchronous.database import AsyncDatabase
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.asynchronous import (  # TODO: migrate all test/__init__.py imports to generated test/synchronous/__init__.py
+    AsyncIntegrationTest,
+    async_client_context,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     AsyncEventListener,

@@ -90,6 +90,8 @@ docstring_replacements: dict[tuple[str, str], str] = {
 
 type_replacements = {"_Condition": "threading.Condition"}
 
+import_replacements = {"test.synchronous": "test"}
+
 _pymongo_base = "./pymongo/asynchronous/"
 _gridfs_base = "./gridfs/asynchronous/"
 _test_base = "./test/asynchronous/"
@@ -160,6 +162,8 @@ def process_files(files: list[str]) -> None:
                     lines = translate_docstrings(lines)
                 translate_locks(lines)
                 translate_types(lines)
+                if file in sync_test_files:
+                    translate_imports(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -213,6 +217,15 @@ def translate_locks(lines: list[str]) -> list[str]:
 def translate_types(lines: list[str]) -> list[str]:
     for k, v in type_replacements.items():
         matches = [line for line in lines if k in line and "import" not in line]
+        for line in matches:
+            index = lines.index(line)
+            lines[index] = line.replace(k, v)
+    return lines
+
+
+def translate_imports(lines: list[str]) -> list[str]:
+    for k, v in import_replacements.items():
+        matches = [line for line in lines if k in line and "import" in line]
         for line in matches:
             index = lines.index(line)
             lines[index] = line.replace(k, v)
