@@ -59,6 +59,8 @@ jobs:
 
   static-scan:
     needs: [pre-publish]
+    permissions:
+      security-events: write
     uses: ./.github/workflows/codeql.yml
     with:
       ref: ${{ needs.pre-publish.outputs.version }}
