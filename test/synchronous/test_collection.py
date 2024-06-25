@@ -2072,7 +2072,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(4, (c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     def test_find_one_and_write_concern(self):
-        listener = EventListener()
+        listener = EventListener()  # TODO: Replace with EventListener after PYTHON-4476
         db = (single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

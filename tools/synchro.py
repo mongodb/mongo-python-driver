@@ -72,6 +72,7 @@ replacements = {
     "async_rs_or_single_client": "rs_or_single_client",
     "async_single_client": "single_client",
     "async_from_client": "from_client",
+    "AsyncEventListener": "EventListener",  # TODO: Remove after PYTHON-4476
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

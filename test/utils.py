@@ -37,6 +37,7 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import AsyncMongoClient
+from pymongo.asynchronous import monitoring as async_monitoring
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers_constants import _SENSITIVE_COMMANDS
@@ -171,6 +172,46 @@ class EventListener(BaseListener, monitoring.CommandListener):
         self.add_event(event)
 
     def failed(self, event: monitoring.CommandFailedEvent) -> None:
+        self.failed_events.append(event)
+        self.add_event(event)
+
+    def started_command_names(self) -> List[str]:
+        """Return list of command names started."""
+        return [event.command_name for event in self.started_events]
+
+    def reset(self) -> None:
+        """Reset the state of this listener."""
+        self.results.clear()
+        super().reset()
+
+
+# TODO: Remove after PYTHON-4476
+class AsyncEventListener(BaseListener, async_monitoring.CommandListener):
+    def __init__(self):
+        super().__init__()
+        self.results = defaultdict(list)
+
+    @property
+    def started_events(self) -> List[async_monitoring.CommandStartedEvent]:
+        return self.results["started"]
+
+    @property
+    def succeeded_events(self) -> List[async_monitoring.CommandSucceededEvent]:
+        return self.results["succeeded"]
+
+    @property
+    def failed_events(self) -> List[async_monitoring.CommandFailedEvent]:
+        return self.results["failed"]
+
+    def started(self, event: async_monitoring.CommandStartedEvent) -> None:
+        self.started_events.append(event)
+        self.add_event(event)
+
+    def succeeded(self, event: async_monitoring.CommandSucceededEvent) -> None:
+        self.succeeded_events.append(event)
+        self.add_event(event)
+
+    def failed(self, event: async_monitoring.CommandFailedEvent) -> None:
         self.failed_events.append(event)
         self.add_event(event)
 
