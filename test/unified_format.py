@@ -195,14 +195,10 @@ def with_metaclass(meta, *bases):
     # the actual metaclass.
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if sys.version_info[:2] >= (3, 7):  # noqa: UP036
-                # This version introduced PEP 560 that requires a bit
-                # of extra care (we mimic what is done by __build_class__).
-                resolved_bases = types.resolve_bases(bases)
-                if resolved_bases is not bases:
-                    d["__orig_bases__"] = bases
-            else:
-                resolved_bases = bases
+            # __orig_bases__ is required by PEP 560.
+            resolved_bases = types.resolve_bases(bases)
+            if resolved_bases is not bases:
+                d["__orig_bases__"] = bases
             return meta(name, resolved_bases, d)
 
         @classmethod

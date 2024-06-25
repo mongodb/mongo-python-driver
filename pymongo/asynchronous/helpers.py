@@ -68,9 +68,10 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-async def anext(cls: Any) -> Any:
-    """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
-    if sys.version_info >= (3, 10):
-        return await builtins.anext(cls)
-    else:
+if sys.version_info >= (3, 10):
+    anext = builtins.anext
+else:
+
+    async def anext(cls: Any) -> Any:
+        """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
         return await cls.__anext__()
