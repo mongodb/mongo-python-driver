@@ -11,12 +11,15 @@ PyMongo 4.8 brings a number of improvements including:
 - The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
 - The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
 - A new asynchronous API with full asyncio support.
+- Secure Software Development Life Cycle automation for release process.
+  GitHub Releases now include a Software Bill of Materials, and signature
+  files corresponding to the distribution files released on PyPI.
 
 Unavoidable breaking changes
 ............................
 
-- Since we are now using ``hatch`` as our build backend, we no longer have a ``setup.py`` file
-  and require installation using ``pip``.
+- Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
+  and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
 
 Changes in Version 4.7.3
 -------------------------
