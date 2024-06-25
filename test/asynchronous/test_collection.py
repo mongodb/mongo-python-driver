@@ -472,8 +472,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_index_haystack(self):
         db = self.db
         await db.test.drop()
-        _id = await db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            await db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         await db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         await db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})

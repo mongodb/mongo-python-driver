@@ -461,8 +461,8 @@ class TestCollection(IntegrationTest):
     def test_index_haystack(self):
         db = self.db
         db.test.drop()
-        _id = db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})
