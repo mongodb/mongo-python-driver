@@ -32,6 +32,8 @@ jobs:
     permissions:
       id-token: write
       contents: write
+    outputs:
+      version: ${{ steps.pre-publish.outputs.version }}
     steps:
       - uses: mongodb-labs/drivers-github-tools/secure-checkout@v2
         with:
@@ -44,6 +46,7 @@ jobs:
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
       - uses: mongodb-labs/drivers-github-tools/python/pre-publish@v2
+        id: pre-publish
         with:
           version: ${{ inputs.version }}
           dry_run: ${{ inputs.dry_run }}
@@ -51,12 +54,14 @@ jobs:
   build-dist:
     needs: [pre-publish]
     uses: ./.github/workflows/dist.yml
+    with:
+      ref: ${{ needs.pre-publish.outputs.version }}
 
   static-scan:
     needs: [pre-publish]
     uses: ./.github/workflows/codeql.yml
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ needs.pre-publish.outputs.version }}
 
   publish:
     needs: [build-dist, static-scan]
