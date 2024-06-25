@@ -258,7 +258,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
     python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
-    python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 test/synchronous/ $TEST_ARGS
+    if [ -z "$TEST_ARGS" ]; then # TODO: remove this once test/__init__.py doesn't share with test/synchronous/__init__.py
+      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 test/synchronous/ $TEST_ARGS
+    fi
     python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 test/asynchronous/ $TEST_ARGS
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
