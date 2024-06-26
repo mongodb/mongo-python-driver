@@ -27,7 +27,7 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import (  # TODO: migrate all test/__init__.py imports to generated test/synchronous/__init__.py
+from test import (  # TODO: fix sync imports in PYTHON-4528
     IntegrationTest,
     client_context,
     unittest,
