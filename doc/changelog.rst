@@ -20,6 +20,7 @@ Unavoidable breaking changes
 
 - Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
   and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
+  Additionally, ``pip`` >= 21.3 is now required for editable installs.
 
 Changes in Version 4.7.3
 -------------------------
