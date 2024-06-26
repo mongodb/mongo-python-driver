@@ -21,16 +21,17 @@ import time
 import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
+from pymongo import common
 from pymongo._csot import MovingMinimum
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
+from pymongo.hello import Hello
 from pymongo.lock import _create_lock
-from pymongo.synchronous import common, periodic_executor
-from pymongo.synchronous.hello import Hello
+from pymongo.pool_options import _is_faas
+from pymongo.read_preferences import MovingAverage
+from pymongo.server_description import ServerDescription
+from pymongo.srv_resolver import _SrvResolver
+from pymongo.synchronous import periodic_executor
 from pymongo.synchronous.periodic_executor import _shutdown_executors
-from pymongo.synchronous.pool import _is_faas
-from pymongo.synchronous.read_preferences import MovingAverage
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection, Pool, _CancellationContext

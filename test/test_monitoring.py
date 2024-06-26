@@ -27,11 +27,10 @@ from test.utils import EventListener, rs_or_single_client, single_client, wait_u
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne
+from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
-from pymongo.synchronous import monitoring
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 

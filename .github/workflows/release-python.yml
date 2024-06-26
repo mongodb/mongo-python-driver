@@ -19,6 +19,7 @@ env:
   PRODUCT_NAME: PyMongo
   # Changes per branch
   SILK_ASSET_GROUP: mongodb-python-driver
+  EVERGREEN_PROJECT: mongo-python-driver
 
 defaults:
   run:
@@ -31,6 +32,8 @@ jobs:
     permissions:
       id-token: write
       contents: write
+    outputs:
+      version: ${{ steps.pre-publish.outputs.version }}
     steps:
       - uses: mongodb-labs/drivers-github-tools/secure-checkout@v2
         with:
@@ -43,6 +46,7 @@ jobs:
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
       - uses: mongodb-labs/drivers-github-tools/python/pre-publish@v2
+        id: pre-publish
         with:
           version: ${{ inputs.version }}
           dry_run: ${{ inputs.dry_run }}
@@ -50,12 +54,16 @@ jobs:
   build-dist:
     needs: [pre-publish]
     uses: ./.github/workflows/dist.yml
+    with:
+      ref: ${{ needs.pre-publish.outputs.version }}
 
   static-scan:
     needs: [pre-publish]
     uses: ./.github/workflows/codeql.yml
+    permissions:
+      security-events: write
     with:
-      ref: ${{ inputs.version }}
+      ref: ${{ needs.pre-publish.outputs.version }}
 
   publish:
     needs: [build-dist, static-scan]
@@ -82,5 +90,6 @@ jobs:
           following_version: ${{ inputs.following_version }}
           product_name: ${{ env.PRODUCT_NAME }}
           silk_asset_group: ${{ env.SILK_ASSET_GROUP }}
+          evergreen_project: ${{ env.EVERGREEN_PROJECT }}
           token: ${{ github.token }}
           dry_run: ${{ inputs.dry_run }}

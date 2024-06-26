@@ -29,8 +29,8 @@ from test.utils import AllowListEventListener, EventListener
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
+from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
-from pymongo.synchronous.operations import SearchIndexModel
 from pymongo.write_concern import WriteConcern
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "index_management")

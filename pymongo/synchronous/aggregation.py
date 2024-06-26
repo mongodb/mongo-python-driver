@@ -18,20 +18,20 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from pymongo import common
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
-from pymongo.synchronous import common
-from pymongo.synchronous.collation import validate_collation_or_none
-from pymongo.synchronous.read_preferences import ReadPreference, _AggWritePref
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.command_cursor import CommandCursor
     from pymongo.synchronous.database import Database
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.read_preferences import _ServerMode
     from pymongo.synchronous.server import Server
-    from pymongo.synchronous.typings import _DocumentType, _Pipeline
+    from pymongo.typings import _DocumentType, _Pipeline
 
 _IS_SYNC = True
 

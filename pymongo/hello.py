@@ -21,12 +21,9 @@ import itertools
 from typing import Any, Generic, Mapping, Optional
 
 from bson.objectid import ObjectId
-from pymongo.asynchronous import common
-from pymongo.asynchronous.hello_compat import HelloCompat
-from pymongo.asynchronous.typings import ClusterTime, _DocumentType
+from pymongo import common
 from pymongo.server_type import SERVER_TYPE
-
-_IS_SYNC = False
+from pymongo.typings import ClusterTime, _DocumentType
 
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:
@@ -55,6 +52,14 @@ def _get_server_type(doc: Mapping[str, Any]) -> int:
         return SERVER_TYPE.Mongos
     else:
         return SERVER_TYPE.Standalone
+
+
+class HelloCompat:
+    CMD = "hello"
+    LEGACY_CMD = "ismaster"
+    PRIMARY = "isWritablePrimary"
+    LEGACY_PRIMARY = "ismaster"
+    LEGACY_ERROR = "not master"
 
 
 class Hello(Generic[_DocumentType]):

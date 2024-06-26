@@ -23,13 +23,13 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
     from bson.typings import _ReadableBuffer
-    from pymongo.asynchronous.auth import MongoCredential
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.auth_shared import MongoCredential
 
 _IS_SYNC = False
 
 
-async def _authenticate_aws(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_aws(credentials: MongoCredential, conn: AsyncConnection) -> None:
     """Authenticate using MONGODB-AWS."""
     try:
         import pymongo_auth_aws  # type:ignore[import]

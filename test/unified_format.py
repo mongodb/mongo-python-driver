@@ -68,6 +68,7 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -78,18 +79,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult
-from pymongo.server_api import ServerApi
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.change_stream import ChangeStream
-from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
-from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.encryption import ClientEncryption
-from pymongo.synchronous.encryption_options import _HAVE_PYMONGOCRYPT
-from pymongo.synchronous.monitoring import (
+from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
     CommandFailedEvent,
     CommandListener,
@@ -125,12 +115,22 @@ from pymongo.synchronous.monitoring import (
     _ServerEvent,
     _ServerHeartbeatEvent,
 )
-from pymongo.synchronous.operations import SearchIndexModel
-from pymongo.synchronous.read_preferences import ReadPreference
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.server_selectors import Selection, writable_server_selector
-from pymongo.synchronous.topology_description import TopologyDescription
-from pymongo.synchronous.typings import _Address
+from pymongo.operations import SearchIndexModel
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
+from pymongo.results import BulkWriteResult
+from pymongo.server_api import ServerApi
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import Selection, writable_server_selector
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.change_stream import ChangeStream
+from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.encryption import ClientEncryption
+from pymongo.topology_description import TopologyDescription
+from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -195,14 +195,10 @@ def with_metaclass(meta, *bases):
     # the actual metaclass.
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if sys.version_info[:2] >= (3, 7):  # noqa: UP036
-                # This version introduced PEP 560 that requires a bit
-                # of extra care (we mimic what is done by __build_class__).
-                resolved_bases = types.resolve_bases(bases)
-                if resolved_bases is not bases:
-                    d["__orig_bases__"] = bases
-            else:
-                resolved_bases = bases
+            # __orig_bases__ is required by PEP 560.
+            resolved_bases = types.resolve_bases(bases)
+            if resolved_bases is not bases:
+                d["__orig_bases__"] = bases
             return meta(name, resolved_bases, d)
 
         @classmethod

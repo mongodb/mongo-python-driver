@@ -47,15 +47,14 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.monitoring import (
+from pymongo.monitoring import (
     CommandSucceededEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.synchronous.operations import (
+from pymongo.operations import (
     DeleteMany,
     DeleteOne,
     InsertOne,
@@ -63,6 +62,7 @@ from pymongo.synchronous.operations import (
     UpdateMany,
     UpdateOne,
 )
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

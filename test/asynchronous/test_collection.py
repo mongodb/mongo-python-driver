@@ -34,7 +34,7 @@ from test.asynchronous import (  # TODO: migrate all test/__init__.py imports to
 )
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
-    AsyncEventListener,
+    EventListener,
     async_get_pool,
     async_is_mongos,
     async_rs_or_single_client,
@@ -50,14 +50,11 @@ from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
-from pymongo.asynchronous.bulk import BulkWriteError
 from pymongo.asynchronous.collection import AsyncCollection, ReturnDocument
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import *
-from pymongo.asynchronous.read_preferences import ReadPreference
+from pymongo.bulk_shared import BulkWriteError
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
@@ -70,7 +67,10 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
@@ -1645,7 +1645,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             with await self.db.test.aggregate([], {}):  # type:ignore
                 pass
 
-        with self.assertRaisesRegex(ValueError, "must be a ClientSession"):
+        with self.assertRaisesRegex(ValueError, "must be an AsyncClientSession"):
             await try_invalid_session()
 
     async def test_large_limit(self):
@@ -2106,7 +2106,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(4, (await c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     async def test_find_one_and_write_concern(self):
-        listener = AsyncEventListener()  # TODO: Replace with EventListener after PYTHON-4476
+        listener = EventListener()
         db = (await async_single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

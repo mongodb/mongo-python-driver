@@ -33,6 +33,9 @@ replacements = {
     "AsyncCommandCursor": "CommandCursor",
     "AsyncRawBatchCursor": "RawBatchCursor",
     "AsyncRawBatchCommandCursor": "RawBatchCommandCursor",
+    "AsyncClientSession": "ClientSession",
+    "_AsyncBulk": "_Bulk",
+    "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
@@ -72,7 +75,6 @@ replacements = {
     "async_rs_or_single_client": "rs_or_single_client",
     "async_single_client": "single_client",
     "async_from_client": "from_client",
-    "AsyncEventListener": "EventListener",  # TODO: Remove after PYTHON-4476
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -128,26 +130,7 @@ sync_test_files = [
 ]
 
 
-docstring_translate_files = [
-    _pymongo_dest_base + f
-    for f in [
-        "aggregation.py",
-        "change_stream.py",
-        "collection.py",
-        "command_cursor.py",
-        "cursor.py",
-        "client_options.py",
-        "client_session.py",
-        "database.py",
-        "encryption.py",
-        "encryption_options.py",
-        "mongo_client.py",
-        "network.py",
-        "operations.py",
-        "pool.py",
-        "topology.py",
-    ]
-]
+docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
 
 
 def process_files(files: list[str]) -> None:

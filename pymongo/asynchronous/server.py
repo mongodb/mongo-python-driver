@@ -27,11 +27,12 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo.asynchronous.helpers import _check_command_response, _handle_reauth
-from pymongo.asynchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.asynchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
-from pymongo.asynchronous.response import PinnedResponse, Response
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.errors import NotPrimaryError, OperationFailure
+from pymongo.helpers_shared import _check_command_response
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -40,11 +41,11 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
     from pymongo.asynchronous.monitor import Monitor
-    from pymongo.asynchronous.monitoring import _EventListeners
-    from pymongo.asynchronous.pool import Connection, Pool
-    from pymongo.asynchronous.read_preferences import _ServerMode
-    from pymongo.asynchronous.server_description import ServerDescription
-    from pymongo.asynchronous.typings import _DocumentOut
+    from pymongo.asynchronous.pool import AsyncConnection, Pool
+    from pymongo.monitoring import _EventListeners
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_description import ServerDescription
+    from pymongo.typings import _DocumentOut
 
 _IS_SYNC = False
 
@@ -105,10 +106,23 @@ class Server:
         """Check the server's state soon."""
         self._monitor.request_check()
 
+    async def operation_to_command(
+        self, operation: Union[_Query, _GetMore], conn: AsyncConnection, apply_timeout: bool = False
+    ) -> tuple[dict[str, Any], str]:
+        cmd, db = operation.as_command(conn, apply_timeout)
+        # Support auto encryption
+        if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
+            cmd = await operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
+                operation.db, cmd, operation.codec_options
+            )
+        operation.update_command(cmd)
+
+        return cmd, db
+
     @_handle_reauth
     async def run_operation(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
@@ -121,26 +135,26 @@ class Server:
         cursors.
         Can raise ConnectionFailure, OperationFailure, etc.
 
-        :param conn: A Connection instance.
+        :param conn: An AsyncConnection instance.
         :param operation: A _Query or _GetMore object.
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.
         :param unpack_res: A callable that decodes the wire protocol response.
+        :param client: An AsyncMongoClient instance.
         """
-        duration = None
         assert listeners is not None
         publish = listeners.enabled_for_commands
         start = datetime.now()
 
         use_cmd = operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
         if more_to_come:
             request_id = 0
         else:
-            message = await operation.get_message(read_preference, conn, use_cmd)
+            message = operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
-        cmd, dbn = await operation.as_command(conn)
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -159,7 +173,6 @@ class Server:
             )
 
         if publish:
-            cmd, dbn = await operation.as_command(conn)
             if "$db" not in cmd:
                 cmd["$db"] = dbn
             assert listeners is not None
@@ -195,7 +208,7 @@ class Server:
             )
             if use_cmd:
                 first = docs[0]
-                await operation.client._process_response(first, operation.session)
+                await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
                 _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             duration = datetime.now() - start
@@ -278,7 +291,7 @@ class Server:
             )
 
         # Decrypt response.
-        client = operation.client
+        client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
                 decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -286,7 +299,7 @@ class Server:
 
         response: Response
 
-        if client._should_pin_cursor(operation.session) or operation.exhaust:
+        if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
             conn.pin_cursor()
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the
@@ -321,7 +334,7 @@ class Server:
 
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncContextManager[Connection]:
+    ) -> AsyncContextManager[AsyncConnection]:
         return self.pool.checkout(handler)
 
     @property

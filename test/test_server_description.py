@@ -23,9 +23,9 @@ from test import unittest
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
+from pymongo.hello import Hello, HelloCompat
+from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.hello import Hello, HelloCompat
-from pymongo.synchronous.server_description import ServerDescription
 
 address = ("localhost", 27017)
 

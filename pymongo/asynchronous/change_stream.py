@@ -21,17 +21,14 @@ from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, Union
 from bson import CodecOptions, _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
-from pymongo import _csot
-from pymongo.asynchronous import common
+from pymongo import _csot, common
 from pymongo.asynchronous.aggregation import (
     _AggregationCommand,
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
 )
-from pymongo.asynchronous.collation import validate_collation_or_none
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.operations import _Op
-from pymongo.asynchronous.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (
     ConnectionFailure,
     CursorNotFound,
@@ -39,6 +36,8 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
+from pymongo.operations import _Op
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 _IS_SYNC = False
 
@@ -68,11 +67,11 @@ _RESUMABLE_GETMORE_ERRORS = frozenset(
 
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
 
 
 def _resumable(exc: PyMongoError) -> bool:
@@ -114,7 +113,7 @@ class ChangeStream(Generic[_DocumentType]):
         batch_size: Optional[int],
         collation: Optional[_CollationIn],
         start_at_operation_time: Optional[Timestamp],
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         start_after: Optional[Mapping[str, Any]],
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
@@ -211,7 +210,7 @@ class ChangeStream(Generic[_DocumentType]):
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result: Mapping[str, Any], conn: Connection) -> None:
+    def _process_result(self, result: Mapping[str, Any], conn: AsyncConnection) -> None:
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.
@@ -237,7 +236,7 @@ class ChangeStream(Generic[_DocumentType]):
                     )
 
     async def _run_aggregation_cmd(
-        self, session: Optional[ClientSession], explicit_session: bool
+        self, session: Optional[AsyncClientSession], explicit_session: bool
     ) -> AsyncCommandCursor:
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding AsyncCommandCursor.

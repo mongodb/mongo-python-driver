@@ -30,22 +30,22 @@ from typing import (
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.asynchronous.cursor import _ConnectionManager
-from pymongo.asynchronous.message import (
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
     _OpReply,
     _RawBatchGetMore,
 )
-from pymongo.asynchronous.response import PinnedResponse
-from pymongo.asynchronous.typings import _Address, _DocumentOut, _DocumentType
-from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.response import PinnedResponse
+from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
 
 _IS_SYNC = False
 
@@ -62,7 +62,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
@@ -133,7 +133,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         """
         return self._postbatchresumetoken
 
-    async def _maybe_pin_connection(self, conn: Connection) -> None:
+    async def _maybe_pin_connection(self, conn: AsyncConnection) -> None:
         client = self._collection.database.client
         if not client._should_pin_cursor(self._session):
             return
@@ -188,8 +188,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         return self._address
 
     @property
-    def session(self) -> Optional[ClientSession]:
-        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
+    def session(self) -> Optional[AsyncClientSession]:
+        """The cursor's :class:`~pymongo.client_session.AsyncClientSession`, or None.
 
         .. versionadded:: 3.6
         """
@@ -272,7 +272,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
         if response.from_command:
             cursor = response.docs[0]["cursor"]
             documents = cursor["nextBatch"]
@@ -384,7 +384,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         explicit_session: bool = False,
         comment: Any = None,
     ) -> None:

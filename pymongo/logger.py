@@ -21,9 +21,7 @@ from typing import Any
 
 from bson import UuidRepresentation, json_util
 from bson.json_util import JSONOptions, _truncate_documents
-from pymongo.asynchronous.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
-
-_IS_SYNC = False
+from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 
 
 class _CommandStatusMessage(str, enum.Enum):
