@@ -458,11 +458,11 @@ class TestDatabase(IntegrationTest):
     @client_context.require_no_fips
     def test_password_digest(self):
         with self.assertRaises(TypeError):
-            auth._password_digest(5)  # type: ignore[call-arg]
+            auth._password_digest(5)  # type: ignore
         with self.assertRaises(TypeError):
-            auth._password_digest(True)  # type: ignore[call-arg]
+            auth._password_digest(True)  # type: ignore
         with self.assertRaises(TypeError):
-            auth._password_digest(None)  # type: ignore[call-arg]
+            auth._password_digest(None)  # type: ignore
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
         self.assertEqual(
