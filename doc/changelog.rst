@@ -26,12 +26,20 @@ PyMongo 4.8 brings a number of improvements including:
 
 - The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
 - The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
+- Secure Software Development Life Cycle automation for release process.
+  GitHub Releases now include a Software Bill of Materials, and signature
+  files corresponding to the distribution files released on PyPI.
+- Fixed a bug in change streams where both ``startAtOperationTime`` and ``resumeToken``
+  could be added to a retry attempt, which caused the retry to fail.
+- Fallback to stdlib ``ssl`` module when ``pyopenssl`` import fails with AttributeError.
+- Improved performance of MongoClient operations, especially when many operations are being run concurrently.
 
 Unavoidable breaking changes
 ............................
 
-- Since we are now using ``hatch`` as our build backend, we no longer have a ``setup.py`` file
-  and require installation using ``pip``. ``pip`` >= 21.3 is required for editable installs.
+- Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
+  and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
+  Additionally, ``pip`` >= 21.3 is now required for editable installs.
 
 Issues Resolved
 ...............
