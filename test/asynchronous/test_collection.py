@@ -28,7 +28,10 @@ from pymongo.asynchronous.database import AsyncDatabase
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
+    AsyncIntegrationTest,
+    async_client_context,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
@@ -472,8 +475,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_index_haystack(self):
         db = self.db
         await db.test.drop()
-        _id = await db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            await db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         await db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         await db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})

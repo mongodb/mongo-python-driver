@@ -27,8 +27,11 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import unittest
-from test.synchronous import IntegrationTest, client_context
+from test import (  # TODO: fix sync imports in PYTHON-4528
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
@@ -461,8 +464,8 @@ class TestCollection(IntegrationTest):
     def test_index_haystack(self):
         db = self.db
         db.test.drop()
-        _id = db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})

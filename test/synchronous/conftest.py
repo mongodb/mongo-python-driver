@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from test.synchronous import setup, teardown
+from test import setup, teardown
 
 import pytest
 

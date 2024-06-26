@@ -92,6 +92,8 @@ docstring_replacements: dict[tuple[str, str], str] = {
 
 type_replacements = {"_Condition": "threading.Condition"}
 
+import_replacements = {"test.synchronous": "test"}
+
 _pymongo_base = "./pymongo/asynchronous/"
 _gridfs_base = "./gridfs/asynchronous/"
 _test_base = "./test/asynchronous/"
@@ -136,23 +138,31 @@ def process_files(files: list[str]) -> None:
         if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
                 lines = f.readlines()
-                lines = apply_is_sync(lines)
+                lines = apply_is_sync(lines, file)
                 lines = translate_coroutine_types(lines)
                 lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
                 translate_locks(lines)
                 translate_types(lines)
+                if file in sync_test_files:
+                    translate_imports(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
 
 
-def apply_is_sync(lines: list[str]) -> list[str]:
-    is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
-    index = lines.index(is_sync)
-    is_sync = is_sync.replace("False", "True")
-    lines[index] = is_sync
+def apply_is_sync(lines: list[str], file: str) -> list[str]:
+    try:
+        is_sync = next(iter([line for line in lines if line.startswith("_IS_SYNC = ")]))
+        index = lines.index(is_sync)
+        is_sync = is_sync.replace("False", "True")
+        lines[index] = is_sync
+    except StopIteration as e:
+        print(
+            f"Missing _IS_SYNC at top of async file {file.replace('synchronous', 'asynchronous')}"
+        )
+        raise e
     return lines
 
 
@@ -190,6 +200,15 @@ def translate_locks(lines: list[str]) -> list[str]:
 def translate_types(lines: list[str]) -> list[str]:
     for k, v in type_replacements.items():
         matches = [line for line in lines if k in line and "import" not in line]
+        for line in matches:
+            index = lines.index(line)
+            lines[index] = line.replace(k, v)
+    return lines
+
+
+def translate_imports(lines: list[str]) -> list[str]:
+    for k, v in import_replacements.items():
+        matches = [line for line in lines if k in line and "import" in line]
         for line in matches:
             index = lines.index(line)
             lines[index] = line.replace(k, v)
