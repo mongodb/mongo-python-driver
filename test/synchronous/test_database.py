@@ -166,11 +166,11 @@ class TestDatabase(IntegrationTest):
         db.drop_collection("test")
 
         with self.assertRaises(TypeError):
-            db.create_collection(5)
+            db.create_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.create_collection(None)
+            db.create_collection(None)  # type: ignore[arg-type]
         with self.assertRaises(InvalidName):
-            db.create_collection("coll..ection")
+            db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = db.create_collection("test")
         self.assertTrue("test" in db.list_collection_names())
@@ -343,9 +343,9 @@ class TestDatabase(IntegrationTest):
         db = Database(self.client, "pymongo_test")
 
         with self.assertRaises(TypeError):
-            db.drop_collection(5)
+            db.drop_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.drop_collection(None)
+            db.drop_collection(None)  # type: ignore[arg-type]
 
         db.test.insert_one({"dummy": "object"})
         self.assertTrue("test" in db.list_collection_names())
@@ -379,9 +379,9 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
 
         with self.assertRaises(TypeError):
-            db.validate_collection(5)
+            db.validate_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.validate_collection(None)
+            db.validate_collection(None)  # type: ignore[arg-type]
 
         db.test.insert_one({"dummy": "object"})
 
@@ -458,11 +458,11 @@ class TestDatabase(IntegrationTest):
     @client_context.require_no_fips
     def test_password_digest(self):
         with self.assertRaises(TypeError):
-            auth._password_digest(5)
+            auth._password_digest(5)  # type: ignore[call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(True)
+            auth._password_digest(True)  # type: ignore[call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(None)
+            auth._password_digest(None)  # type: ignore[call-arg]
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
         self.assertEqual(
@@ -497,11 +497,11 @@ class TestDatabase(IntegrationTest):
         db.test.drop()
 
         with self.assertRaises(TypeError):
-            db.dereference(5)
+            db.dereference(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.dereference("hello")
+            db.dereference("hello")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.dereference(None)
+            db.dereference(None)  # type: ignore[arg-type]
 
         self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
         obj: dict[str, Any] = {"x": True}

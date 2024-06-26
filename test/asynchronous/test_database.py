@@ -166,11 +166,11 @@ class TestDatabase(AsyncIntegrationTest):
         await db.drop_collection("test")
 
         with self.assertRaises(TypeError):
-            await db.create_collection(5)
+            await db.create_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await db.create_collection(None)
+            await db.create_collection(None)  # type: ignore[arg-type]
         with self.assertRaises(InvalidName):
-            await db.create_collection("coll..ection")
+            await db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = await db.create_collection("test")
         self.assertTrue("test" in await db.list_collection_names())
@@ -345,9 +345,9 @@ class TestDatabase(AsyncIntegrationTest):
         db = AsyncDatabase(self.client, "pymongo_test")
 
         with self.assertRaises(TypeError):
-            await db.drop_collection(5)
+            await db.drop_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await db.drop_collection(None)
+            await db.drop_collection(None)  # type: ignore[arg-type]
 
         await db.test.insert_one({"dummy": "object"})
         self.assertTrue("test" in await db.list_collection_names())
@@ -383,9 +383,9 @@ class TestDatabase(AsyncIntegrationTest):
         db = self.client.pymongo_test
 
         with self.assertRaises(TypeError):
-            await db.validate_collection(5)
+            await db.validate_collection(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await db.validate_collection(None)
+            await db.validate_collection(None)  # type: ignore[arg-type]
 
         await db.test.insert_one({"dummy": "object"})
 
@@ -460,13 +460,13 @@ class TestDatabase(AsyncIntegrationTest):
             await self.db.cursor_command("usersInfo", "test")
 
     @async_client_context.require_no_fips
-    async def test_password_digest(self):
+    def test_password_digest(self):
         with self.assertRaises(TypeError):
-            await auth._password_digest(5)
+            auth._password_digest(5)  # type: ignore[call-arg]
         with self.assertRaises(TypeError):
-            await auth._password_digest(True)
+            auth._password_digest(True)  # type: ignore[call-arg]
         with self.assertRaises(TypeError):
-            await auth._password_digest(None)
+            auth._password_digest(None)  # type: ignore[call-arg]
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
         self.assertEqual(
@@ -501,11 +501,11 @@ class TestDatabase(AsyncIntegrationTest):
         await db.test.drop()
 
         with self.assertRaises(TypeError):
-            await db.dereference(5)
+            await db.dereference(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await db.dereference("hello")
+            await db.dereference("hello")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await db.dereference(None)
+            await db.dereference(None)  # type: ignore[arg-type]
 
         self.assertEqual(None, await db.dereference(DBRef("test", ObjectId())))
         obj: dict[str, Any] = {"x": True}
