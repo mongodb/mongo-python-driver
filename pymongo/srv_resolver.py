@@ -19,13 +19,11 @@ import ipaddress
 import random
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pymongo.asynchronous.common import CONNECT_TIMEOUT
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from dns import resolver
-
-_IS_SYNC = False
 
 
 def _have_dnspython() -> bool:

@@ -16,11 +16,8 @@ from __future__ import annotations
 import warnings
 from typing import Any, Iterable, Optional, Union
 
-from pymongo.asynchronous.hello_compat import HelloCompat
-from pymongo.helpers_constants import _SENSITIVE_COMMANDS
-
-_IS_SYNC = False
-
+from pymongo.hello import HelloCompat
+from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}

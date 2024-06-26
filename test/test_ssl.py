@@ -33,8 +33,8 @@ from urllib.parse import quote_plus
 
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from pymongo.hello import HelloCompat
 from pymongo.ssl_support import HAVE_SSL, _ssl, get_ssl_context
-from pymongo.synchronous.hello_compat import HelloCompat
 from pymongo.write_concern import WriteConcern
 
 _HAVE_PYOPENSSL = False

@@ -36,17 +36,16 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock
-from pymongo.synchronous import helpers
-from pymongo.synchronous.collation import validate_collation_or_none
-from pymongo.synchronous.common import (
+from pymongo import helpers_shared
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
-from pymongo.synchronous.helpers import next
-from pymongo.synchronous.message import (
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import _create_lock
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
@@ -55,18 +54,19 @@ from pymongo.synchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
-from pymongo.synchronous.response import PinnedResponse
-from pymongo.synchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+from pymongo.response import PinnedResponse
+from pymongo.synchronous.helpers import next
+from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.read_preferences import _ServerMode
 
 _IS_SYNC = True
 
@@ -179,7 +179,7 @@ class Cursor(Generic[_DocumentType]):
             allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
-            projection = helpers._fields_list_to_dict(projection, "projection")
+            projection = helpers_shared._fields_list_to_dict(projection, "projection")
 
         if let is not None:
             validate_is_document_type("let", let)
@@ -191,7 +191,7 @@ class Cursor(Generic[_DocumentType]):
         self._skip = skip
         self._limit = limit
         self._batch_size = batch_size
-        self._ordering = sort and helpers._index_document(sort) or None
+        self._ordering = sort and helpers_shared._index_document(sort) or None
         self._max_scan = max_scan
         self._explain = False
         self._comment = comment
@@ -740,8 +740,8 @@ class Cursor(Generic[_DocumentType]):
             key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
         self._check_okay_to_chain()
-        keys = helpers._index_list(key_or_list, direction)
-        self._ordering = helpers._index_document(keys)
+        keys = helpers_shared._index_list(key_or_list, direction)
+        self._ordering = helpers_shared._index_document(keys)
         return self
 
     def explain(self) -> _DocumentType:
@@ -772,7 +772,7 @@ class Cursor(Generic[_DocumentType]):
         if isinstance(index, str):
             self._hint = index
         else:
-            self._hint = helpers._index_document(index)
+            self._hint = helpers_shared._index_document(index)
 
     def hint(self, index: Optional[_Hint]) -> Cursor[_DocumentType]:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
@@ -1120,7 +1120,7 @@ class Cursor(Generic[_DocumentType]):
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
 
         cmd_name = operation.name
         docs = response.docs

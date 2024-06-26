@@ -27,9 +27,9 @@ from test.utils import (
 )
 from test.utils_selection_tests import create_topology
 
-from pymongo.synchronous.common import clean_node
-from pymongo.synchronous.operations import _Op
-from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.common import clean_node
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(

@@ -34,15 +34,15 @@ from test.utils import (
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from pymongo.common import partition_node
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.operations import *
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import partition_node
-from pymongo.synchronous.operations import *
 from pymongo.write_concern import WriteConcern
 
 

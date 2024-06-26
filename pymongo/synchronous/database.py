@@ -33,18 +33,17 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
-from pymongo import _csot
+from pymongo import _csot, common
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
-from pymongo.synchronous import common
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.synchronous.change_stream import DatabaseChangeStream
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.synchronous.operations import _Op
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
@@ -151,7 +150,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
           >>> db1.read_preference
           Primary()
-          >>> from pymongo.synchronous.read_preferences import Secondary
+          >>> from pymongo.read_preferences import Secondary
           >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()

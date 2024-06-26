@@ -26,7 +26,7 @@ from pymongo_auth_aws import AwsCredential, auth
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
-from pymongo.synchronous.uri_parser import parse_uri
+from pymongo.uri_parser import parse_uri
 
 
 class TestAuthAWS(unittest.TestCase):
