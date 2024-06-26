@@ -10,10 +10,13 @@ PyMongo 4.8 brings a number of improvements including:
 
 - The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
 - The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
-- A new asynchronous API with full asyncio support.
 - Secure Software Development Life Cycle automation for release process.
   GitHub Releases now include a Software Bill of Materials, and signature
   files corresponding to the distribution files released on PyPI.
+- Fixed a bug in change streams where both ``startAtOperationTime`` and ``resumeToken``
+  could be added to a retry attempt, which caused the retry to fail.
+- Fallback to stdlib ``ssl`` module when ``pyopenssl`` import fails with AttributeError.
+- Improved performance of MongoClient operations, especially when many operations are being run concurrently.
 
 Unavoidable breaking changes
 ............................
@@ -21,6 +24,14 @@ Unavoidable breaking changes
 - Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
   and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
   Additionally, ``pip`` >= 21.3 is now required for editable installs.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.8 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37057
 
 Changes in Version 4.7.3
 -------------------------
