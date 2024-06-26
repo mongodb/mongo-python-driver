@@ -20,6 +20,9 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional
 try:
     import pymongocrypt  # type:ignore[import] # noqa: F401
 
+    # Check for pymongocrypt>=1.10.
+    from pymongocrypt import synchronous as _synchronous  # type:ignore[import] # noqa: F401
+
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
