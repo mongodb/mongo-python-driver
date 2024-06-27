@@ -31,6 +31,11 @@ import traceback
 import types
 from collections import abc, defaultdict
 from test import (
+    IntegrationTest,
+    client_context,
+    unittest,
+)
+from test.shared import (
     AWS_CREDS,
     AWS_CREDS_2,
     AZURE_CREDS,
@@ -39,9 +44,6 @@ from test import (
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
-    IntegrationTest,
-    client_context,
-    unittest,
 )
 from test.utils import (
     CMAPListener,

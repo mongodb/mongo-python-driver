@@ -36,6 +36,12 @@ from pymongo.synchronous.collection import Collection
 sys.path[0:0] = [""]
 
 from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    unittest,
+)
+from test.shared import (
     AWS_CREDS,
     AZURE_CREDS,
     CA_PEM,
@@ -43,10 +49,6 @@ from test import (
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
-    IntegrationTest,
-    PyMongoTestCase,
-    client_context,
-    unittest,
 )
 from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes

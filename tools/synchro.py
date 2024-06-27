@@ -60,6 +60,7 @@ replacements = {
     "AsyncTestCollection": "TestCollection",
     "AsyncIntegrationTest": "IntegrationTest",
     "AsyncPyMongoTestCase": "PyMongoTestCase",
+    "AsyncMockClientTest": "MockClientTest",
     "async_client_context": "client_context",
     "async_setup": "setup",
     "asyncSetUp": "setUp",
@@ -100,7 +101,7 @@ _test_base = "./test/asynchronous/"
 
 _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
-_test_dest_base = "./test/synchronous/"
+_test_dest_base = "./test/"
 
 
 async_files = [
@@ -125,8 +126,15 @@ sync_gridfs_files = [
     if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
+# Add each asynchronized test here as part of the converting PR
+converted_tests = [
+    "__init__.py",
+    "conftest.py",
+    "test_collection.py",
+]
+
 sync_test_files = [
-    _test_dest_base + f for f in listdir(_test_dest_base) if (Path(_test_dest_base) / f).is_file()
+    _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
 ]
 
 
