@@ -574,7 +574,7 @@ class ClientEncryption(Generic[_DocumentType]):
             raise ConfigurationError(
                 "client-side field level encryption requires the pymongocrypt "
                 "library: install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'"
+                "python -m pip install --upgrade 'pymongo[encryption]'"
             )
 
         if not isinstance(codec_options, CodecOptions):
