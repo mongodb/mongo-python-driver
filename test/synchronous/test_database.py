@@ -174,7 +174,7 @@ class TestDatabase(IntegrationTest):
         test = db.create_collection("test")
         self.assertTrue("test" in db.list_collection_names())
         test.insert_one({"hello": "world"})
-        self.assertEqual((db.test.find_one())["hello"], "world")  # type: ignore
+        self.assertEqual((db.test.find_one())["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
@@ -457,11 +457,11 @@ class TestDatabase(IntegrationTest):
     @client_context.require_no_fips
     def test_password_digest(self):
         with self.assertRaises(TypeError):
-            auth._password_digest(5)  # type: ignore
+            auth._password_digest(5)  # type: ignore[arg-type, call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(True)  # type: ignore
+            auth._password_digest(True)  # type: ignore[arg-type, call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(None)  # type: ignore
+            auth._password_digest(None)  # type: ignore[arg-type, call-arg]
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
         self.assertEqual(
@@ -560,12 +560,12 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one({"x": 9223372036854775807})
-        retrieved = (db.test.find_one())["x"]  # type: ignore
+        retrieved = (db.test.find_one())["x"]
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
         db.test.delete_many({})
         db.test.insert_one({"x": Int64(1)})
-        retrieved = (db.test.find_one())["x"]  # type: ignore
+        retrieved = (db.test.find_one())["x"]
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 

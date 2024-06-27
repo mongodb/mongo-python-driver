@@ -129,24 +129,24 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
 
 class TestDatabase(AsyncIntegrationTest):
-    async def test_equality(self):
+    def test_equality(self):
         self.assertNotEqual(AsyncDatabase(self.client, "test"), AsyncDatabase(self.client, "mike"))
         self.assertEqual(AsyncDatabase(self.client, "test"), AsyncDatabase(self.client, "test"))
 
         # Explicitly test inequality
         self.assertFalse(AsyncDatabase(self.client, "test") != AsyncDatabase(self.client, "test"))
 
-    async def test_hashable(self):
+    def test_hashable(self):
         self.assertIn(self.client.test, {AsyncDatabase(self.client, "test")})
 
-    async def test_get_coll(self):
+    def test_get_coll(self):
         db = AsyncDatabase(self.client, "pymongo_test")
         self.assertEqual(db.test, db["test"])
         self.assertEqual(db.test, AsyncCollection(db, "test"))
         self.assertNotEqual(db.test, AsyncCollection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
-    async def test_repr(self):
+    def test_repr(self):
         if _IS_SYNC:
             name = "Database"
         else:
@@ -175,7 +175,7 @@ class TestDatabase(AsyncIntegrationTest):
         test = await db.create_collection("test")
         self.assertTrue("test" in await db.list_collection_names())
         await test.insert_one({"hello": "world"})
-        self.assertEqual((await db.test.find_one())["hello"], "world")  # type: ignore
+        self.assertEqual((await db.test.find_one())["hello"], "world")
 
         await db.drop_collection("test.foo")
         await db.create_collection("test.foo")
@@ -462,11 +462,11 @@ class TestDatabase(AsyncIntegrationTest):
     @async_client_context.require_no_fips
     def test_password_digest(self):
         with self.assertRaises(TypeError):
-            auth._password_digest(5)  # type: ignore
+            auth._password_digest(5)  # type: ignore[arg-type, call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(True)  # type: ignore
+            auth._password_digest(True)  # type: ignore[arg-type, call-arg]
         with self.assertRaises(TypeError):
-            auth._password_digest(None)  # type: ignore
+            auth._password_digest(None)  # type: ignore[arg-type, call-arg]
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
         self.assertEqual(
@@ -565,12 +565,12 @@ class TestDatabase(AsyncIntegrationTest):
         db = self.client.pymongo_test
         await db.test.drop()
         await db.test.insert_one({"x": 9223372036854775807})
-        retrieved = (await db.test.find_one())["x"]  # type: ignore
+        retrieved = (await db.test.find_one())["x"]
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
         await db.test.delete_many({})
         await db.test.insert_one({"x": Int64(1)})
-        retrieved = (await db.test.find_one())["x"]  # type: ignore
+        retrieved = (await db.test.find_one())["x"]
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
@@ -608,7 +608,7 @@ class TestDatabase(AsyncIntegrationTest):
         await db.test.delete_many({})
         self.assertFalse(await db.test.find_one())
 
-    async def test_command_response_without_ok(self):
+    def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
         # command document will have no 'ok' field. We should raise
         # OperationFailure instead of KeyError.
@@ -622,7 +622,7 @@ class TestDatabase(AsyncIntegrationTest):
         else:
             self.fail("_check_command_response didn't raise OperationFailure")
 
-    async def test_mongos_response(self):
+    def test_mongos_response(self):
         error_document = {
             "ok": 0,
             "errmsg": "outer",
@@ -683,7 +683,7 @@ class TestDatabase(AsyncIntegrationTest):
                 "configureFailPoint", "maxTimeAlwaysTimeOut", mode="off"
             )
 
-    async def test_with_options(self):
+    def test_with_options(self):
         codec_options = DECIMAL_CODECOPTS
         read_preference = ReadPreference.SECONDARY_PREFERRED
         write_concern = WriteConcern(j=True)
@@ -769,7 +769,7 @@ class TestDatabaseAggregation(AsyncIntegrationTest):
         result = await async_wait_until(lambda_fn, "read unacknowledged write")
         self.assertEqual(result["dummy"], self.result["dummy"])
 
-    async def test_bool(self):
+    def test_bool(self):
         with self.assertRaises(NotImplementedError):
             bool(AsyncDatabase(self.client, "test"))
 
