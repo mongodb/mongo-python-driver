@@ -7,6 +7,8 @@ Changes in Version 4.9.0
 PyMongo 4.9 brings a number of improvements including:
 
 - A new asynchronous API with full asyncio support.
+- Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
+  :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
 
 Issues Resolved
