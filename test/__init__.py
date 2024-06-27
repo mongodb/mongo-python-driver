@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Synchronous test suite for pymongo, bson, and gridfs."""
+"""Asynchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
 import asyncio
@@ -30,7 +30,7 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
-from test.helpers import (
+from test.shared import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -78,7 +78,7 @@ from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class ClientContext:

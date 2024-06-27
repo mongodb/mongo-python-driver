@@ -30,7 +30,7 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
-from test.helpers import (
+from test.shared import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
