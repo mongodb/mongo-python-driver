@@ -19,3 +19,4 @@ from pymongo.synchronous.client_session import *  # noqa: F403
 from pymongo.synchronous.client_session import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = ["ClientSession", "SessionOptions", "TransactionOptions"]  # noqa: F405
