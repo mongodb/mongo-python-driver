@@ -461,7 +461,14 @@ class Algorithm(str, enum.Enum):
     RANGE = "Range"
     """Range.
 
-    .. versionadded:: 4.8
+    .. versionadded:: 4.9
+    """
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - RangePreview.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
+
+    .. versionadded:: 4.4
     """
 
 
@@ -475,7 +482,18 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
     RANGE = "range"
-    """Used to encrypt a value for a range query."""
+    """Used to encrypt a value for a range query.
+
+    .. versionadded:: 4.9
+    """
+
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
+
+    .. versionadded:: 4.4
+    """
 
 
 def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
@@ -845,7 +863,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
@@ -901,7 +919,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
