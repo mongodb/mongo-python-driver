@@ -113,6 +113,7 @@ class AsyncClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self._fips_enabled = None
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -363,6 +364,17 @@ class AsyncClientContext:
             # Raised if self.server_status is None.
             return None
 
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
+            self._fips_enabled = True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            self._fips_enabled = False
+        return self._fips_enabled
+
     def check_auth_type(self, auth_type):
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
         return auth_type in auth_mechs
@@ -534,6 +546,12 @@ class AsyncClientContext:
             lambda: not self.auth_enabled,
             "Authentication must not be enabled on the server",
             func=func,
+        )
+
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_replica_set(self, func):
