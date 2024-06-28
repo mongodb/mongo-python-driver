@@ -6,6 +6,7 @@ Changes in Version 4.9.0
 
 PyMongo 4.9 brings a number of improvements including:
 
+- Added support for MongoDB 8.0.
 - A new asynchronous API with full asyncio support.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
 
