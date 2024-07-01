@@ -861,6 +861,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
+    async def connect(self):
+        """Explicitly connect asynchronously."""
+        await self._get_topology()
+
     def _init_background(self, old_pid: Optional[int] = None) -> None:
         self._topology = Topology(self._topology_settings)
         # Seed the topology with the old one's pid so we can detect clients
@@ -1360,7 +1364,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     __iter__ = None
 
     def __next__(self) -> NoReturn:
-        raise TypeError("'MongoClient' object is not iterable")
+        raise TypeError("'AsyncMongoClient' object is not iterable")
 
     next = __next__
 
@@ -1516,6 +1520,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
+
+    async def aclose(self) -> None:
+        await self.close()
 
     async def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.

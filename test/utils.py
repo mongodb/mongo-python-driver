@@ -621,7 +621,10 @@ async def _async_mongo_client(host, port, authenticate=True, directConnection=No
         ):
             client_options["username"] = db_user
             client_options["password"] = db_pwd
-    return AsyncMongoClient(uri, port, **client_options)
+    client = AsyncMongoClient(uri, port, **client_options)
+    if client._options.connect:
+        await client.connect()
+    return client
 
 
 def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
@@ -843,32 +846,11 @@ def server_started_with_auth(client):
     return "--auth" in argv or "--keyFile" in argv
 
 
-def drop_collections(db):
-    # Drop all non-system collections in this database.
-    for coll in db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
-        db.drop_collection(coll)
-
-
-def remove_all_users(db):
-    db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": client_context.w})
-
-
 def joinall(threads):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
     for t in threads:
         t.join(300)
         assert not t.is_alive(), "Thread %s hung" % t
-
-
-def connected(client):
-    """Convenience to wait for a newly-constructed client to connect."""
-    with warnings.catch_warnings():
-        # Ignore warning that ping is always routed to primary even
-        # if client's read preference isn't PRIMARY.
-        warnings.simplefilter("ignore", UserWarning)
-        client.admin.command("ping")  # Force connection.
-
-    return client
 
 
 def wait_until(predicate, success_description, timeout=10):
@@ -957,6 +939,20 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
         raise AssertionError("%s not raised" % cls)
 
 
+async def asyncAssertRaisesExactly(cls, fn, *args, **kwargs):
+    """
+    Unlike the standard assertRaises, this checks that a function raises a
+    specific class of exception, and not a subclass. E.g., check that
+    MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
+    """
+    try:
+        await fn(*args, **kwargs)
+    except Exception as e:
+        assert e.__class__ == cls, f"got {e.__class__.__name__}, expected {cls.__name__}"
+    else:
+        raise AssertionError("%s not raised" % cls)
+
+
 @contextlib.contextmanager
 def _ignore_deprecations():
     with warnings.catch_warnings():
@@ -1022,63 +1018,6 @@ async def async_get_pools(client):
             any_server_selector, _Op.TEST
         )
     ]
-
-
-# Constants for run_threads and lazy_client_trial.
-NTRIALS = 5
-NTHREADS = 10
-
-
-def run_threads(collection, target):
-    """Run a target function in many threads.
-
-    target is a function taking a Collection and an integer.
-    """
-    threads = []
-    for i in range(NTHREADS):
-        bound_target = partial(target, collection, i)
-        threads.append(threading.Thread(target=bound_target))
-
-    for t in threads:
-        t.start()
-
-    for t in threads:
-        t.join(60)
-        assert not t.is_alive()
-
-
-@contextlib.contextmanager
-def frequent_thread_switches():
-    """Make concurrency bugs more likely to manifest."""
-    interval = sys.getswitchinterval()
-    sys.setswitchinterval(1e-6)
-
-    try:
-        yield
-    finally:
-        sys.setswitchinterval(interval)
-
-
-def lazy_client_trial(reset, target, test, get_client):
-    """Test concurrent operations on a lazily-connecting client.
-
-    `reset` takes a collection and resets it for the next trial.
-
-    `target` takes a lazily-connecting collection and an index from
-    0 to NTHREADS, and performs some operation, e.g. an insert.
-
-    `test` takes the lazily-connecting collection and asserts a
-    post-condition to prove `target` succeeded.
-    """
-    collection = client_context.client.pymongo_test.test
-
-    with frequent_thread_switches():
-        for _i in range(NTRIALS):
-            reset(collection)
-            lazy_client = get_client()
-            lazy_collection = lazy_client.pymongo_test.test
-            run_threads(lazy_collection, target)
-            test(lazy_collection)
 
 
 def gevent_monkey_patched():

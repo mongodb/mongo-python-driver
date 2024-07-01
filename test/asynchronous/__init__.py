@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import gc
 import multiprocessing
 import os
@@ -30,7 +31,7 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
-from test.shared import (
+from test.helpers import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -39,8 +40,6 @@ from test.shared import (
     TEST_SERVERLESS,
     TLS_OPTIONS,
     SystemCertsPatcher,
-    _all_users,
-    _create_user,
     client_knobs,
     db_pwd,
     db_user,
@@ -62,9 +61,9 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from contextlib import asynccontextmanager, contextmanager
-from functools import wraps
+from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator
+from typing import Any, Callable, Dict, Generator, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -228,8 +227,8 @@ class AsyncClientContext:
             if self.auth_enabled:
                 if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
-                    if not self._check_user_provided():
-                        _create_user(self.client.admin, db_user, db_pwd)
+                    if not await self._check_user_provided():
+                        await _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = await self._connect(
                     host,
@@ -390,7 +389,7 @@ class AsyncClientContext:
         )
 
         try:
-            return db_user in _all_users(client.admin)
+            return db_user in await _all_users(client.admin)
         except pymongo.errors.OperationFailure as e:
             assert e.details is not None
             msg = e.details.get("errmsg", "")
@@ -482,9 +481,9 @@ class AsyncClientContext:
             return decorate
         return make_wrapper(func)
 
-    def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
+    async def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
         kwargs["writeConcern"] = {"w": self.w}
-        return _create_user(self.client[dbname], user, pwd, roles, **kwargs)
+        return await _create_user(self.client[dbname], user, pwd, roles, **kwargs)
 
     async def drop_user(self, dbname, user):
         await self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
@@ -808,6 +807,12 @@ class AsyncClientContext:
             func=func,
         )
 
+    def require_sync(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
@@ -915,6 +920,32 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
+class AsyncUnitTest(AsyncPyMongoTestCase):
+    """Async base class for TestCases that don't require a connection to MongoDB."""
+
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    async def _setup_class(cls):
+        await cls._setup_class()
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    async def _tearDown_class(cls):
+        await cls._tearDown_class()
+
+
 class AsyncIntegrationTest(AsyncPyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
 
@@ -955,7 +986,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
-class AsyncMockClientTest(unittest.TestCase):
+class AsyncMockClientTest(AsyncUnitTest):
     """Base class for TestCases that use MockClient.
 
     This class is *not* an IntegrationTest: if properly written, MockClient
@@ -969,7 +1000,11 @@ class AsyncMockClientTest(unittest.TestCase):
     # with loadBalanced=True.
     @classmethod
     @async_client_context.require_no_load_balancer
-    def setUpClass(cls):
+    async def _setup_class(cls):
+        pass
+
+    @classmethod
+    async def _tearDown_class(cls):
         pass
 
     def setUp(self):
@@ -1047,3 +1082,95 @@ def print_running_clients():
                 processed.add(obj._topology_id)
         except ReferenceError:
             pass
+
+
+async def _all_users(db):
+    return {u["user"] for u in (await db.command("usersInfo")).get("users", [])}
+
+
+async def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([("createUser", user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd["pwd"] = pwd
+    cmd["roles"] = roles or ["root"]
+    cmd.update(**kwargs)
+    return await authdb.command(cmd)
+
+
+async def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    with warnings.catch_warnings():
+        # Ignore warning that ping is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        await client.admin.command("ping")  # Force connection.
+
+    return client
+
+
+async def drop_collections(db: AsyncDatabase):
+    # Drop all non-system collections in this database.
+    for coll in await db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
+        await db.drop_collection(coll)
+
+
+async def remove_all_users(db: AsyncDatabase):
+    await db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": async_client_context.w})
+
+
+# Constants for run_threads and lazy_client_trial.
+NTRIALS = 5
+NTHREADS = 10
+
+
+def run_threads(collection, target):
+    """Run a target function in many threads.
+
+    target is a function taking a Collection and an integer.
+    """
+    threads = []
+    for i in range(NTHREADS):
+        bound_target = partial(target, collection, i)
+        threads.append(threading.Thread(target=bound_target))
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join(60)
+        assert not t.is_alive()
+
+
+@contextlib.contextmanager
+def frequent_thread_switches():
+    """Make concurrency bugs more likely to manifest."""
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+
+    try:
+        yield
+    finally:
+        sys.setswitchinterval(interval)
+
+
+def lazy_client_trial(reset, target, test, get_client):
+    """Test concurrent operations on a lazily-connecting client.
+
+    `reset` takes a collection and resets it for the next trial.
+
+    `target` takes a lazily-connecting collection and an index from
+    0 to NTHREADS, and performs some operation, e.g. an insert.
+
+    `test` takes the lazily-connecting collection and asserts a
+    post-condition to prove `target` succeeded.
+    """
+    collection = async_client_context.client.pymongo_test.test
+
+    with frequent_thread_switches():
+        for _i in range(NTRIALS):
+            reset(collection)
+            lazy_client = get_client()
+            lazy_collection = lazy_client.pymongo_test.test
+            run_threads(lazy_collection, target)
+            test(lazy_collection)
