@@ -861,7 +861,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Explicitly connect asynchronously."""
         await self._get_topology()
 

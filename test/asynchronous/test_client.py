@@ -1418,7 +1418,7 @@ class TestClient(AsyncIntegrationTest):
             raised = False
             try:
                 # Will be interrupted by a KeyboardInterrupt.
-                next(db.foo.find({"$where": where}))
+                next(db.foo.find({"$where": where}))  # type: ignore[call-overload]
             except KeyboardInterrupt:
                 raised = True
 
@@ -1429,7 +1429,7 @@ class TestClient(AsyncIntegrationTest):
             # Raises AssertionError due to PYTHON-294 -- Mongo's response to
             # the previous find() is still waiting to be read on the socket,
             # so the request id's don't match.
-            self.assertEqual({"_id": 1}, next(db.foo.find()))
+            self.assertEqual({"_id": 1}, next(db.foo.find()))  # type: ignore[call-overload]
         finally:
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)
