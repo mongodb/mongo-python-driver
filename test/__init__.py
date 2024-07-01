@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Asynchronous test suite for pymongo, bson, and gridfs."""
+"""Synchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
 import asyncio

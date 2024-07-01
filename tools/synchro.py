@@ -40,6 +40,7 @@ replacements = {
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
+    "Asynchronous": "Synchronous",
     "anext": "next",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
@@ -253,7 +254,7 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
                 lines[i] = lines[i].replace(k, replacements[k])
-            if "Sync" in lines[i] and replacements[k] in lines[i]:
+            if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
     for i in range(len(lines)):
         for k in docstring_replacements:  # type: ignore[assignment]
