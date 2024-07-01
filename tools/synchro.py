@@ -139,6 +139,7 @@ converted_tests = [
     "pymongo_mocks.py",
     "test_collection.py",
     "test_client.py",
+    "test_cursor.py",
 ]
 
 sync_test_files = [

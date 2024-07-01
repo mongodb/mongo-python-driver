@@ -1308,4 +1308,4 @@ class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
         return await clone.explain()
 
     def __getitem__(self, index: Any) -> NoReturn:
-        raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
+        raise InvalidOperation("Cannot call __getitem__ on AsyncRawBatchCursor")

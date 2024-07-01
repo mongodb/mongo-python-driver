@@ -27,6 +27,7 @@ import threading
 import time
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
@@ -963,11 +964,18 @@ def _ignore_deprecations():
 def ignore_deprecations(wrapped=None):
     """A context manager or a decorator."""
     if wrapped:
+        if iscoroutinefunction(wrapped):
 
-        @functools.wraps(wrapped)
-        def wrapper(*args, **kwargs):
-            with _ignore_deprecations():
-                return wrapped(*args, **kwargs)
+            @functools.wraps(wrapped)
+            async def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return await wrapped(*args, **kwargs)
+        else:
+
+            @functools.wraps(wrapped)
+            def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return wrapped(*args, **kwargs)
 
         return wrapper
 
