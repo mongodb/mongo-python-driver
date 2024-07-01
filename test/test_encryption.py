@@ -41,7 +41,7 @@ from test import (
     client_context,
     unittest,
 )
-from test.shared import (
+from test.helpers import (
     AWS_CREDS,
     AZURE_CREDS,
     CA_PEM,
