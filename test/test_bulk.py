@@ -23,9 +23,8 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, client_context, remove_all_users, unittest
 from test.utils import (
-    remove_all_users,
     rs_or_single_client_noauth,
     single_client,
     wait_until,

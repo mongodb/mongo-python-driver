@@ -19,15 +19,16 @@ import contextlib
 import weakref
 from functools import partial
 from test import client_context
+from test.asynchronous import async_client_context
 
-from pymongo import MongoClient, common
+from pymongo import AsyncMongoClient, common
+from pymongo.asynchronous.monitor import Monitor
+from pymongo.asynchronous.pool import Pool
 from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
-from pymongo.synchronous.monitor import Monitor
-from pymongo.synchronous.pool import Pool
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class MockPool(Pool):
@@ -40,8 +41,8 @@ class MockPool(Pool):
         # Actually connect to the default server.
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
-    @contextlib.contextmanager
-    def checkout(self, handler=None):
+    @contextlib.asynccontextmanager
+    async def checkout(self, handler=None):
         client = self.client
         host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:
@@ -51,7 +52,7 @@ class MockPool(Pool):
             client.mock_standalones + client.mock_members + client.mock_mongoses
         ), "bad host: %s" % host_and_port
 
-        with Pool.checkout(self, handler) as conn:
+        async with Pool.checkout(self, handler) as conn:
             conn.mock_host = self.mock_host
             conn.mock_port = self.mock_port
             yield conn
@@ -78,21 +79,21 @@ class DummyMonitor:
         self.opened = False
 
 
-class SyncMockMonitor(Monitor):
+class AsyncMockMonitor(Monitor):
     def __init__(self, client, server_description, topology, pool, topology_settings):
         # MockMonitor gets a 'client' arg, regular monitors don't. Weakref it
         # to avoid cycles.
         self.client = weakref.proxy(client)
         Monitor.__init__(self, server_description, topology, pool, topology_settings)
 
-    def _check_once(self):
+    async def _check_once(self):
         client = self.client
         address = self._server_description.address
         response, rtt = client.mock_hello("%s:%d" % address)  # type: ignore[str-format]
         return ServerDescription(address, Hello(response), rtt)
 
 
-class MockClient(MongoClient):
+class AsyncMockClient(AsyncMongoClient):
     def __init__(
         self,
         standalones,
@@ -104,7 +105,7 @@ class MockClient(MongoClient):
         *args,
         **kwargs,
     ):
-        """A MongoClient connected to the default server, with a mock topology.
+        """An AsyncMongoClient connected to the default server, with a mock topology.
 
         standalones, members, mongoses, arbiters, and down_hosts determine the
         configuration of the topology. They are formatted like ['a:1', 'b:2'].
@@ -142,15 +143,15 @@ class MockClient(MongoClient):
         self.mock_rtts = {}
 
         kwargs["_pool_class"] = partial(MockPool, self)
-        kwargs["_monitor_class"] = partial(SyncMockMonitor, self)
+        kwargs["_monitor_class"] = partial(AsyncMockMonitor, self)
 
-        client_options = client_context.default_client_options.copy()
+        client_options = async_client_context.default_client_options.copy()
         client_options.update(kwargs)
 
         super().__init__(*args, **client_options)
 
     @classmethod
-    def get_async_mock_client(
+    async def get_async_mock_client(
         cls,
         standalones,
         members,
@@ -161,11 +162,11 @@ class MockClient(MongoClient):
         *args,
         **kwargs,
     ):
-        c = MockClient(
+        c = AsyncMockClient(
             standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
         )
 
-        c.connect()
+        await c.connect()
         return c
 
     def kill_host(self, host):
