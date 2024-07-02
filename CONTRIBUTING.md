@@ -216,6 +216,9 @@ the pages will re-render and the browser will automatically refresh.
     `TEST_LOADBALANCER=1 tox -m test-eg`.
 
 ## Running Encryption Tests Locally
+- Clone `drivers-evergreen-tools`:
+  `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
+- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
 - Run `AWS_PROFILE=<profile> tox -m setup-encryption` after setting up your AWS profile with `aws configure sso`.
 - Run the tests with `TEST_ENCRYPTION=1 tox -e test-eg`.
 - When done, run `tox -m teardown-encryption` to clean up.
