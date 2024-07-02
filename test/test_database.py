@@ -106,10 +106,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
         if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
-            if _IS_SYNC:
-                msg = "'Database' object is not iterable"
-            else:
-                msg = "'Database' object is not iterable"
+            msg = "'Database' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in db:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -146,10 +143,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(db.test.mike, db["test.mike"])
 
     def test_repr(self):
-        if _IS_SYNC:
-            name = "Database"
-        else:
-            name = "Database"
+        name = "Database"
         self.assertEqual(
             repr(Database(self.client, "pymongo_test")),
             "{}({!r}, {})".format(name, self.client, repr("pymongo_test")),
@@ -258,7 +252,7 @@ class TestDatabase(IntegrationTest):
         db.test.insert_one({"dummy": "object"})
         db.test.mike.insert_one({"dummy": "object"})
 
-        results = (db.list_collections()).to_list()
+        results = db.list_collections()
         colls = [result["name"] for result in results]
 
         # All the collections present.
@@ -290,15 +284,15 @@ class TestDatabase(IntegrationTest):
             self.assertTrue(False)
 
         colls = (db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(colls))
 
         colls = (db.list_collections(filter={"name": {"$regex": "^test.mike$"}})).to_list()
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(colls))
 
         db.drop_collection("test")
 
         db.create_collection("test", capped=True, size=4096)
-        results = (db.list_collections(filter={"options.capped": True})).to_list()
+        results = db.list_collections(filter={"options.capped": True})
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
@@ -727,9 +721,9 @@ class TestDatabaseAggregation(IntegrationTest):
         self.admin = self.client.admin
 
     def test_database_aggregation(self):
-        cursor = self.admin.aggregate(self.pipeline)
-        result = next(cursor)
-        self.assertEqual(result, self.result)
+        with self.admin.aggregate(self.pipeline) as cursor:
+            result = next(cursor)
+            self.assertEqual(result, self.result)
 
     @client_context.require_no_mongos
     def test_database_aggregation_fake_cursor(self):
@@ -750,9 +744,9 @@ class TestDatabaseAggregation(IntegrationTest):
         admin = self.admin.with_options(write_concern=WriteConcern(w=0))
         pipeline = self.pipeline[:]
         pipeline.append(write_stage)
-        cursor = admin.aggregate(pipeline)
-        with self.assertRaises(StopIteration):
-            next(cursor)
+        with admin.aggregate(pipeline) as cursor:
+            with self.assertRaises(StopIteration):
+                next(cursor)
 
         def lambda_fn():
             return output_coll.find_one()

@@ -107,10 +107,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
         if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
-            if _IS_SYNC:
-                msg = "'Database' object is not iterable"
-            else:
-                msg = "'AsyncDatabase' object is not iterable"
+            msg = "'AsyncDatabase' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in db:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -147,10 +144,7 @@ class TestDatabase(AsyncIntegrationTest):
         self.assertEqual(db.test.mike, db["test.mike"])
 
     def test_repr(self):
-        if _IS_SYNC:
-            name = "Database"
-        else:
-            name = "AsyncDatabase"
+        name = "AsyncDatabase"
         self.assertEqual(
             repr(AsyncDatabase(self.client, "pymongo_test")),
             "{}({!r}, {})".format(name, self.client, repr("pymongo_test")),
@@ -259,8 +253,8 @@ class TestDatabase(AsyncIntegrationTest):
         await db.test.insert_one({"dummy": "object"})
         await db.test.mike.insert_one({"dummy": "object"})
 
-        results = await (await db.list_collections()).to_list()
-        colls = [result["name"] for result in results]
+        results = await db.list_collections()
+        colls = [result["name"] async for result in results]
 
         # All the collections present.
         self.assertTrue("test" in colls)
@@ -291,18 +285,18 @@ class TestDatabase(AsyncIntegrationTest):
             self.assertTrue(False)
 
         colls = await (await db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(colls))
 
         colls = await (
             await db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
         ).to_list()
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(colls))
 
         await db.drop_collection("test")
 
         await db.create_collection("test", capped=True, size=4096)
-        results = await (await db.list_collections(filter={"options.capped": True})).to_list()
-        colls = [result["name"] for result in results]
+        results = await db.list_collections(filter={"options.capped": True})
+        colls = [result["name"] async for result in results]
 
         # Checking only capped collections are present
         self.assertTrue("test" in colls)
@@ -736,9 +730,9 @@ class TestDatabaseAggregation(AsyncIntegrationTest):
         self.admin = self.client.admin
 
     async def test_database_aggregation(self):
-        cursor = await self.admin.aggregate(self.pipeline)
-        result = await anext(cursor)
-        self.assertEqual(result, self.result)
+        async with await self.admin.aggregate(self.pipeline) as cursor:
+            result = await anext(cursor)
+            self.assertEqual(result, self.result)
 
     @async_client_context.require_no_mongos
     async def test_database_aggregation_fake_cursor(self):
@@ -759,9 +753,9 @@ class TestDatabaseAggregation(AsyncIntegrationTest):
         admin = self.admin.with_options(write_concern=WriteConcern(w=0))
         pipeline = self.pipeline[:]
         pipeline.append(write_stage)
-        cursor = await admin.aggregate(pipeline)
-        with self.assertRaises(StopAsyncIteration):
-            await anext(cursor)
+        async with await admin.aggregate(pipeline) as cursor:
+            with self.assertRaises(StopAsyncIteration):
+                await anext(cursor)
 
         async def lambda_fn():
             return await output_coll.find_one()
