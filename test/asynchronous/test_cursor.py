@@ -1407,8 +1407,8 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        with client.start_session() as session:
-            async with session.start_transaction():
+        async with client.start_session() as session:
+            async with await session.start_transaction():
                 batches = await (
                     (await client[self.db.name].test.find_raw_batches(session=session)).sort("_id")
                 ).to_list()
@@ -1461,7 +1461,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
-        with client.start_session(snapshot=True) as session:
+        async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
             batches = await (await db.test.find_raw_batches(session=session)).sort("_id").to_list()
         self.assertEqual(1, len(batches))
@@ -1591,7 +1591,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        with client.start_session() as session:
+        async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
                     await client[self.db.name].test.aggregate_raw_batches(
@@ -1647,7 +1647,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
-        with client.start_session(snapshot=True) as session:
+        async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
             batches = await (
                 await db.test.aggregate_raw_batches([{"$sort": {"_id": 1}}], session=session)

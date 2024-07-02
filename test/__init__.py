@@ -972,6 +972,10 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @classmethod
+    def _tearDown_class(cls):
+        pass
+
     def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:

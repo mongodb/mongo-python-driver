@@ -138,18 +138,21 @@ from __future__ import annotations
 import collections
 import time
 import uuid
+from asyncio import iscoroutinefunction
 from collections.abc import Mapping as _Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
     AsyncContextManager,
     Callable,
+    Coroutine,
     Mapping,
     MutableMapping,
     NoReturn,
     Optional,
     Type,
     TypeVar,
+    Union,
 )
 
 from bson.binary import Binary
@@ -598,7 +601,10 @@ class AsyncClientSession:
 
     async def with_transaction(
         self,
-        callback: Callable[[AsyncClientSession], _T],
+        callback: Union[
+            Callable[[AsyncClientSession], Coroutine[Any, Any, _T]],
+            Callable[[AsyncClientSession], _T],
+        ],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -693,7 +699,10 @@ class AsyncClientSession:
                 read_concern, write_concern, read_preference, max_commit_time_ms
             )
             try:
-                ret = callback(self)
+                if not _IS_SYNC and iscoroutinefunction(callback):
+                    ret = await callback(self)  # type: ignore[assignment]
+                else:
+                    ret = callback(self)  # type: ignore[assignment]
             except Exception as exc:
                 if self.in_transaction:
                     await self.abort_transaction()
@@ -708,7 +717,7 @@ class AsyncClientSession:
 
             if not self.in_transaction:
                 # Assume callback intentionally ended the transaction.
-                return ret
+                return ret  # type: ignore[return-value]
 
             while True:
                 try:
@@ -730,7 +739,7 @@ class AsyncClientSession:
                     raise
 
                 # Commit succeeded.
-                return ret
+                return ret  # type: ignore[return-value]
 
     async def start_transaction(
         self,

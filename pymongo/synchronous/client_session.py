@@ -138,6 +138,7 @@ from __future__ import annotations
 import collections
 import time
 import uuid
+from asyncio import iscoroutinefunction
 from collections.abc import Mapping as _Mapping
 from typing import (
     TYPE_CHECKING,
@@ -150,6 +151,7 @@ from typing import (
     Optional,
     Type,
     TypeVar,
+    Union,
 )
 
 from bson.binary import Binary
@@ -598,7 +600,10 @@ class ClientSession:
 
     def with_transaction(
         self,
-        callback: Callable[[ClientSession], _T],
+        callback: Union[
+            Callable[[ClientSession], _T],
+            Callable[[ClientSession], _T],
+        ],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -691,7 +696,10 @@ class ClientSession:
         while True:
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
-                ret = callback(self)
+                if not _IS_SYNC and iscoroutinefunction(callback):
+                    ret = callback(self)  # type: ignore[assignment]
+                else:
+                    ret = callback(self)  # type: ignore[assignment]
             except Exception as exc:
                 if self.in_transaction:
                     self.abort_transaction()
@@ -706,7 +714,7 @@ class ClientSession:
 
             if not self.in_transaction:
                 # Assume callback intentionally ended the transaction.
-                return ret
+                return ret  # type: ignore[return-value]
 
             while True:
                 try:
@@ -728,7 +736,7 @@ class ClientSession:
                     raise
 
                 # Commit succeeded.
-                return ret
+                return ret  # type: ignore[return-value]
 
     def start_transaction(
         self,

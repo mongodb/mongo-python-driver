@@ -974,6 +974,10 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
+
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:
