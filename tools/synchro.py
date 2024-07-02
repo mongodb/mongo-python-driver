@@ -40,6 +40,7 @@ replacements = {
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
+    "Asynchronous": "Synchronous",
     "anext": "next",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
@@ -60,6 +61,7 @@ replacements = {
     "AsyncTestCollection": "TestCollection",
     "AsyncIntegrationTest": "IntegrationTest",
     "AsyncPyMongoTestCase": "PyMongoTestCase",
+    "AsyncMockClientTest": "MockClientTest",
     "async_client_context": "client_context",
     "async_setup": "setup",
     "asyncSetUp": "setUp",
@@ -100,7 +102,7 @@ _test_base = "./test/asynchronous/"
 
 _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
-_test_dest_base = "./test/synchronous/"
+_test_dest_base = "./test/"
 
 
 async_files = [
@@ -125,8 +127,15 @@ sync_gridfs_files = [
     if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
+# Add each asynchronized test here as part of the converting PR
+converted_tests = [
+    "__init__.py",
+    "conftest.py",
+    "test_collection.py",
+]
+
 sync_test_files = [
-    _test_dest_base + f for f in listdir(_test_dest_base) if (Path(_test_dest_base) / f).is_file()
+    _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
 ]
 
 
@@ -245,7 +254,7 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
                 lines[i] = lines[i].replace(k, replacements[k])
-            if "Sync" in lines[i] and replacements[k] in lines[i]:
+            if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
     for i in range(len(lines)):
         for k in docstring_replacements:  # type: ignore[assignment]
