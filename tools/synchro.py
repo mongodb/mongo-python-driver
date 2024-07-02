@@ -132,6 +132,7 @@ converted_tests = [
     "__init__.py",
     "conftest.py",
     "test_collection.py",
+    "test_database.py",
 ]
 
 sync_test_files = [
