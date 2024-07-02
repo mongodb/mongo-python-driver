@@ -40,11 +40,11 @@ from bson.son import SON
 from gridfs import GridFSBucket
 from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
 from pymongo.synchronous import client_session
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
-from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 

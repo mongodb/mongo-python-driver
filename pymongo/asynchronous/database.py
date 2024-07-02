@@ -33,25 +33,24 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
-from pymongo import _csot
-from pymongo.asynchronous import common
+from pymongo import _csot, common
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import DatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.asynchronous.operations import _Op
-from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
-from pymongo.asynchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
     import bson.codec_options
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
@@ -151,7 +150,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
           >>> db1.read_preference
           Primary()
-          >>> from pymongo.asynchronous.read_preferences import Secondary
+          >>> from pymongo.read_preferences import Secondary
           >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()
@@ -328,7 +327,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
         start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
@@ -402,7 +401,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             the specified :class:`~bson.timestamp.Timestamp`. Requires
             MongoDB >= 4.0.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param start_after: The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
@@ -458,7 +457,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> AsyncCollection[_DocumentType]:
@@ -489,7 +488,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param `check_exists`: if True (the default), send a listCollections command to
             check if the collection already exists before creation.
         :param kwargs: additional keyword arguments will
@@ -607,7 +606,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             return coll
 
     async def aggregate(
-        self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
+        self, pipeline: _Pipeline, session: Optional[AsyncClientSession] = None, **kwargs: Any
     ) -> AsyncCommandCursor[_DocumentType]:
         """Perform a database-level aggregation.
 
@@ -634,7 +633,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param kwargs: extra `aggregate command`_ parameters.
 
         All optional `aggregate command`_ parameters should be passed as
@@ -688,7 +687,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     @overload
     async def _command(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -697,7 +696,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         codec_options: CodecOptions[dict[str, Any]] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         ...
@@ -705,7 +704,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     @overload
     async def _command(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -714,14 +713,14 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         codec_options: CodecOptions[_CodecDocumentType] = ...,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
         ...
 
     async def _command(
         self,
-        conn: Connection,
+        conn: AsyncConnection,
         command: Union[str, MutableMapping[str, Any]],
         value: int = 1,
         check: bool = True,
@@ -732,7 +731,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ] = DEFAULT_CODEC_OPTIONS,
         write_concern: Optional[WriteConcern] = None,
         parse_write_concern_error: bool = False,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> Union[dict[str, Any], _CodecDocumentType]:
         """Internal command helper."""
@@ -763,7 +762,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: None = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -778,7 +777,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: CodecOptions[_CodecDocumentType] = ...,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
@@ -793,7 +792,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[bson.codec_options.CodecOptions[_CodecDocumentType]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> Union[dict[str, Any], _CodecDocumentType]:
@@ -852,7 +851,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param codec_options: A :class:`~bson.codec_options.CodecOptions`
             instance.
         :param session: A
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: additional keyword arguments will
@@ -922,7 +921,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         value: Any = 1,
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         max_await_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -953,7 +952,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param codec_options`: A :class:`~bson.codec_options.CodecOptions`
           instance.
         :param session: A
-          :class:`~pymongo.client_session.ClientSession`.
+          :class:`~pymongo.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to future getMores for this
           command.
         :param max_await_time_ms: The number of ms to wait for more data on future getMores for this command.
@@ -1024,15 +1023,15 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         self,
         command: Union[str, MutableMapping[str, Any]],
         operation: str,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         async def _cmd(
-            session: Optional[ClientSession],
+            session: Optional[AsyncClientSession],
             _server: Server,
-            conn: Connection,
+            conn: AsyncConnection,
             read_preference: _ServerMode,
         ) -> dict[str, Any]:
             return await self._command(
@@ -1046,8 +1045,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def _list_collections(
         self,
-        conn: Connection,
-        session: Optional[ClientSession],
+        conn: AsyncConnection,
+        session: Optional[AsyncClientSession],
         read_preference: _ServerMode,
         **kwargs: Any,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
@@ -1075,7 +1074,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def _list_collections_helper(
         self,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1083,7 +1082,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """Get a cursor over the collections of this database.
 
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1106,9 +1105,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         async def _cmd(
-            session: Optional[ClientSession],
+            session: Optional[AsyncClientSession],
             _server: Server,
-            conn: Connection,
+            conn: AsyncConnection,
             read_preference: _ServerMode,
         ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
             return await self._list_collections(
@@ -1121,7 +1120,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def list_collections(
         self,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1129,7 +1128,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """Get a cursor over the collections of this database.
 
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1149,7 +1148,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def _list_collection_names(
         self,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1174,7 +1173,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
     async def list_collection_names(
         self,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1187,7 +1186,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             db.list_collection_names(filter=filter)
 
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1207,7 +1206,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return await self._list_collection_names(session, filter, comment, **kwargs)
 
     async def _drop_helper(
-        self, name: str, session: Optional[ClientSession] = None, comment: Optional[Any] = None
+        self, name: str, session: Optional[AsyncClientSession] = None, comment: Optional[Any] = None
     ) -> dict[str, Any]:
         command = {"drop": name}
         if comment is not None:
@@ -1227,7 +1226,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     async def drop_collection(
         self,
         name_or_collection: Union[str, AsyncCollection[_DocumentTypeArg]],
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> dict[str, Any]:
@@ -1236,7 +1235,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param name_or_collection: the name of a collection to drop or the
             collection object itself
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param encrypted_fields: **(BETA)** Document that describes the encrypted fields for
@@ -1306,7 +1305,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         name_or_collection: Union[str, AsyncCollection[_DocumentTypeArg]],
         scandata: bool = False,
         full: bool = False,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         background: Optional[bool] = None,
         comment: Optional[Any] = None,
     ) -> dict[str, Any]:
@@ -1326,7 +1325,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             of the structure of the collection and the individual
             documents.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param background: A boolean flag that determines whether
             the command runs in the background. Requires MongoDB 4.4+.
         :param comment: A user-provided comment to attach to this
@@ -1386,7 +1385,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     async def dereference(
         self,
         dbref: DBRef,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> Optional[_DocumentType]:
@@ -1401,7 +1400,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         :param dbref: the reference
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
+            :class:`~pymongo.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: any additional keyword arguments

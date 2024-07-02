@@ -25,8 +25,8 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener, rs_or_single_client
 
 from bson.dbref import DBRef
+from pymongo.operations import IndexModel
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.operations import IndexModel
 
 
 class Empty:

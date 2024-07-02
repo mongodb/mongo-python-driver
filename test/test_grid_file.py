@@ -42,7 +42,7 @@ from gridfs.synchronous.grid_file import (
 )
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
-from pymongo.synchronous.message import _CursorAddress
+from pymongo.message import _CursorAddress
 
 
 class TestGridFileNoConnect(unittest.TestCase):

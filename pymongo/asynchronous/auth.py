@@ -18,17 +18,13 @@ from __future__ import annotations
 import functools
 import hashlib
 import hmac
-import os
 import socket
-import typing
 from base64 import standard_b64decode, standard_b64encode
-from collections import namedtuple
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Coroutine,
-    Dict,
     Mapping,
     MutableMapping,
     Optional,
@@ -41,17 +37,19 @@ from pymongo.asynchronous.auth_aws import _authenticate_aws
 from pymongo.asynchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
-    _OIDCAzureCallback,
-    _OIDCGCPCallback,
-    _OIDCProperties,
-    _OIDCTestCallback,
+)
+from pymongo.auth_shared import (
+    MongoCredential,
+    _authenticate_scram_start,
+    _parse_scram_response,
+    _xor,
 )
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.hello import Hello
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.hello import Hello
 
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
@@ -69,213 +67,9 @@ except ImportError:
 
 _IS_SYNC = False
 
-MECHANISMS = frozenset(
-    [
-        "GSSAPI",
-        "MONGODB-CR",
-        "MONGODB-OIDC",
-        "MONGODB-X509",
-        "MONGODB-AWS",
-        "PLAIN",
-        "SCRAM-SHA-1",
-        "SCRAM-SHA-256",
-        "DEFAULT",
-    ]
-)
-"""The authentication mechanisms supported by PyMongo."""
-
-
-class _Cache:
-    __slots__ = ("data",)
-
-    _hash_val = hash("_Cache")
-
-    def __init__(self) -> None:
-        self.data = None
-
-    def __eq__(self, other: object) -> bool:
-        # Two instances must always compare equal.
-        if isinstance(other, _Cache):
-            return True
-        return NotImplemented
-
-    def __ne__(self, other: object) -> bool:
-        if isinstance(other, _Cache):
-            return False
-        return NotImplemented
-
-    def __hash__(self) -> int:
-        return self._hash_val
-
-
-MongoCredential = namedtuple(
-    "MongoCredential",
-    ["mechanism", "source", "username", "password", "mechanism_properties", "cache"],
-)
-"""A hashable namedtuple of values used for authentication."""
-
-
-GSSAPIProperties = namedtuple(
-    "GSSAPIProperties", ["service_name", "canonicalize_host_name", "service_realm"]
-)
-"""Mechanism properties for GSSAPI authentication."""
-
-
-_AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
-"""Mechanism properties for MONGODB-AWS authentication."""
-
-
-def _build_credentials_tuple(
-    mech: str,
-    source: Optional[str],
-    user: str,
-    passwd: str,
-    extra: Mapping[str, Any],
-    database: Optional[str],
-) -> MongoCredential:
-    """Build and return a mechanism specific credentials tuple."""
-    if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
-        raise ConfigurationError(f"{mech} requires a username.")
-    if mech == "GSSAPI":
-        if source is not None and source != "$external":
-            raise ValueError("authentication source must be $external or None for GSSAPI")
-        properties = extra.get("authmechanismproperties", {})
-        service_name = properties.get("SERVICE_NAME", "mongodb")
-        canonicalize = bool(properties.get("CANONICALIZE_HOST_NAME", False))
-        service_realm = properties.get("SERVICE_REALM")
-        props = GSSAPIProperties(
-            service_name=service_name,
-            canonicalize_host_name=canonicalize,
-            service_realm=service_realm,
-        )
-        # Source is always $external.
-        return MongoCredential(mech, "$external", user, passwd, props, None)
-    elif mech == "MONGODB-X509":
-        if passwd is not None:
-            raise ConfigurationError("Passwords are not supported by MONGODB-X509")
-        if source is not None and source != "$external":
-            raise ValueError("authentication source must be $external or None for MONGODB-X509")
-        # Source is always $external, user can be None.
-        return MongoCredential(mech, "$external", user, None, None, None)
-    elif mech == "MONGODB-AWS":
-        if user is not None and passwd is None:
-            raise ConfigurationError("username without a password is not supported by MONGODB-AWS")
-        if source is not None and source != "$external":
-            raise ConfigurationError(
-                "authentication source must be $external or None for MONGODB-AWS"
-            )
-
-        properties = extra.get("authmechanismproperties", {})
-        aws_session_token = properties.get("AWS_SESSION_TOKEN")
-        aws_props = _AWSProperties(aws_session_token=aws_session_token)
-        # user can be None for temporary link-local EC2 credentials.
-        return MongoCredential(mech, "$external", user, passwd, aws_props, None)
-    elif mech == "MONGODB-OIDC":
-        properties = extra.get("authmechanismproperties", {})
-        callback = properties.get("OIDC_CALLBACK")
-        human_callback = properties.get("OIDC_HUMAN_CALLBACK")
-        environ = properties.get("ENVIRONMENT")
-        token_resource = properties.get("TOKEN_RESOURCE", "")
-        default_allowed = [
-            "*.mongodb.net",
-            "*.mongodb-dev.net",
-            "*.mongodb-qa.net",
-            "*.mongodbgov.net",
-            "localhost",
-            "127.0.0.1",
-            "::1",
-        ]
-        allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
-        msg = (
-            "authentication with MONGODB-OIDC requires providing either a callback or a environment"
-        )
-        if passwd is not None:
-            msg = "password is not supported by MONGODB-OIDC"
-            raise ConfigurationError(msg)
-        if callback or human_callback:
-            if environ is not None:
-                raise ConfigurationError(msg)
-            if callback and human_callback:
-                msg = "cannot set both OIDC_CALLBACK and OIDC_HUMAN_CALLBACK"
-                raise ConfigurationError(msg)
-        elif environ is not None:
-            if environ == "test":
-                if user is not None:
-                    msg = "test environment for MONGODB-OIDC does not support username"
-                    raise ConfigurationError(msg)
-                callback = _OIDCTestCallback()
-            elif environ == "azure":
-                passwd = None
-                if not token_resource:
-                    raise ConfigurationError(
-                        "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
-                    )
-                callback = _OIDCAzureCallback(token_resource)
-            elif environ == "gcp":
-                passwd = None
-                if not token_resource:
-                    raise ConfigurationError(
-                        "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
-                    )
-                callback = _OIDCGCPCallback(token_resource)
-            else:
-                raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
-        else:
-            raise ConfigurationError(msg)
-
-        oidc_props = _OIDCProperties(
-            callback=callback,
-            human_callback=human_callback,
-            environment=environ,
-            allowed_hosts=allowed_hosts,
-            token_resource=token_resource,
-            username=user,
-        )
-        return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
-
-    elif mech == "PLAIN":
-        source_database = source or database or "$external"
-        return MongoCredential(mech, source_database, user, passwd, None, None)
-    else:
-        source_database = source or database or "admin"
-        if passwd is None:
-            raise ConfigurationError("A password is required.")
-        return MongoCredential(mech, source_database, user, passwd, None, _Cache())
-
-
-def _xor(fir: bytes, sec: bytes) -> bytes:
-    """XOR two byte strings together."""
-    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
-
-
-def _parse_scram_response(response: bytes) -> Dict[bytes, bytes]:
-    """Split a scram response into key, value pairs."""
-    return dict(
-        typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))
-        for item in response.split(b",")
-    )
-
-
-def _authenticate_scram_start(
-    credentials: MongoCredential, mechanism: str
-) -> tuple[bytes, bytes, MutableMapping[str, Any]]:
-    username = credentials.username
-    user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
-    nonce = standard_b64encode(os.urandom(32))
-    first_bare = b"n=" + user + b",r=" + nonce
-
-    cmd = {
-        "saslStart": 1,
-        "mechanism": mechanism,
-        "payload": Binary(b"n,," + first_bare),
-        "autoAuthorize": 1,
-        "options": {"skipEmptyExchange": True},
-    }
-    return nonce, first_bare, cmd
-
 
 async def _authenticate_scram(
-    credentials: MongoCredential, conn: Connection, mechanism: str
+    credentials: MongoCredential, conn: AsyncConnection, mechanism: str
 ) -> None:
     """Authenticate using SCRAM."""
     username = credentials.username
@@ -398,7 +192,7 @@ def _canonicalize_hostname(hostname: str) -> str:
     return name[0].lower()
 
 
-async def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_gssapi(credentials: MongoCredential, conn: AsyncConnection) -> None:
     """Authenticate using GSSAPI."""
     if not HAVE_KERBEROS:
         raise ConfigurationError(
@@ -509,7 +303,7 @@ async def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -
         raise OperationFailure(str(exc)) from None
 
 
-async def _authenticate_plain(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_plain(credentials: MongoCredential, conn: AsyncConnection) -> None:
     """Authenticate using SASL PLAIN (RFC 4616)"""
     source = credentials.source
     username = credentials.username
@@ -524,7 +318,7 @@ async def _authenticate_plain(credentials: MongoCredential, conn: Connection) ->
     await conn.command(source, cmd)
 
 
-async def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_x509(credentials: MongoCredential, conn: AsyncConnection) -> None:
     """Authenticate using MONGODB-X509."""
     ctx = conn.auth_ctx
     if ctx and ctx.speculate_succeeded():
@@ -535,7 +329,7 @@ async def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> 
     await conn.command("$external", cmd)
 
 
-async def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_mongo_cr(credentials: MongoCredential, conn: AsyncConnection) -> None:
     """Authenticate using MONGODB-CR."""
     source = credentials.source
     username = credentials.username
@@ -550,7 +344,7 @@ async def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection)
     await conn.command(source, query)
 
 
-async def _authenticate_default(credentials: MongoCredential, conn: Connection) -> None:
+async def _authenticate_default(credentials: MongoCredential, conn: AsyncConnection) -> None:
     if conn.max_wire_version >= 7:
         if conn.negotiated_mechs:
             mechs = conn.negotiated_mechs
@@ -652,7 +446,7 @@ _SPECULATIVE_AUTH_MAP: Mapping[str, Any] = {
 
 
 async def authenticate(
-    credentials: MongoCredential, conn: Connection, reauthenticate: bool = False
+    credentials: MongoCredential, conn: AsyncConnection, reauthenticate: bool = False
 ) -> None:
     """Authenticate connection."""
     mechanism = credentials.mechanism

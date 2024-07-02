@@ -43,13 +43,13 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import client_session
 from pymongo.synchronous.client_session import TransactionOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
-from pymongo.synchronous.operations import IndexModel, InsertOne
-from pymongo.synchronous.read_preferences import ReadPreference
 
 _TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 

@@ -42,6 +42,7 @@ from gridfs.grid_file_shared import (
     _grid_out_property,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
+from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -50,13 +51,13 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.helpers_shared import _check_write_command_response
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import validate_string
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.helpers import _check_write_command_response, next
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
@@ -234,7 +235,10 @@ class GridFS:
             raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
     def get_last_version(
-        self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        filename: Optional[str] = None,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
     ) -> GridOut:
         """Get the most recent version of a file in GridFS by ``"filename"``
         or metadata fields.
@@ -497,7 +501,7 @@ class GridFSBucket:
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(db, Database):
-            raise TypeError("database must be an instance of AsyncDatabase")
+            raise TypeError("database must be an instance of Database")
 
         db = _clear_entity_type_registry(db)
 
@@ -1028,7 +1032,7 @@ class GridIn:
         provided by :class:`~gridfs.GridFS`.
 
         Raises :class:`TypeError` if `root_collection` is not an
-        instance of :class:`~pymongo.collection.AsyncCollection`.
+        instance of :class:`~pymongo.collection.Collection`.
 
         Any of the file level options specified in the `GridFS Spec
         <http://dochub.mongodb.org/core/gridfsspec>`_ may be passed as
@@ -1069,10 +1073,10 @@ class GridIn:
 
         .. versionchanged:: 3.0
            `root_collection` must use an acknowledged
-           :attr:`~pymongo.collection.AsyncCollection.write_concern`
+           :attr:`~pymongo.collection.Collection.write_concern`
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of AsyncCollection")
+            raise TypeError("root_collection must be an instance of Collection")
 
         if not root_collection.write_concern.acknowledged:
             raise ConfigurationError("root_collection must use acknowledged write_concern")
@@ -1401,7 +1405,7 @@ class GridOut(io.IOBase):
         Either `file_id` or `file_document` must be specified,
         `file_document` will be given priority if present. Raises
         :class:`TypeError` if `root_collection` is not an instance of
-        :class:`~pymongo.collection.AsyncCollection`.
+        :class:`~pymongo.collection.Collection`.
 
         :param root_collection: root collection to read from
         :param file_id: value of ``"_id"`` for the file to read
@@ -1424,7 +1428,7 @@ class GridOut(io.IOBase):
            from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of AsyncCollection")
+            raise TypeError("root_collection must be an instance of Collection")
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
@@ -1482,7 +1486,7 @@ class GridOut(io.IOBase):
             self.open()  # type: ignore[unused-coroutine]
         elif not self._file:
             raise InvalidOperation(
-                "You must call AsyncGridOut.open() before accessing the %s property" % name
+                "You must call GridOut.open() before accessing the %s property" % name
             )
         if name in self._file:
             return self._file[name]
@@ -1677,13 +1681,13 @@ class GridOut(io.IOBase):
         return False
 
     def __enter__(self) -> GridOut:
-        """Makes it possible to use :class:`AsyncGridOut` files
+        """Makes it possible to use :class:`GridOut` files
         with the async context manager protocol.
         """
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
-        """Makes it possible to use :class:`AsyncGridOut` files
+        """Makes it possible to use :class:`GridOut` files
         with the async context manager protocol.
         """
         self.close()

@@ -40,9 +40,9 @@ from pymongo.errors import (
     WriteError,
     WTimeoutError,
 )
+from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.operations import IndexModel, InsertOne
 from pymongo.write_concern import WriteConcern
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "read_write_concern")

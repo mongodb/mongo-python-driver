@@ -5,7 +5,7 @@ import warnings
 from typing import Any, Optional
 
 from pymongo import ASCENDING
-from pymongo.asynchronous.common import MAX_MESSAGE_SIZE
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import InvalidOperation
 
 _SEEK_SET = os.SEEK_SET

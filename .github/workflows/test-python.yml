@@ -71,6 +71,9 @@ jobs:
       - name: Run tests
         run: |
           tox -m test
+      - name: Run async tests
+        run: |
+          tox -m test-async
 
   doctest:
     runs-on: ubuntu-latest
@@ -203,3 +206,5 @@ jobs:
             which python
             pip install -e ".[test]"
             pytest -v
+            pytest -v test/synchronous/
+            pytest -v test/asynchronous/

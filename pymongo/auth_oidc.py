@@ -15,7 +15,9 @@
 """Re-import of synchronous AuthOIDC API for compatibility."""
 from __future__ import annotations
 
+from pymongo.auth_oidc_shared import *  # noqa: F403
 from pymongo.synchronous.auth_oidc import *  # noqa: F403
 from pymongo.synchronous.auth_oidc import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = ["OIDCCallback", "OIDCCallbackContext", "OIDCCallbackResult", "OIDCIdPInfo"]  # noqa: F405

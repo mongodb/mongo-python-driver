@@ -19,3 +19,4 @@ from pymongo.synchronous.change_stream import *  # noqa: F403
 from pymongo.synchronous.change_stream import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = ["ChangeStream", "ClusterChangeStream", "CollectionChangeStream", "DatabaseChangeStream"]  # noqa: F405

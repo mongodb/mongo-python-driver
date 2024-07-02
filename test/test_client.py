@@ -36,7 +36,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pymongo.synchronous.operations import _Op
+from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
@@ -83,6 +83,10 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
+from pymongo import event_loggers, message, monitoring
+from pymongo.client_options import ClientOptions
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -96,29 +100,22 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
+from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
+from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.read_preferences import ReadPreference
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import event_loggers, message, monitoring
-from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
-from pymongo.synchronous.compression_support import _have_snappy, _have_zstd
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.synchronous.pool import (
-    _MAX_METADATA_SIZE,
-    _METADATA,
-    ENV_VAR_K8S,
     Connection,
-    PoolOptions,
 )
-from pymongo.synchronous.read_preferences import ReadPreference
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.synchronous.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.topology import _ErrorContext
-from pymongo.synchronous.topology_description import TopologyDescription
+from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 
 
@@ -482,13 +479,13 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.synchronous.srv_resolver import _resolve
+        from pymongo.srv_resolver import _resolve
 
         patched_resolver = FunctionCallRecorder(_resolve)
-        pymongo.synchronous.srv_resolver._resolve = patched_resolver
+        pymongo.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():
-            pymongo.synchronous.srv_resolver._resolve = _resolve
+            pymongo.srv_resolver._resolve = _resolve
 
         self.addCleanup(reset_resolver)
 
@@ -577,7 +574,7 @@ class ClientUnitTest(unittest.TestCase):
             with self.assertRaisesRegex(ConfigurationError, expected):
                 MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
-    @patch("pymongo.synchronous.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
     def test_detected_environment_logging(self, mock_get_hosts):
         normal_hosts = [
             "normal.host.com",
@@ -599,7 +596,7 @@ class ClientUnitTest(unittest.TestCase):
             logs = [record.message for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
-    @patch("pymongo.synchronous.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
     def test_detected_environment_warning(self, mock_get_hosts):
         with self._caplog.at_level(logging.WARN):
             normal_hosts = [

@@ -57,7 +57,8 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, helpers_constants
+from pymongo import _csot, common, helpers_shared, uri_parser
+from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -72,29 +73,21 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
+from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.monitoring import ConnectionClosedReason
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import (
-    client_session,
-    common,
-    database,
-    helpers,
-    message,
-    periodic_executor,
-    uri_parser,
-)
+from pymongo.synchronous import client_session, database, periodic_executor
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
-from pymongo.synchronous.client_options import ClientOptions
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.logger import _CLIENT_LOGGER, _log_or_warn
-from pymongo.synchronous.monitoring import ConnectionClosedReason
-from pymongo.synchronous.operations import _Op
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
-from pymongo.synchronous.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.synchronous.typings import (
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.typings import (
     ClusterTime,
     _Address,
     _CollationIn,
@@ -102,7 +95,7 @@ from pymongo.synchronous.typings import (
     _DocumentTypeArg,
     _Pipeline,
 )
-from pymongo.synchronous.uri_parser import (
+from pymongo.uri_parser import (
     _check_options,
     _handle_option_deprecations,
     _handle_security_options,
@@ -115,20 +108,22 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.read_concern import ReadConcern
+    from pymongo.response import Response
+    from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor import _ConnectionManager
-    from pymongo.synchronous.message import _CursorAddress, _GetMore, _Query
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.response import Response
     from pymongo.synchronous.server import Server
-    from pymongo.synchronous.server_selectors import Selection
 
 
 T = TypeVar("T")
 
 _WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
-_ReadCall = Callable[[Optional["ClientSession"], "Server", "Connection", _ServerMode], T]
+_ReadCall = Callable[
+    [Optional["ClientSession"], "Server", "Connection", _ServerMode],
+    T,
+]
 
 _IS_SYNC = True
 
@@ -1669,13 +1664,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if operation.conn_mgr:
             server = self._select_server(
                 operation.read_preference,
-                operation.session,
+                operation.session,  # type: ignore[arg-type]
                 operation.name,
                 address=address,
             )
 
             with operation.conn_mgr._alock:
-                with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
+                with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return server.run_operation(
                         operation.conn_mgr.conn,
@@ -1705,9 +1700,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._retryable_read(
             _cmd,
             operation.read_preference,
-            operation.session,
+            operation.session,  # type: ignore[arg-type]
             address=address,
-            retryable=isinstance(operation, message._Query),
+            retryable=isinstance(operation, _Query),
             operation=operation.name,
         )
 
@@ -1991,7 +1986,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     # can be caught in _process_periodic_tasks
                     raise
                 else:
-                    helpers._handle_exception()
+                    helpers_shared._handle_exception()
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
@@ -2003,7 +1998,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
                     else:
-                        helpers._handle_exception()
+                        helpers_shared._handle_exception()
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self) -> None:
@@ -2017,7 +2012,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return
             else:
-                helpers._handle_exception()
+                helpers_shared._handle_exception()
 
     def _return_server_session(
         self, server_session: Union[_ServerSession, _EmptyServerSession]
@@ -2227,7 +2222,7 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
             # Do not consult writeConcernError for pre-4.4 mongos.
             if isinstance(exc, WriteConcernError) and is_mongos:
                 pass
-            elif code in helpers_constants._RETRYABLE_ERROR_CODES:
+            elif code in helpers_shared._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
     # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
@@ -2383,7 +2378,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_code = getattr(exc, "code", None)
                         if self._is_not_eligible_for_retry() or (
                             isinstance(exc, OperationFailure)
-                            and exc_code not in helpers_constants._RETRYABLE_ERROR_CODES
+                            and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
                         ):
                             raise
                         self._retrying = True

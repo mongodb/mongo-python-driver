@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
-from pymongo.synchronous.logger import _DEFAULT_DOCUMENT_LENGTH
+from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
 
 
 # https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests

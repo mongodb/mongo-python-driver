@@ -37,9 +37,9 @@ from pymongo.errors import (
     NotPrimaryError,
     ServerSelectionTimeoutError,
 )
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.read_preferences import ReadPreference
 
 
 class JustWrite(threading.Thread):

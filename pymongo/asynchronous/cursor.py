@@ -36,14 +36,17 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo.asynchronous import helpers
-from pymongo.asynchronous.collation import validate_collation_or_none
-from pymongo.asynchronous.common import (
+from pymongo import helpers_shared
+from pymongo.asynchronous.helpers import anext
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
-from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.message import (
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import _ALock, _create_lock
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
@@ -52,21 +55,18 @@ from pymongo.asynchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
-from pymongo.asynchronous.response import PinnedResponse
-from pymongo.asynchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
-from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _ALock, _create_lock
+from pymongo.response import PinnedResponse
+from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.read_preferences import _ServerMode
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
 
@@ -74,8 +74,8 @@ _IS_SYNC = False
 class _ConnectionManager:
     """Used with exhaust cursors to ensure the connection is returned."""
 
-    def __init__(self, conn: Connection, more_to_come: bool):
-        self.conn: Optional[Connection] = conn
+    def __init__(self, conn: AsyncConnection, more_to_come: bool):
+        self.conn: Optional[AsyncConnection] = conn
         self.more_to_come = more_to_come
         self._alock = _ALock(_create_lock())
 
@@ -116,7 +116,7 @@ class AsyncCursor(Generic[_DocumentType]):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Optional[Any] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
     ) -> None:
@@ -134,7 +134,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self._exhaust = False
         self._sock_mgr: Any = None
         self._killed = False
-        self._session: Optional[ClientSession]
+        self._session: Optional[AsyncClientSession]
 
         if session:
             self._session = session
@@ -179,7 +179,7 @@ class AsyncCursor(Generic[_DocumentType]):
             allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
-            projection = helpers._fields_list_to_dict(projection, "projection")
+            projection = helpers_shared._fields_list_to_dict(projection, "projection")
 
         if let is not None:
             validate_is_document_type("let", let)
@@ -191,7 +191,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self._skip = skip
         self._limit = limit
         self._batch_size = batch_size
-        self._ordering = sort and helpers._index_document(sort) or None
+        self._ordering = sort and helpers_shared._index_document(sort) or None
         self._max_scan = max_scan
         self._explain = False
         self._comment = comment
@@ -313,7 +313,7 @@ class AsyncCursor(Generic[_DocumentType]):
         base.__dict__.update(data)
         return base
 
-    def _clone_base(self, session: Optional[ClientSession]) -> AsyncCursor:
+    def _clone_base(self, session: Optional[AsyncClientSession]) -> AsyncCursor:
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
@@ -742,8 +742,8 @@ class AsyncCursor(Generic[_DocumentType]):
             key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
         self._check_okay_to_chain()
-        keys = helpers._index_list(key_or_list, direction)
-        self._ordering = helpers._index_document(keys)
+        keys = helpers_shared._index_list(key_or_list, direction)
+        self._ordering = helpers_shared._index_document(keys)
         return self
 
     async def explain(self) -> _DocumentType:
@@ -774,7 +774,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if isinstance(index, str):
             self._hint = index
         else:
-            self._hint = helpers._index_document(index)
+            self._hint = helpers_shared._index_document(index)
 
     def hint(self, index: Optional[_Hint]) -> AsyncCursor[_DocumentType]:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
@@ -927,8 +927,8 @@ class AsyncCursor(Generic[_DocumentType]):
         return self._address
 
     @property
-    def session(self) -> Optional[ClientSession]:
-        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
+    def session(self) -> Optional[AsyncClientSession]:
+        """The cursor's :class:`~pymongo.client_session.AsyncClientSession`, or None.
 
         .. versionadded:: 3.6
         """
@@ -1122,7 +1122,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
 
         cmd_name = operation.name
         docs = response.docs

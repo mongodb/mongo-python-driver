@@ -40,22 +40,21 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.driver_info import DriverInfo
-from pymongo.errors import ConfigurationError
-from pymongo.read_concern import ReadConcern
-from pymongo.server_api import ServerApi
-from pymongo.synchronous.compression_support import (
+from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
 )
-from pymongo.synchronous.monitoring import _validate_event_listeners
-from pymongo.synchronous.read_preferences import _MONGOS_MODES, _ServerMode
+from pymongo.driver_info import DriverInfo
+from pymongo.errors import ConfigurationError
+from pymongo.monitoring import _validate_event_listeners
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
+from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
-    from pymongo.synchronous.client_session import ClientSession
+    from pymongo.typings import _AgnosticClientSession
 
-_IS_SYNC = True
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -69,7 +68,8 @@ MAX_WRITE_BATCH_SIZE = 1000
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "3.6"
 MIN_SUPPORTED_WIRE_VERSION = 6
-MAX_SUPPORTED_WIRE_VERSION = 21
+# MongoDB 8.0
+MAX_SUPPORTED_WIRE_VERSION = 25
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
@@ -380,7 +380,7 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
-    from pymongo.synchronous.auth import MECHANISMS
+    from pymongo.auth_shared import MECHANISMS
 
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
@@ -446,7 +446,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
-                from pymongo.synchronous.auth_oidc import OIDCCallback
+                from pymongo.auth_oidc_shared import OIDCCallback
 
                 if not isinstance(value, OIDCCallback):
                     raise ValueError("callback must be an OIDCCallback object")
@@ -642,7 +642,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     """Validate the driver keyword arg."""
     if value is None:
         return value
-    from pymongo.synchronous.encryption_options import AutoEncryptionOpts
+    from pymongo.encryption_options import AutoEncryptionOpts
 
     if not isinstance(value, AutoEncryptionOpts):
         raise TypeError(f"{option} must be an instance of AutoEncryptionOpts")
@@ -941,7 +941,7 @@ class BaseObject:
         """
         return self._write_concern
 
-    def _write_concern_for(self, session: Optional[ClientSession]) -> WriteConcern:
+    def _write_concern_for(self, session: Optional[_AgnosticClientSession]) -> WriteConcern:
         """Read only access to the write concern of this instance or session."""
         # Override this operation's write concern with the transaction's.
         if session and session.in_transaction:
@@ -957,7 +957,7 @@ class BaseObject:
         """
         return self._read_preference
 
-    def _read_preference_for(self, session: Optional[ClientSession]) -> _ServerMode:
+    def _read_preference_for(self, session: Optional[_AgnosticClientSession]) -> _ServerMode:
         """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:

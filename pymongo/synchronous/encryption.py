@@ -58,7 +58,9 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -68,19 +70,18 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
+from pymongo.operations import UpdateOne
+from pymongo.pool_options import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import CONNECT_TIMEOUT
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
-from pymongo.synchronous.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.operations import UpdateOne
-from pymongo.synchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
-from pymongo.synchronous.typings import _DocumentType, _DocumentTypeArg
-from pymongo.synchronous.uri_parser import parse_host
+from pymongo.synchronous.pool import _configured_socket, _raise_connection_failure
+from pymongo.typings import _DocumentType, _DocumentTypeArg
+from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -379,7 +380,10 @@ class _Encrypter:
         )
 
         io_callbacks = _EncryptionIO(  # type:ignore[misc]
-            metadata_client, key_vault_coll, mongocryptd_client, opts
+            metadata_client,
+            key_vault_coll,  # type:ignore[arg-type]
+            mongocryptd_client,
+            opts,
         )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
@@ -457,7 +461,14 @@ class Algorithm(str, enum.Enum):
     RANGE = "Range"
     """Range.
 
-    .. versionadded:: 4.8
+    .. versionadded:: 4.9
+    """
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - RangePreview.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
+
+    .. versionadded:: 4.4
     """
 
 
@@ -471,7 +482,18 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
     RANGE = "range"
-    """Used to encrypt a value for a range query."""
+    """Used to encrypt a value for a range query.
+
+    .. versionadded:: 4.9
+    """
+
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
+
+    .. versionadded:: 4.4
+    """
 
 
 def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
@@ -568,7 +590,7 @@ class ClientEncryption(Generic[_DocumentType]):
             raise ConfigurationError(
                 "client-side field level encryption requires the pymongocrypt "
                 "library: install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'"
+                "python -m pip install --upgrade 'pymongo[encryption]'"
             )
 
         if not isinstance(codec_options, CodecOptions):
@@ -841,7 +863,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
@@ -897,7 +919,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7

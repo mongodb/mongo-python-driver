@@ -43,13 +43,13 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunner
 
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.monitoring import (
+from pymongo.monitoring import (
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

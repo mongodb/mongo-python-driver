@@ -27,8 +27,11 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import unittest
-from test.synchronous import IntegrationTest, client_context
+from test import (  # TODO: fix sync imports in PYTHON-4528
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
@@ -46,6 +49,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
+from pymongo.bulk_shared import BulkWriteError
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
@@ -58,21 +62,20 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.synchronous.bulk import BulkWriteError
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import next
-from pymongo.synchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.operations import *
-from pymongo.synchronous.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
@@ -134,7 +137,7 @@ class TestCollectionNoConnect(unittest.TestCase):
             if _IS_SYNC:
                 msg = "'Collection' object is not iterable"
             else:
-                msg = "'AsyncCollection' object is not iterable"
+                msg = "'Collection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -461,8 +464,8 @@ class TestCollection(IntegrationTest):
     def test_index_haystack(self):
         db = self.db
         db.test.drop()
-        _id = db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})
