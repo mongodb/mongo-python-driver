@@ -62,7 +62,6 @@ from test.utils import (
     CMAPListener,
     FunctionCallRecorder,
     assertRaisesExactly,
-    asyncAssertRaisesExactly,
     delay,
     get_pool,
     gevent_monkey_patched,
@@ -1131,7 +1130,7 @@ class TestClient(IntegrationTest):
             f"mongodb://user:wrong@{host}/pymongo_test", connect=False
         )
 
-        asyncAssertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
+        assertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
 
     @client_context.require_no_tls
     def test_unix_socket(self):

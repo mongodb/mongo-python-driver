@@ -84,6 +84,7 @@ replacements = {
     "async_single_client": "single_client",
     "async_from_client": "from_client",
     "aclosing": "closing",
+    "asyncAssertRaisesExactly": "assertRaisesExactly",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
