@@ -937,15 +937,15 @@ class AsyncUnitTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
-    async def _setup_class(cls):
-        await cls._setup_class()
-
-    @classmethod
     def tearDownClass(cls):
         if _IS_SYNC:
             cls._tearDown_class()
         else:
             asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    async def _setup_class(cls):
+        await cls._setup_class()
 
     @classmethod
     async def _tearDown_class(cls):
@@ -965,6 +965,13 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             cls._setup_class()
         else:
             asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
 
     @classmethod
     @async_client_context.require_connection
@@ -1008,6 +1015,20 @@ class AsyncMockClientTest(AsyncUnitTest):
     # MockClients tests that use replicaSet, directConnection=True, pass
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
     @classmethod
     @async_client_context.require_no_load_balancer
     async def _setup_class(cls):
