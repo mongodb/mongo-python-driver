@@ -139,11 +139,12 @@ converted_tests = [
     "__init__.py",
     "conftest.py",
     "pymongo_mocks.py",
+    "utils_spec_runner.py",
     "test_collection.py",
     "test_client.py",
     "test_cursor.py",
+    "test_session.py",
     "test_transactions.py",
-    "utils_spec_runner.py",
 ]
 
 sync_test_files = [
