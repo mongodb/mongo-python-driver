@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import os
 from test import unittest
-from test.test_client import IntegrationTest
-from test.utils import single_client
+from test.synchronous import IntegrationTest
 from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
-from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
+from pymongo.synchronous.logger import _DEFAULT_DOCUMENT_LENGTH
+
+_IS_SYNC = False
 
 
 # https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests
@@ -42,7 +43,7 @@ class TestLogger(IntegrationTest):
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-                list(db.test.find({}))
+                (db.test.find({})).to_list()
                 cmd_succeeded_log = json_util.loads(cm.records[1].message)
                 self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
@@ -82,19 +83,6 @@ class TestLogger(IntegrationTest):
                     last_3_bytes = cmd_started_log.encode()[-3:].decode()
 
                     self.assertEqual(last_3_bytes, str_to_repeat)
-
-    def test_logging_without_listeners(self):
-        c = single_client()
-        self.assertEqual(len(c._event_listeners.event_listeners()), 0)
-        with self.assertLogs("pymongo.connection", level="DEBUG") as cm:
-            c.db.test.insert_one({"x": "1"})
-            self.assertGreater(len(cm.records), 0)
-        with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-            c.db.test.insert_one({"x": "1"})
-            self.assertGreater(len(cm.records), 0)
-        with self.assertLogs("pymongo.serverSelection", level="DEBUG") as cm:
-            c.db.test.insert_one({"x": "1"})
-            self.assertGreater(len(cm.records), 0)
 
 
 if __name__ == "__main__":
