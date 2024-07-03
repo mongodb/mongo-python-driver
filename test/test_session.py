@@ -215,7 +215,7 @@ class TestSession(IntegrationTest):
             def thread_target(op, *args):
                 res = op(*args)
                 if isinstance(res, (Cursor, CommandCursor)):
-                    list(res)
+                    list(res)  # type: ignore[call-overload]
 
             for op, args in ops:
                 threads.append(

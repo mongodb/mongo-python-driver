@@ -217,7 +217,7 @@ class TestSession(AsyncIntegrationTest):
             def thread_target(op, *args):
                 res = op(*args)
                 if isinstance(res, (AsyncCursor, AsyncCommandCursor)):
-                    list(res)
+                    list(res)  # type: ignore[call-overload]
 
             for op, args in ops:
                 threads.append(
