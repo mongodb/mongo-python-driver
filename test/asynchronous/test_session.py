@@ -40,6 +40,7 @@ from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
 from pymongo import ASCENDING, AsyncMongoClient, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
