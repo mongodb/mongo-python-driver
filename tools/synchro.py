@@ -133,6 +133,7 @@ converted_tests = [
     "conftest.py",
     "test_collection.py",
     "test_database.py",
+    "test_logger.py",
 ]
 
 sync_test_files = [
