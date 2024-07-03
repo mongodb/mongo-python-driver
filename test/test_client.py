@@ -1315,8 +1315,13 @@ class TestClient(IntegrationTest):
         # pool
         self.assertEqual(1, len((get_pool(client)).conns))
 
-        with contextlib.closing(client):
-            self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
+        if _IS_SYNC:
+            with contextlib.closing(client):
+                self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
+        # contextlib added closing in 3.10
+        elif not _IS_SYNC and sys.version_info >= (3, 10):
+            with contextlib.closing(client):
+                self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
         with self.assertRaises(InvalidOperation):
             client.pymongo_test.test.find_one()
         client = rs_or_single_client()

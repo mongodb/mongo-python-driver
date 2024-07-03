@@ -61,7 +61,6 @@ from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.utils import (
     CMAPListener,
     FunctionCallRecorder,
-    assertRaisesExactly,
     async_get_pool,
     async_rs_client,
     async_rs_or_single_client,
@@ -1358,8 +1357,13 @@ class TestClient(AsyncIntegrationTest):
         # pool
         self.assertEqual(1, len((await async_get_pool(client)).conns))
 
-        async with contextlib.aclosing(client):
-            self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
+        if _IS_SYNC:
+            with contextlib.closing(client):
+                self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
+        # contextlib added aclosing in 3.10
+        elif not _IS_SYNC and sys.version_info >= (3, 10):
+            async with contextlib.aclosing(client):
+                self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
         with self.assertRaises(InvalidOperation):
             await client.pymongo_test.test.find_one()
         client = await async_rs_or_single_client()
