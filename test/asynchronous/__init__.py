@@ -228,7 +228,7 @@ class AsyncClientContext:
             if self.auth_enabled:
                 if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
-                    if not self._check_user_provided():
+                    if not await self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = await self._connect(
