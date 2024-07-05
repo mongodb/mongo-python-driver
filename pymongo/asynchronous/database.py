@@ -489,7 +489,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
         :param session: a
             :class:`~pymongo.client_session.AsyncClientSession`.
-        :param `check_exists`: if True (the default), send a listCollections command to
+        :param check_exists: if True (the default), send a listCollections command to
             check if the collection already exists before creation.
         :param kwargs: additional keyword arguments will
             be passed as options for the `create collection command`_
@@ -949,7 +949,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
           read preference configured for the transaction.
           Otherwise, defaults to
           :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-        :param codec_options`: A :class:`~bson.codec_options.CodecOptions`
+        :param codec_options: A :class:`~bson.codec_options.CodecOptions`
           instance.
         :param session: A
           :class:`~pymongo.client_session.AsyncClientSession`.
