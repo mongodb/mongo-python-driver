@@ -83,8 +83,17 @@ from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_l
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
-from pymongo.operations import _Op
+from pymongo.operations import (
+    ClientDeleteMany,
+    ClientDeleteOne,
+    ClientInsertOne,
+    ClientReplaceOne,
+    ClientUpdateMany,
+    ClientUpdateOne,
+    _Op,
+)
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.results import BulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -109,12 +118,14 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.asynchronous.bulk import _AsyncBulk
+    from pymongo.asynchronous.client_bulk import _AsyncClientBulk
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
     from pymongo.asynchronous.cursor import _ConnectionManager
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.server_selectors import Selection
 
 
@@ -129,6 +140,15 @@ _ReadCall = Callable[
 ]
 
 _IS_SYNC = False
+
+_WriteOp = Union[
+    ClientInsertOne[_DocumentType],
+    ClientDeleteOne,
+    ClientDeleteMany,
+    ClientReplaceOne[_DocumentType],
+    ClientUpdateOne,
+    ClientUpdateMany,
+]
 
 
 class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -2203,6 +2223,78 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 parse_write_concern_error=True,
                 session=session,
             )
+
+    @_csot.apply
+    async def bulk_write(
+        self,
+        requests: Sequence[_WriteOp[_DocumentType]],
+        ordered: Optional[bool] = True,
+        bypass_document_validation: Optional[bool] = False,
+        session: Optional[AsyncClientSession] = None,
+        comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
+        write_concern: Optional[WriteConcern] = None,
+        verbose_results: Optional[bool] = False,
+    ) -> BulkWriteResult:
+        """Send a batch of write operations to the server.
+
+        Requests are passed as a list of write operation instances (
+        :class:`~pymongo.operations.ClientInsertOne`,
+        :class:`~pymongo.operations.ClientUpdateOne`,
+        :class:`~pymongo.operations.ClientUpdateMany`,
+        :class:`~pymongo.operations.ClientReplaceOne`,
+        :class:`~pymongo.operations.ClientDeleteOne`, or
+        :class:`~pymongo.operations.ClientDeleteMany`).
+
+        :param requests: A list of write operation instances.
+        :param ordered: (optional) If ``True`` (the default) requests will be
+            performed on the server serially, in the order provided. If an error
+            occurs all remaining operations are aborted. If ``False`` requests
+            will be performed on the server in arbitrary order, possibly in
+            parallel, and all operations will be attempted.
+        :param bypass_document_validation: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is ``False``.
+        :param session: a
+            :class:`~pymongo.client_session.AsyncClientSession`.
+        :param comment: (optional) A user-provided comment to attach to this
+            command.
+        :param let: (optional) Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. "$$var").
+        :param write_concern: (optional) The write concern to use for this bulk write.
+        :param verbose_results: (optional) If ``True``, detailed results for each
+            successful operation will be included in the returned
+            :class:`~pymongo.results.BulkWriteResult`. Default is ``False``.
+
+        :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
+
+        .. seealso:: :ref:`writes-and-ids`
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+        """
+        common.validate_list("requests", requests)
+
+        blk = _AsyncClientBulk(
+            self,
+            ordered=ordered,
+            bypass_document_validation=bypass_document_validation,
+            comment=comment,
+            let=let,
+            write_concern=write_concern,
+            verbose_results=verbose_results,
+        )
+        for request in requests:
+            try:
+                request._add_to_bulk(blk)
+            except AttributeError:
+                raise TypeError(f"{request!r} is not a valid request") from None
+
+        bulk_api_result = await blk.execute(write_concern, session, _Op.INSERT)
+        if bulk_api_result is not None:
+            return ClientBulkWriteResult(bulk_api_result, True)
+        return ClientBulkWriteResult({}, False)
 
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:

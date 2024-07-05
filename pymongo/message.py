@@ -696,6 +696,21 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         return _MAX_SPLIT_SIZE_ENC
 
 
+class _ClientBulkWriteContext(_BulkWriteContext):
+    __slots__ = ()
+
+    def batch_command(
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
+        namespace = self.db_name + ".$cmd"
+        request_id, msg, to_send = _do_batched_op_msg(
+            namespace, self.op_type, cmd, docs, self.codec, self
+        )
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+        return request_id, msg, to_send
+
+
 def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> NoReturn:
     """Internal helper for raising DocumentTooLarge."""
     if operation == "insert":

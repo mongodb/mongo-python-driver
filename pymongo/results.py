@@ -84,6 +84,26 @@ class InsertOneResult(_WriteResult):
         return self.__inserted_id
 
 
+class ClientInsertOneResult(_WriteResult):
+    """The return type used in the result of
+    :meth:`~pymongo.MongoClient.bulk_write`
+    for insert_one operations in the bulk write.
+    """
+
+    __slots__ = ("__inserted_id",)
+
+    def __init__(self, inserted_id: Any) -> None:
+        self.__inserted_id = inserted_id
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__inserted_id!r})"
+
+    @property
+    def inserted_id(self) -> Any:
+        """The inserted document's _id."""
+        return self.__inserted_id
+
+
 class InsertManyResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.insert_many`."""
 
@@ -156,6 +176,55 @@ class UpdateResult(_WriteResult):
         return self.__raw_result.get("upserted")
 
 
+class ClientUpdateResult(_WriteResult):
+    """The return type used in the result of
+    :meth:`~pymongo.MongoClient.bulk_write`
+    for update_one, update_many, and
+    replace_one operations in the bulk write.
+    """
+
+    __slots__ = ("__raw_result",)
+
+    def __init__(self, raw_result: Optional[Mapping[str, Any]]):
+        self.__raw_result = raw_result
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r})"
+
+    @property
+    def raw_result(self) -> Optional[Mapping[str, Any]]:
+        """The raw result document returned by the server."""
+        return self.__raw_result
+
+    @property
+    def matched_count(self) -> int:
+        """The number of documents matched for this update."""
+        if self.upserted_id is not None:
+            return 0
+        assert self.__raw_result is not None
+        return self.__raw_result.get("n", 0)
+
+    @property
+    def modified_count(self) -> int:
+        """The number of documents modified."""
+        assert self.__raw_result is not None
+        return cast(int, self.__raw_result.get("nModified"))
+
+    @property
+    def upserted_id(self) -> Any:
+        """The _id of the inserted document if an upsert took place. Otherwise
+        ``None``.
+        """
+        assert self.__raw_result is not None
+        return self.__raw_result.get("upserted")
+
+    @property
+    def did_upsert(self) -> bool:
+        """Whether or not an upsert took place."""
+        assert self.__raw_result is not None
+        return len(self.__raw_result.get("upserted")) > 1
+
+
 class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
     and :meth:`~pymongo.collection.Collection.delete_many`
@@ -179,6 +248,32 @@ class DeleteResult(_WriteResult):
     def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
+        return self.__raw_result.get("n", 0)
+
+
+class ClientDeleteResult(_WriteResult):
+    """The return type used in the result of
+    :meth:`~pymongo.MongoClient.bulk_write`
+    for delete_one and delete_many
+    operations in the bulk write.
+    """
+
+    __slots__ = ("__raw_result",)
+
+    def __init__(self, raw_result: Mapping[str, Any]) -> None:
+        self.__raw_result = raw_result
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__raw_result!r})"
+
+    @property
+    def raw_result(self) -> Mapping[str, Any]:
+        """The raw result document returned by the server."""
+        return self.__raw_result
+
+    @property
+    def deleted_count(self) -> int:
+        """The number of documents deleted."""
         return self.__raw_result.get("n", 0)
 
 
@@ -242,4 +337,102 @@ class BulkWriteResult(_WriteResult):
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
             return {upsert["index"]: upsert["_id"] for upsert in self.bulk_api_result["upserted"]}
+        return None
+
+
+class ClientBulkWriteResult(_WriteResult):
+    """An object wrapper for client-level bulk API write results."""
+
+    __slots__ = ("__bulk_api_result", "__has_verbose_results")
+
+    def __init__(
+        self, bulk_api_result: dict[str, Any], acknowledged: bool, has_verbose_results: bool
+    ) -> None:
+        """Create a ClientBulkWriteResult instance.
+
+        :param bulk_api_result: A result dict from the client-level bulk API
+        :param acknowledged: Was this write result acknowledged? If ``False``
+            then all properties of this object will raise
+            :exc:`~pymongo.errors.InvalidOperation`.
+        :param has_verbose_results: Should the returned result be verbose?
+            If ``False`` then the insert_results, update_results, and
+            delete_results properties of this object will raise
+            :exc:`~pymongo.errors.InvalidOperation`.
+        """
+        self.__bulk_api_result = bulk_api_result
+        self.__has_verbose_results = has_verbose_results
+        super().__init__(acknowledged)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged}, verbose={self.__has_verbose_results})"
+
+    def _raise_if_not_verbose(self, property_name: str) -> None:
+        """Raise an exception on property access if verbose results are off."""
+        if not self.__has_verbose_results:
+            raise InvalidOperation(
+                f"A value for {property_name} is not available when "
+                "the results are not set to be verbose. Check the "
+                "verbose_results attribute to avoid this error."
+            )
+
+    @property
+    def bulk_api_result(self) -> dict[str, Any]:
+        """The raw bulk API result."""
+        return self.__bulk_api_result
+
+    @property
+    def inserted_count(self) -> int:
+        """The number of documents inserted."""
+        self._raise_if_unacknowledged("inserted_count")
+        return cast(int, self.__bulk_api_result.get("nInserted"))
+
+    @property
+    def matched_count(self) -> int:
+        """The number of documents matched for an update."""
+        self._raise_if_unacknowledged("matched_count")
+        return cast(int, self.__bulk_api_result.get("nMatched"))
+
+    @property
+    def modified_count(self) -> int:
+        """The number of documents modified."""
+        self._raise_if_unacknowledged("modified_count")
+        return cast(int, self.__bulk_api_result.get("nModified"))
+
+    @property
+    def deleted_count(self) -> int:
+        """The number of documents deleted."""
+        self._raise_if_unacknowledged("deleted_count")
+        return cast(int, self.__bulk_api_result.get("nRemoved"))
+
+    @property
+    def upserted_count(self) -> int:
+        """The number of documents upserted."""
+        self._raise_if_unacknowledged("upserted_count")
+        return cast(int, self.__bulk_api_result.get("nUpserted"))
+
+    @property
+    def insert_results(self) -> dict[int, ClientInsertOneResult]:
+        """A map of successful insertion ops to their results."""
+        self._raise_if_unacknowledged("insert_results")
+        self._raise_if_not_verbose("insert_results")
+        if self.__bulk_api_result:
+            pass  # TODO
+        return None
+
+    @property
+    def update_results(self) -> dict[int, ClientUpdateResult]:
+        """A map of successful update ops to their results."""
+        self._raise_if_unacknowledged("update_results")
+        self._raise_if_not_verbose("update_results")
+        if self.__bulk_api_result:
+            pass  # TODO
+        return None
+
+    @property
+    def delete_results(self) -> dict[int, ClientDeleteResult]:
+        """A map of successful delete ops to their results."""
+        self._raise_if_unacknowledged("delete_results")
+        self._raise_if_not_verbose("delete_results")
+        if self.__bulk_api_result:
+            pass  # TODO
         return None
