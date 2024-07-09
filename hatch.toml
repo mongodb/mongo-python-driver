@@ -8,7 +8,7 @@ serve = "sphinx-autobuild -W -b html doc --watch ./pymongo --watch ./bson --watc
 linkcheck = "sphinx-build -E -b linkcheck doc ./doc/_build/linkcheck"
 
 [envs.doctest]
-features = ["docs","tests"]
+features = ["docs","test"]
 [envs.doctests.scripts]
 test = "sphinx-build -E -b doctest doc ./doc/_build/doctest"
 
