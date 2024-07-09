@@ -375,7 +375,7 @@ functions:
          script: |
            ${PREPARE_SHELL}
            set -o xtrace
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh -m doctest:test
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
 
   "run tests":
     - command: shell.exec
