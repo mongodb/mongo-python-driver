@@ -9,7 +9,7 @@ linkcheck = "sphinx-build -E -b linkcheck doc ./doc/_build/linkcheck"
 
 [envs.doctest]
 features = ["docs","test"]
-[envs.doctests.scripts]
+[envs.doctest.scripts]
 test = "sphinx-build -E -b doctest doc ./doc/_build/doctest"
 
 [envs.typing]
