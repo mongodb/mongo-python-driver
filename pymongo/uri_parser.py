@@ -502,6 +502,8 @@ def parse_uri(
 
     if dbase:
         dbase = unquote_plus(dbase)
+        if "/" == dbase[0]:
+            dbase = dbase[1:]
         if "." in dbase:
             dbase, collection = dbase.split(".", 1)
         if _BAD_DB_CHARS.search(dbase):
