@@ -30,7 +30,7 @@ jobs:
           python -m pip install -U pip hatch
       - name: Run linters
         run: |
-          hatch -m lint:run-manual
+          hatch run lint:run-manual
       - name: Run compilation
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
@@ -38,7 +38,7 @@ jobs:
           python tools/fail_if_no_c.py
       - name: Run typecheck
         run: |
-          hatch -m typing:check
+          hatch run typing:check
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
@@ -63,7 +63,7 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install -y pip hatch
+          pip install -U pip hatch
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
