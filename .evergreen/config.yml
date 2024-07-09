@@ -382,12 +382,12 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        background: true
+        include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
-            . .evergreen/hatch.sh encryption:setup
-            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
+            ./.evergreen/hatch.sh encryption:setup
           fi
     - command: shell.exec
       type: test
@@ -408,6 +408,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
+            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
             export TEST_ENCRYPTION=1
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1

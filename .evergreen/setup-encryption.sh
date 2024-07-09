@@ -51,4 +51,4 @@ ls -la libmongocrypt
 ls -la libmongocrypt/nocrypto
 
 bash ${DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh
-bash ${DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh &
+bash ${DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh

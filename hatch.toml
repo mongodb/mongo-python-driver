@@ -47,5 +47,5 @@ test-mockupdb = ["pip install -U git+https://github.com/ajdavis/mongo-mockup-db@
 [envs.encryption]
 skip-install = true
 [envs.encryption.scripts]
-setup = "bash .evergreen/setup-libmongocrypt.sh"
-teardown = "bash .evergreen/teardown-libmongocrypt.sh"
+setup = "bash .evergreen/setup-encryption.sh"
+teardown = "bash .evergreen/teardown-encryption.sh"
