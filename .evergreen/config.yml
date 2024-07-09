@@ -387,7 +387,7 @@ functions:
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
             . .evergreen/hatch.sh encryption:setup
-            bash ${DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
           fi
     - command: shell.exec
       type: test
