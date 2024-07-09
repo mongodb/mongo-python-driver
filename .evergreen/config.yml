@@ -365,7 +365,7 @@ functions:
           ${PREPARE_SHELL}
           set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-mockupdb
+          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -375,7 +375,7 @@ functions:
          script: |
            ${PREPARE_SHELL}
            set -o xtrace
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m doc-test
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh -m doctest:test
 
   "run tests":
     - command: shell.exec
@@ -386,7 +386,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           if [ -n "${test_encryption}" ]; then
-            . .evergreen/tox.sh -m setup-encryption
+            . .evergreen/hatch.sh encryption:setup
           fi
     - command: shell.exec
       type: test
@@ -446,7 +446,7 @@ functions:
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -462,7 +462,7 @@ functions:
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
             AUTH=auth \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run atlas tests":
     - command: shell.exec
@@ -478,7 +478,7 @@ functions:
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
-            bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "get aws auth secrets":
     - command: subprocess.exec
@@ -597,7 +597,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          . .evergreen/tox.sh -m teardown-encryption
+          . .evergreen/hatch.sh encryption:teardown
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
@@ -683,7 +683,7 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/tox.sh -m test-eg
+          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec
@@ -2128,7 +2128,7 @@ tasks:
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/tox.sh -m test-eg
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
 
     - name: testazurekms-task
       commands:
