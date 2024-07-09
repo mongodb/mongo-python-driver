@@ -22,12 +22,12 @@ check-mypy = [
     "mypy --install-types --non-interactive test/test_typing.py test/test_typing_strict.py"
 ]
 check-pyright = ["rm -f pyrightconfig.json", "pyright test/test_typing.py test/test_typing_strict.py"]
-check-pyright-strict = [
+check-string-pyright = [
     "echo '{\"strict\": [\"tests/test_typing_strict.py\"]}' > pyrightconfig.json",
     "pyright test/test_typing_strict.py",
     "rm -f pyrightconfig.json"
 ]
-check = ["check-mypy", "check-pyright", "check-pyright-strict"]
+check = ["check-mypy", "check-pyright", "check-strict-pyright"]
 
 [envs.lint]
 skip-install = true
