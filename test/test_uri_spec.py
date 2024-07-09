@@ -24,7 +24,8 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from test import clear_warning_registry, unittest
+from test import unittest
+from test.helpers import clear_warning_registry
 
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
 from pymongo.compression_support import _have_snappy

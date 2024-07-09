@@ -30,7 +30,7 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
-from test import (
+from test.helpers import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -41,13 +41,14 @@ from test import (
     SystemCertsPatcher,
     _all_users,
     _create_user,
+    client_knobs,
     db_pwd,
     db_user,
     global_knobs,
     host,
     is_server_resolvable,
     port,
-    print_running_clients,
+    print_running_topology,
     print_thread_stacks,
     print_thread_tracebacks,
     sanitize_cmd,
@@ -113,6 +114,7 @@ class AsyncClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self._fips_enabled = None
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -189,8 +191,7 @@ class AsyncClientContext:
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info: Any = await self.client.admin.command("buildInfo")
-            if "dataLake" in build_info:
+            if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = await self._connect(host, port, username=db_user, password=db_pwd)
@@ -227,7 +228,7 @@ class AsyncClientContext:
             if self.auth_enabled:
                 if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
-                    if not self._check_user_provided():
+                    if not await self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = await self._connect(
@@ -362,6 +363,17 @@ class AsyncClientContext:
         except AttributeError:
             # Raised if self.server_status is None.
             return None
+
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
+            self._fips_enabled = True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            self._fips_enabled = False
+        return self._fips_enabled
 
     def check_auth_type(self, auth_type):
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
@@ -528,12 +540,24 @@ class AsyncClientContext:
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
         )
 
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
+        )
+
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
         return self._require(
             lambda: not self.auth_enabled,
             "Authentication must not be enabled on the server",
             func=func,
+        )
+
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_replica_set(self, func):
@@ -937,6 +961,35 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
+class AsyncMockClientTest(unittest.TestCase):
+    """Base class for TestCases that use MockClient.
+
+    This class is *not* an IntegrationTest: if properly written, MockClient
+    tests do not require a running server.
+
+    The class temporarily overrides HEARTBEAT_FREQUENCY to speed up tests.
+    """
+
+    # MockClients tests that use replicaSet, directConnection=True, pass
+    # multiple seed addresses, or wait for heartbeat events are incompatible
+    # with loadBalanced=True.
+    @classmethod
+    @async_client_context.require_no_load_balancer
+    def setUpClass(cls):
+        pass
+
+    def setUp(self):
+        super().setUp()
+
+        self.client_knobs = client_knobs(heartbeat_frequency=0.001, min_heartbeat_interval=0.001)
+
+        self.client_knobs.enable()
+
+    def tearDown(self):
+        self.client_knobs.disable()
+        super().tearDown()
+
+
 async def async_setup():
     await async_client_context.init()
     warnings.resetwarnings()
@@ -976,3 +1029,27 @@ def test_cases(suite):
         else:
             # unittest.TestSuite
             yield from test_cases(suite_or_case)
+
+
+def print_running_clients():
+    from pymongo.asynchronous.topology import Topology
+
+    processed = set()
+    # Avoid false positives on the main test client.
+    # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
+    c = async_client_context.client
+    if c:
+        processed.add(c._topology._topology_id)
+    # Call collect to manually cleanup any would-be gc'd clients to avoid
+    # false positives.
+    gc.collect()
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, Topology):
+                # Avoid printing the same Topology multiple times.
+                if obj._topology_id in processed:
+                    continue
+                print_running_topology(obj)
+                processed.add(obj._topology_id)
+        except ReferenceError:
+            pass
