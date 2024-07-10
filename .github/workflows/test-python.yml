@@ -51,7 +51,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.8", "3.11", "pypy-3.9"]
+        python-version: ["3.8", "pypy-3.9", "3.13"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -61,13 +61,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          allow-prereleases: true
       - name: Install dependencies
         run: |
           pip install -q tox
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: 6.0
       - name: Run tests
         run: |
           tox -m test

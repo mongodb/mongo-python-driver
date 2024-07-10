@@ -553,6 +553,12 @@ class AsyncClientContext:
             func=func,
         )
 
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
+        )
+
     def require_replica_set(self, func):
         """Run a test only if the client is connected to a replica set."""
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
