@@ -143,6 +143,7 @@ converted_tests = [
     "pymongo_mocks.py",
     "test_client.py",
     "test_collection.py",
+    "test_cursor.py",
     "test_database.py",
 ]
 
