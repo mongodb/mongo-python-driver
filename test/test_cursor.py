@@ -23,14 +23,13 @@ import re
 import sys
 import threading
 import time
-from test import IntegrationTest, client_context
 from typing import Any
 
 import pymongo
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import (
     AllowListEventListener,
     EventListener,
@@ -252,8 +251,11 @@ class TestCursor(IntegrationTest):
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
-        # Tailable_await with max_time_ms
-        (coll.find(cursor_type=CursorType.TAILABLE_AWAIT)).max_time_ms(99).to_list()
+        # Tailable_await with max_time_ms and make sure list() works on synchronous cursors
+        if _IS_SYNC:
+            list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
+        else:
+            (coll.find(cursor_type=CursorType.TAILABLE_AWAIT)).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
         self.assertTrue("maxTimeMS" in listener.started_events[0].command)
