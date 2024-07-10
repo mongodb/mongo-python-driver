@@ -84,7 +84,7 @@ replacements = {
     "aclosing": "closing",
     "asyncAssertRaisesExactly": "assertRaisesExactly",
     "get_async_mock_client": "get_mock_client",
-    "aconnect": "connect",
+    "aconnect": "_connect",
     "aclose": "close",
 }
 

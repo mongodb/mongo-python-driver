@@ -860,7 +860,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-    def connect(self) -> None:
+    def _connect(self) -> None:
         """Explicitly connect to MongoDB synchronously instead of on the first operation."""
         self._get_topology()
 
