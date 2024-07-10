@@ -623,7 +623,7 @@ async def _async_mongo_client(host, port, authenticate=True, directConnection=No
             client_options["password"] = db_pwd
     client = AsyncMongoClient(uri, port, **client_options)
     if client._options.connect:
-        await client.connect()
+        await client.aconnect()
     return client
 
 
@@ -1018,6 +1018,63 @@ async def async_get_pools(client):
             any_server_selector, _Op.TEST
         )
     ]
+
+
+# Constants for run_threads and lazy_client_trial.
+NTRIALS = 5
+NTHREADS = 10
+
+
+def run_threads(collection, target):
+    """Run a target function in many threads.
+
+    target is a function taking a Collection and an integer.
+    """
+    threads = []
+    for i in range(NTHREADS):
+        bound_target = partial(target, collection, i)
+        threads.append(threading.Thread(target=bound_target))
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join(60)
+        assert not t.is_alive()
+
+
+@contextlib.contextmanager
+def frequent_thread_switches():
+    """Make concurrency bugs more likely to manifest."""
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+
+    try:
+        yield
+    finally:
+        sys.setswitchinterval(interval)
+
+
+def lazy_client_trial(reset, target, test, get_client):
+    """Test concurrent operations on a lazily-connecting client.
+
+    `reset` takes a collection and resets it for the next trial.
+
+    `target` takes a lazily-connecting collection and an index from
+    0 to NTHREADS, and performs some operation, e.g. an insert.
+
+    `test` takes the lazily-connecting collection and asserts a
+    post-condition to prove `target` succeeded.
+    """
+    collection = client_context.client.pymongo_test.test
+
+    with frequent_thread_switches():
+        for _i in range(NTRIALS):
+            reset(collection)
+            lazy_client = get_client()
+            lazy_collection = lazy_client.pymongo_test.test
+            run_threads(lazy_collection, target)
+            test(lazy_collection)
 
 
 def gevent_monkey_patched():

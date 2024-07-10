@@ -43,7 +43,6 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import (
     HAVE_IPADDRESS,
-    NTHREADS,
     AsyncIntegrationTest,
     AsyncMockClientTest,
     AsyncUnitTest,
@@ -53,15 +52,14 @@ from test.asynchronous import (
     connected,
     db_pwd,
     db_user,
-    lazy_client_trial,
     remove_all_users,
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.utils import (
+    NTHREADS,
     CMAPListener,
     FunctionCallRecorder,
-    assertRaisesExactly,
     async_get_pool,
     async_rs_client,
     async_rs_or_single_client,
@@ -72,6 +70,7 @@ from test.utils import (
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
+    lazy_client_trial,
     one,
     rs_or_single_client,
     wait_until,
@@ -92,6 +91,7 @@ from pymongo import event_loggers, message, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.asynchronous.pool import (
     AsyncConnection,
@@ -1357,15 +1357,17 @@ class TestClient(AsyncIntegrationTest):
         # pool
         self.assertEqual(1, len((await async_get_pool(client)).conns))
 
-        async with contextlib.aclosing(client):
-            self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
-        with self.assertRaises(InvalidOperation):
-            await client.pymongo_test.test.find_one()
-        client = await async_rs_or_single_client()
-        async with client as client:
-            self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
-        with self.assertRaises(InvalidOperation):
-            await client.pymongo_test.test.find_one()
+        # contextlib async support was added in Python 3.10
+        if _IS_SYNC or sys.version_info >= (3, 10):
+            async with contextlib.aclosing(client):
+                self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
+            with self.assertRaises(InvalidOperation):
+                await client.pymongo_test.test.find_one()
+            client = await async_rs_or_single_client()
+            async with client as client:
+                self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
+            with self.assertRaises(InvalidOperation):
+                await client.pymongo_test.test.find_one()
 
     @async_client_context.require_sync
     def test_interrupt_signal(self):
@@ -1418,7 +1420,7 @@ class TestClient(AsyncIntegrationTest):
             raised = False
             try:
                 # Will be interrupted by a KeyboardInterrupt.
-                next(db.foo.find({"$where": where}))
+                next(db.foo.find({"$where": where}))  # type: ignore[call-overload]
             except KeyboardInterrupt:
                 raised = True
 
@@ -1429,7 +1431,7 @@ class TestClient(AsyncIntegrationTest):
             # Raises AssertionError due to PYTHON-294 -- Mongo's response to
             # the previous find() is still waiting to be read on the socket,
             # so the request id's don't match.
-            self.assertEqual({"_id": 1}, next(db.foo.find()))
+            self.assertEqual({"_id": 1}, next(db.foo.find()))  # type: ignore[call-overload]
         finally:
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)

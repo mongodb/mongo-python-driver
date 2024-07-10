@@ -861,8 +861,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
-    async def connect(self):
-        """Explicitly connect asynchronously."""
+    async def aconnect(self) -> None:
+        """Explicitly connect to MongoDB asynchronously instead of on the first operation."""
         await self._get_topology()
 
     def _init_background(self, old_pid: Optional[int] = None) -> None:
@@ -1494,7 +1494,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # command.
             pass
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         """Cleanup client resources and disconnect from MongoDB.
 
         End all server sessions created by this client by sending one or more
@@ -1520,9 +1520,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
-
-    async def aclose(self) -> None:
-        await self.close()
 
     async def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.

@@ -860,8 +860,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-    def connect(self):
-        """Explicitly connect synchronously."""
+    def connect(self) -> None:
+        """Explicitly connect to MongoDB synchronously instead of on the first operation."""
         self._get_topology()
 
     def _init_background(self, old_pid: Optional[int] = None) -> None:
@@ -1515,9 +1515,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-
-    def aclose(self) -> None:
-        self.close()
 
     def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.

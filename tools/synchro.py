@@ -82,6 +82,10 @@ replacements = {
     "async_single_client": "single_client",
     "async_from_client": "from_client",
     "aclosing": "closing",
+    "asyncAssertRaisesExactly": "assertRaisesExactly",
+    "get_async_mock_client": "get_mock_client",
+    "aconnect": "connect",
+    "aclose": "close",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -137,8 +141,8 @@ converted_tests = [
     "__init__.py",
     "conftest.py",
     "pymongo_mocks.py",
-    "test_collection.py",
     "test_client.py",
+    "test_collection.py",
 ]
 
 sync_test_files = [

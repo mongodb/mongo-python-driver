@@ -43,7 +43,6 @@ sys.path[0:0] = [""]
 
 from test import (
     HAVE_IPADDRESS,
-    NTHREADS,
     IntegrationTest,
     MockClientTest,
     SkipTest,
@@ -53,20 +52,20 @@ from test import (
     connected,
     db_pwd,
     db_user,
-    lazy_client_trial,
     remove_all_users,
     unittest,
 )
 from test.pymongo_mocks import MockClient
 from test.utils import (
+    NTHREADS,
     CMAPListener,
     FunctionCallRecorder,
     assertRaisesExactly,
-    asyncAssertRaisesExactly,
     delay,
     get_pool,
     gevent_monkey_patched,
     is_greenthread_patched,
+    lazy_client_trial,
     one,
     rs_client,
     rs_or_single_client,
@@ -112,6 +111,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import (
     Connection,
@@ -1130,7 +1130,7 @@ class TestClient(IntegrationTest):
             f"mongodb://user:wrong@{host}/pymongo_test", connect=False
         )
 
-        asyncAssertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
+        assertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
 
     @client_context.require_no_tls
     def test_unix_socket(self):
@@ -1315,15 +1315,17 @@ class TestClient(IntegrationTest):
         # pool
         self.assertEqual(1, len((get_pool(client)).conns))
 
-        with contextlib.closing(client):
-            self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
-        with self.assertRaises(InvalidOperation):
-            client.pymongo_test.test.find_one()
-        client = rs_or_single_client()
-        with client as client:
-            self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
-        with self.assertRaises(InvalidOperation):
-            client.pymongo_test.test.find_one()
+        # contextlib async support was added in Python 3.10
+        if _IS_SYNC or sys.version_info >= (3, 10):
+            with contextlib.closing(client):
+                self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
+            with self.assertRaises(InvalidOperation):
+                client.pymongo_test.test.find_one()
+            client = rs_or_single_client()
+            with client as client:
+                self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
+            with self.assertRaises(InvalidOperation):
+                client.pymongo_test.test.find_one()
 
     @client_context.require_sync
     def test_interrupt_signal(self):
@@ -1376,7 +1378,7 @@ class TestClient(IntegrationTest):
             raised = False
             try:
                 # Will be interrupted by a KeyboardInterrupt.
-                next(db.foo.find({"$where": where}))
+                next(db.foo.find({"$where": where}))  # type: ignore[call-overload]
             except KeyboardInterrupt:
                 raised = True
 
@@ -1387,7 +1389,7 @@ class TestClient(IntegrationTest):
             # Raises AssertionError due to PYTHON-294 -- Mongo's response to
             # the previous find() is still waiting to be read on the socket,
             # so the request id's don't match.
-            self.assertEqual({"_id": 1}, next(db.foo.find()))
+            self.assertEqual({"_id": 1}, next(db.foo.find()))  # type: ignore[call-overload]
         finally:
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)
@@ -2261,7 +2263,7 @@ class TestClientLazyConnect(IntegrationTest):
 
 class TestMongoClientFailover(MockClientTest):
     def test_discover_primary(self):
-        c = MockClient.get_async_mock_client(
+        c = MockClient.get_mock_client(
             standalones=[],
             members=["a:1", "b:2", "c:3"],
             mongoses=[],
@@ -2287,7 +2289,7 @@ class TestMongoClientFailover(MockClientTest):
 
     def test_reconnect(self):
         # Verify the node list isn't forgotten during a network failure.
-        c = MockClient.get_async_mock_client(
+        c = MockClient.get_mock_client(
             standalones=[],
             members=["a:1", "b:2", "c:3"],
             mongoses=[],
@@ -2396,7 +2398,7 @@ class TestClientPool(MockClientTest):
     @client_context.require_connection
     def test_rs_client_does_not_maintain_pool_to_arbiters(self):
         listener = CMAPListener()
-        c = MockClient.get_async_mock_client(
+        c = MockClient.get_mock_client(
             standalones=[],
             members=["a:1", "b:2", "c:3", "d:4"],
             mongoses=[],
@@ -2427,7 +2429,7 @@ class TestClientPool(MockClientTest):
     @client_context.require_connection
     def test_direct_client_maintains_pool_to_arbiter(self):
         listener = CMAPListener()
-        c = MockClient.get_async_mock_client(
+        c = MockClient.get_mock_client(
             standalones=[],
             members=["a:1", "b:2", "c:3"],
             mongoses=[],

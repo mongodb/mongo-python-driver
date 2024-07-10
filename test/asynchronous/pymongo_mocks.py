@@ -166,7 +166,7 @@ class AsyncMockClient(AsyncMongoClient):
             standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
         )
 
-        await c.connect()
+        await c.aconnect()
         return c
 
     def kill_host(self, host):

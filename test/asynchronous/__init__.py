@@ -303,7 +303,7 @@ class AsyncClientContext:
                         params = self.cmd_line["parsed"].get("setParameter", {})
                         if params.get("enableTestCommands") == "1":
                             self.test_commands_enabled = True
-                    self.has_ipv6 = self._server_started_with_ipv6()
+                    self.has_ipv6 = await self._server_started_with_ipv6()
 
             self.is_mongos = (await self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
@@ -931,15 +931,15 @@ class AsyncUnitTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
-    async def _setup_class(cls):
-        await cls._setup_class()
-
-    @classmethod
     def tearDownClass(cls):
         if _IS_SYNC:
             cls._tearDown_class()
         else:
             asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    async def _setup_class(cls):
+        await cls._setup_class()
 
     @classmethod
     async def _tearDown_class(cls):
@@ -961,6 +961,13 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
     @async_client_context.require_connection
     async def _setup_class(cls):
         if async_client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
@@ -973,6 +980,10 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             cls.credentials = {"username": db_user, "password": db_pwd}
         else:
             cls.credentials = {}
+
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
 
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
@@ -998,6 +1009,20 @@ class AsyncMockClientTest(AsyncUnitTest):
     # MockClients tests that use replicaSet, directConnection=True, pass
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
     @classmethod
     @async_client_context.require_no_load_balancer
     async def _setup_class(cls):
@@ -1117,60 +1142,3 @@ async def drop_collections(db: AsyncDatabase):
 
 async def remove_all_users(db: AsyncDatabase):
     await db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": async_client_context.w})
-
-
-# Constants for run_threads and lazy_client_trial.
-NTRIALS = 5
-NTHREADS = 10
-
-
-def run_threads(collection, target):
-    """Run a target function in many threads.
-
-    target is a function taking a Collection and an integer.
-    """
-    threads = []
-    for i in range(NTHREADS):
-        bound_target = partial(target, collection, i)
-        threads.append(threading.Thread(target=bound_target))
-
-    for t in threads:
-        t.start()
-
-    for t in threads:
-        t.join(60)
-        assert not t.is_alive()
-
-
-@contextlib.contextmanager
-def frequent_thread_switches():
-    """Make concurrency bugs more likely to manifest."""
-    interval = sys.getswitchinterval()
-    sys.setswitchinterval(1e-6)
-
-    try:
-        yield
-    finally:
-        sys.setswitchinterval(interval)
-
-
-def lazy_client_trial(reset, target, test, get_client):
-    """Test concurrent operations on a lazily-connecting client.
-
-    `reset` takes a collection and resets it for the next trial.
-
-    `target` takes a lazily-connecting collection and an index from
-    0 to NTHREADS, and performs some operation, e.g. an insert.
-
-    `test` takes the lazily-connecting collection and asserts a
-    post-condition to prove `target` succeeded.
-    """
-    collection = async_client_context.client.pymongo_test.test
-
-    with frequent_thread_switches():
-        for _i in range(NTRIALS):
-            reset(collection)
-            lazy_client = get_client()
-            lazy_collection = lazy_client.pymongo_test.test
-            run_threads(lazy_collection, target)
-            test(lazy_collection)

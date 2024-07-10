@@ -150,7 +150,7 @@ class MockClient(MongoClient):
         super().__init__(*args, **client_options)
 
     @classmethod
-    def get_async_mock_client(
+    def get_mock_client(
         cls,
         standalones,
         members,
