@@ -72,11 +72,20 @@ replacements = {
     "addAsyncCleanup": "addCleanup",
     "async_setup_class": "setup_class",
     "IsolatedAsyncioTestCase": "TestCase",
+    "AsyncUnitTest": "UnitTest",
+    "AsyncMockClient": "MockClient",
     "async_get_pool": "get_pool",
     "async_is_mongos": "is_mongos",
     "async_rs_or_single_client": "rs_or_single_client",
+    "async_rs_or_single_client_noauth": "rs_or_single_client_noauth",
+    "async_rs_client": "rs_client",
     "async_single_client": "single_client",
     "async_from_client": "from_client",
+    "aclosing": "closing",
+    "asyncAssertRaisesExactly": "assertRaisesExactly",
+    "get_async_mock_client": "get_mock_client",
+    "aconnect": "_connect",
+    "aclose": "close",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -131,6 +140,8 @@ sync_gridfs_files = [
 converted_tests = [
     "__init__.py",
     "conftest.py",
+    "pymongo_mocks.py",
+    "test_client.py",
     "test_collection.py",
     "test_database.py",
 ]

@@ -26,10 +26,9 @@ from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, client_context, unittest
+from test import IntegrationTest, SkipTest, client_context, connected, unittest
 from test.utils import (
     OvertCommandListener,
-    connected,
     one,
     rs_client,
     single_client,

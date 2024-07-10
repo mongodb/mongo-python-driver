@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Shared constants and helper method for pymongo, bson, and gridfs test suites."""
+"""Shared constants and helper methods for pymongo, bson, and gridfs test suites."""
 from __future__ import annotations
 
 import base64
