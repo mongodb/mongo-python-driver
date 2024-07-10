@@ -68,7 +68,8 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: 6.0
+          mongodb-replica-set: test-rs
       - name: Run tests
         run: |
           tox -m test
