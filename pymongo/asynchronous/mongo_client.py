@@ -1358,7 +1358,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.close()
+        await self.aclose()
 
     # See PYTHON-3084.
     __iter__ = None
