@@ -708,7 +708,7 @@ class TestClient(AsyncIntegrationTest):
             )
             async with server._pool.checkout() as conn_one:
                 pass
-            # Assert that the pool does not aclose connections prematurely.
+            # Assert that the pool does not close connections prematurely.
             await asyncio.sleep(0.300)
             async with server._pool.checkout() as conn_two:
                 pass
@@ -1437,7 +1437,7 @@ class TestClient(AsyncIntegrationTest):
                 signal.signal(signal.SIGALRM, old_signal_handler)
 
     async def test_operation_failure(self):
-        # Ensure AsyncMongoClient doesn't aclose socket after it gets an error
+        # Ensure AsyncMongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395. We need a new client here
         # to avoid race conditions caused by replica set failover or idle
         # socket reaping.
@@ -1508,7 +1508,7 @@ class TestClient(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = one(pool.conns)
-        conn.conn.aclose()
+        conn.conn.close()
         cursor = await collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             await anext(cursor)
@@ -1531,7 +1531,7 @@ class TestClient(AsyncIntegrationTest):
         # Cause a network error on the actual socket.
         pool = await async_get_pool(c)
         conn = one(pool.conns)
-        conn.conn.aclose()
+        conn.conn.close()
 
         # AsyncConnection.authenticate logs, but gets a socket.error. Should be
         # reraised as AutoReconnect.
@@ -2111,7 +2111,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = one(pool.conns)
-        conn.conn.aclose()
+        conn.conn.close()
 
         cursor = await collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
@@ -2139,7 +2139,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = cursor._sock_mgr.conn
-        conn.conn.aclose()
+        conn.conn.close()
 
         # A getmore fails.
         with self.assertRaises(ConnectionFailure):
