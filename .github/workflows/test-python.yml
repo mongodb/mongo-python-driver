@@ -66,7 +66,7 @@ jobs:
         run: |
           pip install -U pip
           if [ "${{ matrix.python-version }}" == "3.13" ]; then
-            pip install --pre cffi
+            pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
           else
             pip install hatch
