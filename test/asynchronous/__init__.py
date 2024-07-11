@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import gc
 import multiprocessing
 import os
@@ -39,8 +40,6 @@ from test.helpers import (
     TEST_SERVERLESS,
     TLS_OPTIONS,
     SystemCertsPatcher,
-    _all_users,
-    _create_user,
     client_knobs,
     db_pwd,
     db_user,
@@ -62,9 +61,9 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from contextlib import asynccontextmanager, contextmanager
-from functools import wraps
+from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator
+from typing import Any, Callable, Dict, Generator, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -184,7 +183,7 @@ class AsyncClientContext:
             self.connection_attempts.append(f"failed to connect client {client!r}: {exc}")
             return None
         finally:
-            await client.close()
+            await client.aclose()
 
     async def _init_client(self):
         self.client = await self._connect(host, port)
@@ -229,7 +228,7 @@ class AsyncClientContext:
                 if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
                     if not await self._check_user_provided():
-                        _create_user(self.client.admin, db_user, db_pwd)
+                        await _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = await self._connect(
                     host,
@@ -304,7 +303,7 @@ class AsyncClientContext:
                         params = self.cmd_line["parsed"].get("setParameter", {})
                         if params.get("enableTestCommands") == "1":
                             self.test_commands_enabled = True
-                    self.has_ipv6 = self._server_started_with_ipv6()
+                    self.has_ipv6 = await self._server_started_with_ipv6()
 
             self.is_mongos = (await self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
@@ -390,7 +389,7 @@ class AsyncClientContext:
         )
 
         try:
-            return db_user in _all_users(client.admin)
+            return db_user in await _all_users(client.admin)
         except pymongo.errors.OperationFailure as e:
             assert e.details is not None
             msg = e.details.get("errmsg", "")
@@ -400,7 +399,7 @@ class AsyncClientContext:
             else:
                 raise
         finally:
-            await client.close()
+            await client.aclose()
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
@@ -482,9 +481,9 @@ class AsyncClientContext:
             return decorate
         return make_wrapper(func)
 
-    def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
+    async def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
         kwargs["writeConcern"] = {"w": self.w}
-        return _create_user(self.client[dbname], user, pwd, roles, **kwargs)
+        return await _create_user(self.client[dbname], user, pwd, roles, **kwargs)
 
     async def drop_user(self, dbname, user):
         await self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
@@ -814,6 +813,12 @@ class AsyncClientContext:
             func=func,
         )
 
+    def require_sync(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
@@ -921,6 +926,32 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
+class AsyncUnitTest(AsyncPyMongoTestCase):
+    """Async base class for TestCases that don't require a connection to MongoDB."""
+
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    async def _setup_class(cls):
+        await cls._setup_class()
+
+    @classmethod
+    async def _tearDown_class(cls):
+        await cls._tearDown_class()
+
+
 class AsyncIntegrationTest(AsyncPyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
 
@@ -936,6 +967,13 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
     @async_client_context.require_connection
     async def _setup_class(cls):
         if async_client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
@@ -949,6 +987,10 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
+
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:
@@ -961,7 +1003,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
-class AsyncMockClientTest(unittest.TestCase):
+class AsyncMockClientTest(AsyncUnitTest):
     """Base class for TestCases that use MockClient.
 
     This class is *not* an IntegrationTest: if properly written, MockClient
@@ -974,8 +1016,26 @@ class AsyncMockClientTest(unittest.TestCase):
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
     @classmethod
-    @async_client_context.require_no_load_balancer
     def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    @async_client_context.require_no_load_balancer
+    async def _setup_class(cls):
+        pass
+
+    @classmethod
+    async def _tearDown_class(cls):
         pass
 
     def setUp(self):
@@ -1015,7 +1075,7 @@ async def async_teardown():
             await c.drop_database("pymongo_test2")
             await c.drop_database("pymongo_test_mike")
             await c.drop_database("pymongo_test_bernie")
-        await c.close()
+        await c.aclose()
 
     print_running_clients()
 
@@ -1053,3 +1113,38 @@ def print_running_clients():
                 processed.add(obj._topology_id)
         except ReferenceError:
             pass
+
+
+async def _all_users(db):
+    return {u["user"] for u in (await db.command("usersInfo")).get("users", [])}
+
+
+async def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([("createUser", user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd["pwd"] = pwd
+    cmd["roles"] = roles or ["root"]
+    cmd.update(**kwargs)
+    return await authdb.command(cmd)
+
+
+async def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    with warnings.catch_warnings():
+        # Ignore warning that ping is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        await client.admin.command("ping")  # Force connection.
+
+    return client
+
+
+async def drop_collections(db: AsyncDatabase):
+    # Drop all non-system collections in this database.
+    for coll in await db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
+        await db.drop_collection(coll)
+
+
+async def remove_all_users(db: AsyncDatabase):
+    await db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": async_client_context.w})

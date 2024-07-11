@@ -861,6 +861,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
+    async def aconnect(self) -> None:
+        """Explicitly connect to MongoDB asynchronously instead of on the first operation."""
+        await self._get_topology()
+
     def _init_background(self, old_pid: Optional[int] = None) -> None:
         self._topology = Topology(self._topology_settings)
         # Seed the topology with the old one's pid so we can detect clients
@@ -1354,13 +1358,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.close()
+        await self.aclose()
 
     # See PYTHON-3084.
     __iter__ = None
 
     def __next__(self) -> NoReturn:
-        raise TypeError("'MongoClient' object is not iterable")
+        raise TypeError("'AsyncMongoClient' object is not iterable")
 
     next = __next__
 
@@ -1490,7 +1494,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # command.
             pass
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         """Cleanup client resources and disconnect from MongoDB.
 
         End all server sessions created by this client by sending one or more

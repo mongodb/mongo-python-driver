@@ -20,13 +20,12 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, drop_collections, unittest
 from test.utils import (
     SpecTestCreator,
     camel_to_snake,
     camel_to_snake_args,
     camel_to_upper_camel,
-    drop_collections,
 )
 
 from pymongo import WriteConcern, operations
