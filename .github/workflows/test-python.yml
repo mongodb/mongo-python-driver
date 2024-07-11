@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.python-version }}" == "3.13" ]; then
-            export PIP_PRE=1
+            pip install --pre cffi
           fi
           pip install -U pip hatch
       - name: Start MongoDB
