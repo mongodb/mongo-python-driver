@@ -14,5 +14,5 @@ echo "Untarring file ... begin"
 GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/tox.sh -m test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz ./.evergreen/hatch.sh test:test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Running test ... end"
