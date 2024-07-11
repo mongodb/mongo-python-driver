@@ -64,10 +64,13 @@ jobs:
           allow-prereleases: true
       - name: Install dependencies
         run: |
+          pip install -U pip
           if [ "${{ matrix.python-version }}" == "3.13" ]; then
             pip install --pre cffi
+            pip install --no-build-isolation hatch
+          else
+            pip install hatch
           fi
-          pip install -U pip hatch
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
