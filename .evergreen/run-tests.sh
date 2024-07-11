@@ -123,7 +123,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     python -m pip install '.[encryption]'
 
-    # Setup encryption necessary.
+    # Setup encryption if necessary.
     if [ ! -d "libmongocrypt" ]; then
         bash ./.evergreen/setup-encryption.sh
     fi
