@@ -24,9 +24,8 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Un
 from bson.errors import InvalidDocument
 
 if TYPE_CHECKING:
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.typings import _DocumentOut
-
-from pymongo.results import ClientBulkWriteResult
 
 
 class PyMongoError(Exception):

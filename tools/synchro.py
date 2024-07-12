@@ -39,6 +39,7 @@ replacements = {
     "AsyncDatabaseChangeStream": "DatabaseChangeStream",
     "AsyncClusterChangeStream": "ClusterChangeStream",
     "_AsyncBulk": "_Bulk",
+    "_AsyncClientBulk": "_ClientBulk",
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",

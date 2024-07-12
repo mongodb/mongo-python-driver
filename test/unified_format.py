@@ -117,7 +117,15 @@ from pymongo.monitoring import (
     _ServerEvent,
     _ServerHeartbeatEvent,
 )
-from pymongo.operations import SearchIndexModel
+from pymongo.operations import (
+    ClientDeleteMany,
+    ClientDeleteOne,
+    ClientInsertOne,
+    ClientReplaceOne,
+    ClientUpdateMany,
+    ClientUpdateOne,
+    SearchIndexModel,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -285,6 +293,110 @@ def parse_bulk_write_result(result):
         "modifiedCount": result.modified_count,
         "upsertedCount": result.upserted_count,
         "upsertedIds": upserted_ids,
+    }
+
+
+def parse_client_bulk_write_models(models):
+    return_models = []
+    for model in models:
+        if model.get("insertOne"):
+            insert_opts = model["insertOne"]
+            new_model = ClientInsertOne(
+                namespace=insert_opts["namespace"],
+                document=insert_opts["document"],
+            )
+        if model.get("updateOne"):
+            update_opts = model["updateOne"]
+            new_model = ClientUpdateOne(
+                namespace=update_opts["namespace"],
+                filter=update_opts["filter"],
+                update=update_opts["update"],
+                upsert=update_opts.get("upsert", None),
+                collation=update_opts.get("collation", None),
+                array_filters=update_opts.get("arrayFilters", None),
+                hint=update_opts.get("hint", None),
+            )
+        if model.get("updateMany"):
+            update_opts = model["updateMany"]
+            new_model = ClientUpdateMany(
+                namespace=update_opts["namespace"],
+                filter=update_opts["filter"],
+                update=update_opts["update"],
+                upsert=update_opts.get("upsert", None),
+                collation=update_opts.get("collation", None),
+                array_filters=update_opts.get("arrayFilters", None),
+                hint=update_opts.get("hint", None),
+            )
+        if model.get("replaceOne"):
+            replace_opts = model["replaceOne"]
+            new_model = ClientReplaceOne(
+                namespace=replace_opts["namespace"],
+                filter=replace_opts["filter"],
+                replacement=replace_opts["replacement"],
+                upsert=replace_opts.get("upsert", False),
+                collation=replace_opts.get("collation", None),
+                hint=replace_opts.get("hint", None),
+            )
+        if model.get("deleteOne"):
+            delete_opts = model["deleteOne"]
+            new_model = ClientDeleteOne(
+                namespace=delete_opts["namespace"],
+                filter=delete_opts["filter"],
+                collation=delete_opts.get("collation", None),
+                hint=delete_opts.get("hint", None),
+            )
+        if model.get("deleteMany"):
+            delete_opts = model["deleteMany"]
+            new_model = ClientDeleteMany(
+                namespace=delete_opts["namespace"],
+                filter=delete_opts["filter"],
+                collation=delete_opts.get("collation", None),
+                hint=delete_opts.get("hint", None),
+            )
+        return_models.append(new_model)
+
+    return return_models
+
+
+def parse_client_bulk_write_individual(op_type, result):
+    if op_type == "insert":
+        return {"insertedId": result.inserted_id}
+    if op_type == "update":
+        if result.upserted_id:
+            return {
+                "matchedCount": result.matched_count,
+                "modifiedCount": result.modified_count,
+                "upsertedId": result.upserted_id,
+            }
+        return {
+            "matchedCount": result.matched_count,
+            "modifiedCount": result.modified_count,
+        }
+    if op_type == "delete":
+        return {
+            "deletedCount": result.deleted_count,
+        }
+
+
+def parse_client_bulk_write_result(result):
+    insert_results, update_results, delete_results = {}, {}, {}
+    if result.has_verbose_results:
+        for idx, res in result.insert_results.items():
+            insert_results[str(idx)] = parse_client_bulk_write_individual("insert", res)
+        for idx, res in result.update_results.items():
+            update_results[str(idx)] = parse_client_bulk_write_individual("update", res)
+        for idx, res in result.delete_results.items():
+            delete_results[str(idx)] = parse_client_bulk_write_individual("delete", res)
+
+    return {
+        "deletedCount": result.deleted_count,
+        "insertedCount": result.inserted_count,
+        "matchedCount": result.matched_count,
+        "modifiedCount": result.modified_count,
+        "upsertedCount": result.upserted_count,
+        "insertResults": insert_results,
+        "updateResults": update_results,
+        "deleteResults": delete_results,
     }
 
 
@@ -945,6 +1057,8 @@ def coerce_result(opname, result):
         return {"acknowledged": False}
     if opname == "bulkWrite":
         return parse_bulk_write_result(result)
+    if opname == "clientBulkWrite":
+        return parse_client_bulk_write_result(result)
     if opname == "insertOne":
         return {"insertedId": result.inserted_id}
     if opname == "insertMany":
@@ -1470,6 +1584,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             target_opname = camel_to_snake(opname)
             if target_opname == "iterate_once":
                 target_opname = "try_next"
+            if target_opname == "client_bulk_write":
+                target_opname = "bulk_write"
+                arguments["models"] = parse_client_bulk_write_models(arguments["models"])
             try:
                 cmd = getattr(target, target_opname)
             except AttributeError:

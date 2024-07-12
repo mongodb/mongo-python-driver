@@ -696,21 +696,6 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         return _MAX_SPLIT_SIZE_ENC
 
 
-class _ClientBulkWriteContext(_BulkWriteContext):
-    __slots__ = ()
-
-    def batch_command(
-        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
-    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
-        namespace = self.db_name + ".$cmd"
-        request_id, msg, to_send = _do_batched_op_msg(
-            namespace, self.op_type, cmd, docs, self.codec, self
-        )
-        if not to_send:
-            raise InvalidOperation("cannot do an empty bulk write")
-        return request_id, msg, to_send
-
-
 def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> NoReturn:
     """Internal helper for raising DocumentTooLarge."""
     if operation == "insert":
@@ -891,6 +876,341 @@ def _do_batched_op_msg(
     if ctx.conn.compression_context:
         return _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx)
     return _batched_op_msg(operation, command, docs, ack, opts, ctx)
+
+
+class _ClientBulkWriteContext:
+    """A wrapper around AsyncConnection/Connection for use with client-level bulk write."""
+
+    __slots__ = (
+        "db_name",
+        "conn",
+        "op_id",
+        "name",
+        "field",
+        "publish",
+        "start_time",
+        "listeners",
+        "session",
+        "compress",
+        "codec",
+    )
+
+    def __init__(
+        self,
+        database_name: str,
+        cmd_name: str,
+        conn: _AgnosticConnection,
+        operation_id: int,
+        listeners: _EventListeners,
+        session: _AgnosticClientSession,
+        codec: CodecOptions,
+    ):
+        self.db_name = database_name
+        self.conn = conn
+        self.op_id = operation_id
+        self.listeners = listeners
+        self.publish = listeners.enabled_for_commands
+        self.name = cmd_name
+        self.start_time = datetime.datetime.now()
+        self.session = session
+        self.compress = bool(conn.compression_context)
+        self.codec = codec
+
+    def batch_command(
+        self, cmd: MutableMapping[str, Any], operations: list[tuple[str, Mapping[str, Any]]]
+    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+        request_id, msg, to_send_ops, to_send_ns = _client_do_batched_op_msg(
+            cmd, operations, self.codec, self
+        )
+        if not to_send_ops:
+            raise InvalidOperation("cannot do an empty bulk write")
+        return request_id, msg, to_send_ops, to_send_ns
+
+    @property
+    def max_bson_size(self) -> int:
+        """A proxy for SockInfo.max_bson_size."""
+        return self.conn.max_bson_size
+
+    @property
+    def max_message_size(self) -> int:
+        """A proxy for SockInfo.max_message_size."""
+        if self.compress:
+            # Subtract 16 bytes for the message header.
+            return self.conn.max_message_size - 16
+        return self.conn.max_message_size
+
+    @property
+    def max_write_batch_size(self) -> int:
+        """A proxy for SockInfo.max_write_batch_size."""
+        return self.conn.max_write_batch_size
+
+    @property
+    def max_split_size(self) -> int:
+        """The maximum size of a BSON command before batch splitting."""
+        return self.max_bson_size
+
+    def _start(
+        self,
+        cmd: MutableMapping[str, Any],
+        request_id: int,
+        op_docs: list[Mapping[str, Any]],
+        ns_docs: list[Mapping[str, Any]],
+    ) -> MutableMapping[str, Any]:
+        """Publish a CommandStartedEvent."""
+        cmd["ops"] = op_docs
+        cmd["nsInfo"] = ns_docs
+        self.listeners.publish_command_start(
+            cmd,
+            self.db_name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+        )
+        return cmd
+
+    def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandSucceededEvent."""
+        self.listeners.publish_command_success(
+            duration,
+            reply,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
+
+    def _fail(self, request_id: int, failure: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandFailedEvent."""
+        self.listeners.publish_command_failure(
+            duration,
+            failure,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
+
+
+_OP_MSG_OVERHEAD = 1000
+
+
+def _client_batched_op_msg_impl(
+    command: Mapping[str, Any],
+    operations: list[tuple[str, Mapping[str, Any]]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+    buf: _BytesIO,
+) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
+    """Create a batched OP_MSG write for client-level bulk write."""
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
+    max_message_size = ctx.max_message_size
+
+    command_doc = _dict_to_bson(command, False, opts)
+    command_len = len(command_doc)
+
+    # When OP_MSG is used unacknowledged we have to check
+    # document size client-side or applications won't be notified.
+    cmd_doc_too_large = command_len > max_bson_size + _COMMAND_OVERHEAD
+    if not ack and cmd_doc_too_large:
+        _raise_document_too_large("bulkWrite", command_len, max_bson_size)
+    # TODO: verify size of documents to be inserted in InsertOne/ReplaceOne
+
+    # Compute the maximum combined size of the ops and nsInfo document sequences.
+    max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len)
+
+    ns_info = {}
+    to_send_ops = []
+    to_send_ns = []
+    ops_length = 0
+    ns_info_length = 0
+    idx = 0
+    for op_type, op_doc in operations:
+        namespace = op_doc[op_type]
+        ns_doc = None
+        # Add the namespace to ns_info if not already present.
+        if namespace not in ns_info:
+            ns_doc = {"ns": namespace}
+            ns_idx = len(to_send_ns)
+            ns_info[namespace] = ns_idx
+
+        # First entry in the operation doc has the name of the operation
+        # as its key and the index within the ns_info array of the
+        # namespace on which the op should be performed as its value.
+        op_doc[op_type] = ns_info[namespace]
+
+        # Encode current operation doc and namespace doc (if newly added).
+        op_length = len(_dict_to_bson(op_doc, False, opts))
+        if ns_doc:
+            ns_length = len(_dict_to_bson(ns_doc, False, opts))
+        new_message_size = ops_length + ns_info_length + op_length + ns_length
+
+        # When OP_MSG is used unacknowledged we have to check
+        # document size client side or applications won't be notified.
+        # Otherwise we let the server deal with documents that are too large
+        # since ordered=False causes those documents to be skipped instead of
+        # halting the bulk write operation.
+        op_doc_too_large = op_length > max_bson_size + _COMMAND_OVERHEAD
+        if not ack and op_doc_too_large:
+            _raise_document_too_large(op_type, op_length, max_bson_size)
+
+        # We have enough data, return this batch.
+        if new_message_size > max_doc_sequences_bytes:
+            # TODO: if idx = 0, raise an error that we couldn't add at least one operation doc
+            break
+        # Otherwise, we can add this operation to the batch.
+        to_send_ops.append(op_doc)
+        ops_length += op_length
+        if ns_doc:
+            to_send_ns.append(ns_doc)
+            ns_info_length += ns_length
+
+        idx += 1
+        # We have enough documents, return this batch.
+        if idx == max_write_batch_size:
+            break
+
+    # Construct the entire OP_MSG.
+    # TODO: make a helper function to take care of this.
+
+    # Write flags
+    flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
+    buf.write(flags)
+
+    # Type 0 Section
+    buf.write(b"\x00")
+    buf.write(command_doc)
+
+    # Type 1 Section for ops
+    buf.write(b"\x01")
+    size_location = buf.tell()
+    # Save space for size
+    buf.write(b"\x00\x00\x00\x00")
+    buf.write(b"ops\x00")
+    # Write all the ops documents
+    for op in to_send_ops:
+        buf.write(_dict_to_bson(op, False, opts))
+    resume_location = buf.tell()
+    # Write type 1 section size
+    length = buf.tell()
+    buf.seek(size_location)
+    buf.write(_pack_int(length - size_location))
+    buf.seek(resume_location)
+
+    # Type 1 Section for nsInfo
+    buf.write(b"\x01")
+    size_location = buf.tell()
+    # Save space for size
+    buf.write(b"\x00\x00\x00\x00")
+    buf.write(b"nsInfo\x00")
+    # Write all the nsInfo documents
+    for ns in to_send_ns:
+        buf.write(_dict_to_bson(ns, False, opts))
+    # Write type 1 section size
+    length = buf.tell()
+    buf.seek(size_location)
+    buf.write(_pack_int(length - size_location))
+
+    return to_send_ops, to_send_ns, length
+
+
+def _client_encode_batched_op_msg(
+    command: Mapping[str, Any],
+    operations: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+) -> tuple[bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    """Encode the next batched client bulkWrite
+    operation as OP_MSG.
+    """
+    buf = _BytesIO()
+
+    to_send_ops, to_send_ns, _ = _client_batched_op_msg_impl(
+        command, operations, ack, opts, ctx, buf
+    )
+    return buf.getvalue(), to_send_ops, to_send_ns
+
+    # TODO: if use_c
+
+
+def _client_batched_op_msg_compressed(
+    command: Mapping[str, Any],
+    operations: list[Mapping[str, Any]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    """Create the next batched client bulkWrite operation
+    with OP_MSG, compressed.
+    """
+    data, to_send_ops, to_send_ns = _client_encode_batched_op_msg(
+        command, operations, ack, opts, ctx
+    )
+
+    assert ctx.conn.compression_context is not None
+    request_id, msg = _compress(2013, data, ctx.conn.compression_context)
+    return request_id, msg, to_send_ops, to_send_ns
+
+
+def _client_batched_op_msg(
+    command: Mapping[str, Any],
+    operations: list[tuple[str, Mapping[str, Any]]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    """OP_MSG implementation entry point for client bulkWrite."""
+    buf = _BytesIO()
+
+    # Save space for message length and request id
+    buf.write(_ZERO_64)
+    # responseTo, opCode
+    buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
+
+    to_send_ops, to_send_ns, length = _client_batched_op_msg_impl(
+        command, operations, ack, opts, ctx, buf
+    )
+
+    # Header - request id and message length
+    buf.seek(4)
+    request_id = _randint()
+    buf.write(_pack_int(request_id))
+    buf.seek(0)
+    buf.write(_pack_int(length))
+
+    return request_id, buf.getvalue(), to_send_ops, to_send_ns
+
+    # TODO: if use_c
+
+
+def _client_do_batched_op_msg(
+    command: MutableMapping[str, Any],
+    operations: list[tuple[str, Mapping[str, Any]]],
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    """Create the next batched client bulkWrite
+    operation using OP_MSG.
+    """
+    command["$db"] = "admin"
+    # TODO: figure out default write concern here
+    if "writeConcern" in command:
+        ack = bool(command["writeConcern"].get("w", 1))
+    else:
+        ack = True
+    if ctx.conn.compression_context:
+        return _client_batched_op_msg_compressed(command, operations, ack, opts, ctx)
+    return _client_batched_op_msg(command, operations, ack, opts, ctx)
 
 
 # End OP_MSG -----------------------------------------------------

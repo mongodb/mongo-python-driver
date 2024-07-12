@@ -86,11 +86,12 @@ from pymongo.operations import (
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import BulkWriteResult
+from pymongo.results import BulkWriteResult, ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, periodic_executor
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
+from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.settings import TopologySettings
@@ -118,10 +119,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
-    from pymongo.results import ClientBulkWriteResult
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
-    from pymongo.synchronous.client_bulk import _AsyncClientBulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor import _ConnectionManager
     from pymongo.synchronous.pool import Connection
@@ -2216,10 +2215,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def bulk_write(
         self,
-        requests: Sequence[_WriteOp[_DocumentType]],
+        models: Sequence[_WriteOp[_DocumentType]],
+        session: Optional[ClientSession] = None,
         ordered: Optional[bool] = True,
         bypass_document_validation: Optional[bool] = False,
-        session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
         write_concern: Optional[WriteConcern] = None,
@@ -2235,7 +2234,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.ClientDeleteOne`, or
         :class:`~pymongo.operations.ClientDeleteMany`).
 
-        :param requests: A list of write operation instances.
+        :param models: A list of write operation instances.
+        :param session: (optional) a
+            :class:`~pymongo.client_session.ClientSession`.
         :param ordered: (optional) If ``True`` (the default) requests will be
             performed on the server serially, in the order provided. If an error
             occurs all remaining operations are aborted. If ``False`` requests
@@ -2243,8 +2244,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             parallel, and all operations will be attempted.
         :param bypass_document_validation: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is ``False``.
-        :param session: a
-            :class:`~pymongo.client_session.ClientSession`.
         :param comment: (optional) A user-provided comment to attach to this
             command.
         :param let: (optional) Map of parameter names and values. Values must be
@@ -2263,9 +2262,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
         """
-        common.validate_list("requests", requests)
+        if self._options.auto_encryption_opts:
+            raise InvalidOperation(
+                "MongoClient.bulk_write does not currently support automatic encryption"
+            )
 
-        blk = _AsyncClientBulk(
+        # Inherit the client's write concern if none is provided.
+        if not write_concern:
+            write_concern = self.write_concern
+        common.validate_list("models", models)
+        blk = _ClientBulk(
             self,
             ordered=ordered,
             bypass_document_validation=bypass_document_validation,
@@ -2274,16 +2280,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             write_concern=write_concern,
             verbose_results=verbose_results,
         )
-        for request in requests:
+        for model in models:
             try:
-                request._add_to_bulk(blk)
+                model._add_to_bulk(blk)
             except AttributeError:
-                raise TypeError(f"{request!r} is not a valid request") from None
-
-        bulk_api_result = blk.execute(write_concern, session, _Op.INSERT)
-        if bulk_api_result is not None:
-            return ClientBulkWriteResult(bulk_api_result, True)
-        return ClientBulkWriteResult({}, False)
+                raise TypeError(f"{model!r} is not a valid request") from None
+        if not session and write_concern.acknowledged:
+            session = self.start_session()
+        bulk_api_result = blk.execute(session, _Op.BULK_WRITE)
+        return ClientBulkWriteResult(
+            bulk_api_result,
+            write_concern.acknowledged,
+            verbose_results,
+        )
 
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:

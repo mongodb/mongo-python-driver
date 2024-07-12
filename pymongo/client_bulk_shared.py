@@ -20,11 +20,6 @@ from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn
 
 from pymongo.errors import ClientBulkWriteException, OperationFailure
 from pymongo.helpers_shared import _get_wce_doc
-from pymongo.message import (
-    _DELETE,
-    _INSERT,
-    _UPDATE,
-)
 
 if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
@@ -48,8 +43,6 @@ class _Run:
         """Initialize a new Run object."""
         self.index_map: list[int] = []
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
-        self.namespaces: Mapping[str, int] = {}
-        self.nsInfo: list[Mapping[str, str]] = []
         self.idx_offset: int = 0
 
     def index(self, idx: int) -> int:
@@ -68,14 +61,7 @@ class _Run:
             the operation document.
         """
         self.index_map.append(original_index)
-        op_type, op = operation
-        namespace = op[op_type]
-        if namespace not in self.namespaces:
-            ns_index = len(self.nsInfo)
-            self.nsInfo.append({"ns": namespace})
-            self.namespaces[namespace] = ns_index
-        op[op_type] = self.namespaces[namespace]
-        self.ops.append(op)
+        self.ops.append(operation)
 
 
 def _merge_command(
@@ -84,28 +70,18 @@ def _merge_command(
     offset: int,
     result: Mapping[str, Any],
 ) -> None:
-    """Merge result of a single bulkWrite into the full result."""
-    affected = result.get("n", 0)
+    """Merge result of a single bulk write batch into the full result."""
 
-    if run.op_type == _INSERT:
-        full_result["nInserted"] += affected
+    full_result["nInserted"] += result.get("nInserted")
+    full_result["nDeleted"] += result.get("nDeleted")
+    full_result["nMatched"] += result.get("nMatched")
+    full_result["nModified"] += result.get("nModified")
+    full_result["nUpserted"] += result.get("nUpserted")
+    upserted = result.get("upserted")
+    if upserted:
+        full_result["upserted"].extend(upserted)
 
-    elif run.op_type == _DELETE:
-        full_result["nRemoved"] += affected
-
-    elif run.op_type == _UPDATE:
-        upserted = result.get("upserted")
-        if upserted:
-            n_upserted = len(upserted)
-            for doc in upserted:
-                doc["index"] = run.index(doc["index"] + offset)
-            full_result["upserted"].extend(upserted)
-            full_result["nUpserted"] += n_upserted
-            full_result["nMatched"] += affected - n_upserted
-        else:
-            full_result["nMatched"] += affected
-        full_result["nModified"] += result["nModified"]
-
+    # TODO: modify the error-handling logic.
     write_errors = result.get("writeErrors")
     if write_errors:
         for doc in write_errors:

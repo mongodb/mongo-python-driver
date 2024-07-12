@@ -154,8 +154,6 @@ class UpdateResult(_WriteResult):
     def matched_count(self) -> int:
         """The number of documents matched for this update."""
         self._raise_if_unacknowledged("matched_count")
-        if self.upserted_id is not None:
-            return 0
         assert self.__raw_result is not None
         return self.__raw_result.get("n", 0)
 
@@ -199,8 +197,6 @@ class ClientUpdateResult(_WriteResult):
     @property
     def matched_count(self) -> int:
         """The number of documents matched for this update."""
-        if self.upserted_id is not None:
-            return 0
         assert self.__raw_result is not None
         return self.__raw_result.get("n", 0)
 
@@ -216,13 +212,15 @@ class ClientUpdateResult(_WriteResult):
         ``None``.
         """
         assert self.__raw_result is not None
-        return self.__raw_result.get("upserted")
+        if self.__raw_result.get("upserted"):
+            return self.__raw_result["upserted"]["_id"]
+        return None
 
     @property
     def did_upsert(self) -> bool:
         """Whether or not an upsert took place."""
         assert self.__raw_result is not None
-        return len(self.__raw_result.get("upserted")) > 1
+        return len(self.__raw_result.get("upserted")) > 0
 
 
 class DeleteResult(_WriteResult):
@@ -355,8 +353,8 @@ class ClientBulkWriteResult(_WriteResult):
             then all properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         :param has_verbose_results: Should the returned result be verbose?
-            If ``False`` then the insert_results, update_results, and
-            delete_results properties of this object will raise
+            If ``False``, then the ``insert_results``, ``update_results``, and
+            ``delete_results`` properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         """
         self.__bulk_api_result = bulk_api_result
@@ -364,7 +362,12 @@ class ClientBulkWriteResult(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged}, verbose={self.__has_verbose_results})"
+        return "{}({!r}, acknowledged={}, verbose={})".format(
+            self.__class__.__name__,
+            self.__bulk_api_result,
+            self.acknowledged,
+            self.has_verbose_results,
+        )
 
     def _raise_if_not_verbose(self, property_name: str) -> None:
         """Raise an exception on property access if verbose results are off."""
@@ -379,6 +382,11 @@ class ClientBulkWriteResult(_WriteResult):
     def bulk_api_result(self) -> dict[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
+
+    @property
+    def has_verbose_results(self) -> bool:
+        """Whether the returned results should be verbose."""
+        return self.__has_verbose_results
 
     @property
     def inserted_count(self) -> int:
@@ -402,7 +410,7 @@ class ClientBulkWriteResult(_WriteResult):
     def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
-        return cast(int, self.__bulk_api_result.get("nRemoved"))
+        return cast(int, self.__bulk_api_result.get("nDeleted"))
 
     @property
     def upserted_count(self) -> int:
@@ -412,27 +420,21 @@ class ClientBulkWriteResult(_WriteResult):
 
     @property
     def insert_results(self) -> dict[int, ClientInsertOneResult]:
-        """A map of successful insertion ops to their results."""
+        """A map of successful insertion operations to their results."""
         self._raise_if_unacknowledged("insert_results")
         self._raise_if_not_verbose("insert_results")
-        if self.__bulk_api_result:
-            pass  # TODO
-        return None
+        return self.__bulk_api_result.get("insertResults")
 
     @property
     def update_results(self) -> dict[int, ClientUpdateResult]:
-        """A map of successful update ops to their results."""
+        """A map of successful update operations to their results."""
         self._raise_if_unacknowledged("update_results")
         self._raise_if_not_verbose("update_results")
-        if self.__bulk_api_result:
-            pass  # TODO
-        return None
+        return self.__bulk_api_result.get("updateResults")
 
     @property
     def delete_results(self) -> dict[int, ClientDeleteResult]:
-        """A map of successful delete ops to their results."""
+        """A map of successful delete operations to their results."""
         self._raise_if_unacknowledged("delete_results")
         self._raise_if_not_verbose("delete_results")
-        if self.__bulk_api_result:
-            pass  # TODO
-        return None
+        return self.__bulk_api_result.get("deleteResults")
