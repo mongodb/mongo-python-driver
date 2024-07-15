@@ -984,7 +984,7 @@ class TestClient(IntegrationTest):
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
         # Open a cursor and leave it open on the server.
-        cursor = (coll.find()).batch_size(10)
+        cursor = coll.find().batch_size(10)
         self.assertTrue(bool(next(cursor)))
         self.assertLess(cursor.retrieved, docs_inserted)
 
@@ -1219,7 +1219,7 @@ class TestClient(IntegrationTest):
         where_func = delay(timeout_sec + 1)
 
         def get_x(db):
-            doc = next((db.test.find()).where(where_func))
+            doc = next(db.test.find().where(where_func))
             return doc["x"]
 
         self.assertEqual(1, get_x(no_timeout.pymongo_test))

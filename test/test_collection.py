@@ -627,32 +627,32 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"x": 6, "a": 1})
 
         # Operations that use the partial index.
-        explain = (db.test.find({"x": 6, "a": 1})).explain()
+        explain = db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
-        explain = (db.test.find({"x": {"$gt": 1}, "a": 1})).explain()
+        explain = db.test.find({"x": {"$gt": 1}, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
-        explain = (db.test.find({"x": 6, "a": {"$lte": 1}})).explain()
+        explain = db.test.find({"x": 6, "a": {"$lte": 1}}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
         # Operations that do not use the partial index.
-        explain = (db.test.find({"x": 6, "a": {"$lte": 1.6}})).explain()
+        explain = db.test.find({"x": 6, "a": {"$lte": 1.6}}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
-        explain = (db.test.find({"x": 6})).explain()
+        explain = db.test.find({"x": 6}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
 
         # Test drop_indexes.
         db.test.drop_index("x_1")
-        explain = (db.test.find({"x": 6, "a": 1})).explain()
+        explain = db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
 
@@ -1171,11 +1171,11 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"x": "hello_mikey"})
         db.test.insert_one({"x": "hello_test"})
 
-        self.assertEqual(len((db.test.find()).to_list()), 4)
-        self.assertEqual(len((db.test.find({"x": re.compile("^hello.*")})).to_list()), 4)
-        self.assertEqual(len((db.test.find({"x": re.compile("ello")})).to_list()), 4)
-        self.assertEqual(len((db.test.find({"x": re.compile("^hello$")})).to_list()), 0)
-        self.assertEqual(len((db.test.find({"x": re.compile("^hello_mi.*$")})).to_list()), 2)
+        self.assertEqual(len(db.test.find().to_list()), 4)
+        self.assertEqual(len(db.test.find({"x": re.compile("^hello.*")}).to_list()), 4)
+        self.assertEqual(len(db.test.find({"x": re.compile("ello")}).to_list()), 4)
+        self.assertEqual(len(db.test.find({"x": re.compile("^hello$")}).to_list()), 0)
+        self.assertEqual(len(db.test.find({"x": re.compile("^hello_mi.*$")}).to_list()), 2)
 
     def test_id_can_be_anything(self):
         db = self.db
@@ -1633,7 +1633,7 @@ class TestCollection(IntegrationTest):
 
         i = 0
         y = 0
-        for doc in (db.test_large_limit.find(limit=1900)).sort([("x", 1)]):
+        for doc in db.test_large_limit.find(limit=1900).sort([("x", 1)]):
             i += 1
             y += doc["x"]
 
@@ -1772,8 +1772,8 @@ class TestCollection(IntegrationTest):
 
     # TODO doesn't actually test functionality, just that it doesn't blow up
     def test_cursor_timeout(self):
-        (self.db.test.find(no_cursor_timeout=True)).to_list()
-        (self.db.test.find(no_cursor_timeout=False)).to_list()
+        self.db.test.find(no_cursor_timeout=True).to_list()
+        self.db.test.find(no_cursor_timeout=False).to_list()
 
     def test_exhaust(self):
         if is_mongos(self.db.client):
@@ -1787,6 +1787,7 @@ class TestCollection(IntegrationTest):
         cur = self.db.test.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)
+            cur.next()
         cur = self.db.test.find(limit=5)
         with self.assertRaises(InvalidOperation):
             cur.add_option(64)
@@ -1848,7 +1849,7 @@ class TestCollection(IntegrationTest):
 
         self.assertEqual([1, 2, 3], distinct)
 
-        distinct = (test.find({"a": {"$gt": 1}})).distinct("a")
+        distinct = test.find({"a": {"$gt": 1}}).distinct("a")
         distinct.sort()
         self.assertEqual([2, 3], distinct)
 
@@ -1874,7 +1875,7 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_one({"bar": "foo"})
 
         self.assertEqual(1, self.db.test.count_documents({"query": {"$ne": None}}))
-        self.assertEqual(1, len((self.db.test.find({"query": {"$ne": None}})).to_list()))
+        self.assertEqual(1, len(self.db.test.find({"query": {"$ne": None}}).to_list()))
 
     def test_min_query(self):
         self.db.drop_collection("test")
@@ -1979,7 +1980,7 @@ class TestCollection(IntegrationTest):
         db["Employés"].replace_one({"x": 1}, {"x": 2})
         db["Employés"].delete_many({})
         db["Employés"].find_one()
-        (db["Employés"].find()).to_list()
+        db["Employés"].find().to_list()
 
     def test_drop_indexes_non_existent(self):
         self.db.drop_collection("test")
