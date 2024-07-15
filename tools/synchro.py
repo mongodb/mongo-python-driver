@@ -144,7 +144,7 @@ converted_tests = [
     "test_client.py",
     "test_collection.py",
     "test_database.py",
-    "test_sessions.py",
+    "test_session.py",
 ]
 
 sync_test_files = [
