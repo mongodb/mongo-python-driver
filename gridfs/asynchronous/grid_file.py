@@ -154,7 +154,7 @@ class AsyncGridFS:
         """
         async with AsyncGridIn(self._collection, **kwargs) as grid_file:
             await grid_file.write(data)
-            return await grid_file._id
+            return grid_file._id
 
     async def get(self, file_id: Any, session: Optional[AsyncClientSession] = None) -> AsyncGridOut:
         """Get a file from GridFS by ``"_id"``.
