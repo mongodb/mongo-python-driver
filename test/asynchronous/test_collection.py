@@ -1803,19 +1803,19 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_exhaust(self):
         if await async_is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):
-                await self.db.test.find(cursor_type=CursorType.EXHAUST)
+                await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
             return
 
         # Limit is incompatible with exhaust.
         with self.assertRaises(InvalidOperation):
-            await self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
-        cur = await self.db.test.find(cursor_type=CursorType.EXHAUST)
+            await anext(self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5))
+        cur = self.db.test.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)
-        cur = await self.db.test.find(limit=5)
+        cur = self.db.test.find(limit=5)
         with self.assertRaises(InvalidOperation):
             await cur.add_option(64)
-        cur = await self.db.test.find()
+        cur = self.db.test.find()
         await cur.add_option(64)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)
@@ -1829,7 +1829,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         pool = await async_get_pool(client)
 
         # Make sure the socket is returned after exhaustion.
-        cur = await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         await anext(cur)
         self.assertEqual(0, len(pool.conns))
         async for _ in cur:
@@ -1837,14 +1837,14 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(1, len(pool.conns))
 
         # Same as previous but don't call next()
-        async for _ in await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
+        async for _ in client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
             pass
         self.assertEqual(1, len(pool.conns))
 
         # If the Cursor instance is discarded before being completely iterated
         # and the socket has pending data (more_to_come=True) we have to close
         # and discard the socket.
-        cur = await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
         if async_client_context.version.at_least(4, 2):
             # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
             # first getMore.

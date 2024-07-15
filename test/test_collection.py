@@ -1778,12 +1778,12 @@ class TestCollection(IntegrationTest):
     def test_exhaust(self):
         if is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):
-                self.db.test.find(cursor_type=CursorType.EXHAUST)
+                next(self.db.test.find(cursor_type=CursorType.EXHAUST))
             return
 
         # Limit is incompatible with exhaust.
         with self.assertRaises(InvalidOperation):
-            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
+            next(self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5))
         cur = self.db.test.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)

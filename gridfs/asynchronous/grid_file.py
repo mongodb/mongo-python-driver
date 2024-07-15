@@ -220,7 +220,7 @@ class AsyncGridFS:
             query["filename"] = filename
 
         _disallow_transactions(session)
-        cursor = await self._files.find(query, session=session)
+        cursor = self._files.find(query, session=session)
         if version is None:
             version = -1
         if version < 0:
@@ -923,7 +923,7 @@ class AsyncGridFSBucket:
         validate_string("filename", filename)
         query = {"filename": filename}
         _disallow_transactions(session)
-        cursor = await self._files.find(query, session=session)
+        cursor = self._files.find(query, session=session)
         if revision < 0:
             skip = abs(revision) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -1760,12 +1760,12 @@ class _AsyncGridOutChunkIterator:
     def __aiter__(self) -> _AsyncGridOutChunkIterator:
         return self
 
-    async def _create_cursor(self) -> None:
+    def _create_cursor(self) -> None:
         filter = {"files_id": self._id}
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
         _disallow_transactions(self._session)
-        self._cursor = await self._chunks.find(filter, sort=[("n", 1)], session=self._session)
+        self._cursor = self._chunks.find(filter, sort=[("n", 1)], session=self._session)
 
     async def _next_with_retry(self) -> Mapping[str, Any]:
         """Return the next chunk and retry once on CursorNotFound.
@@ -1775,13 +1775,13 @@ class _AsyncGridOutChunkIterator:
         server's default cursor timeout).
         """
         if self._cursor is None:
-            await self._create_cursor()
+            self._create_cursor()
             assert self._cursor is not None
         try:
             return await self._cursor.next()
         except CursorNotFound:
             await self._cursor.close()
-            await self._create_cursor()
+            self._create_cursor()
             return await self._cursor.next()
 
     async def next(self) -> Mapping[str, Any]:
