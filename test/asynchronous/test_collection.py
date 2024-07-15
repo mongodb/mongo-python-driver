@@ -2251,9 +2251,16 @@ class AsyncTestCollection(AsyncIntegrationTest):
         for let in [10, "str", [], False]:
             for helper, args in helpers:
                 with self.assertRaisesRegex(TypeError, "let must be an instance of dict"):
-                    await helper(*args, let=let)  # type: ignore
+                    # c.find() is synchronous, can't await it
+                    if helper == c.find:
+                        helper(*args, let=let)  # type: ignore
+                    else:
+                        await helper(*args, let=let)  # type: ignore
         for helper, args in helpers:
-            await helper(*args, let={})  # type: ignore
+            if helper == c.find:
+                helper(*args, let={})  # type: ignore
+            else:
+                await helper(*args, let={})  # type: ignore
 
 
 if __name__ == "__main__":
