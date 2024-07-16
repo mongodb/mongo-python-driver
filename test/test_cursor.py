@@ -1042,6 +1042,15 @@ class TestCursor(IntegrationTest):
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
         self.assertRaises(IndexError, lambda x: self.db.test.find().skip(50)[x], 50)
 
+    @client_context.require_sync
+    def test_iteration_with_list(self):
+        self.db.drop_collection("test")
+        self.db.test.insert_many([{"i": i} for i in range(100)])
+
+        cur = self.db.test.find().batch_size(10)
+
+        self.assertEqual(100, len(list(cur)))  # type: ignore[call-overload]
+
     def test_len(self):
         with self.assertRaises(TypeError):
             len(self.db.test.find())  # type: ignore[arg-type]
