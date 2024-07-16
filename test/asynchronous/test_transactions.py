@@ -371,6 +371,10 @@ class TestTransactions(AsyncTransactionsBase):
         # Make sure the collection exists.
         await coll.insert_one({})
         self.assertEqual(client.topology_description.topology_type_name, "Single")
+
+        async def find(*args, **kwargs):
+            return coll.find(*args, **kwargs)
+
         ops = [
             (coll.bulk_write, [[InsertOne[dict]({})]]),
             (coll.insert_one, [{}]),
@@ -387,7 +391,7 @@ class TestTransactions(AsyncTransactionsBase):
             (coll.count_documents, [{}]),
             (coll.distinct, ["foo"]),
             (coll.aggregate, [[]]),
-            (coll.find, [{}]),
+            (find, [{}]),
             (coll.aggregate_raw_batches, [[]]),
             (coll.find_raw_batches, [{}]),
             (coll.database.command, ["find", coll.name]),

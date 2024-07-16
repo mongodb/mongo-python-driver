@@ -381,13 +381,13 @@ class TestSession(AsyncIntegrationTest):
         self.addAsyncCleanup(coll.drop)
 
         async with self.client.start_session() as s:
-            cursor = await coll.find(session=s)
+            cursor = coll.find(session=s)
             self.assertTrue(cursor.session is s)
             clone = cursor.clone()
             self.assertTrue(clone.session is s)
 
         # No explicit session.
-        cursor = await coll.find(batch_size=2)
+        cursor = coll.find(batch_size=2)
         await anext(cursor)
         # Session is "owned" by cursor.
         self.assertIsNone(cursor.session)
@@ -406,29 +406,20 @@ class TestSession(AsyncIntegrationTest):
         coll = client.pymongo_test.collection
         await coll.insert_many([{} for _ in range(1000)])
 
-        async def lambda_find(session):
-            return await (await coll.find(session=session)).to_list()
-
-        async def lambda_distinct(session):
-            return await (await coll.find(session=session)).distinct("a")
-
-        async def lambda_explain(session):
-            return await (await coll.find(session=session)).explain()
-
         # Test all cursor methods.
         if _IS_SYNC:
             # getitem is only supported in the synchronous API
             ops = [
-                ("find", lambda_find),
+                ("find", lambda session: coll.find(session=session).to_list()),
                 ("getitem", lambda session: coll.find(session=session)[0]),
-                ("distinct", lambda_distinct),
-                ("explain", lambda_explain),
+                ("distinct", lambda session: coll.find(session=session).distinct("a")),
+                ("explain", lambda session: coll.find(session=session).explain()),
             ]
         else:
             ops = [
-                ("find", lambda_find),
-                ("distinct", lambda_distinct),
-                ("explain", lambda_explain),
+                ("find", lambda session: coll.find(session=session).to_list()),
+                ("distinct", lambda session: coll.find(session=session).distinct("a")),
+                ("explain", lambda session: coll.find(session=session).explain()),
             ]
 
         for name, f in ops:
@@ -488,13 +479,13 @@ class TestSession(AsyncIntegrationTest):
             for f in files:
                 await f.read()
 
-        async def lambda_get(session=None):
+        async def get(session=None):
             await (await fs.get(1, session=session)).read()
 
-        async def lambda_get_version(session=None):
+        async def get_version(session=None):
             await (await fs.get_version("f", session=session)).read()
 
-        async def lambda_get_last_version(session=None):
+        async def get_last_version(session=None):
             await (await fs.get_last_version("f", session=session)).read()
 
         async def find_list(session=None):
@@ -504,9 +495,9 @@ class TestSession(AsyncIntegrationTest):
             client,
             (new_file, [], {}),
             (fs.put, [b"data"], {}),
-            (lambda_get, [], {}),
-            (lambda_get_version, [], {}),
-            (lambda_get_last_version, [], {}),
+            (get, [], {}),
+            (get_version, [], {}),
+            (get_last_version, [], {}),
             (fs.list, [], {}),
             (fs.find_one, [1], {}),
             (find_list, [], {}),
@@ -538,7 +529,7 @@ class TestSession(AsyncIntegrationTest):
             await stream.read()
 
         async def find(session=None):
-            files = await (bucket.find({"_id": 1}, session=session)).to_list()
+            files = await bucket.find({"_id": 1}, session=session).to_list()
             for f in files:
                 await f.read()
 
@@ -633,7 +624,7 @@ class TestSession(AsyncIntegrationTest):
         await coll.insert_many([{} for _ in range(10)])
 
         async def explicit_close(session=None):
-            cursor = await coll.find(batch_size=2, session=session)
+            cursor = coll.find(batch_size=2, session=session)
             await anext(cursor)
             await cursor.close()
 
@@ -686,62 +677,62 @@ class TestSession(AsyncIntegrationTest):
         self.assertIn(lsid, session_ids(self.client))
 
     async def test_cursor_close(self):
-        async def alambda(coll, session):
-            return await coll.find(session=session)
+        async def find(coll, session):
+            return coll.find(session=session)
 
-        await self._test_cursor_helper(alambda, lambda cursor: cursor.close())
+        await self._test_cursor_helper(find, lambda cursor: cursor.close())
 
     async def test_command_cursor_close(self):
-        async def alambda(coll, session):
+        async def aggregate(coll, session):
             return await coll.aggregate([], session=session)
 
-        await self._test_cursor_helper(alambda, lambda cursor: cursor.close())
+        await self._test_cursor_helper(aggregate, lambda cursor: cursor.close())
 
     async def test_cursor_del(self):
-        async def alambda(coll, session):
-            return await coll.find(session=session)
+        async def find(coll, session):
+            return coll.find(session=session)
 
-        async def alambda2(cursor):
+        async def delete(cursor):
             return cursor.__del__()
 
-        await self._test_cursor_helper(alambda, alambda2)
+        await self._test_cursor_helper(find, delete)
 
     async def test_command_cursor_del(self):
-        async def alambda(coll, session):
+        async def aggregate(coll, session):
             return await coll.aggregate([], session=session)
 
-        async def alambda2(cursor):
+        async def delete(cursor):
             return cursor.__del__()
 
-        await self._test_cursor_helper(alambda, alambda2)
+        await self._test_cursor_helper(aggregate, delete)
 
     async def test_cursor_exhaust(self):
-        async def alambda(coll, session):
-            return await coll.find(session=session)
+        async def find(coll, session):
+            return coll.find(session=session)
 
-        await self._test_cursor_helper(alambda, lambda cursor: cursor.to_list())
+        await self._test_cursor_helper(find, lambda cursor: cursor.to_list())
 
     async def test_command_cursor_exhaust(self):
-        async def alambda(coll, session):
+        async def aggregate(coll, session):
             return await coll.aggregate([], session=session)
 
-        await self._test_cursor_helper(alambda, lambda cursor: cursor.to_list())
+        await self._test_cursor_helper(aggregate, lambda cursor: cursor.to_list())
 
     async def test_cursor_limit_reached(self):
-        async def alambda(coll, session):
-            return await coll.find(limit=4, batch_size=2, session=session)
+        async def find(coll, session):
+            return coll.find(limit=4, batch_size=2, session=session)
 
         await self._test_cursor_helper(
-            alambda,
+            find,
             lambda cursor: cursor.to_list(),
         )
 
     async def test_command_cursor_limit_reached(self):
-        async def alambda(coll, session):
+        async def aggregate(coll, session):
             return await coll.aggregate([], batchSize=900, session=session)
 
         await self._test_cursor_helper(
-            alambda,
+            aggregate,
             lambda cursor: cursor.to_list(),
         )
 
@@ -929,25 +920,22 @@ class TestCausalConsistency(AsyncUnitTest):
         # Make sure the collection exists.
         await self.client.pymongo_test.test.insert_one({})
 
-        async def alambda_aggregate(coll, session):
+        async def aggregate(coll, session):
             return await (await coll.aggregate([], session=session)).to_list()
 
-        async def alambda_find(coll, session):
-            return await (await coll.find({}, session=session)).to_list()
-
-        async def alambda_aggregate_raw(coll, session):
+        async def aggregate_raw(coll, session):
             return await (await coll.aggregate_raw_batches([], session=session)).to_list()
 
-        async def alambda_find_raw(coll, session):
+        async def find_raw(coll, session):
             return await (await coll.find_raw_batches({}, session=session)).to_list()
 
-        await self._test_reads(alambda_aggregate)
-        await self._test_reads(alambda_find)
+        await self._test_reads(aggregate)
+        await self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())
         await self._test_reads(lambda coll, session: coll.find_one({}, session=session))
         await self._test_reads(lambda coll, session: coll.count_documents({}, session=session))
         await self._test_reads(lambda coll, session: coll.distinct("foo", session=session))
-        await self._test_reads(alambda_aggregate_raw)
-        await self._test_reads(alambda_find_raw)
+        await self._test_reads(aggregate_raw)
+        await self._test_reads(find_raw)
 
         with self.assertRaises(ConfigurationError):
             await self._test_reads(
@@ -1064,11 +1052,10 @@ class TestCausalConsistency(AsyncUnitTest):
         )
         await self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
 
-        async def alambda(coll, session):
-            await (await coll.find({}, session=session)).explain()
-
         # Not a write, but explain also doesn't support readConcern.
-        await self._test_no_read_concern(alambda)
+        await self._test_no_read_concern(
+            lambda coll, session: coll.find({}, session=session).explain()
+        )
 
     @async_client_context.require_no_standalone
     @async_client_context.require_version_max(4, 1, 0)
@@ -1086,7 +1073,7 @@ class TestCausalConsistency(AsyncUnitTest):
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             await coll.insert_many([{}, {}])
-            cursor = (await coll.find({})).batch_size(1)
+            cursor = coll.find({}).batch_size(1)
             await anext(cursor)
             self.listener.reset()
             await cursor.to_list()
@@ -1183,7 +1170,7 @@ class TestClusterTime(AsyncIntegrationTest):
             await client.pymongo_test.collection2.drop()
 
         async def insert_and_find():
-            cursor = (await collection.find()).batch_size(1)
+            cursor = collection.find().batch_size(1)
             for _ in range(10):
                 # Advance the cluster time.
                 await collection.insert_one({})
@@ -1200,17 +1187,14 @@ class TestClusterTime(AsyncIntegrationTest):
 
             await cursor.close()
 
-        async def lambda_aggregate():
+        async def aggregate():
             await (await collection.aggregate([])).to_list()
-
-        async def lambda_find():
-            await (await collection.find()).to_list()
 
         ops = [
             # Tests from Driver Sessions Spec.
             ("ping", lambda: client.admin.command("ping")),
-            ("aggregate", lambda: lambda_aggregate()),
-            ("find", lambda: lambda_find()),
+            ("aggregate", lambda: aggregate()),
+            ("find", lambda: collection.find().to_list()),
             ("insert_one", lambda: collection.insert_one({})),
             # Additional PyMongo tests.
             ("insert_and_find", insert_and_find),

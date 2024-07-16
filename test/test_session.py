@@ -404,29 +404,20 @@ class TestSession(IntegrationTest):
         coll = client.pymongo_test.collection
         coll.insert_many([{} for _ in range(1000)])
 
-        def lambda_find(session):
-            return (coll.find(session=session)).to_list()
-
-        def lambda_distinct(session):
-            return (coll.find(session=session)).distinct("a")
-
-        def lambda_explain(session):
-            return (coll.find(session=session)).explain()
-
         # Test all cursor methods.
         if _IS_SYNC:
             # getitem is only supported in the synchronous API
             ops = [
-                ("find", lambda_find),
+                ("find", lambda session: coll.find(session=session).to_list()),
                 ("getitem", lambda session: coll.find(session=session)[0]),
-                ("distinct", lambda_distinct),
-                ("explain", lambda_explain),
+                ("distinct", lambda session: coll.find(session=session).distinct("a")),
+                ("explain", lambda session: coll.find(session=session).explain()),
             ]
         else:
             ops = [
-                ("find", lambda_find),
-                ("distinct", lambda_distinct),
-                ("explain", lambda_explain),
+                ("find", lambda session: coll.find(session=session).to_list()),
+                ("distinct", lambda session: coll.find(session=session).distinct("a")),
+                ("explain", lambda session: coll.find(session=session).explain()),
             ]
 
         for name, f in ops:
@@ -486,13 +477,13 @@ class TestSession(IntegrationTest):
             for f in files:
                 f.read()
 
-        def lambda_get(session=None):
+        def get(session=None):
             (fs.get(1, session=session)).read()
 
-        def lambda_get_version(session=None):
+        def get_version(session=None):
             (fs.get_version("f", session=session)).read()
 
-        def lambda_get_last_version(session=None):
+        def get_last_version(session=None):
             (fs.get_last_version("f", session=session)).read()
 
         def find_list(session=None):
@@ -502,9 +493,9 @@ class TestSession(IntegrationTest):
             client,
             (new_file, [], {}),
             (fs.put, [b"data"], {}),
-            (lambda_get, [], {}),
-            (lambda_get_version, [], {}),
-            (lambda_get_last_version, [], {}),
+            (get, [], {}),
+            (get_version, [], {}),
+            (get_last_version, [], {}),
             (fs.list, [], {}),
             (fs.find_one, [1], {}),
             (find_list, [], {}),
@@ -536,7 +527,7 @@ class TestSession(IntegrationTest):
             stream.read()
 
         def find(session=None):
-            files = (bucket.find({"_id": 1}, session=session)).to_list()
+            files = bucket.find({"_id": 1}, session=session).to_list()
             for f in files:
                 f.read()
 
@@ -684,62 +675,62 @@ class TestSession(IntegrationTest):
         self.assertIn(lsid, session_ids(self.client))
 
     def test_cursor_close(self):
-        def alambda(coll, session):
+        def find(coll, session):
             return coll.find(session=session)
 
-        self._test_cursor_helper(alambda, lambda cursor: cursor.close())
+        self._test_cursor_helper(find, lambda cursor: cursor.close())
 
     def test_command_cursor_close(self):
-        def alambda(coll, session):
+        def aggregate(coll, session):
             return coll.aggregate([], session=session)
 
-        self._test_cursor_helper(alambda, lambda cursor: cursor.close())
+        self._test_cursor_helper(aggregate, lambda cursor: cursor.close())
 
     def test_cursor_del(self):
-        def alambda(coll, session):
+        def find(coll, session):
             return coll.find(session=session)
 
-        def alambda2(cursor):
+        def delete(cursor):
             return cursor.__del__()
 
-        self._test_cursor_helper(alambda, alambda2)
+        self._test_cursor_helper(find, delete)
 
     def test_command_cursor_del(self):
-        def alambda(coll, session):
+        def aggregate(coll, session):
             return coll.aggregate([], session=session)
 
-        def alambda2(cursor):
+        def delete(cursor):
             return cursor.__del__()
 
-        self._test_cursor_helper(alambda, alambda2)
+        self._test_cursor_helper(aggregate, delete)
 
     def test_cursor_exhaust(self):
-        def alambda(coll, session):
+        def find(coll, session):
             return coll.find(session=session)
 
-        self._test_cursor_helper(alambda, lambda cursor: cursor.to_list())
+        self._test_cursor_helper(find, lambda cursor: cursor.to_list())
 
     def test_command_cursor_exhaust(self):
-        def alambda(coll, session):
+        def aggregate(coll, session):
             return coll.aggregate([], session=session)
 
-        self._test_cursor_helper(alambda, lambda cursor: cursor.to_list())
+        self._test_cursor_helper(aggregate, lambda cursor: cursor.to_list())
 
     def test_cursor_limit_reached(self):
-        def alambda(coll, session):
+        def find(coll, session):
             return coll.find(limit=4, batch_size=2, session=session)
 
         self._test_cursor_helper(
-            alambda,
+            find,
             lambda cursor: cursor.to_list(),
         )
 
     def test_command_cursor_limit_reached(self):
-        def alambda(coll, session):
+        def aggregate(coll, session):
             return coll.aggregate([], batchSize=900, session=session)
 
         self._test_cursor_helper(
-            alambda,
+            aggregate,
             lambda cursor: cursor.to_list(),
         )
 
@@ -927,25 +918,22 @@ class TestCausalConsistency(UnitTest):
         # Make sure the collection exists.
         self.client.pymongo_test.test.insert_one({})
 
-        def alambda_aggregate(coll, session):
+        def aggregate(coll, session):
             return (coll.aggregate([], session=session)).to_list()
 
-        def alambda_find(coll, session):
-            return (coll.find({}, session=session)).to_list()
-
-        def alambda_aggregate_raw(coll, session):
+        def aggregate_raw(coll, session):
             return (coll.aggregate_raw_batches([], session=session)).to_list()
 
-        def alambda_find_raw(coll, session):
+        def find_raw(coll, session):
             return (coll.find_raw_batches({}, session=session)).to_list()
 
-        self._test_reads(alambda_aggregate)
-        self._test_reads(alambda_find)
+        self._test_reads(aggregate)
+        self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())
         self._test_reads(lambda coll, session: coll.find_one({}, session=session))
         self._test_reads(lambda coll, session: coll.count_documents({}, session=session))
         self._test_reads(lambda coll, session: coll.distinct("foo", session=session))
-        self._test_reads(alambda_aggregate_raw)
-        self._test_reads(alambda_find_raw)
+        self._test_reads(aggregate_raw)
+        self._test_reads(find_raw)
 
         with self.assertRaises(ConfigurationError):
             self._test_reads(lambda coll, session: coll.estimated_document_count(session=session))
@@ -1050,11 +1038,8 @@ class TestCausalConsistency(UnitTest):
         self._test_no_read_concern(lambda coll, session: coll.drop_index("foo_1", session=session))
         self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
 
-        def alambda(coll, session):
-            (coll.find({}, session=session)).explain()
-
         # Not a write, but explain also doesn't support readConcern.
-        self._test_no_read_concern(alambda)
+        self._test_no_read_concern(lambda coll, session: coll.find({}, session=session).explain())
 
     @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)
@@ -1072,7 +1057,7 @@ class TestCausalConsistency(UnitTest):
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             coll.insert_many([{}, {}])
-            cursor = (coll.find({})).batch_size(1)
+            cursor = coll.find({}).batch_size(1)
             next(cursor)
             self.listener.reset()
             cursor.to_list()
@@ -1167,7 +1152,7 @@ class TestClusterTime(IntegrationTest):
             client.pymongo_test.collection2.drop()
 
         def insert_and_find():
-            cursor = (collection.find()).batch_size(1)
+            cursor = collection.find().batch_size(1)
             for _ in range(10):
                 # Advance the cluster time.
                 collection.insert_one({})
@@ -1184,17 +1169,14 @@ class TestClusterTime(IntegrationTest):
 
             cursor.close()
 
-        def lambda_aggregate():
+        def aggregate():
             (collection.aggregate([])).to_list()
-
-        def lambda_find():
-            (collection.find()).to_list()
 
         ops = [
             # Tests from Driver Sessions Spec.
             ("ping", lambda: client.admin.command("ping")),
-            ("aggregate", lambda: lambda_aggregate()),
-            ("find", lambda: lambda_find()),
+            ("aggregate", lambda: aggregate()),
+            ("find", lambda: collection.find().to_list()),
             ("insert_one", lambda: collection.insert_one({})),
             # Additional PyMongo tests.
             ("insert_and_find", insert_and_find),
