@@ -237,6 +237,13 @@ class AsyncCursor(Generic[_DocumentType]):
         self._dbname = collection.database.name
         self._collname = collection.name
 
+        # Checking exhaust cursor support requires network IO
+        if _IS_SYNC:
+            self._exhaust_checked = True
+            self._supports_exhaust()  # type: ignore[unused-coroutine]
+        else:
+            self._exhaust_checked = False
+
     async def _supports_exhaust(self) -> None:
         # Exhaust cursor support
         if self._cursor_type == CursorType.EXHAUST:
@@ -1242,6 +1249,9 @@ class AsyncCursor(Generic[_DocumentType]):
 
     async def next(self) -> _DocumentType:
         """Advance the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            await self._supports_exhaust()
         if self._empty:
             raise StopAsyncIteration
         if len(self._data) or await self._refresh():

@@ -105,8 +105,8 @@ following command from the root directory of the **PyMongo** source:
 
 .. code-block:: bash
 
-  $ pip install tox
-  $ tox -m doc
+  $ pip install hatch
+  $ hatch run doc:build
 
 Indices and tables
 ------------------

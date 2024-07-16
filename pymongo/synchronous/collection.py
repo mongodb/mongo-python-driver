@@ -1710,7 +1710,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         The `filter` argument is a query document that all results
         must match. For example:
 
-        >>> await db.test.find({"hello": "world"})
+        >>> db.test.find({"hello": "world"})
 
         only matches documents that have a key "hello" with value
         "world".  Matches can have other keys *in addition* to
@@ -1890,9 +1890,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        cursor = Cursor(self, *args, **kwargs)
-        cursor._supports_exhaust()
-        return cursor
+        return Cursor(self, *args, **kwargs)
 
     def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.

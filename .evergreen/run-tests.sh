@@ -123,9 +123,9 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     python -m pip install '.[encryption]'
 
-    # Install libmongocrypt if necessary.
+    # Setup encryption if necessary.
     if [ ! -d "libmongocrypt" ]; then
-        bash ./.evergreen/setup-libmongocrypt.sh
+        bash ./.evergreen/setup-encryption.sh
     fi
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.

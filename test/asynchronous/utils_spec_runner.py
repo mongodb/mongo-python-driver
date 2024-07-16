@@ -18,18 +18,18 @@ from __future__ import annotations
 import functools
 import threading
 from collections import abc
-from test import IntegrationTest, client_context, client_knobs
+from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs
 from test.utils import (
     CMAPListener,
     CompareType,
     EventListener,
     OvertCommandListener,
     ServerAndTopologyEventListener,
+    async_rs_client,
     camel_to_snake,
     camel_to_snake_args,
     parse_spec_options,
     prepare_spec_arguments,
-    rs_client,
 )
 from typing import List
 
@@ -38,16 +38,16 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
+from pymongo.asynchronous import client_session
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
-from pymongo.synchronous import client_session
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.cursor import Cursor
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class SpecRunnerThread(threading.Thread):
@@ -84,14 +84,14 @@ class SpecRunnerThread(threading.Thread):
                     self.stop()
 
 
-class SpecRunner(IntegrationTest):
+class AsyncSpecRunner(AsyncIntegrationTest):
     mongos_clients: List
     knobs: client_knobs
     listener: EventListener
 
     @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
@@ -99,9 +99,9 @@ class SpecRunner(IntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         cls.knobs.disable()
-        super()._tearDown_class()
+        await super()._tearDown_class()
 
     def setUp(self):
         super().setUp()
@@ -111,25 +111,25 @@ class SpecRunner(IntegrationTest):
         self.server_listener = None
         self.maxDiff = None
 
-    def _set_fail_point(self, client, command_args):
+    async def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
         cmd.update(command_args)
-        client.admin.command(cmd)
+        await client.admin.command(cmd)
 
-    def set_fail_point(self, command_args):
+    async def set_fail_point(self, command_args):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            self._set_fail_point(client, command_args)
+            await self._set_fail_point(client, command_args)
 
-    def targeted_fail_point(self, session, fail_point):
+    async def targeted_fail_point(self, session, fail_point):
         """Run the targetedFailPoint test operation.
 
         Enable the fail point on the session's pinned mongos.
         """
         clients = {c.address: c for c in self.mongos_clients}
         client = clients[session._pinned_address]
-        self._set_fail_point(client, fail_point)
-        self.addCleanup(self.set_fail_point, {"mode": "off"})
+        await self._set_fail_point(client, fail_point)
+        self.addAsyncCleanup(self.set_fail_point, {"mode": "off"})
 
     def assert_session_pinned(self, session):
         """Run the assertSessionPinned test operation.
@@ -146,25 +146,25 @@ class SpecRunner(IntegrationTest):
         self.assertIsNone(session._pinned_address)
         self.assertIsNone(session._transaction.pinned_address)
 
-    def assert_collection_exists(self, database, collection):
+    async def assert_collection_exists(self, database, collection):
         """Run the assertCollectionExists test operation."""
         db = self.client[database]
-        self.assertIn(collection, db.list_collection_names())
+        self.assertIn(collection, await db.list_collection_names())
 
-    def assert_collection_not_exists(self, database, collection):
+    async def assert_collection_not_exists(self, database, collection):
         """Run the assertCollectionNotExists test operation."""
         db = self.client[database]
-        self.assertNotIn(collection, db.list_collection_names())
+        self.assertNotIn(collection, await db.list_collection_names())
 
-    def assert_index_exists(self, database, collection, index):
+    async def assert_index_exists(self, database, collection, index):
         """Run the assertIndexExists test operation."""
         coll = self.client[database][collection]
-        self.assertIn(index, [doc["name"] for doc in coll.list_indexes()])
+        self.assertIn(index, [doc["name"] async for doc in await coll.list_indexes()])
 
-    def assert_index_not_exists(self, database, collection, index):
+    async def assert_index_not_exists(self, database, collection, index):
         """Run the assertIndexNotExists test operation."""
         coll = self.client[database][collection]
-        self.assertNotIn(index, [doc["name"] for doc in coll.list_indexes()])
+        self.assertNotIn(index, [doc["name"] async for doc in await coll.list_indexes()])
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]
@@ -176,11 +176,11 @@ class SpecRunner(IntegrationTest):
                 exc.has_error_label(label), msg=f"error labels should not contain {label}"
             )
 
-    def kill_all_sessions(self):
+    async def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
             try:
-                client.admin.command("killAllSessions", [])
+                await client.admin.command("killAllSessions", [])
             except OperationFailure:
                 # "operation was interrupted" by killing the command's
                 # own session.
@@ -258,7 +258,7 @@ class SpecRunner(IntegrationTest):
     def parse_options(opts):
         return parse_spec_options(opts)
 
-    def run_operation(self, sessions, collection, operation):
+    async def run_operation(self, sessions, collection, operation):
         original_collection = collection
         name = camel_to_snake(operation["name"])
         if name == "run_command":
@@ -314,7 +314,7 @@ class SpecRunner(IntegrationTest):
         result = cmd(**dict(arguments))
         # Cleanup open change stream cursors.
         if name == "watch":
-            self.addCleanup(result.close)
+            self.addAsyncCleanup(result.close)
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
@@ -326,8 +326,8 @@ class SpecRunner(IntegrationTest):
         if "download" in name:
             result = Binary(result.read())
 
-        if isinstance(result, Cursor) or isinstance(result, CommandCursor):
-            return result.to_list()
+        if isinstance(result, AsyncCursor) or isinstance(result, AsyncCommandCursor):
+            return await result.to_list()
 
         return result
 
@@ -335,11 +335,11 @@ class SpecRunner(IntegrationTest):
         """Allow encryption spec to override expected error classes."""
         return (PyMongoError,)
 
-    def _run_op(self, sessions, collection, op, in_with_transaction):
+    async def _run_op(self, sessions, collection, op, in_with_transaction):
         expected_result = op.get("result")
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
-                self.run_operation(sessions, collection, op.copy())
+                await self.run_operation(sessions, collection, op.copy())
             exc = context.exception
             if expect_error_message(expected_result):
                 if isinstance(exc, BulkWriteError):
@@ -364,16 +364,16 @@ class SpecRunner(IntegrationTest):
             if in_with_transaction:
                 raise context.exception
         else:
-            result = self.run_operation(sessions, collection, op.copy())
+            result = await self.run_operation(sessions, collection, op.copy())
             if "result" in op:
                 if op["name"] == "runCommand":
                     self.check_command_result(expected_result, result)
                 else:
                     self.check_result(expected_result, result)
 
-    def run_operations(self, sessions, collection, ops, in_with_transaction=False):
+    async def run_operations(self, sessions, collection, ops, in_with_transaction=False):
         for op in ops:
-            self._run_op(sessions, collection, op, in_with_transaction)
+            await self._run_op(sessions, collection, op, in_with_transaction)
 
     # TODO: factor with test_command_monitoring.py
     def check_events(self, test, listener, session_ids):
@@ -455,11 +455,11 @@ class SpecRunner(IntegrationTest):
         """Allow subclasses to override outcome collection."""
         return collection.name
 
-    def run_test_ops(self, sessions, collection, test):
+    async def run_test_ops(self, sessions, collection, test):
         """Added to allow retryable writes spec to override a test's
         operation.
         """
-        self.run_operations(sessions, collection, test["operations"])
+        await self.run_operations(sessions, collection, test["operations"])
 
     def parse_client_options(self, opts):
         """Allow encryption spec to override a clientOptions parsing."""
@@ -467,45 +467,45 @@ class SpecRunner(IntegrationTest):
         # "**" with ScenarioDict.
         return dict(opts)
 
-    def setup_scenario(self, scenario_def):
+    async def setup_scenario(self, scenario_def):
         """Allow specs to override a test's setup."""
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
         documents = scenario_def["data"]
 
         # Setup the collection with as few majority writes as possible.
-        db = client_context.client.get_database(db_name)
-        coll_exists = bool(db.list_collection_names(filter={"name": coll_name}))
+        db = async_client_context.client.get_database(db_name)
+        coll_exists = bool(await db.list_collection_names(filter={"name": coll_name}))
         if coll_exists:
-            db[coll_name].delete_many({})
+            await db[coll_name].delete_many({})
         # Only use majority wc only on the final write.
         wc = WriteConcern(w="majority")
         if documents:
             db.get_collection(coll_name, write_concern=wc).insert_many(documents)
         elif not coll_exists:
             # Ensure collection exists.
-            db.create_collection(coll_name, write_concern=wc)
+            await db.create_collection(coll_name, write_concern=wc)
 
-    def run_scenario(self, scenario_def, test):
+    async def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
 
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
-        self.setup_scenario(scenario_def)
+        await self.kill_all_sessions()
+        self.addAsyncCleanup(self.kill_all_sessions)
+        await self.setup_scenario(scenario_def)
         database_name = self.get_scenario_db_name(scenario_def)
         collection_name = self.get_scenario_coll_name(scenario_def)
         # SPEC-1245 workaround StaleDbVersion on distinct
         for c in self.mongos_clients:
-            c[database_name][collection_name].distinct("x")
+            await c[database_name][collection_name].distinct("x")
 
         # Configure the fail point before creating the client.
         if "failPoint" in test:
             fp = test["failPoint"]
-            self.set_fail_point(fp)
-            self.addCleanup(
+            await self.set_fail_point(fp)
+            self.addAsyncCleanup(
                 self.set_fail_point, {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
             )
 
@@ -515,16 +515,19 @@ class SpecRunner(IntegrationTest):
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test["clientOptions"])
         # MMAPv1 does not support retryable writes.
-        if client_options.get("retryWrites") is True and client_context.storage_engine == "mmapv1":
+        if (
+            client_options.get("retryWrites") is True
+            and async_client_context.storage_engine == "mmapv1"
+        ):
             self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test["useMultipleMongoses"]
         host = None
         if use_multi_mongos:
-            if client_context.load_balancer or client_context.serverless:
-                host = client_context.MULTI_MONGOS_LB_URI
-            elif client_context.is_mongos:
-                host = client_context.mongos_seeds()
-        client = rs_client(
+            if async_client_context.load_balancer or async_client_context.serverless:
+                host = async_client_context.MULTI_MONGOS_LB_URI
+            elif async_client_context.is_mongos:
+                host = async_client_context.mongos_seeds()
+        client = await async_rs_client(
             h=host, event_listeners=[listener, pool_listener, server_listener], **client_options
         )
         self.scenario_client = client
@@ -532,7 +535,7 @@ class SpecRunner(IntegrationTest):
         self.pool_listener = pool_listener
         self.server_listener = server_listener
         # Close the client explicitly to avoid having too many threads open.
-        self.addCleanup(client.close)
+        self.addAsyncCleanup(client.aclose)
 
         # Create session0 and session1.
         sessions = {}
@@ -540,7 +543,7 @@ class SpecRunner(IntegrationTest):
         for i in range(2):
             # Don't attempt to create sessions if they are not supported by
             # the running server version.
-            if not client_context.sessions_enabled:
+            if not async_client_context.sessions_enabled:
                 break
             session_name = "session%d" % i
             opts = camel_to_snake_args(test["sessionOptions"][session_name])
@@ -555,19 +558,21 @@ class SpecRunner(IntegrationTest):
             # Store lsid so we can access it after end_session, in check_events.
             session_ids[session_name] = s.session_id
 
-        self.addCleanup(end_sessions, sessions)
+        self.addAsyncCleanup(end_sessions, sessions)
 
         collection = client[database_name][collection_name]
-        self.run_test_ops(sessions, collection, test)
+        await self.run_test_ops(sessions, collection, test)
 
-        end_sessions(sessions)
+        await end_sessions(sessions)
 
         self.check_events(test, listener, session_ids)
 
         # Disable fail points.
         if "failPoint" in test:
             fp = test["failPoint"]
-            self.set_fail_point({"configureFailPoint": fp["configureFailPoint"], "mode": "off"})
+            await self.set_fail_point(
+                {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
+            )
 
         # Assert final state is expected.
         outcome = test["outcome"]
@@ -577,12 +582,12 @@ class SpecRunner(IntegrationTest):
 
             # Read from the primary with local read concern to ensure causal
             # consistency.
-            outcome_coll = client_context.client[collection.database.name].get_collection(
+            outcome_coll = async_client_context.client[collection.database.name].get_collection(
                 outcome_coll_name,
                 read_preference=ReadPreference.PRIMARY,
                 read_concern=ReadConcern("local"),
             )
-            actual_data = (outcome_coll.find(sort=[("_id", 1)])).to_list()
+            actual_data = await (await outcome_coll.find(sort=[("_id", 1)])).to_list()
 
             # The expected data needs to be the left hand side here otherwise
             # CompareType(Binary) doesn't work.
@@ -643,10 +648,10 @@ def expect_error(op):
     )
 
 
-def end_sessions(sessions):
+async def end_sessions(sessions):
     for s in sessions.values():
         # Aborts the transaction if it's open.
-        s.end_session()
+        await s.end_session()
 
 
 def decode_raw(val):

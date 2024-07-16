@@ -74,6 +74,8 @@ replacements = {
     "IsolatedAsyncioTestCase": "TestCase",
     "AsyncUnitTest": "UnitTest",
     "AsyncMockClient": "MockClient",
+    "AsyncSpecRunner": "SpecRunner",
+    "AsyncTransactionsBase": "TransactionsBase",
     "async_get_pool": "get_pool",
     "async_is_mongos": "is_mongos",
     "async_rs_or_single_client": "rs_or_single_client",
@@ -141,10 +143,12 @@ converted_tests = [
     "__init__.py",
     "conftest.py",
     "pymongo_mocks.py",
+    "utils_spec_runner.py",
     "test_client.py",
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
+    "test_transactions.py",
 ]
 
 sync_test_files = [
