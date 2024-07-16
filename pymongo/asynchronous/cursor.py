@@ -242,6 +242,7 @@ class AsyncCursor(Generic[_DocumentType]):
             self._exhaust_checked = True
             self._supports_exhaust()  # type: ignore[unused-coroutine]
         else:
+            self._exhaust = cursor_type == CursorType.EXHAUST
             self._exhaust_checked = False
 
     async def _supports_exhaust(self) -> None:
@@ -1318,4 +1319,4 @@ class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
         return await clone.explain()
 
     def __getitem__(self, index: Any) -> NoReturn:
-        raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
+        raise InvalidOperation("Cannot call __getitem__ on AsyncRawBatchCursor")
