@@ -148,6 +148,7 @@ converted_tests = [
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
+    "test_session.py",
     "test_transactions.py",
 ]
 
