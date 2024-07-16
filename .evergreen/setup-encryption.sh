@@ -2,6 +2,10 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 set -o xtrace
 
+if [ -z "${DRIVERS_TOOLS}" ]; then
+    echo "Missing environment variable DRIVERS_TOOLS"
+fi
+
 TARGET=""
 
 if [ "Windows_NT" = "${OS:-''}" ]; then # Magic variable in cygwin
@@ -45,3 +49,6 @@ mkdir libmongocrypt
 tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
 ls -la libmongocrypt
 ls -la libmongocrypt/nocrypto
+
+bash ${DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh
+bash ${DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh

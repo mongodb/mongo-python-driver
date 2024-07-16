@@ -260,7 +260,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :return: A generator which yields the requested keys from the key vault.
         """
         assert self.key_vault_coll is not None
-        async with await self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
+        async with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
             async for key in cursor:
                 yield key.raw
 
@@ -975,7 +975,7 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return await self._key_vault_coll.find_one({"_id": id})
 
-    async def get_keys(self) -> AsyncCursor[RawBSONDocument]:
+    def get_keys(self) -> AsyncCursor[RawBSONDocument]:
         """Get all of the data keys.
 
         :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key
@@ -985,7 +985,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return await self._key_vault_coll.find({})
+        return self._key_vault_coll.find({})
 
     async def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
