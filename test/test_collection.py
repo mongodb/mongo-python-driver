@@ -2215,10 +2215,14 @@ class TestCollection(IntegrationTest):
     @client_context.require_version_min(5, 0, 0)
     def test_helpers_with_let(self):
         c = self.db.test
+
+        def afind(*args, **kwargs):
+            return c.find(*args, **kwargs)
+
         helpers = [
             (c.delete_many, ({}, {})),
             (c.delete_one, ({}, {})),
-            (c.find, ({})),
+            (afind, ({})),
             (c.update_many, ({}, {"$inc": {"x": 3}})),
             (c.update_one, ({}, {"$inc": {"x": 3}})),
             (c.find_one_and_delete, ({}, {})),
@@ -2228,16 +2232,9 @@ class TestCollection(IntegrationTest):
         for let in [10, "str", [], False]:
             for helper, args in helpers:
                 with self.assertRaisesRegex(TypeError, "let must be an instance of dict"):
-                    # c.find() is synchronous, can't await it
-                    if helper == c.find:
-                        helper(*args, let=let)  # type: ignore
-                    else:
-                        helper(*args, let=let)  # type: ignore
+                    helper(*args, let=let)  # type: ignore
         for helper, args in helpers:
-            if helper == c.find:
-                helper(*args, let={})  # type: ignore
-            else:
-                helper(*args, let={})  # type: ignore
+            helper(*args, let={})  # type: ignore
 
 
 if __name__ == "__main__":
