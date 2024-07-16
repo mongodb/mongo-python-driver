@@ -15,6 +15,8 @@
 """Python driver for MongoDB."""
 from __future__ import annotations
 
+import asyncio
+import sys
 from typing import ContextManager, Optional
 
 __all__ = [
@@ -107,6 +109,11 @@ from pymongo.write_concern import WriteConcern
 
 version = __version__
 """Current version of PyMongo."""
+
+# The default asyncio loop implementation on Windows has issues with sharing sockets across processes
+# We explicitly use a different loop implementation here to prevent that issue
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def has_c() -> bool:
