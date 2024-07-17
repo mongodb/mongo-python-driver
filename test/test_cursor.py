@@ -129,7 +129,7 @@ class TestCursor(IntegrationTest):
         # Exhaust - which mongos doesn't support
         if client_context.is_mongos:
             with self.assertRaises(InvalidOperation):
-                self.db.test.find(cursor_type=CursorType.EXHAUST)
+                next(self.db.test.find(cursor_type=CursorType.EXHAUST))
         else:
             cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
             self.assertEqual(64, cursor._query_flags)
