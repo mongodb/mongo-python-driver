@@ -43,7 +43,7 @@ class TestLogger(IntegrationTest):
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-                (db.test.find({})).to_list()
+                db.test.find({}).to_list()
                 cmd_succeeded_log = json_util.loads(cm.records[1].message)
                 self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
