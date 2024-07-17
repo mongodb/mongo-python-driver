@@ -205,11 +205,12 @@ jobs:
             python-version: '3.8'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
-        - name: Run connect test from sdist
+        - name: Run Test
           shell: bash
           run: |
             cd sdist/test
             ls
             which python
             pip install -e ".[test]"
-            PYMONGO_MUST_CONNECT=1 pytest -v test/test_client_context.py
+            pytest -v
+            pytest -v test/asynchronous/
