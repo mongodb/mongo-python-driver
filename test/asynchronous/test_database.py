@@ -236,7 +236,7 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_check_exists(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        self.addAsyncCleanup(client.aclose)
         db = client[self.db.name]
         await db.drop_collection("unique")
         await db.create_collection("unique", check_exists=True)
@@ -484,8 +484,8 @@ class TestDatabase(AsyncIntegrationTest):
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(document_class=SON[str, Any])
         )
-        cursor = await db.test.find()
-        for x in cursor:
+        cursor = db.test.find()
+        async for x in cursor:
             for k, _v in x.items():
                 self.assertEqual(k, "_id")
                 break
@@ -551,7 +551,7 @@ class TestDatabase(AsyncIntegrationTest):
         self.assertEqual(b, await db.test.find_one())
 
         count = 0
-        async for _ in await db.test.find():
+        async for _ in db.test.find():
             count += 1
         self.assertEqual(count, 1)
 
@@ -576,13 +576,13 @@ class TestDatabase(AsyncIntegrationTest):
         await db.test.insert_one({"x": 2})
         await db.test.insert_one({"x": 3})
         length = 0
-        async for _ in await db.test.find():
+        async for _ in db.test.find():
             length += 1
         self.assertEqual(length, 3)
 
         await db.test.delete_one({"x": 1})
         length = 0
-        async for _ in await db.test.find():
+        async for _ in db.test.find():
             length += 1
         self.assertEqual(length, 2)
 

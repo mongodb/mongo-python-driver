@@ -1003,10 +1003,10 @@ class ClientEncryption(Generic[_DocumentType]):
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to add.
+        :param key_alt_name: The key alternate name to add.
 
         :return: The previous version of the key document.
 
@@ -1035,10 +1035,10 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to remove.
+        :param key_alt_name: The key alternate name to remove.
 
         :return: Returns the previous version of the key document.
 
@@ -1077,7 +1077,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,
             or ``None`` to use the current KMS provider(s).
-        :param `master_key`: The master key fields corresponding to the new KMS
+        :param master_key: The master key fields corresponding to the new KMS
             provider when ``provider`` is not ``None``.
 
         :return: A :class:`RewrapManyDataKeyResult`.

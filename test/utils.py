@@ -27,6 +27,7 @@ import threading
 import time
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
@@ -621,7 +622,10 @@ async def _async_mongo_client(host, port, authenticate=True, directConnection=No
         ):
             client_options["username"] = db_user
             client_options["password"] = db_pwd
-    return AsyncMongoClient(uri, port, **client_options)
+    client = AsyncMongoClient(uri, port, **client_options)
+    if client._options.connect:
+        await client.aconnect()
+    return client
 
 
 def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
@@ -843,32 +847,11 @@ def server_started_with_auth(client):
     return "--auth" in argv or "--keyFile" in argv
 
 
-def drop_collections(db):
-    # Drop all non-system collections in this database.
-    for coll in db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
-        db.drop_collection(coll)
-
-
-def remove_all_users(db):
-    db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": client_context.w})
-
-
 def joinall(threads):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
     for t in threads:
         t.join(300)
         assert not t.is_alive(), "Thread %s hung" % t
-
-
-def connected(client):
-    """Convenience to wait for a newly-constructed client to connect."""
-    with warnings.catch_warnings():
-        # Ignore warning that ping is always routed to primary even
-        # if client's read preference isn't PRIMARY.
-        warnings.simplefilter("ignore", UserWarning)
-        client.admin.command("ping")  # Force connection.
-
-    return client
 
 
 def wait_until(predicate, success_description, timeout=10):
@@ -957,6 +940,20 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
         raise AssertionError("%s not raised" % cls)
 
 
+async def asyncAssertRaisesExactly(cls, fn, *args, **kwargs):
+    """
+    Unlike the standard assertRaises, this checks that a function raises a
+    specific class of exception, and not a subclass. E.g., check that
+    MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
+    """
+    try:
+        await fn(*args, **kwargs)
+    except Exception as e:
+        assert e.__class__ == cls, f"got {e.__class__.__name__}, expected {cls.__name__}"
+    else:
+        raise AssertionError("%s not raised" % cls)
+
+
 @contextlib.contextmanager
 def _ignore_deprecations():
     with warnings.catch_warnings():
@@ -967,11 +964,18 @@ def _ignore_deprecations():
 def ignore_deprecations(wrapped=None):
     """A context manager or a decorator."""
     if wrapped:
+        if iscoroutinefunction(wrapped):
 
-        @functools.wraps(wrapped)
-        def wrapper(*args, **kwargs):
-            with _ignore_deprecations():
-                return wrapped(*args, **kwargs)
+            @functools.wraps(wrapped)
+            async def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return await wrapped(*args, **kwargs)
+        else:
+
+            @functools.wraps(wrapped)
+            def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return wrapped(*args, **kwargs)
 
         return wrapper
 

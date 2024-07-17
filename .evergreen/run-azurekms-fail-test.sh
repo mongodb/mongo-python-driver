@@ -7,4 +7,4 @@ PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
     KEY_VAULT_ENDPOINT="${AZUREKMS_KEYVAULTENDPOINT}" \
     LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
     SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-    ./.evergreen/tox.sh -m test-eg
+    ./.evergreen/hatch.sh test:test-eg

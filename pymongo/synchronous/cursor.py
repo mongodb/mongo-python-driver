@@ -237,6 +237,14 @@ class Cursor(Generic[_DocumentType]):
         self._dbname = collection.database.name
         self._collname = collection.name
 
+        # Checking exhaust cursor support requires network IO
+        if _IS_SYNC:
+            self._exhaust_checked = True
+            self._supports_exhaust()  # type: ignore[unused-coroutine]
+        else:
+            self._exhaust = cursor_type == CursorType.EXHAUST
+            self._exhaust_checked = False
+
     def _supports_exhaust(self) -> None:
         # Exhaust cursor support
         if self._cursor_type == CursorType.EXHAUST:
@@ -1240,6 +1248,9 @@ class Cursor(Generic[_DocumentType]):
 
     def next(self) -> _DocumentType:
         """Advance the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
         if self._empty:
             raise StopIteration
         if len(self._data) or self._refresh():

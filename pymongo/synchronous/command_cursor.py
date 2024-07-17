@@ -424,4 +424,4 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
         return raw_response  # type: ignore[return-value]
 
     def __getitem__(self, index: int) -> NoReturn:
-        raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
+        raise InvalidOperation("Cannot call __getitem__ on RawBatchCommandCursor")

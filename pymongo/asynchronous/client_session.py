@@ -144,6 +144,7 @@ from typing import (
     Any,
     AsyncContextManager,
     Callable,
+    Coroutine,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -598,7 +599,7 @@ class AsyncClientSession:
 
     async def with_transaction(
         self,
-        callback: Callable[[AsyncClientSession], _T],
+        callback: Callable[[AsyncClientSession], Coroutine[Any, Any, _T]],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -693,7 +694,7 @@ class AsyncClientSession:
                 read_concern, write_concern, read_preference, max_commit_time_ms
             )
             try:
-                ret = callback(self)
+                ret = await callback(self)
             except Exception as exc:
                 if self.in_transaction:
                     await self.abort_transaction()

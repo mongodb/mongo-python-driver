@@ -260,7 +260,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :return: A generator which yields the requested keys from the key vault.
         """
         assert self.key_vault_coll is not None
-        async with await self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
+        async with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
             async for key in cursor:
                 yield key.raw
 
@@ -299,7 +299,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         self.client_ref = None
         self.key_vault_coll = None
         if self.mongocryptd_client:
-            await self.mongocryptd_client.close()
+            await self.mongocryptd_client.aclose()
             self.mongocryptd_client = None
 
 
@@ -439,7 +439,7 @@ class _Encrypter:
         self._closed = True
         await self._auto_encrypter.close()
         if self._internal_client:
-            await self._internal_client.close()
+            await self._internal_client.aclose()
             self._internal_client = None
 
 
@@ -975,7 +975,7 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return await self._key_vault_coll.find_one({"_id": id})
 
-    async def get_keys(self) -> AsyncCursor[RawBSONDocument]:
+    def get_keys(self) -> AsyncCursor[RawBSONDocument]:
         """Get all of the data keys.
 
         :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key
@@ -985,7 +985,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return await self._key_vault_coll.find({})
+        return self._key_vault_coll.find({})
 
     async def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
@@ -1005,10 +1005,10 @@ class ClientEncryption(Generic[_DocumentType]):
     async def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to add.
+        :param key_alt_name: The key alternate name to add.
 
         :return: The previous version of the key document.
 
@@ -1037,10 +1037,10 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to remove.
+        :param key_alt_name: The key alternate name to remove.
 
         :return: Returns the previous version of the key document.
 
@@ -1079,7 +1079,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,
             or ``None`` to use the current KMS provider(s).
-        :param `master_key`: The master key fields corresponding to the new KMS
+        :param master_key: The master key fields corresponding to the new KMS
             provider when ``provider`` is not ``None``.
 
         :return: A :class:`RewrapManyDataKeyResult`.

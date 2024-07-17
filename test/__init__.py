@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import gc
 import multiprocessing
 import os
@@ -39,8 +40,6 @@ from test.helpers import (
     TEST_SERVERLESS,
     TLS_OPTIONS,
     SystemCertsPatcher,
-    _all_users,
-    _create_user,
     client_knobs,
     db_pwd,
     db_user,
@@ -62,9 +61,9 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from contextlib import contextmanager
-from functools import wraps
+from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator
+from typing import Any, Callable, Dict, Generator, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -678,7 +677,7 @@ class ClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = (client_context.client.config.shards.find()).to_list()
+            shards = client_context.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -812,6 +811,12 @@ class ClientContext:
             func=func,
         )
 
+    def require_sync(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
@@ -919,6 +924,32 @@ class PyMongoTestCase(unittest.TestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
+class UnitTest(PyMongoTestCase):
+    """Async base class for TestCases that don't require a connection to MongoDB."""
+
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    def _setup_class(cls):
+        cls._setup_class()
+
+    @classmethod
+    def _tearDown_class(cls):
+        cls._tearDown_class()
+
+
 class IntegrationTest(PyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
 
@@ -934,6 +965,13 @@ class IntegrationTest(PyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
     @client_context.require_connection
     def _setup_class(cls):
         if client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
@@ -947,6 +985,10 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @classmethod
+    def _tearDown_class(cls):
+        pass
+
     def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:
@@ -959,7 +1001,7 @@ class IntegrationTest(PyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
-class MockClientTest(unittest.TestCase):
+class MockClientTest(UnitTest):
     """Base class for TestCases that use MockClient.
 
     This class is *not* an IntegrationTest: if properly written, MockClient
@@ -972,8 +1014,26 @@ class MockClientTest(unittest.TestCase):
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
     @classmethod
-    @client_context.require_no_load_balancer
     def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    @client_context.require_no_load_balancer
+    def _setup_class(cls):
+        pass
+
+    @classmethod
+    def _tearDown_class(cls):
         pass
 
     def setUp(self):
@@ -1051,3 +1111,38 @@ def print_running_clients():
                 processed.add(obj._topology_id)
         except ReferenceError:
             pass
+
+
+def _all_users(db):
+    return {u["user"] for u in (db.command("usersInfo")).get("users", [])}
+
+
+def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([("createUser", user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd["pwd"] = pwd
+    cmd["roles"] = roles or ["root"]
+    cmd.update(**kwargs)
+    return authdb.command(cmd)
+
+
+def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    with warnings.catch_warnings():
+        # Ignore warning that ping is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        client.admin.command("ping")  # Force connection.
+
+    return client
+
+
+def drop_collections(db: Database):
+    # Drop all non-system collections in this database.
+    for coll in db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
+        db.drop_collection(coll)
+
+
+def remove_all_users(db: Database):
+    db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": client_context.w})
