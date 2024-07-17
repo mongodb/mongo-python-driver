@@ -242,6 +242,7 @@ class Cursor(Generic[_DocumentType]):
             self._exhaust_checked = True
             self._supports_exhaust()  # type: ignore[unused-coroutine]
         else:
+            self._exhaust = cursor_type == CursorType.EXHAUST
             self._exhaust_checked = False
 
     def _supports_exhaust(self) -> None:
