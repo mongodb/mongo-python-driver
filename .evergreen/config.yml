@@ -1121,7 +1121,7 @@ tasks:
 
     - name: "release-mac"
       tags: ["release_tag"]
-      run_on: macos-1100
+      run_on: macos-11
       commands:
         - func: "build release"
           vars:
