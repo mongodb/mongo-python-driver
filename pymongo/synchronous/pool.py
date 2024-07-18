@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import collections
 import contextlib
+import inspect
 import logging
 import os
 import socket
@@ -561,6 +562,36 @@ class Connection:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
+            if "The parameter is incorrect" in str(error):
+
+                def print_open_fds(print_all=False):
+                    global descriptors
+                    (
+                        frame,
+                        filename,
+                        line_number,
+                        function_name,
+                        lines,
+                        index,
+                    ) = inspect.getouterframes(inspect.currentframe())[1]
+                    fds = set(os.listdir("/proc/self/fd/"))
+                    new_fds = fds - descriptors
+                    closed_fds = descriptors - fds
+                    descriptors = fds
+
+                    if print_all:
+                        print(f"{filename}:{line_number} ALL file descriptors: {fds}")
+
+                    if new_fds:
+                        print(f"{filename}:{line_number} new file descriptors: {new_fds}")
+                    if closed_fds:
+                        print(f"{filename}:{line_number} closed file descriptors: {closed_fds}")
+
+                print(
+                    f"DEBUGGING! fd: {self.conn.fileno()}, total open fds: {print_open_fds(True)}, open threads: {threading.active_count()}"
+                )
+                descriptors = set()
+
             self._raise_connection_failure(error)
 
     def send_message(self, message: bytes, max_doc_size: int) -> None:
