@@ -129,7 +129,7 @@ class TestCursor(AsyncIntegrationTest):
         # Exhaust - which mongos doesn't support
         if async_client_context.is_mongos:
             with self.assertRaises(InvalidOperation):
-                self.db.test.find(cursor_type=CursorType.EXHAUST)
+                await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
         else:
             cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
             self.assertEqual(64, cursor._query_flags)

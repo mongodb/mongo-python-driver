@@ -192,7 +192,7 @@ class TestTransactions(AsyncTransactionsBase):
             addresses = set()
             for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
                 async with await s.start_transaction():
-                    cursor = await coll.find({}, session=s)
+                    cursor = coll.find({}, session=s)
                     self.assertTrue(await anext(cursor))
                     addresses.add(cursor.address)
                 # Break early if we can.
@@ -219,7 +219,7 @@ class TestTransactions(AsyncTransactionsBase):
 
             addresses = set()
             for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                cursor = await coll.find({}, session=s)
+                cursor = coll.find({}, session=s)
                 self.assertTrue(await anext(cursor))
                 addresses.add(cursor.address)
                 # Break early if we can.
