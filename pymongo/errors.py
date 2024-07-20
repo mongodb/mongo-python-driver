@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Un
 from bson.errors import InvalidDocument
 
 if TYPE_CHECKING:
-    from pymongo.results import ClientBulkWriteResult
     from pymongo.typings import _DocumentOut
 
 
@@ -307,37 +306,6 @@ class BulkWriteError(OperationFailure):
         if werrs and werrs[-1].get("code") == 50:
             return True
         return False
-
-
-class ClientBulkWriteException(PyMongoError):
-    """Exception class for client-level bulk write errors.
-
-    .. versionadded:: TODO
-    """
-
-    details: _DocumentOut
-
-    def __init__(self, results: _DocumentOut) -> None:
-        super().__init__("batch op errors occurred", 65, results)
-
-    def __reduce__(self) -> tuple[Any, Any]:
-        return self.__class__, (self.details,)
-
-    @property
-    def error(self) -> None:
-        pass
-
-    @property
-    def write_concern_errors(self) -> Optional[list[WriteConcernError]]:
-        return self.details.get("writeConcernErrors", [])
-
-    @property
-    def write_errors(self) -> Optional[Mapping[int, WriteError]]:
-        pass
-
-    @property
-    def partial_result(self) -> Optional[ClientBulkWriteResult]:
-        pass
 
 
 class InvalidOperation(PyMongoError):

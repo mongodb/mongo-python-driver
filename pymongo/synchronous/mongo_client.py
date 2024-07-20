@@ -58,6 +58,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, uri_parser
+from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
@@ -2218,7 +2219,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         models: Sequence[_WriteOp[_DocumentType]],
         session: Optional[ClientSession] = None,
         ordered: Optional[bool] = True,
-        bypass_document_validation: Optional[bool] = False,
+        bypass_document_validation: Optional[bool] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
         write_concern: Optional[WriteConcern] = None,
@@ -2267,10 +2268,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 "MongoClient.bulk_write does not currently support automatic encryption"
             )
 
-        # Inherit the client's write concern if none is provided.
-        if not write_concern:
-            write_concern = self.write_concern
+        if session and session.in_transaction:
+            # Inherit the transaction write concern.
+            if write_concern:
+                raise InvalidOperation("Cannot set write concern after starting a transaction")
+            write_concern = session._transaction.opts.write_concern
+        else:
+            # Inherit the client's write concern if none is provided.
+            if not write_concern:
+                write_concern = self.write_concern
+
         common.validate_list("models", models)
+
         blk = _ClientBulk(
             self,
             ordered=ordered,
@@ -2285,8 +2294,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 model._add_to_bulk(blk)
             except AttributeError:
                 raise TypeError(f"{model!r} is not a valid request") from None
-        if not session and write_concern.acknowledged:
-            session = self.start_session()
+
         bulk_api_result = blk.execute(session, _Op.BULK_WRITE)
         return ClientBulkWriteResult(
             bulk_api_result,
@@ -2297,7 +2305,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     """Return the server response from PyMongo exception or None."""
-    if isinstance(exc, BulkWriteError):
+    if isinstance(exc, (BulkWriteError, ClientBulkWriteException)):
         # Check the last writeConcernError to determine if this
         # BulkWriteError is retryable.
         wces = exc.details["writeConcernErrors"]

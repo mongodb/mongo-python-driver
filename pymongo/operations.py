@@ -39,7 +39,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
-    from pymongo.typings import _AgnosticBulk
+    from pymongo.typings import _AgnosticBulk, _AgnosticClientBulk
 
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
@@ -522,7 +522,7 @@ class ClientInsertOne(Generic[_DocumentType]):
         self._namespace = namespace
         self._doc = document
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_insert(self._namespace, self._doc)  # type: ignore[arg-type]
 
@@ -618,7 +618,7 @@ class ClientDeleteOne(_ClientDeleteOp):
         """
         super().__init__(namespace, filter, collation, hint)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_delete(
             self._namespace,
@@ -658,7 +658,7 @@ class ClientDeleteMany(_ClientDeleteOp):
         """
         super().__init__(namespace, filter, collation, hint)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_delete(
             self._namespace,
@@ -716,7 +716,7 @@ class ClientReplaceOne(Generic[_DocumentType]):
         self._upsert = upsert
         self._collation = collation
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_replace(
             self._namespace,
@@ -779,7 +779,7 @@ class _ClientUpdateOp:
         namespace: str,
         filter: Mapping[str, Any],
         doc: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool,
+        upsert: Optional[bool],
         collation: Optional[_CollationIn],
         array_filters: Optional[list[Mapping[str, Any]]],
         hint: Optional[_IndexKeyHint],
@@ -846,7 +846,7 @@ class ClientUpdateOne(_ClientUpdateOp):
         namespace: str,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
+        upsert: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -873,7 +873,7 @@ class ClientUpdateOne(_ClientUpdateOp):
         """
         super().__init__(namespace, filter, update, upsert, collation, array_filters, hint)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_update(
             self._namespace,
@@ -897,7 +897,7 @@ class ClientUpdateMany(_ClientUpdateOp):
         namespace: str,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
+        upsert: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -924,7 +924,7 @@ class ClientUpdateMany(_ClientUpdateOp):
         """
         super().__init__(namespace, filter, update, upsert, collation, array_filters, hint)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         bulkobj.add_update(
             self._namespace,
