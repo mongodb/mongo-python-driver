@@ -70,6 +70,7 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
@@ -128,7 +129,7 @@ from pymongo.operations import (
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult
+from pymongo.results import BulkWriteResult, ClientBulkWriteResult
 from pymongo.server_api import ServerApi
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
@@ -403,6 +404,13 @@ def parse_client_bulk_write_result(result):
 def parse_bulk_write_error_result(error):
     write_result = BulkWriteResult(error.details, True)
     return parse_bulk_write_result(write_result)
+
+
+def parse_client_bulk_write_error_result(error):
+    write_result = error.partial_result
+    if not write_result:
+        return None
+    return parse_client_bulk_write_result(write_result)
 
 
 class NonLazyCursor:
@@ -1087,7 +1095,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.20")
+    SCHEMA_VERSION = Version.from_string("1.21")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1278,6 +1286,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if error_contains:
             if isinstance(exception, BulkWriteError):
                 errmsg = str(exception.details).lower()
+            elif isinstance(exception, ClientBulkWriteException):
+                errmsg = str(exception.details).lower()
             else:
                 errmsg = str(exception).lower()
             self.assertIn(error_contains.lower(), errmsg)
@@ -1305,8 +1315,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if isinstance(exception, BulkWriteError):
                 result = parse_bulk_write_error_result(exception)
                 self.match_evaluator.match_result(expect_result, result)
+            elif isinstance(exception, ClientBulkWriteException):
+                result = parse_client_bulk_write_error_result(exception)
+                self.match_evaluator.match_result(expect_result, result)
             else:
-                self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
+                self.fail(
+                    f"expectResult can only be specified with {BulkWriteError} or {ClientBulkWriteException} exceptions"
+                )
 
         return exception
 

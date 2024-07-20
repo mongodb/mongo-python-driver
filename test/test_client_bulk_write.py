@@ -17,7 +17,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test.synchronous import IntegrationTest, client_context
+from test import IntegrationTest, client_context
 from test.utils import (
     OvertCommandListener,
     rs_or_single_client,
@@ -30,7 +30,7 @@ from pymongo.monitoring import *
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = False
+_IS_SYNC = True
 
 
 class TestClientBulkWrite(IntegrationTest):
