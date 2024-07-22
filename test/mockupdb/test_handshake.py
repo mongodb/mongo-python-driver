@@ -19,8 +19,11 @@ import pytest
 
 try:
     from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply, absent, go
+
+    _HAVE_MOCKUPDB = True
 except ImportError:
-    pass
+    _HAVE_MOCKUPDB = False
+
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient

@@ -21,8 +21,11 @@ import pytest
 
 try:
     from mockupdb import MockupDB, going
+
+    _HAVE_MOCKUPDB = True
 except ImportError:
-    pass
+    _HAVE_MOCKUPDB = False
+
 
 from bson import Timestamp
 from pymongo import DeleteMany, InsertOne, MongoClient, UpdateOne

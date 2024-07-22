@@ -19,8 +19,11 @@ import pytest
 
 try:
     from mockupdb import Future, MockupDB, OpReply, going, wait_until
+
+    _HAVE_MOCKUPDB = True
 except ImportError:
-    pass
+    _HAVE_MOCKUPDB = False
+
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure

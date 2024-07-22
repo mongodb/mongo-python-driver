@@ -21,8 +21,11 @@ import pytest
 
 try:
     from mockupdb import MockupDB, going, wait_until
+
+    _HAVE_MOCKUPDB = True
 except ImportError:
-    pass
+    _HAVE_MOCKUPDB = False
+
 
 from operations import operations  # type: ignore[import]
 

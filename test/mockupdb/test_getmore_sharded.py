@@ -22,8 +22,11 @@ import pytest
 
 try:
     from mockupdb import MockupDB, going
+
+    _HAVE_MOCKUPDB = True
 except ImportError:
-    pass
+    _HAVE_MOCKUPDB = False
+
 
 from pymongo import MongoClient
 
