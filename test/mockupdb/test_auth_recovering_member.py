@@ -15,10 +15,17 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB
+import pytest
+
+try:
+    from mockupdb import MockupDB
+except ImportError:
+    pass
 
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestAuthRecoveringMember(unittest.TestCase):

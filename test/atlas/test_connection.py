@@ -20,10 +20,15 @@ import sys
 import unittest
 from collections import defaultdict
 
+import pytest
+
 sys.path[0:0] = [""]
 
 import pymongo
 from pymongo.ssl_support import HAS_SNI
+
+pytestmark = pytest.mark.atlas
+
 
 URIS = {
     "ATLAS_REPL": os.environ.get("ATLAS_REPL"),

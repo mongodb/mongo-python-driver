@@ -19,10 +19,17 @@ import time
 import unittest
 from queue import Queue
 
-from mockupdb import MockupDB, go
+import pytest
+
+try:
+    from mockupdb import MockupDB, go
+except ImportError:
+    pass
 from operations import upgrades  # type: ignore[import]
 
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestMixedVersionSharded(unittest.TestCase):

@@ -17,7 +17,12 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB, OpMsg, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, OpMsg, going
+except ImportError:
+    pass
 
 from bson import SON
 from pymongo import MongoClient
@@ -28,6 +33,8 @@ from pymongo.read_preferences import (
     Secondary,
     SecondaryPreferred,
 )
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestQueryAndReadModeSharded(unittest.TestCase):

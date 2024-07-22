@@ -16,11 +16,18 @@ from __future__ import annotations
 import unittest
 from collections import namedtuple
 
-from mockupdb import OP_MSG_FLAGS, MockupDB, OpMsg, OpMsgReply, going
+import pytest
+
+try:
+    from mockupdb import OP_MSG_FLAGS, MockupDB, OpMsg, OpMsgReply, going
+except ImportError:
+    pass
 
 from pymongo import MongoClient, WriteConcern
 from pymongo.cursor_shared import CursorType
 from pymongo.operations import DeleteOne, InsertOne, UpdateOne
+
+pytestmark = pytest.mark.mockupdb
 
 Operation = namedtuple("Operation", ["name", "function", "request", "reply"])
 

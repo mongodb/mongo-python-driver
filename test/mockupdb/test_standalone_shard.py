@@ -17,10 +17,17 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+except ImportError:
+    pass
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestStandaloneShard(unittest.TestCase):

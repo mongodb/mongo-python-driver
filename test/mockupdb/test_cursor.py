@@ -18,11 +18,18 @@ from __future__ import annotations
 import unittest
 from test import PyMongoTestCase
 
-from mockupdb import MockupDB, OpMsg, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, OpMsg, going
+except ImportError:
+    pass
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestCursor(unittest.TestCase):

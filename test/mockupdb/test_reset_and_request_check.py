@@ -17,13 +17,21 @@ import itertools
 import time
 import unittest
 
-from mockupdb import MockupDB, going, wait_until
+import pytest
+
+try:
+    from mockupdb import MockupDB, going, wait_until
+except ImportError:
+    pass
+
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_type import SERVER_TYPE
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestResetAndRequestCheck(unittest.TestCase):

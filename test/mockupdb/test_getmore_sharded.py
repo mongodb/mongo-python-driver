@@ -18,9 +18,16 @@ from __future__ import annotations
 import unittest
 from queue import Queue
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+except ImportError:
+    pass
 
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestGetmoreSharded(unittest.TestCase):

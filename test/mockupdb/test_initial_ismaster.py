@@ -16,9 +16,16 @@ from __future__ import annotations
 import time
 import unittest
 
-from mockupdb import MockupDB, wait_until
+import pytest
+
+try:
+    from mockupdb import MockupDB, wait_until
+except ImportError:
+    pass
 
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestInitialIsMaster(unittest.TestCase):

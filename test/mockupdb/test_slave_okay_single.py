@@ -23,12 +23,19 @@ from __future__ import annotations
 import itertools
 import unittest
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+except ImportError:
+    pass
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
 from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
 from pymongo.topology_description import TOPOLOGY_TYPE
+
+pytestmark = pytest.mark.mockupdb
 
 
 def topology_type_name(client):

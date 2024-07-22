@@ -18,10 +18,17 @@ from __future__ import annotations
 import datetime
 import unittest
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+except ImportError:
+    pass
 
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestRSGhost(unittest.TestCase):

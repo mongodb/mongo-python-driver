@@ -20,10 +20,17 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+except ImportError:
+    pass
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestSlaveOkayRS(unittest.TestCase):
