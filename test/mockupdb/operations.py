@@ -15,7 +15,10 @@ from __future__ import annotations
 
 from collections import namedtuple
 
-from mockupdb import OpMsgReply, OpReply
+try:
+    from mockupdb import OpMsgReply, OpReply
+except ImportError:
+    pass
 
 from pymongo import ReadPreference
 
