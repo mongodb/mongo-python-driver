@@ -14,8 +14,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import contextlib
+import functools
 import logging
 import os
 import socket
@@ -872,12 +874,23 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
             if _IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
-                ssl_sock = ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
+                if hasattr(ssl_context, "a_wrap_socket"):
+                    ssl_sock = ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
+                else:
+                    loop = asyncio.get_running_loop()
+                    ssl_sock = loop.run_in_executor(
+                        None,
+                        functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc]
+                    )
         else:
             if _IS_SYNC:
                 ssl_sock = ssl_context.wrap_socket(sock)
             else:
-                ssl_sock = ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
+                if hasattr(ssl_context, "a_wrap_socket"):
+                    ssl_sock = ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
+                else:
+                    loop = asyncio.get_running_loop()
+                    ssl_sock = loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc]
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
