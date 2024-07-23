@@ -1700,18 +1700,18 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
-        cursor = await self.find(filter, *args, **kwargs)
+        cursor = self.find(filter, *args, **kwargs)
         async for result in cursor.limit(-1):
             return result
         return None
 
-    async def find(self, *args: Any, **kwargs: Any) -> AsyncCursor[_DocumentType]:
+    def find(self, *args: Any, **kwargs: Any) -> AsyncCursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a query document that all results
         must match. For example:
 
-        >>> await db.test.find({"hello": "world"})
+        >>> db.test.find({"hello": "world"})
 
         only matches documents that have a key "hello" with value
         "world".  Matches can have other keys *in addition* to
@@ -1891,9 +1891,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
-        cursor = AsyncCursor(self, *args, **kwargs)
-        await cursor._supports_exhaust()
-        return cursor
+        return AsyncCursor(self, *args, **kwargs)
 
     async def find_raw_batches(
         self, *args: Any, **kwargs: Any

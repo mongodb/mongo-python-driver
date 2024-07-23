@@ -1010,7 +1010,7 @@ class TestClient(AsyncIntegrationTest):
         await coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
         # Open a cursor and leave it open on the server.
-        cursor = (await coll.find()).batch_size(10)
+        cursor = coll.find().batch_size(10)
         self.assertTrue(bool(await anext(cursor)))
         self.assertLess(cursor.retrieved, docs_inserted)
 
@@ -1257,7 +1257,7 @@ class TestClient(AsyncIntegrationTest):
         where_func = delay(timeout_sec + 1)
 
         async def get_x(db):
-            doc = await anext((await db.test.find()).where(where_func))
+            doc = await anext(db.test.find().where(where_func))
             return doc["x"]
 
         self.assertEqual(1, await get_x(no_timeout.pymongo_test))
@@ -1509,7 +1509,7 @@ class TestClient(AsyncIntegrationTest):
         # Cause a network error.
         conn = one(pool.conns)
         conn.conn.close()
-        cursor = await collection.find(cursor_type=CursorType.EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             await anext(cursor)
 
@@ -1856,7 +1856,7 @@ class TestClient(AsyncIntegrationTest):
         client = await async_rs_or_single_client()
         coll = client.db.collection
         await coll.insert_many([{} for _ in range(5)])
-        cursor = await coll.find(batch_size=2)
+        cursor = coll.find(batch_size=2)
         await cursor.next()
         c_id = cursor.cursor_id
         self.assertIsNotNone(c_id)
@@ -2018,14 +2018,14 @@ class TestClient(AsyncIntegrationTest):
             None,
         )
 
-    async def test_dict_hints(self):
-        await self.db.t.find(hint={"x": 1})
+    def test_dict_hints(self):
+        self.db.t.find(hint={"x": 1})
 
-    async def test_dict_hints_sort(self):
-        result = await self.db.t.find()
+    def test_dict_hints_sort(self):
+        result = self.db.t.find()
         result.sort({"x": 1})
 
-        await self.db.t.find(sort={"x": 1})
+        self.db.t.find(sort={"x": 1})
 
     async def test_dict_hints_create_index(self):
         await self.db.t.create_index({"x": pymongo.ASCENDING})
@@ -2050,7 +2050,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         # This will cause OperationFailure in all mongo versions since
         # the value for $orderby must be a document.
-        cursor = await collection.find(
+        cursor = collection.find(
             SON([("$query", {}), ("$orderby", True)]), cursor_type=CursorType.EXHAUST
         )
 
@@ -2076,7 +2076,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         pool._check_interval_seconds = None  # Never check.
         conn = one(pool.conns)
 
-        cursor = await collection.find(cursor_type=CursorType.EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
         # Initial query succeeds.
         await cursor.next()
@@ -2113,7 +2113,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         conn = one(pool.conns)
         conn.conn.close()
 
-        cursor = await collection.find(cursor_type=CursorType.EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             await cursor.next()
         self.assertTrue(conn.closed)
@@ -2132,7 +2132,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         pool = await async_get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
-        cursor = await collection.find(cursor_type=CursorType.EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
         # Initial query succeeds.
         await cursor.next()

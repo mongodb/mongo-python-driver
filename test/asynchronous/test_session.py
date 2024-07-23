@@ -25,33 +25,35 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
-    PyMongoTestCase,
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    AsyncUnitTest,
     SkipTest,
-    UnitTest,
-    client_context,
+    async_client_context,
     unittest,
 )
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
+    async_rs_or_single_client,
+    async_wait_until,
     rs_or_single_client,
     wait_until,
 )
 
 from bson import DBRef
-from gridfs.synchronous.grid_file import GridFS, GridFSBucket
-from pymongo import ASCENDING, MongoClient, monitoring
+from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
+from pymongo import ASCENDING, AsyncMongoClient, monitoring
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
 from pymongo.read_concern import ReadConcern
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.cursor import Cursor
-from pymongo.synchronous.helpers import next
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
@@ -78,41 +80,41 @@ def session_ids(client):
     return [s.session_id for s in copy.copy(client._topology._session_pool)]
 
 
-class TestSession(IntegrationTest):
-    client2: MongoClient
+class TestSession(AsyncIntegrationTest):
+    client2: AsyncMongoClient
     sensitive_commands: Set[str]
 
     @classmethod
-    @client_context.require_sessions
-    def _setup_class(cls):
-        super()._setup_class()
+    @async_client_context.require_sessions
+    async def _setup_class(cls):
+        await super()._setup_class()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = rs_or_single_client()
+        cls.client2 = await async_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
         cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
         monitoring._SENSITIVE_COMMANDS.clear()
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
-        cls.client2.close()
-        super()._tearDown_class()
+        await cls.client2.aclose()
+        await super()._tearDown_class()
 
-    def setUp(self):
+    async def asyncSetUp(self):
         self.listener = SessionTestListener()
         self.session_checker_listener = SessionTestListener()
-        self.client = rs_or_single_client(
+        self.client = await async_rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
-        self.addCleanup(self.client.close)
+        self.addAsyncCleanup(self.client.aclose)
         self.db = self.client.pymongo_test
         self.initial_lsids = {s["id"] for s in session_ids(self.client)}
 
-    def tearDown(self):
+    async def asyncTearDown(self):
         """All sessions used in the test must be returned to the pool."""
-        self.client.drop_database("pymongo_test")
+        await self.client.drop_database("pymongo_test")
         used_lsids = self.initial_lsids.copy()
         for event in self.session_checker_listener.started_events:
             if "lsid" in event.command:
@@ -121,11 +123,11 @@ class TestSession(IntegrationTest):
         current_lsids = {s["id"] for s in session_ids(self.client)}
         self.assertLessEqual(used_lsids, current_lsids)
 
-    def _test_ops(self, client, *ops):
+    async def _test_ops(self, client, *ops):
         listener = client.options.event_listeners[0]
 
         for f, args, kw in ops:
-            with client.start_session() as s:
+            async with client.start_session() as s:
                 listener.reset()
                 s._materialize()
                 last_use = s._server_session.last_use
@@ -135,7 +137,7 @@ class TestSession(IntegrationTest):
                 args = copy.copy(args)
                 kw = copy.copy(kw)
                 kw["session"] = s
-                f(*args, **kw)
+                await f(*args, **kw)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
                     self.assertTrue(
@@ -153,24 +155,24 @@ class TestSession(IntegrationTest):
 
             self.assertTrue(s.has_ended)
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
-                f(*args, **kw)
+                await f(*args, **kw)
 
             # Test a session cannot be used on another client.
-            with self.client2.start_session() as s:
+            async with self.client2.start_session() as s:
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaisesRegex(
                     InvalidOperation,
-                    "Can only use session with the MongoClient that started it",
+                    "Can only use session with the AsyncMongoClient that started it",
                 ):
-                    f(*args, **kw)
+                    await f(*args, **kw)
 
         # No explicit session.
         for f, args, kw in ops:
             listener.reset()
-            f(*args, **kw)
+            await f(*args, **kw)
             self.assertGreaterEqual(len(listener.started_events), 1)
             lsids = []
             for event in listener.started_events:
@@ -191,7 +193,7 @@ class TestSession(IntegrationTest):
                         f"{f.__name__} did not return implicit session to pool",
                     )
 
-    @client_context.require_sync
+    @async_client_context.require_sync
     def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
@@ -200,7 +202,7 @@ class TestSession(IntegrationTest):
         failures = 0
         for _ in range(5):
             listener = EventListener()
-            client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+            client = async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -222,7 +224,7 @@ class TestSession(IntegrationTest):
 
             def thread_target(op, *args):
                 res = op(*args)
-                if isinstance(res, (Cursor, CommandCursor)):
+                if isinstance(res, (AsyncCursor, AsyncCommandCursor)):
                     list(res)  # type: ignore[call-overload]
 
             for op, args in ops:
@@ -247,14 +249,14 @@ class TestSession(IntegrationTest):
                 failures += 1
         self.assertTrue(succeeded, lsid_set)
 
-    def test_pool_lifo(self):
+    async def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
         a = self.client.start_session()
         b = self.client.start_session()
         a_id = a.session_id
         b_id = b.session_id
-        a.end_session()
-        b.end_session()
+        await a.end_session()
+        await b.end_session()
 
         s = self.client.start_session()
         self.assertEqual(b_id, s.session_id)
@@ -264,46 +266,46 @@ class TestSession(IntegrationTest):
         self.assertEqual(a_id, s2.session_id)
         self.assertNotEqual(b_id, s2.session_id)
 
-        s.end_session()
-        s2.end_session()
+        await s.end_session()
+        await s2.end_session()
 
-    def test_end_session(self):
+    async def test_end_session(self):
         # We test elsewhere that using an ended session throws InvalidOperation.
         client = self.client
         s = client.start_session()
         self.assertFalse(s.has_ended)
         self.assertIsNotNone(s.session_id)
 
-        s.end_session()
+        await s.end_session()
         self.assertTrue(s.has_ended)
 
         with self.assertRaisesRegex(InvalidOperation, "ended session"):
             s.session_id
 
-    def test_end_sessions(self):
+    async def test_end_sessions(self):
         # Use a new client so that the tearDown hook does not error.
         listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = await async_rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
         for s in sessions:
             s._materialize()
         for s in sessions:
-            s.end_session()
+            await s.end_session()
 
         # Closing the client should end all sessions and clear the pool.
         self.assertEqual(len(client._topology._session_pool), _MAX_END_SESSIONS + 1)
-        client.close()
+        await client.aclose()
         self.assertEqual(len(client._topology._session_pool), 0)
         end_sessions = [e for e in listener.started_events if e.command_name == "endSessions"]
         self.assertEqual(len(end_sessions), 2)
 
         # Closing again should not send any commands.
         listener.reset()
-        client.close()
+        await client.aclose()
         self.assertEqual(len(listener.started_events), 0)
 
-    def test_client(self):
+    async def test_client(self):
         client = self.client
         ops: list = [
             (client.server_info, [], {}),
@@ -311,9 +313,9 @@ class TestSession(IntegrationTest):
             (client.drop_database, ["pymongo_test"], {}),
         ]
 
-        self._test_ops(client, *ops)
+        await self._test_ops(client, *ops)
 
-    def test_database(self):
+    async def test_database(self):
         client = self.client
         db = client.pymongo_test
         ops: list = [
@@ -324,7 +326,7 @@ class TestSession(IntegrationTest):
             (db.drop_collection, ["collection"], {}),
             (db.dereference, [DBRef("collection", 1)], {}),
         ]
-        self._test_ops(client, *ops)
+        await self._test_ops(client, *ops)
 
     @staticmethod
     def collection_write_ops(coll):
@@ -352,7 +354,7 @@ class TestSession(IntegrationTest):
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
 
-    def test_collection(self):
+    async def test_collection(self):
         client = self.client
         coll = client.pymongo_test.collection
 
@@ -370,15 +372,15 @@ class TestSession(IntegrationTest):
             ]
         )
 
-        self._test_ops(client, *ops)
+        await self._test_ops(client, *ops)
 
-    def test_cursor_clone(self):
+    async def test_cursor_clone(self):
         coll = self.client.pymongo_test.collection
         # Ensure some batches.
-        coll.insert_many({} for _ in range(10))
-        self.addCleanup(coll.drop)
+        await coll.insert_many({} for _ in range(10))
+        self.addAsyncCleanup(coll.drop)
 
-        with self.client.start_session() as s:
+        async with self.client.start_session() as s:
             cursor = coll.find(session=s)
             self.assertTrue(cursor.session is s)
             clone = cursor.clone()
@@ -386,23 +388,23 @@ class TestSession(IntegrationTest):
 
         # No explicit session.
         cursor = coll.find(batch_size=2)
-        next(cursor)
+        await anext(cursor)
         # Session is "owned" by cursor.
         self.assertIsNone(cursor.session)
         self.assertIsNotNone(cursor._session)
         clone = cursor.clone()
-        next(clone)
+        await anext(clone)
         self.assertIsNone(clone.session)
         self.assertIsNotNone(clone._session)
         self.assertFalse(cursor._session is clone._session)
-        cursor.close()
-        clone.close()
+        await cursor.close()
+        await clone.close()
 
-    def test_cursor(self):
+    async def test_cursor(self):
         listener = self.listener
         client = self.client
         coll = client.pymongo_test.collection
-        coll.insert_many([{} for _ in range(1000)])
+        await coll.insert_many([{} for _ in range(1000)])
 
         # Test all cursor methods.
         if _IS_SYNC:
@@ -421,9 +423,9 @@ class TestSession(IntegrationTest):
             ]
 
         for name, f in ops:
-            with client.start_session() as s:
+            async with client.start_session() as s:
                 listener.reset()
-                f(session=s)
+                await f(session=s)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
                     self.assertTrue(
@@ -438,12 +440,12 @@ class TestSession(IntegrationTest):
                     )
 
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
-                f(session=s)
+                await f(session=s)
 
         # No explicit session.
         for name, f in ops:
             listener.reset()
-            f(session=None)
+            await f(session=None)
             event0 = listener.first_command_started()
             self.assertTrue(
                 "lsid" in event0.command, f"{name} sent no lsid with {event0.command_name}"
@@ -462,34 +464,34 @@ class TestSession(IntegrationTest):
                     f"{name} sent wrong lsid with {event.command_name}",
                 )
 
-    def test_gridfs(self):
+    async def test_gridfs(self):
         client = self.client
-        fs = GridFS(client.pymongo_test)
+        fs = AsyncGridFS(client.pymongo_test)
 
-        def new_file(session=None):
+        async def new_file(session=None):
             grid_file = fs.new_file(_id=1, filename="f", session=session)
             # 1 MB, 5 chunks, to test that each chunk is fetched with same lsid.
-            grid_file.write(b"a" * 1048576)
-            grid_file.close()
+            await grid_file.write(b"a" * 1048576)
+            await grid_file.close()
 
-        def find(session=None):
-            files = fs.find({"_id": 1}, session=session).to_list()
+        async def find(session=None):
+            files = await fs.find({"_id": 1}, session=session).to_list()
             for f in files:
-                f.read()
+                await f.read()
 
-        def get(session=None):
-            (fs.get(1, session=session)).read()
+        async def get(session=None):
+            await (await fs.get(1, session=session)).read()
 
-        def get_version(session=None):
-            (fs.get_version("f", session=session)).read()
+        async def get_version(session=None):
+            await (await fs.get_version("f", session=session)).read()
 
-        def get_last_version(session=None):
-            (fs.get_last_version("f", session=session)).read()
+        async def get_last_version(session=None):
+            await (await fs.get_last_version("f", session=session)).read()
 
-        def find_list(session=None):
-            fs.find(session=session).to_list()
+        async def find_list(session=None):
+            await fs.find(session=session).to_list()
 
-        self._test_ops(
+        await self._test_ops(
             client,
             (new_file, [], {}),
             (fs.put, [b"data"], {}),
@@ -504,36 +506,36 @@ class TestSession(IntegrationTest):
             (fs.delete, [1], {}),
         )
 
-    def test_gridfs_bucket(self):
+    async def test_gridfs_bucket(self):
         client = self.client
-        bucket = GridFSBucket(client.pymongo_test)
+        bucket = AsyncGridFSBucket(client.pymongo_test)
 
-        def upload(session=None):
+        async def upload(session=None):
             stream = bucket.open_upload_stream("f", session=session)
-            stream.write(b"a" * 1048576)
-            stream.close()
+            await stream.write(b"a" * 1048576)
+            await stream.close()
 
-        def upload_with_id(session=None):
+        async def upload_with_id(session=None):
             stream = bucket.open_upload_stream_with_id(1, "f1", session=session)
-            stream.write(b"a" * 1048576)
-            stream.close()
+            await stream.write(b"a" * 1048576)
+            await stream.close()
 
-        def open_download_stream(session=None):
-            stream = bucket.open_download_stream(1, session=session)
-            stream.read()
+        async def open_download_stream(session=None):
+            stream = await bucket.open_download_stream(1, session=session)
+            await stream.read()
 
-        def open_download_stream_by_name(session=None):
-            stream = bucket.open_download_stream_by_name("f", session=session)
-            stream.read()
+        async def open_download_stream_by_name(session=None):
+            stream = await bucket.open_download_stream_by_name("f", session=session)
+            await stream.read()
 
-        def find(session=None):
-            files = bucket.find({"_id": 1}, session=session).to_list()
+        async def find(session=None):
+            files = await bucket.find({"_id": 1}, session=session).to_list()
             for f in files:
-                f.read()
+                await f.read()
 
         sio = BytesIO()
 
-        self._test_ops(
+        await self._test_ops(
             client,
             (upload, [], {}),
             (upload_with_id, [], {}),
@@ -550,19 +552,19 @@ class TestSession(IntegrationTest):
             (bucket.delete, [2], {}),
         )
 
-    def test_gridfsbucket_cursor(self):
+    async def test_gridfsbucket_cursor(self):
         client = self.client
-        bucket = GridFSBucket(client.pymongo_test)
+        bucket = AsyncGridFSBucket(client.pymongo_test)
 
         for file_id in 1, 2:
             stream = bucket.open_upload_stream_with_id(file_id, str(file_id))
-            stream.write(b"a" * 1048576)
-            stream.close()
+            await stream.write(b"a" * 1048576)
+            await stream.close()
 
-        with client.start_session() as s:
+        async with client.start_session() as s:
             cursor = bucket.find(session=s)
-            for f in cursor:
-                f.read()
+            async for f in cursor:
+                await f.read()
 
             self.assertFalse(s.has_ended)
 
@@ -570,7 +572,7 @@ class TestSession(IntegrationTest):
 
         # No explicit session.
         cursor = bucket.find(batch_size=1)
-        files = [cursor.next()]
+        files = [await cursor.next()]
 
         s = cursor._session
         self.assertFalse(s.has_ended)
@@ -581,64 +583,64 @@ class TestSession(IntegrationTest):
 
         # Files are still valid, they use their own sessions.
         for f in files:
-            f.read()
+            await f.read()
 
         # Explicit session.
-        with client.start_session() as s:
+        async with client.start_session() as s:
             cursor = bucket.find(session=s)
             assert cursor.session is not None
             s = cursor.session
-            files = cursor.to_list()
+            files = await cursor.to_list()
             cursor.__del__()
             self.assertFalse(s.has_ended)
 
             for f in files:
-                f.read()
+                await f.read()
 
         for f in files:
             # Attempt to read the file again.
-            f.seek(0)
+            await f.seek(0)
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
-                f.read()
+                await f.read()
 
-    def test_aggregate(self):
+    async def test_aggregate(self):
         client = self.client
         coll = client.pymongo_test.collection
 
-        def agg(session=None):
-            (coll.aggregate([], batchSize=2, session=session)).to_list()
+        async def agg(session=None):
+            await (await coll.aggregate([], batchSize=2, session=session)).to_list()
 
         # With empty collection.
-        self._test_ops(client, (agg, [], {}))
+        await self._test_ops(client, (agg, [], {}))
 
         # Now with documents.
-        coll.insert_many([{} for _ in range(10)])
-        self.addCleanup(coll.drop)
-        self._test_ops(client, (agg, [], {}))
+        await coll.insert_many([{} for _ in range(10)])
+        self.addAsyncCleanup(coll.drop)
+        await self._test_ops(client, (agg, [], {}))
 
-    def test_killcursors(self):
+    async def test_killcursors(self):
         client = self.client
         coll = client.pymongo_test.collection
-        coll.insert_many([{} for _ in range(10)])
+        await coll.insert_many([{} for _ in range(10)])
 
-        def explicit_close(session=None):
+        async def explicit_close(session=None):
             cursor = coll.find(batch_size=2, session=session)
-            next(cursor)
-            cursor.close()
+            await anext(cursor)
+            await cursor.close()
 
-        self._test_ops(client, (explicit_close, [], {}))
+        await self._test_ops(client, (explicit_close, [], {}))
 
-    def test_aggregate_error(self):
+    async def test_aggregate_error(self):
         listener = self.listener
         client = self.client
         coll = client.pymongo_test.collection
         # 3.6.0 mongos only validates the aggregate pipeline when the
         # database exists.
-        coll.insert_one({})
+        await coll.insert_one({})
         listener.reset()
 
         with self.assertRaises(OperationFailure):
-            coll.aggregate([{"$badOperation": {"bar": 1}}])
+            await coll.aggregate([{"$badOperation": {"bar": 1}}])
 
         event = listener.first_command_started()
         self.assertEqual(event.command_name, "aggregate")
@@ -646,99 +648,99 @@ class TestSession(IntegrationTest):
         # Session was returned to pool despite error.
         self.assertIn(lsid, session_ids(client))
 
-    def _test_cursor_helper(self, create_cursor, close_cursor):
+    async def _test_cursor_helper(self, create_cursor, close_cursor):
         coll = self.client.pymongo_test.collection
-        coll.insert_many([{} for _ in range(1000)])
+        await coll.insert_many([{} for _ in range(1000)])
 
-        cursor = create_cursor(coll, None)
-        next(cursor)
+        cursor = await create_cursor(coll, None)
+        await anext(cursor)
         # Session is "owned" by cursor.
         session = cursor._session
         self.assertIsNotNone(session)
         lsid = session.session_id
-        next(cursor)
+        await anext(cursor)
 
         # Cursor owns its session unto death.
         self.assertNotIn(lsid, session_ids(self.client))
-        close_cursor(cursor)
+        await close_cursor(cursor)
         self.assertIn(lsid, session_ids(self.client))
 
         # An explicit session is not ended by cursor.close() or list(cursor).
-        with self.client.start_session() as s:
-            cursor = create_cursor(coll, s)
-            next(cursor)
-            close_cursor(cursor)
+        async with self.client.start_session() as s:
+            cursor = await create_cursor(coll, s)
+            await anext(cursor)
+            await close_cursor(cursor)
             self.assertFalse(s.has_ended)
             lsid = s.session_id
 
         self.assertTrue(s.has_ended)
         self.assertIn(lsid, session_ids(self.client))
 
-    def test_cursor_close(self):
-        def find(coll, session):
+    async def test_cursor_close(self):
+        async def find(coll, session):
             return coll.find(session=session)
 
-        self._test_cursor_helper(find, lambda cursor: cursor.close())
+        await self._test_cursor_helper(find, lambda cursor: cursor.close())
 
-    def test_command_cursor_close(self):
-        def aggregate(coll, session):
-            return coll.aggregate([], session=session)
+    async def test_command_cursor_close(self):
+        async def aggregate(coll, session):
+            return await coll.aggregate([], session=session)
 
-        self._test_cursor_helper(aggregate, lambda cursor: cursor.close())
+        await self._test_cursor_helper(aggregate, lambda cursor: cursor.close())
 
-    def test_cursor_del(self):
-        def find(coll, session):
+    async def test_cursor_del(self):
+        async def find(coll, session):
             return coll.find(session=session)
 
-        def delete(cursor):
+        async def delete(cursor):
             return cursor.__del__()
 
-        self._test_cursor_helper(find, delete)
+        await self._test_cursor_helper(find, delete)
 
-    def test_command_cursor_del(self):
-        def aggregate(coll, session):
-            return coll.aggregate([], session=session)
+    async def test_command_cursor_del(self):
+        async def aggregate(coll, session):
+            return await coll.aggregate([], session=session)
 
-        def delete(cursor):
+        async def delete(cursor):
             return cursor.__del__()
 
-        self._test_cursor_helper(aggregate, delete)
+        await self._test_cursor_helper(aggregate, delete)
 
-    def test_cursor_exhaust(self):
-        def find(coll, session):
+    async def test_cursor_exhaust(self):
+        async def find(coll, session):
             return coll.find(session=session)
 
-        self._test_cursor_helper(find, lambda cursor: cursor.to_list())
+        await self._test_cursor_helper(find, lambda cursor: cursor.to_list())
 
-    def test_command_cursor_exhaust(self):
-        def aggregate(coll, session):
-            return coll.aggregate([], session=session)
+    async def test_command_cursor_exhaust(self):
+        async def aggregate(coll, session):
+            return await coll.aggregate([], session=session)
 
-        self._test_cursor_helper(aggregate, lambda cursor: cursor.to_list())
+        await self._test_cursor_helper(aggregate, lambda cursor: cursor.to_list())
 
-    def test_cursor_limit_reached(self):
-        def find(coll, session):
+    async def test_cursor_limit_reached(self):
+        async def find(coll, session):
             return coll.find(limit=4, batch_size=2, session=session)
 
-        self._test_cursor_helper(
+        await self._test_cursor_helper(
             find,
             lambda cursor: cursor.to_list(),
         )
 
-    def test_command_cursor_limit_reached(self):
-        def aggregate(coll, session):
-            return coll.aggregate([], batchSize=900, session=session)
+    async def test_command_cursor_limit_reached(self):
+        async def aggregate(coll, session):
+            return await coll.aggregate([], batchSize=900, session=session)
 
-        self._test_cursor_helper(
+        await self._test_cursor_helper(
             aggregate,
             lambda cursor: cursor.to_list(),
         )
 
-    def _test_unacknowledged_ops(self, client, *ops):
+    async def _test_unacknowledged_ops(self, client, *ops):
         listener = client.options.event_listeners[0]
 
         for f, args, kw in ops:
-            with client.start_session() as s:
+            async with client.start_session() as s:
                 listener.reset()
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
@@ -747,7 +749,7 @@ class TestSession(IntegrationTest):
                 with self.assertRaises(
                     ConfigurationError, msg=f"{f.__name__} did not raise ConfigurationError"
                 ):
-                    f(*args, **kw)
+                    await f(*args, **kw)
                 if f.__name__ == "create_collection":
                     # create_collection runs listCollections first.
                     event = listener.started_events.pop(0)
@@ -766,7 +768,7 @@ class TestSession(IntegrationTest):
         # Unacknowledged write without a session does not send an lsid.
         for f, args, kw in ops:
             listener.reset()
-            f(*args, **kw)
+            await f(*args, **kw)
             self.assertGreaterEqual(len(listener.started_events), 1)
 
             if f.__name__ == "create_collection":
@@ -784,11 +786,11 @@ class TestSession(IntegrationTest):
                     "lsid", event.command, f"{f.__name__} sent lsid with {event.command_name}"
                 )
 
-    def test_unacknowledged_writes(self):
+    async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        self.client.pymongo_test.test_unacked_writes.insert_one({})
-        client = rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addCleanup(client.close)
+        await self.client.pymongo_test.test_unacked_writes.insert_one({})
+        client = await async_rs_or_single_client(w=0, event_listeners=[self.listener])
+        self.addAsyncCleanup(client.aclose)
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -797,11 +799,11 @@ class TestSession(IntegrationTest):
             (db.drop_collection, ["collection"], {}),
         ]
         ops.extend(self.collection_write_ops(coll))
-        self._test_unacknowledged_ops(client, *ops)
+        await self._test_unacknowledged_ops(client, *ops)
 
-        def drop_db():
+        async def drop_db():
             try:
-                self.client.drop_database(db.name)
+                await self.client.drop_database(db.name)
                 return True
             except OperationFailure as exc:
                 # Try again on BackgroundOperationInProgressForDatabase and
@@ -810,49 +812,49 @@ class TestSession(IntegrationTest):
                     return False
                 raise
 
-        wait_until(drop_db, "dropped database after w=0 writes")
+        await async_wait_until(drop_db, "dropped database after w=0 writes")
 
-    def test_snapshot_incompatible_with_causal_consistency(self):
-        with self.client.start_session(causal_consistency=False, snapshot=False):
+    async def test_snapshot_incompatible_with_causal_consistency(self):
+        async with self.client.start_session(causal_consistency=False, snapshot=False):
             pass
-        with self.client.start_session(causal_consistency=False, snapshot=True):
+        async with self.client.start_session(causal_consistency=False, snapshot=True):
             pass
-        with self.client.start_session(causal_consistency=True, snapshot=False):
+        async with self.client.start_session(causal_consistency=True, snapshot=False):
             pass
         with self.assertRaises(ConfigurationError):
-            with self.client.start_session(causal_consistency=True, snapshot=True):
+            async with self.client.start_session(causal_consistency=True, snapshot=True):
                 pass
 
-    def test_session_not_copyable(self):
+    async def test_session_not_copyable(self):
         client = self.client
-        with client.start_session() as s:
+        async with client.start_session() as s:
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
 
-class TestCausalConsistency(UnitTest):
+class TestCausalConsistency(AsyncUnitTest):
     listener: SessionTestListener
-    client: MongoClient
+    client: AsyncMongoClient
 
     @classmethod
-    def _setup_class(cls):
+    async def _setup_class(cls):
         cls.listener = SessionTestListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = await async_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
+    async def _tearDown_class(cls):
+        await cls.client.aclose()
 
-    @client_context.require_sessions
-    def setUp(self):
-        super().setUp()
+    @async_client_context.require_sessions
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
-    @client_context.require_no_standalone
-    def test_core(self):
-        with self.client.start_session() as sess:
+    @async_client_context.require_no_standalone
+    async def test_core(self):
+        async with self.client.start_session() as sess:
             self.assertIsNone(sess.cluster_time)
             self.assertIsNone(sess.operation_time)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one(session=sess)
+            await self.client.pymongo_test.test.find_one(session=sess)
             started = self.listener.started_events[0]
             cmd = started.command
             self.assertIsNone(cmd.get("readConcern"))
@@ -863,11 +865,11 @@ class TestCausalConsistency(UnitTest):
             self.assertEqual(op_time, reply.get("operationTime"))
 
             # No explicit session
-            self.client.pymongo_test.test.insert_one({})
+            await self.client.pymongo_test.test.insert_one({})
             self.assertEqual(sess.operation_time, op_time)
             self.listener.reset()
             try:
-                self.client.pymongo_test.command("doesntexist", session=sess)
+                await self.client.pymongo_test.command("doesntexist", session=sess)
             except:
                 pass
             failed = self.listener.failed_events[0]
@@ -880,7 +882,7 @@ class TestCausalConsistency(UnitTest):
             else:
                 self.assertEqual(sess.operation_time, failed_op_time)
 
-            with self.client.start_session() as sess2:
+            async with self.client.start_session() as sess2:
                 self.assertIsNone(sess2.cluster_time)
                 self.assertIsNone(sess2.operation_time)
                 self.assertRaises(TypeError, sess2.advance_cluster_time, 1)
@@ -894,18 +896,18 @@ class TestCausalConsistency(UnitTest):
                 self.assertEqual(sess.cluster_time, sess2.cluster_time)
                 self.assertEqual(sess.operation_time, sess2.operation_time)
 
-    def _test_reads(self, op, exception=None):
+    async def _test_reads(self, op, exception=None):
         coll = self.client.pymongo_test.test
-        with self.client.start_session() as sess:
-            coll.find_one({}, session=sess)
+        async with self.client.start_session() as sess:
+            await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             self.listener.reset()
             if exception:
                 with self.assertRaises(exception):
-                    op(coll, sess)
+                    await op(coll, sess)
             else:
-                op(coll, sess)
+                await op(coll, sess)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -913,39 +915,41 @@ class TestCausalConsistency(UnitTest):
             )
             self.assertEqual(operation_time, act)
 
-    @client_context.require_no_standalone
-    def test_reads(self):
+    @async_client_context.require_no_standalone
+    async def test_reads(self):
         # Make sure the collection exists.
-        self.client.pymongo_test.test.insert_one({})
+        await self.client.pymongo_test.test.insert_one({})
 
-        def aggregate(coll, session):
-            return (coll.aggregate([], session=session)).to_list()
+        async def aggregate(coll, session):
+            return await (await coll.aggregate([], session=session)).to_list()
 
-        def aggregate_raw(coll, session):
-            return (coll.aggregate_raw_batches([], session=session)).to_list()
+        async def aggregate_raw(coll, session):
+            return await (await coll.aggregate_raw_batches([], session=session)).to_list()
 
-        def find_raw(coll, session):
-            return (coll.find_raw_batches({}, session=session)).to_list()
+        async def find_raw(coll, session):
+            return await (await coll.find_raw_batches({}, session=session)).to_list()
 
-        self._test_reads(aggregate)
-        self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())
-        self._test_reads(lambda coll, session: coll.find_one({}, session=session))
-        self._test_reads(lambda coll, session: coll.count_documents({}, session=session))
-        self._test_reads(lambda coll, session: coll.distinct("foo", session=session))
-        self._test_reads(aggregate_raw)
-        self._test_reads(find_raw)
+        await self._test_reads(aggregate)
+        await self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())
+        await self._test_reads(lambda coll, session: coll.find_one({}, session=session))
+        await self._test_reads(lambda coll, session: coll.count_documents({}, session=session))
+        await self._test_reads(lambda coll, session: coll.distinct("foo", session=session))
+        await self._test_reads(aggregate_raw)
+        await self._test_reads(find_raw)
 
         with self.assertRaises(ConfigurationError):
-            self._test_reads(lambda coll, session: coll.estimated_document_count(session=session))
+            await self._test_reads(
+                lambda coll, session: coll.estimated_document_count(session=session)
+            )
 
-    def _test_writes(self, op):
+    async def _test_writes(self, op):
         coll = self.client.pymongo_test.test
-        with self.client.start_session() as sess:
-            op(coll, sess)
+        async with self.client.start_session() as sess:
+            await op(coll, sess)
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             self.listener.reset()
-            coll.find_one({}, session=sess)
+            await coll.find_one({}, session=sess)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -953,123 +957,135 @@ class TestCausalConsistency(UnitTest):
             )
             self.assertEqual(operation_time, act)
 
-    @client_context.require_no_standalone
-    def test_writes(self):
-        self._test_writes(
+    @async_client_context.require_no_standalone
+    async def test_writes(self):
+        await self._test_writes(
             lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
         )
-        self._test_writes(lambda coll, session: coll.insert_one({}, session=session))
-        self._test_writes(lambda coll, session: coll.insert_many([{}], session=session))
-        self._test_writes(
+        await self._test_writes(lambda coll, session: coll.insert_one({}, session=session))
+        await self._test_writes(lambda coll, session: coll.insert_many([{}], session=session))
+        await self._test_writes(
             lambda coll, session: coll.replace_one({"_id": 1}, {"x": 1}, session=session)
         )
-        self._test_writes(
+        await self._test_writes(
             lambda coll, session: coll.update_one({}, {"$set": {"X": 1}}, session=session)
         )
-        self._test_writes(
+        await self._test_writes(
             lambda coll, session: coll.update_many({}, {"$set": {"x": 1}}, session=session)
         )
-        self._test_writes(lambda coll, session: coll.delete_one({}, session=session))
-        self._test_writes(lambda coll, session: coll.delete_many({}, session=session))
-        self._test_writes(
+        await self._test_writes(lambda coll, session: coll.delete_one({}, session=session))
+        await self._test_writes(lambda coll, session: coll.delete_many({}, session=session))
+        await self._test_writes(
             lambda coll, session: coll.find_one_and_replace({"x": 1}, {"y": 1}, session=session)
         )
-        self._test_writes(
+        await self._test_writes(
             lambda coll, session: coll.find_one_and_update(
                 {"y": 1}, {"$set": {"x": 1}}, session=session
             )
         )
-        self._test_writes(lambda coll, session: coll.find_one_and_delete({"x": 1}, session=session))
-        self._test_writes(lambda coll, session: coll.create_index("foo", session=session))
-        self._test_writes(
+        await self._test_writes(
+            lambda coll, session: coll.find_one_and_delete({"x": 1}, session=session)
+        )
+        await self._test_writes(lambda coll, session: coll.create_index("foo", session=session))
+        await self._test_writes(
             lambda coll, session: coll.create_indexes(
                 [IndexModel([("bar", ASCENDING)])], session=session
             )
         )
-        self._test_writes(lambda coll, session: coll.drop_index("foo_1", session=session))
-        self._test_writes(lambda coll, session: coll.drop_indexes(session=session))
+        await self._test_writes(lambda coll, session: coll.drop_index("foo_1", session=session))
+        await self._test_writes(lambda coll, session: coll.drop_indexes(session=session))
 
-    def _test_no_read_concern(self, op):
+    async def _test_no_read_concern(self, op):
         coll = self.client.pymongo_test.test
-        with self.client.start_session() as sess:
-            coll.find_one({}, session=sess)
+        async with self.client.start_session() as sess:
+            await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             self.listener.reset()
-            op(coll, sess)
+            await op(coll, sess)
             rc = self.listener.started_events[0].command.get("readConcern")
             self.assertIsNone(rc)
 
-    @client_context.require_no_standalone
-    def test_writes_do_not_include_read_concern(self):
-        self._test_no_read_concern(
+    @async_client_context.require_no_standalone
+    async def test_writes_do_not_include_read_concern(self):
+        await self._test_no_read_concern(
             lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
         )
-        self._test_no_read_concern(lambda coll, session: coll.insert_one({}, session=session))
-        self._test_no_read_concern(lambda coll, session: coll.insert_many([{}], session=session))
-        self._test_no_read_concern(
+        await self._test_no_read_concern(lambda coll, session: coll.insert_one({}, session=session))
+        await self._test_no_read_concern(
+            lambda coll, session: coll.insert_many([{}], session=session)
+        )
+        await self._test_no_read_concern(
             lambda coll, session: coll.replace_one({"_id": 1}, {"x": 1}, session=session)
         )
-        self._test_no_read_concern(
+        await self._test_no_read_concern(
             lambda coll, session: coll.update_one({}, {"$set": {"X": 1}}, session=session)
         )
-        self._test_no_read_concern(
+        await self._test_no_read_concern(
             lambda coll, session: coll.update_many({}, {"$set": {"x": 1}}, session=session)
         )
-        self._test_no_read_concern(lambda coll, session: coll.delete_one({}, session=session))
-        self._test_no_read_concern(lambda coll, session: coll.delete_many({}, session=session))
-        self._test_no_read_concern(
+        await self._test_no_read_concern(lambda coll, session: coll.delete_one({}, session=session))
+        await self._test_no_read_concern(
+            lambda coll, session: coll.delete_many({}, session=session)
+        )
+        await self._test_no_read_concern(
             lambda coll, session: coll.find_one_and_replace({"x": 1}, {"y": 1}, session=session)
         )
-        self._test_no_read_concern(
+        await self._test_no_read_concern(
             lambda coll, session: coll.find_one_and_update(
                 {"y": 1}, {"$set": {"x": 1}}, session=session
             )
         )
-        self._test_no_read_concern(
+        await self._test_no_read_concern(
             lambda coll, session: coll.find_one_and_delete({"x": 1}, session=session)
         )
-        self._test_no_read_concern(lambda coll, session: coll.create_index("foo", session=session))
-        self._test_no_read_concern(
+        await self._test_no_read_concern(
+            lambda coll, session: coll.create_index("foo", session=session)
+        )
+        await self._test_no_read_concern(
             lambda coll, session: coll.create_indexes(
                 [IndexModel([("bar", ASCENDING)])], session=session
             )
         )
-        self._test_no_read_concern(lambda coll, session: coll.drop_index("foo_1", session=session))
-        self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
+        await self._test_no_read_concern(
+            lambda coll, session: coll.drop_index("foo_1", session=session)
+        )
+        await self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
 
         # Not a write, but explain also doesn't support readConcern.
-        self._test_no_read_concern(lambda coll, session: coll.find({}, session=session).explain())
+        await self._test_no_read_concern(
+            lambda coll, session: coll.find({}, session=session).explain()
+        )
 
-    @client_context.require_no_standalone
-    @client_context.require_version_max(4, 1, 0)
-    def test_aggregate_out_does_not_include_read_concern(self):
-        def alambda(coll, session):
-            (coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
+    @async_client_context.require_no_standalone
+    @async_client_context.require_version_max(4, 1, 0)
+    async def test_aggregate_out_does_not_include_read_concern(self):
+        async def alambda(coll, session):
+            await (await coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
 
-        self._test_no_read_concern(alambda)
+        await self._test_no_read_concern(alambda)
 
-    @client_context.require_no_standalone
-    def test_get_more_does_not_include_read_concern(self):
+    @async_client_context.require_no_standalone
+    async def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
-        with self.client.start_session() as sess:
-            coll.find_one({}, session=sess)
+        async with self.client.start_session() as sess:
+            await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
-            coll.insert_many([{}, {}])
+            await coll.insert_many([{}, {}])
             cursor = coll.find({}).batch_size(1)
-            next(cursor)
+            await anext(cursor)
             self.listener.reset()
-            cursor.to_list()
+            await cursor.to_list()
             started = self.listener.started_events[0]
             self.assertEqual(started.command_name, "getMore")
             self.assertIsNone(started.command.get("readConcern"))
 
-    def test_session_not_causal(self):
-        with self.client.start_session(causal_consistency=False) as s:
-            self.client.pymongo_test.test.insert_one({}, session=s)
+    async def test_session_not_causal(self):
+        async with self.client.start_session(causal_consistency=False) as s:
+            await self.client.pymongo_test.test.insert_one({}, session=s)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one({}, session=s)
+            await self.client.pymongo_test.test.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1077,12 +1093,12 @@ class TestCausalConsistency(UnitTest):
             )
             self.assertIsNone(act)
 
-    @client_context.require_standalone
-    def test_server_not_causal(self):
-        with self.client.start_session(causal_consistency=True) as s:
-            self.client.pymongo_test.test.insert_one({}, session=s)
+    @async_client_context.require_standalone
+    async def test_server_not_causal(self):
+        async with self.client.start_session(causal_consistency=True) as s:
+            await self.client.pymongo_test.test.insert_one({}, session=s)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one({}, session=s)
+            await self.client.pymongo_test.test.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1090,14 +1106,14 @@ class TestCausalConsistency(UnitTest):
             )
             self.assertIsNone(act)
 
-    @client_context.require_no_standalone
-    @client_context.require_no_mmap
-    def test_read_concern(self):
-        with self.client.start_session(causal_consistency=True) as s:
+    @async_client_context.require_no_standalone
+    @async_client_context.require_no_mmap
+    async def test_read_concern(self):
+        async with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test
-            coll.insert_one({}, session=s)
+            await coll.insert_one({}, session=s)
             self.listener.reset()
-            coll.find_one({}, session=s)
+            await coll.find_one({}, session=s)
             read_concern = self.listener.started_events[0].command.get("readConcern")
             self.assertIsNotNone(read_concern)
             self.assertIsNone(read_concern.get("level"))
@@ -1105,72 +1121,74 @@ class TestCausalConsistency(UnitTest):
 
             coll = coll.with_options(read_concern=ReadConcern("majority"))
             self.listener.reset()
-            coll.find_one({}, session=s)
+            await coll.find_one({}, session=s)
             read_concern = self.listener.started_events[0].command.get("readConcern")
             self.assertIsNotNone(read_concern)
             self.assertEqual(read_concern.get("level"), "majority")
             self.assertIsNotNone(read_concern.get("afterClusterTime"))
 
-    @client_context.require_no_standalone
-    def test_cluster_time_with_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
+    @async_client_context.require_no_standalone
+    async def test_cluster_time_with_server_support(self):
+        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
-        self.client.pymongo_test.test.find_one({})
+        await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNotNone(after_cluster_time)
 
-    @client_context.require_standalone
-    def test_cluster_time_no_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
+    @async_client_context.require_standalone
+    async def test_cluster_time_no_server_support(self):
+        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
-        self.client.pymongo_test.test.find_one({})
+        await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNone(after_cluster_time)
 
 
-class TestClusterTime(IntegrationTest):
-    def setUp(self):
-        super().setUp()
-        if "$clusterTime" not in (client_context.hello):
+class TestClusterTime(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        if "$clusterTime" not in (await async_client_context.hello):
             raise SkipTest("$clusterTime not supported")
 
-    def test_cluster_time(self):
+    async def test_cluster_time(self):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
-        client = rs_or_single_client(event_listeners=[listener], heartbeatFrequencyMS=999999)
-        self.addCleanup(client.close)
+        client = await async_rs_or_single_client(
+            event_listeners=[listener], heartbeatFrequencyMS=999999
+        )
+        self.addAsyncCleanup(client.aclose)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
-        collection.insert_many([{} for _ in range(10)])
-        self.addCleanup(collection.drop)
-        self.addCleanup(client.pymongo_test.collection2.drop)
+        await collection.insert_many([{} for _ in range(10)])
+        self.addAsyncCleanup(collection.drop)
+        self.addAsyncCleanup(client.pymongo_test.collection2.drop)
 
-        def rename_and_drop():
+        async def rename_and_drop():
             # Ensure collection exists.
-            collection.insert_one({})
-            collection.rename("collection2")
-            client.pymongo_test.collection2.drop()
+            await collection.insert_one({})
+            await collection.rename("collection2")
+            await client.pymongo_test.collection2.drop()
 
-        def insert_and_find():
+        async def insert_and_find():
             cursor = collection.find().batch_size(1)
             for _ in range(10):
                 # Advance the cluster time.
-                collection.insert_one({})
-                next(cursor)
+                await collection.insert_one({})
+                await anext(cursor)
 
-            cursor.close()
+            await cursor.close()
 
-        def insert_and_aggregate():
-            cursor = (collection.aggregate([], batchSize=1)).batch_size(1)
+        async def insert_and_aggregate():
+            cursor = (await collection.aggregate([], batchSize=1)).batch_size(1)
             for _ in range(5):
                 # Advance the cluster time.
-                collection.insert_one({})
-                next(cursor)
+                await collection.insert_one({})
+                await anext(cursor)
 
-            cursor.close()
+            await cursor.close()
 
-        def aggregate():
-            (collection.aggregate([])).to_list()
+        async def aggregate():
+            await (await collection.aggregate([])).to_list()
 
         ops = [
             # Tests from Driver Sessions Spec.
@@ -1192,10 +1210,10 @@ class TestClusterTime(IntegrationTest):
         for _name, f in ops:
             listener.reset()
             # Call f() twice, insert to advance clusterTime, call f() again.
-            f()
-            f()
-            collection.insert_one({})
-            f()
+            await f()
+            await f()
+            await collection.insert_one({})
+            await f()
 
             self.assertGreaterEqual(len(listener.started_events), 1)
             for i, event in enumerate(listener.started_events):
