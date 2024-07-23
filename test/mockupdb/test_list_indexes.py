@@ -17,10 +17,20 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, going
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 
 from bson import SON
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestListIndexes(unittest.TestCase):

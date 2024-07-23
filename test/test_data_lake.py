@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 import sys
 
+import pytest
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
@@ -28,6 +30,9 @@ from test.utils import (
     rs_client_noauth,
     rs_or_single_client,
 )
+
+pytestmark = pytest.mark.data_lake
+
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lake")
