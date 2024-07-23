@@ -332,17 +332,15 @@ class SSLContext:
     def _load_wincerts(self, store: str) -> None:
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
-        if cert_store is not None:
-            oid = _stdlibssl.Purpose.SERVER_AUTH.oid
+        assert cert_store is not None
+        oid = _stdlibssl.Purpose.SERVER_AUTH.oid
 
-            for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
-                if encoding == "x509_asn":
-                    if trust is True or oid in trust:
-                        cert_store.add_cert(
-                            _crypto.X509.from_cryptography(x509.load_der_x509_certificate(cert))
-                        )
-        else:
-            raise _ConfigurationError("The current CA context does not have a X509Store object.")
+        for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
+            if encoding == "x509_asn":
+                if trust is True or oid in trust:
+                    cert_store.add_cert(
+                        _crypto.X509.from_cryptography(x509.load_der_x509_certificate(cert))
+                    )
 
     def load_default_certs(self) -> None:
         """A PyOpenSSL version of load_default_certs from CPython."""
