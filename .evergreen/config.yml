@@ -3002,7 +3002,7 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "original"
+    serverless: "enabled"
   display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
