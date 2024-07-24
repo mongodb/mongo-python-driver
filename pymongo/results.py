@@ -155,6 +155,8 @@ class UpdateResult(_WriteResult):
         """The number of documents matched for this update."""
         self._raise_if_unacknowledged("matched_count")
         assert self.__raw_result is not None
+        if self.upserted_id is not None:
+            return 0
         return self.__raw_result.get("n", 0)
 
     @property
