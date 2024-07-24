@@ -352,15 +352,15 @@ class TestClientBulkWrite(IntegrationTest):
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
         b_repeated = "b" * max_bson_object_size
         with self.assertRaises(DocumentTooLarge):
-            models = []
-            models.append(ClientInsertOne(namespace="db.coll", document={"a": b_repeated}))  # type: ignore[arg-type]
+            models = [
+                ClientInsertOne(namespace="db.coll", document={"a": b_repeated})  # type: ignore[list-item]
+            ]
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
         with self.assertRaises(DocumentTooLarge):
-            models = []
-            models.append(
-                ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
-            )  # type: ignore[arg-type]
+            models = [
+                ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})  # type: ignore[list-item]
+            ]
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
     def setup_namespace_test_models(self):
