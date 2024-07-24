@@ -2228,13 +2228,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def bulk_write(
         self,
         models: Sequence[_WriteOp[_DocumentType]],
-        session: Optional[AsyncClientSession],
-        write_concern: Optional[WriteConcern],
+        session: Optional[AsyncClientSession] = None,
         ordered: bool = True,
         verbose_results: bool = False,
         bypass_document_validation: Optional[bool] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
+        write_concern: Optional[WriteConcern] = None,
     ) -> ClientBulkWriteResult:
         """Send a batch of write operations, potentially across multiple namespaces, to the server.
 
@@ -2289,7 +2289,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param models: A list of write operation instances.
         :param session: (optional) An instance of
             :class:`~pymongo.client_session.AsyncClientSession`.
-        :param write_concern: (optional) The write concern to use for this bulk write.
         :param ordered: If ``True`` (the default), requests will be
             performed on the server serially, in the order provided. If an error
             occurs all remaining operations are aborted. If ``False``, requests
@@ -2306,6 +2305,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+        :param write_concern: (optional) The write concern to use for this bulk write.
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
