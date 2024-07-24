@@ -17,14 +17,14 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     OvertCommandListener,
     async_rs_or_single_client,
 )
 
 from pymongo.client_bulk_shared import ClientBulkWriteException
-from pymongo.encryption import AutoEncryptionOpts
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import DocumentTooLarge, InvalidOperation, NetworkTimeout
 from pymongo.monitoring import *
 from pymongo.operations import *
@@ -482,6 +482,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
             await client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
 
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_returns_error_if_auto_encryption_configured(self):
         opts = AutoEncryptionOpts(
