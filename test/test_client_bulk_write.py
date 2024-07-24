@@ -352,13 +352,15 @@ class TestClientBulkWrite(IntegrationTest):
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
         b_repeated = "b" * max_bson_object_size
         with self.assertRaises(DocumentTooLarge):
-            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
+            models = []
+            models.append(ClientInsertOne(namespace="db.coll", document={"a": b_repeated}))
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
         with self.assertRaises(DocumentTooLarge):
-            models = [
+            models = []
+            models.append(
                 ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
-            ]
+            )
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
     def setup_namespace_test_models(self):
@@ -470,7 +472,7 @@ class TestClientBulkWrite(IntegrationTest):
             b_repeated = "b" * max_message_size_bytes
             models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc)
+            self.assertIn("cannot do an empty bulk write", exc.msg)
 
         # Namespace too large.
         with self.assertRaises(InvalidOperation) as exc:
@@ -478,7 +480,7 @@ class TestClientBulkWrite(IntegrationTest):
             namespace = f"db.{c_repeated}"
             models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
             client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc)
+            self.assertIn("cannot do an empty bulk write", exc.msg)
 
     @client_context.require_version_min(8, 0, 0, -24)
     def test_returns_error_if_auto_encryption_configured(self):
@@ -492,7 +494,7 @@ class TestClientBulkWrite(IntegrationTest):
         models = [ClientInsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
             client.bulk_write(models=models)
-            self.assertIn("bulkWrite does not currently support automatic encryption", exc)
+            self.assertIn("bulkWrite does not currently support automatic encryption", exc.msg)
 
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point

@@ -352,13 +352,15 @@ class TestClientBulkWrite(AsyncIntegrationTest):
         max_bson_object_size = (await async_client_context.hello)["maxBsonObjectSize"]
         b_repeated = "b" * max_bson_object_size
         with self.assertRaises(DocumentTooLarge):
-            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
+            models = []
+            models.append(ClientInsertOne(namespace="db.coll", document={"a": b_repeated}))
             await client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
         with self.assertRaises(DocumentTooLarge):
-            models = [
+            models = []
+            models.append(
                 ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
-            ]
+            )
             await client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
     async def setup_namespace_test_models(self):
@@ -470,7 +472,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
             b_repeated = "b" * max_message_size_bytes
             models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             await client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc)
+            self.assertIn("cannot do an empty bulk write", exc.msg)
 
         # Namespace too large.
         with self.assertRaises(InvalidOperation) as exc:
@@ -478,7 +480,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
             namespace = f"db.{c_repeated}"
             models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
             await client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc)
+            self.assertIn("cannot do an empty bulk write", exc.msg)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_returns_error_if_auto_encryption_configured(self):
@@ -492,7 +494,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
         models = [ClientInsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
             await client.bulk_write(models=models)
-            self.assertIn("bulkWrite does not currently support automatic encryption", exc)
+            self.assertIn("bulkWrite does not currently support automatic encryption", exc.msg)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
