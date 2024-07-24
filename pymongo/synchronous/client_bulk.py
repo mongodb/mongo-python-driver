@@ -87,22 +87,22 @@ class _ClientBulk:
     def __init__(
         self,
         client: MongoClient,
-        ordered: Optional[bool] = True,
+        write_concern: WriteConcern,
+        ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
         comment: Optional[str] = None,
         let: Optional[Any] = None,
-        write_concern: Optional[WriteConcern] = None,
-        verbose_results: Optional[bool] = False,
+        verbose_results: bool = False,
     ) -> None:
         """Initialize a _ClientBulk instance."""
         self.client = client
+        self.write_concern = write_concern
         self.let = let
         if self.let is not None:
             common.validate_is_document_type("let", self.let)
         self.ordered = ordered
         self.bypass_doc_val = bypass_document_validation
         self.comment = comment
-        self.write_concern = write_concern
         self.verbose_results = verbose_results
 
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
@@ -232,7 +232,7 @@ class _ClientBulk:
         bwc: _ClientBulkWriteContext,
         cmd: MutableMapping[str, Any],
         request_id: int,
-        msg: bytes,
+        msg: Union[bytes, dict[str, Any]],
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient,
@@ -259,7 +259,7 @@ class _ClientBulk:
         if bwc.publish:
             bwc._start(cmd, request_id, op_docs, ns_docs)
         try:
-            reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
+            reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
             duration = datetime.datetime.now() - bwc.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -406,7 +406,7 @@ class _ClientBulk:
         self,
         bwc: _ClientBulkWriteContext,
         cmd: dict[str, Any],
-        ops: list[Mapping[str, Any]],
+        ops: list[tuple[str, Mapping[str, Any]]],
     ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (unack)."""
         request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops)
@@ -417,7 +417,7 @@ class _ClientBulk:
         self,
         bwc: _ClientBulkWriteContext,
         cmd: dict[str, Any],
-        ops: list[Mapping[str, Any]],
+        ops: list[tuple[str, Mapping[str, Any]]],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (ack)."""
         request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops)
@@ -463,12 +463,12 @@ class _ClientBulk:
                 if doc["ok"] and self.verbose_results:
                     if op_type == "insert":
                         inserted_id = op["document"]["_id"]
-                        res = ClientInsertOneResult(inserted_id)
-                    if op_type == "update" or op_type == "replace":
+                        res = ClientInsertOneResult(inserted_id)  # type: ignore[assignment]
+                    if op_type in ["update", "replace"]:
                         op_type = "update"
-                        res = ClientUpdateResult(doc)
+                        res = ClientUpdateResult(doc)  # type: ignore[assignment]
                     if op_type == "delete":
-                        res = ClientDeleteResult(doc)
+                        res = ClientDeleteResult(doc)  # type: ignore[assignment]
                     full_result[f"{op_type}Results"][original_index] = res
 
         except Exception as exc:
@@ -497,7 +497,13 @@ class _ClientBulk:
         conn.validate_session(self.client, session)
 
         bwc = self.bulk_ctx_class(
-            db_name, cmd_name, conn, op_id, listeners, session, self.client.codec_options
+            db_name,
+            cmd_name,
+            conn,
+            op_id,
+            listeners,  # type: ignore[arg-type]
+            session,
+            self.client.codec_options,
         )
 
         while self.idx_offset < self.total_ops:
@@ -509,14 +515,14 @@ class _ClientBulk:
             # Construct the server command, specifying the relevant options.
             cmd = {"bulkWrite": 1}
             cmd["errorsOnly"] = not self.verbose_results
-            cmd["ordered"] = self.ordered
+            cmd["ordered"] = self.ordered  # type: ignore[assignment]
             not_in_transaction = session and not session.in_transaction
             if not_in_transaction or not session:
                 _csot.apply_write_concern(cmd, write_concern)
             if self.bypass_doc_val is not None:
                 cmd["bypassDocumentValidation"] = self.bypass_doc_val
             if self.comment:
-                cmd["comment"] = self.comment
+                cmd["comment"] = self.comment  # type: ignore[assignment]
             if self.let:
                 cmd["let"] = self.let
 
@@ -535,12 +541,12 @@ class _ClientBulk:
 
             # Run as many ops as possible in one server command.
             if write_concern.acknowledged:
-                raw_result, to_send_ops, _ = self._execute_batch(bwc, cmd, ops)
+                raw_result, to_send_ops, _ = self._execute_batch(bwc, cmd, ops)  # type: ignore[arg-type]
 
                 result = copy.deepcopy(raw_result)
                 result["error"] = None
                 result["writeErrors"] = []
-                if result.get("nErrors") < len(to_send_ops):
+                if result.get("nErrors", 0) < len(to_send_ops):
                     full_result["anySuccessful"] = True
 
                 # Make raw reply accessible for top-level command error.
@@ -570,7 +576,7 @@ class _ClientBulk:
                 self.started_retryable_write = False
 
             else:
-                to_send_ops, _ = self._execute_batch_unack(bwc, cmd, ops)
+                to_send_ops, _ = self._execute_batch_unack(bwc, cmd, ops)  # type: ignore[arg-type]
 
             self.idx_offset += len(to_send_ops)
 
@@ -583,9 +589,9 @@ class _ClientBulk:
         self,
         session: Optional[ClientSession],
         operation: str,
-    ) -> dict[str, Any]:
+    ) -> MutableMapping[str, Any]:
         """Execute commands with w=1 WriteConcern."""
-        full_result = {
+        full_result: MutableMapping[str, Any] = {
             "anySuccessful": False,
             "error": None,
             "writeErrors": [],
@@ -639,19 +645,25 @@ class _ClientBulk:
         op_id = _randint()
 
         bwc = self.bulk_ctx_class(
-            db_name, cmd_name, conn, op_id, listeners, None, self.client.codec_options
+            db_name,
+            cmd_name,
+            conn,
+            op_id,
+            listeners,  # type: ignore[arg-type]
+            None,
+            self.client.codec_options,
         )
 
         while self.idx_offset < self.total_ops:
             # Construct the server command, specifying the relevant options.
             cmd = {"bulkWrite": 1}
             cmd["errorsOnly"] = not self.verbose_results
-            cmd["ordered"] = self.ordered
+            cmd["ordered"] = self.ordered  # type: ignore[assignment]
             if self.bypass_doc_val is not None:
                 cmd["bypassDocumentValidation"] = self.bypass_doc_val
-            cmd["writeConcern"] = {"w": 0}
+            cmd["writeConcern"] = {"w": 0}  # type: ignore[assignment]
             if self.comment:
-                cmd["comment"] = self.comment
+                cmd["comment"] = self.comment  # type: ignore[assignment]
             if self.let:
                 cmd["let"] = self.let
 
@@ -659,7 +671,7 @@ class _ClientBulk:
             ops = islice(self.ops, self.idx_offset, None)
 
             # Run as many ops as possible in one server command.
-            to_send_ops, _ = self._execute_batch_unack(bwc, cmd, ops)
+            to_send_ops, _ = self._execute_batch_unack(bwc, cmd, ops)  # type: ignore[arg-type]
 
             self.idx_offset += len(to_send_ops)
 
@@ -668,7 +680,7 @@ class _ClientBulk:
         conn: Connection,
     ) -> None:
         """Execute commands with OP_MSG and w=0 WriteConcern, ordered."""
-        full_result = {
+        full_result: MutableMapping[str, Any] = {
             "anySuccessful": False,
             "error": None,
             "writeErrors": [],
@@ -745,6 +757,11 @@ class _ClientBulk:
         if not self.write_concern.acknowledged:
             with self.client._conn_for_writes(session, operation) as connection:
                 self.execute_no_results(connection)
-                return ClientBulkWriteResult(None, False, False)
+                return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
-        return self.execute_command(session, operation)
+        result = self.execute_command(session, operation)
+        return ClientBulkWriteResult(
+            result,
+            self.write_concern.acknowledged,
+            self.verbose_results,
+        )

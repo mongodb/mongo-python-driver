@@ -55,7 +55,7 @@ class ClientBulkWriteException(OperationFailure):
     def partial_result(self) -> Optional[ClientBulkWriteResult]:
         if self.details.get("anySuccessful"):
             return ClientBulkWriteResult(
-                self.details,
+                self.details,  # type: ignore[arg-type]
                 acknowledged=True,
                 has_verbose_results=self.verbose,
             )

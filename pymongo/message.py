@@ -141,7 +141,7 @@ def _convert_bulk_exception(exception: Exception) -> dict[str, Any]:
     """Convert an Exception into a failure document for publishing."""
     return {
         "errmsg": str(exception),
-        "code": exception.code,
+        "code": exception.code,  # type: ignore[attr-defined]
         "errtype": exception.__class__.__name__,
     }
 
@@ -912,7 +912,7 @@ class _ClientBulkWriteContext:
         conn: _AgnosticConnection,
         operation_id: int,
         listeners: _EventListeners,
-        session: _AgnosticClientSession,
+        session: Optional[_AgnosticClientSession],
         codec: CodecOptions,
     ):
         self.db_name = database_name
@@ -1013,7 +1013,7 @@ _OP_MSG_OVERHEAD = 1000
 
 
 def _client_construct_op_msg(
-    command_doc: Mapping[str, Any],
+    command_doc: bytes,
     to_send_ops: list[Mapping[str, Any]],
     to_send_ns: list[Mapping[str, Any]],
     ack: bool,
@@ -1071,7 +1071,11 @@ def _client_batched_op_msg_impl(
 ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
     """Create a batched OP_MSG write for client-level bulk write."""
 
-    def _check_doc_size_limits(op_type, document, limit):
+    def _check_doc_size_limits(
+        op_type: str,
+        document: Mapping[str, Any],
+        limit: int,
+    ) -> int:
         doc_size = len(_dict_to_bson(document, False, opts))
         if doc_size > limit:
             _raise_document_too_large(op_type, doc_size, limit)
@@ -1102,8 +1106,8 @@ def _client_batched_op_msg_impl(
     max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len_abridged)
 
     ns_info = {}
-    to_send_ops = []
-    to_send_ns = []
+    to_send_ops: list[Mapping[str, Any]] = []
+    to_send_ns: list[Mapping[str, int]] = []
     total_ops_length = 0
     total_ns_length = 0
     idx = 0
@@ -1130,7 +1134,7 @@ def _client_batched_op_msg_impl(
         # First entry in the operation doc has the operation type as its
         # key and the index of its namespace within ns_info as its value.
         op_doc_to_send = copy.deepcopy(op_doc)
-        op_doc_to_send[op_type] = ns_info[namespace]
+        op_doc_to_send[op_type] = ns_info[namespace]  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
         op_length = len(_dict_to_bson(op_doc_to_send, False, opts))
@@ -1163,7 +1167,7 @@ def _client_batched_op_msg_impl(
 
 def _client_encode_batched_op_msg(
     command: Mapping[str, Any],
-    operations: list[Mapping[str, Any]],
+    operations: list[tuple[str, Mapping[str, Any]]],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
@@ -1181,7 +1185,7 @@ def _client_encode_batched_op_msg(
 
 def _client_batched_op_msg_compressed(
     command: Mapping[str, Any],
-    operations: list[Mapping[str, Any]],
+    operations: list[tuple[str, Mapping[str, Any]]],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,

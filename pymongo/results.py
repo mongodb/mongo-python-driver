@@ -18,7 +18,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, cast
+from typing import Any, Mapping, MutableMapping, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -220,7 +220,7 @@ class ClientUpdateResult(_WriteResult):
     def did_upsert(self) -> bool:
         """Whether or not an upsert took place."""
         assert self.__raw_result is not None
-        return len(self.__raw_result.get("upserted")) > 0
+        return len(self.__raw_result.get("upserted", {})) > 0
 
 
 class DeleteResult(_WriteResult):
@@ -344,7 +344,10 @@ class ClientBulkWriteResult(_WriteResult):
     __slots__ = ("__bulk_api_result", "__has_verbose_results")
 
     def __init__(
-        self, bulk_api_result: dict[str, Any], acknowledged: bool, has_verbose_results: bool
+        self,
+        bulk_api_result: MutableMapping[str, Any],
+        acknowledged: bool,
+        has_verbose_results: bool,
     ) -> None:
         """Create a ClientBulkWriteResult instance.
 
@@ -379,7 +382,7 @@ class ClientBulkWriteResult(_WriteResult):
             )
 
     @property
-    def bulk_api_result(self) -> dict[str, Any]:
+    def bulk_api_result(self) -> MutableMapping[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
 
@@ -419,22 +422,31 @@ class ClientBulkWriteResult(_WriteResult):
         return cast(int, self.__bulk_api_result.get("nUpserted"))
 
     @property
-    def insert_results(self) -> dict[int, ClientInsertOneResult]:
+    def insert_results(self) -> Mapping[int, ClientInsertOneResult]:
         """A map of successful insertion operations to their results."""
         self._raise_if_unacknowledged("insert_results")
         self._raise_if_not_verbose("insert_results")
-        return self.__bulk_api_result.get("insertResults")
+        return cast(
+            Mapping[int, ClientInsertOneResult],
+            self.__bulk_api_result.get("insertResults"),
+        )
 
     @property
-    def update_results(self) -> dict[int, ClientUpdateResult]:
+    def update_results(self) -> Mapping[int, ClientUpdateResult]:
         """A map of successful update operations to their results."""
         self._raise_if_unacknowledged("update_results")
         self._raise_if_not_verbose("update_results")
-        return self.__bulk_api_result.get("updateResults")
+        return cast(
+            Mapping[int, ClientUpdateResult],
+            self.__bulk_api_result.get("updateResults"),
+        )
 
     @property
-    def delete_results(self) -> dict[int, ClientDeleteResult]:
+    def delete_results(self) -> Mapping[int, ClientDeleteResult]:
         """A map of successful delete operations to their results."""
         self._raise_if_unacknowledged("delete_results")
         self._raise_if_not_verbose("delete_results")
-        return self.__bulk_api_result.get("deleteResults")
+        return cast(
+            Mapping[int, ClientDeleteResult],
+            self.__bulk_api_result.get("deleteResults"),
+        )

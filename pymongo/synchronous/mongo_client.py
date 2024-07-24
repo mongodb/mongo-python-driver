@@ -2217,13 +2217,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def bulk_write(
         self,
         models: Sequence[_WriteOp[_DocumentType]],
-        session: Optional[ClientSession] = None,
-        ordered: Optional[bool] = True,
+        session: Optional[ClientSession],
+        write_concern: Optional[WriteConcern],
+        ordered: bool = True,
+        verbose_results: bool = False,
         bypass_document_validation: Optional[bool] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
-        write_concern: Optional[WriteConcern] = None,
-        verbose_results: Optional[bool] = False,
     ) -> ClientBulkWriteResult:
         """Send a batch of write operations, potentially across multiple namespaces, to the server.
 
@@ -2278,11 +2278,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param models: A list of write operation instances.
         :param session: (optional) An instance of
             :class:`~pymongo.client_session.ClientSession`.
-        :param ordered: (optional) If ``True`` (the default), requests will be
+        :param write_concern: (optional) The write concern to use for this bulk write.
+        :param ordered: If ``True`` (the default), requests will be
             performed on the server serially, in the order provided. If an error
             occurs all remaining operations are aborted. If ``False``, requests
             will be still performed on the server serially, in the order provided,
             but all operations will be attempted even if any errors occur.
+        :param verbose_results: If ``True``, detailed results for each
+            successful operation will be included in the returned
+            :class:`~pymongo.results.ClientBulkWriteResult`. Default is ``False``.
         :param bypass_document_validation: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is ``False``.
         :param comment: (optional) A user-provided comment to attach to this
@@ -2291,10 +2295,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
-        :param write_concern: (optional) The write concern to use for this bulk write.
-        :param verbose_results: (optional) If ``True``, detailed results for each
-            successful operation will be included in the returned
-            :class:`~pymongo.results.ClientBulkWriteResult`. Default is ``False``.
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
@@ -2314,7 +2314,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Inherit the transaction write concern.
             if write_concern:
                 raise InvalidOperation("Cannot set write concern after starting a transaction")
-            write_concern = session._transaction.opts.write_concern
+            write_concern = session._transaction.opts.write_concern  # type: ignore[union-attr]
         else:
             # Inherit the client's write concern if none is provided.
             if not write_concern:
@@ -2324,11 +2324,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         blk = _ClientBulk(
             self,
+            write_concern=write_concern,  # type: ignore[arg-type]
             ordered=ordered,
             bypass_document_validation=bypass_document_validation,
             comment=comment,
             let=let,
-            write_concern=write_concern,
             verbose_results=verbose_results,
         )
         for model in models:
@@ -2337,12 +2337,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             except AttributeError:
                 raise TypeError(f"{model!r} is not a valid request") from None
 
-        bulk_api_result = blk.execute(session, _Op.BULK_WRITE)
-        return ClientBulkWriteResult(
-            bulk_api_result,
-            write_concern.acknowledged,
-            verbose_results,
-        )
+        return blk.execute(session, _Op.BULK_WRITE)
 
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
