@@ -25,7 +25,7 @@ from test.utils import (
 
 from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.encryption import AutoEncryptionOpts
-from pymongo.errors import DocumentTooLarge, InvalidOperation
+from pymongo.errors import DocumentTooLarge, InvalidOperation, NetworkTimeout
 from pymongo.monitoring import *
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
@@ -33,6 +33,8 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 
+# https://github.com/mongodb/specifications/tree/master/source/crud/tests
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md
 class TestClientBulkWrite(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     def test_batch_splits_if_num_operations_too_large(self):
@@ -485,3 +487,49 @@ class TestClientBulkWrite(IntegrationTest):
         with self.assertRaises(InvalidOperation) as exc:
             client.bulk_write(models=models)
             self.assertIn("bulkWrite does not currently support automatic encryption", exc)
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_failCommand_fail_point
+    def test_times_out_in_multi_batch_bulk_write(self):
+        internal_client = rs_or_single_client(timeoutMS=None)
+        self.addCleanup(internal_client.close)
+
+        collection = internal_client.db["coll"]
+        self.addCleanup(collection.drop)
+        collection.drop()
+
+        max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
+        max_message_size_bytes = (client_context.hello)["maxMessageSizeBytes"]
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 2},
+            "data": {"failCommands": ["bulkWrite"], "blockConnection": True, "blockTimeMS": 1010},
+        }
+        with self.fail_point(fail_command):
+            models = []
+            num_models = int(max_message_size_bytes / max_bson_object_size + 1)
+            for _ in range(num_models):
+                models.append(
+                    ClientInsertOne(
+                        namespace="db.coll",
+                        document={"a": "b" * (max_bson_object_size - 500)},
+                    )
+                )
+
+            listener = OvertCommandListener()
+            client = rs_or_single_client(
+                event_listeners=[listener],
+                readConcernLevel="majority",
+                readPreference="primary",
+                timeoutMS=2000,
+                w="majority",
+            )
+            self.addCleanup(client.close)
+            with self.assertRaises(NetworkTimeout):
+                client.bulk_write(models=models)
+
+        bulk_write_events = []
+        for event in listener.started_events:
+            if event.command_name == "bulkWrite":
+                bulk_write_events.append(event)
+        self.assertEqual(len(bulk_write_events), 2)

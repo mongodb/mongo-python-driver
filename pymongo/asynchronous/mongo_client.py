@@ -95,7 +95,7 @@ from pymongo.operations import (
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import BulkWriteResult, ClientBulkWriteResult
+from pymongo.results import ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -142,10 +142,10 @@ _ReadCall = Callable[
 _IS_SYNC = False
 
 _WriteOp = Union[
-    ClientInsertOne[_DocumentType],
+    ClientInsertOne,
     ClientDeleteOne,
     ClientDeleteMany,
-    ClientReplaceOne[_DocumentType],
+    ClientReplaceOne,
     ClientUpdateOne,
     ClientUpdateMany,
 ]
@@ -2235,8 +2235,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping] = None,
         write_concern: Optional[WriteConcern] = None,
         verbose_results: Optional[bool] = False,
-    ) -> BulkWriteResult:
-        """Send a batch of write operations to the server.
+    ) -> ClientBulkWriteResult:
+        """Send a batch of write operations, potentially across multiple namespaces, to the server.
 
         Requests are passed as a list of write operation instances (
         :class:`~pymongo.operations.ClientInsertOne`,
@@ -2246,14 +2246,54 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.ClientDeleteOne`, or
         :class:`~pymongo.operations.ClientDeleteMany`).
 
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
+          ...
+          >>> for doc in db.coll.find({}):
+          ...     print(doc)
+          ...
+          {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
+          ...
+          >>> # ClientDeleteMany, ClientUpdateOne, and ClientUpdateMany are also available.
+          >>> from pymongo import ClientInsertOne, ClientDeleteOne, ClientReplaceOne
+          >>> models = [ClientInsertOne("db.test", {'y': 1}),
+          ...           ClientDeleteOne("db.test", {'x': 1}),
+          ...           ClientInsertOne("db.coll", {'y': 2}),
+          ...           ClientReplaceOne("db.test", {'w': 1}, {'z': 1}, upsert=True)]
+          >>> client = MongoClient()
+          >>> result = client.bulk_write(models=models)
+          >>> result.inserted_count
+          2
+          >>> result.deleted_count
+          1
+          >>> result.modified_count
+          0
+          >>> result.upserted_ids
+          {3: ObjectId('54f62ee28891e756a6e1abd5')}
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
+          {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
+          {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
+          ...
+          >>> for doc in db.coll.find({}):
+          ...     print(doc)
+          ...
+          {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
+          {'y': 2, '_id': ObjectId('507f1f77bcf86cd799439012')}
+
         :param models: A list of write operation instances.
-        :param session: (optional) a
+        :param session: (optional) An instance of
             :class:`~pymongo.client_session.AsyncClientSession`.
-        :param ordered: (optional) If ``True`` (the default) requests will be
+        :param ordered: (optional) If ``True`` (the default), requests will be
             performed on the server serially, in the order provided. If an error
-            occurs all remaining operations are aborted. If ``False`` requests
-            will be performed on the server in arbitrary order, possibly in
-            parallel, and all operations will be attempted.
+            occurs all remaining operations are aborted. If ``False``, requests
+            will be still performed on the server serially, in the order provided,
+            but all operations will be attempted even if any errors occur.
         :param bypass_document_validation: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is ``False``.
         :param comment: (optional) A user-provided comment to attach to this
@@ -2265,7 +2305,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param write_concern: (optional) The write concern to use for this bulk write.
         :param verbose_results: (optional) If ``True``, detailed results for each
             successful operation will be included in the returned
-            :class:`~pymongo.results.BulkWriteResult`. Default is ``False``.
+            :class:`~pymongo.results.ClientBulkWriteResult`. Default is ``False``.
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
@@ -2273,6 +2313,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionadded:: 4.9
         """
         if self._options.auto_encryption_opts:
             raise InvalidOperation(

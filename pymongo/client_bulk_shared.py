@@ -26,87 +26,8 @@ if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
 
-_DELETE_ALL: int = 0
-_DELETE_ONE: int = 1
-
-# For backwards compatibility. See MongoDB src/mongo/base/error_codes.err
-_BAD_VALUE: int = 2
-_UNKNOWN_ERROR: int = 8
-_WRITE_CONCERN_ERROR: int = 64
-
-_COMMANDS: tuple[str, str, str] = ("insert", "update", "delete")
-
-
-class _Run:
-    """Represents a batch of bulk write operations."""
-
-    def __init__(self) -> None:
-        """Initialize a new Run object."""
-        self.index_map: list[int] = []
-        self.ops: list[tuple[str, Mapping[str, Any]]] = []
-        self.idx_offset: int = 0
-        self.total_ops: int = 0
-
-    def index(self, idx: int) -> int:
-        """Get the original index of an operation in this run.
-
-        :param idx: The Run index that maps to the original index.
-        """
-        return self.index_map[idx]
-
-    def add(self, original_index: int, operation: tuple[str, Any]) -> None:
-        """Add an operation and its namespace to this Run instance.
-
-        :param original_index: The original index of this operation
-            within a larger bulk operation.
-        :param operation: A tuple containing the operation type and
-            the operation document.
-        """
-        self.index_map.append(original_index)
-        self.ops.append(operation)
-        self.total_ops += 1
-
-
-def _merge_command(
-    run: _Run,
-    full_result: MutableMapping[str, Any],
-    offset: int,
-    result: Mapping[str, Any],
-) -> None:
-    """Merge result of a single bulk write batch into the full result."""
-    if result.get("error"):
-        full_result["error"] = result["error"]
-
-    full_result["nInserted"] += result.get("nInserted")
-    full_result["nDeleted"] += result.get("nDeleted")
-    full_result["nMatched"] += result.get("nMatched")
-    full_result["nModified"] += result.get("nModified")
-    full_result["nUpserted"] += result.get("nUpserted")
-    upserted = result.get("upserted")
-    if upserted:
-        full_result["upserted"].extend(upserted)
-
-    write_errors = result.get("writeErrors")
-    if write_errors:
-        for doc in write_errors:
-            # Leave the server response intact for APM.
-            replacement = doc.copy()
-            idx = doc["idx"] + offset
-            replacement["idx"] = run.index(idx)
-            # Add the failed operation to the error document.
-            replacement["op"] = run.ops[idx][1]
-            full_result["writeErrors"].append(replacement)
-
-    wce = _get_wce_doc(result)
-    if wce:
-        full_result["writeConcernErrors"].append(wce)
-
-
 class ClientBulkWriteException(OperationFailure):
-    """Exception class for client-level bulk write errors.
-
-    .. versionadded:: TODO
-    """
+    """Exception class for client-level bulk write errors."""
 
     details: _DocumentOut
     verbose: bool
@@ -139,6 +60,38 @@ class ClientBulkWriteException(OperationFailure):
                 has_verbose_results=self.verbose,
             )
         return None
+
+
+def _merge_command(
+    ops: list[tuple[str, Mapping[str, Any]]],
+    offset: int,
+    full_result: MutableMapping[str, Any],
+    result: Mapping[str, Any],
+) -> None:
+    """Merge result of a single bulk write batch into the full result."""
+    full_result["nInserted"] += result.get("nInserted")
+    full_result["nDeleted"] += result.get("nDeleted")
+    full_result["nMatched"] += result.get("nMatched")
+    full_result["nModified"] += result.get("nModified")
+    full_result["nUpserted"] += result.get("nUpserted")
+
+    if result.get("error"):
+        full_result["error"] = result["error"]
+
+    write_errors = result.get("writeErrors")
+    if write_errors:
+        for doc in write_errors:
+            # Leave the server response intact for APM.
+            replacement = doc.copy()
+            original_index = doc["idx"] + offset
+            replacement["idx"] = original_index
+            # Add the failed operation to the error document.
+            replacement["op"] = ops[original_index][1]
+            full_result["writeErrors"].append(replacement)
+
+    wce = _get_wce_doc(result)
+    if wce:
+        full_result["writeConcernErrors"].append(wce)
 
 
 def _throw_client_bulk_write_exception(

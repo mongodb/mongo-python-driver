@@ -1012,106 +1012,14 @@ class _ClientBulkWriteContext:
 _OP_MSG_OVERHEAD = 1000
 
 
-def _client_batched_op_msg_impl(
-    command: Mapping[str, Any],
-    operations: list[tuple[str, Mapping[str, Any]]],
+def _client_construct_op_msg(
+    command_doc: Mapping[str, Any],
+    to_send_ops: list[Mapping[str, Any]],
+    to_send_ns: list[Mapping[str, Any]],
     ack: bool,
     opts: CodecOptions,
-    ctx: _ClientBulkWriteContext,
     buf: _BytesIO,
-) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
-    """Create a batched OP_MSG write for client-level bulk write."""
-    max_bson_size = ctx.max_bson_size
-    max_write_batch_size = ctx.max_write_batch_size
-    max_message_size = ctx.max_message_size
-
-    # Don't include command-agnostic fields in the calculation.
-    command_doc = _dict_to_bson(command, False, opts)
-    command_abridged = {
-        "bulkWrite": 1,
-        "errorsOnly": command["errorsOnly"],
-        "ordered": command["ordered"],
-    }
-    command_doc_abridged = _dict_to_bson(command_abridged, False, opts)
-    command_len_abridged = len(command_doc_abridged)
-
-    # When OP_MSG is used unacknowledged we have to check command
-    # document size client-side or applications won't be notified.
-    cmd_doc_too_large = command_len_abridged > max_bson_size + _COMMAND_OVERHEAD
-    if not ack and cmd_doc_too_large:
-        _raise_document_too_large("bulkWrite", command_len_abridged, max_bson_size)
-
-    # Compute the maximum combined size of the ops and nsInfo document sequences.
-    max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len_abridged)
-
-    ns_info = {}
-    to_send_ops = []
-    to_send_ns = []
-    total_ops_length = 0
-    total_ns_length = 0
-    idx = 0
-    for op_type, op_doc in operations:
-        # When OP_MSG is used unacknowledged we have to check insert/replace
-        # document size client-side or applications won't be notified.
-        if op_type == "insert":
-            insert_doc_size = len(_dict_to_bson(op_doc["document"], False, opts))
-            insert_doc_too_large = insert_doc_size > max_bson_size
-            if not ack and insert_doc_too_large:
-                _raise_document_too_large(op_type, insert_doc_size, max_bson_size)
-        if op_type == "replace":
-            replace_doc_size = len(_dict_to_bson(op_doc["updateMods"], False, opts))
-            replace_doc_too_large = replace_doc_size > max_bson_size
-            if not ack and replace_doc_too_large:
-                _raise_document_too_large(op_type, replace_doc_size, max_bson_size)
-
-        ns_doc = None
-        ns_length = 0
-        namespace = op_doc[op_type]
-        # Add the namespace to ns_info if not already present.
-        if namespace not in ns_info:
-            ns_doc = {"ns": namespace}
-            ns_idx = len(to_send_ns)
-            ns_info[namespace] = ns_idx
-
-        # First entry in the document has the operation type as its
-        # key and the index of its namespace within ns_info as its value.
-        op_doc_to_send = copy.deepcopy(op_doc)
-        op_doc_to_send[op_type] = ns_info[namespace]
-
-        # Encode current operation doc and namespace doc (if newly added).
-        op_length = len(_dict_to_bson(op_doc_to_send, False, opts))
-        if ns_doc:
-            ns_length = len(_dict_to_bson(ns_doc, False, opts))
-        new_message_size = total_ops_length + total_ns_length + op_length + ns_length
-
-        # When OP_MSG is used unacknowledged we have to check operation
-        # document size client-side or applications won't be notified.
-        op_doc_too_large = op_length > max_bson_size + _COMMAND_OVERHEAD
-        if not ack and op_doc_too_large:
-            _raise_document_too_large(op_type, op_length, max_bson_size)
-
-        # We have enough data, return this batch.
-        if new_message_size > max_doc_sequences_bytes:
-            if idx == 0:
-                raise InvalidOperation(
-                    "cannot do an empty bulk write: provided operation is too large"
-                )
-            break
-        # Otherwise, we can add this operation to the batch.
-        to_send_ops.append(op_doc_to_send)
-        total_ops_length += op_length
-        if ns_doc:
-            to_send_ns.append(ns_doc)
-            total_ns_length += ns_length
-
-        idx += 1
-        # We have enough documents, return this batch.
-        if idx == max_write_batch_size:
-            break
-
-    # Construct the entire OP_MSG.
-    # TODO: make a helper function to take care of this.
-
+) -> int:
     # Write flags
     flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
     buf.write(flags)
@@ -1150,6 +1058,106 @@ def _client_batched_op_msg_impl(
     buf.seek(size_location)
     buf.write(_pack_int(length - size_location))
 
+    return length
+
+
+def _client_batched_op_msg_impl(
+    command: Mapping[str, Any],
+    operations: list[tuple[str, Mapping[str, Any]]],
+    ack: bool,
+    opts: CodecOptions,
+    ctx: _ClientBulkWriteContext,
+    buf: _BytesIO,
+) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
+    """Create a batched OP_MSG write for client-level bulk write."""
+
+    def _check_doc_size_limits(op_type, document, limit):
+        doc_size = len(_dict_to_bson(document, False, opts))
+        if doc_size > limit:
+            _raise_document_too_large(op_type, doc_size, limit)
+        return doc_size
+
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
+    max_message_size = ctx.max_message_size
+
+    command_doc = _dict_to_bson(command, False, opts)
+    # Don't include command-agnostic fields in document size calculations.
+    abridged_keys = ["bulkWrite", "errorsOnly", "ordered"]
+    if command.get("bypassDocumentValidation"):
+        abridged_keys.append("bypassDocumentValidation")
+    if command.get("comment"):
+        abridged_keys.append("comment")
+    if command.get("let"):
+        abridged_keys.append("let")
+    command_abridged = {key: command[key] for key in abridged_keys}
+    command_len_abridged = len(_dict_to_bson(command_abridged, False, opts))
+
+    # When OP_MSG is used unacknowledged we have to check command
+    # document size client-side or applications won't be notified.
+    if not ack:
+        _check_doc_size_limits("bulkWrite", command_abridged, max_bson_size + _COMMAND_OVERHEAD)
+
+    # Maximum combined size of the ops and nsInfo document sequences.
+    max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len_abridged)
+
+    ns_info = {}
+    to_send_ops = []
+    to_send_ns = []
+    total_ops_length = 0
+    total_ns_length = 0
+    idx = 0
+
+    for real_op_type, op_doc in operations:
+        op_type = real_op_type
+        # Check insert/replace document size if unacknowledged.
+        if real_op_type == "insert":
+            if not ack:
+                _check_doc_size_limits(real_op_type, op_doc["document"], max_bson_size)
+        if real_op_type == "replace":
+            op_type = "update"
+            if not ack:
+                _check_doc_size_limits(real_op_type, op_doc["updateMods"], max_bson_size)
+
+        ns_doc_to_send = None
+        ns_length = 0
+        namespace = op_doc[op_type]
+        if namespace not in ns_info:
+            ns_doc_to_send = {"ns": namespace}
+            new_ns_index = len(to_send_ns)
+            ns_info[namespace] = new_ns_index
+
+        # First entry in the operation doc has the operation type as its
+        # key and the index of its namespace within ns_info as its value.
+        op_doc_to_send = copy.deepcopy(op_doc)
+        op_doc_to_send[op_type] = ns_info[namespace]
+
+        # Encode current operation doc and, if newly added, namespace doc.
+        op_length = len(_dict_to_bson(op_doc_to_send, False, opts))
+        if ns_doc_to_send:
+            ns_length = len(_dict_to_bson(ns_doc_to_send, False, opts))
+
+        # Check operation document size if unacknowledged.
+        if not ack:
+            _check_doc_size_limits(op_type, op_doc_to_send, max_bson_size + _COMMAND_OVERHEAD)
+
+        new_message_size = total_ops_length + total_ns_length + op_length + ns_length
+        # We have enough data, return this batch.
+        if new_message_size > max_doc_sequences_bytes:
+            break
+        to_send_ops.append(op_doc_to_send)
+        total_ops_length += op_length
+        if ns_doc_to_send:
+            to_send_ns.append(ns_doc_to_send)
+            total_ns_length += ns_length
+        idx += 1
+        # We have enough documents, return this batch.
+        if idx == max_write_batch_size:
+            break
+
+    # Construct the entire OP_MSG.
+    length = _client_construct_op_msg(command_doc, to_send_ops, to_send_ns, ack, opts, buf)
+
     return to_send_ops, to_send_ns, length
 
 
@@ -1169,8 +1177,6 @@ def _client_encode_batched_op_msg(
         command, operations, ack, opts, ctx, buf
     )
     return buf.getvalue(), to_send_ops, to_send_ns
-
-    # TODO: if use_c
 
 
 def _client_batched_op_msg_compressed(
@@ -1220,8 +1226,6 @@ def _client_batched_op_msg(
 
     return request_id, buf.getvalue(), to_send_ops, to_send_ns
 
-    # TODO: if use_c
-
 
 def _client_do_batched_op_msg(
     command: MutableMapping[str, Any],
@@ -1233,7 +1237,6 @@ def _client_do_batched_op_msg(
     operation using OP_MSG.
     """
     command["$db"] = "admin"
-    # TODO: figure out default write concern here
     if "writeConcern" in command:
         ack = bool(command["writeConcern"].get("w", 1))
     else:
