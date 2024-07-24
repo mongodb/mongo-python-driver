@@ -73,11 +73,12 @@ class TestClientBulkWrite(IntegrationTest):
 
         models = []
         num_models = int(max_message_size_bytes / max_bson_object_size + 1)
+        b_repeated = "b" * (max_bson_object_size - 500)
         for _ in range(num_models):
             models.append(
                 ClientInsertOne(
                     namespace="db.coll",
-                    document={"a": "b" * (max_bson_object_size - 500)},
+                    document={"a": b_repeated},
                 )
             )
         self.addCleanup(client.db.drop_collection, "coll")
@@ -213,10 +214,12 @@ class TestClientBulkWrite(IntegrationTest):
 
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
         models = []
+        a_repeated = "a" * (max_bson_object_size // 2)
+        b_repeated = "b" * (max_bson_object_size // 2)
         models.append(
             ClientUpdateOne(
                 namespace="db.coll",
-                filter={"_id": "a" * (max_bson_object_size // 2)},
+                filter={"_id": a_repeated},
                 update={"$set": {"x": 1}},
                 upsert=True,
             )
@@ -224,7 +227,7 @@ class TestClientBulkWrite(IntegrationTest):
         models.append(
             ClientUpdateOne(
                 namespace="db.coll",
-                filter={"_id": "b" * (max_bson_object_size // 2)},
+                filter={"_id": b_repeated},
                 update={"$set": {"x": 1}},
                 upsert=True,
             )
@@ -255,10 +258,12 @@ class TestClientBulkWrite(IntegrationTest):
         with client.start_session() as session:
             session.start_transaction()
             models = []
+            a_repeated = "a" * (max_bson_object_size // 2)
+            b_repeated = "b" * (max_bson_object_size // 2)
             models.append(
                 ClientUpdateOne(
                     namespace="db.coll",
-                    filter={"_id": "a" * (max_bson_object_size // 2)},
+                    filter={"_id": a_repeated},
                     update={"$set": {"x": 1}},
                     upsert=True,
                 )
@@ -266,7 +271,7 @@ class TestClientBulkWrite(IntegrationTest):
             models.append(
                 ClientUpdateOne(
                     namespace="db.coll",
-                    filter={"_id": "b" * (max_bson_object_size // 2)},
+                    filter={"_id": b_repeated},
                     update={"$set": {"x": 1}},
                     upsert=True,
                 )
@@ -301,10 +306,12 @@ class TestClientBulkWrite(IntegrationTest):
         }
         with self.fail_point(fail_command):
             models = []
+            a_repeated = "a" * (max_bson_object_size // 2)
+            b_repeated = "b" * (max_bson_object_size // 2)
             models.append(
                 ClientUpdateOne(
                     namespace="db.coll",
-                    filter={"_id": "a" * (max_bson_object_size // 2)},
+                    filter={"_id": a_repeated},
                     update={"$set": {"x": 1}},
                     upsert=True,
                 )
@@ -312,7 +319,7 @@ class TestClientBulkWrite(IntegrationTest):
             models.append(
                 ClientUpdateOne(
                     namespace="db.coll",
-                    filter={"_id": "b" * (max_bson_object_size // 2)},
+                    filter={"_id": b_repeated},
                     update={"$set": {"x": 1}},
                     upsert=True,
                 )
@@ -343,17 +350,14 @@ class TestClientBulkWrite(IntegrationTest):
         self.addCleanup(client.close)
 
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
+        b_repeated = "b" * max_bson_object_size
         with self.assertRaises(DocumentTooLarge):
-            models = [
-                ClientInsertOne(namespace="db.coll", document={"a": "b" * max_bson_object_size})
-            ]
+            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
         with self.assertRaises(DocumentTooLarge):
             models = [
-                ClientReplaceOne(
-                    namespace="db.coll", filter={}, replacement={"a": "b" * max_bson_object_size}
-                )
+                ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
             ]
             client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
@@ -366,19 +370,21 @@ class TestClientBulkWrite(IntegrationTest):
         remainder_bytes = ops_bytes % max_bson_object_size
 
         models = []
+        b_repeated = "b" * (max_bson_object_size - 57)
         for _ in range(num_models):
             models.append(
                 ClientInsertOne(
                     namespace="db.coll",
-                    document={"a": "b" * (max_bson_object_size - 57)},
+                    document={"a": b_repeated},
                 )
             )
         if remainder_bytes >= 217:
             num_models += 1
+            b_repeated = "b" * (remainder_bytes - 57)
             models.append(
                 ClientInsertOne(
                     namespace="db.coll",
-                    document={"a": "b" * (remainder_bytes - 57)},
+                    document={"a": b_repeated},
                 )
             )
         return num_models, models
@@ -461,15 +467,15 @@ class TestClientBulkWrite(IntegrationTest):
 
         # Document too large.
         with self.assertRaises(InvalidOperation) as exc:
-            models = [
-                ClientInsertOne(namespace="db.coll", document={"a": "b" * (max_message_size_bytes)})
-            ]
+            b_repeated = "b" * max_message_size_bytes
+            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc)
 
         # Namespace too large.
         with self.assertRaises(InvalidOperation) as exc:
-            namespace = f"db.{"c" * max_message_size_bytes}"
+            c_repeated = "c" * max_message_size_bytes
+            namespace = f"db.{c_repeated}"
             models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
             client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc)
@@ -508,11 +514,12 @@ class TestClientBulkWrite(IntegrationTest):
         with self.fail_point(fail_command):
             models = []
             num_models = int(max_message_size_bytes / max_bson_object_size + 1)
+            b_repeated = "b" * (max_bson_object_size - 500)
             for _ in range(num_models):
                 models.append(
                     ClientInsertOne(
                         namespace="db.coll",
-                        document={"a": "b" * (max_bson_object_size - 500)},
+                        document={"a": b_repeated},
                     )
                 )
 
