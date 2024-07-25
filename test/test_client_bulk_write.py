@@ -47,7 +47,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         models = []
         for _ in range(max_write_batch_size + 1):
             models.append(ClientInsertOne(namespace="db.coll", document={"a": "b"}))
-        self.addCleanup(client.db.drop_collection, "coll")
+        self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, max_write_batch_size + 1)
@@ -82,7 +82,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        self.addCleanup(client.db.drop_collection, "coll")
+        self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
@@ -117,7 +117,6 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 "writeConcernError": {"code": 91, "errmsg": "Replication is being shut down"},
             },
         }
-
         with self.fail_point(fail_command):
             models = []
             for _ in range(max_write_batch_size + 1):
@@ -127,7 +126,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                         document={"a": "b"},
                     )
                 )
-            self.addCleanup(client.db.drop_collection, "coll")
+            self.addCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as exc:
                 client.bulk_write(models=models)
@@ -352,19 +351,20 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
         b_repeated = "b" * max_bson_object_size
-        with self.assertRaises(DocumentTooLarge):
-            models = [
-                ClientInsertOne(namespace="db.coll", document={"a": b_repeated})  # type: ignore[list-item]
-            ]
-            client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
+        # Insert document.
+        models_insert = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            models = [
-                ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})  # type: ignore[list-item]
-            ]
-            client.bulk_write(models=models, write_concern=WriteConcern(w=0))
+            client.bulk_write(models=models_insert, write_concern=WriteConcern(w=0))
 
-    def setup_namespace_test_models(self):
+        # Replace document.
+        models_replace = [
+            ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
+        ]
+        with self.assertRaises(DocumentTooLarge):
+            client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
+
+    def _setup_namespace_test_models(self):
         max_message_size_bytes = (client_context.hello)["maxMessageSizeBytes"]
         max_bson_object_size = (client_context.hello)["maxBsonObjectSize"]
 
@@ -398,7 +398,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
 
-        num_models, models = self.setup_namespace_test_models()
+        num_models, models = self._setup_namespace_test_models()
         models.append(
             ClientInsertOne(
                 namespace="db.coll",
@@ -429,7 +429,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
 
-        num_models, models = self.setup_namespace_test_models()
+        num_models, models = self._setup_namespace_test_models()
         c_repeated = "c" * 200
         namespace = f"db.{c_repeated}"
         models.append(
@@ -469,22 +469,22 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         max_message_size_bytes = (client_context.hello)["maxMessageSizeBytes"]
 
         # Document too large.
+        b_repeated = "b" * max_message_size_bytes
+        models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(InvalidOperation) as exc:
-            b_repeated = "b" * max_message_size_bytes
-            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
 
         # Namespace too large.
+        c_repeated = "c" * max_message_size_bytes
+        namespace = f"db.{c_repeated}"
+        models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
-            c_repeated = "c" * max_message_size_bytes
-            namespace = f"db.{c_repeated}"
-            models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
             client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
 
-    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(8, 0, 0, -24)
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_returns_error_if_auto_encryption_configured(self):
         opts = AutoEncryptionOpts(
             key_vault_namespace="db.coll",
@@ -503,7 +503,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 class TestClientBulkWriteTimeout(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point
-    def test_timeut_in_multi_batch_bulk_write(self):
+    def test_timeout_in_multi_batch_bulk_write(self):
         internal_client = rs_or_single_client(timeoutMS=None)
         self.addCleanup(internal_client.close)
 

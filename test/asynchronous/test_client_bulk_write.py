@@ -47,7 +47,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         models = []
         for _ in range(max_write_batch_size + 1):
             models.append(ClientInsertOne(namespace="db.coll", document={"a": "b"}))
-        self.addAsyncCleanup(client.db.drop_collection, "coll")
+        self.addAsyncCleanup(client.db["coll"].drop)
 
         result = await client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, max_write_batch_size + 1)
@@ -82,7 +82,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        self.addAsyncCleanup(client.db.drop_collection, "coll")
+        self.addAsyncCleanup(client.db["coll"].drop)
 
         result = await client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
@@ -117,7 +117,6 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                 "writeConcernError": {"code": 91, "errmsg": "Replication is being shut down"},
             },
         }
-
         async with self.fail_point(fail_command):
             models = []
             for _ in range(max_write_batch_size + 1):
@@ -127,7 +126,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                         document={"a": "b"},
                     )
                 )
-            self.addAsyncCleanup(client.db.drop_collection, "coll")
+            self.addAsyncCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as exc:
                 await client.bulk_write(models=models)
@@ -352,19 +351,20 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 
         max_bson_object_size = (await async_client_context.hello)["maxBsonObjectSize"]
         b_repeated = "b" * max_bson_object_size
-        with self.assertRaises(DocumentTooLarge):
-            models = [
-                ClientInsertOne(namespace="db.coll", document={"a": b_repeated})  # type: ignore[list-item]
-            ]
-            await client.bulk_write(models=models, write_concern=WriteConcern(w=0))
 
+        # Insert document.
+        models_insert = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            models = [
-                ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})  # type: ignore[list-item]
-            ]
-            await client.bulk_write(models=models, write_concern=WriteConcern(w=0))
+            await client.bulk_write(models=models_insert, write_concern=WriteConcern(w=0))
 
-    async def setup_namespace_test_models(self):
+        # Replace document.
+        models_replace = [
+            ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
+        ]
+        with self.assertRaises(DocumentTooLarge):
+            await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
+
+    async def _setup_namespace_test_models(self):
         max_message_size_bytes = (await async_client_context.hello)["maxMessageSizeBytes"]
         max_bson_object_size = (await async_client_context.hello)["maxBsonObjectSize"]
 
@@ -398,7 +398,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await async_rs_or_single_client(event_listeners=[listener])
         self.addAsyncCleanup(client.aclose)
 
-        num_models, models = await self.setup_namespace_test_models()
+        num_models, models = await self._setup_namespace_test_models()
         models.append(
             ClientInsertOne(
                 namespace="db.coll",
@@ -429,7 +429,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await async_rs_or_single_client(event_listeners=[listener])
         self.addAsyncCleanup(client.aclose)
 
-        num_models, models = await self.setup_namespace_test_models()
+        num_models, models = await self._setup_namespace_test_models()
         c_repeated = "c" * 200
         namespace = f"db.{c_repeated}"
         models.append(
@@ -469,22 +469,22 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         max_message_size_bytes = (await async_client_context.hello)["maxMessageSizeBytes"]
 
         # Document too large.
+        b_repeated = "b" * max_message_size_bytes
+        models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(InvalidOperation) as exc:
-            b_repeated = "b" * max_message_size_bytes
-            models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
             await client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
 
         # Namespace too large.
+        c_repeated = "c" * max_message_size_bytes
+        namespace = f"db.{c_repeated}"
+        models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
-            c_repeated = "c" * max_message_size_bytes
-            namespace = f"db.{c_repeated}"
-            models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
             await client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
 
-    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     async def test_returns_error_if_auto_encryption_configured(self):
         opts = AutoEncryptionOpts(
             key_vault_namespace="db.coll",
@@ -503,7 +503,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 class TestClientBulkWriteTimeout(AsyncIntegrationTest):
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
-    async def test_timeut_in_multi_batch_bulk_write(self):
+    async def test_timeout_in_multi_batch_bulk_write(self):
         internal_client = await async_rs_or_single_client(timeoutMS=None)
         self.addAsyncCleanup(internal_client.aclose)
 
