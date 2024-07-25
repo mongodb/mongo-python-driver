@@ -18,7 +18,15 @@ import itertools
 import unittest
 from typing import Any
 
-from mockupdb import CommandBase, MockupDB, going
+import pytest
+
+try:
+    from mockupdb import CommandBase, MockupDB, going
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient, ReadPreference
@@ -27,6 +35,8 @@ from pymongo.read_preferences import (
     make_read_preference,
     read_pref_mode_from_name,
 )
+
+pytestmark = pytest.mark.mockupdb
 
 
 class OpMsgReadPrefBase(unittest.TestCase):

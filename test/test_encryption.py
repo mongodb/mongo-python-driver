@@ -30,6 +30,8 @@ import warnings
 from threading import Thread
 from typing import Any, Dict, Mapping
 
+import pytest
+
 from pymongo.daemon import _spawn_daemon
 from pymongo.synchronous.collection import Collection
 
@@ -90,6 +92,8 @@ from pymongo.synchronous import encryption
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+
+pytestmark = pytest.mark.encryption
 
 KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 

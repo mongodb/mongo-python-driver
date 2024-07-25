@@ -20,10 +20,15 @@ import os
 import sys
 import unittest
 
+import pytest
+
 sys.path[0:0] = [""]
 
 import pymongo
 from pymongo.errors import ServerSelectionTimeoutError
+
+pytestmark = pytest.mark.ocsp
+
 
 CA_FILE = os.environ.get("CA_FILE")
 OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"

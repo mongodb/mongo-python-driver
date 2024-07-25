@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_SUITES="test/ test/asynchronous/"
+TEST_SUITES=""
 TEST_ARGS="${*:1}"
 
 export PIP_QUIET=1  # Quiet by default
@@ -96,7 +96,7 @@ if [ -n "$TEST_LOADBALANCER" ]; then
     export LOAD_BALANCER=1
     export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI:-mongodb://127.0.0.1:8000/?loadBalanced=true}"
     export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI:-mongodb://127.0.0.1:8001/?loadBalanced=true}"
-    export TEST_SUITES="test/test_load_balancer.py"
+    export TEST_SUITES="load_balancer"
 fi
 
 if [ "$SSL" != "nossl" ]; then
@@ -172,7 +172,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         export PATH=$CRYPT_SHARED_DIR:$PATH
     fi
     # Only run the encryption tests.
-    TEST_SUITES="test/test_encryption.py"
+    TEST_SUITES="encryption"
 fi
 
 if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
@@ -185,8 +185,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
       echo "MONGODB_URI unexpectedly contains user credentials in FLE test!";
       exit 1
     fi
-
-    TEST_SUITES="test/test_on_demand_csfle.py"
+    TEST_SUITES="csfle"
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
@@ -195,36 +194,36 @@ if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
     set +x
     export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     set -x
-    TEST_SUITES="test/test_index_management.py"
+    TEST_SUITES="index_management"
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
-    TEST_SUITES="test/test_data_lake.py"
+    TEST_SUITES="data_lake"
 fi
 
 if [ -n "$TEST_ATLAS" ]; then
-    TEST_SUITES="test/atlas/test_connection.py"
+    TEST_SUITES="atlas"
 fi
 
 if [ -n "$TEST_OCSP" ]; then
     python -m pip install ".[ocsp]"
-    TEST_SUITES="test/ocsp/test_ocsp.py"
+    TEST_SUITES="ocsp"
 fi
 
 if [ -n "$TEST_AUTH_AWS" ]; then
     python -m pip install ".[aws]"
-    TEST_SUITES="test/auth_aws/test_auth_aws.py"
+    TEST_SUITES="auth_aws"
 fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_SUITES="test/auth_oidc/test_auth_oidc.py $TEST_ARGS"
+    TEST_SUITES="auth_oidc"
 fi
 
 if [ -n "$PERF_TEST" ]; then
     python -m pip install simplejson
     start_time=$(date +%s)
-    TEST_SUITES="test/performance/perf_test.py"
+    TEST_SUITES="perf"
 fi
 
 echo "Running $AUTH tests over $SSL with python $(which python)"
@@ -254,7 +253,11 @@ PIP_QUIET=0 python -m pip list
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_SUITES $TEST_ARGS
+    if [ -z "$TEST_SUITES" ]; then
+      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
+    else
+      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 -m $TEST_SUITES $TEST_ARGS
+    fi
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi

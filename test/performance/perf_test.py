@@ -48,6 +48,8 @@ import time
 import warnings
 from typing import Any, List, Optional
 
+import pytest
+
 try:
     import simplejson as json
 except ImportError:
@@ -60,6 +62,8 @@ from test import client_context, unittest
 from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import MongoClient
+
+pytestmark = pytest.mark.perf
 
 # Spec says to use at least 1 minute cumulative execution time and up to 100 iterations or 5 minutes but that
 # makes the benchmarks too slow. Instead, we use at least 30 seconds and at most 60 seconds.

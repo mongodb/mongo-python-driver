@@ -432,9 +432,6 @@ functions:
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
           fi
-          if [ -n "${IS_SERVERLESS_PROXY}" ]; then
-            export IS_SERVERLESS_PROXY=1
-          fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
           fi
@@ -1121,7 +1118,7 @@ tasks:
 
     - name: "release-mac"
       tags: ["release_tag"]
-      run_on: macos-1100
+      run_on: macos-11
       commands:
         - func: "build release"
           vars:
@@ -2219,16 +2216,16 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: macos-1100
-        display_name: "macOS 11.00"
-        run_on: macos-1100
+      - id: macos
+        display_name: "macOS"
+        run_on: macos-14
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
-      - id: macos-1100-arm64
-        display_name: "macOS 11.00 Arm64"
-        run_on: macos-1100-arm64
+      - id: macos-arm64
+        display_name: "macOS Arm64"
+        run_on: macos-14-arm64
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
@@ -2600,17 +2597,10 @@ axes:
   - id: serverless
     display_name: "Serverless"
     values:
-      - id: "original"
+      - id: "enabled"
         display_name: "Serverless"
         variables:
           test_serverless: true
-        batchtime: 10080  # 7 days
-      - id: "proxy"
-        display_name: "Serverless Proxy"
-        variables:
-          test_serverless: true
-          VAULT_NAME: "serverless_next"
-          IS_SERVERLESS_PROXY: true
         batchtime: 10080  # 7 days
 
 buildvariants:
@@ -2629,12 +2619,12 @@ buildvariants:
     platform:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos-1100
+      - macos
     auth: "*"
     ssl: "*"
   exclude_spec:
     # No point testing with SSL without auth.
-    - platform: macos-1100
+    - platform: macos
       auth: "noauth"
       ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2652,7 +2642,7 @@ buildvariants:
 - matrix_name: "test-macos-arm64"
   matrix_spec:
     platform:
-      - macos-1100-arm64
+      - macos-arm64
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2666,7 +2656,7 @@ buildvariants:
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
-      - macos-1100
+      - macos
     auth: "auth"
     ssl: "nossl"
     encryption: "*"
@@ -2675,7 +2665,7 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
-        platform: macos-1100
+        platform: macos
         auth: "auth"
         ssl: "nossl"
       then:
@@ -2743,7 +2733,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
-    platform: macos-1100
+    platform: macos
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -3012,17 +3002,7 @@ buildvariants:
     platform: rhel8
     python-version: "*"
     auth-ssl: auth-ssl
-    serverless: "original"
-  display_name: "${serverless} ${python-version} ${platform}"
-  tasks:
-    - "serverless_task_group"
-
-- matrix_name: "serverless_proxy"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.8", "3.10"]
-    auth-ssl: auth-ssl
-    serverless: "proxy"
+    serverless: "enabled"
   display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
@@ -3077,7 +3057,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
-    platform: macos-1100
+    platform: macos
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -3089,7 +3069,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8, macos-1100, windows-64-vsMulti-small ]
+    platform: [ rhel8, macos, windows-64-vsMulti-small ]
   display_name: "OIDC Auth ${platform}"
   tasks:
     - name: testoidc_task_group
@@ -3125,7 +3105,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
-    platform: [macos-1100]
+    platform: [macos]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"

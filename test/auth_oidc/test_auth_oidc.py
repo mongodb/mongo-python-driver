@@ -25,6 +25,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict
 
+import pytest
+
 sys.path[0:0] = [""]
 
 from test.unified_format import generate_test_classes
@@ -54,6 +56,8 @@ TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
 
 # Generate unified tests.
 globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
+
+pytestmark = pytest.mark.auth_oidc
 
 
 class OIDCTestBase(unittest.TestCase):
@@ -96,6 +100,7 @@ class OIDCTestBase(unittest.TestCase):
             client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
 
+@pytest.mark.auth_oidc
 class TestAuthOIDCHuman(OIDCTestBase):
     uri: str
 

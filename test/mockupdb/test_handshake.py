@@ -15,13 +15,23 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply, absent, go
+import pytest
+
+try:
+    from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply, absent, go
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 from pymongo import version as pymongo_version
 from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi, ServerApiVersion
+
+pytestmark = pytest.mark.mockupdb
 
 
 def _check_handshake_data(request):

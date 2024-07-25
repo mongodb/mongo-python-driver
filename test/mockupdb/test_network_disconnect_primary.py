@@ -15,11 +15,21 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import Future, MockupDB, OpReply, going, wait_until
+import pytest
+
+try:
+    from mockupdb import Future, MockupDB, OpReply, going, wait_until
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestNetworkDisconnectPrimary(unittest.TestCase):
