@@ -46,7 +46,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         max_write_batch_size = (await async_client_context.hello)["maxWriteBatchSize"]
         models = []
         for _ in range(max_write_batch_size + 1):
-            models.append(ClientInsertOne(namespace="db.coll", document={"a": "b"}))
+            models.append(InsertOne(namespace="db.coll", document={"a": "b"}))
         self.addAsyncCleanup(client.db["coll"].drop)
 
         result = await client.bulk_write(models=models)
@@ -77,7 +77,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         b_repeated = "b" * (max_bson_object_size - 500)
         for _ in range(num_models):
             models.append(
-                ClientInsertOne(
+                InsertOne(
                     namespace="db.coll",
                     document={"a": b_repeated},
                 )
@@ -121,7 +121,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             models = []
             for _ in range(max_write_batch_size + 1):
                 models.append(
-                    ClientInsertOne(
+                    InsertOne(
                         namespace="db.coll",
                         document={"a": "b"},
                     )
@@ -155,7 +155,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         models = []
         for _ in range(max_write_batch_size + 1):
             models.append(
-                ClientInsertOne(
+                InsertOne(
                     namespace="db.coll",
                     document={"_id": 1},
                 )
@@ -186,7 +186,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         models = []
         for _ in range(max_write_batch_size + 1):
             models.append(
-                ClientInsertOne(
+                InsertOne(
                     namespace="db.coll",
                     document={"_id": 1},
                 )
@@ -217,7 +217,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         a_repeated = "a" * (max_bson_object_size // 2)
         b_repeated = "b" * (max_bson_object_size // 2)
         models.append(
-            ClientUpdateOne(
+            UpdateOne(
                 namespace="db.coll",
                 filter={"_id": a_repeated},
                 update={"$set": {"x": 1}},
@@ -225,7 +225,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             )
         )
         models.append(
-            ClientUpdateOne(
+            UpdateOne(
                 namespace="db.coll",
                 filter={"_id": b_repeated},
                 update={"$set": {"x": 1}},
@@ -261,7 +261,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             a_repeated = "a" * (max_bson_object_size // 2)
             b_repeated = "b" * (max_bson_object_size // 2)
             models.append(
-                ClientUpdateOne(
+                UpdateOne(
                     namespace="db.coll",
                     filter={"_id": a_repeated},
                     update={"$set": {"x": 1}},
@@ -269,7 +269,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                 )
             )
             models.append(
-                ClientUpdateOne(
+                UpdateOne(
                     namespace="db.coll",
                     filter={"_id": b_repeated},
                     update={"$set": {"x": 1}},
@@ -309,7 +309,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             a_repeated = "a" * (max_bson_object_size // 2)
             b_repeated = "b" * (max_bson_object_size // 2)
             models.append(
-                ClientUpdateOne(
+                UpdateOne(
                     namespace="db.coll",
                     filter={"_id": a_repeated},
                     update={"$set": {"x": 1}},
@@ -317,7 +317,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                 )
             )
             models.append(
-                ClientUpdateOne(
+                UpdateOne(
                     namespace="db.coll",
                     filter={"_id": b_repeated},
                     update={"$set": {"x": 1}},
@@ -353,14 +353,12 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         b_repeated = "b" * max_bson_object_size
 
         # Insert document.
-        models_insert = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
+        models_insert = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
             await client.bulk_write(models=models_insert, write_concern=WriteConcern(w=0))
 
         # Replace document.
-        models_replace = [
-            ClientReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})
-        ]
+        models_replace = [ReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
             await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
 
@@ -376,7 +374,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         b_repeated = "b" * (max_bson_object_size - 57)
         for _ in range(num_models):
             models.append(
-                ClientInsertOne(
+                InsertOne(
                     namespace="db.coll",
                     document={"a": b_repeated},
                 )
@@ -385,7 +383,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             num_models += 1
             b_repeated = "b" * (remainder_bytes - 57)
             models.append(
-                ClientInsertOne(
+                InsertOne(
                     namespace="db.coll",
                     document={"a": b_repeated},
                 )
@@ -400,7 +398,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 
         num_models, models = await self._setup_namespace_test_models()
         models.append(
-            ClientInsertOne(
+            InsertOne(
                 namespace="db.coll",
                 document={"a": "b"},
             )
@@ -433,7 +431,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         c_repeated = "c" * 200
         namespace = f"db.{c_repeated}"
         models.append(
-            ClientInsertOne(
+            InsertOne(
                 namespace=namespace,
                 document={"a": "b"},
             )
@@ -470,7 +468,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 
         # Document too large.
         b_repeated = "b" * max_message_size_bytes
-        models = [ClientInsertOne(namespace="db.coll", document={"a": b_repeated})]
+        models = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(InvalidOperation) as exc:
             await client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
@@ -478,7 +476,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         # Namespace too large.
         c_repeated = "c" * max_message_size_bytes
         namespace = f"db.{c_repeated}"
-        models = [ClientInsertOne(namespace=namespace, document={"a": "b"})]
+        models = [InsertOne(namespace=namespace, document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
             await client.bulk_write(models=models)
             self.assertIn("cannot do an empty bulk write", exc.msg)
@@ -493,7 +491,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await async_rs_or_single_client(auto_encryption_opts=opts)
         self.addAsyncCleanup(client.aclose)
 
-        models = [ClientInsertOne(namespace="db.coll", document={"a": "b"})]
+        models = [InsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as exc:
             await client.bulk_write(models=models)
             self.assertIn("bulkWrite does not currently support automatic encryption", exc.msg)
@@ -524,7 +522,7 @@ class TestClientBulkWriteTimeout(AsyncIntegrationTest):
             b_repeated = "b" * (max_bson_object_size - 500)
             for _ in range(num_models):
                 models.append(
-                    ClientInsertOne(
+                    InsertOne(
                         namespace="db.coll",
                         document={"a": b_repeated},
                     )

@@ -86,12 +86,12 @@ from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import (
-    ClientDeleteMany,
-    ClientDeleteOne,
-    ClientInsertOne,
-    ClientReplaceOne,
-    ClientUpdateMany,
-    ClientUpdateOne,
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -142,12 +142,12 @@ _ReadCall = Callable[
 _IS_SYNC = False
 
 _WriteOp = Union[
-    ClientInsertOne,
-    ClientDeleteOne,
-    ClientDeleteMany,
-    ClientReplaceOne,
-    ClientUpdateOne,
-    ClientUpdateMany,
+    InsertOne,
+    DeleteOne,
+    DeleteMany,
+    ReplaceOne,
+    UpdateOne,
+    UpdateMany,
 ]
 
 
@@ -2239,32 +2239,32 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Send a batch of write operations, potentially across multiple namespaces, to the server.
 
         Requests are passed as a list of write operation instances (
-        :class:`~pymongo.operations.ClientInsertOne`,
-        :class:`~pymongo.operations.ClientUpdateOne`,
-        :class:`~pymongo.operations.ClientUpdateMany`,
-        :class:`~pymongo.operations.ClientReplaceOne`,
-        :class:`~pymongo.operations.ClientDeleteOne`, or
-        :class:`~pymongo.operations.ClientDeleteMany`).
+        :class:`~pymongo.operations.InsertOne`,
+        :class:`~pymongo.operations.UpdateOne`,
+        :class:`~pymongo.operations.UpdateMany`,
+        :class:`~pymongo.operations.ReplaceOne`,
+        :class:`~pymongo.operations.DeleteOne`, or
+        :class:`~pymongo.operations.DeleteMany`).
 
-          >>> for doc in db.test.find({}):
+          >>> async for doc in await db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           ...
-          >>> for doc in db.coll.find({}):
+          >>> async for doc in await db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
           ...
-          >>> # ClientDeleteMany, ClientUpdateOne, and ClientUpdateMany are also available.
-          >>> from pymongo import ClientInsertOne, ClientDeleteOne, ClientReplaceOne
-          >>> models = [ClientInsertOne("db.test", {'y': 1}),
-          ...           ClientDeleteOne("db.test", {'x': 1}),
-          ...           ClientInsertOne("db.coll", {'y': 2}),
-          ...           ClientReplaceOne("db.test", {'w': 1}, {'z': 1}, upsert=True)]
-          >>> client = MongoClient()
-          >>> result = client.bulk_write(models=models)
+          >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
+          >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
+          >>> models = [InsertOne("db.test", {'y': 1}),
+          ...           DeleteOne("db.test", {'x': 1}),
+          ...           InsertOne("db.coll", {'y': 2}),
+          ...           ReplaceOne("db.test", {'w': 1}, {'z': 1}, upsert=True)]
+          >>> client = AsyncMongoClient()
+          >>> result = await client.bulk_write(models=models)
           >>> result.inserted_count
           2
           >>> result.deleted_count
@@ -2273,14 +2273,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_ids
           {3: ObjectId('54f62ee28891e756a6e1abd5')}
-          >>> for doc in db.test.find({}):
+          >>> async for doc in await db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
           ...
-          >>> for doc in db.coll.find({}):
+          >>> async for doc in await db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
@@ -2288,7 +2288,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :param models: A list of write operation instances.
         :param session: (optional) An instance of
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param ordered: If ``True`` (the default), requests will be
             performed on the server serially, in the order provided. If an error
             occurs all remaining operations are aborted. If ``False``, requests
@@ -2344,7 +2344,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         for model in models:
             try:
-                model._add_to_bulk(blk)
+                model._add_to_client_bulk(blk)
             except AttributeError:
                 raise TypeError(f"{model!r} is not a valid request") from None
 

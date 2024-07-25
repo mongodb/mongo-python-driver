@@ -119,13 +119,13 @@ from pymongo.monitoring import (
     _ServerHeartbeatEvent,
 )
 from pymongo.operations import (
-    ClientDeleteMany,
-    ClientDeleteOne,
-    ClientInsertOne,
-    ClientReplaceOne,
-    ClientUpdateMany,
-    ClientUpdateOne,
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
     SearchIndexModel,
+    UpdateMany,
+    UpdateOne,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -302,13 +302,13 @@ def parse_client_bulk_write_models(models):
     for model in models:
         if model.get("insertOne"):
             insert_opts = model["insertOne"]
-            new_model = ClientInsertOne(
+            new_model = InsertOne(
                 namespace=insert_opts["namespace"],
                 document=insert_opts["document"],
             )
         if model.get("updateOne"):
             update_opts = model["updateOne"]
-            new_model = ClientUpdateOne(
+            new_model = UpdateOne(
                 namespace=update_opts["namespace"],
                 filter=update_opts["filter"],
                 update=update_opts["update"],
@@ -319,7 +319,7 @@ def parse_client_bulk_write_models(models):
             )
         if model.get("updateMany"):
             update_opts = model["updateMany"]
-            new_model = ClientUpdateMany(
+            new_model = UpdateMany(
                 namespace=update_opts["namespace"],
                 filter=update_opts["filter"],
                 update=update_opts["update"],
@@ -330,7 +330,7 @@ def parse_client_bulk_write_models(models):
             )
         if model.get("replaceOne"):
             replace_opts = model["replaceOne"]
-            new_model = ClientReplaceOne(
+            new_model = ReplaceOne(
                 namespace=replace_opts["namespace"],
                 filter=replace_opts["filter"],
                 replacement=replace_opts["replacement"],
@@ -340,7 +340,7 @@ def parse_client_bulk_write_models(models):
             )
         if model.get("deleteOne"):
             delete_opts = model["deleteOne"]
-            new_model = ClientDeleteOne(
+            new_model = DeleteOne(
                 namespace=delete_opts["namespace"],
                 filter=delete_opts["filter"],
                 collation=delete_opts.get("collation", None),
@@ -348,7 +348,7 @@ def parse_client_bulk_write_models(models):
             )
         if model.get("deleteMany"):
             delete_opts = model["deleteMany"]
-            new_model = ClientDeleteMany(
+            new_model = DeleteMany(
                 namespace=delete_opts["namespace"],
                 filter=delete_opts["filter"],
                 collation=delete_opts.get("collation", None),
@@ -369,10 +369,11 @@ def parse_client_bulk_write_individual(op_type, result):
                 "modifiedCount": result.modified_count,
                 "upsertedId": result.upserted_id,
             }
-        return {
-            "matchedCount": result.matched_count,
-            "modifiedCount": result.modified_count,
-        }
+        else:
+            return {
+                "matchedCount": result.matched_count,
+                "modifiedCount": result.modified_count,
+            }
     if op_type == "delete":
         return {
             "deletedCount": result.deleted_count,

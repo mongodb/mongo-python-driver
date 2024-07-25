@@ -63,7 +63,7 @@ from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import (
     _ClientBulkWriteContext,
-    _convert_bulk_exception,
+    _convert_client_bulk_exception,
     _convert_exception,
     _convert_write_result,
     _randint,
@@ -71,9 +71,9 @@ from pymongo.message import (
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     ClientBulkWriteResult,
-    ClientDeleteResult,
-    ClientInsertOneResult,
-    ClientUpdateResult,
+    DeleteResult,
+    InsertOneResult,
+    UpdateResult,
 )
 from pymongo.typings import _DocumentOut, _Pipeline
 from pymongo.write_concern import WriteConcern
@@ -147,14 +147,12 @@ class _ClientBulk:
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = dict(  # noqa: C406
-            [
-                ("update", namespace),
-                ("filter", selector),
-                ("updateMods", update),
-                ("multi", multi),
-            ]
-        )
+        cmd = {
+            "update": namespace,
+            "filter": selector,
+            "updateMods": update,
+            "multi": multi,
+        }
         if upsert is not None:
             self.uses_upsert = True
             cmd["upsert"] = upsert
@@ -184,14 +182,12 @@ class _ClientBulk:
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd: dict[str, Any] = dict(  # noqa: C406
-            [
-                ("update", namespace),
-                ("filter", selector),
-                ("updateMods", replacement),
-                ("multi", False),
-            ]
-        )
+        cmd = {
+            "update": namespace,
+            "filter": selector,
+            "updateMods": replacement,
+            "multi": False,
+        }
         if upsert is not None:
             self.uses_upsert = True
             cmd["upsert"] = upsert
@@ -237,7 +233,7 @@ class _ClientBulk:
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient,
     ) -> dict[str, Any]:
-        """A proxy for SocketInfo.write_command that handles event publishing."""
+        """A proxy for Connection.write_command that handles event publishing."""
         cmd["ops"] = op_docs
         cmd["nsInfo"] = ns_docs
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
@@ -448,34 +444,34 @@ class _ClientBulk:
             )
             cmd_cursor._maybe_pin_connection(conn)
 
-        # Iterate the cursor to get individual write results.
-        try:
-            for doc in cmd_cursor:
-                original_index = doc["idx"] + self.idx_offset
-                op_type, op = self.ops[original_index]
+            # Iterate the cursor to get individual write results.
+            try:
+                for doc in cmd_cursor:
+                    original_index = doc["idx"] + self.idx_offset
+                    op_type, op = self.ops[original_index]
 
-                if not doc["ok"]:
-                    result["writeErrors"].append(doc)
-                    if self.ordered:
-                        return
+                    if not doc["ok"]:
+                        result["writeErrors"].append(doc)
+                        if self.ordered:
+                            return
 
-                # Record individual write result.
-                if doc["ok"] and self.verbose_results:
-                    if op_type == "insert":
-                        inserted_id = op["document"]["_id"]
-                        res = ClientInsertOneResult(inserted_id)  # type: ignore[assignment]
-                    if op_type in ["update", "replace"]:
-                        op_type = "update"
-                        res = ClientUpdateResult(doc)  # type: ignore[assignment]
-                    if op_type == "delete":
-                        res = ClientDeleteResult(doc)  # type: ignore[assignment]
-                    full_result[f"{op_type}Results"][original_index] = res
+                    # Record individual write result.
+                    if doc["ok"] and self.verbose_results:
+                        if op_type == "insert":
+                            inserted_id = op["document"]["_id"]
+                            res = InsertOneResult(inserted_id)  # type: ignore[assignment]
+                        if op_type in ["update", "replace"]:
+                            op_type = "update"
+                            res = UpdateResult(doc)  # type: ignore[assignment]
+                        if op_type == "delete":
+                            res = DeleteResult(doc)  # type: ignore[assignment]
+                        full_result[f"{op_type}Results"][original_index] = res
 
-        except Exception as exc:
-            # Attempt to close the cursor, then raise top-level error.
-            if cmd_cursor.alive:
-                cmd_cursor.close()
-            result["error"] = _convert_bulk_exception(exc)
+            except Exception as exc:
+                # Attempt to close the cursor, then raise top-level error.
+                if cmd_cursor.alive:
+                    cmd_cursor.close()
+                result["error"] = _convert_client_bulk_exception(exc)
 
     def _execute_command(
         self,
@@ -621,7 +617,7 @@ class _ClientBulk:
                 full_result,
             )
 
-        _ = self.client._retryable_write(
+        self.client._retryable_write(
             self.is_retryable,
             retryable_bulk,
             session,

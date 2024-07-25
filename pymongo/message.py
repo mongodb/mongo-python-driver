@@ -102,7 +102,12 @@ _OP_MAP = {
     _UPDATE: b"\x04updates\x00\x00\x00\x00\x00",
     _DELETE: b"\x04deletes\x00\x00\x00\x00\x00",
 }
-_FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
+_FIELD_MAP = {
+    "insert": "documents",
+    "update": "updates",
+    "delete": "deletes",
+    "bulkWrite": "bulkWrite",
+}
 
 _UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Mapping[str, Any]] = CodecOptions(
     unicode_decode_error_handler="replace"
@@ -137,8 +142,10 @@ def _convert_exception(exception: Exception) -> dict[str, Any]:
     return {"errmsg": str(exception), "errtype": exception.__class__.__name__}
 
 
-def _convert_bulk_exception(exception: Exception) -> dict[str, Any]:
-    """Convert an Exception into a failure document for publishing."""
+def _convert_client_bulk_exception(exception: Exception) -> dict[str, Any]:
+    """Convert an Exception into a failure document for publishing,
+    for use in client-level bulk write API.
+    """
     return {
         "errmsg": str(exception),
         "code": exception.code,  # type: ignore[attr-defined]
@@ -561,8 +568,8 @@ _OP_MSG_MAP = {
 }
 
 
-class _BulkWriteContext:
-    """A wrapper around AsyncConnection for use with write splitting functions."""
+class _BulkWriteContextBase:
+    """Private base class for wrapper around AsyncConnection for use with write splitting functions."""
 
     __slots__ = (
         "db_name",
@@ -586,7 +593,7 @@ class _BulkWriteContext:
         conn: _AgnosticConnection,
         operation_id: int,
         listeners: _EventListeners,
-        session: _AgnosticClientSession,
+        session: Optional[_AgnosticClientSession],
         op_type: int,
         codec: CodecOptions,
     ):
@@ -602,17 +609,6 @@ class _BulkWriteContext:
         self.compress = bool(conn.compression_context)
         self.op_type = op_type
         self.codec = codec
-
-    def batch_command(
-        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
-    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
-        namespace = self.db_name + ".$cmd"
-        request_id, msg, to_send = _do_batched_op_msg(
-            namespace, self.op_type, cmd, docs, self.codec, self
-        )
-        if not to_send:
-            raise InvalidOperation("cannot do an empty bulk write")
-        return request_id, msg, to_send
 
     @property
     def max_bson_size(self) -> int:
@@ -636,22 +632,6 @@ class _BulkWriteContext:
     def max_split_size(self) -> int:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
-
-    def _start(
-        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
-    ) -> MutableMapping[str, Any]:
-        """Publish a CommandStartedEvent."""
-        cmd[self.field] = docs
-        self.listeners.publish_command_start(
-            cmd,
-            self.db_name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-        )
-        return cmd
 
     def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
         """Publish a CommandSucceededEvent."""
@@ -680,6 +660,61 @@ class _BulkWriteContext:
             self.conn.service_id,
             database_name=self.db_name,
         )
+
+
+class _BulkWriteContext(_BulkWriteContextBase):
+    """A wrapper around AsyncConnection/Connection for use with the collection-level bulk write API."""
+
+    __slots__ = ()
+
+    def __init__(
+        self,
+        database_name: str,
+        cmd_name: str,
+        conn: _AgnosticConnection,
+        operation_id: int,
+        listeners: _EventListeners,
+        session: Optional[_AgnosticClientSession],
+        op_type: int,
+        codec: CodecOptions,
+    ):
+        super().__init__(
+            database_name,
+            cmd_name,
+            conn,
+            operation_id,
+            listeners,
+            session,
+            op_type,
+            codec,
+        )
+
+    def batch_command(
+        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
+        namespace = self.db_name + ".$cmd"
+        request_id, msg, to_send = _do_batched_op_msg(
+            namespace, self.op_type, cmd, docs, self.codec, self
+        )
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+        return request_id, msg, to_send
+
+    def _start(
+        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
+    ) -> MutableMapping[str, Any]:
+        """Publish a CommandStartedEvent."""
+        cmd[self.field] = docs
+        self.listeners.publish_command_start(
+            cmd,
+            self.db_name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+        )
+        return cmd
 
 
 class _EncryptedBulkWriteContext(_BulkWriteContext):
@@ -888,22 +923,10 @@ def _do_batched_op_msg(
     return _batched_op_msg(operation, command, docs, ack, opts, ctx)
 
 
-class _ClientBulkWriteContext:
-    """A wrapper around AsyncConnection/Connection for use with client-level bulk write."""
+class _ClientBulkWriteContext(_BulkWriteContextBase):
+    """A wrapper around AsyncConnection/Connection for use with the client-level bulk write API."""
 
-    __slots__ = (
-        "db_name",
-        "conn",
-        "op_id",
-        "name",
-        "field",
-        "publish",
-        "start_time",
-        "listeners",
-        "session",
-        "compress",
-        "codec",
-    )
+    __slots__ = ()
 
     def __init__(
         self,
@@ -915,16 +938,16 @@ class _ClientBulkWriteContext:
         session: Optional[_AgnosticClientSession],
         codec: CodecOptions,
     ):
-        self.db_name = database_name
-        self.conn = conn
-        self.op_id = operation_id
-        self.listeners = listeners
-        self.publish = listeners.enabled_for_commands
-        self.name = cmd_name
-        self.start_time = datetime.datetime.now()
-        self.session = session
-        self.compress = bool(conn.compression_context)
-        self.codec = codec
+        super().__init__(
+            database_name,
+            cmd_name,
+            conn,
+            operation_id,
+            listeners,
+            session,
+            0,
+            codec,
+        )
 
     def batch_command(
         self, cmd: MutableMapping[str, Any], operations: list[tuple[str, Mapping[str, Any]]]
@@ -935,29 +958,6 @@ class _ClientBulkWriteContext:
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send_ops, to_send_ns
-
-    @property
-    def max_bson_size(self) -> int:
-        """A proxy for SockInfo.max_bson_size."""
-        return self.conn.max_bson_size
-
-    @property
-    def max_message_size(self) -> int:
-        """A proxy for SockInfo.max_message_size."""
-        if self.compress:
-            # Subtract 16 bytes for the message header.
-            return self.conn.max_message_size - 16
-        return self.conn.max_message_size
-
-    @property
-    def max_write_batch_size(self) -> int:
-        """A proxy for SockInfo.max_write_batch_size."""
-        return self.conn.max_write_batch_size
-
-    @property
-    def max_split_size(self) -> int:
-        """The maximum size of a BSON command before batch splitting."""
-        return self.max_bson_size
 
     def _start(
         self,
@@ -979,34 +979,6 @@ class _ClientBulkWriteContext:
             self.conn.service_id,
         )
         return cmd
-
-    def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
-        """Publish a CommandSucceededEvent."""
-        self.listeners.publish_command_success(
-            duration,
-            reply,
-            self.name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-            database_name=self.db_name,
-        )
-
-    def _fail(self, request_id: int, failure: _DocumentOut, duration: datetime.timedelta) -> None:
-        """Publish a CommandFailedEvent."""
-        self.listeners.publish_command_failure(
-            duration,
-            failure,
-            self.name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-            database_name=self.db_name,
-        )
 
 
 _OP_MSG_OVERHEAD = 1000
@@ -1172,7 +1144,7 @@ def _client_encode_batched_op_msg(
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Encode the next batched client bulkWrite
+    """Encode the next batched client-level bulkWrite
     operation as OP_MSG.
     """
     buf = _BytesIO()
@@ -1190,7 +1162,7 @@ def _client_batched_op_msg_compressed(
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Create the next batched client bulkWrite operation
+    """Create the next batched client-level bulkWrite operation
     with OP_MSG, compressed.
     """
     data, to_send_ops, to_send_ns = _client_encode_batched_op_msg(
@@ -1209,7 +1181,7 @@ def _client_batched_op_msg(
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """OP_MSG implementation entry point for client bulkWrite."""
+    """OP_MSG implementation entry point for client-level bulkWrite."""
     buf = _BytesIO()
 
     # Save space for message length and request id
@@ -1237,7 +1209,7 @@ def _client_do_batched_op_msg(
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Create the next batched client bulkWrite
+    """Create the next batched client-level bulkWrite
     operation using OP_MSG.
     """
     command["$db"] = "admin"
