@@ -27,12 +27,6 @@ from pymongo.lock import _create_lock
 
 _IS_SYNC = True
 
-# The default asyncio loop implementation on Windows
-# has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
-# We explicitly use a different loop implementation here to prevent that issue
-if not _IS_SYNC and sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
-
 
 class PeriodicExecutor:
     def __init__(
@@ -78,6 +72,12 @@ class PeriodicExecutor:
 
         Not safe to call from multiple threads at once.
         """
+        # The default asyncio loop implementation on Windows
+        # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
+        # We explicitly use a different loop implementation here to prevent that issue
+        if not _IS_SYNC and sys.platform == "win32":
+            asyncio.set_event_loop(asyncio.SelectorEventLoop())
+
         with self._lock:
             if self._thread_will_exit:
                 # If the background thread has read self._stopped as True
