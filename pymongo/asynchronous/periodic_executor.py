@@ -31,7 +31,7 @@ _IS_SYNC = False
 # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
 # We explicitly use a different loop implementation here to prevent that issue
 if not _IS_SYNC and sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
 
 
 class PeriodicExecutor:
