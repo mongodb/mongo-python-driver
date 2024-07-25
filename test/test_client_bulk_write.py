@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""Test the client bulk write API."""
 from __future__ import annotations
 
 import sys
@@ -34,8 +36,7 @@ _IS_SYNC = True
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
-# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md
-class TestClientBulkWrite(IntegrationTest):
+class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     def test_batch_splits_if_num_operations_too_large(self):
         listener = OvertCommandListener()
@@ -497,9 +498,12 @@ class TestClientBulkWrite(IntegrationTest):
             client.bulk_write(models=models)
             self.assertIn("bulkWrite does not currently support automatic encryption", exc.msg)
 
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
+class TestClientBulkWriteTimeout(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point
-    def test_times_out_in_multi_batch_bulk_write(self):
+    def test_timeut_in_multi_batch_bulk_write(self):
         internal_client = rs_or_single_client(timeoutMS=None)
         self.addCleanup(internal_client.close)
 
