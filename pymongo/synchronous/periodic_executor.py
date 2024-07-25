@@ -86,10 +86,6 @@ class PeriodicExecutor:
 
         Not safe to call from multiple threads at once.
         """
-        # The default asyncio loop implementation on Windows
-        # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
-        # We explicitly use a different loop implementation here to prevent that issue
-
         with self._lock:
             if self._thread_will_exit:
                 # If the background thread has read self._stopped as True

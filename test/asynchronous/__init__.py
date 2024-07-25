@@ -82,7 +82,11 @@ _IS_SYNC = False
 # The default asyncio loop implementation on Windows
 # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
 # We explicitly use a different loop implementation here to prevent that issue
-if not _IS_SYNC and sys.platform == "win32":
+if (
+    not _IS_SYNC
+    and sys.platform == "win32"
+    and asyncio.get_event_loop_policy() == asyncio.WindowsProactorEventLoopPolicy
+):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
 
 
