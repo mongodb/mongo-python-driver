@@ -68,7 +68,7 @@ class PeriodicExecutor:
         # The default asyncio loop implementation on Windows
         # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
         # We explicitly use a different loop implementation here to prevent that issue
-        if not _IS_SYNC and sys.platform == "win32":
+        if sys.platform == "win32":
             loop = asyncio.SelectorEventLoop()
             try:
                 loop.run_until_complete(self._run())  # type: ignore[func-returns-value]
