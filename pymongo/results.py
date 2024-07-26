@@ -243,7 +243,7 @@ class _BulkWriteResultBase(_WriteResult):
     def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
-        if self.__bulk_api_result.get("nRemoved"):
+        if "nRemoved" in self.__bulk_api_result:
             return cast(int, self.__bulk_api_result.get("nRemoved"))
         else:
             return cast(int, self.__bulk_api_result.get("nDeleted"))
@@ -253,14 +253,6 @@ class _BulkWriteResultBase(_WriteResult):
         """The number of documents upserted."""
         self._raise_if_unacknowledged("upserted_count")
         return cast(int, self.__bulk_api_result.get("nUpserted"))
-
-    @property
-    def upserted_ids(self) -> Optional[dict[int, Any]]:
-        """A map of operation index to the _id of the upserted document."""
-        self._raise_if_unacknowledged("upserted_ids")
-        if self.__bulk_api_result:
-            return {upsert["index"]: upsert["_id"] for upsert in self.bulk_api_result["upserted"]}
-        return None
 
 
 class BulkWriteResult(_BulkWriteResultBase):
