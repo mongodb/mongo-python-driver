@@ -1260,7 +1260,7 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             raise StopAsyncIteration
 
-    async def _get_all(self, result) -> list[_DocumentType]:
+    async def _get_all(self, result: list) -> list[_DocumentType]:
         """Get all documents from the cursor."""
         if not self._exhaust_checked:
             self._exhaust_checked = True
