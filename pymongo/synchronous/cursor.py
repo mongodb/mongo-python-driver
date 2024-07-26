@@ -1258,6 +1258,19 @@ class Cursor(Generic[_DocumentType]):
         else:
             raise StopIteration
 
+    def _get_all(self, result) -> list[_DocumentType]:
+        """Get all documents from the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
+        if self._empty:
+            raise StopIteration
+        while self.alive:
+            if len(self._data) or self._refresh():
+                result.extend(self._data)
+                self._data.clear()
+        return result
+
     def __next__(self) -> _DocumentType:
         return self.next()
 
@@ -1272,6 +1285,9 @@ class Cursor(Generic[_DocumentType]):
 
     def to_list(self) -> list[_DocumentType]:
         return [x for x in self]  # noqa: C416,RUF100
+
+    def to_list_batch(self) -> list[_DocumentType]:
+        return self._get_all([])
 
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):
