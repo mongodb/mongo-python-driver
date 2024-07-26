@@ -1809,6 +1809,9 @@ class GridOutChunkIterator:
 
     __next__ = next
 
+    def to_list(self) -> list[Mapping[str, Any]]:
+        return [x for x in self]  # noqa: C416,RUF100
+
     def close(self) -> None:
         if self._cursor:
             self._cursor.close()
@@ -1827,6 +1830,9 @@ class GridOutIterator:
         return bytes(chunk["data"])
 
     __next__ = next
+
+    def to_list(self) -> list[bytes]:
+        return [x for x in self]  # noqa: C416,RUF100
 
 
 class GridOutCursor(Cursor):
@@ -1877,6 +1883,9 @@ class GridOutCursor(Cursor):
         _disallow_transactions(self.session)
         next_file = super().next()
         return GridOut(self._root_collection, file_document=next_file, session=self.session)
+
+    def to_list(self) -> list[GridOut]:
+        return [x for x in self]  # noqa: C416,RUF100
 
     __next__ = next
 
