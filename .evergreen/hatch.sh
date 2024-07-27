@@ -10,7 +10,7 @@ fi
 
 if $PYTHON_BINARY -m hatch --version; then
     run_hatch() {
-      $PYTHON_BINARY hatch run "$@"
+      $PYTHON_BINARY -m hatch run "$@"
     }
 else # No toolchain hatch present, set up virtualenv before installing hatch
     createvirtualenv "$PYTHON_BINARY" hatchenv
