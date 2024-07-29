@@ -536,6 +536,20 @@ class TestURI(unittest.TestCase):
         self.assertEqual(user, res["username"])
         self.assertEqual(pwd, res["password"])
 
+    def test_do_not_include_password_in_port_message(self):
+        with self.assertRaisesRegex(ValueError, "Port must be an integer between 0 and 65535"):
+            parse_uri("mongodb://localhost:65536")
+        with self.assertRaisesRegex(
+            ValueError, "Port contains non-digit characters. Hint: username "
+        ) as ctx:
+            parse_uri("mongodb://user:PASS/@localhost:27017")
+        self.assertNotIn("PASS", str(ctx.exception))
+
+        # This "invalid" case is technically a valid URI:
+        res = parse_uri("mongodb://user:1234/@localhost:27017")
+        self.assertEqual([("user", 1234)], res["nodelist"])
+        self.assertEqual("@localhost:27017", res["database"])
+
 
 if __name__ == "__main__":
     unittest.main()

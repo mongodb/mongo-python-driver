@@ -143,8 +143,15 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
             )
         host, port = host.split(":", 1)
     if isinstance(port, str):
-        if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError(f"Port must be an integer between 0 and 65535: {port!r}")
+        if not port.isdigit():
+            # A non-digit port indicates that the URI is invalid, likely because the password
+            # or username were not escaped.
+            raise ValueError(
+                "Port contains non-digit characters. Hint: username and password must be escaped according to "
+                "RFC 3986, use urllib.parse.quote_plus"
+            )
+        if int(port) > 65535 or int(port) <= 0:
+            raise ValueError("Port must be an integer between 0 and 65535")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
