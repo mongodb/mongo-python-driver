@@ -1809,9 +1809,6 @@ class GridOutChunkIterator:
 
     __next__ = next
 
-    def to_list(self) -> list[Mapping[str, Any]]:
-        return [x for x in self]  # noqa: C416,RUF100
-
     def close(self) -> None:
         if self._cursor:
             self._cursor.close()
@@ -1830,9 +1827,6 @@ class GridOutIterator:
         return bytes(chunk["data"])
 
     __next__ = next
-
-    def to_list(self) -> list[bytes]:
-        return [x for x in self]  # noqa: C416,RUF100
 
 
 class GridOutCursor(Cursor):

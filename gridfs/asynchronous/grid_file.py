@@ -1821,9 +1821,6 @@ class _AsyncGridOutChunkIterator:
 
     __anext__ = next
 
-    async def to_list(self) -> list[Mapping[str, Any]]:
-        return [x async for x in self]  # noqa: C416,RUF100
-
     async def close(self) -> None:
         if self._cursor:
             await self._cursor.close()
@@ -1844,9 +1841,6 @@ class AsyncGridOutIterator:
         return bytes(chunk["data"])
 
     __anext__ = next
-
-    async def to_list(self) -> list[bytes]:
-        return [x async for x in self]  # noqa: C416,RUF100
 
 
 class AsyncGridOutCursor(AsyncCursor):

@@ -1371,6 +1371,17 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
+    @client_context.require_sync
+    def test_to_list_when_empty(self):
+        self.db.drop_collection("test")
+
+        c = self.db.test.find().limit(0)
+        _ = c[0]
+
+        docs = self.db.test.find().to_list()
+
+        self.assertEqual(0, len(docs))  # type: ignore[arg-type]
+
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
