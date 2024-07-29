@@ -717,18 +717,8 @@ class _ClientBulk:
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
         if self.uses_array_filters:
             raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
-        # Guard against unsupported unacknowledged writes.
-        unack = self.write_concern and not self.write_concern.acknowledged
-        if unack and self.uses_hint_delete and conn.max_wire_version < 9:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
-            )
-        if unack and self.uses_hint_update and conn.max_wire_version < 8:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-            )
         # Cannot have both unacknowledged writes and bypass document validation.
-        if self.bypass_doc_val:
+        if self.bypass_doc_val is not None:
             raise OperationFailure(
                 "Cannot set bypass_document_validation with unacknowledged write concern"
             )

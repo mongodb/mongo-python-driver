@@ -2300,11 +2300,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: :ref:`writes-and-ids`
 
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
+        .. note:: requires MongoDB server version 8.0+.
 
         .. versionadded:: 4.9
         """
+        with self._conn_for_writes(session, operation=_Op.BULK_WRITE) as connection:
+            if connection.max_wire_version < 25:
+                raise InvalidOperation(
+                    "MongoClient.bulk_write requires MongoDB server version 8.0+."
+                )
+
         if self._options.auto_encryption_opts:
             raise InvalidOperation(
                 "MongoClient.bulk_write does not currently support automatic encryption"

@@ -128,11 +128,13 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 )
             self.addCleanup(client.db["coll"].drop)
 
-            with self.assertRaises(ClientBulkWriteException) as exc:
+            with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
-                self.assertEqual(len(exc.write_concern_errors), 2)
-                self.assertIsNotNone(exc.partial_result)
-                self.assertEqual(exc.partial_result.inserted_count, max_write_batch_size + 1)
+            self.assertEqual(len(context.exception.write_concern_errors), 2)
+            self.assertIsNotNone(context.exception.partial_result)
+            self.assertEqual(
+                context.exception.partial_result.inserted_count, max_write_batch_size + 1
+            )
 
         bulk_write_events = []
         for event in listener.started_events:
@@ -161,9 +163,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 )
             )
 
-        with self.assertRaises(ClientBulkWriteException) as exc:
+        with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=False)
-            self.assertEqual(len(exc.write_errors), self.max_write_batch_size + 1)
+        self.assertEqual(len(context.exception.write_errors), max_write_batch_size + 1)
 
         bulk_write_events = []
         for event in listener.started_events:
@@ -192,9 +194,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 )
             )
 
-        with self.assertRaises(ClientBulkWriteException) as exc:
+        with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=True)
-            self.assertEqual(len(exc.write_errors), 1)
+        self.assertEqual(len(context.exception.write_errors), 1)
 
         bulk_write_events = []
         for event in listener.started_events:
@@ -325,13 +327,13 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 )
             )
 
-            with self.assertRaises(ClientBulkWriteException) as exc:
+            with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models, verbose_results=True)
-                self.assertIsNotNone(exc.error)
-                self.assertEqual(exc.error["code"], 8)
-                self.assertIsNotNone(exc.partial_result)
-                self.assertEqual(exc.partial_result.upserted_count, 2)
-                self.assertEqual(len(exc.partial_result.update_results), 1)
+            self.assertIsNotNone(context.exception.error)
+            self.assertEqual(context.exception.error["code"], 8)
+            self.assertIsNotNone(context.exception.partial_result)
+            self.assertEqual(context.exception.partial_result.upserted_count, 2)
+            self.assertEqual(len(context.exception.partial_result.update_results), 1)
 
         get_more_event = False
         kill_cursors_event = False
@@ -469,17 +471,17 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         # Document too large.
         b_repeated = "b" * max_message_size_bytes
         models = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
-        with self.assertRaises(InvalidOperation) as exc:
+        with self.assertRaises(InvalidOperation) as context:
             client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc.msg)
+        self.assertIn("cannot do an empty bulk write", context.exception._message)
 
         # Namespace too large.
         c_repeated = "c" * max_message_size_bytes
         namespace = f"db.{c_repeated}"
         models = [InsertOne(namespace=namespace, document={"a": "b"})]
-        with self.assertRaises(InvalidOperation) as exc:
+        with self.assertRaises(InvalidOperation) as context:
             client.bulk_write(models=models)
-            self.assertIn("cannot do an empty bulk write", exc.msg)
+        self.assertIn("cannot do an empty bulk write", context.exception._message)
 
     @client_context.require_version_min(8, 0, 0, -24)
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
@@ -492,9 +494,11 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.addCleanup(client.close)
 
         models = [InsertOne(namespace="db.coll", document={"a": "b"})]
-        with self.assertRaises(InvalidOperation) as exc:
+        with self.assertRaises(InvalidOperation) as context:
             client.bulk_write(models=models)
-            self.assertIn("bulkWrite does not currently support automatic encryption", exc.msg)
+        self.assertIn(
+            "bulk_write does not currently support automatic encryption", context.exception._message
+        )
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
