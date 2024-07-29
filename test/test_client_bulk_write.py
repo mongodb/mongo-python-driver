@@ -130,7 +130,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
-            self.assertEqual(len(context.exception.write_concern_errors), 2)
+            self.assertEqual(len(context.exception.write_concern_errors), 2)  # type: ignore[arg-type]
             self.assertIsNotNone(context.exception.partial_result)
             self.assertEqual(
                 context.exception.partial_result.inserted_count, max_write_batch_size + 1
@@ -165,7 +165,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 
         with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=False)
-        self.assertEqual(len(context.exception.write_errors), max_write_batch_size + 1)
+        self.assertEqual(len(context.exception.write_errors), max_write_batch_size + 1)  # type: ignore[arg-type]
 
         bulk_write_events = []
         for event in listener.started_events:
@@ -196,7 +196,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 
         with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=True)
-        self.assertEqual(len(context.exception.write_errors), 1)
+        self.assertEqual(len(context.exception.write_errors), 1)  # type: ignore[arg-type]
 
         bulk_write_events = []
         for event in listener.started_events:
