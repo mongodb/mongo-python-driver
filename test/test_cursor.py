@@ -1371,16 +1371,17 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
-    @client_context.require_sync
-    def test_to_list_when_empty(self):
-        self.db.drop_collection("test")
+    def test_to_list_tailable(self):
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
 
-        c = self.db.test.find().limit(0)
-        _ = c[0]
+        c = client.local.oplog.rs.find(
+            cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        )
 
-        docs = self.db.test.find().to_list()
+        docs = c.to_list()
 
-        self.assertEqual(0, len(docs))  # type: ignore[arg-type]
+        self.assertGreater(len(docs), 0)
 
 
 class TestRawBatchCursor(IntegrationTest):

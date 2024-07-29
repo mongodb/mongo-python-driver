@@ -1380,16 +1380,17 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
-    @async_client_context.require_sync
-    def test_to_list_when_empty(self):
-        self.db.drop_collection("test")
+    async def test_to_list_tailable(self):
+        client = await async_rs_or_single_client()
+        self.addAsyncCleanup(client.aclose)
 
-        c = self.db.test.find().limit(0)
-        _ = c[0]
+        c = client.local.oplog.rs.find(
+            cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        )
 
-        docs = self.db.test.find().to_list()
+        docs = await c.to_list()
 
-        self.assertEqual(0, len(docs))  # type: ignore[arg-type]
+        self.assertGreater(len(docs), 0)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
