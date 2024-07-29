@@ -2235,13 +2235,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.DeleteOne`, or
         :class:`~pymongo.operations.DeleteMany`).
 
-          >>> async for doc in await db.test.find({}):
+          >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           ...
-          >>> async for doc in await db.coll.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
@@ -2262,14 +2262,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_ids
           {3: ObjectId('54f62ee28891e756a6e1abd5')}
-          >>> async for doc in await db.test.find({}):
+          >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
           ...
-          >>> async for doc in await db.coll.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}

@@ -569,7 +569,7 @@ _OP_MSG_MAP = {
 
 
 class _BulkWriteContextBase:
-    """Private base class for wrapper around AsyncConnection for use with write splitting functions."""
+    """Private base class for wrapping around AsyncConnection to use with write splitting functions."""
 
     __slots__ = (
         "db_name",
