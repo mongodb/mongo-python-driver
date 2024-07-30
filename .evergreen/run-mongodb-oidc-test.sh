@@ -22,7 +22,8 @@ elif [ $OIDC_ENV == "gcp" ]; then
     source ./secrets-export.sh
 
 elif [ $OIDC_ENV == "k8s" ]; then
-    # Nothing extra to do.
+    echo "Running oidc on k8s"
+
 else
     echo "Unrecognized OIDC_ENV $OIDC_ENV"
     exit 1
