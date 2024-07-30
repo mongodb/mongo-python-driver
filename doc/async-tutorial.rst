@@ -124,8 +124,6 @@ Note that documents can contain native Python types (like
 converted to and from the appropriate `BSON
 <https://bsonspec.org/>`_ types.
 
-.. todo:: link to table of Python <-> BSON types
-
 Inserting a Document
 --------------------
 To insert a document into a collection we can use the
@@ -233,7 +231,7 @@ case to **convert the ObjectId from a string** before passing it to
   from bson.objectid import ObjectId
 
   # The web framework gets post_id from the URL and passes it as a string
-  def get(post_id):
+  async def get(post_id):
       # Convert from string to ObjectId:
       document = await client.db.collection.find_one({'_id': ObjectId(post_id)})
 
