@@ -2061,7 +2061,7 @@ tasks:
 
     - name: "oidc-auth-test"
       commands:
-      - func: "run oidc auth test with credentials"
+      - func: "run oidc auth test with test credentials"
 
     - name: "oidc-auth-test-azure"
       commands:
