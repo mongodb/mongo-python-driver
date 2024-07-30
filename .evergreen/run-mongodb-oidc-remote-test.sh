@@ -47,6 +47,7 @@ elif [ $OIDC_ENV == "k8s" ]; then
     bash ./.evergreen/auth_oidc/k8s/run-self-test.sh
     export K8S_DRIVERS_TAR_FILE=$TEST_TAR_FILE
     export K8S_TEST_CMD="OIDC_ENV=k8s ./.evergreen/run-mongodb-oidc-test.sh"
+    source ./.evergreen/auth_oidc/k8s/secrets-export.sh  # for MONGODB_URI
     bash ./.evergreen/auth_oidc/k8s/run-driver-test.sh
     bash ./.evergreen/auth_oidc/k8s/teardown-pod.sh
 
