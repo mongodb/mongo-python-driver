@@ -610,6 +610,10 @@ class _AsyncClientBulk:
             conn: AsyncConnection,
             retryable: bool,
         ) -> None:
+            if conn.max_wire_version < 25:
+                raise InvalidOperation(
+                    "MongoClient.bulk_write requires MongoDB server version 8.0+."
+                )
             await self._execute_command(
                 self.write_concern,
                 session,
@@ -744,6 +748,10 @@ class _AsyncClientBulk:
 
         if not self.write_concern.acknowledged:
             async with await self.client._conn_for_writes(session, operation) as connection:
+                if connection.max_wire_version < 25:
+                    raise InvalidOperation(
+                        "MongoClient.bulk_write requires MongoDB server version 8.0+."
+                    )
                 await self.execute_no_results(connection)
                 return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
