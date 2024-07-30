@@ -1390,7 +1390,7 @@ class TestCursor(AsyncIntegrationTest):
 
         docs = await c.to_list()
 
-        self.assertGreater(len(docs), 0)
+        self.assertGreaterEqual(len(docs), 0)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):

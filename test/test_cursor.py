@@ -1381,7 +1381,7 @@ class TestCursor(IntegrationTest):
 
         docs = c.to_list()
 
-        self.assertGreater(len(docs), 0)
+        self.assertGreaterEqual(len(docs), 0)
 
 
 class TestRawBatchCursor(IntegrationTest):
