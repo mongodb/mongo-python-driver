@@ -34,6 +34,10 @@ replacements = {
     "AsyncRawBatchCursor": "RawBatchCursor",
     "AsyncRawBatchCommandCursor": "RawBatchCommandCursor",
     "AsyncClientSession": "ClientSession",
+    "AsyncChangeStream": "ChangeStream",
+    "AsyncCollectionChangeStream": "CollectionChangeStream",
+    "AsyncDatabaseChangeStream": "DatabaseChangeStream",
+    "AsyncClusterChangeStream": "ClusterChangeStream",
     "_AsyncBulk": "_Bulk",
     "AsyncConnection": "Connection",
     "async_command": "command",
@@ -88,6 +92,8 @@ replacements = {
     "get_async_mock_client": "get_mock_client",
     "aconnect": "_connect",
     "aclose": "close",
+    "async-transactions-ref": "transactions-ref",
+    "async-snapshot-reads-ref": "snapshot-reads-ref",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

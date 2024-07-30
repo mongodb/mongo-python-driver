@@ -48,7 +48,7 @@ from pymongo.asynchronous.aggregation import (
     _CollectionRawAggregationCommand,
 )
 from pymongo.asynchronous.bulk import _AsyncBulk
-from pymongo.asynchronous.change_stream import CollectionChangeStream
+from pymongo.asynchronous.change_stream import AsyncCollectionChangeStream
 from pymongo.asynchronous.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
@@ -417,12 +417,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
         show_expanded_events: Optional[bool] = None,
-    ) -> CollectionChangeStream[_DocumentType]:
+    ) -> AsyncCollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
+        :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` cursor which
         iterates over changes on this collection.
 
         .. code-block:: python
@@ -431,10 +431,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                async for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
+        The :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
+        :meth:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -501,7 +501,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+        :return: A :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -525,7 +525,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        change_stream = CollectionChangeStream(
+        change_stream = AsyncCollectionChangeStream(
             self,
             pipeline,
             full_document,

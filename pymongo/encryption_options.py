@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Support for automatic client-side field level encryption."""
+"""Support for automatic client-side field level encryption.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional

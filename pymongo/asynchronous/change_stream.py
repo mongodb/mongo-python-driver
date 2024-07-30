@@ -87,7 +87,7 @@ def _resumable(exc: PyMongoError) -> bool:
     return False
 
 
-class ChangeStream(Generic[_DocumentType]):
+class AsyncChangeStream(Generic[_DocumentType]):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use
@@ -276,7 +276,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._closed = True
         await self._cursor.close()
 
-    def __aiter__(self) -> ChangeStream[_DocumentType]:
+    def __aiter__(self) -> AsyncChangeStream[_DocumentType]:
         return self
 
     @property
@@ -436,14 +436,14 @@ class ChangeStream(Generic[_DocumentType]):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    async def __aenter__(self) -> ChangeStream[_DocumentType]:
+    async def __aenter__(self) -> AsyncChangeStream[_DocumentType]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
 
-class CollectionChangeStream(ChangeStream[_DocumentType]):
+class AsyncCollectionChangeStream(AsyncChangeStream[_DocumentType]):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
@@ -463,7 +463,7 @@ class CollectionChangeStream(ChangeStream[_DocumentType]):
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream[_DocumentType]):
+class AsyncDatabaseChangeStream(AsyncChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use
@@ -483,7 +483,7 @@ class DatabaseChangeStream(ChangeStream[_DocumentType]):
         return self._target.client
 
 
-class ClusterChangeStream(DatabaseChangeStream[_DocumentType]):
+class AsyncClusterChangeStream(AsyncDatabaseChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use

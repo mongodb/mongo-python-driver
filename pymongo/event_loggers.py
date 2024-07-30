@@ -25,6 +25,9 @@ These loggers can be registered using :func:`register` or
 or
 
 ``MongoClient(event_listeners=[CommandLogger()])``
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+
 """
 from __future__ import annotations
 

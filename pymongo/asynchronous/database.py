@@ -35,7 +35,7 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
-from pymongo.asynchronous.change_stream import DatabaseChangeStream
+from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
@@ -332,12 +332,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
         show_expanded_events: Optional[bool] = None,
-    ) -> DatabaseChangeStream[_DocumentType]:
+    ) -> AsyncDatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
+        :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` cursor which
         iterates over changes on all collections in this database.
 
         Introduced in MongoDB 4.0.
@@ -348,10 +348,10 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                async for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
+        The :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
+        :meth:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -409,7 +409,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+        :return: A :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -430,7 +430,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        change_stream = DatabaseChangeStream(
+        change_stream = AsyncDatabaseChangeStream(
             self,
             pipeline,
             full_document,

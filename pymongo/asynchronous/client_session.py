@@ -36,7 +36,7 @@ guaranteed monotonic reads, even when reading from replica set secondaries.
 
 .. seealso:: The MongoDB documentation on `causal-consistency <https://dochub.mongodb.org/core/causal-consistency>`_.
 
-.. _transactions-ref:
+.. _async-transactions-ref:
 
 Transactions
 ============
@@ -93,7 +93,7 @@ running either commitTransaction or abortTransaction, the session is unpinned.
 
 .. seealso:: The MongoDB documentation on `transactions <https://dochub.mongodb.org/core/transactions>`_.
 
-.. _snapshot-reads-ref:
+.. _async-snapshot-reads-ref:
 
 Snapshot Reads
 ==============

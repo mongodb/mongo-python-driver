@@ -60,7 +60,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, uri_parser
 from pymongo.asynchronous import client_session, database, periodic_executor
-from pymongo.asynchronous.change_stream import ChangeStream, ClusterChangeStream
+from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.settings import TopologySettings
@@ -919,7 +919,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
         show_expanded_events: Optional[bool] = None,
-    ) -> ChangeStream[_DocumentType]:
+    ) -> AsyncChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -1017,7 +1017,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        change_stream = ClusterChangeStream(
+        change_stream = AsyncClusterChangeStream(
             self.admin,
             pipeline,
             full_document,

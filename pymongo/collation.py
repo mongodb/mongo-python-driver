@@ -15,6 +15,8 @@
 """Tools for working with `collations`_.
 
 .. _collations: https://www.mongodb.com/docs/manual/reference/collation/
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
 from __future__ import annotations
 
