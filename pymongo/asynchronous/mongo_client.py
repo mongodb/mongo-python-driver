@@ -17,18 +17,18 @@
 .. seealso:: :doc:`/examples/high_availability` for examples of connecting
    to replica sets or sets of mongos servers.
 
-To get a :class:`~pymongo.database.Database` instance from a
-:class:`MongoClient` use either dictionary-style or attribute-style
+To get a :class:`~pymongo.asynchronous.database.AsyncDatabase` instance from a
+:class:`AsyncMongoClient` use either dictionary-style or attribute-style
 access:
 
 .. doctest::
 
-  >>> from pymongo import MongoClient
-  >>> c = MongoClient()
+  >>> from pymongo import AsyncMongoClient
+  >>> c = AsyncMongoClient()
   >>> c.test_database
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test_database')
+  AsyncDatabase(AsyncMongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test_database')
   >>> c["test-database"]
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
+  AsyncDatabase(AsyncMongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
 from __future__ import annotations
 
@@ -175,18 +175,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
             uri = "mongodb://%s:%s@%s" % (
                 quote_plus(user), quote_plus(password), host)
-            client = MongoClient(uri)
+            client = AsyncMongoClient(uri)
 
         Unix domain sockets are also supported. The socket path must be percent
         encoded in the URI::
 
             uri = "mongodb://%s:%s@%s" % (
                 quote_plus(user), quote_plus(password), quote_plus(socket_path))
-            client = MongoClient(uri)
+            client = AsyncMongoClient(uri)
 
         But not when passed as a simple hostname::
 
-            client = MongoClient('/tmp/mongodb-27017.sock')
+            client = AsyncMongoClient('/tmp/mongodb-27017.sock')
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -202,10 +202,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
 
-        .. note:: MongoClient creation will block waiting for answers from
+        .. note:: AsyncMongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.
 
-        .. note:: Starting with version 3.0 the :class:`MongoClient`
+        .. note:: Starting with version 3.0 the :class:`AsyncMongoClient`
           constructor no longer blocks while connecting to the server or
           servers, and it no longer raises
           :class:`~pymongo.errors.ConnectionFailure` if they are
@@ -216,7 +216,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           like this::
 
             from pymongo.errors import ConnectionFailure
-            client = MongoClient()
+            client = AsyncMongoClient()
             try:
                 # The ping command is cheap and does not require auth.
                 client.admin.command('ping')
@@ -242,7 +242,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             documents returned from queries on this client
         :param tz_aware: if ``True``,
             :class:`~datetime.datetime` instances returned as values
-            in a document by this :class:`MongoClient` will be timezone
+            in a document by this :class:`AsyncMongoClient` will be timezone
             aware (otherwise they will be naive)
         :param connect: **Not supported by AsyncMongoClient**.
         :param type_registry: instance of
@@ -314,7 +314,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           - `serverMonitoringMode`: (optional) The server monitoring mode to use.
             Valid values are the strings: "auto", "stream", "poll". Defaults to "auto".
           - `appname`: (string or None) The name of the application that
-            created this MongoClient instance. The server will log this value
+            created this AsyncMongoClient instance. The server will log this value
             upon establishing each connection. It is also recorded in the slow
             query log and profile collections.
           - `driver`: (pair or None) A driver implemented on top of PyMongo can
@@ -324,47 +324,47 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
           - `retryWrites`: (boolean) Whether supported write operations
-            executed within this MongoClient will be retried once after a
+            executed within this AsyncMongoClient will be retried once after a
             network error. Defaults to ``True``.
             The supported write operations are:
 
-              - :meth:`~pymongo.collection.Collection.bulk_write`, as long as
-                :class:`~pymongo.operations.UpdateMany` or
-                :class:`~pymongo.operations.DeleteMany` are not included.
-              - :meth:`~pymongo.collection.Collection.delete_one`
-              - :meth:`~pymongo.collection.Collection.insert_one`
-              - :meth:`~pymongo.collection.Collection.insert_many`
-              - :meth:`~pymongo.collection.Collection.replace_one`
-              - :meth:`~pymongo.collection.Collection.update_one`
-              - :meth:`~pymongo.collection.Collection.find_one_and_delete`
-              - :meth:`~pymongo.collection.Collection.find_one_and_replace`
-              - :meth:`~pymongo.collection.Collection.find_one_and_update`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, as long as
+                :class:`~pymongo.asynchronous.operations.UpdateMany` or
+                :class:`~pymongo.asynchronous.operations.DeleteMany` are not included.
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.delete_one`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.insert_one`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.insert_many`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.replace_one`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.update_one`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_delete`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_replace`
+              - :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_update`
 
             Unsupported write operations include, but are not limited to,
-            :meth:`~pymongo.collection.Collection.aggregate` using the ``$out``
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` using the ``$out``
             pipeline operator and any operation with an unacknowledged write
             concern (e.g. {w: 0})). See
             https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
           - `retryReads`: (boolean) Whether supported read operations
-            executed within this MongoClient will be retried once after a
+            executed within this AsyncMongoClient will be retried once after a
             network error. Defaults to ``True``.
             The supported read operations are:
-            :meth:`~pymongo.collection.Collection.find`,
-            :meth:`~pymongo.collection.Collection.find_one`,
-            :meth:`~pymongo.collection.Collection.aggregate` without ``$out``,
-            :meth:`~pymongo.collection.Collection.distinct`,
-            :meth:`~pymongo.collection.Collection.count`,
-            :meth:`~pymongo.collection.Collection.estimated_document_count`,
-            :meth:`~pymongo.collection.Collection.count_documents`,
-            :meth:`pymongo.collection.Collection.watch`,
-            :meth:`~pymongo.collection.Collection.list_indexes`,
-            :meth:`pymongo.database.Database.watch`,
-            :meth:`~pymongo.database.Database.list_collections`,
-            :meth:`pymongo.mongo_client.MongoClient.watch`,
-            and :meth:`~pymongo.mongo_client.MongoClient.list_databases`.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.find`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` without ``$out``,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.count`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.estimated_document_count`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.count_documents`,
+            :meth:`pymongo.asynchronous.collection.AsyncCollection.watch`,
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_indexes`,
+            :meth:`pymongo.asynchronous.database.AsyncDatabase.watch`,
+            :meth:`~pymongo.asynchronous.database.AsyncDatabase.list_collections`,
+            :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.watch`,
+            and :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`.
 
             Unsupported read operations include, but are not limited to
-            :meth:`~pymongo.database.Database.command` and any getMore
+            :meth:`~pymongo.asynchronous.database.AsyncDatabase.command` and any getMore
             operation on a cursor.
 
             Enabling retryable reads makes applications more resilient to
@@ -403,7 +403,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           - `srvServiceName`: (string) The SRV service name to use for
             "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
 
-                MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
+                AsyncMongoClient("mongodb+srv://example.com/?srvServiceName=customname")
           - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
             connect to. More specifically, when a "mongodb+srv://" connection string
             resolves to more than srvMaxHosts number of hosts, the client will randomly
@@ -470,7 +470,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             this example, both the space and slash special characters are passed
             as-is::
 
-              MongoClient(username="user name", password="pass/word")
+              AsyncMongoClient(username="user name", password="pass/word")
 
           - `authSource`: The database to authenticate on. Defaults to the
             database specified in the URI, if provided, or to "admin".
@@ -549,9 +549,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             configures this client to automatically encrypt collection commands
             and automatically decrypt results. See
             :ref:`automatic-client-side-encryption` for an example.
-            If a :class:`MongoClient` is configured with
+            If a :class:`AsyncMongoClient` is configured with
             ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
-            separate internal ``MongoClient`` is created if any of the
+            separate internal ``AsyncMongoClient`` is created if any of the
             following are true:
 
               - A ``key_vault_client`` is not passed to
@@ -640,14 +640,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            ``socketKeepAlive`` now defaults to ``True``.
 
         .. versionchanged:: 3.0
-           :class:`~pymongo.mongo_client.MongoClient` is now the one and only
+           :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` is now the one and only
            client class for a standalone server, mongos, or replica set.
            It includes the functionality that had been split into
-           :class:`~pymongo.mongo_client.MongoReplicaSetClient`: it can connect
+           :class:`~pymongo.asynchronous.mongo_client.MongoReplicaSetClient`: it can connect
            to a replica set, discover all its members, and monitor the set for
            stepdowns, elections, and reconfigs.
 
-           The :class:`~pymongo.mongo_client.MongoClient` constructor no
+           The :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` constructor no
            longer blocks while connecting to the server or servers, and it no
            longer raises :class:`~pymongo.errors.ConnectionFailure` if they
            are unavailable, nor :class:`~pymongo.errors.ConfigurationError`
@@ -659,10 +659,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            provides meaningful information; even if the client is disconnected,
            it may discover a server in time to fulfill the next operation.
 
-           In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of
+           In PyMongo 2.x, :class:`~pymongo.asynchronous.AsyncMongoClient` accepted a list of
            standalone MongoDB servers and used the first it could connect to::
 
-               MongoClient(['host1.com:27017', 'host2.com:27017'])
+               AsyncMongoClient(['host1.com:27017', 'host2.com:27017'])
 
            A list of multiple standalones is no longer supported; if multiple
            servers are listed they must be members of the same replica set, or
@@ -685,11 +685,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            The ``copy_database`` method is removed, see the
            :doc:`copy_database examples </examples/copydb>` for alternatives.
 
-           The :meth:`MongoClient.disconnect` method is removed; it was a
-           synonym for :meth:`~pymongo.MongoClient.close`.
+           The :meth:`AsyncMongoClient.disconnect` method is removed; it was a
+           synonym for :meth:`~pymongo.asynchronous.AsyncMongoClient.close`.
 
-           :class:`~pymongo.mongo_client.MongoClient` no longer returns an
-           instance of :class:`~pymongo.database.Database` for attribute names
+           :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` no longer returns an
+           instance of :class:`~pymongo.asynchronous.database.AsyncDatabase` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
                client['__my_database__']
@@ -924,7 +924,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.change_stream.ClusterChangeStream` cursor which
+        :class:`~pymongo.asynchronous.change_stream.AsyncClusterChangeStream` cursor which
         iterates over changes on all databases on this cluster.
 
         Introduced in MongoDB 4.0.
@@ -935,10 +935,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.ClusterChangeStream` iterable
+        The :class:`~pymongo.asynchronous.change_stream.AsyncClusterChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.change_stream.ClusterChangeStream.next` method
+        :meth:`~pymongo.asynchronous.change_stream.AsyncClusterChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -951,7 +951,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
+                # The AsyncChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
                 logging.error("...")
 
@@ -988,7 +988,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             the specified :class:`~bson.timestamp.Timestamp`. Requires
             MongoDB >= 4.0.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param start_after: The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
@@ -996,7 +996,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.change_stream.ClusterChangeStream` cursor.
+        :return: A :class:`~pymongo.asynchronous.change_stream.AsyncClusterChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -1062,9 +1062,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`
-          can change over time as :class:`MongoClient`'s view of the replica
+          can change over time as :class:`AsyncMongoClient`'s view of the replica
           set changes. :attr:`nodes` can also be an empty set when
-          :class:`MongoClient` is first instantiated and hasn't yet connected
+          :class:`AsyncMongoClient` is first instantiated and hasn't yet connected
           to any servers, or a network partition causes it to lose connection
           to all servers.
         """
@@ -1176,16 +1176,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Start a logical session.
 
         This method takes the same parameters as
-        :class:`~pymongo.client_session.SessionOptions`. See the
-        :mod:`~pymongo.client_session` module for details and examples.
+        :class:`~pymongo.asynchronous.client_session.SessionOptions`. See the
+        :mod:`~pymongo.asynchronous.client_session` module for details and examples.
 
-        A :class:`~pymongo.client_session.AsyncClientSession` may only be used with
-        the MongoClient that started it. :class:`AsyncClientSession` instances are
+        A :class:`~pymongo.asynchronous.client_session.AsyncClientSession` may only be used with
+        the AsyncMongoClient that started it. :class:`AsyncClientSession` instances are
         **not thread-safe or fork-safe**. They can only be used by one thread
         or process at a time. A single :class:`AsyncClientSession` cannot be used
         to run multiple operations concurrently.
 
-        :return: An instance of :class:`~pymongo.client_session.AsyncClientSession`.
+        :return: An instance of :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
 
         .. versionadded:: 3.6
         """
@@ -1237,7 +1237,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
-        >>> client = MongoClient(uri)
+        >>> client = AsyncMongoClient(uri)
         >>> db = client.get_default_database()
         >>> assert db.name == 'my_database'
         >>> db = client.get_database()
@@ -1250,19 +1250,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             was provided in the URI.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`MongoClient` is
+            default) the :attr:`codec_options` of this :class:`AsyncMongoClient` is
             used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+            :class:`AsyncMongoClient` is used. See :mod:`~pymongo.read_preferences`
             for options.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`MongoClient` is
+            default) the :attr:`write_concern` of this :class:`AsyncMongoClient` is
             used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`MongoClient` is
+            default) the :attr:`read_concern` of this :class:`AsyncMongoClient` is
             used.
         :param comment: A user-provided comment to attach to this
             command.
@@ -1294,12 +1294,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
     ) -> database.AsyncDatabase[_DocumentType]:
-        """Get a :class:`~pymongo.database.Database` with the given name and
+        """Get a :class:`~pymongo.asynchronous.database.AsyncDatabase` with the given name and
         options.
 
-        Useful for creating a :class:`~pymongo.database.Database` with
+        Useful for creating a :class:`~pymongo.asynchronous.database.AsyncDatabase` with
         different codec options, read preference, and/or write concern from
-        this :class:`MongoClient`.
+        this :class:`AsyncMongoClient`.
 
           >>> client.read_preference
           Primary()
@@ -1317,19 +1317,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             returned.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`MongoClient` is
+            default) the :attr:`codec_options` of this :class:`AsyncMongoClient` is
             used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+            :class:`AsyncMongoClient` is used. See :mod:`~pymongo.read_preferences`
             for options.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`MongoClient` is
+            default) the :attr:`write_concern` of this :class:`AsyncMongoClient` is
             used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`MongoClient` is
+            default) the :attr:`read_concern` of this :class:`AsyncMongoClient` is
             used.
 
         .. versionchanged:: 3.5
@@ -1346,7 +1346,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
     def _database_default_options(self, name: str) -> database.AsyncDatabase:
-        """Get a Database instance with the default settings."""
+        """Get a AsyncDatabase instance with the default settings."""
         return self.get_database(
             name,
             codec_options=DEFAULT_CODEC_OPTIONS,
@@ -1426,7 +1426,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         `replicaSet` option.
 
         .. versionadded:: 3.0
-           MongoClient gained this property in version 3.0.
+           AsyncMongoClient gained this property in version 3.0.
         """
         return await self._topology.get_primary()  # type: ignore[return-value]
 
@@ -1439,7 +1439,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         client was created without the `replicaSet` option.
 
         .. versionadded:: 3.0
-           MongoClient gained this property in version 3.0.
+           AsyncMongoClient gained this property in version 3.0.
         """
         return await self._topology.get_secondaries()
 
@@ -1522,7 +1522,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await self._encrypter.close()
 
     async def _get_topology(self) -> Topology:
-        """Get the internal :class:`~pymongo.topology.Topology` object.
+        """Get the internal :class:`~pymongo.asynchronous.topology.Topology` object.
 
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
@@ -2074,7 +2074,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Get information about the MongoDB server we're connected to.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2117,7 +2117,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Get a cursor over the databases of the connected server.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: Optional parameters of the
@@ -2127,7 +2127,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             options differ by server version.
 
 
-        :return: An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+        :return: An instance of :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`.
 
         .. versionadded:: 3.6
         """
@@ -2141,7 +2141,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Get a list of the names of all databases on the connected server.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -2163,13 +2163,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
-        :class:`str` or :class:`~pymongo.database.Database`.
+        :class:`str` or :class:`~pymongo.asynchronous.database.AsyncDatabase`.
 
         :param name_or_database: the name of a database to drop, or a
-            :class:`~pymongo.database.Database` instance representing the
+            :class:`~pymongo.asynchronous.database.AsyncDatabase` instance representing the
             database to drop
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -2179,7 +2179,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
-        .. note:: The :attr:`~pymongo.mongo_client.MongoClient.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.write_concern` of
            this client is automatically applied to this operation.
 
         .. versionchanged:: 3.4
@@ -2192,7 +2192,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_database must be an instance of str or a Database")
+            raise TypeError("name_or_database must be an instance of str or a AsyncDatabase")
 
         async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
             await self[name]._command(

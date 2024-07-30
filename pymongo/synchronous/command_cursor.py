@@ -164,7 +164,7 @@ class CommandCursor(Generic[_DocumentType]):
         Even if :attr:`alive` is ``True``, :meth:`next` can raise
         :exc:`StopIteration`. Best to use a for loop::
 
-            async for doc in collection.aggregate(pipeline):
+            for doc in collection.aggregate(pipeline):
                 print(doc)
 
         .. note:: :attr:`alive` can be True while iterating a cursor from

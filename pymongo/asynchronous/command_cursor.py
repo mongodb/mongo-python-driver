@@ -189,7 +189,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
     @property
     def session(self) -> Optional[AsyncClientSession]:
-        """The cursor's :class:`~pymongo.client_session.AsyncClientSession`, or None.
+        """The cursor's :class:`~pymongo.asynchronous.client_session.AsyncClientSession`, or None.
 
         .. versionadded:: 3.6
         """
@@ -391,7 +391,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.AsyncCollection.aggregate_raw_batches`
+        see :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`
         instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.

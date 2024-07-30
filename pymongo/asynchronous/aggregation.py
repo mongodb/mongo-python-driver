@@ -40,8 +40,8 @@ class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.
 
     Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.AsyncCollection.aggregate`, or
-    :meth:`pymongo.database.AsyncDatabase.aggregate` instead.
+    :meth:`pymongo.asynchronous.collection.AsyncCollection.aggregate`, or
+    :meth:`pymongo.asynchronous.database.AsyncDatabase.aggregate` instead.
     """
 
     def __init__(
