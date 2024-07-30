@@ -11,6 +11,11 @@ PyMongo 4.9 brings a number of improvements including:
 - Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
   :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
+- Added :meth:`~pymongo.cursor.Cursor.to_list`, :meth:`~pymongo.command_cursor.CommandCursor.to_list`,
+  :meth:`~pymongo.asynchronous.cursor.AsyncCursor.to_list`,
+  and :meth:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor.to_list`
+  as an asynchronous-friendly alternative to ``list(cursor)``.
+
 
 Issues Resolved
 ...............
