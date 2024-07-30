@@ -1375,8 +1375,12 @@ class TestCursor(IntegrationTest):
         client = rs_or_single_client()
         self.addCleanup(client.close)
 
-        c = client.local.oplog.rs.find(
-            cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        oplog = client.local.oplog.rs
+        first = oplog.find().sort("$natural", pymongo.ASCENDING).limit(-1).next()
+        ts = first["ts"]
+
+        c = oplog.find(
+            {"ts": {"$gt": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         )
 
         docs = c.to_list()

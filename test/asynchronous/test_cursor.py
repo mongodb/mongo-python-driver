@@ -1384,8 +1384,12 @@ class TestCursor(AsyncIntegrationTest):
         client = await async_rs_or_single_client()
         self.addAsyncCleanup(client.aclose)
 
-        c = client.local.oplog.rs.find(
-            cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        oplog = client.local.oplog.rs
+        first = await oplog.find().sort("$natural", pymongo.ASCENDING).limit(-1).next()
+        ts = first["ts"]
+
+        c = oplog.find(
+            {"ts": {"$gt": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         )
 
         docs = await c.to_list()
