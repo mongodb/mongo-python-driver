@@ -13,7 +13,10 @@
 # permissions and limitations under the License.
 
 
-"""Tools to parse and validate a MongoDB URI."""
+"""Tools to parse and validate a MongoDB URI.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import re

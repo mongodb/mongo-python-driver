@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Exceptions raised by PyMongo."""
+"""Exceptions raised by PyMongo.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
