@@ -1401,6 +1401,7 @@ class TestCursor(AsyncIntegrationTest):
 
         self.assertEqual([], docs)
 
+    @async_client_context.require_replica_set
     async def test_command_cursor_to_list(self):
         c = await self.db.test.aggregate([{"$changeStream": {}}])
 
@@ -1408,6 +1409,7 @@ class TestCursor(AsyncIntegrationTest):
 
         self.assertGreaterEqual(len(docs), 0)
 
+    @async_client_context.require_replica_set
     async def test_command_cursor_to_list_empty(self):
         c = await self.db.does_not_exist.aggregate([{"$changeStream": {}}])
 

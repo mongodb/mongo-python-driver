@@ -1392,6 +1392,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual([], docs)
 
+    @client_context.require_replica_set
     def test_command_cursor_to_list(self):
         c = self.db.test.aggregate([{"$changeStream": {}}])
 
@@ -1399,6 +1400,7 @@ class TestCursor(IntegrationTest):
 
         self.assertGreaterEqual(len(docs), 0)
 
+    @client_context.require_replica_set
     def test_command_cursor_to_list_empty(self):
         c = self.db.does_not_exist.aggregate([{"$changeStream": {}}])
 
