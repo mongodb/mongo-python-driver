@@ -1401,6 +1401,20 @@ class TestCursor(AsyncIntegrationTest):
 
         self.assertEqual([], docs)
 
+    async def test_command_cursor_to_list(self):
+        c = await self.db.test.aggregate([{"$changeStream": {}}])
+
+        docs = await c.to_list()
+
+        self.assertGreaterEqual(len(docs), 0)
+
+    async def test_command_cursor_to_list_empty(self):
+        c = await self.db.does_not_exist.aggregate([{"$changeStream": {}}])
+
+        docs = await c.to_list()
+
+        self.assertEqual([], docs)
+
 
 class TestRawBatchCursor(AsyncIntegrationTest):
     async def test_find_raw(self):

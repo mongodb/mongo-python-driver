@@ -1392,6 +1392,20 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual([], docs)
 
+    def test_command_cursor_to_list(self):
+        c = self.db.test.aggregate([{"$changeStream": {}}])
+
+        docs = c.to_list()
+
+        self.assertGreaterEqual(len(docs), 0)
+
+    def test_command_cursor_to_list_empty(self):
+        c = self.db.does_not_exist.aggregate([{"$changeStream": {}}])
+
+        docs = c.to_list()
+
+        self.assertEqual([], docs)
+
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
