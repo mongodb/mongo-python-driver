@@ -1371,21 +1371,26 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
+    @client_context.require_replica_set
     def test_to_list_tailable(self):
-        client = rs_or_single_client()
-        self.addCleanup(client.close)
-
-        oplog = client.local.oplog.rs
-        first = oplog.find().sort("$natural", pymongo.ASCENDING).limit(-1).next()
-        ts = first["ts"]
+        oplog = self.client.local.oplog.rs
+        last = oplog.find().sort("$natural", pymongo.DESCENDING).limit(-1).next()
+        ts = last["ts"]
 
         c = oplog.find(
-            {"ts": {"$gt": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+            {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         )
 
         docs = c.to_list()
 
-        self.assertGreaterEqual(len(docs), 0)
+        self.assertGreaterEqual(len(docs), 1)
+
+    def test_to_list_empty(self):
+        c = self.db.does_not_exist.find()
+
+        docs = c.to_list()
+
+        self.assertEqual([], docs)
 
 
 class TestRawBatchCursor(IntegrationTest):

@@ -346,16 +346,16 @@ class CommandCursor(Generic[_DocumentType]):
         else:
             return None
 
-    def _next_batch(self, result: list) -> Optional[list[_DocumentType]]:
-        """Get all documents from the cursor."""
+    def _next_batch(self, result: list) -> bool:
+        """Get all available documents from the cursor."""
         if not len(self._data) and not self._killed:
             self._refresh()
         if len(self._data):
             result.extend(self._data)
             self._data.clear()
-            return result
+            return True
         else:
-            return None
+            return False
 
     def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
@@ -383,11 +383,9 @@ class CommandCursor(Generic[_DocumentType]):
 
     def to_list(self) -> list[_DocumentType]:
         res: list[_DocumentType] = []
-        try:
-            while self.alive:
-                self._next_batch(res)
-        except StopIteration:
-            pass
+        while self.alive:
+            if not self._next_batch(res):
+                break
         return res
 
 

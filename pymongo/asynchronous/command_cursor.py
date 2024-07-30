@@ -346,16 +346,16 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         else:
             return None
 
-    async def _next_batch(self, result: list) -> Optional[list[_DocumentType]]:
-        """Get all documents from the cursor."""
+    async def _next_batch(self, result: list) -> bool:
+        """Get all available documents from the cursor."""
         if not len(self._data) and not self._killed:
             await self._refresh()
         if len(self._data):
             result.extend(self._data)
             self._data.clear()
-            return result
+            return True
         else:
-            return None
+            return False
 
     async def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
@@ -383,11 +383,9 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
     async def to_list(self) -> list[_DocumentType]:
         res: list[_DocumentType] = []
-        try:
-            while self.alive:
-                await self._next_batch(res)
-        except StopAsyncIteration:
-            pass
+        while self.alive:
+            if not await self._next_batch(res):
+                break
         return res
 
 

@@ -1258,19 +1258,19 @@ class Cursor(Generic[_DocumentType]):
         else:
             raise StopIteration
 
-    def _next_batch(self, result: list) -> list[_DocumentType]:
-        """Get all documents from the cursor."""
+    def _next_batch(self, result: list) -> bool:
+        """Get all available documents from the cursor."""
         if not self._exhaust_checked:
             self._exhaust_checked = True
             self._supports_exhaust()
         if self._empty:
-            raise StopIteration
+            return False
         if len(self._data) or self._refresh():
             result.extend(self._data)
             self._data.clear()
-            return result
+            return True
         else:
-            raise StopIteration
+            return False
 
     def __next__(self) -> _DocumentType:
         return self.next()
@@ -1286,11 +1286,9 @@ class Cursor(Generic[_DocumentType]):
 
     def to_list(self) -> list[_DocumentType]:
         res: list[_DocumentType] = []
-        try:
-            while self.alive:
-                self._next_batch(res)
-        except StopIteration:
-            pass
+        while self.alive:
+            if not self._next_batch(res):
+                break
         return res
 
 
