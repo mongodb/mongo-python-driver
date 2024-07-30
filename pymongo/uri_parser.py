@@ -144,6 +144,12 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
         host, port = host.split(":", 1)
     if isinstance(port, str):
         if not port.isdigit():
+            # Special case check for mistakes like "mongodb://localhost:27017 ".
+            if all(c.isspace() or c.isdigit() for c in port):
+                for c in port:
+                    if c.isspace():
+                        raise ValueError(f"Port contains whitespace character: {c!r}")
+
             # A non-digit port indicates that the URI is invalid, likely because the password
             # or username were not escaped.
             raise ValueError(
