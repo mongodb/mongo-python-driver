@@ -985,7 +985,7 @@ _OP_MSG_OVERHEAD = 1000
 
 
 def _client_construct_op_msg(
-    command_doc: bytes,
+    command: Mapping[str, Any],
     to_send_ops: list[Mapping[str, Any]],
     to_send_ns: list[Mapping[str, Any]],
     ack: bool,
@@ -998,7 +998,7 @@ def _client_construct_op_msg(
 
     # Type 0 Section
     buf.write(b"\x00")
-    buf.write(command_doc)
+    buf.write(_dict_to_bson(command, False, opts))
 
     # Type 1 Section for ops
     buf.write(b"\x01")
@@ -1057,8 +1057,7 @@ def _client_batched_op_msg_impl(
     max_write_batch_size = ctx.max_write_batch_size
     max_message_size = ctx.max_message_size
 
-    command_doc = _dict_to_bson(command, False, opts)
-    # Don't include command-agnostic fields in document size calculations.
+    # Don't include bulkWrite-command-agnostic fields in document size calculations.
     abridged_keys = ["bulkWrite", "errorsOnly", "ordered"]
     if command.get("bypassDocumentValidation"):
         abridged_keys.append("bypassDocumentValidation")
@@ -1132,7 +1131,7 @@ def _client_batched_op_msg_impl(
             break
 
     # Construct the entire OP_MSG.
-    length = _client_construct_op_msg(command_doc, to_send_ops, to_send_ns, ack, opts, buf)
+    length = _client_construct_op_msg(command, to_send_ops, to_send_ns, ack, opts, buf)
 
     return to_send_ops, to_send_ns, length
 

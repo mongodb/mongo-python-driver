@@ -1263,20 +1263,27 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
         if error_response:
-            self.match_evaluator.match_result(error_response, exception.details)
+            if isinstance(exception, ClientBulkWriteException):
+                self.match_evaluator.match_result(error_response, exception.error.details)
+            else:
+                self.match_evaluator.match_result(error_response, exception.details)
 
         if is_error:
             # already satisfied because exception was raised
             pass
 
         if is_client_error:
+            if isinstance(exception, ClientBulkWriteException):
+                error = exception.error
+            else:
+                error = exception
             # Connection errors are considered client errors.
-            if isinstance(exception, ConnectionFailure):
-                self.assertNotIsInstance(exception, NotPrimaryError)
-            elif isinstance(exception, (InvalidOperation, ConfigurationError, EncryptionError)):
+            if isinstance(error, ConnectionFailure):
+                self.assertNotIsInstance(error, NotPrimaryError)
+            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
                 pass
             else:
-                self.assertNotIsInstance(exception, PyMongoError)
+                self.assertNotIsInstance(error, PyMongoError)
 
         if is_timeout_error:
             self.assertIsInstance(exception, PyMongoError)
@@ -1294,16 +1301,24 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.assertIn(error_contains.lower(), errmsg)
 
         if error_code:
-            self.assertEqual(error_code, exception.details.get("code"))
+            if isinstance(exception, ClientBulkWriteException):
+                self.assertEqual(error_code, exception.error.details.get("code"))
+            else:
+                self.assertEqual(error_code, exception.details.get("code"))
 
         if error_code_name:
-            self.assertEqual(error_code_name, exception.details.get("codeName"))
+            if isinstance(exception, ClientBulkWriteException):
+                self.assertEqual(error_code, exception.error.details.get("codeName"))
+            else:
+                self.assertEqual(error_code_name, exception.details.get("codeName"))
 
         if error_labels_contain:
+            if isinstance(exception, ClientBulkWriteException):
+                error = exception.error
+            else:
+                error = exception
             labels = [
-                err_label
-                for err_label in error_labels_contain
-                if exception.has_error_label(err_label)
+                err_label for err_label in error_labels_contain if error.has_error_label(err_label)
             ]
             self.assertEqual(labels, error_labels_contain)
 
