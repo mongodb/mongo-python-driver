@@ -58,11 +58,11 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, uri_parser
-from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
+    ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     InvalidOperation,

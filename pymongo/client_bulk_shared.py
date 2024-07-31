@@ -16,50 +16,13 @@
 """Constants, types, and classes shared across Client Bulk Write API implementations."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn, Optional
+from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn
 
-from pymongo.errors import OperationFailure, WriteConcernError, WriteError
+from pymongo.errors import ClientBulkWriteException, OperationFailure
 from pymongo.helpers_shared import _get_wce_doc
-from pymongo.results import ClientBulkWriteResult
 
 if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
-
-
-class ClientBulkWriteException(OperationFailure):
-    """Exception class for client-level bulk write errors."""
-
-    details: _DocumentOut
-    verbose: bool
-
-    def __init__(self, results: _DocumentOut, verbose: bool) -> None:
-        super().__init__("batch op errors occurred", 65, results)
-        self.verbose = verbose
-
-    def __reduce__(self) -> tuple[Any, Any]:
-        return self.__class__, (self.details,)
-
-    @property
-    def error(self) -> Optional[Any]:
-        return self.details.get("error", None)
-
-    @property
-    def write_concern_errors(self) -> Optional[list[WriteConcernError]]:
-        return self.details.get("writeConcernErrors", [])
-
-    @property
-    def write_errors(self) -> Optional[Mapping[int, WriteError]]:
-        return self.details.get("writeErrors", {})
-
-    @property
-    def partial_result(self) -> Optional[ClientBulkWriteResult]:
-        if self.details.get("anySuccessful"):
-            return ClientBulkWriteResult(
-                self.details,  # type: ignore[arg-type]
-                acknowledged=True,
-                has_verbose_results=self.verbose,
-            )
-        return None
 
 
 def _merge_command(
@@ -69,14 +32,14 @@ def _merge_command(
     result: Mapping[str, Any],
 ) -> None:
     """Merge result of a single bulk write batch into the full result."""
+    if result.get("error"):
+        full_result["error"] = result["error"]
+
     full_result["nInserted"] += result.get("nInserted", 0)
     full_result["nDeleted"] += result.get("nDeleted", 0)
     full_result["nMatched"] += result.get("nMatched", 0)
     full_result["nModified"] += result.get("nModified", 0)
     full_result["nUpserted"] += result.get("nUpserted", 0)
-
-    if result.get("error"):
-        full_result["error"] = result["error"]
 
     write_errors = result.get("writeErrors")
     if write_errors:

@@ -66,11 +66,11 @@ from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
-from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
+    ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     InvalidOperation,

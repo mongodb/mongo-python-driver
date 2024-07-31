@@ -25,9 +25,13 @@ from test.utils import (
     rs_or_single_client,
 )
 
-from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
-from pymongo.errors import DocumentTooLarge, InvalidOperation, NetworkTimeout
+from pymongo.errors import (
+    ClientBulkWriteException,
+    DocumentTooLarge,
+    InvalidOperation,
+    NetworkTimeout,
+)
 from pymongo.monitoring import *
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern

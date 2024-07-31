@@ -70,10 +70,10 @@ from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
-from pymongo.client_bulk_shared import ClientBulkWriteException
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
+    ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     EncryptionError,

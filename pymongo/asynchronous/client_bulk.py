@@ -565,7 +565,7 @@ class _AsyncClientBulk:
                         _throw_client_bulk_write_exception(full, self.verbose_results)
                     else:
                         _merge_command(self.ops, self.idx_offset, full_result, result)
-                        break
+                        _throw_client_bulk_write_exception(full_result, self.verbose_results)
 
                 result["error"] = None
                 result["writeErrors"] = []
