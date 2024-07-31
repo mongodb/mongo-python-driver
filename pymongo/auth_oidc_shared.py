@@ -120,10 +120,13 @@ class _OIDCGCPCallback(OIDCCallback):
 
 class _OIDCK8SCallback(OIDCCallback):
     def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        fname = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-        for key in ["AZURE_FEDERATED_TOKEN_FILE", "AWS_WEB_IDENTITY_TOKEN_FILE"]:
-            if key in os.environ:
-                fname = os.environ[key]
-        with open(fname) as fid:
-            token = fid.read()
-        return OIDCCallbackResult(access_token=token)
+        return OIDCCallbackResult(access_token=_get_k8s_token())
+
+
+def _get_k8s_token() -> str:
+    fname = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    for key in ["AZURE_FEDERATED_TOKEN_FILE", "AWS_WEB_IDENTITY_TOKEN_FILE"]:
+        if key in os.environ:
+            fname = os.environ[key]
+    with open(fname) as fid:
+        return fid.read()
