@@ -1285,7 +1285,11 @@ class Cursor(Generic[_DocumentType]):
         self.close()
 
     def to_list(self) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list.
+        """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
+
+        To use::
+
+          >>> await cursor.to_list()
 
         If the cursor is empty or has no more results, an empty list will be returned.
 
