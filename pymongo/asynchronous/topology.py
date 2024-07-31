@@ -664,8 +664,36 @@ class Topology:
         # Publish only after releasing the lock.
         if self._publish_tp:
             assert self._events is not None
+            old_td = self._description
+            self._description = TopologyDescription(
+                TOPOLOGY_TYPE.Unknown,
+                {},
+                self._description.replica_set_name,
+                self._description.max_set_version,
+                self._description.max_election_id,
+                self._description._topology_settings,
+            )
+            self._events.put(
+                (
+                    self._listeners.publish_topology_description_changed,
+                    (
+                        old_td,
+                        self._description,
+                        self._topology_id,
+                    ),
+                )
+            )
             self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
         if self._publish_server or self._publish_tp:
+            # Publish all remaining events before closing the event publishing thread
+            while True:
+                try:
+                    event = self._events.get_nowait()
+                except queue.Empty:
+                    break
+                else:
+                    fn, args = event
+                    fn(*args)
             self.__events_executor.close()
 
     @property

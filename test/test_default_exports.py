@@ -168,7 +168,7 @@ class TestDefaultExports(unittest.TestCase):
             TopologyDescriptionChangedEvent,
             TopologyEvent,
             TopologyListener,
-            TopologyOpenedEvent,
+            TopologyOpeningEvent,
             register,
         )
         from pymongo.operations import (

@@ -110,7 +110,7 @@ from pymongo.monitoring import (
     TopologyDescriptionChangedEvent,
     TopologyEvent,
     TopologyListener,
-    TopologyOpenedEvent,
+    TopologyOpeningEvent,
     _CommandEvent,
     _ConnectionEvent,
     _PoolEvent,
@@ -405,7 +405,7 @@ class EventListenerUtil(
         else:
             self.add_event(event)
 
-    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
+    def opened(self, event: Union[ServerOpeningEvent, TopologyOpeningEvent]) -> None:
         self.add_event(event)
 
     def description_changed(
@@ -924,6 +924,10 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
+        elif name == "topologyOpeningEvent":
+            self.test.assertIsInstance(actual, TopologyOpeningEvent)
+        elif name == "topologyClosedEvent":
+            self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 

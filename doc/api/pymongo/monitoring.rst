@@ -42,7 +42,7 @@
    .. autoclass:: TopologyDescriptionChangedEvent
       :members:
       :inherited-members:
-   .. autoclass:: TopologyOpenedEvent
+   .. autoclass:: TopologyOpeningEvent
       :members:
       :inherited-members:
    .. autoclass:: TopologyClosedEvent

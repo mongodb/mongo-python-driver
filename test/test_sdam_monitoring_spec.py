@@ -121,7 +121,7 @@ def compare_events(expected_dict, actual):
             )
 
     elif expected_type == "topology_opening_event":
-        if not isinstance(actual, monitoring.TopologyOpenedEvent):
+        if not isinstance(actual, monitoring.TopologyOpeningEvent):
             return False, "Expected TopologyOpeningEvent, got %s" % (actual.__class__)
 
     elif expected_type == "topology_description_changed_event":
