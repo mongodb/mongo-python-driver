@@ -15,7 +15,7 @@ fi
 
 # Set up the remote files to test.
 git add .
-git commit -m "add files"
+git commit -m "add files" || true
 export TEST_TAR_FILE=/tmp/mongo-python-driver.tgz
 git archive -o $TEST_TAR_FILE HEAD
 
