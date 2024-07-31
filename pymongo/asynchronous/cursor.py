@@ -1260,6 +1260,20 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             raise StopAsyncIteration
 
+    async def _next_batch(self, result: list) -> bool:
+        """Get all available documents from the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            await self._supports_exhaust()
+        if self._empty:
+            return False
+        if len(self._data) or await self._refresh():
+            result.extend(self._data)
+            self._data.clear()
+            return True
+        else:
+            return False
+
     async def __anext__(self) -> _DocumentType:
         return await self.next()
 
@@ -1273,7 +1287,11 @@ class AsyncCursor(Generic[_DocumentType]):
         await self.close()
 
     async def to_list(self) -> list[_DocumentType]:
-        return [x async for x in self]  # noqa: C416,RUF100
+        res: list[_DocumentType] = []
+        while self.alive:
+            if not await self._next_batch(res):
+                break
+        return res
 
 
 class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):

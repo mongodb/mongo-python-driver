@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Operation class definitions."""
+"""Operation class definitions.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import enum

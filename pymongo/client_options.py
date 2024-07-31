@@ -12,7 +12,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Tools to parse mongo client options."""
+"""Tools to parse mongo client options.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast

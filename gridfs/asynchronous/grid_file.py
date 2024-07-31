@@ -1892,6 +1892,9 @@ class AsyncGridOutCursor(AsyncCursor):
         next_file = await super().next()
         return AsyncGridOut(self._root_collection, file_document=next_file, session=self.session)
 
+    async def to_list(self) -> list[AsyncGridOut]:
+        return [x async for x in self]  # noqa: C416,RUF100
+
     __anext__ = next
 
     def add_option(self, *args: Any, **kwargs: Any) -> NoReturn:

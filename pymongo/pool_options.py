@@ -12,7 +12,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""AsyncConnection pool options for AsyncMongoClient/MongoClient."""
+"""Pool options for AsyncMongoClient/MongoClient.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import copy
