@@ -161,7 +161,7 @@
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
-          "times": 3
+          "times": 2
         },
         "data": {
           "failCommands": [
@@ -169,7 +169,7 @@
             "find"
           ],
           "blockConnection": true,
-          "blockTimeMS": 20
+          "blockTimeMS": 30
         }
       },
       "clientOptions": {
