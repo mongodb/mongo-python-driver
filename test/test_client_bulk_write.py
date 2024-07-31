@@ -35,6 +35,21 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 
+class TestClientBulkWrite(IntegrationTest):
+    @client_context.require_version_min(8, 0, 0, -24)
+    def test_returns_error_if_no_namespace_provided(self):
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+
+        models = [InsertOne(document={"a": "b"})]
+        with self.assertRaises(InvalidOperation) as context:
+            client.bulk_write(models=models)
+        self.assertIn(
+            "MongoClient.bulk_write requires a namespace to be provided for each write operation",
+            context.exception._message,
+        )
+
+
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
 class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
@@ -541,8 +556,9 @@ class TestClientBulkWriteTimeout(IntegrationTest):
                 w="majority",
             )
             self.addCleanup(client.close)
-            with self.assertRaises(NetworkTimeout):
+            with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
+            self.assertIsInstance(context.exception.error, NetworkTimeout)
 
         bulk_write_events = []
         for event in listener.started_events:

@@ -34,6 +34,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_is_mapping, validate_list
+from pymongo.errors import InvalidOperation
 from pymongo.helpers_shared import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
@@ -111,18 +112,23 @@ class InsertOne(Generic[_DocumentType]):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
-        bulkobj.add_insert(self._namespace, self._doc)  # type: ignore[arg-type]
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
+        bulkobj.add_insert(
+            self._namespace,
+            self._doc,  # type: ignore[arg-type]
+        )
 
     def __repr__(self) -> str:
         if self._namespace:
-            class_name = f"namespace {self._namespace}: {self.__class__.__name__}"
-        else:
-            class_name = self.__class__.__name__
-        return f"{class_name}({self._doc!r})"
+            return f"{self.__class__.__name__}({self._doc!r}, {self._namespace!r})"
+        return f"{self.__class__.__name__}({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return other._namespace == self._namespace and other._doc == self._doc
+            return other._doc == self._doc and other._namespace == self._namespace
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -160,15 +166,15 @@ class _DeleteOp:
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return (
-                other._namespace,
                 other._filter,
                 other._collation,
                 other._hint,
+                other._namespace,
             ) == (
-                self._namespace,
                 self._filter,
                 self._collation,
                 self._hint,
+                self._namespace,
             )
         return NotImplemented
 
@@ -177,10 +183,14 @@ class _DeleteOp:
 
     def __repr__(self) -> str:
         if self._namespace:
-            class_name = f"namespace {self._namespace}: {self.__class__.__name__}"
-        else:
-            class_name = self.__class__.__name__
-        return f"{class_name}({self._filter!r}, {self._collation!r}, {self._hint!r})"
+            return "{}({!r}, {!r}, {!r}, {!r})".format(
+                self.__class__.__name__,
+                self._filter,
+                self._collation,
+                self._hint,
+                self._namespace,
+            )
+        return f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
 
 class DeleteOne(_DeleteOp):
@@ -231,8 +241,12 @@ class DeleteOne(_DeleteOp):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
         bulkobj.add_delete(
-            self._namespace,  # type: ignore[arg-type]
+            self._namespace,
             self._filter,
             multi=False,
             collation=validate_collation_or_none(self._collation),
@@ -288,8 +302,12 @@ class DeleteMany(_DeleteOp):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
         bulkobj.add_delete(
-            self._namespace,  # type: ignore[arg-type]
+            self._namespace,
             self._filter,
             multi=True,
             collation=validate_collation_or_none(self._collation),
@@ -371,8 +389,12 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
         bulkobj.add_replace(
-            self._namespace,  # type: ignore[arg-type]
+            self._namespace,
             self._filter,
             self._doc,
             self._upsert,
@@ -383,19 +405,19 @@ class ReplaceOne(Generic[_DocumentType]):
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return (
-                other._namespace,
                 other._filter,
                 other._doc,
                 other._upsert,
                 other._collation,
                 other._hint,
+                other._namespace,
             ) == (
-                self._namespace,
                 self._filter,
                 self._doc,
                 self._upsert,
                 self._collation,
                 other._hint,
+                self._namespace,
             )
         return NotImplemented
 
@@ -404,11 +426,17 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def __repr__(self) -> str:
         if self._namespace:
-            class_name = f"namespace {self._namespace}: {self.__class__.__name__}"
-        else:
-            class_name = self.__class__.__name__
+            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+                self.__class__.__name__,
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._hint,
+                self._namespace,
+            )
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
-            class_name,
+            self.__class__.__name__,
             self._filter,
             self._doc,
             self._upsert,
@@ -461,21 +489,21 @@ class _UpdateOp:
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
             return (
-                other._namespace,
                 other._filter,
                 other._doc,
                 other._upsert,
                 other._collation,
                 other._array_filters,
                 other._hint,
+                other._namespace,
             ) == (
-                self._namespace,
                 self._filter,
                 self._doc,
                 self._upsert,
                 self._collation,
                 self._array_filters,
                 self._hint,
+                self._namespace,
             )
         return NotImplemented
 
@@ -484,11 +512,18 @@ class _UpdateOp:
 
     def __repr__(self) -> str:
         if self._namespace:
-            class_name = f"namespace {self._namespace}: {self.__class__.__name__}"
-        else:
-            class_name = self.__class__.__name__
+            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+                self.__class__.__name__,
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._array_filters,
+                self._hint,
+                self._namespace,
+            )
         return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-            class_name,
+            self.__class__.__name__,
             self._filter,
             self._doc,
             self._upsert,
@@ -561,8 +596,12 @@ class UpdateOne(_UpdateOp):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
         bulkobj.add_update(
-            self._namespace,  # type: ignore[arg-type]
+            self._namespace,
             self._filter,
             self._doc,
             False,
@@ -636,8 +675,12 @@ class UpdateMany(_UpdateOp):
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
+        if not self._namespace:
+            raise InvalidOperation(
+                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+            )
         bulkobj.add_update(
-            self._namespace,  # type: ignore[arg-type]
+            self._namespace,
             self._filter,
             self._doc,
             True,

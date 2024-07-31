@@ -1740,7 +1740,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool,
         func: _WriteCall[T],
         session: Optional[AsyncClientSession],
-        bulk: Optional[_AsyncBulk],
+        bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
         operation: str,
         operation_id: Optional[int] = None,
     ) -> T:
@@ -1770,7 +1770,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         func: _WriteCall[T] | _ReadCall[T],
         session: Optional[AsyncClientSession],
-        bulk: Optional[_AsyncBulk],
+        bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
         operation: str,
         is_read: bool = False,
         address: Optional[_Address] = None,
@@ -1853,7 +1853,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T],
         session: Optional[AsyncClientSession],
         operation: str,
-        bulk: Optional[_AsyncBulk] = None,
+        bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]] = None,
         operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
@@ -2259,11 +2259,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           ...
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> models = [InsertOne("db.test", {'y': 1}),
-          ...           DeleteOne("db.test", {'x': 1}),
-          ...           InsertOne("db.coll", {'y': 2}),
-          ...           ReplaceOne("db.test", {'w': 1}, {'z': 1}, upsert=True)]
-          >>> client = AsyncMongoClient()
+          >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
+          ...           DeleteOne(namespace="db.test", filter={'x': 1}),
+          ...           InsertOne(namespace="db.coll", document={'y': 2}),
+          ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
           >>> result = await client.bulk_write(models=models)
           >>> result.inserted_count
           2
@@ -2387,10 +2386,14 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
 
     # AsyncConnection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
-    if isinstance(exc, ConnectionFailure) and not isinstance(
-        exc, (NotPrimaryError, WaitQueueTimeoutError)
+    if isinstance(exc, ClientBulkWriteException):
+        exc_to_check = exc.error
+    else:
+        exc_to_check = exc
+    if isinstance(exc_to_check, ConnectionFailure) and not isinstance(
+        exc_to_check, (NotPrimaryError, WaitQueueTimeoutError)
     ):
-        exc._add_error_label("RetryableWriteError")
+        exc_to_check._add_error_label("RetryableWriteError")
 
 
 class _MongoClientErrorHandler:
@@ -2437,6 +2440,8 @@ class _MongoClientErrorHandler:
             return
         self.handled = True
         if self.session:
+            if isinstance(exc_val, ClientBulkWriteException):
+                exc_val = exc_val.error
             if isinstance(exc_val, ConnectionFailure):
                 if self.session.in_transaction:
                     exc_val._add_error_label("TransientTransactionError")
@@ -2448,7 +2453,7 @@ class _MongoClientErrorHandler:
                 ):
                     await self.session._unpin()
         err_ctx = _ErrorContext(
-            exc_val,
+            exc_val,  # type: ignore[arg-type]
             self.max_wire_version,
             self.sock_generation,
             self.completed_handshake,
@@ -2475,7 +2480,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self,
         mongo_client: AsyncMongoClient,
         func: _WriteCall[T] | _ReadCall[T],
-        bulk: Optional[_AsyncBulk],
+        bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
         operation: str,
         is_read: bool = False,
         session: Optional[AsyncClientSession] = None,
@@ -2552,7 +2557,10 @@ class _ClientConnectionRetryable(Generic[T]):
                 if not self._is_read:
                     if not self._retryable:
                         raise
-                    retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
+                    if isinstance(exc, ClientBulkWriteException) and exc.error:
+                        retryable_write_error_exc = exc.error.has_error_label("RetryableWriteError")
+                    else:
+                        retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:
                         assert self._session
                         await self._session._unpin()

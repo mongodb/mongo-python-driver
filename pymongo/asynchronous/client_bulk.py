@@ -55,9 +55,11 @@ from pymongo.common import (
 )
 from pymongo.errors import (
     ConfigurationError,
+    ConnectionFailure,
     InvalidOperation,
     NotPrimaryError,
     OperationFailure,
+    WaitQueueTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
@@ -303,7 +305,8 @@ class _AsyncClientBulk:
 
             if bwc.publish:
                 bwc._fail(request_id, failure, duration)
-            raise
+            # Top-level error will be embedded in ClientBulkWriteException.
+            reply = {"error": exc}
         finally:
             bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
@@ -393,7 +396,8 @@ class _AsyncClientBulk:
             if bwc.publish:
                 assert bwc.start_time is not None
                 bwc._fail(request_id, failure, duration)
-            raise
+            # Top-level error will be embedded in ClientBulkWriteException.
+            reply = {"error": exc}
         finally:
             bwc.start_time = datetime.datetime.now()
         return result  # type: ignore[return-value]
@@ -540,14 +544,35 @@ class _AsyncClientBulk:
             # Run as many ops as possible in one server command.
             if write_concern.acknowledged:
                 raw_result, to_send_ops, _ = await self._execute_batch(bwc, cmd, ops)  # type: ignore[arg-type]
-
                 result = copy.deepcopy(raw_result)
+
+                # Top-level server/network error.
+                if result.get("error"):
+                    error = result["error"]
+                    retryable_top_level_error = (
+                        isinstance(error.details, dict)
+                        and error.details.get("code", 0) in _RETRYABLE_ERROR_CODES
+                    )
+                    retryable_network_error = isinstance(
+                        error, ConnectionFailure
+                    ) and not isinstance(error, (NotPrimaryError, WaitQueueTimeoutError))
+
+                    # Synthesize the full bulk result without modifying the
+                    # current one because this write operation may be retried.
+                    if retryable and (retryable_top_level_error or retryable_network_error):
+                        full = copy.deepcopy(full_result)
+                        _merge_command(self.ops, self.idx_offset, full, result)
+                        _throw_client_bulk_write_exception(full, self.verbose_results)
+                    else:
+                        _merge_command(self.ops, self.idx_offset, full_result, result)
+                        break
+
                 result["error"] = None
                 result["writeErrors"] = []
                 if result.get("nErrors", 0) < len(to_send_ops):
                     full_result["anySuccessful"] = True
 
-                # Make raw reply accessible for top-level command error.
+                # Top-level command error.
                 if not result["ok"]:
                     result["error"] = raw_result
                     _merge_command(self.ops, self.idx_offset, full_result, result)
@@ -628,7 +653,7 @@ class _AsyncClientBulk:
             retryable_bulk,
             session,
             operation,
-            bulk=self,  # type: ignore[arg-type]
+            bulk=self,
             operation_id=op_id,
         )
 

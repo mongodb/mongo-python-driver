@@ -69,11 +69,11 @@ def _merge_command(
     result: Mapping[str, Any],
 ) -> None:
     """Merge result of a single bulk write batch into the full result."""
-    full_result["nInserted"] += result.get("nInserted")
-    full_result["nDeleted"] += result.get("nDeleted")
-    full_result["nMatched"] += result.get("nMatched")
-    full_result["nModified"] += result.get("nModified")
-    full_result["nUpserted"] += result.get("nUpserted")
+    full_result["nInserted"] += result.get("nInserted", 0)
+    full_result["nDeleted"] += result.get("nDeleted", 0)
+    full_result["nMatched"] += result.get("nMatched", 0)
+    full_result["nModified"] += result.get("nModified", 0)
+    full_result["nUpserted"] += result.get("nUpserted", 0)
 
     if result.get("error"):
         full_result["error"] = result["error"]
