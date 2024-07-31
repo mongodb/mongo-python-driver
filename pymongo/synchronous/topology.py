@@ -686,7 +686,7 @@ class Topology:
             # Publish all remaining events before closing the event publishing thread
             while True:
                 try:
-                    event = self._events.get_nowait()
+                    event = self._events.get_nowait()  # type: ignore[attr-defined]
                 except queue.Empty:
                     break
                 else:
