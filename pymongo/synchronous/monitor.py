@@ -247,7 +247,9 @@ class Monitor(MonitorBase):
             _sanitize(error)
             sd = self._server_description
             address = sd.address
-            duration = time.monotonic() - start
+            end = time.monotonic()
+            # time.monotonic() is not monotonic
+            duration = max(0.0, end - start)
             if self._publish:
                 awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
@@ -317,7 +319,10 @@ class Monitor(MonitorBase):
         else:
             # New connection handshake or polling hello (MongoDB <4.4).
             response = conn._hello(cluster_time, None, None)
-        return response, time.monotonic() - start
+        end = time.monotonic()
+        # time.monotonic() is not monotonic
+        duration = max(0.0, end - start)
+        return response, duration
 
 
 class SrvMonitor(MonitorBase):
@@ -441,7 +446,10 @@ class _RttMonitor(MonitorBase):
                 raise Exception("_RttMonitor closed")
             start = time.monotonic()
             conn.hello()
-            return time.monotonic() - start
+            end = time.monotonic()
+            # time.monotonic() is not monotonic
+            duration = max(0.0, end - start)
+            return duration
 
 
 # Close monitors to cancel any in progress streaming checks before joining
