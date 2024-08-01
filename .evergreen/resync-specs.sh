@@ -137,6 +137,9 @@ do
     srv|SRV|initial-dns-seedlist-discovery|srv_seedlist)
       cpjson initial-dns-seedlist-discovery/tests/ srv_seedlist
       ;;
+    read-write-concern|read_write_concern)
+      cpjson read-write-concern/tests/operation read_write_concern/operation
+      ;;
     retryable-reads|retryable_reads)
       cpjson retryable-reads/tests/ retryable_reads
       ;;
