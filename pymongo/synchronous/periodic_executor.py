@@ -55,7 +55,6 @@ class PeriodicExecutor:
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._stop_soon = False
         self._thread: Optional[threading.Thread] = None
         self._name = name
         self._skip_sleep = False
@@ -130,14 +129,6 @@ class PeriodicExecutor:
         """
         self._stopped = True
 
-    def close_soon(self, dummy: Any = None) -> None:
-        """Stop after running target at least one more time. To restart, call open().
-
-        The dummy parameter allows an executor's close method to be a weakref
-        callback; see monitor.py.
-        """
-        self._stop_soon = True
-
     def join(self, timeout: Optional[int] = None) -> None:
         if self._thread is not None:
             try:
@@ -176,9 +167,6 @@ class PeriodicExecutor:
 
                 raise
 
-            if self._stop_soon:
-                with self._lock:
-                    self._stopped = True
             if self._skip_sleep:
                 self._skip_sleep = False
             else:
