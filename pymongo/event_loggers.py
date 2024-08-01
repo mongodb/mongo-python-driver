@@ -130,7 +130,7 @@ class HeartbeatLogger(monitoring.ServerHeartbeatListener):
 class TopologyLogger(monitoring.TopologyListener):
     """A simple listener that logs server topology events.
 
-    Listens for :class:`~pymongo.monitoring.TopologyOpeningEvent`,
+    Listens for :class:`~pymongo.monitoring.TopologyOpenedEvent`,
     :class:`~pymongo.monitoring.TopologyDescriptionChangedEvent`,
     and :class:`~pymongo.monitoring.TopologyClosedEvent`
     events and logs them at the `INFO` severity level using :mod:`logging`.
@@ -138,7 +138,7 @@ class TopologyLogger(monitoring.TopologyListener):
     .. versionadded:: 3.11
     """
 
-    def opened(self, event: monitoring.TopologyOpeningEvent) -> None:
+    def opened(self, event: monitoring.TopologyOpenedEvent) -> None:
         logging.info(f"Topology with id {event.topology_id} opened")
 
     def description_changed(self, event: monitoring.TopologyDescriptionChangedEvent) -> None:

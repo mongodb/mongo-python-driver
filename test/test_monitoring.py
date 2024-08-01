@@ -1238,10 +1238,8 @@ class TestEventClasses(unittest.TestCase):
 
     def test_topology_event_repr(self):
         topology_id = ObjectId("000000000000000000000001")
-        event = monitoring.TopologyOpeningEvent(topology_id)
-        self.assertEqual(
-            repr(event), "<TopologyOpeningEvent topology_id: 000000000000000000000001>"
-        )
+        event = monitoring.TopologyOpenedEvent(topology_id)
+        self.assertEqual(repr(event), "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
         event = monitoring.TopologyDescriptionChangedEvent(
             "PREV",  # type: ignore[arg-type]
             "NEW",  # type: ignore[arg-type]

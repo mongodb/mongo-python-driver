@@ -404,16 +404,16 @@ class ServerHeartbeatListener(_EventListener):
 
 class TopologyListener(_EventListener):
     """Abstract base class for topology monitoring listeners.
-    Handles `TopologyOpeningEvent`, `TopologyDescriptionChangedEvent`, and
+    Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
     `TopologyClosedEvent`.
 
     .. versionadded:: 3.3
     """
 
-    def opened(self, event: TopologyOpeningEvent) -> None:
-        """Abstract method to handle a `TopologyOpeningEvent`.
+    def opened(self, event: TopologyOpenedEvent) -> None:
+        """Abstract method to handle a `TopologyOpenedEvent`.
 
-        :param event: An instance of :class:`TopologyOpeningEvent`.
+        :param event: An instance of :class:`TopologyOpenedEvent`.
         """
         raise NotImplementedError
 
@@ -1281,7 +1281,7 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         )
 
 
-class TopologyOpeningEvent(TopologyEvent):
+class TopologyOpenedEvent(TopologyEvent):
     """Published when the topology is initialized.
 
     .. versionadded:: 3.3
@@ -1735,12 +1735,12 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_topology_opened(self, topology_id: ObjectId) -> None:
-        """Publish a TopologyOpeningEvent to all topology listeners.
+        """Publish a TopologyOpenedEvent to all topology listeners.
 
         :param topology_id: A unique identifier for the topology this server
            is a part of.
         """
-        event = TopologyOpeningEvent(topology_id)
+        event = TopologyOpenedEvent(topology_id)
         for subscriber in self.__topology_listeners:
             try:
                 subscriber.opened(event)
