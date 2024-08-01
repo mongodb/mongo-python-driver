@@ -1878,6 +1878,9 @@ class GridOutCursor(Cursor):
         next_file = super().next()
         return GridOut(self._root_collection, file_document=next_file, session=self.session)
 
+    def to_list(self) -> list[GridOut]:
+        return [x for x in self]  # noqa: C416,RUF100
+
     __next__ = next
 
     def add_option(self, *args: Any, **kwargs: Any) -> NoReturn:

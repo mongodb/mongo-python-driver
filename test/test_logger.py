@@ -14,14 +14,15 @@
 from __future__ import annotations
 
 import os
-from test import unittest
-from test.test_client import IntegrationTest
+from test import IntegrationTest, unittest
 from test.utils import single_client
 from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
+
+_IS_SYNC = True
 
 
 # https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests
@@ -42,7 +43,7 @@ class TestLogger(IntegrationTest):
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
-                list(db.test.find({}))
+                db.test.find({}).to_list()
                 cmd_succeeded_log = json_util.loads(cm.records[1].message)
                 self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 

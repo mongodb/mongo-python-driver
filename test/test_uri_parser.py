@@ -160,10 +160,6 @@ class TestURI(unittest.TestCase):
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")
         self.assertRaises(ValueError, parse_uri, "mongodb://::1", 27017)
 
-        # Extra whitespace should be visible in error message.
-        with self.assertRaisesRegex(ValueError, "'27017 '"):
-            parse_uri("mongodb://localhost:27017 ")
-
         orig: dict = {
             "nodelist": [("localhost", 27017)],
             "username": None,
@@ -535,6 +531,28 @@ class TestURI(unittest.TestCase):
         res = parse_uri(uri)
         self.assertEqual(user, res["username"])
         self.assertEqual(pwd, res["password"])
+
+    def test_do_not_include_password_in_port_message(self):
+        with self.assertRaisesRegex(ValueError, "Port must be an integer between 0 and 65535"):
+            parse_uri("mongodb://localhost:65536")
+        with self.assertRaisesRegex(
+            ValueError, "Port contains non-digit characters. Hint: username "
+        ) as ctx:
+            parse_uri("mongodb://user:PASS /@localhost:27017")
+        self.assertNotIn("PASS", str(ctx.exception))
+
+        # This "invalid" case is technically a valid URI:
+        res = parse_uri("mongodb://user:1234/@localhost:27017")
+        self.assertEqual([("user", 1234)], res["nodelist"])
+        self.assertEqual("@localhost:27017", res["database"])
+
+    def test_port_with_whitespace(self):
+        with self.assertRaisesRegex(ValueError, "Port contains whitespace character: ' '"):
+            parse_uri("mongodb://localhost:27017 ")
+        with self.assertRaisesRegex(ValueError, "Port contains whitespace character: ' '"):
+            parse_uri("mongodb://localhost: 27017")
+        with self.assertRaisesRegex(ValueError, r"Port contains whitespace character: '\\n'"):
+            parse_uri("mongodb://localhost:27\n017")
 
 
 if __name__ == "__main__":
