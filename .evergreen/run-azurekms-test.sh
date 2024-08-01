@@ -6,7 +6,7 @@ echo "Copying files ... begin"
 export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
 export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
 export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
+export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
 bash ./.evergreen/setup-encryption.sh
 tar czf /tmp/mongo-python-driver.tgz .
 # shellcheck disable=SC2088
@@ -21,3 +21,4 @@ echo "Running test ... begin"
 AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/hatch.sh test:test-eg" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Running test ... end"
+bash ./evergreen/teardown-encryption.sh

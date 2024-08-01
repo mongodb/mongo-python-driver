@@ -2126,7 +2126,7 @@ tasks:
             script: |
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
               bash ./.evergreen/setup-encryption.sh
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
 
@@ -3145,7 +3145,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - debian10-small
+    - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
