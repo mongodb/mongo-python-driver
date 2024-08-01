@@ -214,11 +214,11 @@ class TestCursor(IntegrationTest):
         cursor = coll.find().max_await_time_ms(99)
         self.assertEqual(None, cursor._max_await_time_ms)
 
-        # If cursor is tailable_and timeout is unset
+        # If cursor is tailable_await and timeout is unset
         cursor = coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(None, cursor._max_await_time_ms)
 
-        # If cursor is tailable_and timeout is set
+        # If cursor is tailable_await and timeout is set
         cursor = coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99)
         self.assertEqual(99, cursor._max_await_time_ms)
 
@@ -282,7 +282,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
-        # Non tailable_with max_await_time_ms
+        # Non tailable_await with max_await_time_ms
         coll.find(batch_size=1).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
@@ -292,7 +292,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Non tailable_with max_time_ms
+        # Non tailable_await with max_time_ms
         coll.find(batch_size=1).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
@@ -302,7 +302,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
 
-        # Non tailable_with both max_time_ms and max_await_time_ms
+        # Non tailable_await with both max_time_ms and max_await_time_ms
         coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)

@@ -1760,7 +1760,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
               received. For details, see the `tailable cursor documentation
               <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_.
             - :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` - the result
-              of this find call will be a tailable cursor with the flag
+              of this find call will be a tailable cursor with the await flag
               set. The server will wait for a few seconds after returning the
               full result set so that it can capture and return additional data
               added during the query.

@@ -289,7 +289,7 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 lines[i] = lines[i].replace("Sync", "")
         if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
             lines[i] = lines[i].replace("async ", "")
-        if "await " in lines[i]:
+        if "await " in lines[i] and "tailable" not in lines[i]:
             lines[i] = lines[i].replace("await ", "")
     for i in range(len(lines)):
         for k in docstring_replacements:  # type: ignore[assignment]
