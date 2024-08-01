@@ -44,7 +44,7 @@ from pymongo.asynchronous.helpers import _handle_reauth
 if TYPE_CHECKING:
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
-from pymongo.client_bulk_shared import (
+from pymongo._client_bulk_shared import (
     _merge_command,
     _throw_client_bulk_write_exception,
 )

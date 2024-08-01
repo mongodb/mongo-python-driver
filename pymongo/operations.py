@@ -462,7 +462,7 @@ class _UpdateOp:
         self,
         filter: Mapping[str, Any],
         doc: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool,
+        upsert: Optional[bool],
         collation: Optional[_CollationIn],
         array_filters: Optional[list[Mapping[str, Any]]],
         hint: Optional[_IndexKeyHint],
@@ -542,7 +542,7 @@ class UpdateOne(_UpdateOp):
         self,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
+        upsert: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -584,6 +584,8 @@ class UpdateOne(_UpdateOp):
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
+        if self._upsert is None:
+            self._upsert = False
         bulkobj.add_update(
             self._filter,
             self._doc,
@@ -621,7 +623,7 @@ class UpdateMany(_UpdateOp):
         self,
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        upsert: bool = False,
+        upsert: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -663,6 +665,8 @@ class UpdateMany(_UpdateOp):
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
+        if self._upsert is None:
+            self._upsert = False
         bulkobj.add_update(
             self._filter,
             self._doc,

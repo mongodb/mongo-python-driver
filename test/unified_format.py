@@ -297,68 +297,6 @@ def parse_bulk_write_result(result):
     }
 
 
-def parse_client_bulk_write_models(models):
-    return_models = []
-    for model in models:
-        if model.get("insertOne"):
-            insert_opts = model["insertOne"]
-            new_model = InsertOne(
-                namespace=insert_opts["namespace"],
-                document=insert_opts["document"],
-            )
-        if model.get("updateOne"):
-            update_opts = model["updateOne"]
-            new_model = UpdateOne(
-                namespace=update_opts["namespace"],
-                filter=update_opts["filter"],
-                update=update_opts["update"],
-                upsert=update_opts.get("upsert", None),
-                collation=update_opts.get("collation", None),
-                array_filters=update_opts.get("arrayFilters", None),
-                hint=update_opts.get("hint", None),
-            )
-        if model.get("updateMany"):
-            update_opts = model["updateMany"]
-            new_model = UpdateMany(
-                namespace=update_opts["namespace"],
-                filter=update_opts["filter"],
-                update=update_opts["update"],
-                upsert=update_opts.get("upsert", None),
-                collation=update_opts.get("collation", None),
-                array_filters=update_opts.get("arrayFilters", None),
-                hint=update_opts.get("hint", None),
-            )
-        if model.get("replaceOne"):
-            replace_opts = model["replaceOne"]
-            new_model = ReplaceOne(
-                namespace=replace_opts["namespace"],
-                filter=replace_opts["filter"],
-                replacement=replace_opts["replacement"],
-                upsert=replace_opts.get("upsert", False),
-                collation=replace_opts.get("collation", None),
-                hint=replace_opts.get("hint", None),
-            )
-        if model.get("deleteOne"):
-            delete_opts = model["deleteOne"]
-            new_model = DeleteOne(
-                namespace=delete_opts["namespace"],
-                filter=delete_opts["filter"],
-                collation=delete_opts.get("collation", None),
-                hint=delete_opts.get("hint", None),
-            )
-        if model.get("deleteMany"):
-            delete_opts = model["deleteMany"]
-            new_model = DeleteMany(
-                namespace=delete_opts["namespace"],
-                filter=delete_opts["filter"],
-                collation=delete_opts.get("collation", None),
-                hint=delete_opts.get("hint", None),
-            )
-        return_models.append(new_model)
-
-    return return_models
-
-
 def parse_client_bulk_write_individual(op_type, result):
     if op_type == "insert":
         return {"insertedId": result.inserted_id}
@@ -1617,7 +1555,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 target_opname = "try_next"
             if target_opname == "client_bulk_write":
                 target_opname = "bulk_write"
-                arguments["models"] = parse_client_bulk_write_models(arguments["models"])
             try:
                 cmd = getattr(target, target_opname)
             except AttributeError:
