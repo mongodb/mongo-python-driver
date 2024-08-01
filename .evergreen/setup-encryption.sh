@@ -4,6 +4,7 @@ set -o xtrace
 
 if [ -z "${DRIVERS_TOOLS}" ]; then
     echo "Missing environment variable DRIVERS_TOOLS"
+    exit 1
 fi
 
 TARGET=""
