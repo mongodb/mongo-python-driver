@@ -688,7 +688,7 @@ class Topology:
             # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
             self.__events_executor.join(1)
-            process_events_queue(weakref.ref(self._events))
+            process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
 
     @property
     def description(self) -> TopologyDescription:
