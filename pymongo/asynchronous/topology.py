@@ -687,7 +687,7 @@ class Topology:
         if self._publish_server or self._publish_tp:
             # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
-            self.__events_executor.join()
+            self.__events_executor.join(1)
             process_events_queue(weakref.ref(self._events))
 
     @property
