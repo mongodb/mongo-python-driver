@@ -77,7 +77,7 @@ _IS_SYNC = True
 _pymongo_dir = str(Path(__file__).parent)
 
 
-def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue], closed: bool) -> bool:
+def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
     q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
@@ -86,9 +86,6 @@ def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue], closed: 
         try:
             event = q.get_nowait()
         except queue.Empty:
-            # Publish all remaining events before closing the event publishing thread
-            if closed:
-                return False
             break
         else:
             fn, args = event
@@ -160,7 +157,7 @@ class Topology:
             weak: weakref.ReferenceType[queue.Queue]
 
             def target() -> bool:
-                return process_events_queue(weak, self._closed)
+                return process_events_queue(weak)
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
@@ -686,7 +683,10 @@ class Topology:
             )
             self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
         if self._publish_server or self._publish_tp:
+            # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
+            self.__events_executor.join()
+            process_events_queue(weakref.ref(self._events))
 
     @property
     def description(self) -> TopologyDescription:
