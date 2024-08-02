@@ -475,6 +475,11 @@ class EntityMapUtil:
         if entity_type == "client":
             kwargs: dict = {}
             observe_events = spec.get("observeEvents", [])
+
+            # The unified tests use topologyOpeningEvent, we use topologyOpenedEvent
+            for i in range(len(observe_events)):
+                if "topologyOpeningEvent" == observe_events[i]:
+                    observe_events[i] = "topologyOpenedEvent"
             ignore_commands = spec.get("ignoreCommandMonitoringEvents", [])
             observe_sensitive_commands = spec.get("observeSensitiveCommands", False)
             ignore_commands = [cmd.lower() for cmd in ignore_commands]
@@ -924,6 +929,10 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
+        elif name == "topologyOpeningEvent":
+            self.test.assertIsInstance(actual, TopologyOpenedEvent)
+        elif name == "topologyClosedEvent":
+            self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 
