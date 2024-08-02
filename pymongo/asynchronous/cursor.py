@@ -123,7 +123,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
-        :meth:`~pymongo.collection.AsyncCollection.find` instead.
+        :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -256,7 +256,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
     @property
     def collection(self) -> AsyncCollection[_DocumentType]:
-        """The :class:`~pymongo.collection.AsyncCollection` that this
+        """The :class:`~pymongo.asynchronous.collection.AsyncCollection` that this
         :class:`AsyncCursor` is iterating.
         """
         return self._collection
@@ -322,7 +322,7 @@ class AsyncCursor(Generic[_DocumentType]):
         return base
 
     def _clone_base(self, session: Optional[AsyncClientSession]) -> AsyncCursor:
-        """Creates an empty Cursor object for information to be copied into."""
+        """Creates an empty AsyncCursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
     def _query_spec(self) -> Mapping[str, Any]:
@@ -527,7 +527,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> AsyncCursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor_shared.CursorType.TAILABLE_AWAIT` cursor. For all other
+        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
@@ -606,12 +606,12 @@ class AsyncCursor(Generic[_DocumentType]):
             self._empty = False
             if isinstance(index, slice):
                 if index.step is not None:
-                    raise IndexError("Cursor instances do not support slice steps")
+                    raise IndexError("AsyncCursor instances do not support slice steps")
 
                 skip = 0
                 if index.start is not None:
                     if index.start < 0:
-                        raise IndexError("Cursor instances do not support negative indices")
+                        raise IndexError("AsyncCursor instances do not support negative indices")
                     skip = index.start
 
                 if index.stop is not None:
@@ -631,15 +631,15 @@ class AsyncCursor(Generic[_DocumentType]):
 
             if isinstance(index, int):
                 if index < 0:
-                    raise IndexError("Cursor instances do not support negative indices")
+                    raise IndexError("AsyncCursor instances do not support negative indices")
                 clone = self.clone()
                 clone.skip(index + self._skip)
                 clone.limit(-1)  # use a hard limit
                 clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
                 for doc in clone:  # type: ignore[attr-defined]
                     return doc
-                raise IndexError("no such item for Cursor instance")
-            raise TypeError("index %r cannot be applied to Cursor instances" % index)
+                raise IndexError("no such item for AsyncCursor instance")
+            raise TypeError("index %r cannot be applied to AsyncCursor instances" % index)
         else:
             raise IndexError("AsyncCursor does not support indexing")
 
@@ -727,7 +727,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         Text search results can be sorted by relevance::
 
-            cursor = await db.test.find(
+            cursor = db.test.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
@@ -761,7 +761,7 @@ class AsyncCursor(Generic[_DocumentType]):
           `explain command
           <https://mongodb.com/docs/manual/reference/command/explain/>`_,
           ``allPlansExecution``. To use a different verbosity use
-          :meth:`~pymongo.database.AsyncDatabase.command` to run the explain
+          :meth:`~pymongo.asynchronous.database.AsyncDatabase.command` to run the explain
           command directly.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
@@ -796,7 +796,7 @@ class AsyncCursor(Generic[_DocumentType]):
         already been used.
 
         `index` should be an index as passed to
-        :meth:`~pymongo.collection.AsyncCollection.create_index`
+        :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
         (e.g. ``[('field', ASCENDING)]``) or the name of the index.
         If `index` is ``None`` any existing hint for this query is
         cleared. The last hint applied to this cursor takes precedence
@@ -838,7 +838,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         Raises :class:`TypeError` if `code` is not an instance of
         :class:`str`. Raises :class:`~pymongo.errors.InvalidOperation` if this
-        :class:`Cursor` has already been used. Only the last call to
+        :class:`AsyncCursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`AsyncCursor` has any effect.
 
         .. note:: MongoDB 4.4 drops support for :class:`~bson.code.Code`
@@ -936,7 +936,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
     @property
     def session(self) -> Optional[AsyncClientSession]:
-        """The cursor's :class:`~pymongo.client_session.AsyncClientSession`, or None.
+        """The cursor's :class:`~pymongo.asynchronous.client_session.AsyncClientSession`, or None.
 
         .. versionadded:: 3.6
         """
@@ -1063,13 +1063,13 @@ class AsyncCursor(Generic[_DocumentType]):
         :class:`str`.
 
         The :meth:`distinct` method obeys the
-        :attr:`~pymongo.collection.AsyncCollection.read_preference` of the
-        :class:`~pymongo.collection.AsyncCollection` instance on which
-        :meth:`~pymongo.collection.AsyncCollection.find` was called.
+        :attr:`~pymongo.asynchronous.collection.AsyncCollection.read_preference` of the
+        :class:`~pymongo.asynchronous.collection.AsyncCollection` instance on which
+        :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` was called.
 
         :param key: name of key for which we want to get the distinct values
 
-        .. seealso:: :meth:`pymongo.collection.AsyncCollection.distinct`
+        .. seealso:: :meth:`pymongo.asynchronous.collection.AsyncCollection.distinct`
         """
         options: dict[str, Any] = {}
         if self._spec:
@@ -1111,7 +1111,7 @@ class AsyncCursor(Generic[_DocumentType]):
                 await self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
-            # self._killed to True ensures Cursor.alive will be
+            # self._killed to True ensures AsyncCursor.alive will be
             # False. No need to re-raise.
             if (
                 exc.code in _CURSOR_CLOSED_ERRORS
@@ -1316,7 +1316,7 @@ class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.AsyncCollection.find_raw_batches`
+        see :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_raw_batches`
         instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.

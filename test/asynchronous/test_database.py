@@ -116,10 +116,10 @@ class TestDatabaseNoConnect(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = db[0]
         # next fails
-        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, "'AsyncDatabase' object is not iterable"):
             _ = next(db)
         # .next() fails
-        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, "'AsyncDatabase' object is not iterable"):
             _ = db.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(db, Iterable)
