@@ -27,7 +27,7 @@ from test.unified_format import generate_test_classes
 TEST_PATH = Path(__file__).parent / "retryable_reads/unified"
 
 # Generate unified tests.
-# PyMongo does not supportMapReduce, ListDatabaseObjects or ListCollectionObjects.
+# PyMongo does not support MapReduce, ListDatabaseObjects or ListCollectionObjects.
 globals().update(
     generate_test_classes(
         TEST_PATH,
