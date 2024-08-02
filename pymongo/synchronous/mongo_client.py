@@ -2235,13 +2235,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.DeleteOne`, or
         :class:`~pymongo.operations.DeleteMany`).
 
-          >>> async for doc in db.test.find({}):
+          >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           ...
-          >>> async for doc in db.coll.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
@@ -2252,7 +2252,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           ...           DeleteOne(namespace="db.test", filter={'x': 1}),
           ...           InsertOne(namespace="db.coll", document={'y': 2}),
           ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
-          >>> result = await client.bulk_write(models=models)
+          >>> result = client.bulk_write(models=models)
           >>> result.inserted_count
           2
           >>> result.deleted_count
@@ -2261,14 +2261,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_ids
           {3: ObjectId('54f62ee28891e756a6e1abd5')}
-          >>> async for doc in db.test.find({}):
+          >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
           ...
-          >>> async for doc in db.coll.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
@@ -2276,7 +2276,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :param models: A list of write operation instances.
         :param session: (optional) An instance of
-            :class:`~pymongo.synchronous.client_session.ClientSession`.
+            :class:`~pymongo.client_session.ClientSession`.
         :param ordered: If ``True`` (the default), requests will be
             performed on the server serially, in the order provided. If an error
             occurs all remaining operations are aborted. If ``False``, requests
