@@ -48,6 +48,15 @@ def _sanitize(error: Exception) -> None:
     error.__cause__ = None
 
 
+def _monotonic_duration(start: float) -> float:
+    """Return the duration since the given start time.
+
+    Accounts for buggy platforms where time.monotonic() is not monotonic.
+    See PYTHON-4600.
+    """
+    return max(0.0, time.monotonic() - start)
+
+
 class MonitorBase:
     def __init__(self, topology: Topology, name: str, interval: int, min_interval: float):
         """Base class to do periodic work on a background thread.
@@ -247,7 +256,7 @@ class Monitor(MonitorBase):
             _sanitize(error)
             sd = self._server_description
             address = sd.address
-            duration = time.monotonic() - start
+            duration = _monotonic_duration(start)
             if self._publish:
                 awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
@@ -317,7 +326,8 @@ class Monitor(MonitorBase):
         else:
             # New connection handshake or polling hello (MongoDB <4.4).
             response = await conn._hello(cluster_time, None, None)
-        return response, time.monotonic() - start
+        duration = _monotonic_duration(start)
+        return response, duration
 
 
 class SrvMonitor(MonitorBase):
@@ -441,7 +451,7 @@ class _RttMonitor(MonitorBase):
                 raise Exception("_RttMonitor closed")
             start = time.monotonic()
             await conn.hello()
-            return time.monotonic() - start
+            return _monotonic_duration(start)
 
 
 # Close monitors to cancel any in progress streaming checks before joining
