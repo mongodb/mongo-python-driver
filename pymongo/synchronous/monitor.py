@@ -451,8 +451,7 @@ class _RttMonitor(MonitorBase):
                 raise Exception("_RttMonitor closed")
             start = time.monotonic()
             conn.hello()
-            duration = _monotonic_duration(start)
-            return duration
+            return _monotonic_duration(start)
 
 
 # Close monitors to cancel any in progress streaming checks before joining
