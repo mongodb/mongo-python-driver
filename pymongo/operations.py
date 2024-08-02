@@ -584,13 +584,11 @@ class UpdateOne(_UpdateOp):
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        if self._upsert is None:
-            self._upsert = False
         bulkobj.add_update(
             self._filter,
             self._doc,
             False,
-            self._upsert,
+            self._upsert is True,
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
@@ -665,13 +663,11 @@ class UpdateMany(_UpdateOp):
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        if self._upsert is None:
-            self._upsert = False
         bulkobj.add_update(
             self._filter,
             self._doc,
             True,
-            self._upsert,
+            self._upsert is True,
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,

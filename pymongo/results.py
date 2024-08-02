@@ -36,7 +36,7 @@ class _WriteResult:
 
     def _raise_if_unacknowledged(self, property_name: str) -> None:
         """Raise an exception on property access if unacknowledged."""
-        if not self.__acknowledged:
+        if self.__acknowledged is False:
             raise InvalidOperation(
                 f"A value for {property_name} is not available when "
                 "the write is unacknowledged. Check the "
@@ -139,8 +139,7 @@ class UpdateResult(_WriteResult):
     @property
     def matched_count(self) -> int:
         """The number of documents matched for this update."""
-        if self.acknowledged is not None:
-            self._raise_if_unacknowledged("matched_count")
+        self._raise_if_unacknowledged("matched_count")
         assert self.__raw_result is not None
         if self.acknowledged is not None and self.upserted_id is not None:
             return 0
@@ -149,8 +148,7 @@ class UpdateResult(_WriteResult):
     @property
     def modified_count(self) -> int:
         """The number of documents modified."""
-        if self.acknowledged is not None:
-            self._raise_if_unacknowledged("modified_count")
+        self._raise_if_unacknowledged("modified_count")
         assert self.__raw_result is not None
         return cast(int, self.__raw_result.get("nModified"))
 
@@ -159,8 +157,7 @@ class UpdateResult(_WriteResult):
         """The _id of the inserted document if an upsert took place. Otherwise
         ``None``.
         """
-        if self.acknowledged is not None:
-            self._raise_if_unacknowledged("upserted_id")
+        self._raise_if_unacknowledged("upserted_id")
         assert self.__raw_result is not None
         if self.acknowledged is not None:
             return self.__raw_result.get("upserted")
@@ -199,8 +196,7 @@ class DeleteResult(_WriteResult):
     @property
     def deleted_count(self) -> int:
         """The number of documents deleted."""
-        if self.acknowledged is not None:
-            self._raise_if_unacknowledged("deleted_count")
+        self._raise_if_unacknowledged("deleted_count")
         return self.__raw_result.get("n", 0)
 
 

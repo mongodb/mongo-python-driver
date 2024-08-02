@@ -1251,7 +1251,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
-        elif c2s == "requests" or c2s == "models":
+        elif "bulk_write" in opname and (c2s == "requests" or c2s == "models"):
             # Parse each request into a bulk write model.
             requests = []
             for request in arguments[c2s]:
