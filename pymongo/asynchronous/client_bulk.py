@@ -465,12 +465,12 @@ class _AsyncClientBulk:
                     if doc["ok"] and self.verbose_results:
                         if op_type == "insert":
                             inserted_id = op["document"]["_id"]
-                            res = InsertOneResult(inserted_id)  # type: ignore[assignment]
+                            res = InsertOneResult(inserted_id, acknowledged=True)  # type: ignore[assignment]
                         if op_type in ["update", "replace"]:
                             op_type = "update"
-                            res = UpdateResult(doc)  # type: ignore[assignment]
+                            res = UpdateResult(doc, acknowledged=True, in_client_bulk=True)  # type: ignore[assignment]
                         if op_type == "delete":
-                            res = DeleteResult(doc)  # type: ignore[assignment]
+                            res = DeleteResult(doc, acknowledged=True)  # type: ignore[assignment]
                         full_result[f"{op_type}Results"][original_index] = res
 
             except Exception as exc:

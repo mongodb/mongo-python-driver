@@ -28,7 +28,7 @@ class _WriteResult:
 
     __slots__ = ("__acknowledged",)
 
-    def __init__(self, acknowledged: Optional[bool] = None) -> None:
+    def __init__(self, acknowledged: bool) -> None:
         self.__acknowledged = acknowledged
 
     def __repr__(self) -> str:
@@ -36,7 +36,7 @@ class _WriteResult:
 
     def _raise_if_unacknowledged(self, property_name: str) -> None:
         """Raise an exception on property access if unacknowledged."""
-        if self.__acknowledged is False:
+        if not self.__acknowledged:
             raise InvalidOperation(
                 f"A value for {property_name} is not available when "
                 "the write is unacknowledged. Check the "
@@ -45,12 +45,11 @@ class _WriteResult:
             )
 
     @property
-    def acknowledged(self) -> Optional[bool]:
+    def acknowledged(self) -> bool:
         """Is this the result of an acknowledged write operation?
 
         The :attr:`acknowledged` attribute will be ``False`` when using
-        ``WriteConcern(w=0)``, ``None`` for an individual write
-        result within a `ClientBulkWriteResult`, otherwise ``True``.
+        ``WriteConcern(w=0)``, otherwise ``True``.
 
         .. note::
           If the :attr:`acknowledged` attribute is ``False`` all other
@@ -72,7 +71,7 @@ class InsertOneResult(_WriteResult):
 
     __slots__ = ("__inserted_id",)
 
-    def __init__(self, inserted_id: Any, acknowledged: Optional[bool] = None) -> None:
+    def __init__(self, inserted_id: Any, acknowledged: bool) -> None:
         self.__inserted_id = inserted_id
         super().__init__(acknowledged)
 
@@ -120,12 +119,19 @@ class UpdateResult(_WriteResult):
     :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
     """
 
-    __slots__ = ("__raw_result",)
+    __slots__ = (
+        "__raw_result",
+        "__in_client_bulk",
+    )
 
     def __init__(
-        self, raw_result: Optional[Mapping[str, Any]], acknowledged: Optional[bool] = None
+        self,
+        raw_result: Optional[Mapping[str, Any]],
+        acknowledged: bool,
+        in_client_bulk: bool = False,
     ):
         self.__raw_result = raw_result
+        self.__in_client_bulk = in_client_bulk
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
@@ -141,7 +147,7 @@ class UpdateResult(_WriteResult):
         """The number of documents matched for this update."""
         self._raise_if_unacknowledged("matched_count")
         assert self.__raw_result is not None
-        if self.acknowledged is not None and self.upserted_id is not None:
+        if not self.__in_client_bulk and self.upserted_id is not None:
             return 0
         return self.__raw_result.get("n", 0)
 
@@ -159,12 +165,9 @@ class UpdateResult(_WriteResult):
         """
         self._raise_if_unacknowledged("upserted_id")
         assert self.__raw_result is not None
-        if self.acknowledged is not None:
-            return self.__raw_result.get("upserted")
-        else:
-            if self.__raw_result.get("upserted"):
-                return self.__raw_result["upserted"]["_id"]
-        return None
+        if self.__in_client_bulk and self.__raw_result.get("upserted"):
+            return self.__raw_result["upserted"]["_id"]
+        return self.__raw_result.get("upserted", None)
 
     @property
     def did_upsert(self) -> bool:
@@ -181,7 +184,7 @@ class DeleteResult(_WriteResult):
 
     __slots__ = ("__raw_result",)
 
-    def __init__(self, raw_result: Mapping[str, Any], acknowledged: Optional[bool] = None) -> None:
+    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super().__init__(acknowledged)
 
