@@ -643,6 +643,7 @@ class Topology:
         :exc:`~.errors.InvalidOperation`.
         """
         with self._lock:
+            old_td = self._description
             for server in self._servers.values():
                 server.close()
 
@@ -662,7 +663,6 @@ class Topology:
         # Publish only after releasing the lock.
         if self._publish_tp:
             assert self._events is not None
-            old_td = self._description
             self._description = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 {},
