@@ -82,20 +82,24 @@ class _OCSPCache:
                 return
 
             this_update = _this_update(value)
+            if this_update is None:
+                return
             now = _datetime.now(tz=timezone.utc)
             if this_update.tzinfo is None:
                 # Make naive to match cryptography.
                 now = now.replace(tzinfo=None)
             # Do nothing if the response is invalid.
-            if not this_update <= now < next_update:
+            if not (this_update <= now < next_update):
                 return
 
             # Cache new response OR update cached response if new response
             # has longer validity.
             cached_value = self._data.get(cache_key, None)
-            if cached_value is None or (
-                _next_update(cached_value) is not None and _next_update(cached_value) < next_update
-            ):
+            if cached_value is None:
+                self._data[cache_key] = value
+                return
+            cached_next_update = _next_update(cached_value)
+            if cached_next_update is not None and cached_next_update < next_update:
                 self._data[cache_key] = value
 
     def __getitem__(self, item: OCSPRequest) -> OCSPResponse:
@@ -112,6 +116,8 @@ class _OCSPCache:
             # Return cached response if it is still valid.
             this_update = _this_update(value)
             next_update = _next_update(value)
+            assert this_update is not None
+            assert next_update is not None
             now = _datetime.now(tz=timezone.utc)
             if this_update.tzinfo is None:
                 # Make naive to match cryptography.

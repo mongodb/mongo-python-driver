@@ -278,11 +278,11 @@ def _verify_response(issuer: Certificate, response: OCSPResponse) -> int:
     # https://tools.ietf.org/rfc/rfc5019.txt?
     this_update = _this_update(response)
     now = _datetime.now(tz=timezone.utc)
-    if this_update.tzinfo is None:
+    if this_update and this_update.tzinfo is None:
         # Make naive to match cryptography.
         now = now.replace(tzinfo=None)
     # RFC6960, Section 3.2, Number 5
-    if this_update > now:
+    if this_update and this_update > now:
         _LOGGER.debug("thisUpdate is in the future")
         return 0
     # RFC6960, Section 3.2, Number 6
