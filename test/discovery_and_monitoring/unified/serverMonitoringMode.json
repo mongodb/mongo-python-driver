@@ -463,8 +463,7 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "serverHeartbeatStartedEvent",
-                    "serverHeartbeatSucceededEvent",
-                    "serverHeartbeatFailedEvent"
+                    "serverHeartbeatSucceededEvent"
                   ]
                 }
               },
