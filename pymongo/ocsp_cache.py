@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 def _next_update(value: OCSPResponse) -> Optional[_datetime]:
     """Compat helper to return the response's next_update_utc."""
+    # Added in cryptography 43.0.0.
     if hasattr(value, "next_update_utc"):
         return value.next_update_utc
     return value.next_update
@@ -36,6 +37,7 @@ def _next_update(value: OCSPResponse) -> Optional[_datetime]:
 
 def _this_update(value: OCSPResponse) -> Optional[_datetime]:
     """Compat helper to return the response's this_update_utc."""
+    # Added in cryptography 43.0.0.
     if hasattr(value, "this_update_utc"):
         return value.this_update_utc
     return value.this_update
@@ -122,8 +124,6 @@ class _OCSPCache:
             if this_update.tzinfo is None:
                 # Make naive to match cryptography.
                 now = now.replace(tzinfo=None)
-            assert this_update is not None
-            assert next_update is not None
             if this_update <= now < next_update:
                 return value
 
