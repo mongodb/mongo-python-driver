@@ -267,8 +267,6 @@ class Monitor(MonitorBase):
                 _debug_log(
                     _SDAM_LOGGER,
                     topologyId=self._topology._topology_id,
-                    # driverConnectionId=conn.id,
-                    # serverConnectionId=conn.server_connection_id,
                     serverHost=address[0],
                     serverPort=address[1],
                     awaited=awaited,
