@@ -673,7 +673,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method.
-        See the documentation for :meth:`~pymongo.database.AsyncDatabase.create_collection` for all valid options.
+        See the documentation for :meth:`~pymongo.asynchronous.database.AsyncDatabase.create_collection` for all valid options.
 
         :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
 
@@ -978,7 +978,7 @@ class ClientEncryption(Generic[_DocumentType]):
     def get_keys(self) -> AsyncCursor[RawBSONDocument]:
         """Get all of the data keys.
 
-        :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key
+        :return: An instance of :class:`~pymongo.asynchronous.cursor.AsyncCursor` over the data key
           documents.
 
         .. versionadded:: 4.2

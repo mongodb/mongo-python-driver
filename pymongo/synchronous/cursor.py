@@ -527,7 +527,7 @@ class Cursor(Generic[_DocumentType]):
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor_shared.CursorType.TAILABLE_AWAIT` cursor. For all other
+        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
@@ -712,27 +712,27 @@ class Cursor(Generic[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
-            async for doc in collection.find().sort('field', pymongo.ASCENDING):
+            for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
-            async for doc in collection.find().sort([
+            for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
         Text search results can be sorted by relevance::
 
-            cursor = await db.test.find(
+            cursor = db.test.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
-            async for doc in cursor:
+            for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -831,7 +831,7 @@ class Cursor(Generic[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
@@ -904,7 +904,7 @@ class Cursor(Generic[_DocumentType]):
 
         With regular cursors, simply use a for loop instead of :attr:`alive`::
 
-            async for doc in collection.find():
+            for doc in collection.find():
                 print(doc)
 
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
@@ -1285,11 +1285,11 @@ class Cursor(Generic[_DocumentType]):
         self.close()
 
     def to_list(self) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
+        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
 
         To use::
 
-          >>> await cursor.to_list()
+          >>> cursor.to_list()
 
         If the cursor is empty or has no more results, an empty list will be returned.
 

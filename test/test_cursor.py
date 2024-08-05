@@ -232,7 +232,7 @@ class TestCursor(IntegrationTest):
         listener = AllowListEventListener("find", "getMore")
         coll = (rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
 
-        # Tailable_await defaults.
+        # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
         # find
         self.assertFalse("maxTimeMS" in listener.started_events[0].command)
@@ -240,7 +240,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with max_await_time_ms set.
+        # Tailable_with max_await_time_ms set.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
@@ -251,7 +251,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
-        # Tailable_await with max_time_ms and make sure list() works on synchronous cursors
+        # Tailable_with max_time_ms and make sure list() works on synchronous cursors
         if _IS_SYNC:
             list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))  # type: ignore[call-overload]
         else:
@@ -265,7 +265,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with both max_time_ms and max_await_time_ms
+        # Tailable_with both max_time_ms and max_await_time_ms
         (
             coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
             .max_time_ms(99)
