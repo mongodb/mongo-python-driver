@@ -33,6 +33,7 @@ from collections import abc, defaultdict
 from test import (
     IntegrationTest,
     client_context,
+    client_knobs,
     unittest,
 )
 from test.helpers import (
@@ -1051,8 +1052,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "retryable-writes" in cls.TEST_SPEC["description"]:
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(
+            heartbeat_frequency=0.1,
+            min_heartbeat_interval=0.1,
+            kill_cursor_frequency=0.1,
+            events_queue_frequency=0.1,
+        )
+        cls.knobs.enable()
+
     @classmethod
     def tearDownClass(cls):
+        cls.knobs.disable()
         for client in cls.mongos_clients:
             client.close()
         super().tearDownClass()

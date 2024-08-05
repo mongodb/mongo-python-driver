@@ -684,6 +684,7 @@ class Topology:
         :exc:`~.errors.InvalidOperation`.
         """
         with self._lock:
+            old_td = self._description
             for server in self._servers.values():
                 server.close()
 
