@@ -726,14 +726,14 @@ class Topology:
             self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
-                _SDAM_LOGGER, topologyId=self._topology_id, message=_SDAMStatusMessage.STOP_TOPOLOGY
-            )
-            _debug_log(
                 _SDAM_LOGGER,
                 topologyId=self._topology_id,
                 previousDescription=old_td,
                 newDescription=self._description,
                 message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
+            )
+            _debug_log(
+                _SDAM_LOGGER, topologyId=self._topology_id, message=_SDAMStatusMessage.STOP_TOPOLOGY
             )
 
         if self._publish_server or self._publish_tp:
