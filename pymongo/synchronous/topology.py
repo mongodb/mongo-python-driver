@@ -702,7 +702,6 @@ class Topology:
             self._closed = True
 
         # Publish only after releasing the lock.
-        old_td = self._description
         if self._publish_tp:
             assert self._events is not None
             self._description = TopologyDescription(
