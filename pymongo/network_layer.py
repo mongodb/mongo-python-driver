@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import socket
 import struct
+from ssl import SSLSocket
 from typing import (
     TYPE_CHECKING,
     Union,
@@ -35,15 +36,31 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-async def async_sendall(socket: Union[socket.socket, _sslConn], buf: bytes) -> None:
-    timeout = socket.gettimeout()
-    socket.settimeout(0.0)
+async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
+    timeout = sock.gettimeout()
+    sock.settimeout(0.0)
     loop = asyncio.get_event_loop()
     try:
-        await asyncio.wait_for(loop.sock_sendall(socket, buf), timeout=timeout)  # type: ignore[arg-type]
+        if isinstance(sock, SSLSocket):
+            await asyncio.wait_for(_async_sendall_ssl(sock, buf), timeout=timeout)
+        else:
+            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
     finally:
-        socket.settimeout(timeout)
+        sock.settimeout(timeout)
 
 
-def sendall(socket: Union[socket.socket, _sslConn], buf: bytes) -> None:
-    socket.sendall(buf)
+async def _async_sendall_ssl(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
+    view = memoryview(buf)
+    total_length = len(buf)
+    total_sent = 0
+    while total_sent < total_length:
+        try:
+            sent = sock.send(view[total_sent:])
+        except BLOCKING_IO_ERRORS:
+            await asyncio.sleep(0.5)
+            sent = 0
+        total_sent += sent
+
+
+def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
+    sock.sendall(buf)
