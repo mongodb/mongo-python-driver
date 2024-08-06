@@ -1377,6 +1377,7 @@ class TestCursor(IntegrationTest):
         oplog = self.client.local.oplog.rs
         last = oplog.find().sort("$natural", pymongo.DESCENDING).limit(-1).next()
         ts = last["ts"]
+        # Set maxAwaitTimeMS=1 to speed up the test and avoid blocking on the noop writer.
         c = oplog.find(
             {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         ).max_await_time_ms(1)
@@ -1391,6 +1392,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_change_streams
     def test_command_cursor_to_list(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
         c = self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
         self.addCleanup(c.close)
         docs = c.to_list()
@@ -1398,6 +1400,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_change_streams
     def test_command_cursor_to_list_empty(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
         c = self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
         self.addCleanup(c.close)
         docs = c.to_list()
