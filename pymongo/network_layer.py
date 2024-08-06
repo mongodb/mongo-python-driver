@@ -18,16 +18,19 @@ from __future__ import annotations
 import asyncio
 import socket
 import struct
-from ssl import SSLSocket
+import sys
+from asyncio import AbstractEventLoop, Future
+from ssl import SSLError, SSLSocket, SSLWantReadError, SSLWantWriteError
 from typing import (
-    TYPE_CHECKING,
     Union,
 )
 
 from pymongo import ssl_support
 
-if TYPE_CHECKING:
+try:
     from pymongo.pyopenssl_context import _sslConn
+except ImportError:
+    _sslConn = SSLSocket  # type: ignore
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
@@ -41,15 +44,49 @@ async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> Non
     sock.settimeout(0.0)
     loop = asyncio.get_event_loop()
     try:
-        if isinstance(sock, SSLSocket):
-            await asyncio.wait_for(_async_sendall_ssl(sock, buf), timeout=timeout)
+        if isinstance(sock, (SSLSocket, _sslConn)):
+            if sys.platform == "win32":
+                await asyncio.wait_for(_async_sendall_ssl_windows(sock, buf), timeout=timeout)
+            else:
+                await asyncio.wait_for(_async_sendall_ssl(sock, buf, loop), timeout=timeout)
         else:
-            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
+            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)
     finally:
         sock.settimeout(timeout)
 
 
-async def _async_sendall_ssl(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
+async def _async_sendall_ssl(
+    sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
+) -> None:
+    fd = sock.fileno()
+    sent = 0
+
+    def _is_ready(fut: Future) -> None:
+        if fut.done():
+            return
+        loop.remove_writer(fd)
+        loop.remove_reader(fd)
+        fut.set_result(None)
+
+    while sent < len(buf):
+        try:
+            sent += sock.send(buf)
+        except BLOCKING_IO_ERRORS as exc:
+            fd = sock.fileno()
+            # Check for closed socket.
+            if fd == -1:
+                raise SSLError("Underlying socket has been closed") from None
+            if isinstance(exc, SSLWantReadError):
+                fut = loop.create_future()
+                loop.add_reader(fd, _is_ready, fut)
+                await fut
+            if isinstance(exc, SSLWantWriteError):
+                fut = loop.create_future()
+                loop.add_writer(fd, _is_ready, fut)
+                await fut
+
+
+async def _async_sendall_ssl_windows(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     view = memoryview(buf)
     total_length = len(buf)
     total_sent = 0
