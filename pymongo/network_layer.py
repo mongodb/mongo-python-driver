@@ -39,7 +39,7 @@ try:
 except ImportError:
     _HAVE_PYOPENSSL = False
     _sslConn = SSLSocket  # type: ignore
-    from pymongo.ssl_support import (
+    from pymongo.ssl_support import (  # type: ignore[assignment]
         BLOCKING_IO_LOOKUP_ERROR,
         BLOCKING_IO_READ_ERROR,
         BLOCKING_IO_WRITE_ERROR,
