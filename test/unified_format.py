@@ -1839,7 +1839,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.message)
-                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
+                client = data.pop("clientId", data.pop("topologyId"))
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
