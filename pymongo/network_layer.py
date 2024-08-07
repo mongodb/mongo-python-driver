@@ -20,7 +20,7 @@ import socket
 import struct
 import sys
 from asyncio import AbstractEventLoop, Future
-from ssl import SSLError, SSLSocket, SSLWantReadError, SSLWantWriteError
+from ssl import SSLError, SSLSocket
 from typing import (
     Union,
 )
@@ -28,15 +28,28 @@ from typing import (
 from pymongo import ssl_support
 
 try:
-    from pymongo.pyopenssl_context import _sslConn
+    from pymongo.pyopenssl_context import (
+        BLOCKING_IO_LOOKUP_ERROR,
+        BLOCKING_IO_READ_ERROR,
+        BLOCKING_IO_WRITE_ERROR,
+        _sslConn,
+    )
+
+    _HAVE_PYOPENSSL = True
 except ImportError:
+    _HAVE_PYOPENSSL = False
     _sslConn = SSLSocket  # type: ignore
+    from pymongo.ssl_support import (
+        BLOCKING_IO_LOOKUP_ERROR,
+        BLOCKING_IO_READ_ERROR,
+        BLOCKING_IO_WRITE_ERROR,
+    )
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 _POLL_TIMEOUT = 0.5
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
-BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
+BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
@@ -62,10 +75,10 @@ async def _async_sendall_ssl(
     sent = 0
 
     def _is_ready(fut: Future) -> None:
-        if fut.done():
-            return
         loop.remove_writer(fd)
         loop.remove_reader(fd)
+        if fut.done():
+            return
         fut.set_result(None)
 
     while sent < len(buf):
@@ -76,16 +89,22 @@ async def _async_sendall_ssl(
             # Check for closed socket.
             if fd == -1:
                 raise SSLError("Underlying socket has been closed") from None
-            if isinstance(exc, SSLWantReadError):
+            if isinstance(exc, BLOCKING_IO_READ_ERROR):
                 fut = loop.create_future()
                 loop.add_reader(fd, _is_ready, fut)
                 await fut
-            if isinstance(exc, SSLWantWriteError):
+            if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
                 fut = loop.create_future()
+                loop.add_writer(fd, _is_ready, fut)
+                await fut
+            if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
+                fut = loop.create_future()
+                loop.add_reader(fd, _is_ready, fut)
                 loop.add_writer(fd, _is_ready, fut)
                 await fut
 
 
+# The default Windows asyncio event loop does not support loop.add_reader/add_writer: https://docs.python.org/3/library/asyncio-platforms.html#asyncio-platform-support
 async def _async_sendall_ssl_windows(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     view = memoryview(buf)
     total_length = len(buf)
