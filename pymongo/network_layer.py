@@ -20,12 +20,18 @@ import socket
 import struct
 import sys
 from asyncio import AbstractEventLoop, Future
-from ssl import SSLError, SSLSocket
 from typing import (
     Union,
 )
 
 from pymongo import ssl_support
+
+try:
+    from ssl import SSLError, SSLSocket
+
+    _HAVE_SSL = True
+except ImportError:
+    _HAVE_SSL = False
 
 try:
     from pymongo.pyopenssl_context import (
@@ -57,13 +63,13 @@ async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> Non
     sock.settimeout(0.0)
     loop = asyncio.get_event_loop()
     try:
-        if isinstance(sock, (SSLSocket, _sslConn)):
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             if sys.platform == "win32":
                 await asyncio.wait_for(_async_sendall_ssl_windows(sock, buf), timeout=timeout)
             else:
                 await asyncio.wait_for(_async_sendall_ssl(sock, buf, loop), timeout=timeout)
         else:
-            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)
+            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
     finally:
         sock.settimeout(timeout)
 
