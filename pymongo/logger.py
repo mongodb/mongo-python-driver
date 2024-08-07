@@ -141,8 +141,7 @@ class LogMessage:
         )
 
         is_sensitive_hello = (
-            self._kwargs.get("commandName", None) in _HELLO_COMMANDS
-            and is_speculative_authenticate
+            self._kwargs.get("commandName", None) in _HELLO_COMMANDS and is_speculative_authenticate
         )
 
         return is_sensitive_command or is_sensitive_hello
