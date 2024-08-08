@@ -288,13 +288,14 @@ class Monitor(MonitorBase):
         """
         address = self._server_description.address
         sd = self._server_description
+
+        # XXX: "awaited" could be incorrectly set to True in the rare case
+        # the pool checkout closes and recreates a connection.
         awaited = bool(
             self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
         )
         if self._publish:
             assert self._listeners is not None
-            # XXX: "awaited" could be incorrectly set to True in the rare case
-            # the pool checkout closes and recreates a connection.
             self._listeners.publish_server_heartbeat_started(address, awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
@@ -333,7 +334,7 @@ class Monitor(MonitorBase):
                     serverHost=address[0],
                     serverPort=address[1],
                     awaited=awaited,
-                    durationMS=round_trip_time,
+                    durationMS=round_trip_time * 1000,
                     reply=response.document,
                     message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
                 )
