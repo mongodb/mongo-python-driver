@@ -1,6 +1,6 @@
 {
   "description": "legacy timeouts continue to work if timeoutMS is not set",
-  "schemaVersion": "1.9",
+  "schemaVersion": "1.0",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4"
@@ -280,7 +280,7 @@
         {
           "topologies": [
             "replicaset",
-            "sharded-replicaset"
+            "sharded"
           ]
         }
       ],
