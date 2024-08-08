@@ -166,7 +166,6 @@ class ObjectId:
 
     def __generate(self) -> None:
         """Generate a new value for this ObjectId."""
-        # 3 bytes inc
         with ObjectId._inc_lock:
             inc = ObjectId._inc
             ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
