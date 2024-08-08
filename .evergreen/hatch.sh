@@ -15,7 +15,7 @@ if $PYTHON_BINARY -m hatch --version; then
 else # No toolchain hatch present, set up virtualenv before installing hatch
     createvirtualenv "$PYTHON_BINARY" hatchenv
     trap "deactivate; rm -rf hatchenv" EXIT HUP
-    python -m pip install -q hatch
+    python -m pip install --prefer-binary -q hatch
     run_hatch() {
       python -m hatch run "$@"
     }
