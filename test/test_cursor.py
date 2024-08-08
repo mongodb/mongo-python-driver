@@ -232,7 +232,7 @@ class TestCursor(IntegrationTest):
         listener = AllowListEventListener("find", "getMore")
         coll = (rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
 
-        # Tailable_await defaults.
+        # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
         # find
         self.assertFalse("maxTimeMS" in listener.started_events[0].command)
@@ -240,7 +240,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with max_await_time_ms set.
+        # Tailable_with max_await_time_ms set.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
@@ -251,7 +251,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
-        # Tailable_await with max_time_ms and make sure list() works on synchronous cursors
+        # Tailable_with max_time_ms and make sure list() works on synchronous cursors
         if _IS_SYNC:
             list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))  # type: ignore[call-overload]
         else:
@@ -265,7 +265,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with both max_time_ms and max_await_time_ms
+        # Tailable_with both max_time_ms and max_await_time_ms
         (
             coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
             .max_time_ms(99)
@@ -1371,41 +1371,39 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
+    @client_context.require_version_min(4, 0)
     @client_context.require_replica_set
     def test_to_list_tailable(self):
         oplog = self.client.local.oplog.rs
         last = oplog.find().sort("$natural", pymongo.DESCENDING).limit(-1).next()
         ts = last["ts"]
-
+        # Set maxAwaitTimeMS=1 to speed up the test and avoid blocking on the noop writer.
         c = oplog.find(
             {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
-        )
-
+        ).max_await_time_ms(1)
+        self.addCleanup(c.close)
         docs = c.to_list()
-
         self.assertGreaterEqual(len(docs), 1)
 
     def test_to_list_empty(self):
         c = self.db.does_not_exist.find()
-
         docs = c.to_list()
-
         self.assertEqual([], docs)
 
-    @client_context.require_replica_set
+    @client_context.require_change_streams
     def test_command_cursor_to_list(self):
-        c = self.db.test.aggregate([{"$changeStream": {}}])
-
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addCleanup(c.close)
         docs = c.to_list()
-
         self.assertGreaterEqual(len(docs), 0)
 
-    @client_context.require_replica_set
+    @client_context.require_change_streams
     def test_command_cursor_to_list_empty(self):
-        c = self.db.does_not_exist.aggregate([{"$changeStream": {}}])
-
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addCleanup(c.close)
         docs = c.to_list()
-
         self.assertEqual([], docs)
 
 

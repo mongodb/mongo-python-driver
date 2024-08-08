@@ -416,7 +416,8 @@ class TestPooling(_TestPoolingBase):
     @client_context.require_failCommand_fail_point
     def test_csot_timeout_message(self):
         client = rs_or_single_client(appName="connectionTimeoutApp")
-        # Mock a connection failing due to timeout.
+        self.addCleanup(client.close)
+        # Mock an operation failing due to pymongo.timeout().
         mock_connection_timeout = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -440,8 +441,8 @@ class TestPooling(_TestPoolingBase):
     @client_context.require_failCommand_fail_point
     def test_socket_timeout_message(self):
         client = rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
-
-        # Mock a connection failing due to timeout.
+        self.addCleanup(client.close)
+        # Mock an operation failing due to socketTimeoutMS.
         mock_connection_timeout = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -469,7 +470,7 @@ class TestPooling(_TestPoolingBase):
         4, 9, 0
     )  # configureFailPoint does not allow failure on handshake before 4.9, fixed in SERVER-49336
     def test_connection_timeout_message(self):
-        # Mock a connection failing due to timeout.
+        # Mock a connection creation failing due to timeout.
         mock_connection_timeout = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -481,9 +482,18 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
+        client = rs_or_single_client(
+            connectTimeoutMS=500,
+            socketTimeoutMS=500,
+            appName="connectionTimeoutApp",
+            heartbeatFrequencyMS=1000000,
+        )
+        self.addCleanup(client.close)
+        client.admin.command("ping")
+        pool = get_pool(client)
+        pool.reset_without_pause()
         with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
-                client = rs_or_single_client(connectTimeoutMS=500, appName="connectionTimeoutApp")
                 client.admin.command("ping")
 
         self.assertTrue(

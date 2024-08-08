@@ -645,6 +645,7 @@ class Topology:
         :exc:`~.errors.InvalidOperation`.
         """
         async with self._lock:
+            old_td = self._description
             for server in self._servers.values():
                 await server.close()
 
@@ -664,9 +665,30 @@ class Topology:
         # Publish only after releasing the lock.
         if self._publish_tp:
             assert self._events is not None
+            self._description = TopologyDescription(
+                TOPOLOGY_TYPE.Unknown,
+                {},
+                self._description.replica_set_name,
+                self._description.max_set_version,
+                self._description.max_election_id,
+                self._description._topology_settings,
+            )
+            self._events.put(
+                (
+                    self._listeners.publish_topology_description_changed,
+                    (
+                        old_td,
+                        self._description,
+                        self._topology_id,
+                    ),
+                )
+            )
             self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
         if self._publish_server or self._publish_tp:
+            # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
+            self.__events_executor.join(1)
+            process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
 
     @property
     def description(self) -> TopologyDescription:
