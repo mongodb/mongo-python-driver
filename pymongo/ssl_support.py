@@ -53,6 +53,9 @@ if HAVE_SSL:
     IPADDR_SAFE = True
     SSLError = _ssl.SSLError
     BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
+    BLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
+    BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
+    BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     def get_ssl_context(
         certfile: Optional[str],

@@ -30,6 +30,8 @@ IS_PYOPENSSL = False
 
 # Errors raised by SSL sockets when in non-blocking mode.
 BLOCKING_IO_ERRORS = (_ssl.SSLWantReadError, _ssl.SSLWantWriteError)
+BLOCKING_IO_READ_ERROR = _ssl.SSLWantReadError
+BLOCKING_IO_WRITE_ERROR = _ssl.SSLWantWriteError
 
 # Base Exception class
 SSLError = _ssl.SSLError
