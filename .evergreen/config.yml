@@ -2854,7 +2854,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9", "pypy3.9", "pypy3.10"]
+    python-version: ["3.8", "3.9"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
