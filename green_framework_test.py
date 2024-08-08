@@ -63,9 +63,12 @@ def run(framework_name, *args):
     arg_list = list(args)
 
     # Never run async tests with a framework
-    for i in range(len(arg_list) - 1):
-        if "-m" in arg_list[i]:
-            arg_list[i + 1] = f"not default_async and {arg_list[i + 1]}"
+    if len(arg_list) <= 1:
+        arg_list.extend(["-m", "not default_async"])
+    else:
+        for i in range(len(arg_list) - 1):
+            if "-m" in arg_list[i]:
+                arg_list[i + 1] = f"not default_async and {arg_list[i + 1]}"
 
     # Run the tests.
     sys.exit(pytest.main(arg_list))
