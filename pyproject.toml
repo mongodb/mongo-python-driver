@@ -108,6 +108,7 @@ markers = [
     "load_balancer: load balancer tests",
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
+    "default_async: default async test suite",
 ]
 
 [tool.mypy]
