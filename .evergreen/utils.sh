@@ -43,7 +43,7 @@ find_python3() {
 createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
-    rm -rf $VENVPATH
+
     # Prefer venv
     VENV="$PYTHON -m venv"
     if [ "$(uname -s)" = "Darwin" ]; then
