@@ -378,7 +378,8 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
 
     async def _setup_namespace_test_models(self):
-        # See prose test specification for details on these calculations.
+        # See prose test specification below for details on these calculations.
+        # https://github.com/mongodb/specifications/tree/master/source/crud/tests#details-on-size-calculations
         _EXISTING_BULK_WRITE_BYTES = 1122
         _OPERATION_DOC_BYTES = 57
         _NAMESPACE_DOC_BYTES = 217
