@@ -13,6 +13,7 @@ if $PYTHON_BINARY -m hatch --version; then
       $PYTHON_BINARY -m hatch run "$@"
     }
 else # No toolchain hatch present, set up virtualenv before installing hatch
+    # Use a random venv name because the encryption tasks run this script multiple times in the same run.
     ENV_NAME=hatchenv-$RANDOM
     createvirtualenv "$PYTHON_BINARY" $ENV_NAME
     # shellcheck disable=SC2064
