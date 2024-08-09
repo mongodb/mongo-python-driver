@@ -95,6 +95,7 @@ replacements = {
     "aclose": "close",
     "async-transactions-ref": "transactions-ref",
     "async-snapshot-reads-ref": "snapshot-reads-ref",
+    "default_async": "default",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

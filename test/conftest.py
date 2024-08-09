@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from test import setup, teardown
+from test import pytest_conf, setup, teardown
 
 import pytest
 
@@ -14,7 +14,4 @@ def test_setup_and_teardown():
     teardown()
 
 
-def pytest_collection_modifyitems(items, config):
-    for item in items:
-        if not any(item.iter_markers()):
-            item.add_marker("default")
+pytest_collection_modifyitems = pytest_conf.pytest_collection_modifyitems
