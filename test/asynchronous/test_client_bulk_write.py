@@ -378,6 +378,13 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
 
     async def _setup_namespace_test_models(self, max_message_size_bytes):
+        # When compression is enabled, max_message_size is
+        # smaller to account for compression message header.
+        if async_client_context.client_options.get("compressors"):
+            max_message_size_bytes = self.max_message_size_bytes - 16
+        else:
+            max_message_size_bytes = self.max_message_size_bytes
+
         ops_bytes = max_message_size_bytes - 1122
         num_models = ops_bytes // self.max_bson_object_size
         remainder_bytes = ops_bytes % self.max_bson_object_size
@@ -408,12 +415,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await async_rs_or_single_client(event_listeners=[listener])
         self.addAsyncCleanup(client.aclose)
 
-        if async_client_context.client_options.get("compressors"):
-            max_message_size = self.max_message_size_bytes - 16
-        else:
-            max_message_size = self.max_message_size_bytes
-
-        num_models, models = await self._setup_namespace_test_models(max_message_size)
+        num_models, models = await self._setup_namespace_test_models()
         models.append(
             InsertOne(
                 namespace="db.coll",
@@ -444,12 +446,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await async_rs_or_single_client(event_listeners=[listener])
         self.addAsyncCleanup(client.aclose)
 
-        if async_client_context.client_options.get("compressors"):
-            max_message_size = self.max_message_size_bytes - 16
-        else:
-            max_message_size = self.max_message_size_bytes
-
-        num_models, models = await self._setup_namespace_test_models(max_message_size)
+        num_models, models = await self._setup_namespace_test_models()
         c_repeated = "c" * 200
         namespace = f"db.{c_repeated}"
         models.append(
