@@ -2854,7 +2854,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9", "pypy3.9", "pypy3.10"]
+    python-version: ["3.8", "3.9"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -3153,7 +3153,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel87-small
+  run_on: debian11-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README

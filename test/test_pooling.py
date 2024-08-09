@@ -413,7 +413,7 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
 
-    @client_context.require_failCommand_fail_point
+    @client_context.require_failCommand_appName
     def test_csot_timeout_message(self):
         client = rs_or_single_client(appName="connectionTimeoutApp")
         self.addCleanup(client.close)
@@ -438,7 +438,7 @@ class TestPooling(_TestPoolingBase):
 
         self.assertTrue("(configured timeouts: timeoutMS: 500.0ms" in str(error.exception))
 
-    @client_context.require_failCommand_fail_point
+    @client_context.require_failCommand_appName
     def test_socket_timeout_message(self):
         client = rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
         self.addCleanup(client.close)
@@ -465,10 +465,7 @@ class TestPooling(_TestPoolingBase):
             in str(error.exception)
         )
 
-    @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(
-        4, 9, 0
-    )  # configureFailPoint does not allow failure on handshake before 4.9, fixed in SERVER-49336
+    @client_context.require_failCommand_appName
     def test_connection_timeout_message(self):
         # Mock a connection creation failing due to timeout.
         mock_connection_timeout = {

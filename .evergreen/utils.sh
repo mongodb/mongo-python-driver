@@ -67,7 +67,6 @@ createvirtualenv () {
 
     export PIP_QUIET=1
     python -m pip install --upgrade pip
-    python -m pip install --upgrade hatch
 }
 
 # Usage:
