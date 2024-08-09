@@ -378,6 +378,11 @@ class TestClientBulkWriteCRUD(IntegrationTest):
             client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
 
     def _setup_namespace_test_models(self):
+        # See prose test specification for details on these calculations.
+        _EXISTING_BULK_WRITE_BYTES = 1122
+        _OPERATION_DOC_BYTES = 57
+        _NAMESPACE_DOC_BYTES = 217
+
         # When compression is enabled, max_message_size is
         # smaller to account for compression message header.
         if client_context.client_options.get("compressors"):
@@ -385,12 +390,12 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         else:
             max_message_size_bytes = self.max_message_size_bytes
 
-        ops_bytes = max_message_size_bytes - 1122
+        ops_bytes = max_message_size_bytes - _EXISTING_BULK_WRITE_BYTES
         num_models = ops_bytes // self.max_bson_object_size
         remainder_bytes = ops_bytes % self.max_bson_object_size
 
         models = []
-        b_repeated = "b" * (self.max_bson_object_size - 57)
+        b_repeated = "b" * (self.max_bson_object_size - _OPERATION_DOC_BYTES)
         for _ in range(num_models):
             models.append(
                 InsertOne(
@@ -398,9 +403,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        if remainder_bytes >= 217:
+        if remainder_bytes >= _NAMESPACE_DOC_BYTES:
             num_models += 1
-            b_repeated = "b" * (remainder_bytes - 57)
+            b_repeated = "b" * (remainder_bytes - _OPERATION_DOC_BYTES)
             models.append(
                 InsertOne(
                     namespace="db.coll",
@@ -526,6 +531,8 @@ class TestClientBulkWriteTimeout(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point
     def test_timeout_in_multi_batch_bulk_write(self):
+        _OVERHEAD = 500
+
         internal_client = rs_or_single_client(timeoutMS=None)
         self.addCleanup(internal_client.close)
 
@@ -541,7 +548,7 @@ class TestClientBulkWriteTimeout(IntegrationTest):
         with self.fail_point(fail_command):
             models = []
             num_models = int(self.max_message_size_bytes / self.max_bson_object_size + 1)
-            b_repeated = "b" * (self.max_bson_object_size - 500)
+            b_repeated = "b" * (self.max_bson_object_size - _OVERHEAD)
             for _ in range(num_models):
                 models.append(
                     InsertOne(
