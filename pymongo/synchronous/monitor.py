@@ -270,7 +270,7 @@ class Monitor(MonitorBase):
                     serverHost=address[0],
                     serverPort=address[1],
                     awaited=awaited,
-                    durationMS=duration,
+                    durationMS=duration * 1000,
                     failure=error,
                     message=_SDAMStatusMessage.HEARTBEAT_FAIL,
                 )
