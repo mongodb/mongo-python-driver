@@ -1380,7 +1380,6 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
-    @async_client_context.require_version_min(4, 0)
     @async_client_context.require_replica_set
     async def test_to_list_tailable(self):
         oplog = self.client.local.oplog.rs
@@ -1391,7 +1390,10 @@ class TestCursor(AsyncIntegrationTest):
             {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         ).max_await_time_ms(1)
         self.addAsyncCleanup(c.close)
-        docs = await c.to_list()
+        # Wait for the change to be read.
+        docs = []
+        while not docs:
+            docs = await c.to_list()
         self.assertGreaterEqual(len(docs), 1)
 
     async def test_to_list_empty(self):
