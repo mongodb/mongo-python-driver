@@ -377,7 +377,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         with self.assertRaises(DocumentTooLarge):
             await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
 
-    async def _setup_namespace_test_models(self, max_message_size_bytes):
+    async def _setup_namespace_test_models(self):
         # When compression is enabled, max_message_size is
         # smaller to account for compression message header.
         if async_client_context.client_options.get("compressors"):
