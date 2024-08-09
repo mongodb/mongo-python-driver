@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import atexit
+import logging
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
@@ -26,6 +27,7 @@ from pymongo._csot import MovingMinimum
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
+from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -257,10 +259,21 @@ class Monitor(MonitorBase):
             sd = self._server_description
             address = sd.address
             duration = _monotonic_duration(start)
+            awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
             if self._publish:
-                awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
+            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _SDAM_LOGGER,
+                    topologyId=self._topology._topology_id,
+                    serverHost=address[0],
+                    serverPort=address[1],
+                    awaited=awaited,
+                    durationMS=duration * 1000,
+                    failure=error,
+                    message=_SDAMStatusMessage.HEARTBEAT_FAIL,
+                )
             self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
@@ -274,22 +287,32 @@ class Monitor(MonitorBase):
         Returns a ServerDescription, or raises an exception.
         """
         address = self._server_description.address
+        sd = self._server_description
+
+        # XXX: "awaited" could be incorrectly set to True in the rare case
+        # the pool checkout closes and recreates a connection.
+        awaited = bool(
+            self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
+        )
         if self._publish:
             assert self._listeners is not None
-            sd = self._server_description
-            # XXX: "awaited" could be incorrectly set to True in the rare case
-            # the pool checkout closes and recreates a connection.
-            awaited = bool(
-                self._pool.conns
-                and self._stream
-                and sd.is_server_type_known
-                and sd.topology_version
-            )
             self._listeners.publish_server_heartbeat_started(address, awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
         with self._pool.checkout() as conn:
+            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _SDAM_LOGGER,
+                    topologyId=self._topology._topology_id,
+                    driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
+                    serverHost=address[0],
+                    serverPort=address[1],
+                    awaited=awaited,
+                    message=_SDAMStatusMessage.HEARTBEAT_START,
+                )
+
             self._cancel_context = conn.cancel_context
             response, round_trip_time = self._check_with_socket(conn)
             if not response.awaitable:
@@ -301,6 +324,19 @@ class Monitor(MonitorBase):
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_succeeded(
                     address, round_trip_time, response, response.awaitable
+                )
+            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _SDAM_LOGGER,
+                    topologyId=self._topology._topology_id,
+                    driverConnectionId=conn.id,
+                    serverConnectionId=conn.server_connection_id,
+                    serverHost=address[0],
+                    serverPort=address[1],
+                    awaited=awaited,
+                    durationMS=round_trip_time * 1000,
+                    reply=response.document,
+                    message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
                 )
             return sd
 

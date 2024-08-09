@@ -1,5 +1,5 @@
 {
-  "description": "Standalone with default maxWireVersion of 0 is upgraded to one with maxWireVersion 21",
+  "description": "Standalone with default maxWireVersion of 0 is upgraded to one with maxWireVersion 6",
   "uri": "mongodb://a",
   "phases": [
     {
@@ -35,7 +35,7 @@
             "helloOk": true,
             "isWritablePrimary": true,
             "minWireVersion": 0,
-            "maxWireVersion": 21
+            "maxWireVersion": 6
           }
         ]
       ],
