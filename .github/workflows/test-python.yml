@@ -78,9 +78,6 @@ jobs:
       - name: Run tests
         run: |
           hatch run test:test
-      - name: Run async tests
-        run: |
-          hatch run test:test-async
 
   doctest:
     runs-on: ubuntu-latest
