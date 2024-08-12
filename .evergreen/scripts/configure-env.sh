@@ -17,8 +17,8 @@ fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
 
-if [ -f "$SCRIPT_DIR/.env" ]; then
-  echo "Reading $SCRIPT_DIR/.env file"
+if [ -f "$SCRIPT_DIR/env.sh" ]; then
+  echo "Reading $SCRIPT_DIR/env.sh file"
   . "$SCRIPT_DIR/env.sh"
   exit 0
 fi
