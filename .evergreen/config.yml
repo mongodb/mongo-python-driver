@@ -40,6 +40,8 @@ functions:
         include_expansions_in_env: ["is_patch", "project", "version_id"]
         binary: bash
         working_dir: "src"
+        args:
+          - .evergreen/scripts/configure-env.sh
 
   "prepare resources":
     - command: shell.exec
