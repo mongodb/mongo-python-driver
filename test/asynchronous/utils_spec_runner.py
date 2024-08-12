@@ -535,7 +535,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         self.pool_listener = pool_listener
         self.server_listener = server_listener
         # Close the client explicitly to avoid having too many threads open.
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         # Create session0 and session1.
         sessions = {}

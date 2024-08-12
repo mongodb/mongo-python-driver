@@ -354,7 +354,7 @@ class TestCursor(AsyncIntegrationTest):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
@@ -1262,7 +1262,7 @@ class TestCursor(AsyncIntegrationTest):
 
         listener = AllowListEventListener("killCursors")
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test_close_kills_cursors
 
         # Add some test data.
@@ -1301,7 +1301,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_timeout_kills_cursor_asynchronously(self):
         listener = AllowListEventListener("killCursors")
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
@@ -1359,7 +1359,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener("find", "getMore")
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
             "test", read_preference=ReadPreference.PRIMARY_PREFERRED
@@ -1424,7 +1424,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
-        batches = await (await c.find_raw_batches()).sort("_id").to_list()
+        batches = await c.find_raw_batches().sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1440,7 +1440,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
-                    (await client[self.db.name].test.find_raw_batches(session=session)).sort("_id")
+                    await client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
@@ -1470,9 +1470,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
-            batches = (
-                await (await client[self.db.name].test.find_raw_batches()).sort("_id").to_list()
-            )
+            batches = await client[self.db.name].test.find_raw_batches().sort("_id").to_list()
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1493,7 +1491,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
-            batches = await (await db.test.find_raw_batches(session=session)).sort("_id").to_list()
+            batches = await db.test.find_raw_batches(session=session).sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1504,18 +1502,18 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     async def test_explain(self):
         c = self.db.test
         await c.insert_one({})
-        explanation = await (await c.find_raw_batches()).explain()
+        explanation = await c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     async def test_empty(self):
         await self.db.test.drop()
-        cursor = await self.db.test.find_raw_batches()
+        cursor = self.db.test.find_raw_batches()
         with self.assertRaises(StopAsyncIteration):
             await anext(cursor)
 
     async def test_clone(self):
         await self.db.test.insert_one({})
-        cursor = await self.db.test.find_raw_batches()
+        cursor = self.db.test.find_raw_batches()
         # Copy of a RawBatchCursor is also a RawBatchCursor, not a Cursor.
         self.assertIsInstance(await anext(cursor.clone()), bytes)
         self.assertIsInstance(await anext(copy.copy(cursor)), bytes)
@@ -1525,24 +1523,22 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         c = self.db.test
         await c.drop()
         await c.insert_many({"_id": i} for i in range(200))
-        result = b"".join(
-            await (await c.find_raw_batches(cursor_type=CursorType.EXHAUST)).to_list()
-        )
+        result = b"".join(await c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
 
     async def test_server_error(self):
         with self.assertRaises(OperationFailure) as exc:
-            await anext(await self.db.test.find_raw_batches({"x": {"$bad": 1}}))
+            await anext(self.db.test.find_raw_batches({"x": {"$bad": 1}}))
 
         # The server response was decoded, not left raw.
         self.assertIsInstance(exc.exception.details, dict)
 
     async def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            (await self.db.test.find_raw_batches())[0]
+            self.db.test.find_raw_batches()[0]
 
     async def test_collation(self):
-        await anext(await self.db.test.find_raw_batches(collation=Collation("en_US")))
+        await anext(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
     @async_client_context.require_no_mmap  # MMAPv1 does not support read concern
     async def test_read_concern(self):
@@ -1550,7 +1546,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
             {}
         )
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
-        await anext(await c.find_raw_batches())
+        await anext(c.find_raw_batches())
 
     async def test_monitoring(self):
         listener = EventListener()
@@ -1560,7 +1556,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many([{"_id": i} for i in range(10)])
 
         listener.reset()
-        cursor = await c.find_raw_batches(batch_size=4)
+        cursor = c.find_raw_batches(batch_size=4)
 
         # First raw batch of 4 documents.
         await anext(cursor)
@@ -1766,7 +1762,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         c = client.pymongo_test.test
         await c.delete_many({})
         await c.insert_many([{"_id": i} for i in range(3)])

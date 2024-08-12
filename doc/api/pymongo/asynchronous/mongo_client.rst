@@ -6,7 +6,7 @@
 
    .. autoclass:: pymongo.asynchronous.mongo_client.AsyncMongoClient(host='localhost', port=27017, document_class=dict, tz_aware=False, connect=True, **kwargs)
 
-      .. automethod:: aclose
+      .. automethod:: close
 
       .. describe:: c[db_name] || c.db_name
 

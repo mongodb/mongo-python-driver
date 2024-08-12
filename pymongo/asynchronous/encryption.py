@@ -299,7 +299,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         self.client_ref = None
         self.key_vault_coll = None
         if self.mongocryptd_client:
-            await self.mongocryptd_client.aclose()
+            await self.mongocryptd_client.close()
             self.mongocryptd_client = None
 
 
@@ -439,7 +439,7 @@ class _Encrypter:
         self._closed = True
         await self._auto_encrypter.close()
         if self._internal_client:
-            await self._internal_client.aclose()
+            await self._internal_client.close()
             self._internal_client = None
 
 

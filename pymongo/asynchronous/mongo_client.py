@@ -1378,7 +1378,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.aclose()
+        await self.close()
 
     # See PYTHON-3084.
     __iter__ = None
@@ -1514,7 +1514,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # command.
             pass
 
-    async def aclose(self) -> None:
+    async def close(self) -> None:
         """Cleanup client resources and disconnect from MongoDB.
 
         End all server sessions created by this client by sending one or more
