@@ -531,7 +531,6 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_sync
     async def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
 
@@ -568,6 +567,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
                 w="majority",
             )
             self.addAsyncCleanup(client.aclose)
+            await client.admin.command("ping")  # Init the client first.
             with self.assertRaises(ClientBulkWriteException) as context:
                 await client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, NetworkTimeout)
