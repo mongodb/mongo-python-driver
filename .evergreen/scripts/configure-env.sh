@@ -1,4 +1,4 @@
-set +x
+set -x
 # Get the current unique version of this checkout
 if [ "$is_patch" = "true" ]; then
     CURRENT_VERSION="$(git describe)-patch-$version_id"

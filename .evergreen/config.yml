@@ -42,6 +42,11 @@ functions:
         working_dir: "src"
         args:
           - .evergreen/scripts/configure-env.sh
+    - command: shell.exec
+      params:
+        working_dir: "src/.evergreen/scripts"
+        script: |
+          ls -la
 
   "prepare resources":
     - command: shell.exec
