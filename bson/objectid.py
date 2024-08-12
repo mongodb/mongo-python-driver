@@ -29,6 +29,9 @@ from bson.errors import InvalidId
 from bson.tz_util import utc
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
+_PACK_INT = struct.Struct(">I").pack
+_PACK_INT_RANDOM = struct.Struct(">I5s").pack
+_UNPACK_INT = struct.Struct(">I").unpack
 
 
 def _raise_invalid_id(oid: str) -> NoReturn:
@@ -132,7 +135,7 @@ class ObjectId:
         if offset is not None:
             generation_time = generation_time - offset
         timestamp = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        oid = _PACK_INT(int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         return cls(oid)
 
     @classmethod
@@ -163,18 +166,12 @@ class ObjectId:
 
     def __generate(self) -> None:
         """Generate a new value for this ObjectId."""
-        # 4 bytes current time
-        oid = struct.pack(">I", int(time.time()))
-
-        # 5 bytes random
-        oid += ObjectId._random()
-
-        # 3 bytes inc
         with ObjectId._inc_lock:
-            oid += struct.pack(">I", ObjectId._inc)[1:4]
-            ObjectId._inc = (ObjectId._inc + 1) % (_MAX_COUNTER_VALUE + 1)
+            inc = ObjectId._inc
+            ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
 
-        self.__id = oid
+        # 4 bytes current time, 5 bytes random, 3 bytes inc.
+        self.__id = _PACK_INT_RANDOM(int(time.time()), ObjectId._random()) + _PACK_INT(inc)[1:4]
 
     def __validate(self, oid: Any) -> None:
         """Validate and use the given id for this ObjectId.
@@ -212,7 +209,7 @@ class ObjectId:
         represents the generation time in UTC. It is precise to the
         second.
         """
-        timestamp = struct.unpack(">I", self.__id[0:4])[0]
+        timestamp = _UNPACK_INT(self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self) -> bytes:
