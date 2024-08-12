@@ -852,6 +852,10 @@ class ClientContext:
     def max_write_batch_size(self):
         return (self.hello)["maxWriteBatchSize"]
 
+    @property
+    def max_message_size_bytes(self):
+        return (self.hello)["maxMessageSizeBytes"]
+
 
 # Reusable client context
 client_context = ClientContext()
