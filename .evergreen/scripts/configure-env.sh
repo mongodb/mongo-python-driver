@@ -23,8 +23,6 @@ if [ -f "$SCRIPT_DIR/env.sh" ]; then
   exit 0
 fi
 
-mkdir $SCRIPT_DIR
-
 cat <<EOT > "$SCRIPT_DIR/env.sh"
 export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
 export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
