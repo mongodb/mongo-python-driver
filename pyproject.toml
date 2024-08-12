@@ -70,7 +70,7 @@ zstd = ["requirements/zstd.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"
-addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
 faulthandler_timeout = 1500
@@ -108,6 +108,7 @@ markers = [
     "load_balancer: load balancer tests",
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
+    "default_async: default async test suite",
 ]
 
 [tool.mypy]

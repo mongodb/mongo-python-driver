@@ -854,6 +854,10 @@ class AsyncClientContext:
     async def max_write_batch_size(self):
         return (await self.hello)["maxWriteBatchSize"]
 
+    @property
+    async def max_message_size_bytes(self):
+        return (await self.hello)["maxMessageSizeBytes"]
+
 
 # Reusable client context
 async_client_context = AsyncClientContext()

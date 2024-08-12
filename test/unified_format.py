@@ -145,6 +145,8 @@ from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
+SKIP_CSOT_TESTS = os.getenv("SKIP_CSOT_TESTS")
+
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
 IS_INTERRUPTED = False
@@ -1953,6 +1955,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        if "csot" in self.id().lower() and SKIP_CSOT_TESTS:
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
+
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
