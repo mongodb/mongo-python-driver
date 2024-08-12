@@ -15,11 +15,17 @@ if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
     export PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
 fi
 
-SCRIPT_PATH="$PROJECT_DIRECTORY/.evergreen/scripts"
+SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
 
-mkdir $SCRIPT_PATH
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  echo "Reading $SCRIPT_DIR/.env file"
+  . "$SCRIPT_DIR/env.sh"
+  exit 0
+fi
 
-cat <<EOT > "$SCRIPT_PATH/env.sh"
+mkdir $SCRIPT_DIR
+
+cat <<EOT > "$SCRIPT_DIR/env.sh"
 export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
 export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
