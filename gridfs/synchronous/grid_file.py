@@ -1884,7 +1884,7 @@ class GridOutCursor(Cursor):
             return [x for x in self]  # noqa: C416,RUF100
         if length < 0:
             raise ValueError("length must be non-negative")
-        iter = aiter(self)
+        iter = self.__iter__()
         ret = []
         for _ in range(length):
             ret.append(iter.next())
