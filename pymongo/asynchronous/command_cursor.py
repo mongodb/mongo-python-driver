@@ -350,6 +350,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         """Get all or some available documents from the cursor."""
         if not len(self._data) and not self._killed:
             await self._refresh()
+        print("hi", len(self._data))  # noqa: T201
         if len(self._data):
             if total is None:
                 result.extend(self._data)
