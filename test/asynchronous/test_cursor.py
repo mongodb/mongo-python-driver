@@ -1439,7 +1439,7 @@ class TestCursor(AsyncIntegrationTest):
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = await db.test.aggregate([pipeline])
-        self.assertEqal(len(await result.to_list(1)), 2)
+        self.assertEqual(len(await result.to_list(1)), 2)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
