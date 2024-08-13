@@ -1431,6 +1431,7 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list()
         self.assertEqual([], docs)
 
+    @async_client_context.require_standalone
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list_length(self):
         # Set maxAwaitTimeMS=1 to speed up the test.

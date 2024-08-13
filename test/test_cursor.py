@@ -1422,6 +1422,7 @@ class TestCursor(IntegrationTest):
         docs = c.to_list()
         self.assertEqual([], docs)
 
+    @client_context.require_standalone
     @client_context.require_change_streams
     def test_command_cursor_to_list_length(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
