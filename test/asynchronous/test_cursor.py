@@ -1433,7 +1433,11 @@ class TestCursor(AsyncIntegrationTest):
 
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list_length(self):
-        raise ValueError("TODO")
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addAsyncCleanup(c.close)
+        docs = await c.to_list(1)
+        self.assertEqual(len(docs), 1)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
