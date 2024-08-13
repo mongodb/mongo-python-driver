@@ -1424,11 +1424,13 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_change_streams
     def test_command_cursor_to_list_length(self):
-        # Set maxAwaitTimeMS=1 to speed up the test.
-        c = self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addCleanup(c.close)
-        docs = c.to_list(1)
-        self.assertEqual(len(docs), 1)
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"foo": 1}, {"foo", 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = db.test.aggregate([pipeline])
+        self.assertEqal(len(result.to_list(1)), 2)
 
 
 class TestRawBatchCursor(IntegrationTest):

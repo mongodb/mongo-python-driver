@@ -1433,11 +1433,13 @@ class TestCursor(AsyncIntegrationTest):
 
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list_length(self):
-        # Set maxAwaitTimeMS=1 to speed up the test.
-        c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addAsyncCleanup(c.close)
-        docs = await c.to_list(1)
-        self.assertEqual(len(docs), 1)
+        db = self.db
+        await db.drop_collection("test")
+        await db.test.insert_many([{"foo": 1}, {"foo", 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = await db.test.aggregate([pipeline])
+        self.assertEqal(len(await result.to_list(1)), 2)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
