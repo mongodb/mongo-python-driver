@@ -1472,7 +1472,7 @@ class GridOut(io.IOBase):
     _file: Any
     _chunk_iter: Any
 
-    def open(self) -> None:
+    def open(self) -> GridOut:
         if not self._file:
             _disallow_transactions(self._session)
             self._file = self._files.find_one({"_id": self._file_id}, session=self._session)
@@ -1480,6 +1480,7 @@ class GridOut(io.IOBase):
                 raise NoFile(
                     f"no file in gridfs collection {self._files!r} with _id {self._file_id!r}"
                 )
+        return self
 
     def __getattr__(self, name: str) -> Any:
         if _IS_SYNC:
