@@ -1435,7 +1435,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_command_cursor_to_list_length(self):
         db = self.db
         await db.drop_collection("test")
-        await db.test.insert_many([{"foo": 1}, {"foo", 2}])
+        await db.test.insert_many([{"foo": 1}, {"foo": 2}])
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = await db.test.aggregate([pipeline])

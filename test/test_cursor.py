@@ -1426,7 +1426,7 @@ class TestCursor(IntegrationTest):
     def test_command_cursor_to_list_length(self):
         db = self.db
         db.drop_collection("test")
-        db.test.insert_many([{"foo": 1}, {"foo", 2}])
+        db.test.insert_many([{"foo": 1}, {"foo": 2}])
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = db.test.aggregate([pipeline])
