@@ -54,7 +54,6 @@ except ImportError:
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 _POLL_TIMEOUT = 0.5
-_SSL_RECORD_SIZE = 0x4000
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
@@ -91,7 +90,7 @@ async def _async_sendall_ssl(
 
     while sent < len(buf):
         try:
-            sent += sock.send(view[sent : sent + _SSL_RECORD_SIZE])
+            sent += sock.send(view[sent:])
         except BLOCKING_IO_ERRORS as exc:
             fd = sock.fileno()
             # Check for closed socket.
@@ -119,7 +118,7 @@ async def _async_sendall_ssl_windows(sock: Union[socket.socket, _sslConn], buf: 
     total_sent = 0
     while total_sent < total_length:
         try:
-            sent = sock.send(view[total_sent : total_sent + _SSL_RECORD_SIZE])
+            sent = sock.send(view[total_sent:])
         except BLOCKING_IO_ERRORS:
             await asyncio.sleep(0.5)
             sent = 0
