@@ -375,6 +375,9 @@ class TestTransactions(AsyncTransactionsBase):
         async def find(*args, **kwargs):
             return coll.find(*args, **kwargs)
 
+        async def find_raw_batches(*args, **kwargs):
+            return coll.find_raw_batches(*args, **kwargs)
+
         ops = [
             (coll.bulk_write, [[InsertOne[dict]({})]]),
             (coll.insert_one, [{}]),
@@ -393,7 +396,7 @@ class TestTransactions(AsyncTransactionsBase):
             (coll.aggregate, [[]]),
             (find, [{}]),
             (coll.aggregate_raw_batches, [[]]),
-            (coll.find_raw_batches, [{}]),
+            (find_raw_batches, [{}]),
             (coll.database.command, ["find", coll.name]),
         ]
         for f, args in ops:
