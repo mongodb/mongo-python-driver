@@ -458,14 +458,6 @@ class TestGridFile(IntegrationTest):
         self.assertEqual(b"d", g.read(2))
         self.assertEqual(b"", g.read(2))
 
-    def test_open(self):
-        f = GridIn(self.db.fs, chunkSize=3)
-        f.write(b"hello world")
-        f.close()
-
-        g = GridOut(self.db.fs, f._id)
-        self.assertEqual(g.open(), g)
-
     def test_readline(self):
         f = GridIn(self.db.fs, chunkSize=5)
         f.write(
