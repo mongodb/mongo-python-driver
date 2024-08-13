@@ -1400,11 +1400,11 @@ class TestCursor(IntegrationTest):
         docs = c.to_list(3)
         self.assertEqual(len(docs), 3)
 
-        # c = coll.find(batch_size=2)
-        # docs = c.to_list(3)
-        # self.assertEqual(len(docs), 3)
-        # docs = c.to_list(3)
-        # self.assertEqual(len(docs), 2)
+        c = coll.find(batch_size=2)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 2)
 
     @client_context.require_change_streams
     def test_command_cursor_to_list(self):
