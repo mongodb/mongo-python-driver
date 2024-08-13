@@ -346,12 +346,12 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         else:
             return None
 
-    async def _next_batch(self, result: list, total: int = -1) -> bool:
+    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
         """Get all or some available documents from the cursor."""
         if not len(self._data) and not self._killed:
             await self._refresh()
         if len(self._data):
-            if total == -1:
+            if total is None:
                 result.extend(self._data)
                 self._data.clear()
             else:
@@ -385,7 +385,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
-    async def to_list(self, length: int = -1) -> list[_DocumentType]:
+    async def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
 
         To use::
@@ -402,10 +402,12 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         """
         res: list[_DocumentType] = []
         remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
         while self.alive:
             if remaining != 0 and not await self._next_batch(res, remaining):
                 break
-            if length != -1:
+            if length is not None:
                 remaining = length - len(res)
         return res
 

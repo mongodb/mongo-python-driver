@@ -1878,16 +1878,15 @@ class GridOutCursor(Cursor):
         next_file = super().next()
         return GridOut(self._root_collection, file_document=next_file, session=self.session)
 
-    def to_list(self, length: int = -1) -> list[GridOut]:
+    def to_list(self, length: Optional[int] = None) -> list[GridOut]:
         """Convert the cursor to a list."""
-        if length == -1:
+        if length is None:
             return [x for x in self]  # noqa: C416,RUF100
-        if length < 0:
-            raise ValueError("length must be non-negative")
-        iter = self.__iter__()
+        if length < 1:
+            raise ValueError("to_list() length must be greater than 0")
         ret = []
         for _ in range(length):
-            ret.append(iter.next())
+            ret.append(self.next())
         return ret
 
     __next__ = next

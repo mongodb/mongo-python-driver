@@ -1260,7 +1260,7 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             raise StopAsyncIteration
 
-    async def _next_batch(self, result: list, total: int = -1) -> bool:
+    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
         """Get all or some documents from the cursor."""
         if not self._exhaust_checked:
             self._exhaust_checked = True
@@ -1268,7 +1268,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if self._empty:
             return False
         if len(self._data) or await self._refresh():
-            if total == -1:
+            if total is None:
                 result.extend(self._data)
                 self._data.clear()
             else:
@@ -1290,7 +1290,7 @@ class AsyncCursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
-    async def to_list(self, length: int = -1) -> list[_DocumentType]:
+    async def to_list(self, length: Optional[int]) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
 
         To use::
@@ -1307,10 +1307,12 @@ class AsyncCursor(Generic[_DocumentType]):
         """
         res: list[_DocumentType] = []
         remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
         while self.alive:
             if not await self._next_batch(res, remaining):
                 break
-            if length != -1:
+            if length is not None:
                 remaining = length - len(res)
         return res
 
