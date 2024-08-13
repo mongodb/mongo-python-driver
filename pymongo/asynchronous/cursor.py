@@ -1314,6 +1314,8 @@ class AsyncCursor(Generic[_DocumentType]):
                 break
             if length is not None:
                 remaining = length - len(res)
+                if remaining == 0:
+                    break
         return res
 
 
