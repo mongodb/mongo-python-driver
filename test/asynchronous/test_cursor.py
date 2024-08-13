@@ -1440,7 +1440,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
-                    await client[self.db.name].test.find_raw_batches(session=session).sort("_id")
+                    client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
