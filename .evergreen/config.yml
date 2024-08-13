@@ -2170,7 +2170,9 @@ tasks:
             shell: "bash"
             working_dir: src
             script: |
-              . .evergreen/scripts/env.sh
+              ls -la
+              ls -la .evergreen/scripts/
+              . $(pwd)/.evergreen/scripts/env.sh
               set -x
               export BASE_SHA=${revision}
               export HEAD_SHA=${github_commit}
