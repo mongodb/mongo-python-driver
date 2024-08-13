@@ -1401,6 +1401,14 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list()
         self.assertEqual([], docs)
 
+    async def test_to_list_length(self):
+        coll = self.db.test
+        await coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1416,6 +1424,14 @@ class TestCursor(AsyncIntegrationTest):
         self.addAsyncCleanup(c.close)
         docs = await c.to_list()
         self.assertEqual([], docs)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list_length(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addCleanup(c.close)
+        docs = await c.to_list(2)
+        self.assertEqual(len(docs), 2)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
