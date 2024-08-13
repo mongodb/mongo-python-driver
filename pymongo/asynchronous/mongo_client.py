@@ -1541,6 +1541,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
 
+    if not _IS_SYNC:
+        # Add support for contextlib.aclosing.
+        aclose = close
+
     async def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.asynchronous.topology.Topology` object.
 
