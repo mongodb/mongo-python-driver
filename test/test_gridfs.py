@@ -440,6 +440,12 @@ class TestGridfs(IntegrationTest):
         gout = next(cursor)
         self.assertEqual(b"test2+", gout.read())
         self.assertRaises(StopIteration, cursor.__next__)
+        cursor.rewind()
+        items = cursor.to_list()
+        self.assertEqual(len(items), 2)
+        cursor.rewind()
+        items = cursor.to_list(1)
+        self.assertEqual(len(items), 1)
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 

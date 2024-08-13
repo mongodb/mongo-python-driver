@@ -399,7 +399,7 @@ class CommandCursor(Generic[_DocumentType]):
         res: list[_DocumentType] = []
         remaining = length
         while self.alive:
-            if not self._next_batch(res, remaining):
+            if remaining != 0 and not self._next_batch(res, remaining):
                 break
             if length != -1:
                 remaining = length - len(res)
