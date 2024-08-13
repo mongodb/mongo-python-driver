@@ -94,6 +94,8 @@ BLOCKING_IO_READ_ERROR = _SSL.WantReadError
 BLOCKING_IO_WRITE_ERROR = _SSL.WantWriteError
 BLOCKING_IO_LOOKUP_ERROR = _SSL.WantX509LookupError
 
+_SSL_RECORD_SIZE = 0x4000
+
 
 def _ragged_eof(exc: BaseException) -> bool:
     """Return True if the OpenSSL.SSL.SysCallError is a ragged EOF."""
@@ -165,7 +167,9 @@ class _sslConn(_SSL.Connection):
         total_sent = 0
         while total_sent < total_length:
             try:
-                sent = self._call(super().send, view[total_sent:], flags)
+                sent = self._call(
+                    super().send, view[total_sent : total_sent + _SSL_RECORD_SIZE], flags
+                )
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
