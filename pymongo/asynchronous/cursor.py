@@ -1290,7 +1290,7 @@ class AsyncCursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
-    async def to_list(self, length: Optional[int]) -> list[_DocumentType]:
+    async def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
 
         To use::

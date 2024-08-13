@@ -1288,7 +1288,7 @@ class Cursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def to_list(self, length: Optional[int]) -> list[_DocumentType]:
+    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
 
         To use::
