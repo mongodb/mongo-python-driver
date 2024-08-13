@@ -405,10 +405,12 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         if isinstance(length, int) and length < 1:
             raise ValueError("to_list() length must be greater than 0")
         while self.alive:
-            if remaining != 0 and not await self._next_batch(res, remaining):
+            if not await self._next_batch(res, remaining):
                 break
             if length is not None:
                 remaining = length - len(res)
+                if remaining == 0:
+                    break
         return res
 
 
