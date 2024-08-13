@@ -1430,7 +1430,10 @@ class TestCursor(IntegrationTest):
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = db.test.aggregate([pipeline])
-        self.assertEqual(len(result.to_list(1)), 2)
+        self.assertEqual(len(result.to_list()), 2)
+
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list(1)), 1)
 
 
 class TestRawBatchCursor(IntegrationTest):
