@@ -523,7 +523,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
-class TestClientBulkWriteTimeout(IntegrationTest):
+class TestClientBulkWriteCSOT(IntegrationTest):
     def setUp(self):
         self.max_write_batch_size = client_context.max_write_batch_size
         self.max_bson_object_size = client_context.max_bson_size
@@ -567,6 +567,7 @@ class TestClientBulkWriteTimeout(IntegrationTest):
                 w="majority",
             )
             self.addCleanup(client.close)
+            client.admin.command("ping")  # Init the client first.
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, NetworkTimeout)
