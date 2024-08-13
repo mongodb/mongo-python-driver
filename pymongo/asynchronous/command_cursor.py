@@ -392,6 +392,10 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
           >>> await cursor.to_list()
 
+        Or, so read at most n items from the cursor::
+
+          >>> await cursor.to_list(n)
+
         If the cursor is empty or has no more results, an empty list will be returned.
 
         .. versionadded:: 4.9
