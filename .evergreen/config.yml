@@ -129,7 +129,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           mkdir out_dir
           find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
@@ -234,7 +234,7 @@ functions:
           ls -la
           ls -la .evergreen/scripts/
           . $(pwd)/.evergreen/scripts/env.sh
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
 
           # Enable core dumps if enabled on the machine
@@ -296,13 +296,13 @@ functions:
           ls -la
           ls -la .evergreen/scripts/
           . $(pwd)/.evergreen/scripts/env.sh
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
           sleep 1
           docker ps
@@ -311,7 +311,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
@@ -576,7 +576,7 @@ functions:
       params:
         script: |
           set +x
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
             perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
           done
@@ -586,7 +586,7 @@ functions:
       params:
         script: |
           set +x
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
@@ -599,7 +599,7 @@ functions:
       params:
         script: |
           set +x
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
           done
@@ -609,7 +609,7 @@ functions:
       params:
         script: |
           set +x
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
   "install dependencies":
@@ -660,7 +660,7 @@ functions:
       params:
         background: true
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -673,7 +673,7 @@ functions:
       params:
         background: true
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -688,7 +688,7 @@ functions:
       params:
         background: true
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -701,7 +701,7 @@ functions:
       params:
         background: true
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -743,7 +743,7 @@ functions:
       params:
         shell: "bash"
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
           if [ -f "./aws_e2e_setup.json" ]; then
             . ./activate-authawsvenv.sh
@@ -804,7 +804,7 @@ functions:
       params:
         shell: "bash"
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           # Combine releases into one directory.
           ls -la release/
@@ -2010,7 +2010,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            . .evergreen/scripts/env.sh
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
@@ -2027,7 +2027,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            . .evergreen/scripts/env.sh
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
