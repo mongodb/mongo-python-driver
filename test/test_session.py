@@ -925,7 +925,7 @@ class TestCausalConsistency(UnitTest):
             return (coll.aggregate_raw_batches([], session=session)).to_list()
 
         def find_raw(coll, session):
-            return (coll.find_raw_batches({}, session=session)).to_list()
+            return coll.find_raw_batches({}, session=session).to_list()
 
         self._test_reads(aggregate)
         self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())

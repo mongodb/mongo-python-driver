@@ -43,7 +43,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_returns_error_if_no_namespace_provided(self):
         client = await async_rs_or_single_client()
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         models = [InsertOne(document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
@@ -65,7 +65,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_batch_splits_if_num_operations_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         models = []
         for _ in range(self.max_write_batch_size + 1):
@@ -90,7 +90,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_batch_splits_if_ops_payload_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         models = []
         num_models = int(self.max_message_size_bytes / self.max_bson_object_size + 1)
@@ -126,7 +126,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             event_listeners=[listener],
             retryWrites=False,
         )
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         fail_command = {
             "configureFailPoint": "failCommand",
@@ -165,7 +165,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_collects_write_errors_across_batches_unordered(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         collection = client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -195,7 +195,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_collects_write_errors_across_batches_ordered(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         collection = client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -225,7 +225,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_handles_cursor_requiring_getMore(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         collection = client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -266,7 +266,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_handles_cursor_requiring_getMore_within_transaction(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         collection = client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -309,7 +309,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_handles_getMore_error(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         collection = client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -363,7 +363,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_returns_error_if_unacknowledged_too_large_insert(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         b_repeated = "b" * self.max_bson_object_size
 
@@ -419,7 +419,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_no_batch_splits_if_new_namespace_is_not_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         num_models, models = await self._setup_namespace_test_models()
         models.append(
@@ -450,7 +450,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def test_batch_splits_if_new_namespace_is_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         num_models, models = await self._setup_namespace_test_models()
         c_repeated = "c" * 200
@@ -487,7 +487,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_returns_error_if_no_writes_can_be_added_to_ops(self):
         client = await async_rs_or_single_client()
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         # Document too large.
         b_repeated = "b" * self.max_message_size_bytes
@@ -512,7 +512,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
             kms_providers={"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}},
         )
         client = await async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         models = [InsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
@@ -535,7 +535,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
         _OVERHEAD = 500
 
         internal_client = await async_rs_or_single_client(timeoutMS=None)
-        self.addAsyncCleanup(internal_client.aclose)
+        self.addAsyncCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
         self.addAsyncCleanup(collection.drop)
@@ -566,7 +566,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
                 timeoutMS=2000,
                 w="majority",
             )
-            self.addAsyncCleanup(client.aclose)
+            self.addAsyncCleanup(client.close)
             await client.admin.command("ping")  # Init the client first.
             with self.assertRaises(ClientBulkWriteException) as context:
                 await client.bulk_write(models=models)

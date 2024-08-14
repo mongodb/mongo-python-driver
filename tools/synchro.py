@@ -92,7 +92,6 @@ replacements = {
     "asyncAssertRaisesExactly": "assertRaisesExactly",
     "get_async_mock_client": "get_mock_client",
     "aconnect": "_connect",
-    "aclose": "close",
     "async-transactions-ref": "transactions-ref",
     "async-snapshot-reads-ref": "snapshot-reads-ref",
     "default_async": "default",
