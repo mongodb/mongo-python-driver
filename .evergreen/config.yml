@@ -2101,6 +2101,8 @@ tasks:
 
     - name: testazurekms-task
       commands:
+      - command: shell.exec
+        params:
           shell: bash
           working_dir: src
           script: |
