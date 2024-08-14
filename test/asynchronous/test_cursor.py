@@ -1410,9 +1410,9 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(docs), 3)
 
         c = coll.find(batch_size=2)
-        docs = c.to_list(3)
+        docs = await c.to_list(3)
         self.assertEqual(len(docs), 3)
-        docs = c.to_list(3)
+        docs = await c.to_list(3)
         self.assertEqual(len(docs), 2)
 
     @async_client_context.require_change_streams
