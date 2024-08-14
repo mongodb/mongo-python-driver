@@ -342,10 +342,10 @@ class ClientBulkWriteException(OperationFailure):
         return self.details.get("writeConcernErrors", [])
 
     @property
-    def write_errors(self) -> Optional[Mapping[int, WriteError]]:
+    def write_errors(self) -> Optional[list[WriteError]]:
         """Errors that occurred during the execution of individual write operations.
 
-        This map will contain at most one entry if the bulk write was ordered.
+        This list will contain at most one entry if the bulk write was ordered.
         """
         return self.details.get("writeErrors", {})
 

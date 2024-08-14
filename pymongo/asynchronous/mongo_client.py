@@ -2270,8 +2270,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           1
           >>> result.modified_count
           0
-          >>> result.upserted_ids
-          {3: ObjectId('54f62ee28891e756a6e1abd5')}
+          >>> result.upserted_count
+          1
           >>> async for doc in db.test.find({}):
           ...     print(doc)
           ...

@@ -22,6 +22,7 @@ MongoDB, you can start it like so:
    copydb
    custom_type
    bulk
+   client_bulk
    datetimes
    geo
    gevent
