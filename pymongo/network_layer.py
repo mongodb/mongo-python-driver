@@ -77,6 +77,7 @@ async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> Non
 async def _async_sendall_ssl(
     sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
 ) -> None:
+    view = memoryview(buf)
     fd = sock.fileno()
     sent = 0
 
@@ -89,7 +90,7 @@ async def _async_sendall_ssl(
 
     while sent < len(buf):
         try:
-            sent += sock.send(buf)
+            sent += sock.send(view[sent:])
         except BLOCKING_IO_ERRORS as exc:
             fd = sock.fileno()
             # Check for closed socket.
