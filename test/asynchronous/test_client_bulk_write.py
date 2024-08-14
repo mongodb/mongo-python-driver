@@ -596,7 +596,7 @@ class TestClientBulkWriteMock(AsyncMockClientTest):
             replicaSet="rs",
             heartbeatFrequencyMS=500,
         )
-        self.addAsyncCleanup(mock_client.aclose)
+        self.addAsyncCleanup(mock_client.close)
         models = [InsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(ClientBulkWriteException) as context:
             await mock_client.mock_client_bulk_write(models=models)
