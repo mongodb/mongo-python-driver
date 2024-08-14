@@ -1401,6 +1401,20 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list()
         self.assertEqual([], docs)
 
+    async def test_to_list_length(self):
+        coll = self.db.test
+        await coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
+        c = coll.find(batch_size=2)
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 2)
+
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1416,6 +1430,19 @@ class TestCursor(AsyncIntegrationTest):
         self.addAsyncCleanup(c.close)
         docs = await c.to_list()
         self.assertEqual([], docs)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list_length(self):
+        db = self.db
+        await db.drop_collection("test")
+        await db.test.insert_many([{"foo": 1}, {"foo": 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = await db.test.aggregate([pipeline])
+        self.assertEqual(len(await result.to_list()), 2)
+
+        result = await db.test.aggregate([pipeline])
+        self.assertEqual(len(await result.to_list(1)), 1)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):

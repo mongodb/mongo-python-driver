@@ -1392,6 +1392,20 @@ class TestCursor(IntegrationTest):
         docs = c.to_list()
         self.assertEqual([], docs)
 
+    def test_to_list_length(self):
+        coll = self.db.test
+        coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
+        c = coll.find(batch_size=2)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 2)
+
     @client_context.require_change_streams
     def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1407,6 +1421,19 @@ class TestCursor(IntegrationTest):
         self.addCleanup(c.close)
         docs = c.to_list()
         self.assertEqual([], docs)
+
+    @client_context.require_change_streams
+    def test_command_cursor_to_list_length(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"foo": 1}, {"foo": 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list()), 2)
+
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list(1)), 1)
 
 
 class TestRawBatchCursor(IntegrationTest):
