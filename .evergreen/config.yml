@@ -51,9 +51,8 @@ functions:
   "prepare resources":
     - command: shell.exec
       params:
-        working_dir: "src"
         script: |
-          . .evergreen/scripts/env.sh
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           rm -rf $DRIVERS_TOOLS
           if [ "${project}" = "drivers-tools" ]; then
