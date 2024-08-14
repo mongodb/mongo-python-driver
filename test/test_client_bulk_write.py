@@ -19,7 +19,13 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    MockClientTest,
+    client_context,
+    unittest,
+)
+from test.pymongo_mocks import MockClient
 from test.utils import (
     OvertCommandListener,
     rs_or_single_client,
@@ -577,3 +583,22 @@ class TestClientBulkWriteCSOT(IntegrationTest):
             if event.command_name == "bulkWrite":
                 bulk_write_events.append(event)
         self.assertEqual(len(bulk_write_events), 2)
+
+
+class TestClientBulkWriteMock(MockClientTest):
+    @client_context.require_version_min(8, 0, 0, -24)
+    def test_handles_non_pymongo_error(self):
+        mock_client = MockClient.get_mock_client(
+            standalones=[],
+            members=["a:1", "b:2", "c:3"],
+            mongoses=[],
+            host="b:2",  # Pass a secondary.
+            replicaSet="rs",
+            heartbeatFrequencyMS=500,
+        )
+        self.addCleanup(mock_client.close)
+        models = [InsertOne(namespace="db.coll", document={"a": "b"})]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            mock_client.mock_client_bulk_write(models=models)
+        self.assertIsInstance(context.exception.error, TypeError)
+        self.assertFalse(hasattr(context.exception.error, "details"))
