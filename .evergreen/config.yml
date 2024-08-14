@@ -231,6 +231,9 @@ functions:
     - command: shell.exec
       params:
         script: |
+          ls -la
+          ls -la .evergreen/scripts/
+          . $(pwd)/.evergreen/scripts/env.sh
           . .evergreen/scripts/env.sh
           set -o xtrace
 
@@ -290,6 +293,9 @@ functions:
       type: setup
       params:
         script: |
+          ls -la
+          ls -la .evergreen/scripts/
+          . $(pwd)/.evergreen/scripts/env.sh
           . .evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
