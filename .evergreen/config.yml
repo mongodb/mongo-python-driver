@@ -750,11 +750,12 @@ functions:
           fi
 
   "teardown atlas":
-    - command: subprocess.exec
+    - command: shell.exec
       params:
-        binary: bash
-        args:
-          - $DRIVERS_TOOLS/.evergreen/atlas/teardown-atlas-cluster.sh
+        shell: bash
+        script: |
+          . src/.evergreen/scripts/env.sh
+          $DRIVERS_TOOLS/.evergreen/atlas/teardown-atlas-cluster.sh
 
   "build release":
     - command: shell.exec
@@ -889,19 +890,21 @@ task_groups:
     setup_group:
       - func: "fetch source"
       - func: "prepare resources"
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
+          shell: bash
           env:
             VAULT_NAME: ${VAULT_NAME}
-          args:
-            - $DRIVERS_TOOLS/.evergreen/serverless/create-instance.sh
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/serverless/create-instance.sh
     teardown_task:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
-          args:
-            - $DRIVERS_TOOLS/.evergreen/serverless/delete-instance.sh
+          shell: bash
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/serverless/delete-instance.sh
       - func: "upload test results"
     tasks:
       - ".serverless"
@@ -914,17 +917,19 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: "bash"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
+          shell: "bash"
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: "bash"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+          shell: "bash"
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
       - func: "upload test results"
     tasks:
       - testgcpkms-task
@@ -935,19 +940,21 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
+          shell: bash
           env:
             AZUREKMS_VMNAME_PREFIX: "PYTHON_DRIVER"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
     teardown_group:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
-          args:
-            - $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+          shell: bash
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
     teardown_task_can_fail_task: true
@@ -961,19 +968,21 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
+          shell: bash
           env:
             AZUREOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
     teardown_task:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+          shell: bash
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -985,19 +994,21 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
+          shell: bash
           env:
             GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/setup.sh
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/setup.sh
     teardown_task:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/teardown.sh
+          shell: bash
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/teardown.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -1010,21 +1021,23 @@ task_groups:
       - func: fix absolute paths
       - func: make files executable
       - func: "assume ec2 role"
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
+          shell: bash
           include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           env:
             # PYTHON-4447
             MONGODB_VERSION: "8.0"
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/setup.sh
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/setup.sh
     teardown_task:
-      - command: subprocess.exec
+      - command: shell.exec
         params:
-          binary: bash
-          args:
-            - $DRIVERS_TOOLS/.evergreen/auth_oidc/teardown.sh
+          shell: bash
+          script: |
+            . src/.evergreen/scripts/env.sh
+            $DRIVERS_TOOLS/.evergreen/auth_oidc/teardown.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -1528,13 +1541,14 @@ tasks:
           params:
             role_arn: ${LAMBDA_AWS_ROLE_ARN}
             duration_seconds: 3600
-        - command: subprocess.exec
+        - command: shell.exec
           params:
             working_dir: src
-            binary: bash
+            shell: bash
             add_expansions_to_env: true
-            args:
-              - .evergreen/run-deployed-lambda-aws-tests.sh
+            script: |
+              . .evergreen/scripts/env.sh
+              .evergreen/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: $PROJECT_DIRECTORY/test/lambda
 
@@ -2071,12 +2085,12 @@ tasks:
 
     - name: "testgcpkms-task"
       commands:
-        - command: subprocess.exec
+        - command: shell.exec
           type: setup
           params:
             working_dir: "src"
             shell: "bash"
-            args:
+            script: |
               . .evergreen/scripts/env.sh
               .evergreen/run-gcpkms-test.sh
 
