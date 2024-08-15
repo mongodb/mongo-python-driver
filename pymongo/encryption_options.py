@@ -265,7 +265,7 @@ class RangeOpts:
         doc = {}
         for k, v in [
             ("sparsity", int64.Int64(self.sparsity) if self.sparsity else None),
-            ("trimFactor", self.trim_factor),
+            ("trimFactor", int64.Int64(self.trim_factor) if self.sparsity else None),
             ("precision", self.precision),
             ("min", self.min),
             ("max", self.max),
