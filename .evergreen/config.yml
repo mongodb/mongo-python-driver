@@ -2031,6 +2031,17 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-8.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
     - name: "assign-pr-reviewer"
       tags: ["pr"]
       allowed_requesters: ["patch", "github_pr"]

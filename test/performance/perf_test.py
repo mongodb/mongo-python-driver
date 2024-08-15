@@ -61,7 +61,16 @@ from test import client_context, unittest
 
 from bson import decode, encode, json_util
 from gridfs import GridFSBucket
-from pymongo import MongoClient
+from pymongo import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    MongoClient,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+    WriteConcern,
+)
 
 pytestmark = pytest.mark.perf
 
@@ -347,9 +356,13 @@ class TestDocument(PerformanceTest):
 
     def before(self):
         self.corpus = self.client.perftest.create_collection("corpus")
+        self.bulk_one = self.client.perftest.create_collection("bulk_one")
+        self.bulk_two = self.client.perftest.create_collection("bulk_two")
 
     def after(self):
         self.client.perftest.drop_collection("corpus")
+        self.client.perftest.drop_collection("bulk_one")
+        self.client.perftest.drop_collection("bulk_two")
 
 
 class FindTest(TestDocument):
@@ -390,6 +403,15 @@ class SmallDocInsertTest(TestDocument):
         self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
 
+class SmallDocMixedTest(TestDocument):
+    dataset = "small_doc.json"
+
+    def setUp(self):
+        super().setUp()
+        self.data_size = len(encode(self.document)) * NUM_DOCS * 2
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
+
+
 class TestSmallDocInsertOne(SmallDocInsertTest, unittest.TestCase):
     def do_task(self):
         insert_one = self.corpus.insert_one
@@ -404,6 +426,16 @@ class LargeDocInsertTest(TestDocument):
         super().setUp()
         n_docs = 10
         self.data_size = len(encode(self.document)) * n_docs
+        self.documents = [self.document.copy() for _ in range(n_docs)]
+
+
+class LargeDocMixedTest(TestDocument):
+    dataset = "large_doc.json"
+
+    def setUp(self):
+        super().setUp()
+        n_docs = 10
+        self.data_size = len(encode(self.document)) * n_docs * 2
         self.documents = [self.document.copy() for _ in range(n_docs)]
 
 
@@ -429,9 +461,127 @@ class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
         self.corpus.insert_many(self.documents, ordered=True)
 
 
+class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
+class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(document=doc.copy()))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
+            self.models.append(DeleteMany(filter={}))
+
+    def do_task(self):
+        self.corpus.bulk_write(self.models, ordered=True)
+
+
+class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+            self.models.append(
+                ReplaceOne(
+                    namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
+                )
+            )
+            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
+class TestSmallDocMultiNamespaceBulkInsert(SmallDocMixedTest, unittest.TestCase):
+    def do_task(self):
+        self.bulk_one.insert_many(self.documents, ordered=True)
+        self.bulk_two.insert_many(self.documents, ordered=True)
+
+
+class TestSmallDocMultiNamespaceClientBulkInsert(SmallDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc))
+            self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
 class TestLargeDocBulkInsert(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
+
+
+class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
+class TestLargeDocBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(document=doc.copy()))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
+            self.models.append(DeleteMany(filter={}))
+
+    def do_task(self):
+        self.corpus.bulk_write(self.models, ordered=True)
+
+
+class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+            self.models.append(
+                ReplaceOne(
+                    namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
+                )
+            )
+            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
+class TestLargeDocMultiNamespaceBulkInsert(LargeDocMixedTest, unittest.TestCase):
+    def do_task(self):
+        self.bulk_one.insert_many(self.documents, ordered=True)
+        self.bulk_two.insert_many(self.documents, ordered=True)
+
+
+class TestLargeDocMultiNamespaceClientBulkInsert(LargeDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc.copy()))
+            self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc.copy()))
+
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
 
 
 class GridFsTest(PerformanceTest):
