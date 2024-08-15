@@ -3052,6 +3052,7 @@ buildvariants:
   tasks:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
+     - name: "perf-8.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
