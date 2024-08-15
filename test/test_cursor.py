@@ -1392,6 +1392,20 @@ class TestCursor(IntegrationTest):
         docs = c.to_list()
         self.assertEqual([], docs)
 
+    def test_to_list_length(self):
+        coll = self.db.test
+        coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
+        c = coll.find(batch_size=2)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 2)
+
     @client_context.require_change_streams
     def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1408,6 +1422,19 @@ class TestCursor(IntegrationTest):
         docs = c.to_list()
         self.assertEqual([], docs)
 
+    @client_context.require_change_streams
+    def test_command_cursor_to_list_length(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"foo": 1}, {"foo": 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list()), 2)
+
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list(1)), 1)
+
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
@@ -1415,7 +1442,7 @@ class TestRawBatchCursor(IntegrationTest):
         c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
-        batches = (c.find_raw_batches()).sort("_id").to_list()
+        batches = c.find_raw_batches().sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1431,7 +1458,7 @@ class TestRawBatchCursor(IntegrationTest):
         with client.start_session() as session:
             with session.start_transaction():
                 batches = (
-                    (client[self.db.name].test.find_raw_batches(session=session)).sort("_id")
+                    client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
@@ -1461,7 +1488,7 @@ class TestRawBatchCursor(IntegrationTest):
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
-            batches = (client[self.db.name].test.find_raw_batches()).sort("_id").to_list()
+            batches = client[self.db.name].test.find_raw_batches().sort("_id").to_list()
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1482,7 +1509,7 @@ class TestRawBatchCursor(IntegrationTest):
         db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
             db.test.distinct("x", {}, session=session)
-            batches = (db.test.find_raw_batches(session=session)).sort("_id").to_list()
+            batches = db.test.find_raw_batches(session=session).sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1493,7 +1520,7 @@ class TestRawBatchCursor(IntegrationTest):
     def test_explain(self):
         c = self.db.test
         c.insert_one({})
-        explanation = (c.find_raw_batches()).explain()
+        explanation = c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     def test_empty(self):
@@ -1514,7 +1541,7 @@ class TestRawBatchCursor(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert_many({"_id": i} for i in range(200))
-        result = b"".join((c.find_raw_batches(cursor_type=CursorType.EXHAUST)).to_list())
+        result = b"".join(c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
 
     def test_server_error(self):
@@ -1526,7 +1553,7 @@ class TestRawBatchCursor(IntegrationTest):
 
     def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            (self.db.test.find_raw_batches())[0]
+            self.db.test.find_raw_batches()[0]
 
     def test_collation(self):
         next(self.db.test.find_raw_batches(collation=Collation("en_US")))

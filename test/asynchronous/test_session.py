@@ -99,7 +99,7 @@ class TestSession(AsyncIntegrationTest):
     @classmethod
     async def _tearDown_class(cls):
         monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
-        await cls.client2.aclose()
+        await cls.client2.close()
         await super()._tearDown_class()
 
     async def asyncSetUp(self):
@@ -108,7 +108,7 @@ class TestSession(AsyncIntegrationTest):
         self.client = await async_rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
-        self.addAsyncCleanup(self.client.aclose)
+        self.addAsyncCleanup(self.client.close)
         self.db = self.client.pymongo_test
         self.initial_lsids = {s["id"] for s in session_ids(self.client)}
 
@@ -295,14 +295,14 @@ class TestSession(AsyncIntegrationTest):
 
         # Closing the client should end all sessions and clear the pool.
         self.assertEqual(len(client._topology._session_pool), _MAX_END_SESSIONS + 1)
-        await client.aclose()
+        await client.close()
         self.assertEqual(len(client._topology._session_pool), 0)
         end_sessions = [e for e in listener.started_events if e.command_name == "endSessions"]
         self.assertEqual(len(end_sessions), 2)
 
         # Closing again should not send any commands.
         listener.reset()
-        await client.aclose()
+        await client.close()
         self.assertEqual(len(listener.started_events), 0)
 
     async def test_client(self):
@@ -790,7 +790,7 @@ class TestSession(AsyncIntegrationTest):
         # Ensure the collection exists.
         await self.client.pymongo_test.test_unacked_writes.insert_one({})
         client = await async_rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -842,7 +842,7 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @classmethod
     async def _tearDown_class(cls):
-        await cls.client.aclose()
+        await cls.client.close()
 
     @async_client_context.require_sessions
     async def asyncSetUp(self):
@@ -927,7 +927,7 @@ class TestCausalConsistency(AsyncUnitTest):
             return await (await coll.aggregate_raw_batches([], session=session)).to_list()
 
         async def find_raw(coll, session):
-            return await (await coll.find_raw_batches({}, session=session)).to_list()
+            return await coll.find_raw_batches({}, session=session).to_list()
 
         await self._test_reads(aggregate)
         await self._test_reads(lambda coll, session: coll.find({}, session=session).to_list())
@@ -1156,7 +1156,7 @@ class TestClusterTime(AsyncIntegrationTest):
         client = await async_rs_or_single_client(
             event_listeners=[listener], heartbeatFrequencyMS=999999
         )
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         await collection.insert_many([{} for _ in range(10)])

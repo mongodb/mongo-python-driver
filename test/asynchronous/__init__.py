@@ -193,7 +193,7 @@ class AsyncClientContext:
             self.connection_attempts.append(f"failed to connect client {client!r}: {exc}")
             return None
         finally:
-            await client.aclose()
+            await client.close()
 
     async def _init_client(self):
         self.client = await self._connect(host, port)
@@ -409,7 +409,7 @@ class AsyncClientContext:
             else:
                 raise
         finally:
-            await client.aclose()
+            await client.close()
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
@@ -1089,7 +1089,7 @@ async def async_teardown():
             await c.drop_database("pymongo_test2")
             await c.drop_database("pymongo_test_mike")
             await c.drop_database("pymongo_test_bernie")
-        await c.aclose()
+        await c.close()
 
     print_running_clients()
 
