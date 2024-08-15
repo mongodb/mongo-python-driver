@@ -238,8 +238,8 @@ class RangeOpts:
 
     def __init__(
         self,
-        sparsity: int,
-        trim_factor: int,
+        sparsity: Optional[int] = None,
+        trim_factor: Optional[int] = None,
         min: Optional[Any] = None,
         max: Optional[Any] = None,
         precision: Optional[int] = None,
