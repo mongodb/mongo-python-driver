@@ -548,7 +548,8 @@ class _ClientBulk:
                 if result.get("error"):
                     error = result["error"]
                     retryable_top_level_error = (
-                        isinstance(error.details, dict)
+                        hasattr(error, "details")
+                        and isinstance(error.details, dict)
                         and error.details.get("code", 0) in _RETRYABLE_ERROR_CODES
                     )
                     retryable_network_error = isinstance(

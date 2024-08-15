@@ -2562,7 +2562,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     if not self._retryable:
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
-                        retryable_write_error_exc = exc.error.has_error_label("RetryableWriteError")
+                        retryable_write_error_exc = isinstance(
+                            exc.error, PyMongoError
+                        ) and exc.error.has_error_label("RetryableWriteError")
                     else:
                         retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:

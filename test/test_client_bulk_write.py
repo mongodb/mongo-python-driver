@@ -19,11 +19,16 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     OvertCommandListener,
     rs_or_single_client,
 )
+from unittest.mock import patch
 
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
@@ -34,6 +39,7 @@ from pymongo.errors import (
 )
 from pymongo.monitoring import *
 from pymongo.operations import *
+from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
@@ -52,6 +58,20 @@ class TestClientBulkWrite(IntegrationTest):
             "MongoClient.bulk_write requires a namespace to be provided for each write operation",
             context.exception._message,
         )
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    def test_handles_non_pymongo_error(self):
+        with patch.object(
+            _ClientBulk, "write_command", return_value={"error": TypeError("mock type error")}
+        ):
+            client = rs_or_single_client()
+            self.addCleanup(client.close)
+
+            models = [InsertOne(namespace="db.coll", document={"a": "b"})]
+            with self.assertRaises(ClientBulkWriteException) as context:
+                client.bulk_write(models=models)
+            self.assertIsInstance(context.exception.error, TypeError)
+            self.assertFalse(hasattr(context.exception.error, "details"))
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
