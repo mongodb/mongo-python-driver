@@ -848,8 +848,8 @@ def _encode_batched_op_msg(
     return buf.getvalue(), to_send
 
 
-# if _use_c:
-#     _encode_batched_op_msg = _cmessage._encode_batched_op_msg
+if _use_c:
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
 
 def _batched_op_msg_compressed(
@@ -898,8 +898,8 @@ def _batched_op_msg(
     return request_id, buf.getvalue(), to_send
 
 
-# if _use_c:
-#     _batched_op_msg = _cmessage._batched_op_msg
+if _use_c:
+    _batched_op_msg = _cmessage._batched_op_msg
 
 
 def _do_batched_op_msg(
