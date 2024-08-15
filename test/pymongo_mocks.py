@@ -21,14 +21,11 @@ from functools import partial
 from test import client_context
 
 from pymongo import MongoClient, common
-from pymongo.errors import AutoReconnect, ClientBulkWriteException, NetworkTimeout
+from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.hello import Hello, HelloCompat
-from pymongo.operations import _Op
 from pymongo.server_description import ServerDescription
-from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import Pool
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
@@ -248,18 +245,7 @@ class MockClient(MongoClient):
 
         return response, rtt
 
-    def mock_client_bulk_write(self, models):
-        blk = _MockClientBulk(self, write_concern=WriteConcern(w=1))
-        for model in models:
-            model._add_to_client_bulk(blk)
-        return blk.execute(None, _Op.BULK_WRITE)
-
     def _process_periodic_tasks(self):
         # Avoid the background thread causing races, e.g. a surprising
         # reconnect while we're trying to test a disconnected client.
         pass
-
-
-class _MockClientBulk(_ClientBulk):
-    def write_command(self, bwc, cmd, request_id, msg, to_send_ops, to_send_ns, client):
-        return {"error": TypeError("mock type error")}

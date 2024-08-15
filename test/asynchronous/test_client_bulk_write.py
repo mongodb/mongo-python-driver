@@ -21,16 +21,16 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import (
     AsyncIntegrationTest,
-    AsyncMockClientTest,
     async_client_context,
     unittest,
 )
-from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.utils import (
     OvertCommandListener,
     async_rs_or_single_client,
 )
+from unittest.mock import patch
 
+from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     ClientBulkWriteException,
@@ -58,6 +58,20 @@ class TestClientBulkWrite(AsyncIntegrationTest):
             "MongoClient.bulk_write requires a namespace to be provided for each write operation",
             context.exception._message,
         )
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_handles_non_pymongo_error(self):
+        with patch.object(
+            _AsyncClientBulk, "write_command", return_value={"error": TypeError("mock type error")}
+        ):
+            client = await async_rs_or_single_client()
+            self.addAsyncCleanup(client.close)
+
+            models = [InsertOne(namespace="db.coll", document={"a": "b"})]
+            with self.assertRaises(ClientBulkWriteException) as context:
+                await client.bulk_write(models=models)
+            self.assertIsInstance(context.exception.error, TypeError)
+            self.assertFalse(hasattr(context.exception.error, "details"))
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
@@ -583,22 +597,3 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
             if event.command_name == "bulkWrite":
                 bulk_write_events.append(event)
         self.assertEqual(len(bulk_write_events), 2)
-
-
-class TestClientBulkWriteMock(AsyncMockClientTest):
-    @async_client_context.require_version_min(8, 0, 0, -24)
-    async def test_handles_non_pymongo_error(self):
-        mock_client = await AsyncMockClient.get_async_mock_client(
-            standalones=[],
-            members=["a:1", "b:2", "c:3"],
-            mongoses=[],
-            host="b:2",  # Pass a secondary.
-            replicaSet="rs",
-            heartbeatFrequencyMS=500,
-        )
-        self.addAsyncCleanup(mock_client.close)
-        models = [InsertOne(namespace="db.coll", document={"a": "b"})]
-        with self.assertRaises(ClientBulkWriteException) as context:
-            await mock_client.mock_client_bulk_write(models=models)
-        self.assertIsInstance(context.exception.error, TypeError)
-        self.assertFalse(hasattr(context.exception.error, "details"))
