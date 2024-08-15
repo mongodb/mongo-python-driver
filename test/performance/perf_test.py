@@ -474,8 +474,8 @@ class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
         self.models = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc.copy()))
-            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
-            self.models.append(DeleteMany(filter={}))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))  # type: ignore[arg-type]
+            self.models.append(DeleteMany(filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
         self.corpus.bulk_write(self.models, ordered=True)
@@ -491,8 +491,8 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
                 )
-            )
-            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))
+            )  # type: ignore[arg-type]
+            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
@@ -538,8 +538,8 @@ class TestLargeDocBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
         self.models = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc.copy()))
-            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
-            self.models.append(DeleteMany(filter={}))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))  # type: ignore[arg-type]
+            self.models.append(DeleteMany(filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
         self.corpus.bulk_write(self.models, ordered=True)
@@ -555,8 +555,8 @@ class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
                 )
-            )
-            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))
+            )  # type: ignore[arg-type]
+            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
