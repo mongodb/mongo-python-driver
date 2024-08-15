@@ -63,13 +63,9 @@ from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import (
     DeleteMany,
-    DeleteOne,
     InsertOne,
     MongoClient,
     ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-    WriteConcern,
 )
 
 pytestmark = pytest.mark.perf
