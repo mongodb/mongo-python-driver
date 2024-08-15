@@ -490,8 +490,8 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
             self.models.append(
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
-                )
-            )  # type: ignore[arg-type]
+                )  # type: ignore[arg-type]
+            )
             self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
@@ -554,8 +554,8 @@ class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
             self.models.append(
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
-                )
-            )  # type: ignore[arg-type]
+                )  # type: ignore[arg-type]
+            )
             self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
     def do_task(self):
