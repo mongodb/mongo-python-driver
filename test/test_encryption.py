@@ -2834,7 +2834,6 @@ class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
         self.payload_defaults = self.client_encryption.encrypt(
             123, "range", self.key_id, contention_factor=0, range_opts=opts
         )
-        self.addCleanup(self.encrypted_client.close)
 
     def test_uses_libmongocrypt_defaults(self):
         opts = RangeOpts(min=0, max=1000, sparsity=2, trim_factor=6)
