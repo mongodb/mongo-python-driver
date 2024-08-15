@@ -458,12 +458,14 @@ class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
 
 
 class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
@@ -482,6 +484,7 @@ class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
 
 
 class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
@@ -494,6 +497,7 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
             )
             self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
@@ -505,6 +509,7 @@ class TestSmallDocMultiNamespaceBulkInsert(SmallDocMixedTest, unittest.TestCase)
 
 
 class TestSmallDocMultiNamespaceClientBulkInsert(SmallDocMixedTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
@@ -512,6 +517,7 @@ class TestSmallDocMultiNamespaceClientBulkInsert(SmallDocMixedTest, unittest.Tes
             self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc))
             self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc))
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
@@ -522,12 +528,14 @@ class TestLargeDocBulkInsert(LargeDocInsertTest, unittest.TestCase):
 
 
 class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
@@ -546,6 +554,7 @@ class TestLargeDocBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
 
 
 class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
@@ -558,6 +567,7 @@ class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
             )
             self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
@@ -569,6 +579,7 @@ class TestLargeDocMultiNamespaceBulkInsert(LargeDocMixedTest, unittest.TestCase)
 
 
 class TestLargeDocMultiNamespaceClientBulkInsert(LargeDocMixedTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
         self.models = []
@@ -576,6 +587,7 @@ class TestLargeDocMultiNamespaceClientBulkInsert(LargeDocMixedTest, unittest.Tes
             self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc.copy()))
             self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc.copy()))
 
+    @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
         self.client.bulk_write(self.models, ordered=True)
 
