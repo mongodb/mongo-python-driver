@@ -6,7 +6,14 @@ Client Bulk Write Operations
   from pymongo import MongoClient
 
   client = MongoClient()
-
+  client.drop_database("client_bulk_example")
+  db = client.client_bulk_example
+  client.db.drop_collection("test_one")
+  client.db.drop_collection("test_two")
+  client.db.drop_collection("test_three")
+  client.db.drop_collection("test_four")
+  client.db.drop_collection("test_five")
+  client.db.drop_collection("test_six")
 
 The :meth:`~pymongo.mongo_client.MongoClient.bulk_write`
 method has been added to :class:`~pymongo.mongo_client.MongoClient` in PyMongo 4.9.
@@ -71,7 +78,7 @@ instance will also include detailed results about each successful operation perf
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
 
-  >>> from pymongo import InsertOne, DeleteMany, ReplaceOne, UpdateOne
+  >>> from pymongo import InsertOne, DeleteMany, ReplaceOne, UpdateMany
   >>> models = [
   ...     DeleteMany(
   ...         namespace="db.test_two", filter={}
@@ -81,19 +88,19 @@ instance will also include detailed results about each successful operation perf
   ...     InsertOne(namespace="db.test_two", document={"_id": 3}),
   ...     UpdateMany(namespace="db.test_one", filter={}, update={"$set": {"foo": "bar"}}),
   ...     ReplaceOne(
-  ...         namespace="db.test_two", filter={"j": 1}, replacement={"j": 2}, upsert=True
+  ...         namespace="db.test_two", filter={"j": 1}, replacement={"_id": 4}, upsert=True
   ...     ),
   ... ]
   >>> result = client.bulk_write(models, verbose_results=True)
   >>> result.delete_results
-  {0: DeleteResult(deleted_count=2)}
+  {0: DeleteResult({'ok': 1.0, 'idx': 0, 'n': 2}, ...)}
   >>> result.insert_results
-  {1: InsertOneResult(inserted_id='1'),
-   2: InsertOneResult(inserted_id='2'),
-   3: InsertOneResult(inserted_id='3')}
+  {1: InsertOneResult(1, ...),
+   2: InsertOneResult(2, ...),
+   3: InsertOneResult(3, ...)}
   >>> result.update_results
-  {4: UpdateResult(matched_count=2, modified_count=2),
-   5: UpdateResult(matched_count=1, modified_count=0, upserted={"_id": ObjectId('66bc11e4b37d9644be9847cb')})}
+  {4: UpdateResult({'ok': 1.0, 'idx': 4, 'n': 2, 'nModified': 2}, ...),
+   5: UpdateResult({'ok': 1.0, 'idx': 5, 'n': 1, 'nModified': 0, 'upserted': {'_id': 4}}, ...)}
 
 
 Handling Errors
@@ -132,7 +139,11 @@ For example, a duplicate key error on the third operation below aborts the remai
   ...     exception = cbwe
   ...
   >>> exception.write_errors
-  [{'idx': 2, 'errmsg': 'E11000 duplicate key error...', ...}]
+  [{'ok': 0.0,
+    'idx': 2,
+    'code': 11000,
+    'errmsg': 'E11000 duplicate key error ... dup key: { _id: 3 }', ...
+    'op': {'insert': 'db.test_three', 'document': {'_id': 3}}}]
   >>> exception.partial_result.inserted_count
   2
   >>> exception.partial_result.deleted_count
@@ -164,7 +175,11 @@ For example, the fourth and fifth write operations below get executed successful
   ...     exception = cbwe
   ...
   >>> exception.write_errors
-  [{'idx': 2, 'errmsg': 'E11000 duplicate key error...', ...}]
+  [{'ok': 0.0,
+    'idx': 2,
+    'code': 11000,
+    'errmsg': 'E11000 duplicate key error ... dup key: { _id: 5 }', ...
+    'op': {'insert': 'db.test_five', 'document': {'_id': 5}}}]
   >>> exception.partial_result.inserted_count
   3
   >>> exception.partial_result.deleted_count
