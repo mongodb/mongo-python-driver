@@ -9,9 +9,9 @@ Client Bulk Write Operations
 
 
 The :meth:`~pymongo.mongo_client.MongoClient.bulk_write`
-method in :class:`~pymongo.mongo_client.MongoClient` has been added in PyMongo 4.9.
+method has been added to :class:`~pymongo.mongo_client.MongoClient` in PyMongo 4.9.
 This method enables users to perform batches of write operations **across
-mixed namespaces** in a minimized number of round trips, and
+multiple namespaces** in a minimized number of round trips, and
 to receive detailed results for each operation performed.
 
 Basic Usage
@@ -75,7 +75,7 @@ instance will also include detailed results about each successful operation perf
   >>> models = [
   ...     DeleteMany(
   ...         namespace="db.test_two", filter={}
-  ...     ),  # Delete all documents from the previous example.
+  ...     ),  # Delete all documents from the previous example
   ...     InsertOne(namespace="db.test_one", document={"_id": 1}),
   ...     InsertOne(namespace="db.test_one", document={"_id": 2}),
   ...     InsertOne(namespace="db.test_two", document={"_id": 3}),
@@ -100,15 +100,15 @@ Handling Errors
 ----------------
 
 If any errors occur during the bulk write, a :class:`~pymongo.errors.ClientBulkWriteException` will be raised.
-If the error was a server, connection, or network error, the ``error`` field of the exception will contain
-more details.
+If a server, connection, or network error occurred, the ``error`` field of the exception will contain
+that error.
 
 Individual write errors or write concern errors get recorded in the ``write_errors`` and ``write_concern_errors`` fields of the exception.
 The ``partial_result`` field gets populated with the results of any operations that were successfully completed before the exception was raised.
 
 .. _ordered_client_bulk:
 
-Ordered Bulk Write
+Ordered Operations
 ....................
 
 In an ordered bulk write (the default), if an individual write fails, no further operations will get executed.
@@ -124,23 +124,23 @@ For example, a duplicate key error on the third operation below aborts the remai
   ...     InsertOne(namespace="db.test_four", document={"_id": 4}),
   ...     InsertOne(namespace="db.test_three", document={"_id": 3}),  # Duplicate _id
   ...     InsertOne(namespace="db.test_four", document={"_id": 5}),
-  ...     DeleteOne(namespace="db.test_four", filter={"_id": 4}),
+  ...     DeleteOne(namespace="db.test_three", filter={"_id": 3}),
   ... ]
   >>> try:
   ...     client.bulk_write(models)
-  ... except ClientBulkWriteException as exc:
-  ...     exc = exception
+  ... except ClientBulkWriteException as cbwe:
+  ...     exception = cbwe
   ...
-  >>> exc.write_errors
+  >>> exception.write_errors
   [{'idx': 2, 'errmsg': 'E11000 duplicate key error...', ...}]
-  >>> exc.partial_result.inserted_count
+  >>> exception.partial_result.inserted_count
   2
-  >>> exc.partial_result.deleted_count
+  >>> exception.partial_result.deleted_count
   0
 
 .. _unordered_client_bulk:
 
-Unordered Bulk Write
+Unordered Operations
 .....................
 
 If the ``ordered`` parameter is set to False, all operations in the bulk write will be attempted, regardless of any individual write errors that occur.
@@ -156,16 +156,16 @@ For example, the fourth and fifth write operations below get executed successful
   ...     InsertOne(namespace="db.test_six", document={"_id": 6}),
   ...     InsertOne(namespace="db.test_five", document={"_id": 5}),  # Duplicate _id
   ...     InsertOne(namespace="db.test_six", document={"_id": 7}),
-  ...     DeleteOne(namespace="db.test_six", filter={"_id": 6}),
+  ...     DeleteOne(namespace="db.test_five", filter={"_id": 5}),
   ... ]
   >>> try:
   ...     client.bulk_write(models, ordered=False)
-  ... except ClientBulkWriteException as exception:
-  ...     exc = exception
+  ... except ClientBulkWriteException as cbwe:
+  ...     exception = cbwe
   ...
-  >>> exc.write_errors
+  >>> exception.write_errors
   [{'idx': 2, 'errmsg': 'E11000 duplicate key error...', ...}]
-  >>> exc.partial_result.inserted_count
+  >>> exception.partial_result.inserted_count
   3
-  >>> exc.partial_result.deleted_count
+  >>> exception.partial_result.deleted_count
   1
