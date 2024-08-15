@@ -21,6 +21,8 @@ This method enables users to perform batches of write operations **across
 multiple namespaces** in a minimized number of round trips, and
 to receive detailed results for each operation performed.
 
+.. note:: This method requires MongoDB server version 8.0+.
+
 Basic Usage
 ------------
 
