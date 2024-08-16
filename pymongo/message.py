@@ -1120,9 +1120,7 @@ def _client_batched_op_msg_impl(
         # We have enough data, return this batch.
         if new_message_size > max_doc_sequences_bytes:
             if idx == 0:
-                raise InvalidOperation(
-                    "No operations can be executed -- given operation is too large"
-                )
+                _raise_document_too_large(op_type, op_length, max_bson_size)
             break
         to_send_ops.append(op_doc_to_send)
         total_ops_length += op_length
