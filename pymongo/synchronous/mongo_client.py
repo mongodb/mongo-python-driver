@@ -2297,6 +2297,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
+        .. seealso:: For more info, see :doc:`/examples/client_bulk`.
+
         .. seealso:: :ref:`writes-and-ids`
 
         .. note:: requires MongoDB server version 8.0+.
