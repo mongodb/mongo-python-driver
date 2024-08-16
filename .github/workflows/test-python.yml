@@ -96,7 +96,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: '8.0.0-rc4'
       - name: Run tests
         run: |
           hatch run doctest:test
