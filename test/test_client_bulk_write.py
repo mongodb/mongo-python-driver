@@ -514,7 +514,10 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         models = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(InvalidOperation) as context:
             client.bulk_write(models=models)
-        self.assertIn("cannot do an empty bulk write", context.exception._message)
+        self.assertIn(
+            "No operations can be executed -- given operation is too large",
+            context.exception._message,
+        )
 
         # Namespace too large.
         c_repeated = "c" * self.max_message_size_bytes
@@ -522,7 +525,10 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         models = [InsertOne(namespace=namespace, document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
             client.bulk_write(models=models)
-        self.assertIn("cannot do an empty bulk write", context.exception._message)
+        self.assertIn(
+            "No operations can be executed -- given operation is too large",
+            context.exception._message,
+        )
 
     @client_context.require_version_min(8, 0, 0, -24)
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
