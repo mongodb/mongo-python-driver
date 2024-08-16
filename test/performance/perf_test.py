@@ -46,7 +46,7 @@ import tempfile
 import threading
 import time
 import warnings
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 import pytest
 
@@ -62,7 +62,7 @@ from test import client_context, unittest
 from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import (
-    DeleteMany,
+    DeleteOne,
     InsertOne,
     MongoClient,
     ReplaceOne,
@@ -352,13 +352,9 @@ class TestDocument(PerformanceTest):
 
     def before(self):
         self.corpus = self.client.perftest.create_collection("corpus")
-        self.bulk_one = self.client.perftest.create_collection("bulk_one")
-        self.bulk_two = self.client.perftest.create_collection("bulk_two")
 
     def after(self):
         self.client.perftest.drop_collection("corpus")
-        self.client.perftest.drop_collection("bulk_one")
-        self.client.perftest.drop_collection("bulk_two")
 
 
 class FindTest(TestDocument):
@@ -425,16 +421,6 @@ class LargeDocInsertTest(TestDocument):
         self.documents = [self.document.copy() for _ in range(n_docs)]
 
 
-class LargeDocMixedTest(TestDocument):
-    dataset = "large_doc.json"
-
-    def setUp(self):
-        super().setUp()
-        n_docs = 10
-        self.data_size = len(encode(self.document)) * n_docs * 2
-        self.documents = [self.document.copy() for _ in range(n_docs)]
-
-
 class TestLargeDocInsertOne(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         insert_one = self.corpus.insert_one
@@ -473,11 +459,11 @@ class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
 class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.models = []
+        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc.copy()))
-            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))  # type: ignore[arg-type]
-            self.models.append(DeleteMany(filter={}))  # type: ignore[arg-type]
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
+            self.models.append(DeleteOne(filter={}))
 
     def do_task(self):
         self.corpus.bulk_write(self.models, ordered=True)
@@ -487,35 +473,15 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
     @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
-        self.models = []
+        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
             self.models.append(
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
-                )  # type: ignore[arg-type]
+                )
             )
-            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
-
-    @client_context.require_version_min(8, 0, 0, -24)
-    def do_task(self):
-        self.client.bulk_write(self.models, ordered=True)
-
-
-class TestSmallDocMultiNamespaceBulkInsert(SmallDocMixedTest, unittest.TestCase):
-    def do_task(self):
-        self.bulk_one.insert_many(self.documents, ordered=True)
-        self.bulk_two.insert_many(self.documents, ordered=True)
-
-
-class TestSmallDocMultiNamespaceClientBulkInsert(SmallDocMixedTest, unittest.TestCase):
-    @client_context.require_version_min(8, 0, 0, -24)
-    def setUp(self):
-        super().setUp()
-        self.models = []
-        for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc))
-            self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc))
+            self.models.append(DeleteOne(namespace="perftest.corpus", filter={}))
 
     @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
@@ -534,58 +500,6 @@ class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
         self.models = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
-
-    @client_context.require_version_min(8, 0, 0, -24)
-    def do_task(self):
-        self.client.bulk_write(self.models, ordered=True)
-
-
-class TestLargeDocBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.models = []
-        for doc in self.documents:
-            self.models.append(InsertOne(document=doc.copy()))
-            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))  # type: ignore[arg-type]
-            self.models.append(DeleteMany(filter={}))  # type: ignore[arg-type]
-
-    def do_task(self):
-        self.corpus.bulk_write(self.models, ordered=True)
-
-
-class TestLargeDocClientBulkMixedOps(LargeDocMixedTest, unittest.TestCase):
-    @client_context.require_version_min(8, 0, 0, -24)
-    def setUp(self):
-        super().setUp()
-        self.models = []
-        for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
-            self.models.append(
-                ReplaceOne(
-                    namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
-                )  # type: ignore[arg-type]
-            )
-            self.models.append(DeleteMany(namespace="perftest.corpus", filter={}))  # type: ignore[arg-type]
-
-    @client_context.require_version_min(8, 0, 0, -24)
-    def do_task(self):
-        self.client.bulk_write(self.models, ordered=True)
-
-
-class TestLargeDocMultiNamespaceBulkInsert(LargeDocMixedTest, unittest.TestCase):
-    def do_task(self):
-        self.bulk_one.insert_many(self.documents, ordered=True)
-        self.bulk_two.insert_many(self.documents, ordered=True)
-
-
-class TestLargeDocMultiNamespaceClientBulkInsert(LargeDocMixedTest, unittest.TestCase):
-    @client_context.require_version_min(8, 0, 0, -24)
-    def setUp(self):
-        super().setUp()
-        self.models = []
-        for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.bulk_one", document=doc.copy()))
-            self.models.append(InsertOne(namespace="perftest.bulk_two", document=doc.copy()))
 
     @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
