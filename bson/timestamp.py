@@ -15,11 +15,11 @@
 """Tools for representing MongoDB internal Timestamps."""
 from __future__ import annotations
 
-import calendar
 import datetime
 from typing import Any, Union
 
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.datetime_ms import _datetime_to_millis
 from bson.tz_util import utc
 
 UPPERBOUND = 4294967296
@@ -53,10 +53,7 @@ class Timestamp:
         :param inc: the incrementing counter
         """
         if isinstance(time, datetime.datetime):
-            offset = time.utcoffset()
-            if offset is not None:
-                time = time - offset
-            time = int(calendar.timegm(time.timetuple()))
+            time = _datetime_to_millis(time) // 1000
         if not isinstance(time, int):
             raise TypeError("time must be an instance of int")
         if not isinstance(inc, int):

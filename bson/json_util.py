@@ -926,7 +926,8 @@ def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
                 tz_string = "Z"
             else:
                 tz_string = obj.strftime("%z")
-            millis = int(obj.microsecond / 1000)
+            # TODO: write test case
+            millis = obj.microsecond // 1000
             fracsecs = ".%03d" % (millis,) if millis else ""
             return {
                 "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)

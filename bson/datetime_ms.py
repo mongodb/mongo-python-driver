@@ -18,7 +18,6 @@
 """
 from __future__ import annotations
 
-import calendar
 import datetime
 from typing import Any, Union, cast
 
@@ -146,7 +145,8 @@ def _millis_to_datetime(
             if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
                 if millis < 0:
                     return datetime.datetime.min.replace(tzinfo=opts.tzinfo)
-                return datetime.datetime.max.replace(tzinfo=opts.tzinfo)
+                # BSON truncates the microsecond field to at most 999 milliseconds.
+                return datetime.datetime.max.replace(tzinfo=opts.tzinfo, microsecond=999000)
             elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
                 return DatetimeMS(millis)
             raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
@@ -159,9 +159,11 @@ def _millis_to_datetime(
 
 def _datetime_to_millis(dtm: datetime.datetime) -> int:
     """Convert datetime to milliseconds since epoch UTC."""
-    if dtm.utcoffset() is not None:
-        dtm = dtm - dtm.utcoffset()  # type: ignore
-    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
+    if dtm.tzinfo is not None:
+        delta = dtm - EPOCH_AWARE
+    else:
+        delta = dtm - EPOCH_NAIVE
+    return (delta.days * 86400 + delta.seconds) * 1000 + (delta.microseconds // 1000)
 
 
 # Inclusive min and max for UTC timezones
