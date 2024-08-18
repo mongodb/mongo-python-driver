@@ -985,11 +985,10 @@ _OP_MSG_OVERHEAD = 1000
 
 
 def _client_construct_op_msg(
-    command: Mapping[str, Any],
-    to_send_ops: list[Mapping[str, Any]],
-    to_send_ns: list[Mapping[str, Any]],
+    command_encoded: bytes,
+    to_send_ops_encoded: list[bytes],
+    to_send_ns_encoded: list[bytes],
     ack: bool,
-    opts: CodecOptions,
     buf: _BytesIO,
 ) -> int:
     # Write flags
@@ -998,7 +997,7 @@ def _client_construct_op_msg(
 
     # Type 0 Section
     buf.write(b"\x00")
-    buf.write(_dict_to_bson(command, False, opts))
+    buf.write(command_encoded)
 
     # Type 1 Section for ops
     buf.write(b"\x01")
@@ -1007,8 +1006,8 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"ops\x00")
     # Write all the ops documents
-    for op in to_send_ops:
-        buf.write(_dict_to_bson(op, False, opts))
+    for op_encoded in to_send_ops_encoded:
+        buf.write(op_encoded)
     resume_location = buf.tell()
     # Write type 1 section size
     length = buf.tell()
@@ -1023,8 +1022,8 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"nsInfo\x00")
     # Write all the nsInfo documents
-    for ns in to_send_ns:
-        buf.write(_dict_to_bson(ns, False, opts))
+    for ns_encoded in to_send_ns_encoded:
+        buf.write(ns_encoded)
     # Write type 1 section size
     length = buf.tell()
     buf.seek(size_location)
@@ -1045,19 +1044,23 @@ def _client_batched_op_msg_impl(
 
     def _check_doc_size_limits(
         op_type: str,
-        document: Mapping[str, Any],
+        doc_size: int,
         limit: int,
-    ) -> int:
-        doc_size = len(_dict_to_bson(document, False, opts))
+    ) -> None:
         if doc_size > limit:
             _raise_document_too_large(op_type, doc_size, limit)
-        return doc_size
 
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
     max_message_size = ctx.max_message_size
 
-    # Don't include bulkWrite-command-agnostic fields in document size calculations.
+    command_encoded = _dict_to_bson(command, False, opts)
+    # When OP_MSG is used unacknowledged we have to check command
+    # document size client-side or applications won't be notified.
+    if not ack:
+        _check_doc_size_limits("bulkWrite", len(command_encoded), max_bson_size + _COMMAND_OVERHEAD)
+
+    # Don't include bulkWrite-command-agnostic fields in batch-splitting calculations.
     abridged_keys = ["bulkWrite", "errorsOnly", "ordered"]
     if command.get("bypassDocumentValidation"):
         abridged_keys.append("bypassDocumentValidation")
@@ -1068,17 +1071,14 @@ def _client_batched_op_msg_impl(
     command_abridged = {key: command[key] for key in abridged_keys}
     command_len_abridged = len(_dict_to_bson(command_abridged, False, opts))
 
-    # When OP_MSG is used unacknowledged we have to check command
-    # document size client-side or applications won't be notified.
-    if not ack:
-        _check_doc_size_limits("bulkWrite", command_abridged, max_bson_size + _COMMAND_OVERHEAD)
-
     # Maximum combined size of the ops and nsInfo document sequences.
     max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len_abridged)
 
     ns_info = {}
     to_send_ops: list[Mapping[str, Any]] = []
     to_send_ns: list[Mapping[str, int]] = []
+    to_send_ops_encoded: list[bytes] = []
+    to_send_ns_encoded: list[bytes] = []
     total_ops_length = 0
     total_ns_length = 0
     idx = 0
@@ -1088,11 +1088,13 @@ def _client_batched_op_msg_impl(
         # Check insert/replace document size if unacknowledged.
         if real_op_type == "insert":
             if not ack:
-                _check_doc_size_limits(real_op_type, op_doc["document"], max_bson_size)
+                doc_size = len(_dict_to_bson(op_doc["document"], False, opts))
+                _check_doc_size_limits(real_op_type, doc_size, max_bson_size)
         if real_op_type == "replace":
             op_type = "update"
             if not ack:
-                _check_doc_size_limits(real_op_type, op_doc["updateMods"], max_bson_size)
+                doc_size = len(_dict_to_bson(op_doc["updateMods"], False, opts))
+                _check_doc_size_limits(real_op_type, doc_size, max_bson_size)
 
         ns_doc_to_send = None
         ns_length = 0
@@ -1108,30 +1110,40 @@ def _client_batched_op_msg_impl(
         op_doc_to_send[op_type] = ns_info[namespace]  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
-        op_length = len(_dict_to_bson(op_doc_to_send, False, opts))
+        op_doc_encoded = _dict_to_bson(op_doc_to_send, False, opts)
+        op_length = len(op_doc_encoded)
         if ns_doc_to_send:
-            ns_length = len(_dict_to_bson(ns_doc_to_send, False, opts))
+            ns_doc_encoded = _dict_to_bson(ns_doc_to_send, False, opts)
+            ns_length = len(ns_doc_encoded)
 
         # Check operation document size if unacknowledged.
         if not ack:
-            _check_doc_size_limits(op_type, op_doc_to_send, max_bson_size + _COMMAND_OVERHEAD)
+            _check_doc_size_limits(op_type, op_length, max_bson_size + _COMMAND_OVERHEAD)
 
         new_message_size = total_ops_length + total_ns_length + op_length + ns_length
         # We have enough data, return this batch.
         if new_message_size > max_doc_sequences_bytes:
             break
+
+        # Add op and ns documents to this batch.
         to_send_ops.append(op_doc_to_send)
+        to_send_ops_encoded.append(op_doc_encoded)
         total_ops_length += op_length
         if ns_doc_to_send:
             to_send_ns.append(ns_doc_to_send)
+            to_send_ns_encoded.append(ns_doc_encoded)
             total_ns_length += ns_length
+
         idx += 1
+
         # We have enough documents, return this batch.
         if idx == max_write_batch_size:
             break
 
     # Construct the entire OP_MSG.
-    length = _client_construct_op_msg(command, to_send_ops, to_send_ns, ack, opts, buf)
+    length = _client_construct_op_msg(
+        command_encoded, to_send_ops_encoded, to_send_ns_encoded, ack, buf
+    )
 
     return to_send_ops, to_send_ns, length
 

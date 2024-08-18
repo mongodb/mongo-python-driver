@@ -35,5 +35,6 @@
       .. automethod:: get_database
       .. automethod:: server_info
       .. automethod:: watch
+      .. automethod:: bulk_write
       .. automethod:: __getitem__
       .. automethod:: __getattr__

@@ -2274,8 +2274,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           1
           >>> result.modified_count
           0
-          >>> result.upserted_ids
-          {3: ObjectId('54f62ee28891e756a6e1abd5')}
+          >>> result.upserted_count
+          1
           >>> async for doc in db.test.find({}):
           ...     print(doc)
           ...
@@ -2311,6 +2311,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param write_concern: (optional) The write concern to use for this bulk write.
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
+
+        .. seealso:: For more info, see :doc:`/examples/client_bulk`.
 
         .. seealso:: :ref:`writes-and-ids`
 
@@ -2562,7 +2564,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     if not self._retryable:
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
-                        retryable_write_error_exc = exc.error.has_error_label("RetryableWriteError")
+                        retryable_write_error_exc = isinstance(
+                            exc.error, PyMongoError
+                        ) and exc.error.has_error_label("RetryableWriteError")
                     else:
                         retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:

@@ -2031,6 +2031,17 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-8.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
     - name: "assign-pr-reviewer"
       tags: ["pr"]
       allowed_requesters: ["patch", "github_pr"]
@@ -3041,6 +3052,7 @@ buildvariants:
   tasks:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
+     - name: "perf-8.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
