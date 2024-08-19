@@ -2817,6 +2817,39 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1, trim_factor=1), int)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#23-range-explicit-encryption-applies-defaults
+class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(8, 0, -1)
+    def setUp(self):
+        super().setUp()
+        self.client.drop_database(self.db)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys", self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        self.key_id = self.client_encryption.create_data_key("local")
+        opts = RangeOpts(min=0, max=1000)
+        self.payload_defaults = self.client_encryption.encrypt(
+            123, "range", self.key_id, contention_factor=0, range_opts=opts
+        )
+
+    def test_uses_libmongocrypt_defaults(self):
+        opts = RangeOpts(min=0, max=1000, sparsity=2, trim_factor=6)
+        payload = self.client_encryption.encrypt(
+            123, "range", self.key_id, contention_factor=0, range_opts=opts
+        )
+        assert len(payload) == len(self.payload_defaults)
+
+    def test_accepts_trim_factor_0(self):
+        opts = RangeOpts(min=0, max=1000, trim_factor=0)
+        payload = self.client_encryption.encrypt(
+            123, "range", self.key_id, contention_factor=0, range_opts=opts
+        )
+        assert len(payload) > len(self.payload_defaults)
+
+
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
