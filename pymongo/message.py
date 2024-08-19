@@ -1079,7 +1079,7 @@ def _client_batched_op_msg_impl(
 
     ns_info = {}
     to_send_ops: list[Mapping[str, Any]] = []
-    to_send_ns: list[Mapping[str, int]] = []
+    to_send_ns: list[Mapping[str, str]] = []
     to_send_ops_encoded: list[bytes] = []
     to_send_ns_encoded: list[bytes] = []
     total_ops_length = 0
