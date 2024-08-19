@@ -10,6 +10,9 @@ PyMongo 4.9 brings a number of improvements including:
 - A new asynchronous API with full asyncio support.
 - Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
   :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
+- Added support for In-Use Encryption range queries with MongoDB 8.0.
+  Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
+  ``trim_factor`` is not optional in :class:`~pymongo.encryption_options.RangeOpts`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
 - Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
   :class:`~pymongo.command_cursor.CommandCursor`,
