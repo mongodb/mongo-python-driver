@@ -1251,10 +1251,10 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
-        elif c2s == "requests":
+        elif "bulk_write" in opname and (c2s == "requests" or c2s == "models"):
             # Parse each request into a bulk write model.
             requests = []
-            for request in arguments["requests"]:
+            for request in arguments[c2s]:
                 if "name" in request:
                     # CRUD v2 format
                     bulk_model = camel_to_upper_camel(request["name"])
@@ -1266,7 +1266,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                     bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
                     bulk_arguments = camel_to_snake_args(spec)
                 requests.append(bulk_class(**dict(bulk_arguments)))
-            arguments["requests"] = requests
+            arguments[c2s] = requests
         elif arg_name == "session":
             arguments["session"] = entity_map[arguments["session"]]
         elif opname == "open_download_stream" and arg_name == "id":

@@ -16,7 +16,19 @@ PyMongo 4.9 brings a number of improvements including:
   :class:`~pymongo.asynchronous.cursor.AsyncCursor`,
   and :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`
   as an asynchronous-friendly alternative to ``list(cursor)``.
-
+- Added :meth:`~pymongo.mongo_client.MongoClient.bulk_write` to :class:`~pymongo.mongo_client.MongoClient`
+  and :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`,
+  enabling users to perform insert, update, and delete operations
+  against mixed namespaces in a minimized number of round trips.
+  Please see :doc:`examples/client_bulk` for more information.
+- Added support for the ``namespace`` parameter to the
+  :class:`~pymongo.operations.InsertOne`,
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`,
+  :class:`~pymongo.operations.UpdateMany`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany` operations, so
+  they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
 Issues Resolved
 ...............

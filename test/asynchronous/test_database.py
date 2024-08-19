@@ -236,7 +236,7 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_check_exists(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         db = client[self.db.name]
         await db.drop_collection("unique")
         await db.create_collection("unique", check_exists=True)

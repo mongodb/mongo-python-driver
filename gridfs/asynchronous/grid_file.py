@@ -1892,8 +1892,16 @@ class AsyncGridOutCursor(AsyncCursor):
         next_file = await super().next()
         return AsyncGridOut(self._root_collection, file_document=next_file, session=self.session)
 
-    async def to_list(self) -> list[AsyncGridOut]:
-        return [x async for x in self]  # noqa: C416,RUF100
+    async def to_list(self, length: Optional[int] = None) -> list[AsyncGridOut]:
+        """Convert the cursor to a list."""
+        if length is None:
+            return [x async for x in self]  # noqa: C416,RUF100
+        if length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        ret = []
+        for _ in range(length):
+            ret.append(await self.next())
+        return ret
 
     __anext__ = next
 

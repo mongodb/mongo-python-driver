@@ -346,13 +346,17 @@ class CommandCursor(Generic[_DocumentType]):
         else:
             return None
 
-    def _next_batch(self, result: list) -> bool:
-        """Get all available documents from the cursor."""
+    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+        """Get all or some available documents from the cursor."""
         if not len(self._data) and not self._killed:
             self._refresh()
         if len(self._data):
-            result.extend(self._data)
-            self._data.clear()
+            if total is None:
+                result.extend(self._data)
+                self._data.clear()
+            else:
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())
             return True
         else:
             return False
@@ -381,21 +385,32 @@ class CommandCursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def to_list(self) -> list[_DocumentType]:
+    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
 
         To use::
 
           >>> cursor.to_list()
 
+        Or, so read at most n items from the cursor::
+
+          >>> cursor.to_list(n)
+
         If the cursor is empty or has no more results, an empty list will be returned.
 
         .. versionadded:: 4.9
         """
         res: list[_DocumentType] = []
+        remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
         while self.alive:
-            if not self._next_batch(res):
+            if not self._next_batch(res, remaining):
                 break
+            if length is not None:
+                remaining = length - len(res)
+                if remaining == 0:
+                    break
         return res
 
 

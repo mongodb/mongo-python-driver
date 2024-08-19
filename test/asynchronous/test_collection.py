@@ -1820,7 +1820,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.insert_many([{"i": i} for i in range(150)])
 
         client = await async_rs_or_single_client(maxPoolSize=1)
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         pool = await async_get_pool(client)
 
         # Make sure the socket is returned after exhaustion.

@@ -62,6 +62,7 @@ from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
+    ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     InvalidOperation,
@@ -76,12 +77,22 @@ from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
-from pymongo.operations import _Op
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+    _Op,
+)
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.results import ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, periodic_executor
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
+from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.settings import TopologySettings
@@ -126,6 +137,15 @@ _ReadCall = Callable[
 ]
 
 _IS_SYNC = True
+
+_WriteOp = Union[
+    InsertOne,
+    DeleteOne,
+    DeleteMany,
+    ReplaceOne,
+    UpdateOne,
+    UpdateMany,
+]
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -1516,6 +1536,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
 
+    if not _IS_SYNC:
+        # Add support for contextlib.closing.
+        aclose = close
+
     def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.
 
@@ -1715,7 +1739,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool,
         func: _WriteCall[T],
         session: Optional[ClientSession],
-        bulk: Optional[_Bulk],
+        bulk: Optional[Union[_Bulk, _ClientBulk]],
         operation: str,
         operation_id: Optional[int] = None,
     ) -> T:
@@ -1745,7 +1769,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         func: _WriteCall[T] | _ReadCall[T],
         session: Optional[ClientSession],
-        bulk: Optional[_Bulk],
+        bulk: Optional[Union[_Bulk, _ClientBulk]],
         operation: str,
         is_read: bool = False,
         address: Optional[_Address] = None,
@@ -1828,7 +1852,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         func: _WriteCall[T],
         session: Optional[ClientSession],
         operation: str,
-        bulk: Optional[_Bulk] = None,
+        bulk: Optional[Union[_Bulk, _ClientBulk]] = None,
         operation_id: Optional[int] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
@@ -2193,10 +2217,136 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
+    @_csot.apply
+    def bulk_write(
+        self,
+        models: Sequence[_WriteOp[_DocumentType]],
+        session: Optional[ClientSession] = None,
+        ordered: bool = True,
+        verbose_results: bool = False,
+        bypass_document_validation: Optional[bool] = None,
+        comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
+        write_concern: Optional[WriteConcern] = None,
+    ) -> ClientBulkWriteResult:
+        """Send a batch of write operations, potentially across multiple namespaces, to the server.
+
+        Requests are passed as a list of write operation instances (
+        :class:`~pymongo.operations.InsertOne`,
+        :class:`~pymongo.operations.UpdateOne`,
+        :class:`~pymongo.operations.UpdateMany`,
+        :class:`~pymongo.operations.ReplaceOne`,
+        :class:`~pymongo.operations.DeleteOne`, or
+        :class:`~pymongo.operations.DeleteMany`).
+
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
+          ...
+          >>> for doc in db.coll.find({}):
+          ...     print(doc)
+          ...
+          {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
+          ...
+          >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
+          >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
+          >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
+          ...           DeleteOne(namespace="db.test", filter={'x': 1}),
+          ...           InsertOne(namespace="db.coll", document={'y': 2}),
+          ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
+          >>> result = client.bulk_write(models=models)
+          >>> result.inserted_count
+          2
+          >>> result.deleted_count
+          1
+          >>> result.modified_count
+          0
+          >>> result.upserted_count
+          1
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
+          {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
+          {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
+          ...
+          >>> for doc in db.coll.find({}):
+          ...     print(doc)
+          ...
+          {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
+          {'y': 2, '_id': ObjectId('507f1f77bcf86cd799439012')}
+
+        :param models: A list of write operation instances.
+        :param session: (optional) An instance of
+            :class:`~pymongo.client_session.ClientSession`.
+        :param ordered: If ``True`` (the default), requests will be
+            performed on the server serially, in the order provided. If an error
+            occurs all remaining operations are aborted. If ``False``, requests
+            will be still performed on the server serially, in the order provided,
+            but all operations will be attempted even if any errors occur.
+        :param verbose_results: If ``True``, detailed results for each
+            successful operation will be included in the returned
+            :class:`~pymongo.results.ClientBulkWriteResult`. Default is ``False``.
+        :param bypass_document_validation: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is ``False``.
+        :param comment: (optional) A user-provided comment to attach to this
+            command.
+        :param let: (optional) Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. "$$var").
+        :param write_concern: (optional) The write concern to use for this bulk write.
+
+        :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
+
+        .. seealso:: For more info, see :doc:`/examples/client_bulk`.
+
+        .. seealso:: :ref:`writes-and-ids`
+
+        .. note:: requires MongoDB server version 8.0+.
+
+        .. versionadded:: 4.9
+        """
+        if self._options.auto_encryption_opts:
+            raise InvalidOperation(
+                "MongoClient.bulk_write does not currently support automatic encryption"
+            )
+
+        if session and session.in_transaction:
+            # Inherit the transaction write concern.
+            if write_concern:
+                raise InvalidOperation("Cannot set write concern after starting a transaction")
+            write_concern = session._transaction.opts.write_concern  # type: ignore[union-attr]
+        else:
+            # Inherit the client's write concern if none is provided.
+            if not write_concern:
+                write_concern = self.write_concern
+
+        common.validate_list("models", models)
+
+        blk = _ClientBulk(
+            self,
+            write_concern=write_concern,  # type: ignore[arg-type]
+            ordered=ordered,
+            bypass_document_validation=bypass_document_validation,
+            comment=comment,
+            let=let,
+            verbose_results=verbose_results,
+        )
+        for model in models:
+            try:
+                model._add_to_client_bulk(blk)
+            except AttributeError:
+                raise TypeError(f"{model!r} is not a valid request") from None
+
+        return blk.execute(session, _Op.BULK_WRITE)
+
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     """Return the server response from PyMongo exception or None."""
-    if isinstance(exc, BulkWriteError):
+    if isinstance(exc, (BulkWriteError, ClientBulkWriteException)):
         # Check the last writeConcernError to determine if this
         # BulkWriteError is retryable.
         wces = exc.details["writeConcernErrors"]
@@ -2231,10 +2381,14 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
 
     # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
-    if isinstance(exc, ConnectionFailure) and not isinstance(
-        exc, (NotPrimaryError, WaitQueueTimeoutError)
+    if isinstance(exc, ClientBulkWriteException):
+        exc_to_check = exc.error
+    else:
+        exc_to_check = exc
+    if isinstance(exc_to_check, ConnectionFailure) and not isinstance(
+        exc_to_check, (NotPrimaryError, WaitQueueTimeoutError)
     ):
-        exc._add_error_label("RetryableWriteError")
+        exc_to_check._add_error_label("RetryableWriteError")
 
 
 class _MongoClientErrorHandler:
@@ -2279,6 +2433,8 @@ class _MongoClientErrorHandler:
             return
         self.handled = True
         if self.session:
+            if isinstance(exc_val, ClientBulkWriteException):
+                exc_val = exc_val.error
             if isinstance(exc_val, ConnectionFailure):
                 if self.session.in_transaction:
                     exc_val._add_error_label("TransientTransactionError")
@@ -2290,7 +2446,7 @@ class _MongoClientErrorHandler:
                 ):
                     self.session._unpin()
         err_ctx = _ErrorContext(
-            exc_val,
+            exc_val,  # type: ignore[arg-type]
             self.max_wire_version,
             self.sock_generation,
             self.completed_handshake,
@@ -2317,7 +2473,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self,
         mongo_client: MongoClient,
         func: _WriteCall[T] | _ReadCall[T],
-        bulk: Optional[_Bulk],
+        bulk: Optional[Union[_Bulk, _ClientBulk]],
         operation: str,
         is_read: bool = False,
         session: Optional[ClientSession] = None,
@@ -2394,7 +2550,12 @@ class _ClientConnectionRetryable(Generic[T]):
                 if not self._is_read:
                     if not self._retryable:
                         raise
-                    retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
+                    if isinstance(exc, ClientBulkWriteException) and exc.error:
+                        retryable_write_error_exc = isinstance(
+                            exc.error, PyMongoError
+                        ) and exc.error.has_error_label("RetryableWriteError")
+                    else:
+                        retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                     if retryable_write_error_exc:
                         assert self._session
                         self._session._unpin()

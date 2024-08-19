@@ -193,7 +193,7 @@ class AsyncClientContext:
             self.connection_attempts.append(f"failed to connect client {client!r}: {exc}")
             return None
         finally:
-            await client.aclose()
+            await client.close()
 
     async def _init_client(self):
         self.client = await self._connect(host, port)
@@ -409,7 +409,7 @@ class AsyncClientContext:
             else:
                 raise
         finally:
-            await client.aclose()
+            await client.close()
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
@@ -730,9 +730,9 @@ class AsyncClientContext:
 
     def require_failCommand_appName(self, func):
         """Run a test only if the server supports the failCommand appName."""
-        # SERVER-47195
+        # SERVER-47195 and SERVER-49336.
         return self._require(
-            lambda: (self.test_commands_enabled and self.version >= (4, 4, -1)),
+            lambda: (self.test_commands_enabled and self.version >= (4, 4, 7)),
             "failCommand appName must be supported",
             func=func,
         )
@@ -853,6 +853,10 @@ class AsyncClientContext:
     @property
     async def max_write_batch_size(self):
         return (await self.hello)["maxWriteBatchSize"]
+
+    @property
+    async def max_message_size_bytes(self):
+        return (await self.hello)["maxMessageSizeBytes"]
 
 
 # Reusable client context
@@ -1085,7 +1089,7 @@ async def async_teardown():
             await c.drop_database("pymongo_test2")
             await c.drop_database("pymongo_test_mike")
             await c.drop_database("pymongo_test_bernie")
-        await c.aclose()
+        await c.close()
 
     print_running_clients()
 

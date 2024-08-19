@@ -747,6 +747,7 @@ class TestSampleShellCommands(IntegrationTest):
         done = False
 
         def insert_docs():
+            nonlocal done
             while not done:
                 db.inventory.insert_one({"username": "alice"})
                 db.inventory.delete_one({"username": "alice"})
@@ -760,17 +761,20 @@ class TestSampleShellCommands(IntegrationTest):
             cursor = db.inventory.watch()
             next(cursor)
             # End Changestream Example 1
+            cursor.close()
 
             # Start Changestream Example 2
             cursor = db.inventory.watch(full_document="updateLookup")
             next(cursor)
             # End Changestream Example 2
+            cursor.close()
 
             # Start Changestream Example 3
             resume_token = cursor.resume_token
             cursor = db.inventory.watch(resume_after=resume_token)
             next(cursor)
             # End Changestream Example 3
+            cursor.close()
 
             # Start Changestream Example 4
             pipeline = [
@@ -780,6 +784,7 @@ class TestSampleShellCommands(IntegrationTest):
             cursor = db.inventory.watch(pipeline=pipeline)
             next(cursor)
             # End Changestream Example 4
+            cursor.close()
         finally:
             done = True
             t.join()

@@ -1893,9 +1893,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         return AsyncCursor(self, *args, **kwargs)
 
-    async def find_raw_batches(
-        self, *args: Any, **kwargs: Any
-    ) -> AsyncRawBatchCursor[_DocumentType]:
+    def find_raw_batches(self, *args: Any, **kwargs: Any) -> AsyncRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1907,7 +1905,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :mod:`bson` module.
 
           >>> import bson
-          >>> cursor = await db.test.find_raw_batches()
+          >>> cursor = db.test.find_raw_batches()
           >>> async for batch in cursor:
           ...     print(bson.decode_all(batch))
 

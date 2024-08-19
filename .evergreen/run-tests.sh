@@ -121,13 +121,13 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+    # Check for libmongocrypt checkout.
+    if [ ! -d "libmongocrypt" ]; then
+        echo "Run encryption setup first!"
+        exit 1
+    fi
 
     python -m pip install '.[encryption]'
-
-    # Setup encryption if necessary.
-    if [ ! -d "libmongocrypt" ]; then
-        bash ./.evergreen/setup-encryption.sh
-    fi
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
