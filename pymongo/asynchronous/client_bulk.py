@@ -108,6 +108,7 @@ class _AsyncClientBulk:
         self.verbose_results = verbose_results
 
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
+        self.namespaces: list[str] = []
         self.idx_offset: int = 0
         self.total_ops: int = 0
 
@@ -132,8 +133,9 @@ class _AsyncClientBulk:
         # Generate ObjectId client side.
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
             document["_id"] = ObjectId()
-        cmd = {"insert": namespace, "document": document}
+        cmd = {"insert": -1, "document": document}
         self.ops.append(("insert", cmd))
+        self.namespaces.append(namespace)
         self.total_ops += 1
 
     def add_update(
@@ -150,7 +152,7 @@ class _AsyncClientBulk:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
         cmd = {
-            "update": namespace,
+            "update": -1,
             "filter": selector,
             "updateMods": update,
             "multi": multi,
@@ -171,6 +173,7 @@ class _AsyncClientBulk:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
         self.ops.append(("update", cmd))
+        self.namespaces.append(namespace)
         self.total_ops += 1
 
     def add_replace(
@@ -185,7 +188,7 @@ class _AsyncClientBulk:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
         cmd = {
-            "update": namespace,
+            "update": -1,
             "filter": selector,
             "updateMods": replacement,
             "multi": False,
@@ -200,6 +203,7 @@ class _AsyncClientBulk:
             self.uses_collation = True
             cmd["collation"] = collation
         self.ops.append(("replace", cmd))
+        self.namespaces.append(namespace)
         self.total_ops += 1
 
     def add_delete(
@@ -211,7 +215,7 @@ class _AsyncClientBulk:
         hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = {"delete": namespace, "filter": selector, "multi": multi}
+        cmd = {"delete": -1, "filter": selector, "multi": multi}
         if hint is not None:
             self.uses_hint_delete = True
             cmd["hint"] = hint
@@ -222,6 +226,7 @@ class _AsyncClientBulk:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
         self.ops.append(("delete", cmd))
+        self.namespaces.append(namespace)
         self.total_ops += 1
 
     @_handle_reauth
@@ -407,9 +412,10 @@ class _AsyncClientBulk:
         bwc: _ClientBulkWriteContext,
         cmd: dict[str, Any],
         ops: list[tuple[str, Mapping[str, Any]]],
+        namespaces: list[str],
     ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (unack)."""
-        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops)
+        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
         await self.unack_write(bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client)  # type: ignore[arg-type]
         return to_send_ops, to_send_ns
 
@@ -418,9 +424,10 @@ class _AsyncClientBulk:
         bwc: _ClientBulkWriteContext,
         cmd: dict[str, Any],
         ops: list[tuple[str, Mapping[str, Any]]],
+        namespaces: list[str],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (ack)."""
-        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops)
+        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
         result = await self.write_command(
             bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client
         )  # type: ignore[arg-type]
@@ -540,11 +547,12 @@ class _AsyncClientBulk:
             # CSOT: apply timeout before encoding the command.
             conn.apply_timeout(self.client, cmd)
             ops = islice(self.ops, self.idx_offset, None)
+            namespaces = islice(self.namespaces, self.idx_offset, None)
 
             # Run as many ops as possible in one server command.
             if write_concern.acknowledged:
-                raw_result, to_send_ops, _ = await self._execute_batch(bwc, cmd, ops)  # type: ignore[arg-type]
-                result = copy.deepcopy(raw_result)
+                raw_result, to_send_ops, _ = await self._execute_batch(bwc, cmd, ops, namespaces)  # type: ignore[arg-type]
+                result = raw_result
 
                 # Top-level server/network error.
                 if result.get("error"):
@@ -600,7 +608,7 @@ class _AsyncClientBulk:
                 self.started_retryable_write = False
 
             else:
-                to_send_ops, _ = await self._execute_batch_unack(bwc, cmd, ops)  # type: ignore[arg-type]
+                to_send_ops, _ = await self._execute_batch_unack(bwc, cmd, ops, namespaces)  # type: ignore[arg-type]
 
             self.idx_offset += len(to_send_ops)
 
@@ -697,9 +705,10 @@ class _AsyncClientBulk:
 
             conn.add_server_api(cmd)
             ops = islice(self.ops, self.idx_offset, None)
+            namespaces = islice(self.namespaces, self.idx_offset, None)
 
             # Run as many ops as possible in one server command.
-            to_send_ops, _ = await self._execute_batch_unack(bwc, cmd, ops)  # type: ignore[arg-type]
+            to_send_ops, _ = await self._execute_batch_unack(bwc, cmd, ops, namespaces)  # type: ignore[arg-type]
 
             self.idx_offset += len(to_send_ops)
 

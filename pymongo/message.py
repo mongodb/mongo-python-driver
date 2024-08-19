@@ -21,7 +21,6 @@ MongoDB.
 """
 from __future__ import annotations
 
-import copy
 import datetime
 import random
 import struct
@@ -950,10 +949,13 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         )
 
     def batch_command(
-        self, cmd: MutableMapping[str, Any], operations: list[tuple[str, Mapping[str, Any]]]
+        self,
+        cmd: MutableMapping[str, Any],
+        operations: list[tuple[str, Mapping[str, Any]]],
+        namespaces: list[str],
     ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         request_id, msg, to_send_ops, to_send_ns = _client_do_batched_op_msg(
-            cmd, operations, self.codec, self
+            cmd, operations, namespaces, self.codec, self
         )
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
@@ -1035,6 +1037,7 @@ def _client_construct_op_msg(
 def _client_batched_op_msg_impl(
     command: Mapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
+    namespaces: list[str],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
@@ -1083,7 +1086,7 @@ def _client_batched_op_msg_impl(
     total_ns_length = 0
     idx = 0
 
-    for real_op_type, op_doc in operations:
+    for (real_op_type, op_doc), namespace in zip(operations, namespaces):
         op_type = real_op_type
         # Check insert/replace document size if unacknowledged.
         if real_op_type == "insert":
@@ -1096,24 +1099,23 @@ def _client_batched_op_msg_impl(
                 doc_size = len(_dict_to_bson(op_doc["updateMods"], False, opts))
                 _check_doc_size_limits(real_op_type, doc_size, max_bson_size)
 
-        ns_doc_to_send = None
+        ns_doc = None
         ns_length = 0
-        namespace = op_doc[op_type]
+
         if namespace not in ns_info:
-            ns_doc_to_send = {"ns": namespace}
+            ns_doc = {"ns": namespace}
             new_ns_index = len(to_send_ns)
             ns_info[namespace] = new_ns_index
 
         # First entry in the operation doc has the operation type as its
         # key and the index of its namespace within ns_info as its value.
-        op_doc_to_send = copy.deepcopy(op_doc)
-        op_doc_to_send[op_type] = ns_info[namespace]  # type: ignore[index]
+        op_doc[op_type] = ns_info[namespace]  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
-        op_doc_encoded = _dict_to_bson(op_doc_to_send, False, opts)
+        op_doc_encoded = _dict_to_bson(op_doc, False, opts)
         op_length = len(op_doc_encoded)
-        if ns_doc_to_send:
-            ns_doc_encoded = _dict_to_bson(ns_doc_to_send, False, opts)
+        if ns_doc:
+            ns_doc_encoded = _dict_to_bson(ns_doc, False, opts)
             ns_length = len(ns_doc_encoded)
 
         # Check operation document size if unacknowledged.
@@ -1128,11 +1130,11 @@ def _client_batched_op_msg_impl(
             break
 
         # Add op and ns documents to this batch.
-        to_send_ops.append(op_doc_to_send)
+        to_send_ops.append(op_doc)
         to_send_ops_encoded.append(op_doc_encoded)
         total_ops_length += op_length
-        if ns_doc_to_send:
-            to_send_ns.append(ns_doc_to_send)
+        if ns_doc:
+            to_send_ns.append(ns_doc)
             to_send_ns_encoded.append(ns_doc_encoded)
             total_ns_length += ns_length
 
@@ -1153,6 +1155,7 @@ def _client_batched_op_msg_impl(
 def _client_encode_batched_op_msg(
     command: Mapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
+    namespaces: list[str],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
@@ -1163,7 +1166,7 @@ def _client_encode_batched_op_msg(
     buf = _BytesIO()
 
     to_send_ops, to_send_ns, _ = _client_batched_op_msg_impl(
-        command, operations, ack, opts, ctx, buf
+        command, operations, namespaces, ack, opts, ctx, buf
     )
     return buf.getvalue(), to_send_ops, to_send_ns
 
@@ -1171,6 +1174,7 @@ def _client_encode_batched_op_msg(
 def _client_batched_op_msg_compressed(
     command: Mapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
+    namespaces: list[str],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
@@ -1179,7 +1183,7 @@ def _client_batched_op_msg_compressed(
     with OP_MSG, compressed.
     """
     data, to_send_ops, to_send_ns = _client_encode_batched_op_msg(
-        command, operations, ack, opts, ctx
+        command, operations, namespaces, ack, opts, ctx
     )
 
     assert ctx.conn.compression_context is not None
@@ -1190,6 +1194,7 @@ def _client_batched_op_msg_compressed(
 def _client_batched_op_msg(
     command: Mapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
+    namespaces: list[str],
     ack: bool,
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
@@ -1203,7 +1208,7 @@ def _client_batched_op_msg(
     buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
 
     to_send_ops, to_send_ns, length = _client_batched_op_msg_impl(
-        command, operations, ack, opts, ctx, buf
+        command, operations, namespaces, ack, opts, ctx, buf
     )
 
     # Header - request id and message length
@@ -1219,6 +1224,7 @@ def _client_batched_op_msg(
 def _client_do_batched_op_msg(
     command: MutableMapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
+    namespaces: list[str],
     opts: CodecOptions,
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
@@ -1231,8 +1237,8 @@ def _client_do_batched_op_msg(
     else:
         ack = True
     if ctx.conn.compression_context:
-        return _client_batched_op_msg_compressed(command, operations, ack, opts, ctx)
-    return _client_batched_op_msg(command, operations, ack, opts, ctx)
+        return _client_batched_op_msg_compressed(command, operations, namespaces, ack, opts, ctx)
+    return _client_batched_op_msg(command, operations, namespaces, ack, opts, ctx)
 
 
 # End OP_MSG -----------------------------------------------------
