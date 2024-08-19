@@ -9,6 +9,7 @@ import pytest
 _IS_SYNC = True
 
 
+@pytest.fixture
 def event_loop_policy():
     # The default asyncio loop implementation on Windows
     # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)

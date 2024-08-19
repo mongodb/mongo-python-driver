@@ -5,11 +5,13 @@ import sys
 from test import pytest_conf
 from test.asynchronous import async_setup, async_teardown
 
+import pytest
 import pytest_asyncio
 
 _IS_SYNC = False
 
 
+@pytest.fixture
 def event_loop_policy():
     # The default asyncio loop implementation on Windows
     # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
