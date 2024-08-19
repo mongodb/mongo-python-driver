@@ -15,7 +15,7 @@ def event_loop_policy():
     # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
     # We explicitly use a different loop implementation here to prevent that issue
     if sys.platform == "win32":
-        return asyncio.WindowsSelectorEventLoopPolicy  # type: ignore[attr-defined]
+        return asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
 
     return asyncio.get_event_loop_policy()
 
