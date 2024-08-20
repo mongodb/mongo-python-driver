@@ -72,7 +72,6 @@ fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     python -m pip install '.[gssapi]'
-    set +x
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
