@@ -1035,7 +1035,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.request_called = 0
 
         # Perform an `insert` operation that succeeds.
-        client.test.test.insert_one()
+        client.test.test.insert_one({})
 
         # Assert that the callback was not called.
         self.assertEqual(self.request_called, 0)
@@ -1053,7 +1053,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             }
         ):
             # Perform an `insert` operation that succeeds.
-            client.test.test.insert_one()
+            client.test.test.insert_one({})
 
         # Assert that the callback was called once.
         self.assertEqual(self.request_called, 1)
