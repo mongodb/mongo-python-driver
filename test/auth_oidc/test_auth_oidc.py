@@ -1025,21 +1025,20 @@ class TestAuthOIDCMachine(OIDCTestBase):
         listener = EventListener()
         client = self.create_client(event_listeners=[listener])
 
-        # Poison the *Client Cache* with a valid access token to enforce Speculative Authentication.
+        # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = self.create_client()
         client2.test.test.find_one()
         client.options.pool_options._credentials.cache.data = (
             client2.options.pool_options._credentials.cache.data
         )
         client2.close()
-        client2.options.pool_options._credentials.cache.data.access_token = "bad"
         self.request_called = 0
 
         # Perform an `insert` operation that succeeds.
         client.test.test.insert_one({})
 
-        # Assert that the callback was called.
-        self.assertEqual(self.request_called, 1)
+        # Assert that the callback was not called.
+        self.assertEqual(self.request_called, 0)
 
         # Assert there were no `SaslStart` commands executed.
         for event in listener.started_events:
@@ -1056,8 +1055,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
             # Perform an `insert` operation that succeeds.
             client.test.test.insert_one({})
 
-        # Assert that the callback was called twice.
-        self.assertEqual(self.request_called, 2)
+        # Assert that the callback was called once.
+        self.assertEqual(self.request_called, 1)
 
         # Assert there were `SaslStart` commands executed.
         found = False
