@@ -36,6 +36,7 @@ TEST_ARGS="${*:1}"
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
+set +x
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 # Try to source local Drivers Secrets
@@ -47,7 +48,6 @@ else
 fi
 
 if [ "$AUTH" != "noauth" ]; then
-    set +x
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
@@ -68,10 +68,10 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_PASSWORD="pwd123"
     fi
     echo "Added auth, DB_USER: $DB_USER"
-    set -x
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
+    python -m pip install '.[gssapi]'
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
