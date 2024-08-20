@@ -462,7 +462,7 @@ class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
         self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc))
-            self.models.append(ReplaceOne(filter={}, replacement=doc, upsert=True))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
             self.models.append(DeleteOne(filter={}))
 
     def do_task(self):
@@ -477,7 +477,9 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
             self.models.append(
-                ReplaceOne(namespace="perftest.corpus", filter={}, replacement=doc, upsert=True)
+                ReplaceOne(
+                    namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
+                )
             )
             self.models.append(DeleteOne(namespace="perftest.corpus", filter={}))
 
