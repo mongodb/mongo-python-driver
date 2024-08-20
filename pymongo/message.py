@@ -1123,6 +1123,8 @@ def _client_batched_op_msg_impl(
         new_message_size = total_ops_length + total_ns_length + op_length + ns_length
         # We have enough data, return this batch.
         if new_message_size > max_doc_sequences_bytes:
+            if idx == 0:
+                _raise_document_too_large(op_type, op_length, max_bson_size + _COMMAND_OVERHEAD)
             break
 
         # Add op and ns documents to this batch.
