@@ -40,12 +40,7 @@ from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
-from pymongo.synchronous.auth_oidc import (
-    OIDCCallback,
-    OIDCCallbackContext,
-    OIDCCallbackResult,
-    _get_authenticator,
-)
+from pymongo.synchronous.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
 from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
