@@ -44,6 +44,7 @@ from pymongo.synchronous.auth_oidc import (
     OIDCCallback,
     OIDCCallbackContext,
     OIDCCallbackResult,
+    _get_authenticator,
 )
 from pymongo.uri_parser import parse_uri
 
@@ -1015,6 +1016,54 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         # Verify that the callback was called 2 times.
         self.assertEqual(callback.count, 2)
+
+        # Close the client.
+        client.close()
+
+    def test_4_4_speculative_authentication_should_be_ignored_on_reauthentication(self):
+        # Create an OIDC configured client that can listen for `SaslStart` commands.
+        listener = EventListener()
+        client = self.create_client(event_listeners=[listener])
+
+        # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
+        client2 = self.create_client()
+        client2.test.test.find()
+        client.options.pool_options._credentials.cache.data = (
+            client2.options.pool_options._credentials.cache.data
+        )
+        client2.close()
+        self.request_called = 0
+
+        # Perform an `insert` operation that succeeds.
+        client.test.test.insert_one()
+
+        # Assert that the callback was not called.
+        self.assertEqual(self.request_called, 0)
+
+        # Assert there were no `SaslStart` commands executed.
+        for event in listener.started_events:
+            assert event.command_name.lower() != "saslstart"
+        listener.reset()
+
+        # Set a fail point for `insert` commands of the form:
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["insert"], "errorCode": 391},
+            }
+        ):
+            # Perform an `insert` operation that succeeds.
+            client.test.test.insert_one()
+
+        # Assert that the callback was called once.
+        self.assertEqual(self.request_called, 1)
+
+        # Assert there were `SaslStart` commands executed.
+        found = False
+        for event in listener.started_events:
+            if event.command_name.lower() != "saslstart":
+                found = True
+        assert found
 
         # Close the client.
         client.close()
