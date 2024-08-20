@@ -1027,7 +1027,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = self.create_client()
-        client2.test.test.find()
+        client2.test.test.find_one()
         client.options.pool_options._credentials.cache.data = (
             client2.options.pool_options._credentials.cache.data
         )
