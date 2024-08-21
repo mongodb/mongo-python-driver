@@ -45,3 +45,9 @@ export PATH="$MONGODB_BINARIES:$PATH"
 export PROJECT="$project"
 export PIP_QUIET=1
 EOT
+
+# Add these expansions to make it easier to call out tests scripts from the EVG yaml
+cat <<EOT > expansion.yml
+DRIVERS_TOOLS: "$DRIVERS_TOOLS"
+PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
+EOT

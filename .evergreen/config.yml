@@ -42,11 +42,10 @@ functions:
         working_dir: "src"
         args:
           - .evergreen/scripts/configure-env.sh
-    - command: shell.exec
+    # Load the expansion file to make an evergreen variable with the current unique version
+    - command: expansions.update
       params:
-        working_dir: "src/.evergreen/scripts"
-        script: |
-          ls -la
+        file: src/expansion.yml
 
   "prepare resources":
     - command: shell.exec
