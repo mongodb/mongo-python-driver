@@ -2055,7 +2055,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             PyObject* replace;
             PyObject* args;
             PyObject* kwargs;
-            PyObject* astimezone;
             int64_t millis;
             if (max < 8) {
                 goto invalid;
@@ -2133,30 +2132,22 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
             value = PyObject_Call(replace, args, kwargs);
+            Py_DECREF(replace);
+            Py_DECREF(args);
+            Py_DECREF(kwargs);
             if (!value) {
-                Py_DECREF(replace);
-                Py_DECREF(args);
-                Py_DECREF(kwargs);
                 goto invalid;
             }
 
             /* convert to local time */
             if (options->tzinfo != Py_None) {
-                astimezone = PyObject_GetAttr(value, state->_astimezone_str);
+                PyObject* temp = PyObject_CallMethodObjArgs(value, state->_astimezone_str, options->tzinfo, NULL);
                 Py_DECREF(value);
-                if (!astimezone) {
-                    Py_DECREF(replace);
-                    Py_DECREF(args);
-                    Py_DECREF(kwargs);
+                value = temp;
+                if (!value) {
                     goto invalid;
                 }
-                value = PyObject_CallFunctionObjArgs(astimezone, options->tzinfo, NULL);
-                Py_DECREF(astimezone);
             }
-
-            Py_DECREF(replace);
-            Py_DECREF(args);
-            Py_DECREF(kwargs);
             break;
         }
     case 11:
