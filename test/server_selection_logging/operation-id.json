@@ -232,7 +232,8 @@
       "description": "Successful client bulkWrite operation: log messages have operationIds",
       "runOnRequirements": [
         {
-          "minServerVersion": "8.0"
+          "minServerVersion": "8.0",
+          "serverless": "forbid"
         }
       ],
       "operations": [
@@ -304,7 +305,8 @@
       "description": "Failed client bulkWrite operation: log messages have operationIds",
       "runOnRequirements": [
         {
-          "minServerVersion": "8.0"
+          "minServerVersion": "8.0",
+          "serverless": "forbid"
         }
       ],
       "operations": [
