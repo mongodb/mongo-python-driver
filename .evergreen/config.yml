@@ -220,7 +220,7 @@ functions:
   "upload test results":
     - command: attach.results
       params:
-        file_location: "$DRIVERS_TOOLS/results.json"
+        file_location: "${DRIVERS_TOOLS}/results.json"
     - command: attach.xunit_results
       params:
         file: "src/xunit-results/TEST-*.xml"
@@ -272,7 +272,7 @@ functions:
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
             LOAD_BALANCER=${LOAD_BALANCER} \
-            bash $DRIVERS_TOOLS/.evergreen/run-orchestration.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -289,13 +289,13 @@ functions:
       params:
         script: |
           . src/.evergreen/scripts/env.sh
-          bash $DRIVERS_TOOLS/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
         script: |
           . src/.evergreen/scripts/env.sh
-          bash $DRIVERS_TOOLS/.evergreen/atlas_data_lake/run-mongohouse-image.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
           sleep 1
           docker ps
 
@@ -305,7 +305,7 @@ functions:
         script: |
           . src/.evergreen/scripts/env.sh
           set -o xtrace
-          bash $DRIVERS_TOOLS/.evergreen/stop-orchestration.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
     - command: shell.exec
@@ -371,7 +371,7 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
-            bash $DRIVERS_TOOLS/.evergreen/csfle/await-servers.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
             export TEST_ENCRYPTION=1
             if [ -n "${test_encryption_pyopenssl}" ]; then
               export TEST_ENCRYPTION_PYOPENSSL=1
@@ -423,7 +423,7 @@ functions:
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           . .evergreen/scripts/env.sh
-          bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
           PROJECT_DIRECTORY="$PROJECT_DIRECTORY" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
@@ -441,7 +441,7 @@ functions:
           set +x
           set -o errexit
           . .evergreen/scripts/env.sh
-          bash $DRIVERS_TOOLS/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
+          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
           PROJECT_DIRECTORY="$PROJECT_DIRECTORY" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
@@ -455,7 +455,7 @@ functions:
         binary: bash
         script: |
           . src/.evergreen/scripts/env.sh
-          $DRIVERS_TOOLS/.evergreen/auth_aws/setup-secrets.sh
+          ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh
 
   "run aws auth test with regular aws credentials":
     - command: shell.exec
@@ -553,7 +553,7 @@ functions:
           fi
           . .evergreen/scripts/env.sh
           set -ex
-          cd $DRIVERS_TOOLS/.evergreen/auth_aws
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           . aws_setup.sh ecs
           export MONGODB_BINARIES="$MONGODB_BINARIES";
@@ -587,12 +587,12 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          for i in $(find $DRIVERS_TOOLS/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
+          for i in $(find ${DRIVERS_TOOLS}/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
           done
           # Copy client certificate because symlinks do not work on Windows.
-          cp $DRIVERS_TOOLS/.evergreen/x509gen/client.pem $MONGO_ORCHESTRATION_HOME/lib/client.pem
+          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem $MONGO_ORCHESTRATION_HOME/lib/client.pem
 
   "make files executable":
     - command: shell.exec
@@ -600,7 +600,7 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          for i in $(find $DRIVERS_TOOLS/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
+          for i in $(find ${DRIVERS_TOOLS}/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
             chmod +x $i
           done
 
@@ -638,7 +638,7 @@ functions:
           LAMBDA_STACK_NAME: dbx-python-lambda
         script: |
           . src/.evergreen/scripts/env.sh
-          $DRIVERS_TOOLS/.evergreen/atlas/setup-atlas-cluster.sh
+          ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
     - command: expansions.update
       params:
         file: atlas-expansion.yml
@@ -652,7 +652,7 @@ functions:
           . .evergreen/scripts/env.sh
           TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
+          CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-eg
 
@@ -662,7 +662,7 @@ functions:
         background: true
         script: |
           . src/.evergreen/scripts/env.sh
-          cd $DRIVERS_TOOLS/.evergreen/ocsp
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
@@ -675,7 +675,7 @@ functions:
         background: true
         script: |
           . src/.evergreen/scripts/env.sh
-          cd $DRIVERS_TOOLS/.evergreen/ocsp
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
@@ -690,7 +690,7 @@ functions:
         background: true
         script: |
           . src/.evergreen/scripts/env.sh
-          cd $DRIVERS_TOOLS/.evergreen/ocsp
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
@@ -703,7 +703,7 @@ functions:
         background: true
         script: |
           . src/.evergreen/scripts/env.sh
-          cd $DRIVERS_TOOLS/.evergreen/ocsp
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
           --ca_file ${OCSP_ALGORITHM}/ca.pem \
@@ -717,7 +717,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          DRIVERS_TOOLS=$DRIVERS_TOOLS MONGODB_URI=${MONGODB_URI} bash $DRIVERS_TOOLS/.evergreen/run-load-balancer.sh start
+          DRIVERS_TOOLS=$DRIVERS_TOOLS MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
     - command: expansions.update
       params:
         file: lb-expansion.yml
@@ -726,8 +726,8 @@ functions:
     - command: shell.exec
       params:
         script: |
-          cd $DRIVERS_TOOLS/.evergreen
-          DRIVERS_TOOLS=$DRIVERS_TOOLS bash $DRIVERS_TOOLS/.evergreen/run-load-balancer.sh stop
+          cd ${DRIVERS_TOOLS}/.evergreen
+          DRIVERS_TOOLS=$DRIVERS_TOOLS bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
 
   "teardown_docker":
     - command: shell.exec
@@ -745,19 +745,18 @@ functions:
         shell: "bash"
         script: |
           . src/.evergreen/scripts/env.sh
-          cd "$DRIVERS_TOOLS/.evergreen/auth_aws"
+          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
           if [ -f "./aws_e2e_setup.json" ]; then
             . ./activate-authawsvenv.sh
             python ./lib/aws_assign_instance_profile.py
           fi
 
   "teardown atlas":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        shell: bash
-        script: |
-          . src/.evergreen/scripts/env.sh
-          $DRIVERS_TOOLS/.evergreen/atlas/teardown-atlas-cluster.sh
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
   "run perf tests":
     - command: shell.exec
@@ -813,14 +812,14 @@ task_groups:
             VAULT_NAME: ${VAULT_NAME}
           script: |
             . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/serverless/create-instance.sh
+            ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
     teardown_task:
       - command: shell.exec
         params:
           shell: bash
           script: |
             . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/serverless/delete-instance.sh
+            ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
       - func: "upload test results"
     tasks:
       - ".serverless"
@@ -833,19 +832,17 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: "bash"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
+          binary: "bash"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: "bash"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+          binary: "bash"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/delete-instance.sh
       - func: "upload test results"
     tasks:
       - testgcpkms-task
@@ -858,19 +855,18 @@ task_groups:
       - func: make files executable
       - command: shell.exec
         params:
-          shell: bash
+          binary: bash
           env:
             AZUREKMS_VMNAME_PREFIX: "PYTHON_DRIVER"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/create-and-setup-vm.sh
     teardown_group:
       - command: shell.exec
         params:
           shell: bash
           script: |
             . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+            ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/delete-vm.sh
       - func: "upload test results"
     setup_group_can_fail_task: true
     teardown_task_can_fail_task: true
@@ -884,21 +880,19 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
+          binary: bash
           env:
             AZUREOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/delete-vm.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -912,19 +906,17 @@ task_groups:
       - func: make files executable
       - command: shell.exec
         params:
-          shell: bash
+          binary: bash
           env:
             GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/setup.sh
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/setup.sh
     teardown_task:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/teardown.sh
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/teardown.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -937,23 +929,22 @@ task_groups:
       - func: fix absolute paths
       - func: make files executable
       - func: "assume ec2 role"
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
+          binary: bash
           include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           env:
             # PYTHON-4447
             MONGODB_VERSION: "8.0"
-          script: |
-            . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/setup.sh
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
     teardown_task:
       - command: shell.exec
         params:
           shell: bash
           script: |
             . src/.evergreen/scripts/env.sh
-            $DRIVERS_TOOLS/.evergreen/auth_oidc/teardown.sh
+            ${DRIVERS_TOOLS}/.evergreen/auth_oidc/teardown.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
@@ -995,7 +986,7 @@ tasks:
           params:
             script: |
                set -o xtrace
-               . $DRIVERS_TOOLS/.evergreen/download-mongodb.sh || true
+               . ${DRIVERS_TOOLS}/.evergreen/download-mongodb.sh || true
                get_distro || true
                echo $DISTRO
                echo $MARCH
@@ -1880,7 +1871,7 @@ tasks:
             export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
             git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
             export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/run-driver-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
@@ -1900,7 +1891,7 @@ tasks:
             # Ensure that we source the environment file created for us, set up any other variables we need,
             # and then run our test suite on the vm.
             export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -2038,7 +2029,7 @@ tasks:
               . .evergreen/scripts/env.sh
               set -x
               export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
-              export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
+              export SCRIPT="${DRIVERS_TOOLS}/.evergreen/github_app/assign-reviewer.sh"
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
               echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > $PROJECT_DIRECTORY/test-results.json
 
