@@ -1241,21 +1241,29 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x02;
         return write_unicode(buffer, value);
     } else if (PyDateTime_Check(value)) {
-        long long millis;
+        long long millis = millis_from_datetime(value);
         PyObject* utcoffset = PyObject_CallMethodObjArgs(value, state->_utcoffset_str , NULL);
         if (utcoffset == NULL)
             return 0;
         if (utcoffset != Py_None) {
-            PyObject* result = PyNumber_Subtract(value, utcoffset);
-            Py_DECREF(utcoffset);
-            if (!result) {
+            if (!PyDelta_Check(utcoffset)) {
+                PyObject* BSONError = _error("BSONError");
+                if (BSONError) {
+                    PyErr_SetString(BSONError,
+                                    "datetime.utcoffset() did not return a datetime.timedelta");
+                    Py_DECREF(BSONError);
+                }
+                Py_DECREF(utcoffset);
                 return 0;
             }
-            millis = millis_from_datetime(result);
-            Py_DECREF(result);
-        } else {
-            millis = millis_from_datetime(value);
+            PyDateTime_DELTA_GET_DAYS(utcoffset);
+            PyDateTime_DELTA_GET_SECONDS(utcoffset);
+            PyDateTime_DELTA_GET_MICROSECONDS(utcoffset);
+            millis -= (PyDateTime_DELTA_GET_DAYS(utcoffset) * 86400 +
+                       PyDateTime_DELTA_GET_SECONDS(utcoffset)) * 1000 +
+                       (PyDateTime_DELTA_GET_MICROSECONDS(utcoffset) / 1000);
         }
+        Py_DECREF(utcoffset);
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, state->REType)) {
