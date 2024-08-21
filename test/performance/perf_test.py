@@ -449,7 +449,7 @@ class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
         super().setUp()
         self.models = []
         for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):
@@ -461,7 +461,7 @@ class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
         super().setUp()
         self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
         for doc in self.documents:
-            self.models.append(InsertOne(document=doc.copy()))
+            self.models.append(InsertOne(document=doc))
             self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
             self.models.append(DeleteOne(filter={}))
 
@@ -475,7 +475,7 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
         super().setUp()
         self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
         for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
             self.models.append(
                 ReplaceOne(
                     namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
@@ -499,7 +499,7 @@ class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
         super().setUp()
         self.models = []
         for doc in self.documents:
-            self.models.append(InsertOne(namespace="perftest.corpus", document=doc.copy()))
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     @client_context.require_version_min(8, 0, 0, -24)
     def do_task(self):

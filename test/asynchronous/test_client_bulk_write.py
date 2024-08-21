@@ -48,12 +48,9 @@ _IS_SYNC = False
 class TestClientBulkWrite(AsyncIntegrationTest):
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_returns_error_if_no_namespace_provided(self):
-        client = await async_rs_or_single_client()
-        self.addAsyncCleanup(client.close)
-
         models = [InsertOne(document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
-            await client.bulk_write(models=models)
+            await self.client.bulk_write(models=models)
         self.assertIn(
             "MongoClient.bulk_write requires a namespace to be provided for each write operation",
             context.exception._message,
@@ -64,14 +61,25 @@ class TestClientBulkWrite(AsyncIntegrationTest):
         with patch.object(
             _AsyncClientBulk, "write_command", return_value={"error": TypeError("mock type error")}
         ):
-            client = await async_rs_or_single_client()
-            self.addAsyncCleanup(client.close)
-
             models = [InsertOne(namespace="db.coll", document={"a": "b"})]
             with self.assertRaises(ClientBulkWriteException) as context:
-                await client.bulk_write(models=models)
+                await self.client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, TypeError)
             self.assertFalse(hasattr(context.exception.error, "details"))
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_formats_write_error_correctly(self):
+        models = [
+            InsertOne(namespace="db.coll", document={"_id": 1}),
+            InsertOne(namespace="db.coll", document={"_id": 1}),
+        ]
+
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self.client.bulk_write(models=models)
+
+        write_error = context.exception.write_errors[0]
+        self.assertEqual(write_error["idx"], 1)
+        self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
