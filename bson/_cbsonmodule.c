@@ -53,8 +53,6 @@ struct module_state {
     PyObject* Decimal128;
     PyObject* Mapping;
     PyObject* DatetimeMS;
-    PyObject* _min_datetime_ms;
-    PyObject* _max_datetime_ms;
     PyObject* _type_marker_str;
     PyObject* _flags_str;
     PyObject* _pattern_str;
@@ -80,6 +78,8 @@ struct module_state {
     PyObject* _from_uuid_str;
     PyObject* _as_uuid_str;
     PyObject* _from_bid_str;
+    int64_t min_millis;
+    int64_t max_millis;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -482,6 +482,8 @@ static int _load_python_objects(PyObject* module) {
     PyObject* empty_string = NULL;
     PyObject* re_compile = NULL;
     PyObject* compiled = NULL;
+    PyObject* min_datetime_ms = NULL;
+    PyObject* max_datetime_ms = NULL;
     struct module_state *state = GETSTATE(module);
     if (!state) {
         return 1;
@@ -530,10 +532,19 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
         _load_object(&state->DatetimeMS, "bson.datetime_ms", "DatetimeMS") ||
-        _load_object(&state->_min_datetime_ms, "bson.datetime_ms", "_MIN_DATETIME_MS") ||
-        _load_object(&state->_max_datetime_ms, "bson.datetime_ms", "_MAX_DATETIME_MS")) {
+        _load_object(&min_datetime_ms, "bson.datetime_ms", "_MIN_DATETIME_MS") ||
+        _load_object(&max_datetime_ms, "bson.datetime_ms", "_MAX_DATETIME_MS")) {
         return 1;
     }
+
+    state->min_millis = PyLong_AsLongLong(min_datetime_ms);
+    state->max_millis = PyLong_AsLongLong(max_datetime_ms);
+    Py_DECREF(min_datetime_ms);
+    Py_DECREF(max_datetime_ms);
+    if ((state->min_millis == -1 || state->max_millis == -1) && PyErr_Occurred()) {
+        return 1;
+    }
+
     /* Reload our REType hack too. */
     empty_string = PyBytes_FromString("");
     if (empty_string == NULL) {
@@ -2071,29 +2082,16 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             int dt_clamp = options->datetime_conversion == DATETIME_CLAMP;
             int dt_auto = options->datetime_conversion == DATETIME_AUTO;
 
-
             if (dt_clamp || dt_auto){
-                int64_t min_millis;
-                int64_t max_millis;
-
-                min_millis = PyLong_AsLongLong(state->_min_datetime_ms);
-                max_millis = PyLong_AsLongLong(state->_max_datetime_ms);
-
-                if ((min_millis == -1 || max_millis == -1) && PyErr_Occurred())
-                {
-                    // min/max_millis check
-                    goto invalid;
-                }
-
                 if (dt_clamp) {
-                    if (millis < min_millis) {
-                        millis = min_millis;
-                    } else if (millis > max_millis) {
-                        millis = max_millis;
+                    if (millis < state->min_millis) {
+                        millis = state->min_millis;
+                    } else if (millis > state->max_millis) {
+                        millis = state->max_millis;
                     }
                     // Continues from here to return a datetime.
                 } else { // dt_auto
-                    if (millis < min_millis || millis > max_millis){
+                    if (millis < state->min_millis || millis > state->max_millis){
                         value = datetime_ms_from_millis(self, millis);
                         break; // Out-of-range so done.
                     }
