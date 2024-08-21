@@ -47,6 +47,7 @@ _IS_SYNC = True
 
 class TestClientBulkWrite(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_returns_error_if_no_namespace_provided(self):
         models = [InsertOne(document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
@@ -57,6 +58,7 @@ class TestClientBulkWrite(IntegrationTest):
         )
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_handles_non_pymongo_error(self):
         with patch.object(
             _ClientBulk, "write_command", return_value={"error": TypeError("mock type error")}
@@ -68,6 +70,7 @@ class TestClientBulkWrite(IntegrationTest):
             self.assertFalse(hasattr(context.exception.error, "details"))
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_formats_write_error_correctly(self):
         models = [
             InsertOne(namespace="db.coll", document={"_id": 1}),
@@ -90,6 +93,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.max_message_size_bytes = client_context.max_message_size_bytes
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_batch_splits_if_num_operations_too_large(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -115,6 +119,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(first_event.operation_id, second_event.operation_id)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_batch_splits_if_ops_payload_too_large(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -147,6 +152,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(first_event.operation_id, second_event.operation_id)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     @client_context.require_failCommand_fail_point
     def test_collects_write_concern_errors_across_batches(self):
         listener = OvertCommandListener()
@@ -190,6 +196,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(len(bulk_write_events), 2)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_collects_write_errors_across_batches_unordered(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -220,6 +227,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(len(bulk_write_events), 2)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_collects_write_errors_across_batches_ordered(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -250,6 +258,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(len(bulk_write_events), 1)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_handles_cursor_requiring_getMore(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -290,6 +299,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertTrue(get_more_event)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     @client_context.require_no_standalone
     def test_handles_cursor_requiring_getMore_within_transaction(self):
         listener = OvertCommandListener()
@@ -333,6 +343,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertTrue(get_more_event)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     @client_context.require_failCommand_fail_point
     def test_handles_getMore_error(self):
         listener = OvertCommandListener()
@@ -388,6 +399,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertTrue(kill_cursors_event)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_returns_error_if_unacknowledged_too_large_insert(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -444,6 +456,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         return num_models, models
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_no_batch_splits_if_new_namespace_is_not_too_large(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -475,6 +488,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(event.command["nsInfo"][0]["ns"], "db.coll")
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_batch_splits_if_new_namespace_is_too_large(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -513,6 +527,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(second_event.command["nsInfo"][0]["ns"], namespace)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     def test_returns_error_if_no_writes_can_be_added_to_ops(self):
         client = rs_or_single_client()
         self.addCleanup(client.close)
@@ -531,6 +546,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
             client.bulk_write(models=models)
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_returns_error_if_auto_encryption_configured(self):
         opts = AutoEncryptionOpts(
@@ -556,6 +572,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
         self.max_message_size_bytes = client_context.max_message_size_bytes
 
     @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
     @client_context.require_failCommand_fail_point
     def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
