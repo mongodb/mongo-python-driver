@@ -253,7 +253,7 @@ static PyObject* datetime_from_millis(long long millis) {
      * 2. Multiply that by 1000:                  253402300799000
      * 3. Add in microseconds divided by 1000     253402300799999
      *
-     * (Note: BSON doesn't support microsecond accuracy, hence the rounding.)
+     * (Note: BSON doesn't support microsecond accuracy, hence the truncation.)
      *
      * To decode we could do:
      * 1. Get seconds: timestamp / 1000:          253402300799
@@ -530,8 +530,8 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
         _load_object(&state->DatetimeMS, "bson.datetime_ms", "DatetimeMS") ||
-        _load_object(&state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms") ||
-        _load_object(&state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms")) {
+        _load_object(&state->_min_datetime_ms, "bson.datetime_ms", "_MIN_DATETIME_MS") ||
+        _load_object(&state->_max_datetime_ms, "bson.datetime_ms", "_MAX_DATETIME_MS")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -2066,32 +2066,11 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
 
             if (dt_clamp || dt_auto){
-                PyObject *min_millis_fn_res;
-                PyObject *max_millis_fn_res;
                 int64_t min_millis;
                 int64_t max_millis;
 
-                if (options->tz_aware){
-                    PyObject* tzinfo = options->tzinfo;
-                    if (tzinfo == Py_None) {
-                        // Default to UTC.
-                        tzinfo = state->UTC;
-                    }
-                    min_millis_fn_res = PyObject_CallFunctionObjArgs(state->_min_datetime_ms, tzinfo, NULL);
-                    max_millis_fn_res = PyObject_CallFunctionObjArgs(state->_max_datetime_ms, tzinfo, NULL);
-                } else {
-                    min_millis_fn_res = PyObject_CallObject(state->_min_datetime_ms, NULL);
-                    max_millis_fn_res = PyObject_CallObject(state->_max_datetime_ms, NULL);
-                }
-
-                if (!min_millis_fn_res || !max_millis_fn_res){
-                    Py_XDECREF(min_millis_fn_res);
-                    Py_XDECREF(max_millis_fn_res);
-                    goto invalid;
-                }
-
-                min_millis = PyLong_AsLongLong(min_millis_fn_res);
-                max_millis = PyLong_AsLongLong(max_millis_fn_res);
+                min_millis = PyLong_AsLongLong(state->_min_datetime_ms);
+                max_millis = PyLong_AsLongLong(state->_max_datetime_ms);
 
                 if ((min_millis == -1 || max_millis == -1) && PyErr_Occurred())
                 {

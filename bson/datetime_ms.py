@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import calendar
 import datetime
-import functools
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
@@ -114,19 +113,6 @@ class DatetimeMS:
         return self._value
 
 
-# Inclusive and exclusive min and max for timezones.
-# Timezones are hashed by their offset, which is a timedelta
-# and therefore there are more than 24 possible timezones.
-@functools.lru_cache(maxsize=None)
-def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.min.replace(tzinfo=tz))
-
-
-@functools.lru_cache(maxsize=None)
-def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
-
-
 def _millis_to_datetime(
     millis: int, opts: CodecOptions[Any]
 ) -> Union[datetime.datetime, DatetimeMS]:
@@ -138,9 +124,9 @@ def _millis_to_datetime(
     ):
         tz = opts.tzinfo or datetime.timezone.utc
         if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
-            millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
+            millis = max(_MIN_DATETIME_MS, min(millis, _MAX_DATETIME_MS))
         elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
-            if not (_min_datetime_ms(tz) <= millis <= _max_datetime_ms(tz)):
+            if not (_MIN_DATETIME_MS <= millis <= _MAX_DATETIME_MS):
                 return DatetimeMS(millis)
 
         diff = ((millis % 1000) + 1000) % 1000
@@ -156,6 +142,13 @@ def _millis_to_datetime(
             else:
                 return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
         except ArithmeticError as err:
+            # Account for min/max edge cases in timezones.
+            if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
+                if millis < 0:
+                    return datetime.datetime.min.replace(tzinfo=opts.tzinfo)
+                return datetime.datetime.max.replace(tzinfo=opts.tzinfo)
+            elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
+                return DatetimeMS(millis)
             raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
 
     elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
@@ -169,3 +162,8 @@ def _datetime_to_millis(dtm: datetime.datetime) -> int:
     if dtm.utcoffset() is not None:
         dtm = dtm - dtm.utcoffset()  # type: ignore
     return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
+
+
+# Inclusive min and max for UTC timezones
+_MIN_DATETIME_MS = _datetime_to_millis(datetime.datetime.min.replace(tzinfo=utc))
+_MAX_DATETIME_MS = _datetime_to_millis(datetime.datetime.max.replace(tzinfo=utc))

@@ -1295,6 +1295,27 @@ class TestDatetimeConversion(unittest.TestCase):
             datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
         )
 
+    def test_tz_clamping_non_hashable(self):
+        class NonHashableTZ(FixedOffset):
+            __hash__ = None
+
+        tz = NonHashableTZ(0, "UTC-non-hashable")
+        self.assertRaises(TypeError, hash, tz)
+        # Aware clamping.
+        opts = CodecOptions(
+            datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
+        )
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts)
+        self.assertEqual(dec_below["x"], datetime.datetime.min.replace(tzinfo=tz))
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=tz, microsecond=999000),
+        )
+
     def test_datetime_auto(self):
         # Naive auto, in range.
         opts1 = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_AUTO)
