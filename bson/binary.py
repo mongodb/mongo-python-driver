@@ -191,6 +191,13 @@ SENSITIVE_SUBTYPE = 8
 """
 
 
+VECTOR_SUBTYPE = 9
+"""BSON binary subtype for densely packed vector data.
+
+.. versionadded:: 4.9
+"""
+
+
 USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
 """
