@@ -1036,8 +1036,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 0)
 
         # Assert there were no `SaslStart` commands executed.
-        for event in listener.started_events:
-            assert event.command_name.lower() != "saslstart"
+        assert not any(
+            event.command_name.lower() == "saslstart" for event in listener.started_events
+        )
         listener.reset()
 
         # Set a fail point for `insert` commands of the form:
