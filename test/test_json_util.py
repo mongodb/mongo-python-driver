@@ -39,7 +39,7 @@ from bson.binary import (
     UuidRepresentation,
 )
 from bson.code import Code
-from bson.datetime_ms import _max_datetime_ms
+from bson.datetime_ms import _MAX_DATETIME_MS
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.int64 import Int64
@@ -257,7 +257,7 @@ class TestJsonUtil(unittest.TestCase):
     def test_datetime_ms(self):
         # Test ISO8601 in-range
         dat_min: dict[str, Any] = {"x": DatetimeMS(0)}
-        dat_max: dict[str, Any] = {"x": DatetimeMS(_max_datetime_ms())}
+        dat_max: dict[str, Any] = {"x": DatetimeMS(_MAX_DATETIME_MS)}
         opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
 
         self.assertEqual(
@@ -271,7 +271,7 @@ class TestJsonUtil(unittest.TestCase):
 
         # Test ISO8601 out-of-range
         dat_min = {"x": DatetimeMS(-1)}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms() + 1)}
+        dat_max = {"x": DatetimeMS(_MAX_DATETIME_MS + 1)}
 
         self.assertEqual('{"x": {"$date": {"$numberLong": "-1"}}}', json_util.dumps(dat_min))
         self.assertEqual(
@@ -302,7 +302,7 @@ class TestJsonUtil(unittest.TestCase):
 
         # Test decode from datetime.datetime to DatetimeMS
         dat_min = {"x": datetime.datetime.min}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms()).as_datetime(CodecOptions(tz_aware=False))}
+        dat_max = {"x": DatetimeMS(_MAX_DATETIME_MS).as_datetime(CodecOptions(tz_aware=False))}
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.ISO8601,
             datetime_conversion=DatetimeConversion.DATETIME_MS,
