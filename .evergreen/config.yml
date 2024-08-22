@@ -1382,14 +1382,13 @@ tasks:
           params:
             role_arn: ${LAMBDA_AWS_ROLE_ARN}
             duration_seconds: 3600
-        - command: shell.exec
+        - command: subprocess.exec
           params:
             working_dir: src
-            shell: bash
+            binary: bash
             add_expansions_to_env: true
-            script: |
-              . .evergreen/scripts/env.sh
-              .evergreen/run-deployed-lambda-aws-tests.sh
+            args:
+              - .evergreen/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
