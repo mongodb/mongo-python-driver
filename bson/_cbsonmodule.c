@@ -376,6 +376,80 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
     return 1;
 }
 
+static PyObject* decode_datetime(PyObject* self, long long millis, const codec_options_t* options){
+    PyObject* naive = NULL;
+    PyObject* replace = NULL;
+    PyObject* args = NULL;
+    PyObject* kwargs = NULL;
+    PyObject* value = NULL;
+    struct module_state *state = GETSTATE(self);
+    if (options->datetime_conversion == DATETIME_MS){
+        return datetime_ms_from_millis(self, millis);
+    }
+
+    int dt_clamp = options->datetime_conversion == DATETIME_CLAMP;
+    int dt_auto = options->datetime_conversion == DATETIME_AUTO;
+
+    if (dt_clamp || dt_auto){
+        if (dt_clamp) {
+            if (millis < state->min_millis) {
+                millis = state->min_millis;
+            } else if (millis > state->max_millis) {
+                millis = state->max_millis;
+            }
+            // Continues from here to return a datetime.
+        } else { // dt_auto
+            if (millis < state->min_millis || millis > state->max_millis){
+                return datetime_ms_from_millis(self, millis);
+            }
+        }
+    }
+
+    naive = datetime_from_millis(millis);
+    if (!naive) {
+        goto invalid;
+    }
+
+    if (!options->tz_aware) { /* In the naive case, we're done here. */
+        return naive;
+    }
+    replace = PyObject_GetAttr(naive, state->_replace_str);
+    if (!replace) {
+        goto invalid;
+    }
+    args = PyTuple_New(0);
+    if (!args) {
+        goto invalid;
+    }
+    kwargs = PyDict_New();
+    if (!kwargs) {
+        goto invalid;
+    }
+    if (PyDict_SetItem(kwargs, state->_tzinfo_str, state->UTC) == -1) {
+        goto invalid;
+    }
+    value = PyObject_Call(replace, args, kwargs);
+    if (!value) {
+        goto invalid;
+    }
+
+    /* convert to local time */
+    if (options->tzinfo != Py_None) {
+        PyObject* temp = PyObject_CallMethodObjArgs(value, state->_astimezone_str, options->tzinfo, NULL);
+        Py_DECREF(value);
+        value = temp;
+        if (!value) {
+            goto invalid;
+        }
+    }
+invalid:
+    Py_XDECREF(naive);
+    Py_XDECREF(replace);
+    Py_XDECREF(args);
+    Py_XDECREF(kwargs);
+    return value;
+}
+
 /* Just make this compatible w/ the old API. */
 int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
     if (pymongo_buffer_write(buffer, data, size)) {
@@ -2062,10 +2136,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 9:
         {
-            PyObject* naive;
-            PyObject* replace;
-            PyObject* args;
-            PyObject* kwargs;
             int64_t millis;
             if (max < 8) {
                 goto invalid;
@@ -2074,78 +2144,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             millis = (int64_t)BSON_UINT64_FROM_LE(millis);
             *position += 8;
 
-            if (options->datetime_conversion == DATETIME_MS){
-                value = datetime_ms_from_millis(self, millis);
-                break;
-            }
-
-            int dt_clamp = options->datetime_conversion == DATETIME_CLAMP;
-            int dt_auto = options->datetime_conversion == DATETIME_AUTO;
-
-            if (dt_clamp || dt_auto){
-                if (dt_clamp) {
-                    if (millis < state->min_millis) {
-                        millis = state->min_millis;
-                    } else if (millis > state->max_millis) {
-                        millis = state->max_millis;
-                    }
-                    // Continues from here to return a datetime.
-                } else { // dt_auto
-                    if (millis < state->min_millis || millis > state->max_millis){
-                        value = datetime_ms_from_millis(self, millis);
-                        break; // Out-of-range so done.
-                    }
-                }
-            }
-
-            naive = datetime_from_millis(millis);
-            if (!options->tz_aware) { /* In the naive case, we're done here. */
-                value = naive;
-                break;
-            }
-
-            if (!naive) {
-                goto invalid;
-            }
-            replace = PyObject_GetAttr(naive, state->_replace_str);
-            Py_DECREF(naive);
-            if (!replace) {
-                goto invalid;
-            }
-            args = PyTuple_New(0);
-            if (!args) {
-                Py_DECREF(replace);
-                goto invalid;
-            }
-            kwargs = PyDict_New();
-            if (!kwargs) {
-                Py_DECREF(replace);
-                Py_DECREF(args);
-                goto invalid;
-            }
-            if (PyDict_SetItem(kwargs, state->_tzinfo_str, state->UTC) == -1) {
-                Py_DECREF(replace);
-                Py_DECREF(args);
-                Py_DECREF(kwargs);
-                goto invalid;
-            }
-            value = PyObject_Call(replace, args, kwargs);
-            Py_DECREF(replace);
-            Py_DECREF(args);
-            Py_DECREF(kwargs);
-            if (!value) {
-                goto invalid;
-            }
-
-            /* convert to local time */
-            if (options->tzinfo != Py_None) {
-                PyObject* temp = PyObject_CallMethodObjArgs(value, state->_astimezone_str, options->tzinfo, NULL);
-                Py_DECREF(value);
-                value = temp;
-                if (!value) {
-                    goto invalid;
-                }
-            }
+            value = decode_datetime(self, millis, options);
             break;
         }
     case 11:
