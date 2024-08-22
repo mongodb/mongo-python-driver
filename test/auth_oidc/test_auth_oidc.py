@@ -1054,8 +1054,9 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 1)
 
         # Assert there were `SaslStart` commands executed.
-        found = False
-        assert not any([event.command_name.lower()  == "saslstart" for event in listener.started_events])
+        assert not any(
+            event.command_name.lower() == "saslstart" for event in listener.started_events
+        )
 
         # Close the client.
         client.close()
