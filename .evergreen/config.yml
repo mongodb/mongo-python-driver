@@ -182,7 +182,7 @@ functions:
     - command: archive.targz_pack
       params:
         target: "working-dir.tar.gz"
-        source_dir: $PROJECT_DIRECTORY/
+        source_dir: ${PROJECT_DIRECTORY}/
         include:
           - "./**"
     - command: s3.put
@@ -853,7 +853,7 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec
         params:
           binary: bash
           env:
@@ -904,7 +904,7 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
-      - command: shell.exec
+      - command: subprocess.exec
         params:
           binary: bash
           env:
@@ -1391,7 +1391,7 @@ tasks:
               . .evergreen/scripts/env.sh
               .evergreen/run-deployed-lambda-aws-tests.sh
             env:
-              TEST_LAMBDA_DIRECTORY: $PROJECT_DIRECTORY/test/lambda
+              TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
