@@ -78,6 +78,8 @@ struct module_state {
     PyObject* _from_uuid_str;
     PyObject* _as_uuid_str;
     PyObject* _from_bid_str;
+    PyObject* min_datetime;
+    PyObject* max_datetime;
     int64_t min_millis;
     int64_t max_millis;
 };
@@ -438,8 +440,38 @@ static PyObject* decode_datetime(PyObject* self, long long millis, const codec_o
         PyObject* temp = PyObject_CallMethodObjArgs(value, state->_astimezone_str, options->tzinfo, NULL);
         Py_DECREF(value);
         value = temp;
-        if (!value) {
-            goto invalid;
+        if (!value && (dt_clamp || dt_auto)) {
+            PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+            // Calling PyErr_Fetch clears the error state.
+            PyErr_Fetch(&etype, &evalue, &etrace);
+            // Catch overflow due to timezone via PyExc_ArithmeticError exceptions.
+            if (!PyErr_GivenExceptionMatches(etype, PyExc_ArithmeticError)) {
+                // Steals references to args.
+                PyErr_Restore(etype, evalue, etrace);
+                goto invalid;
+            }
+            Py_XDECREF(etype);
+            Py_XDECREF(evalue);
+            Py_XDECREF(etrace);
+            if (dt_clamp) {
+                PyObject* dtm;
+                Py_XDECREF(replace);
+                if (millis < 0) {
+                    dtm = state->min_datetime;
+                } else {
+                    dtm = state->max_datetime;
+                }
+                if (PyDict_SetItem(kwargs, state->_tzinfo_str, options->tzinfo) == -1) {
+                    goto invalid;
+                }
+                replace = PyObject_GetAttr(dtm, state->_replace_str);
+                if (!replace) {
+                    goto invalid;
+                }
+                value = PyObject_Call(replace, args, kwargs);
+            } else { // dt_auto
+                value = datetime_ms_from_millis(self, millis);
+            }
         }
     }
 invalid:
@@ -607,7 +639,9 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
         _load_object(&state->DatetimeMS, "bson.datetime_ms", "DatetimeMS") ||
         _load_object(&min_datetime_ms, "bson.datetime_ms", "_MIN_DATETIME_MS") ||
-        _load_object(&max_datetime_ms, "bson.datetime_ms", "_MAX_DATETIME_MS")) {
+        _load_object(&max_datetime_ms, "bson.datetime_ms", "_MAX_DATETIME_MS") ||
+        _load_object(&state->min_datetime, "bson.datetime_ms", "_MIN_DATETIME") ||
+        _load_object(&state->max_datetime, "bson.datetime_ms", "_MAX_DATETIME")) {
         return 1;
     }
 
@@ -3016,6 +3050,8 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(state->_from_uuid_str);
     Py_VISIT(state->_as_uuid_str);
     Py_VISIT(state->_from_bid_str);
+    Py_VISIT(state->min_datetime);
+    Py_VISIT(state->max_datetime);
     return 0;
 }
 
@@ -3060,6 +3096,8 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(state->_from_uuid_str);
     Py_CLEAR(state->_as_uuid_str);
     Py_CLEAR(state->_from_bid_str);
+    Py_CLEAR(state->min_datetime);
+    Py_CLEAR(state->max_datetime);
     return 0;
 }
 

@@ -1302,6 +1302,7 @@ class TestDatetimeConversion(unittest.TestCase):
         opts = CodecOptions(
             datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
         )
+        # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
         min_tz = datetime.datetime.min.replace(tzinfo=utc).astimezone(tz)
         max_tz = (
             (datetime.datetime.max - datetime.timedelta(minutes=60))
@@ -1332,6 +1333,7 @@ class TestDatetimeConversion(unittest.TestCase):
         for too_high in [
             max_tz + datetime.timedelta(microseconds=1),
             max_tz + datetime.timedelta(microseconds=999),
+            datetime.datetime.max.replace(tzinfo=tz),
             DatetimeMS(_datetime_to_millis(max_tz) + 1),  # 253402297200000
             DatetimeMS(_datetime_to_millis(max_tz) + 1000),  # 253402297200999
         ]:

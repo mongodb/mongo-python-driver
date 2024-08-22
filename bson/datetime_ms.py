@@ -144,9 +144,8 @@ def _millis_to_datetime(
             # Account for min/max edge cases in timezones.
             if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
                 if millis < 0:
-                    return datetime.datetime.min.replace(tzinfo=opts.tzinfo)
-                # BSON truncates the microsecond field to at most 999 milliseconds.
-                return datetime.datetime.max.replace(tzinfo=opts.tzinfo, microsecond=999000)
+                    return _MIN_DATETIME.replace(tzinfo=opts.tzinfo)
+                return _MAX_DATETIME.replace(tzinfo=opts.tzinfo)
             elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
                 return DatetimeMS(millis)
             raise InvalidBSON(f"{err} {_DATETIME_ERROR_SUGGESTION}") from err
@@ -167,5 +166,8 @@ def _datetime_to_millis(dtm: datetime.datetime) -> int:
 
 
 # Inclusive min and max for UTC timezones
-_MIN_DATETIME_MS = _datetime_to_millis(datetime.datetime.min.replace(tzinfo=utc))
-_MAX_DATETIME_MS = _datetime_to_millis(datetime.datetime.max.replace(tzinfo=utc))
+_MIN_DATETIME = datetime.datetime.min.replace(tzinfo=utc)
+# BSON truncates the microsecond field to at most 999 milliseconds.
+_MAX_DATETIME = datetime.datetime.max.replace(tzinfo=utc, microsecond=999000)
+_MIN_DATETIME_MS = _datetime_to_millis(_MIN_DATETIME)
+_MAX_DATETIME_MS = _datetime_to_millis(_MAX_DATETIME)
