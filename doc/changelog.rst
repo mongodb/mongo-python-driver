@@ -30,6 +30,7 @@ PyMongo 4.9 brings a number of improvements including:
   :class:`~pymongo.operations.DeleteOne`, and
   :class:`~pymongo.operations.DeleteMany` operations, so
   they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+- Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
 
 Issues Resolved
 ...............
