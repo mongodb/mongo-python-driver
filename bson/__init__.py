@@ -408,6 +408,7 @@ def _get_binary(
     # Decode subtype 0 to 'bytes'.
     if subtype == 0:
         value = data[position:end]
+    # Decode subtype 9 to vector.
     elif subtype == 9:
         dtype, padding = struct.unpack_from("<sB", data, position)
         position += 2

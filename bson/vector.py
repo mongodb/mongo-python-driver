@@ -12,35 +12,41 @@ logger = logging.getLogger(__name__)
 
 
 class DTYPES(Enum):
-    """Datatypes of vectors."""
+    """Datatypes of vector."""
 
     INT8 = b"\x03"
     FLOAT32 = b"\x27"
     BOOL = b"\x10"
 
 
+# Map from bytes to enum value, for decoding.
 DTYPE_FROM_HEX = {key.value: key for key in DTYPES}
 
 
 class BinaryVector(Binary):
-    """
+    """Binary subtype for efficient storage and retrieval of vectors.
 
-    TODO:
-        4. Add docs
-        5. Add simple tests?.
-            - those in bson_vector.py
-            - empty and non-sensible inputs
-        6. Get to BSON Specs
+    Vectors here refer to densely packed one dimensional arrays of numbers,
+    all of the same data type (dtype).
+    These types loosely match those of PyArrow and Numpy.
+
+    BinaryVector includes two additional bytes of metadata to the length and subtype
+    already prepended in the Binary class.
+    One byte defines the data type, described by the bson.binary.vector.DTYPE Enum.
+    Another byte declares the number of bits at the end that should be ignored,
+    in the case that a vector's length and type do not require a whole number of bytes.
+    This number is referred to as padding.
     """
 
     dtype: str
+    padding: int = 0
 
     def __new__(cls, data: Any, dtype: Union[DTYPES, bytes], padding: int = 0) -> BinaryVector:
         self = Binary.__new__(cls, data, bson.binary.VECTOR_SUBTYPE)
         if isinstance(dtype, bytes):
             dtype = DTYPE_FROM_HEX[dtype]
         assert dtype in DTYPES
-        self.dtype = dtype  # TODO - decide if we wish to make private and expose via property
+        self.dtype = dtype
         self.padding = padding
         return self
 
