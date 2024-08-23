@@ -114,8 +114,17 @@ class DatetimeMS:
         return self._value
 
 
+def _datetime_to_millis(dtm: datetime.datetime) -> int:
+    """Convert datetime to milliseconds since epoch UTC."""
+    if dtm.utcoffset() is not None:
+        dtm = dtm - dtm.utcoffset()  # type: ignore
+    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
+
+
 _MIN_UTC = datetime.datetime.min.replace(tzinfo=utc)
 _MAX_UTC = datetime.datetime.max.replace(tzinfo=utc)
+_MIN_UTC_MS = _datetime_to_millis(_MIN_UTC)
+_MAX_UTC_MS = _datetime_to_millis(_MAX_UTC)
 
 
 # Inclusive and exclusive min and max for timezones.
@@ -123,20 +132,22 @@ _MAX_UTC = datetime.datetime.max.replace(tzinfo=utc)
 # and therefore there are more than 24 possible timezones.
 @functools.lru_cache(maxsize=None)
 def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    try:
-        dtm = _MIN_UTC.astimezone(tz)
-    except OverflowError:
-        dtm = _MIN_UTC.replace(tzinfo=tz)
-    return _datetime_to_millis(dtm)
+    delta = tz.utcoffset(_MIN_UTC)
+    if delta is not None:
+        offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
+    else:
+        offset_millis = 0
+    return max(_MIN_UTC_MS, _MIN_UTC_MS - offset_millis)
 
 
 @functools.lru_cache(maxsize=None)
 def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    try:
-        dtm = _MAX_UTC.astimezone(tz)
-    except OverflowError:
-        dtm = _MAX_UTC.replace(tzinfo=tz)
-    return _datetime_to_millis(dtm)
+    delta = tz.utcoffset(_MAX_UTC)
+    if delta is not None:
+        offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
+    else:
+        offset_millis = 0
+    return min(_MAX_UTC_MS, _MAX_UTC_MS - offset_millis)
 
 
 def _millis_to_datetime(
@@ -174,10 +185,3 @@ def _millis_to_datetime(
         return DatetimeMS(millis)
     else:
         raise ValueError("datetime_conversion must be an element of DatetimeConversion")
-
-
-def _datetime_to_millis(dtm: datetime.datetime) -> int:
-    """Convert datetime to milliseconds since epoch UTC."""
-    if dtm.utcoffset() is not None:
-        dtm = dtm - dtm.utcoffset()  # type: ignore
-    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
