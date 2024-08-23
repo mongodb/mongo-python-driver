@@ -63,6 +63,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+from bson.vector import DTYPES, BinaryVector
 
 
 class NotADict(abc.MutableMapping):
@@ -148,6 +149,11 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
+        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", b"\x10", 3)})
+        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", DTYPES.BOOL, 3)})
+        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", b"\x03")})
+        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", DTYPES.INT8)})
+        helper({"a binary vector": BinaryVector(b"\xcd\xcc\x8c\xbf\xc7H7P", DTYPES.FLOAT32)})
         helper(SON([("test dst", datetime.datetime(1993, 4, 4, 2))]))
         helper(SON([("test negative dst", datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
@@ -446,6 +452,18 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(
             encode({"test": Binary(b"test", 128)}),
             b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x80\x74\x65\x73\x74\x00",
+        )
+        self.assertEqual(
+            encode({"vector_int8": BinaryVector.from_list([-128, -1, 127], DTYPES.INT8)}),
+            b"\x1c\x00\x00\x00\x05vector_int8\x00\x03\x00\x00\x00\t\x03\x00\x80\xff\x7f\x00",
+        )
+        self.assertEqual(
+            encode({"vector_bool": BinaryVector.from_list([1, 127], DTYPES.BOOL)}),
+            b"\x1b\x00\x00\x00\x05vector_bool\x00\x02\x00\x00\x00\t\x10\x00\x01\x7f\x00",
+        )
+        self.assertEqual(
+            encode({"vector_float32": BinaryVector.from_list([-1.1, 1.1e10], DTYPES.FLOAT32)}),
+            b"$\x00\x00\x00\x05vector_float32\x00\x08\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
         )
         self.assertEqual(encode({"test": None}), b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(

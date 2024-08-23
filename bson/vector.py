@@ -117,7 +117,7 @@ class BinaryVector(Binary):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, BinaryVector):
             return (
-                self.__subtype == other.subtype
+                self.subtype == other.subtype
                 and self.dtype == other.dtype
                 and self.padding == other.padding
                 and bytes(self) == bytes(other)
