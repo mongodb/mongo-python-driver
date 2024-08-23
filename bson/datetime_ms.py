@@ -126,7 +126,7 @@ def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     try:
         dtm = _MIN_UTC.astimezone(tz)
     except OverflowError:
-        dtm = (_MIN_UTC - tz.utcoffset(_MIN_UTC)).astimezone(tz)
+        dtm = _MIN_UTC.replace(tzinfo=tz)
     return _datetime_to_millis(dtm)
 
 
@@ -135,7 +135,7 @@ def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     try:
         dtm = _MAX_UTC.astimezone(tz)
     except OverflowError:
-        dtm = (_MAX_UTC - tz.utcoffset(_MAX_UTC)).astimezone(tz)
+        dtm = _MAX_UTC.replace(tzinfo=tz)
     return _datetime_to_millis(dtm)
 
 
