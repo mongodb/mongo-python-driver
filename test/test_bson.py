@@ -29,7 +29,6 @@ import tempfile
 import uuid
 from collections import OrderedDict, abc
 from io import BytesIO
-from typing import Optional
 
 sys.path[0:0] = [""]
 
@@ -1302,63 +1301,65 @@ class TestDatetimeConversion(unittest.TestCase):
         )
 
     def test_tz_clamping_non_utc(self):
-        class DivergentTimezone(FixedOffset):
-            """A timezone that reverses the offset for dates before 1970."""
+        for tz in [FixedOffset(60, "+1H"), FixedOffset(-60, "-1H")]:
+            opts = CodecOptions(
+                datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
+            )
+            # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
+            try:
+                min_tz = datetime.datetime.min.replace(tzinfo=utc).astimezone(tz)
+            except OverflowError:
+                min_tz = datetime.datetime.min.replace(tzinfo=tz)
+            try:
+                max_tz = datetime.datetime.max.replace(tzinfo=utc, microsecond=999000).astimezone(
+                    tz
+                )
+            except OverflowError:
+                max_tz = datetime.datetime.max.replace(tzinfo=tz, microsecond=999000)
 
-            def utcoffset(self, dt: Optional[datetime]) -> datetime.timedelta:
-                if dt is None:
-                    raise TypeError("DivergentTimezone.utcoffset requires a datetime")
-                offset = super().utcoffset(dt)
-                if dt.year < 1970:
-                    return -offset
-                return offset
+            for in_range in [
+                min_tz,
+                min_tz + datetime.timedelta(milliseconds=1),
+                max_tz - datetime.timedelta(milliseconds=1),
+                max_tz,
+            ]:
+                doc = decode(encode({"x": in_range}), opts)
+                self.assertEqual(doc["x"], in_range)
 
-        tz = DivergentTimezone(60, "Custom")
-        opts = CodecOptions(
-            datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
-        )
-        # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
-        min_tz = (
-            datetime.datetime.min.replace(tzinfo=utc) + datetime.timedelta(minutes=60)
-        ).astimezone(tz)
-        max_tz = (
-            datetime.datetime.max.replace(tzinfo=utc, microsecond=999000)
-            - datetime.timedelta(minutes=60)
-        ).astimezone(tz)
-        # Sanity check:
-        self.assertEqual(min_tz, datetime.datetime.min.replace(tzinfo=tz))
-        self.assertEqual(max_tz, datetime.datetime.max.replace(tzinfo=tz, microsecond=999000))
-        self.assertEqual(tz.utcoffset(datetime.datetime.min), datetime.timedelta(minutes=-60))
-        self.assertEqual(tz.utcoffset(datetime.datetime.max), datetime.timedelta(minutes=60))
-        for in_range in [
-            min_tz,
-            min_tz + datetime.timedelta(milliseconds=1),
-            max_tz - datetime.timedelta(milliseconds=1),
-            max_tz,
+            for too_low in [
+                DatetimeMS(_datetime_to_millis(min_tz) - 1),
+                DatetimeMS(_datetime_to_millis(min_tz) - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(min_tz) - 1 - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1 - 60 * 60 * 1000),
+            ]:
+                doc = decode(encode({"x": too_low}), opts)
+                self.assertEqual(doc["x"], min_tz)
+
+            for too_high in [
+                DatetimeMS(_datetime_to_millis(max_tz) + 1),
+                DatetimeMS(_datetime_to_millis(max_tz) + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(max_tz) + 1 + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1 + 60 * 60 * 1000),
+            ]:
+                doc = decode(encode({"x": too_high}), opts)
+                self.assertEqual(doc["x"], max_tz)
+
+    def test_tz_clamping_non_utc_simple(self):
+        dtm = datetime.datetime(2024, 8, 23)
+        encoded = encode({"d": dtm})
+        self.assertEqual(decode(encoded)["d"], dtm)
+        for conversion in [
+            DatetimeConversion.DATETIME,
+            DatetimeConversion.DATETIME_CLAMP,
+            DatetimeConversion.DATETIME_AUTO,
         ]:
-            doc = decode(encode({"x": in_range}), opts)
-            self.assertEqual(doc["x"], in_range)
-
-        for too_low in [
-            DatetimeMS(_datetime_to_millis(min_tz) - 1),
-            DatetimeMS(_datetime_to_millis(min_tz) - 60 * 60 * 1000),
-            DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1),
-            DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 60 * 60 * 1000),
-            DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1 - 60 * 60 * 1000),
-        ]:
-            doc = decode(encode({"x": too_low}), opts)
-            self.assertEqual(doc["x"], min_tz)
-
-        for too_high in [
-            max_tz + datetime.timedelta(microseconds=1),
-            max_tz + datetime.timedelta(microseconds=999),
-            datetime.datetime.max.replace(tzinfo=tz),
-            DatetimeMS(_datetime_to_millis(max_tz) + 1),
-            DatetimeMS(_datetime_to_millis(max_tz) + 60 * 60 * 1000),
-            DatetimeMS(_datetime_to_millis(max_tz) + 1 + 60 * 60 * 1000),
-        ]:
-            doc = decode(encode({"x": too_high}), opts)
-            self.assertEqual(doc["x"], max_tz)
+            for tz in [FixedOffset(60, "+1H"), FixedOffset(-60, "-1H")]:
+                opts = CodecOptions(datetime_conversion=conversion, tz_aware=True, tzinfo=tz)
+                self.assertEqual(decode(encoded, opts)["d"], dtm.replace(tzinfo=utc).astimezone(tz))
 
     def test_datetime_auto(self):
         # Naive auto, in range.
