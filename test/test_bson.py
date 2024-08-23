@@ -29,6 +29,7 @@ import tempfile
 import uuid
 from collections import OrderedDict, abc
 from io import BytesIO
+from typing import Optional
 
 sys.path[0:0] = [""]
 
@@ -1301,19 +1302,34 @@ class TestDatetimeConversion(unittest.TestCase):
         )
 
     def test_tz_clamping_non_utc(self):
-        # Aware clamping non-utc.
-        tz = FixedOffset(60, "Custom")
+        class DivergentTimezone(FixedOffset):
+            """A timezone that reverses the offset for dates before 1970."""
+
+            def utcoffset(self, dt: Optional[datetime]) -> datetime.timedelta:
+                if dt is None:
+                    raise TypeError("DivergentTimezone.utcoffset requires a datetime")
+                offset = super().utcoffset(dt)
+                if dt.year < 1970:
+                    return -offset
+                return offset
+
+        tz = DivergentTimezone(60, "Custom")
         opts = CodecOptions(
             datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
         )
         # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
-        min_tz = datetime.datetime.min.replace(tzinfo=utc).astimezone(tz)
+        min_tz = (
+            datetime.datetime.min.replace(tzinfo=utc) + datetime.timedelta(minutes=60)
+        ).astimezone(tz)
         max_tz = (
-            (datetime.datetime.max - datetime.timedelta(minutes=60))
-            .replace(tzinfo=utc)
-            .astimezone(tz)
-            .replace(microsecond=999000)
-        )
+            datetime.datetime.max.replace(tzinfo=utc, microsecond=999000)
+            - datetime.timedelta(minutes=60)
+        ).astimezone(tz)
+        # Sanity check:
+        self.assertEqual(min_tz, datetime.datetime.min.replace(tzinfo=tz))
+        self.assertEqual(max_tz, datetime.datetime.max.replace(tzinfo=tz, microsecond=999000))
+        self.assertEqual(tz.utcoffset(datetime.datetime.min), datetime.timedelta(minutes=-60))
+        self.assertEqual(tz.utcoffset(datetime.datetime.max), datetime.timedelta(minutes=60))
         for in_range in [
             min_tz,
             min_tz + datetime.timedelta(milliseconds=1),
