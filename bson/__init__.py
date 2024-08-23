@@ -137,7 +137,7 @@ from bson.regex import Regex
 from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from bson.vector import DTYPE_CODES, INV_DTYPE_CODES, BinaryVector
+from bson.vector import BinaryVector
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
@@ -409,13 +409,10 @@ def _get_binary(
     if subtype == 0:
         value = data[position:end]
     elif subtype == 9:
-        dtype_int, padding = struct.unpack_from(
-            "<BB", data, position
-        )  # INV_DTYPE_CODES[data[position]]
-        dtype_str = INV_DTYPE_CODES[dtype_int]
+        dtype, padding = struct.unpack_from("<sB", data, position)
         position += 2
         end = position + length
-        value = BinaryVector(data[position:end], dtype=dtype_str, padding=padding)
+        value = BinaryVector(data[position:end], dtype=dtype, padding=padding)
     else:
         value = Binary(data[position:end], subtype)
 
@@ -772,9 +769,7 @@ def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> byte
 
 def _encode_vector(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
     """Encode bson.binary.BinaryVector, a subtype of Binary."""
-    metadata = struct.pack(
-        "<iBsB", len(value), value.subtype, DTYPE_CODES[value.dtype], value.padding
-    )
+    metadata = struct.pack("<iBsB", len(value), value.subtype, value.dtype.value, value.padding)
     return b"\x05" + name + metadata + value
 
 

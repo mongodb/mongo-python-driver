@@ -2,101 +2,51 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import Any, List, Optional, Type
+from enum import Enum
+from typing import Any, List, Optional, Type, Union
 
 import bson
 from bson.binary import Binary
 
 logger = logging.getLogger(__name__)
 
-DTYPE_CODES = {
-    "int8": b"\x03",
-    "float32": b"\x27",
-    "bool": b"\x10",
-}
 
-INV_DTYPE_CODES = {ord(v): k for k, v in DTYPE_CODES.items()}
+class DTYPES(Enum):
+    """Datatypes of vectors."""
 
-DTYPES_SUPPORTED = {
-    "int8": 8,  # signed integers in [128, 127]. 8 bits
-    "bool": 1,  # vector of bits received as ints in [0, 255]
-    "float32": 4,  #
-}
+    INT8 = b"\x03"
+    FLOAT32 = b"\x27"
+    BOOL = b"\x10"
 
 
-def int_to_bin(value, bit_width=8):
-    """Twos-complement representation of binary values.
-    Uses value of most-significant-bit (msb) to denote sign.
-    0 is positive. 1 is negative
-    """
-    if value >= 0:
-        binary_representation = bin(value)[2:].zfill(bit_width)
-    else:
-        # Compute two's complement
-        binary_representation = bin((1 << bit_width) + value)[2:]
-    return binary_representation
+DTYPE_FROM_HEX = {key.value: key for key in DTYPES}
 
 
 class BinaryVector(Binary):
     """
 
     TODO:
-        1. Add bool_
-            a. from_list
-            b. handle padding
-            c. as_list  (first version as list of ints)
-        2. Take dtype and padding out of binary payload. Move logic to __init__.py
-        3. Turn dtype into enum
         4. Add docs
-        5. Add a few simple tests. e.g. For empty and non-sensible inputs
+        5. Add simple tests?.
+            - those in bson_vector.py
+            - empty and non-sensible inputs
         6. Get to BSON Specs
-
-
-    TODO:
-        - CLASS STRUCTURE
-            - Do we want to have a separate class or just add class methods?
-            - If we roll into Binary, we bake the dtype into the bytes.
-                - We just have to unroll this value when decoding
-        - What benefit do we get from subclassing this? ==> Not having to massively change BSON Spec!
-            - __eq__? not __hash__ though..
-        -[DECODE] bson._get_binary
-            - because of _ELEMENT_GETTER[bson_type] -> bson._get_binary, the first line will get called.
-                - we then add dtype as 1 byte following that
-            - if subtype == 9:  dtype = _UNPACK_DTYPE_FROM(data, position)[0];  position += 1 etc; _UNPACK_DTYPE_FROM = struct.Struct("<B").unpack_from
-            - update length by reducing by 1-byte.
-            - dtypes are given in gdoc: Technical Design: MongoDB BSON Specification for Vectors
-        - [ENCODE] bson._encode_vector?
-            - do we need a separate one? or has this already been taken care of in constructor?
-            - _encode_binary
-                - b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
-                = type (len=1) + name:bytes(len=len(name) in bytes?) + len(value) as int32 + subtype as ubyte + value(bytes)
-        - QUESTIONS
-            - Do we need padding?
-            - Handle all 3 types, or just int8?
-            -
-        ADD
-            ** padding
-            - __repr__ and __str__ methods
-        TEST
-            -bson.encode(int8_vector) where vector is BinaryVector
-            - bson.encode({"a":int8_vector}) where we encode a doc
     """
 
     dtype: str
 
-    def __new__(cls, data: Any, dtype: str, padding: int = 0) -> BinaryVector:
+    def __new__(cls, data: Any, dtype: Union[DTYPES, bytes], padding: int = 0) -> BinaryVector:
         self = Binary.__new__(cls, data, bson.binary.VECTOR_SUBTYPE)
-        assert dtype in DTYPES_SUPPORTED
-        self.dtype = dtype  # todo - decide if we wish to make private and expose via property
+        if isinstance(dtype, bytes):
+            dtype = DTYPE_FROM_HEX[dtype]
+        assert dtype in DTYPES
+        self.dtype = dtype  # TODO - decide if we wish to make private and expose via property
         self.padding = padding
         return self
 
-    def __repr__(self) -> str:
-        return f"BinaryVector({bytes.__repr__(self)}, dtype={self.dtype}, padding={self.padding})"
-
     @classmethod
     def from_list(
-        cls: Type[BinaryVector], num_list: List, dtype: str, padding: int = 0
+        cls: Type[BinaryVector], num_list: List, dtype: DTYPES, padding: int = 0
     ) -> BinaryVector:
         """Create a BSON Binary Vector subtype from a list of python objects.
 
@@ -105,11 +55,11 @@ class BinaryVector(Binary):
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
         """
-        if dtype == "int8":  # pack ints in [-128, 127] as signed int8
+        if dtype == DTYPES.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
-        elif dtype == "bool":  # pack ints in [0, 255] as unsigned uint8
+        elif dtype == DTYPES.BOOL:  # pack ints in [0, 255] as unsigned uint8
             format_str = "B"
-        elif dtype == "float32":  # pack floats as float32
+        elif dtype == DTYPES.FLOAT32:  # pack floats as float32
             format_str = "f"
         else:
             raise NotImplementedError("%s not yet supported" % dtype)
@@ -117,7 +67,7 @@ class BinaryVector(Binary):
         data = struct.pack(f"{len(num_list)}{format_str}", *num_list)
         return cls(data, dtype, padding)
 
-    def as_list(self, dtype: Optional[str] = None, padding: Optional[int] = None) -> List[Any]:
+    def as_list(self, dtype: Optional[DTYPES] = None, padding: Optional[int] = None) -> List[Any]:
         """Create a list of python objects.
 
         BinaryVector was created with a specific dtype and padding.
@@ -130,7 +80,7 @@ class BinaryVector(Binary):
         dtype = dtype or self.dtype
         padding = padding or self.padding
 
-        if dtype == "bool":
+        if dtype == DTYPES.BOOL:
             n_values = len(self)  # data packed as uint8
             unpacked_uint8s = struct.unpack(f"{n_values}B", self)
             bits = []
@@ -138,14 +88,14 @@ class BinaryVector(Binary):
                 bits.extend([int(bit) for bit in f"{uint8:08b}"])
             return bits[:-padding]
 
-        elif dtype == "int8":
+        elif dtype == DTYPES.INT8:
             n_values = len(self)
             dtype_format = "b"
             format_string = f"{n_values}{dtype_format}"
             unpacked_data = struct.unpack(format_string, self)
             return list(unpacked_data)
 
-        elif dtype == "float32":
+        elif dtype == DTYPES.FLOAT32:
             n_bytes = len(self)
             n_values = n_bytes // 4
             assert n_bytes % 4 == 0
@@ -153,4 +103,23 @@ class BinaryVector(Binary):
             return list(unpacked_data)
 
         else:
-            raise NotImplementedError("BinaryVector dtype %i not yet supported" % dtype)
+            raise NotImplementedError("BinaryVector dtype %s not yet supported" % dtype.name)
+
+    def __repr__(self) -> str:
+        return f"BinaryVector({bytes.__repr__(self)}, dtype={self.dtype}, padding={self.padding})"
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, BinaryVector):
+            return (
+                self.__subtype == other.subtype
+                and self.dtype == other.dtype
+                and self.padding == other.padding
+                and bytes(self) == bytes(other)
+            )
+        return False
+
+    def __ne__(self, other: Any) -> bool:
+        return not self == other
+
+    def __hash__(self) -> int:
+        return super().__hash__() ^ hash(self.dtype) ^ hash(self.padding)
