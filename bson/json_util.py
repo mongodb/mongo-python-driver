@@ -141,6 +141,7 @@ from bson.regex import Regex
 from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+from bson.vector import DTYPES, BinaryVector
 
 _RE_OPT_TABLE = {
     "i": re.I,
@@ -608,6 +609,26 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
     return _binary_or_uuid(data, int(subtype, 16), json_options)
 
 
+def _parse_canonical_binary_vector(doc: Any, dummy0: Any) -> BinaryVector:
+    binary = doc["$binaryVector"]
+    b64 = binary["base64"]
+    dtype = getattr(DTYPES, binary["dtype"])
+    padding = binary["padding"]
+    if not isinstance(b64, str):
+        raise TypeError(f"$binaryVector base64 must be a string: {doc}")
+    if not isinstance(dtype, DTYPES):
+        raise TypeError(f"$binaryVector dtype must a member of bson.vector.DTYPES: {doc}")
+    if not isinstance(padding, str) or len(padding) > 2:
+        raise TypeError(f"$binaryVector padding must be a string at most 2 characters: {doc}")
+    if len(binary) != 3:
+        raise TypeError(
+            f'$binaryVector must include only "base64", "dtype", and "padding" components: {doc}'
+        )
+
+    data = base64.b64decode(b64.encode())
+    return BinaryVector(data, dtype, int(padding))
+
+
 def _parse_canonical_datetime(
     doc: Any, json_options: JSONOptions
 ) -> Union[datetime.datetime, DatetimeMS]:
@@ -820,6 +841,7 @@ _PARSERS: dict[str, Callable[[Any, JSONOptions], Any]] = {
     "$minKey": _parse_canonical_minkey,
     "$maxKey": _parse_canonical_maxkey,
     "$binary": _parse_binary,
+    "$binaryVector": _parse_canonical_binary_vector,
     "$code": _parse_canonical_code,
     "$uuid": _parse_legacy_uuid,
     "$undefined": lambda _, _1: None,
@@ -839,6 +861,22 @@ def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
         return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
     return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
+
+
+def _encode_binary_vector(obj: Any, json_options: JSONOptions) -> Any:
+    if json_options.json_mode == JSONMode.LEGACY:
+        return {
+            "$binaryVector": base64.b64encode(obj).decode(),
+            "dtype": "%s" % obj.dtype.name,
+            "padding": "%02x" % obj.padding,
+        }
+    return {
+        "$binaryVector": {
+            "base64": base64.b64encode(obj).decode(),
+            "dtype": "%s" % obj.dtype.name,
+            "padding": "%02x" % obj.padding,
+        }
+    }
 
 
 def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
@@ -992,6 +1030,7 @@ _ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {
     str: _encode_noop,
     type(None): _encode_noop,
     uuid.UUID: _encode_uuid,
+    BinaryVector: _encode_binary_vector,
     Binary: _encode_binary_obj,
     Int64: _encode_int64,
     Code: _encode_code,
