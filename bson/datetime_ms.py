@@ -114,17 +114,29 @@ class DatetimeMS:
         return self._value
 
 
+_MIN_UTC = datetime.datetime.min.replace(tzinfo=utc)
+_MAX_UTC = datetime.datetime.max.replace(tzinfo=utc)
+
+
 # Inclusive and exclusive min and max for timezones.
 # Timezones are hashed by their offset, which is a timedelta
 # and therefore there are more than 24 possible timezones.
 @functools.lru_cache(maxsize=None)
 def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.min.replace(tzinfo=tz))
+    try:
+        dtm = _MIN_UTC.astimezone(tz)
+    except OverflowError:
+        dtm = (_MIN_UTC - tz.utcoffset(_MIN_UTC)).astimezone(tz)
+    return _datetime_to_millis(dtm)
 
 
 @functools.lru_cache(maxsize=None)
 def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
+    try:
+        dtm = _MAX_UTC.astimezone(tz)
+    except OverflowError:
+        dtm = (_MAX_UTC - tz.utcoffset(_MAX_UTC)).astimezone(tz)
+    return _datetime_to_millis(dtm)
 
 
 def _millis_to_datetime(
