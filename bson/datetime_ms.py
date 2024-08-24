@@ -129,7 +129,7 @@ _MAX_UTC_MS = _datetime_to_millis(_MAX_UTC)
 # Inclusive and exclusive min and max for timezones.
 # Timezones are hashed by their offset, which is a timedelta
 # and therefore there are more than 24 possible timezones.
-def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
+def _min_datetime_ms(tz: datetime.tzinfo = utc) -> int:
     delta = tz.utcoffset(_MIN_UTC)
     if delta is not None:
         offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
@@ -138,7 +138,7 @@ def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
     return max(_MIN_UTC_MS, _MIN_UTC_MS - offset_millis)
 
 
-def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
+def _max_datetime_ms(tz: datetime.tzinfo = utc) -> int:
     delta = tz.utcoffset(_MAX_UTC)
     if delta is not None:
         offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
@@ -156,7 +156,7 @@ def _millis_to_datetime(
         or opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP
         or opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO
     ):
-        tz = opts.tzinfo or datetime.timezone.utc
+        tz = opts.tzinfo or utc
         if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
             millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
         elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
