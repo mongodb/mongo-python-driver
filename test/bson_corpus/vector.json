@@ -1,0 +1,12 @@
+{
+  "description": "BinaryVector type [!! MORE TESTS REQUIRED. json_utils may need tweaking",
+  "bson_type": "0x05",
+  "test_key": "x",
+  "valid": [
+    {
+      "description": "DTYPES.INT8 (Zero-length)",
+      "canonical_bson": "0f0000000578000000000009030000",
+      "canonical_extjson": "{\"x\": {\"$binaryVector\": {\"base64\": \"\", \"dtype\": \"INT8\", \"padding\": \"00\"}}}"
+    }
+  ]
+}

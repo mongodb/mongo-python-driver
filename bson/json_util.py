@@ -610,17 +610,20 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
 
 
 def _parse_canonical_binary_vector(doc: Any, dummy0: Any) -> BinaryVector:
-    binary = doc["$binaryVector"]
-    b64 = binary["base64"]
-    dtype = getattr(DTYPES, binary["dtype"])
-    padding = binary["padding"]
+    if "dtype" in doc:
+        b64 = doc["$binaryVector"]
+    else:
+        doc = doc["$binaryVector"]
+        b64 = doc["base64"]
+    dtype = getattr(DTYPES, doc["dtype"])
+    padding = doc["padding"]
     if not isinstance(b64, str):
         raise TypeError(f"$binaryVector base64 must be a string: {doc}")
     if not isinstance(dtype, DTYPES):
         raise TypeError(f"$binaryVector dtype must a member of bson.vector.DTYPES: {doc}")
     if not isinstance(padding, str) or len(padding) > 2:
         raise TypeError(f"$binaryVector padding must be a string at most 2 characters: {doc}")
-    if len(binary) != 3:
+    if len(doc) != 3:
         raise TypeError(
             f'$binaryVector must include only "base64", "dtype", and "padding" components: {doc}'
         )
