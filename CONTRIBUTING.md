@@ -244,3 +244,7 @@ The `-b` flag adds as a regex pattern to block files you do not wish to
 update in PyMongo. This is primarily helpful if you are implementing a
 new feature in PyMongo that has spec tests already implemented, or if
 you are attempting to validate new spec tests in PyMongo.
+
+## Making a Release
+
+Follow the [Python Driver Release Process Wiki](https://wiki.corp.mongodb.com/display/DRIVERS/Python+Driver+Release+Process).

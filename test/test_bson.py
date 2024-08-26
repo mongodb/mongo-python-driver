@@ -1019,6 +1019,10 @@ class TestCodecOptions(unittest.TestCase):
         tz = FixedOffset(42, "forty-two")
         self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
         self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
+        self.assertEqual(repr(tz), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')")
+        self.assertEqual(
+            repr(eval(repr(tz))), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')"
+        )
 
     def test_codec_options_repr(self):
         r = (
