@@ -830,7 +830,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self._options = options = ClientOptions(username, password, dbase, opts)
+        if _IS_SYNC:
+            self._options = options = ClientOptions(username, password, dbase, opts, False)
+        else:
+            self._options = options = ClientOptions(username, password, dbase, opts, True)
 
         self._default_database_name = dbase
         self._lock = _ALock(_create_lock())
