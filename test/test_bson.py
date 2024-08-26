@@ -369,6 +369,9 @@ class TestBSON(unittest.TestCase):
                 b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                 b"\x05\x00\x00\x00\xFF"
             ),
+            # An array where the size cannot be represented as int32.
+            # We replace the size of the array with \xff\xff\xff\x00 which is -221 as an int32.
+            b"\x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00",
         ]
         for i, data in enumerate(bad_bsons):
             msg = f"bad_bson[{i}]"
