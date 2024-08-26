@@ -148,7 +148,7 @@ def _parse_pool_options(
     password: str,
     database: Optional[str],
     options: Mapping[str, Any],
-    async_client: bool,
+    is_async: bool,
 ) -> PoolOptions:
     """Parse connection pool options."""
     credentials = _parse_credentials(username, password, database, options)
@@ -187,7 +187,7 @@ def _parse_pool_options(
         server_api=server_api,
         load_balanced=load_balanced,
         credentials=credentials,
-        async_client=async_client,
+        is_async=is_async,
     )
 
 
@@ -205,7 +205,7 @@ class ClientOptions:
         password: str,
         database: Optional[str],
         options: Mapping[str, Any],
-        async_client: bool = False,
+        is_async: bool = False,
     ):
         self.__options = options
         self.__codec_options = _parse_codec_options(options)
@@ -216,9 +216,7 @@ class ClientOptions:
         self.__server_selection_timeout = options.get(
             "serverselectiontimeoutms", common.SERVER_SELECTION_TIMEOUT
         )
-        self.__pool_options = _parse_pool_options(
-            username, password, database, options, async_client
-        )
+        self.__pool_options = _parse_pool_options(username, password, database, options, is_async)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get("replicaset")
         self.__write_concern = _parse_write_concern(options)

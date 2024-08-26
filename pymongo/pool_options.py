@@ -331,7 +331,7 @@ class PoolOptions:
         server_api: Optional[ServerApi] = None,
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
-        async_client: Optional[bool] = False,
+        is_async: Optional[bool] = False,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -351,8 +351,6 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
-        if async_client:
-            self.__metadata["driver"]["name"] = "AsyncPyMongo"
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -365,6 +363,11 @@ class PoolOptions:
         #    },
         #    'platform': 'CPython 3.8.0|MyPlatform'
         # }
+        if is_async:
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "async",
+            )
         if driver:
             if driver.name:
                 self.__metadata["driver"]["name"] = "{}|{}".format(

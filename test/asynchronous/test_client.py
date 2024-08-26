@@ -341,7 +341,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "AsyncPyMongo"
+        metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
         client = AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -360,7 +360,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertRaises(TypeError, AsyncMongoClient, driver="abc")
         self.assertRaises(TypeError, AsyncMongoClient, driver=("Foo", "1", "a"))
         # Test appending to driver info.
-        metadata["driver"]["name"] = "AsyncPyMongo|FooDriver"
+        metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
         client = AsyncMongoClient(
             "foo",
@@ -404,7 +404,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "AsyncPyMongo"
+        metadata["driver"]["name"] = "PyMongo|async"
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
         client = AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
@@ -1940,7 +1940,7 @@ class TestClient(AsyncIntegrationTest):
     async def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
-            metadata["driver"]["name"] = "AsyncPyMongo"
+            metadata["driver"]["name"] = "PyMongo|async"
             if expected_env is not None:
                 metadata["env"] = expected_env
 
