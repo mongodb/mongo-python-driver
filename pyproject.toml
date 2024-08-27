@@ -126,7 +126,7 @@ module = ["service_identity.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["pymongo.synchronous.*", "gridfs.synchronous.*"]
+module = ["pymongo.synchronous.*"]
 warn_unused_ignores = false
 disable_error_code = ["unused-coroutine"]
 
@@ -134,6 +134,10 @@ disable_error_code = ["unused-coroutine"]
 module = ["pymongo.asynchronous.*"]
 warn_unused_ignores = false
 
+[[tool.mypy.overrides]]
+module = ["gridfs.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
 target-version = "py37"
