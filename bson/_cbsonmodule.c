@@ -2901,7 +2901,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
                             "not enough data for a BSON document");
             Py_DECREF(InvalidBSON);
         }
-        goto done;
+        goto fail;
     }
 
     memcpy(&size, string, 4);
@@ -2972,6 +2972,16 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
             goto fail;
         }
         position += value_length;
+    }
+
+    if (view.len != (int32_t)size) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON,
+                            "bad object or element length");
+            Py_DECREF(InvalidBSON);
+        }
+        goto fail;
     }
 
     /* objectify buffer */
