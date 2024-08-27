@@ -2908,7 +2908,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     size = BSON_UINT32_FROM_LE(size);
 
     /* validate the size of the array */
-    if (view.len < (int32_t)size || (int32_t)size < BSON_MIN_SIZE) {
+    if (view.len != (int32_t)size || (int32_t)size < BSON_MIN_SIZE) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
             PyErr_SetString(InvalidBSON, "objsize too large");
@@ -2974,7 +2974,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
         position += value_length;
     }
 
-    if (view.len != (int32_t)size) {
+    if (position != size - 1) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
             PyErr_SetString(InvalidBSON,

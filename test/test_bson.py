@@ -1364,17 +1364,14 @@ class TestDatetimeConversion(unittest.TestCase):
             decode(encode({"a": DatetimeMS(small_ms)}))
 
     def test_array_of_documents_to_buffer(self):
-        # An array where the size cannot be represented as int32.
-        # We replace the size of the array with \xff\xff\xff\x00 which is -221 as an int32.
-        # b"-            \x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00",
         doc = dict(a=1)
-        buf = _array_of_documents_to_buffer(encode(dict(a=doc)))
+        buf = _array_of_documents_to_buffer(encode({"0": doc}))
         self.assertEqual(buf, encode(doc))
-        buf = _array_of_documents_to_buffer(encode(dict(a=doc, b=doc)))
+        buf = _array_of_documents_to_buffer(encode({"0": doc, "1": doc}))
         self.assertEqual(buf, encode(doc) + encode(doc))
         with self.assertRaises(InvalidBSON):
-            _array_of_documents_to_buffer(encode(dict(a=doc, b=doc)) + b"1")
-        buf = encode(dict(a=doc, b=doc))
+            _array_of_documents_to_buffer(encode({"0": doc, "1": doc}) + b"1")
+        buf = encode({"0": doc, "1": doc})
         buf = buf[:-1] + b"1"
         with self.assertRaises(InvalidBSON):
             _array_of_documents_to_buffer(buf)
