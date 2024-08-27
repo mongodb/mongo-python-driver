@@ -1180,20 +1180,20 @@ def _decode_selective(
     return doc
 
 
-def _array_of_documents_to_buffer(view: memoryview) -> bytes:
+def _array_of_documents_to_buffer(data: Union[memoryview, bytes]) -> bytes:
     # Extract the raw bytes of each document.
     position = 0
-    _, end = _get_object_size(view, position, len(view))
+    _, end = _get_object_size(data, position, len(data))
     position += 4
     buffers: list[memoryview] = []
     append = buffers.append
     while position < end - 1:
         # Just skip the keys.
-        while view[position] != 0:
+        while data[position] != 0:
             position += 1
         position += 1
-        obj_size, _ = _get_object_size(view, position, end)
-        append(view[position : position + obj_size])
+        obj_size, _ = _get_object_size(data, position, end)
+        append(data[position : position + obj_size])
         position += obj_size
     if position != end:
         raise InvalidBSON("bad object or element length")
