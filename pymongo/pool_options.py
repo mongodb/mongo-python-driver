@@ -331,7 +331,7 @@ class PoolOptions:
         server_api: Optional[ServerApi] = None,
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
-        is_async: Optional[bool] = False,
+        is_sync: Optional[bool] = True,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -363,7 +363,7 @@ class PoolOptions:
         #    },
         #    'platform': 'CPython 3.8.0|MyPlatform'
         # }
-        if is_async:
+        if not is_sync:
             self.__metadata["driver"]["name"] = "{}|{}".format(
                 self.__metadata["driver"]["name"],
                 "async",
