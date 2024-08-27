@@ -1472,6 +1472,9 @@ class GridOut(io.IOBase):
     _file: Any
     _chunk_iter: Any
 
+    def __next__(self) -> bytes:
+        return super().__next__()
+
     def open(self) -> None:
         if not self._file:
             _disallow_transactions(self._session)
@@ -1499,6 +1502,7 @@ class GridOut(io.IOBase):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
+        self.open()
         received = len(self._buffer) - self._buffer_pos
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
