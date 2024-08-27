@@ -1176,20 +1176,22 @@ class AsyncGridIn:
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if _IS_SYNC:
-            # For properties of this instance like _buffer, or descriptors set on
-            # the class like filename, use regular __setattr__
-            if name in self.__dict__ or name in self.__class__.__dict__:
-                object.__setattr__(self, name, value)
-            else:
+        # For properties of this instance like _buffer, or descriptors set on
+        # the class like filename, use regular __setattr__
+        if name in self.__dict__ or name in self.__class__.__dict__:
+            object.__setattr__(self, name, value)
+        else:
+            if _IS_SYNC:
                 # All other attributes are part of the document in db.fs.files.
                 # Store them to be sent to server on close() or if closed, send
                 # them now.
                 self._file[name] = value
                 if self._closed:
                     self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
-        else:
-            object.__setattr__(self, name, value)
+            else:
+                raise AttributeError(
+                    "AsyncGridIn does not support __setattr__. Use AsyncGridIn.set() instead"
+                )
 
     async def set(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
@@ -1486,6 +1488,14 @@ class AsyncGridOut(io.IOBase):
 
     async def __anext__(self) -> bytes:
         return super().__next__()
+
+    def __next__(self) -> bytes:  # noqa: F811, RUF100
+        if _IS_SYNC:
+            return super().__next__()
+        else:
+            raise TypeError(
+                "AsyncGridOut does not support synchronous iteration. Use `async for` instead"
+            )
 
     async def open(self) -> None:
         if not self._file:
