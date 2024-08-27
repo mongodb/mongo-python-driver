@@ -70,7 +70,7 @@ class AutoEncryptionOpts:
         users. To configure automatic *decryption* without automatic
         *encryption* set ``bypass_auto_encryption=True``. Explicit
         encryption and explicit decryption is also supported for all users
-        with the :class:`~pymongo.encryption.ClientEncryption` class.
+        with the :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and :class:`~pymongo.encryption.ClientEncryption` classes.
 
         See :ref:`automatic-client-side-encryption` for an example.
 
