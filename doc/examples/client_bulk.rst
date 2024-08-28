@@ -145,7 +145,7 @@ For example, a duplicate key error on the third operation below aborts the remai
     'idx': 2,
     'code': 11000,
     'errmsg': 'E11000 duplicate key error ... dup key: { _id: 3 }', ...
-    'op': {'insert': 'db.test_three', 'document': {'_id': 3}}}]
+    'op': {'insert': 0, 'document': {'_id': 3}}}]
   >>> exception.partial_result.inserted_count
   2
   >>> exception.partial_result.deleted_count
@@ -181,7 +181,7 @@ For example, the fourth and fifth write operations below get executed successful
     'idx': 2,
     'code': 11000,
     'errmsg': 'E11000 duplicate key error ... dup key: { _id: 5 }', ...
-    'op': {'insert': 'db.test_five', 'document': {'_id': 5}}}]
+    'op': {'insert': 0, 'document': {'_id': 5}}}]
   >>> exception.partial_result.inserted_count
   3
   >>> exception.partial_result.deleted_count

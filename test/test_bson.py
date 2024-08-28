@@ -41,6 +41,7 @@ from bson import (
     EPOCH_AWARE,
     DatetimeMS,
     Regex,
+    _array_of_documents_to_buffer,
     _datetime_to_millis,
     decode,
     decode_all,
@@ -1019,6 +1020,10 @@ class TestCodecOptions(unittest.TestCase):
         tz = FixedOffset(42, "forty-two")
         self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
         self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
+        self.assertEqual(repr(tz), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')")
+        self.assertEqual(
+            repr(eval(repr(tz))), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')"
+        )
 
     def test_codec_options_repr(self):
         r = (
@@ -1361,6 +1366,23 @@ class TestDatetimeConversion(unittest.TestCase):
         small_ms = -2 << 51
         with self.assertRaisesRegex(InvalidBSON, re.compile(re.escape(_DATETIME_ERROR_SUGGESTION))):
             decode(encode({"a": DatetimeMS(small_ms)}))
+
+    def test_array_of_documents_to_buffer(self):
+        doc = dict(a=1)
+        buf = _array_of_documents_to_buffer(encode({"0": doc}))
+        self.assertEqual(buf, encode(doc))
+        buf = _array_of_documents_to_buffer(encode({"0": doc, "1": doc}))
+        self.assertEqual(buf, encode(doc) + encode(doc))
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(encode({"0": doc, "1": doc}) + b"1")
+        buf = encode({"0": doc, "1": doc})
+        buf = buf[:-1] + b"1"
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(buf)
+        # We replace the size of the array with \xff\xff\xff\x00 which is -221 as an int32.
+        buf = b"\x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00"
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(buf)
 
 
 class TestLongLongToString(unittest.TestCase):

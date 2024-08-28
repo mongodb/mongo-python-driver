@@ -15,6 +15,7 @@
 """Test the client bulk write API."""
 from __future__ import annotations
 
+import os
 import sys
 
 sys.path[0:0] = [""]
@@ -47,31 +48,42 @@ _IS_SYNC = False
 
 class TestClientBulkWrite(AsyncIntegrationTest):
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_returns_error_if_no_namespace_provided(self):
-        client = await async_rs_or_single_client()
-        self.addAsyncCleanup(client.close)
-
         models = [InsertOne(document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
-            await client.bulk_write(models=models)
+            await self.client.bulk_write(models=models)
         self.assertIn(
             "MongoClient.bulk_write requires a namespace to be provided for each write operation",
             context.exception._message,
         )
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_handles_non_pymongo_error(self):
         with patch.object(
             _AsyncClientBulk, "write_command", return_value={"error": TypeError("mock type error")}
         ):
-            client = await async_rs_or_single_client()
-            self.addAsyncCleanup(client.close)
-
             models = [InsertOne(namespace="db.coll", document={"a": "b"})]
             with self.assertRaises(ClientBulkWriteException) as context:
-                await client.bulk_write(models=models)
+                await self.client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, TypeError)
             self.assertFalse(hasattr(context.exception.error, "details"))
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
+    async def test_formats_write_error_correctly(self):
+        models = [
+            InsertOne(namespace="db.coll", document={"_id": 1}),
+            InsertOne(namespace="db.coll", document={"_id": 1}),
+        ]
+
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self.client.bulk_write(models=models)
+
+        write_error = context.exception.write_errors[0]
+        self.assertEqual(write_error["idx"], 1)
+        self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
@@ -82,6 +94,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_batch_splits_if_num_operations_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -107,6 +120,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(first_event.operation_id, second_event.operation_id)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_batch_splits_if_ops_payload_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -139,6 +153,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(first_event.operation_id, second_event.operation_id)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     @async_client_context.require_failCommand_fail_point
     async def test_collects_write_concern_errors_across_batches(self):
         listener = OvertCommandListener()
@@ -182,6 +197,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(len(bulk_write_events), 2)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_collects_write_errors_across_batches_unordered(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -212,6 +228,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(len(bulk_write_events), 2)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_collects_write_errors_across_batches_ordered(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -242,6 +259,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(len(bulk_write_events), 1)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_handles_cursor_requiring_getMore(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -282,6 +300,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertTrue(get_more_event)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     @async_client_context.require_no_standalone
     async def test_handles_cursor_requiring_getMore_within_transaction(self):
         listener = OvertCommandListener()
@@ -325,6 +344,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertTrue(get_more_event)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     @async_client_context.require_failCommand_fail_point
     async def test_handles_getMore_error(self):
         listener = OvertCommandListener()
@@ -380,6 +400,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertTrue(kill_cursors_event)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_returns_error_if_unacknowledged_too_large_insert(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -436,6 +457,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         return num_models, models
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_no_batch_splits_if_new_namespace_is_not_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -467,6 +489,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(event.command["nsInfo"][0]["ns"], "db.coll")
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_batch_splits_if_new_namespace_is_too_large(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
@@ -505,6 +528,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(second_event.command["nsInfo"][0]["ns"], namespace)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     async def test_returns_error_if_no_writes_can_be_added_to_ops(self):
         client = await async_rs_or_single_client()
         self.addAsyncCleanup(client.close)
@@ -512,19 +536,18 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         # Document too large.
         b_repeated = "b" * self.max_message_size_bytes
         models = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
-        with self.assertRaises(InvalidOperation) as context:
+        with self.assertRaises(DocumentTooLarge):
             await client.bulk_write(models=models)
-        self.assertIn("cannot do an empty bulk write", context.exception._message)
 
         # Namespace too large.
         c_repeated = "c" * self.max_message_size_bytes
         namespace = f"db.{c_repeated}"
         models = [InsertOne(namespace=namespace, document={"a": "b"})]
-        with self.assertRaises(InvalidOperation) as context:
+        with self.assertRaises(DocumentTooLarge):
             await client.bulk_write(models=models)
-        self.assertIn("cannot do an empty bulk write", context.exception._message)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     async def test_returns_error_if_auto_encryption_configured(self):
         opts = AutoEncryptionOpts(
@@ -545,11 +568,14 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(AsyncIntegrationTest):
     async def asyncSetUp(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes
 
     @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
     @async_client_context.require_failCommand_fail_point
     async def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500

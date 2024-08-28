@@ -357,7 +357,6 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x

@@ -8,8 +8,9 @@ PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
 - A new asynchronous API with full asyncio support.
-- Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
-  :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
+- Added support for In-Use Encryption range queries with MongoDB 8.0.
+  Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
+  ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
 - Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
   :class:`~pymongo.command_cursor.CommandCursor`,
@@ -29,6 +30,7 @@ PyMongo 4.9 brings a number of improvements including:
   :class:`~pymongo.operations.DeleteOne`, and
   :class:`~pymongo.operations.DeleteMany` operations, so
   they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+- Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
 
 Issues Resolved
 ...............
