@@ -33,10 +33,10 @@ PyMongo 4.9 brings a number of improvements including:
 - Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
 - Fixed a bug where PyMongo would raise ``InvalidBSON: unhashable type: 'tzfile'``
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
-  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezones from dateutil.
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezone from dateutil.
 - Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
-  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezones.
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
 
 Issues Resolved
 ...............
