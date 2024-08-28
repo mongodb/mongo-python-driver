@@ -337,6 +337,7 @@ class ClientUnitTest(UnitTest):
 
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
+        metadata["driver"]["name"] = "PyMongo"
         metadata["application"] = {"name": "foobar"}
         client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -399,6 +400,7 @@ class ClientUnitTest(UnitTest):
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
+        metadata["driver"]["name"] = "PyMongo"
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
         client = MongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
@@ -1894,6 +1896,7 @@ class TestClient(IntegrationTest):
     def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
+            metadata["driver"]["name"] = "PyMongo"
             if expected_env is not None:
                 metadata["env"] = expected_env
 

@@ -97,6 +97,7 @@ replacements = {
     "async-snapshot-reads-ref": "snapshot-reads-ref",
     "default_async": "default",
     "aclose": "close",
+    "PyMongo|async": "PyMongo",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

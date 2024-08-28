@@ -829,7 +829,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self._options = options = ClientOptions(username, password, dbase, opts)
+        self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
         self._lock = _create_lock()
