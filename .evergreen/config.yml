@@ -53,12 +53,12 @@ functions:
         script: |
           . src/.evergreen/scripts/env.sh
           set -o xtrace
-          rm -rf $DRIVERS_TOOLS
+          rm -rf ${DRIVERS_TOOLS}
           if [ "$PROJECT" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
-            cp -R $PROJECT_DIRECTORY/ $DRIVERS_TOOLS
+            cp -R $PROJECT_DIRECTORY/ ${DRIVERS_TOOLS}
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git ${DRIVERS_TOOLS}
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -199,7 +199,7 @@ functions:
     - command: archive.targz_pack
       params:
         target: "drivers-dir.tar.gz"
-        source_dir: $DRIVERS_TOOLS
+        source_dir: ${DRIVERS_TOOLS}
         include:
           - "./**"
         exclude_files:
@@ -567,7 +567,7 @@ functions:
         script: |
           . .evergreen/scripts/env.sh
           . .evergreen/hatch.sh encryption:teardown
-          rm -rf $DRIVERS_TOOLS || true
+          rm -rf ${DRIVERS_TOOLS} || true
           rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
@@ -576,8 +576,8 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          for filename in $(find $DRIVERS_TOOLS -name \*.json); do
-            perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|$DRIVERS_TOOLS|g" $filename
+          for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
+            perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
           done
 
   "windows fix":
@@ -716,7 +716,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          DRIVERS_TOOLS=$DRIVERS_TOOLS MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
+          DRIVERS_TOOLS=${DRIVERS_TOOLS} MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
     - command: expansions.update
       params:
         file: lb-expansion.yml
@@ -726,7 +726,7 @@ functions:
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen
-          DRIVERS_TOOLS=$DRIVERS_TOOLS bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
+          DRIVERS_TOOLS=${DRIVERS_TOOLS} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
 
   "teardown_docker":
     - command: shell.exec
