@@ -58,6 +58,7 @@ replacements = {
     "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
     "_a_grid_in_property": "_grid_in_property",
     "_a_grid_out_property": "_grid_out_property",
+    "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
@@ -95,6 +96,7 @@ replacements = {
     "async-transactions-ref": "transactions-ref",
     "async-snapshot-reads-ref": "snapshot-reads-ref",
     "default_async": "default",
+    "PyMongo|async": "PyMongo",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

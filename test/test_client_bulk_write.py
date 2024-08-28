@@ -15,6 +15,7 @@
 """Test the client bulk write API."""
 from __future__ import annotations
 
+import os
 import sys
 
 sys.path[0:0] = [""]
@@ -567,6 +568,8 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(IntegrationTest):
     def setUp(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         self.max_write_batch_size = client_context.max_write_batch_size
         self.max_bson_object_size = client_context.max_bson_size
         self.max_message_size_bytes = client_context.max_message_size_bytes

@@ -126,9 +126,7 @@ _MIN_UTC_MS = _datetime_to_millis(_MIN_UTC)
 _MAX_UTC_MS = _datetime_to_millis(_MAX_UTC)
 
 
-# Inclusive and exclusive min and max for timezones.
-# Timezones are hashed by their offset, which is a timedelta
-# and therefore there are more than 24 possible timezones.
+# Inclusive min and max for timezones.
 def _min_datetime_ms(tz: datetime.tzinfo = utc) -> int:
     delta = tz.utcoffset(_MIN_UTC)
     if delta is not None:
