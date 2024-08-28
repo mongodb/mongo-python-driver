@@ -35,6 +35,7 @@ from typing import Any, Dict, Mapping
 import pytest
 
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
 
 sys.path[0:0] = [""]

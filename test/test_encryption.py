@@ -36,6 +36,7 @@ import pytest
 
 from pymongo.daemon import _spawn_daemon
 from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.helpers import next
 
 sys.path[0:0] = [""]
 
