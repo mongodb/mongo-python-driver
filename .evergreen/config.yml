@@ -56,7 +56,7 @@ functions:
           rm -rf ${DRIVERS_TOOLS}
           if [ "$PROJECT" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
-            cp -R $PROJECT_DIRECTORY/ ${DRIVERS_TOOLS}
+            cp -R ${PROJECT_DIRECTORY}/ ${DRIVERS_TOOLS}
           else
             git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git ${DRIVERS_TOOLS}
           fi
@@ -316,8 +316,8 @@ functions:
           . .evergreen/scripts/env.sh
           set -o xtrace
           PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
-            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=$PROJECT_DIRECTORY \
-            bash $PROJECT_DIRECTORY/.evergreen/run-mod-wsgi-tests.sh
+            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
+            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -328,7 +328,7 @@ functions:
           . .evergreen/scripts/env.sh
           set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
-          bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-mockupdb
+          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-mockupdb
 
   "run doctests":
      - command: shell.exec
@@ -338,7 +338,7 @@ functions:
          script: |
            . .evergreen/scripts/env.sh
            set -o xtrace
-           PYTHON_BINARY=${PYTHON_BINARY} bash $PROJECT_DIRECTORY/.evergreen/hatch.sh doctest:test
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
 
   "run tests":
     - command: shell.exec
@@ -410,7 +410,7 @@ functions:
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -423,11 +423,11 @@ functions:
           set +x
           . .evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
-          PROJECT_DIRECTORY="$PROJECT_DIRECTORY" \
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ENTERPRISE_AUTH=1 \
             AUTH=auth \
-            bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run atlas tests":
     - command: shell.exec
@@ -441,10 +441,10 @@ functions:
           set -o errexit
           . .evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
-          PROJECT_DIRECTORY="$PROJECT_DIRECTORY" \
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
             TEST_ATLAS=1 \
-            bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-eg
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "get aws auth secrets":
     - command: shell.exec
@@ -556,7 +556,7 @@ functions:
           . ./activate-authawsvenv.sh
           . aws_setup.sh ecs
           export MONGODB_BINARIES="$MONGODB_BINARIES";
-          export PROJECT_DIRECTORY="$PROJECT_DIRECTORY";
+          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
           python aws_tester.py ecs
           cd -
 
@@ -586,7 +586,7 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          for i in $(find ${DRIVERS_TOOLS}/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
+          for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
           done
@@ -599,7 +599,7 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          for i in $(find ${DRIVERS_TOOLS}/.evergreen $PROJECT_DIRECTORY/.evergreen -name \*.sh); do
+          for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
           done
 
@@ -609,7 +609,7 @@ functions:
         script: |
           set +x
           . src/.evergreen/scripts/env.sh
-          echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > $PROJECT_DIRECTORY/test-results.json
+          echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
   "install dependencies":
     - command: shell.exec
@@ -618,7 +618,7 @@ functions:
         script: |
           . .evergreen/scripts/env.sh
           set -o xtrace
-          file="$PROJECT_DIRECTORY/.evergreen/install-dependencies.sh"
+          file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
           [ -f "$file" ] && bash $file || echo "$file not available, skipping"
 
@@ -653,7 +653,7 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash $PROJECT_DIRECTORY/.evergreen/hatch.sh test:test-eg
+          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   run-valid-ocsp-server:
     - command: shell.exec
@@ -764,7 +764,7 @@ functions:
         working_dir: "src"
         script: |
           . .evergreen/scripts/env.sh
-          PROJECT_DIRECTORY=$PROJECT_DIRECTORY bash $PROJECT_DIRECTORY/.evergreen/run-perf-tests.sh
+          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
 
   "attach benchmark test results":
     - command: attach.results
@@ -2026,10 +2026,10 @@ tasks:
             script: |
               . .evergreen/scripts/env.sh
               set -x
-              export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
+              export CONFIG=${PROJECT_DIRECTORY}/.github/reviewers.txt
               export SCRIPT="${DRIVERS_TOOLS}/.evergreen/github_app/assign-reviewer.sh"
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
-              echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > $PROJECT_DIRECTORY/test-results.json
+              echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
     - name: "check-import-time"
       tags: ["pr"]
