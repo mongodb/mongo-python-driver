@@ -612,7 +612,7 @@ KMS_TLS_OPTS = {"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PE
 
 
 if _IS_SYNC:
-    # TODO: Add asynchronous SpecRunner
+    # TODO: Add asynchronous SpecRunner (https://jira.mongodb.org/browse/PYTHON-4700)
     class TestSpec(SpecRunner):
         @classmethod
         @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
