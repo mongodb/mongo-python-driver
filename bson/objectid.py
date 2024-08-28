@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import binascii
-import calendar
 import datetime
 import os
 import struct
@@ -25,6 +24,7 @@ import time
 from random import SystemRandom
 from typing import Any, NoReturn, Optional, Type, Union
 
+from bson.datetime_ms import _datetime_to_millis
 from bson.errors import InvalidId
 from bson.tz_util import utc
 
@@ -131,11 +131,10 @@ class ObjectId:
         :param generation_time: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
         """
-        offset = generation_time.utcoffset()
-        if offset is not None:
-            generation_time = generation_time - offset
-        timestamp = calendar.timegm(generation_time.timetuple())
-        oid = _PACK_INT(int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        oid = (
+            _PACK_INT(_datetime_to_millis(generation_time) // 1000)
+            + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
         return cls(oid)
 
     @classmethod
