@@ -31,6 +31,12 @@ PyMongo 4.9 brings a number of improvements including:
   :class:`~pymongo.operations.DeleteMany` operations, so
   they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 - Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: unhashable type: 'tzfile'``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezones from dateutil.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezones.
 
 Issues Resolved
 ...............
