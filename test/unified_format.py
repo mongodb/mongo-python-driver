@@ -45,6 +45,7 @@ from test.helpers import (
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
+    client_knobs,
 )
 from test.utils import (
     CMAPListener,
@@ -851,7 +852,7 @@ class MatchEvaluatorUtil:
 
         return False
 
-    def _match_document(self, expectation, actual, is_root):
+    def _match_document(self, expectation, actual, is_root, test=False):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
@@ -861,35 +862,48 @@ class MatchEvaluatorUtil:
                 continue
 
             self.test.assertIn(key, actual)
-            self.match_result(value, actual[key], in_recursive_call=True)
+            if not self.match_result(value, actual[key], in_recursive_call=True, test=test):
+                return False
 
         if not is_root:
             expected_keys = set(expectation.keys())
             for key, value in expectation.items():
                 if value == {"$$exists": False}:
                     expected_keys.remove(key)
-            self.test.assertEqual(expected_keys, set(actual.keys()))
+            if test:
+                self.test.assertEqual(expected_keys, set(actual.keys()))
+            else:
+                return set(expected_keys).issubset(set(actual.keys()))
+        return True
 
-    def match_result(self, expectation, actual, in_recursive_call=False):
+    def match_result(self, expectation, actual, in_recursive_call=False, test=True):
         if isinstance(expectation, abc.Mapping):
-            return self._match_document(expectation, actual, is_root=not in_recursive_call)
+            return self._match_document(
+                expectation, actual, is_root=not in_recursive_call, test=test
+            )
 
         if isinstance(expectation, abc.MutableSequence):
             self.test.assertIsInstance(actual, abc.MutableSequence)
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
-                    self._match_document(e, a, is_root=not in_recursive_call)
+                    self._match_document(e, a, is_root=not in_recursive_call, test=test)
                 else:
-                    self.match_result(e, a, in_recursive_call=True)
+                    self.match_result(e, a, in_recursive_call=True, test=test)
                 return None
 
         # account for flexible numerics in element-wise comparison
         if isinstance(expectation, int) or isinstance(expectation, float):
-            self.test.assertEqual(expectation, actual)
+            if test:
+                self.test.assertEqual(expectation, actual)
+            else:
+                return expectation == actual
             return None
         else:
-            self.test.assertIsInstance(actual, type(expectation))
-            self.test.assertEqual(expectation, actual)
+            if test:
+                self.test.assertIsInstance(actual, type(expectation))
+                self.test.assertEqual(expectation, actual)
+            else:
+                return isinstance(actual, type(expectation)) and expectation == actual
             return None
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
@@ -1891,6 +1905,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def process_ignore_messages(self, ignore_logs, actual_logs):
+        final_logs = []
+        for log in actual_logs:
+            ignored = False
+            for ignore_log in ignore_logs:
+                if log["data"]["message"] == ignore_log["data"][
+                    "message"
+                ] and self.match_evaluator.match_result(ignore_log, log, test=False):
+                    ignored = True
+                    break
+            if not ignored:
+                final_logs.append(log)
+        return final_logs
+
     def check_log_messages(self, operations, spec):
         def format_logs(log_list):
             client_to_log = defaultdict(list)
@@ -1898,7 +1926,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.message)
-                client = data.pop("clientId")
+                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
@@ -1919,6 +1947,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
                 actual_logs = [log for log in actual_logs if log["component"] in components]
+
+                ignore_logs = client.get("ignoreMessages", [])
+                if ignore_logs:
+                    actual_logs = self.process_ignore_messages(ignore_logs, actual_logs)
+
                 if client.get("ignoreExtraMessages", False):
                     actual_logs = actual_logs[: len(client["messages"])]
                 self.assertEqual(len(client["messages"]), len(actual_logs))
