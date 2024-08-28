@@ -294,7 +294,7 @@ class Server:
         client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
-                decrypted = client._encrypter.decrypt(reply.raw_command_response())
+                decrypted = await client._encrypter.decrypt(reply.raw_command_response())
                 docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
 
         response: Response

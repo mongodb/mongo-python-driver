@@ -1538,7 +1538,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     if not _IS_SYNC:
         # Add support for contextlib.closing.
-        aclose = close
+        close = close
 
     def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.

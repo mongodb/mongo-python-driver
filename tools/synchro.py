@@ -96,6 +96,7 @@ replacements = {
     "async-transactions-ref": "transactions-ref",
     "async-snapshot-reads-ref": "snapshot-reads-ref",
     "default_async": "default",
+    "aclose": "close",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -157,6 +158,7 @@ converted_tests = [
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
+    "test_encryption.py",
     "test_logger.py",
     "test_session.py",
     "test_transactions.py",
