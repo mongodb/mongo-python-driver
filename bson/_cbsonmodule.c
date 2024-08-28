@@ -2901,11 +2901,31 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
                             "not enough data for a BSON document");
             Py_DECREF(InvalidBSON);
         }
-        goto done;
+        goto fail;
     }
 
     memcpy(&size, string, 4);
     size = BSON_UINT32_FROM_LE(size);
+
+    /* validate the size of the array */
+    if (view.len != (int32_t)size || (int32_t)size < BSON_MIN_SIZE) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "objsize too large");
+            Py_DECREF(InvalidBSON);
+        }
+        goto fail;
+    }
+
+    if (string[size - 1]) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "bad eoo");
+            Py_DECREF(InvalidBSON);
+        }
+        goto fail;
+    }
+
     /* save space for length */
     if (pymongo_buffer_save_space(buffer, size) == -1) {
         goto fail;
@@ -2948,28 +2968,20 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
             goto fail;
          }
 
-        if (view.len < size) {
-            PyObject* InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                PyErr_SetString(InvalidBSON, "objsize too large");
-                Py_DECREF(InvalidBSON);
-            }
-            goto fail;
-        }
-
-        if (string[size - 1]) {
-            PyObject* InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                PyErr_SetString(InvalidBSON, "bad eoo");
-                Py_DECREF(InvalidBSON);
-            }
-            goto fail;
-        }
-
         if (pymongo_buffer_write(buffer, string + position, value_length) == 1) {
             goto fail;
         }
         position += value_length;
+    }
+
+    if (position != size - 1) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON,
+                            "bad object or element length");
+            Py_DECREF(InvalidBSON);
+        }
+        goto fail;
     }
 
     /* objectify buffer */
