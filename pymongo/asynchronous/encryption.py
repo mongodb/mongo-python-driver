@@ -50,7 +50,7 @@ try:
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
-    MongoCryptCallback = object
+    AsyncMongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
