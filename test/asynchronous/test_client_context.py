@@ -18,18 +18,18 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test.synchronous import SkipTest, UnitTest, client_context, unittest
+from test.asynchronous import AsyncUnitTest, SkipTest, async_client_context, unittest
 
 _IS_SYNC = False
 
 
-class TestAsyncClientContext(UnitTest):
+class TestAsyncClientContext(AsyncUnitTest):
     @classmethod
-    def _setup_class(cls):
+    async def _setup_class(cls):
         pass
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         pass
 
     def test_must_connect(self):
@@ -37,10 +37,10 @@ class TestAsyncClientContext(UnitTest):
             raise SkipTest("PYMONGO_MUST_CONNECT is not set")
 
         self.assertTrue(
-            client_context.connected,
+            async_client_context.connected,
             "client context must be connected when "
             "PYMONGO_MUST_CONNECT is set. Failed attempts:\n{}".format(
-                client_context.connection_attempt_info()
+                async_client_context.connection_attempt_info()
             ),
         )
 
@@ -49,9 +49,9 @@ class TestAsyncClientContext(UnitTest):
             raise SkipTest("TEST_SERVERLESS is not set")
 
         self.assertTrue(
-            client_context.connected and client_context.serverless,
+            async_client_context.connected and async_client_context.serverless,
             "client context must be connected to serverless when "
-            f"TEST_SERVERLESS is set. Failed attempts:\n{client_context.connection_attempt_info()}",
+            f"TEST_SERVERLESS is set. Failed attempts:\n{async_client_context.connection_attempt_info()}",
         )
 
     def test_enableTestCommands_is_disabled(self):
@@ -59,7 +59,7 @@ class TestAsyncClientContext(UnitTest):
             raise SkipTest("PYMONGO_DISABLE_TEST_COMMANDS is not set")
 
         self.assertFalse(
-            client_context.test_commands_enabled,
+            async_client_context.test_commands_enabled,
             "enableTestCommands must be disabled when PYMONGO_DISABLE_TEST_COMMANDS is set.",
         )
 
