@@ -1400,7 +1400,10 @@ class AsyncGridIn:
         return False
 
 
-class AsyncGridOut(io.IOBase):
+GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object
+
+
+class AsyncGridOut(GRIDOUT_BASE_CLASS):
     """Class to read data out of GridFS."""
 
     def __init__(
@@ -1486,13 +1489,13 @@ class AsyncGridOut(io.IOBase):
     _file: Any
     _chunk_iter: Any
 
-    async def __anext__(self) -> bytes:
-        return super().__next__()
-
-    # This is a duplicate definition of __next__ for the synchronous API
-    # due to the limitations of our synchro process
     if not _IS_SYNC:
 
+        async def __anext__(self) -> bytes:
+            return await self.readline()
+
+        # This is a duplicate definition of __next__ for the synchronous API
+        # due to the limitations of our synchro process
         def __next__(self) -> bytes:  # noqa: F811, RUF100
             raise TypeError(
                 "AsyncGridOut does not support synchronous iteration. Use `async for` instead"
