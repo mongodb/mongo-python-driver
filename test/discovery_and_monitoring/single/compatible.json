@@ -11,7 +11,7 @@
             "helloOk": true,
             "isWritablePrimary": true,
             "minWireVersion": 0,
-            "maxWireVersion": 21
+            "maxWireVersion": 6
           }
         ]
       ],

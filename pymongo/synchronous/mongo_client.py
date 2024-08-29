@@ -829,7 +829,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self._options = options = ClientOptions(username, password, dbase, opts)
+        self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
         self._lock = _create_lock()
@@ -1538,7 +1538,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     if not _IS_SYNC:
         # Add support for contextlib.closing.
-        aclose = close
+        close = close
 
     def _get_topology(self) -> Topology:
         """Get the internal :class:`~pymongo.topology.Topology` object.

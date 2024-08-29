@@ -50,7 +50,7 @@ try:
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
-    MongoCryptCallback = object
+    AsyncMongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
@@ -207,10 +207,10 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
-        async with self.client_ref()[database].list_collections(
+        async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
-            for doc in cursor:
+            async for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
             return None
 
@@ -304,7 +304,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
 
 class RewrapManyDataKeyResult:
-    """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
+    """Result object returned by a :meth:`~AsyncClientEncryption.rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
     """
@@ -316,7 +316,7 @@ class RewrapManyDataKeyResult:
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
         """The result of the bulk write operation used to update the key vault
         collection with one or more rewrapped data keys. If
-        :meth:`~ClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
+        :meth:`~AsyncClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
         no bulk write operation will be executed and this field will be
         ``None``.
         """
@@ -506,7 +506,7 @@ def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
     return opts
 
 
-class ClientEncryption(Generic[_DocumentType]):
+class AsyncClientEncryption(Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
     def __init__(
@@ -519,7 +519,7 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> None:
         """Explicit client-side field level encryption.
 
-        The ClientEncryption class encapsulates explicit operations on a key
+        The AsyncClientEncryption class encapsulates explicit operations on a key
         vault collection that cannot be done directly on an AsyncMongoClient. Similar
         to configuring auto encryption on an AsyncMongoClient, it is constructed with
         an AsyncMongoClient (to a MongoDB cluster containing the key vault
@@ -1126,7 +1126,7 @@ class ClientEncryption(Generic[_DocumentType]):
         result = await self._key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
 
-    async def __aenter__(self) -> ClientEncryption[_DocumentType]:
+    async def __aenter__(self) -> AsyncClientEncryption[_DocumentType]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -1134,7 +1134,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
     def _check_closed(self) -> None:
         if self._encryption is None:
-            raise InvalidOperation("Cannot use closed ClientEncryption")
+            raise InvalidOperation("Cannot use closed AsyncClientEncryption")
 
     async def close(self) -> None:
         """Release resources.
@@ -1142,7 +1142,7 @@ class ClientEncryption(Generic[_DocumentType]):
         Note that using this class in a with-statement will automatically call
         :meth:`close`::
 
-            with ClientEncryption(...) as client_encryption:
+            with AsyncClientEncryption(...) as client_encryption:
                 encrypted = client_encryption.encrypt(value, ...)
                 decrypted = client_encryption.decrypt(encrypted)
 
