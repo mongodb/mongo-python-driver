@@ -194,9 +194,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
 
-    async def collection_info(
-        self, database: AsyncDatabase[Mapping[str, Any]], filter: bytes
-    ) -> Optional[bytes]:
+    async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -207,11 +205,6 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
-        if not isinstance(database, AsyncDatabase):
-            raise TypeError(
-                f"collection_info() requires an AsyncDatabase, {database} is an instance of {type(database)}"
-            )
-
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
