@@ -119,8 +119,15 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             read_concern or client.read_concern,
         )
 
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
 
         if name != "$external":
             _check_name(name)

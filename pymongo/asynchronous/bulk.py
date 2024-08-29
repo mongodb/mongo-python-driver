@@ -239,7 +239,14 @@ class _AsyncBulk:
         docs: list[Mapping[str, Any]],
         client: AsyncMongoClient,
     ) -> dict[str, Any]:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
         """A proxy for SocketInfo.write_command that handles event publishing."""
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         cmd[bwc.field] = docs
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -324,6 +331,13 @@ class _AsyncBulk:
         client: AsyncMongoClient,
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -410,6 +424,13 @@ class _AsyncBulk:
         ops: list[Mapping[str, Any]],
         client: AsyncMongoClient,
     ) -> list[Mapping[str, Any]]:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         if self.is_encrypted:
             _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
             await bwc.conn.command(  # type: ignore[misc]
@@ -437,6 +458,13 @@ class _AsyncBulk:
         ops: list[Mapping[str, Any]],
         client: AsyncMongoClient,
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         if self.is_encrypted:
             _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
             result = await bwc.conn.command(  # type: ignore[misc]

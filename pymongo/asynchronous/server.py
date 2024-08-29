@@ -142,7 +142,14 @@ class Server:
         :param unpack_res: A callable that decodes the wire protocol response.
         :param client: An AsyncMongoClient instance.
         """
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
         assert listeners is not None
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         publish = listeners.enabled_for_commands
         start = datetime.now()
 

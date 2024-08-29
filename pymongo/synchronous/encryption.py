@@ -207,6 +207,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
+        if not isinstance(database, Database):
+            raise TypeError(
+                f"collection_info() requires a Database, {database} is an instance of {type(database)}"
+            )
+
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
@@ -337,6 +342,9 @@ class _Encrypter:
         :param client: The encrypted MongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
+        if not isinstance(client, MongoClient):
+            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
+
         if opts._schema_map is None:
             schema_map = None
         else:
@@ -352,6 +360,11 @@ class _Encrypter:
         def _get_internal_client(
             encrypter: _Encrypter, mongo_client: MongoClient[_DocumentTypeArg]
         ) -> MongoClient[_DocumentTypeArg]:
+            if not isinstance(mongo_client, MongoClient):
+                raise TypeError(
+                    f"MongoClient required but {mongo_client} is an instance of {type(mongo_client)}"
+                )
+
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -596,6 +609,11 @@ class ClientEncryption(Generic[_DocumentType]):
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
+        if not isinstance(key_vault_client, MongoClient):
+            raise TypeError(
+                f"MongoClient required but {key_vault_client} is an instance of {type(key_vault_client)}"
+            )
+
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
@@ -681,6 +699,11 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
+        if not isinstance(database, Database):
+            raise TypeError(
+                f"create_encrypted_collection() requires a Database, {database} is an instance of {type(database)}"
+            )
+
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):
             if isinstance(field, dict) and field.get("keyId") is None:

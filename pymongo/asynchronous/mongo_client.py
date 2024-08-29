@@ -2265,6 +2265,11 @@ class _MongoClientErrorHandler:
     def __init__(
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         self.client = client
         self.server_address = server.description.address
         self.session = session
@@ -2339,6 +2344,11 @@ class _ClientConnectionRetryable(Generic[T]):
         retryable: bool = False,
         operation_id: Optional[int] = None,
     ):
+        if not isinstance(mongo_client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {mongo_client} is an instance of {type(mongo_client)}"
+            )
+
         self._last_error: Optional[Exception] = None
         self._retrying = False
         self._multiple_retries = _csot.get_timeout() is not None

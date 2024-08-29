@@ -176,6 +176,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.typings import ClusterTime, _Address
@@ -395,6 +396,13 @@ class _Transaction:
     """Internal class to hold transaction information in a AsyncClientSession."""
 
     def __init__(self, opts: Optional[TransactionOptions], client: AsyncMongoClient):
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -502,6 +510,13 @@ class AsyncClientSession:
         options: SessionOptions,
         implicit: bool,
     ) -> None:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        if not isinstance(client, AsyncMongoClient):
+            raise TypeError(
+                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
+            )
+
         # An AsyncMongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: AsyncMongoClient = client
         self._server_session = server_session
