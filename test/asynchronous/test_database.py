@@ -116,10 +116,10 @@ class TestDatabaseNoConnect(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = db[0]
         # next fails
-        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, "'AsyncDatabase' object is not iterable"):
             _ = next(db)
         # .next() fails
-        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, "'AsyncDatabase' object is not iterable"):
             _ = db.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(db, Iterable)
@@ -236,7 +236,7 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_check_exists(self):
         listener = OvertCommandListener()
         client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
         db = client[self.db.name]
         await db.drop_collection("unique")
         await db.create_collection("unique", check_exists=True)

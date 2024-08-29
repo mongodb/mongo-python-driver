@@ -284,10 +284,10 @@ def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
     except struct.error as exc:
         raise InvalidBSON(str(exc)) from None
     end = position + obj_size - 1
-    if data[end] != 0:
-        raise InvalidBSON("bad eoo")
     if end >= obj_end:
         raise InvalidBSON("invalid object length")
+    if data[end] != 0:
+        raise InvalidBSON("bad eoo")
     # If this is the top-level document, validate the total size too.
     if position == 0 and obj_size != obj_end:
         raise InvalidBSON("invalid object length")
@@ -1180,9 +1180,10 @@ def _decode_selective(
     return doc
 
 
-def _array_of_documents_to_buffer(view: memoryview) -> bytes:
+def _array_of_documents_to_buffer(data: Union[memoryview, bytes]) -> bytes:
     # Extract the raw bytes of each document.
     position = 0
+    view = memoryview(data)
     _, end = _get_object_size(view, position, len(view))
     position += 4
     buffers: list[memoryview] = []

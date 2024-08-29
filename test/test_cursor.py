@@ -232,7 +232,7 @@ class TestCursor(IntegrationTest):
         listener = AllowListEventListener("find", "getMore")
         coll = (rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
 
-        # Tailable_await defaults.
+        # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
         # find
         self.assertFalse("maxTimeMS" in listener.started_events[0].command)
@@ -240,7 +240,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with max_await_time_ms set.
+        # Tailable_with max_await_time_ms set.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
@@ -251,7 +251,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
-        # Tailable_await with max_time_ms and make sure list() works on synchronous cursors
+        # Tailable_with max_time_ms and make sure list() works on synchronous cursors
         if _IS_SYNC:
             list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))  # type: ignore[call-overload]
         else:
@@ -265,7 +265,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         listener.reset()
 
-        # Tailable_await with both max_time_ms and max_await_time_ms
+        # Tailable_with both max_time_ms and max_await_time_ms
         (
             coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
             .max_time_ms(99)
@@ -1371,6 +1371,70 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
+    @client_context.require_replica_set
+    def test_to_list_tailable(self):
+        oplog = self.client.local.oplog.rs
+        last = oplog.find().sort("$natural", pymongo.DESCENDING).limit(-1).next()
+        ts = last["ts"]
+        # Set maxAwaitTimeMS=1 to speed up the test and avoid blocking on the noop writer.
+        c = oplog.find(
+            {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        ).max_await_time_ms(1)
+        self.addCleanup(c.close)
+        # Wait for the change to be read.
+        docs = []
+        while not docs:
+            docs = c.to_list()
+        self.assertGreaterEqual(len(docs), 1)
+
+    def test_to_list_empty(self):
+        c = self.db.does_not_exist.find()
+        docs = c.to_list()
+        self.assertEqual([], docs)
+
+    def test_to_list_length(self):
+        coll = self.db.test
+        coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
+        c = coll.find(batch_size=2)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = c.to_list(3)
+        self.assertEqual(len(docs), 2)
+
+    @client_context.require_change_streams
+    def test_command_cursor_to_list(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addCleanup(c.close)
+        docs = c.to_list()
+        self.assertGreaterEqual(len(docs), 0)
+
+    @client_context.require_change_streams
+    def test_command_cursor_to_list_empty(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addCleanup(c.close)
+        docs = c.to_list()
+        self.assertEqual([], docs)
+
+    @client_context.require_change_streams
+    def test_command_cursor_to_list_length(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"foo": 1}, {"foo": 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list()), 2)
+
+        result = db.test.aggregate([pipeline])
+        self.assertEqual(len(result.to_list(1)), 1)
+
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
@@ -1378,7 +1442,7 @@ class TestRawBatchCursor(IntegrationTest):
         c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
-        batches = (c.find_raw_batches()).sort("_id").to_list()
+        batches = c.find_raw_batches().sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1394,7 +1458,7 @@ class TestRawBatchCursor(IntegrationTest):
         with client.start_session() as session:
             with session.start_transaction():
                 batches = (
-                    (client[self.db.name].test.find_raw_batches(session=session)).sort("_id")
+                    client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
@@ -1424,7 +1488,7 @@ class TestRawBatchCursor(IntegrationTest):
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
-            batches = (client[self.db.name].test.find_raw_batches()).sort("_id").to_list()
+            batches = client[self.db.name].test.find_raw_batches().sort("_id").to_list()
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1445,7 +1509,7 @@ class TestRawBatchCursor(IntegrationTest):
         db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
             db.test.distinct("x", {}, session=session)
-            batches = (db.test.find_raw_batches(session=session)).sort("_id").to_list()
+            batches = db.test.find_raw_batches(session=session).sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1456,7 +1520,7 @@ class TestRawBatchCursor(IntegrationTest):
     def test_explain(self):
         c = self.db.test
         c.insert_one({})
-        explanation = (c.find_raw_batches()).explain()
+        explanation = c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     def test_empty(self):
@@ -1477,7 +1541,7 @@ class TestRawBatchCursor(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert_many({"_id": i} for i in range(200))
-        result = b"".join((c.find_raw_batches(cursor_type=CursorType.EXHAUST)).to_list())
+        result = b"".join(c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
 
     def test_server_error(self):
@@ -1489,7 +1553,7 @@ class TestRawBatchCursor(IntegrationTest):
 
     def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            (self.db.test.find_raw_batches())[0]
+            self.db.test.find_raw_batches()[0]
 
     def test_collation(self):
         next(self.db.test.find_raw_batches(collation=Collation("en_US")))

@@ -23,14 +23,13 @@ import warnings
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.unified_format import generate_test_classes
 from test.utils import (
     EventListener,
-    SpecTestCreator,
     disable_replication,
     enable_replication,
     rs_or_single_client,
 )
-from test.utils_spec_runner import SpecRunner
 
 from pymongo import DESCENDING
 from pymongo.errors import (
@@ -321,25 +320,15 @@ def create_tests():
 create_tests()
 
 
-class TestOperation(SpecRunner):
-    # Location of JSON test specifications.
-    TEST_PATH = os.path.join(_TEST_PATH, "operation")
-
-    def get_outcome_coll_name(self, outcome, collection):
-        """Spec says outcome has an optional 'collection.name'."""
-        return outcome["collection"].get("name", collection.name)
-
-
-def create_operation_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = SpecTestCreator(create_operation_test, TestOperation, TestOperation.TEST_PATH)
-test_creator.create_tests()
+# Generate unified tests.
+# PyMongo does not support MapReduce.
+globals().update(
+    generate_test_classes(
+        os.path.join(_TEST_PATH, "operation"),
+        module=__name__,
+        expected_failures=["MapReduce .*"],
+    )
+)
 
 
 if __name__ == "__main__":

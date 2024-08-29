@@ -342,21 +342,21 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.synchronous.change_stream.DatabaseChangeStream` cursor which
+        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
         iterates over changes on all collections in this database.
 
         Introduced in MongoDB 4.0.
 
         .. code-block:: python
 
-           async with db.watch() as stream:
-               async for change in stream:
+           with db.watch() as stream:
+               for change in stream:
                    print(change)
 
-        The :class:`~pymongo.synchronous.change_stream.DatabaseChangeStream` iterable
+        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.synchronous.change_stream.DatabaseChangeStream.next` method
+        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -365,8 +365,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    async for insert_change in stream:
+                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
@@ -414,7 +414,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.synchronous.change_stream.DatabaseChangeStream` cursor.
+        :return: A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -815,23 +815,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         For example, a command like ``{buildinfo: 1}`` can be sent
         using:
 
-        >>> await db.command("buildinfo")
+        >>> db.command("buildinfo")
         OR
-        >>> await db.command({"buildinfo": 1})
+        >>> db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> await db.command("count", collection_name)
+        >>> db.command("count", collection_name)
         OR
-        >>> await db.command({"count": collection_name})
+        >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> await db.command("count", collection_name, query=query)
+        >>> db.command("count", collection_name, query=query)
         OR
-        >>> await db.command({"count": collection_name, "query": query})
+        >>> db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).

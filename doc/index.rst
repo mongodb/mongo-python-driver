@@ -16,6 +16,9 @@ everything you need to know to use **PyMongo**.
 :doc:`tutorial`
   Start here for a quick overview.
 
+:doc:`async-tutorial`
+  Start here for a quick overview of the asynchronous API.
+
 :doc:`examples/index`
   Examples of how to perform specific tasks.
 
@@ -121,6 +124,7 @@ Indices and tables
    atlas
    installation
    tutorial
+   async-tutorial
    examples/index
    faq
    compatibility-policy

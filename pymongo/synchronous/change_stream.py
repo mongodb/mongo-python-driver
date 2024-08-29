@@ -297,8 +297,8 @@ class ChangeStream(Generic[_DocumentType]):
             try:
                 resume_token = None
                 pipeline = [{'$match': {'operationType': 'insert'}}]
-                async with db.collection.watch(pipeline) as stream:
-                    async for insert_change in stream:
+                with db.collection.watch(pipeline) as stream:
+                    for insert_change in stream:
                         print(insert_change)
                         resume_token = stream.resume_token
             except pymongo.errors.PyMongoError:
@@ -312,9 +312,9 @@ class ChangeStream(Generic[_DocumentType]):
                     # Use the interrupted ChangeStream's resume token to create
                     # a new ChangeStream. The new stream will continue from the
                     # last seen insert change without missing any events.
-                    async with db.collection.watch(
+                    with db.collection.watch(
                             pipeline, resume_after=resume_token) as stream:
-                        async for insert_change in stream:
+                        for insert_change in stream:
                             print(insert_change)
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
@@ -346,9 +346,9 @@ class ChangeStream(Generic[_DocumentType]):
         This method returns the next change document without waiting
         indefinitely for the next change. For example::
 
-            async with db.collection.watch() as stream:
+            with db.collection.watch() as stream:
                 while stream.alive:
-                    change = await stream.try_next()
+                    change = stream.try_next()
                     # Note that the ChangeStream's resume token may be updated
                     # even when no changes are returned.
                     print("Current resume token: %r" % (stream.resume_token,))

@@ -394,7 +394,6 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x
@@ -434,6 +433,9 @@ functions:
           fi
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
+          fi
+          if [ -n "${SKIP_CSOT_TESTS}" ]; then
+            export SKIP_CSOT_TESTS=1
           fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -786,92 +788,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
-  "build release":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          set -o xtrace
-          VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
-
-  "upload release":
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-    - command: archive.targz_pack
-      params:
-        target: "release-files.tgz"
-        source_dir: "src/dist"
-        include:
-          - "*"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: release-files.tgz
-        remote_file: release/${revision}/${task_id}-${execution}-release-files.tar.gz
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|application/gzip}
-        display_name: Release files
-
-  "download and merge releases":
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-    - command: shell.exec
-      params:
-        silent: true
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Download all the task coverage files.
-          aws s3 cp --recursive s3://${bucket_name}/release/${revision}/ release/
-    - command: shell.exec
-      params:
-        shell: "bash"
-        script: |
-          ${PREPARE_SHELL}
-          set -o xtrace
-          # Combine releases into one directory.
-          ls -la release/
-          mkdir releases
-          # Copy old manylinux release first since we want the newer manylinux
-          # wheels to override them.
-          mkdir old_manylinux
-          if mv release/*old_manylinux* old_manylinux; then
-            for REL in old_manylinux/*; do
-              tar zxvf $REL -C releases/
-            done
-          fi
-          for REL in release/*; do
-            tar zxvf $REL -C releases/
-          done
-          # Build source distribution.
-          cd src/
-          /opt/python/3.8/bin/python3 -m pip install build
-          /opt/python/3.8/bin/python3 -m build --sdist .
-          cp dist/* ../releases
-    - command: archive.targz_pack
-      params:
-        target: "release-files-all.tgz"
-        source_dir: "releases/"
-        include:
-          - "*"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: release-files-all.tgz
-        remote_file: release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|application/gzip}
-        display_name: Release files all
-
   "run perf tests":
     - command: shell.exec
       type: test
@@ -1115,72 +1031,6 @@ tasks:
                scan-build --version || true
                genhtml --version || true
                valgrind --version || true
-
-    - name: "release-mac"
-      tags: ["release_tag"]
-      run_on: macos-11
-      commands:
-        - func: "build release"
-          vars:
-              VERSION: "3.12"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.11"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.10"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.9"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "upload release"
-        - func: "build release"
-          vars:
-              VERSION: "3.8"
-        - func: "upload release"
-
-    - name: "release-windows"
-      tags: ["release_tag"]
-      run_on: windows-64-vsMulti-small
-      commands:
-        - func: "build release"
-        - func: "upload release"
-
-    - name: "release-manylinux"
-      tags: ["release_tag"]
-      run_on: ubuntu2204-large
-      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
-      commands:
-        - func: "build release"
-        - func: "upload release"
-
-    - name: "release-old-manylinux"
-      tags: ["release_tag"]
-      run_on: ubuntu2204-large
-      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
-      commands:
-        - command: shell.exec
-          type: test
-          params:
-            working_dir: "src"
-            script: |
-              ${PREPARE_SHELL}
-              set -o xtrace
-              .evergreen/build-manylinux.sh BUILD_WITH_TAG
-        - func: "upload release"
-
-    - name: "release-combine"
-      tags: ["release_tag"]
-      run_on: rhel84-small
-      depends_on:
-        - name: "*"
-          variant: ".release_tag"
-          patch_optional: true
-      commands:
-        - func: "download and merge releases"
 
 # Standard test tasks {{{
 
@@ -2126,7 +1976,8 @@ tasks:
             script: |
               ${PREPARE_SHELL}
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
+              SKIP_SERVERS=1 bash ./.evergreen/setup-encryption.sh
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
 
     - name: testazurekms-task
@@ -2179,6 +2030,17 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-8.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
     - name: "assign-pr-reviewer"
       tags: ["pr"]
       allowed_requesters: ["patch", "github_pr"]
@@ -2223,6 +2085,8 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
+          # CSOT tests are unreliable on our slow macOS hosts.
+          SKIP_CSOT_TESTS: true
       - id: macos-arm64
         display_name: "macOS Arm64"
         run_on: macos-14-arm64
@@ -2230,6 +2094,8 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
+          # CSOT tests are unreliable on our slow macOS hosts.
+          SKIP_CSOT_TESTS: true
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
@@ -2272,6 +2138,8 @@ axes:
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
           venv_bin_dir: "Scripts"
+          # CSOT tests are unreliable on our slow Windows hosts.
+          SKIP_CSOT_TESTS: true
 
   # Test with authentication?
   - id: auth
@@ -2853,7 +2721,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9", "pypy3.9", "pypy3.10"]
+    python-version: ["3.8", "3.9"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -3144,7 +3012,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - debian10-small
+    - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3152,7 +3020,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel87-small
+  run_on: debian11-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3176,13 +3044,6 @@ buildvariants:
   tasks:
     - name: "check-import-time"
 
-- name: Release
-  display_name: Release
-  batchtime: 20160 # 14 days
-  tags: ["release_tag"]
-  tasks:
-  - ".release_tag"
-
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
   batchtime: 10080  # 7 days
@@ -3190,6 +3051,7 @@ buildvariants:
   tasks:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
+     - name: "perf-8.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

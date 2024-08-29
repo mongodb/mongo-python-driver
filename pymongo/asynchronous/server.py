@@ -30,7 +30,13 @@ from bson import _decode_all_selective
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers_shared import _check_command_response
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.logger import (
+    _COMMAND_LOGGER,
+    _SDAM_LOGGER,
+    _CommandStatusMessage,
+    _debug_log,
+    _SDAMStatusMessage,
+)
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -99,6 +105,15 @@ class Server:
                     (self._description.address, self._topology_id),
                 )
             )
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                topologyId=self._topology_id,
+                serverHost=self._description.address[0],
+                serverPort=self._description.address[1],
+                message=_SDAMStatusMessage.STOP_SERVER,
+            )
+
         await self._monitor.close()
         await self._pool.close()
 
@@ -301,7 +316,7 @@ class Server:
         client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
-                decrypted = client._encrypter.decrypt(reply.raw_command_response())
+                decrypted = await client._encrypter.decrypt(reply.raw_command_response())
                 docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
 
         response: Response

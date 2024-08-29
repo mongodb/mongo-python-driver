@@ -102,7 +102,7 @@ Snapshot Reads
 
 MongoDB 5.0 adds support for snapshot reads. Snapshot reads are requested by
 passing the ``snapshot`` option to
-:meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
+:meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.start_session`.
 If ``snapshot`` is True, all read operations that use this session read data
 from the same snapshot timestamp. The server chooses the latest
 majority-committed snapshot timestamp when executing the first read operation
@@ -123,11 +123,11 @@ Snapshot Reads Limitations
 Snapshot reads sessions are incompatible with ``causal_consistency=True``.
 Only the following read operations are supported in a snapshot reads session:
 
-- :meth:`~pymongo.collection.AsyncCollection.find`
-- :meth:`~pymongo.collection.AsyncCollection.find_one`
-- :meth:`~pymongo.collection.AsyncCollection.aggregate`
-- :meth:`~pymongo.collection.AsyncCollection.count_documents`
-- :meth:`~pymongo.collection.AsyncCollection.distinct` (on unsharded collections)
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.find`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.count_documents`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` (on unsharded collections)
 
 Classes
 =======
@@ -500,7 +500,7 @@ class AsyncClientSession:
 
     Should not be initialized directly by application developers - to create a
     :class:`AsyncClientSession`, call
-    :meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
+    :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.start_session`.
     """
 
     def __init__(
@@ -565,7 +565,7 @@ class AsyncClientSession:
 
     @property
     def client(self) -> AsyncMongoClient:
-        """The :class:`~pymongo.mongo_client.AsyncMongoClient` this session was
+        """The :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
         created from.
         """
         return self._client
@@ -913,7 +913,7 @@ class AsyncClientSession:
         """Update the cluster time for this session.
 
         :param cluster_time: The
-            :data:`~pymongo.client_session.AsyncClientSession.cluster_time` from
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.cluster_time` from
             another `AsyncClientSession` instance.
         """
         if not isinstance(cluster_time, _Mapping):
@@ -934,7 +934,7 @@ class AsyncClientSession:
         """Update the operation time for this session.
 
         :param operation_time: The
-            :data:`~pymongo.client_session.AsyncClientSession.operation_time` from
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.operation_time` from
             another `AsyncClientSession` instance.
         """
         if not isinstance(operation_time, Timestamp):
@@ -1148,7 +1148,7 @@ class _ServerSessionPool(collections.deque):
     def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
-        # sessions from a __del__ method (like in Cursor.__die), so it can't
+        # sessions from a __del__ method (like in AsyncCursor.__die), so it can't
         # clear stale sessions there. In case many sessions were returned via
         # __del__, check for stale sessions here too.
         self._clear_stale(session_timeout_minutes)

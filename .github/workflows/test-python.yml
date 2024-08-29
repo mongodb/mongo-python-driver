@@ -78,9 +78,6 @@ jobs:
       - name: Run tests
         run: |
           hatch run test:test
-      - name: Run async tests
-        run: |
-          hatch run test:test-async
 
   doctest:
     runs-on: ubuntu-latest
@@ -99,7 +96,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: '8.0.0-rc4'
       - name: Run tests
         run: |
           hatch run doctest:test

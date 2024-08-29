@@ -33,6 +33,7 @@ from collections import abc, defaultdict
 from test import (
     IntegrationTest,
     client_context,
+    client_knobs,
     unittest,
 )
 from test.helpers import (
@@ -44,6 +45,7 @@ from test.helpers import (
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
+    client_knobs,
 )
 from test.utils import (
     CMAPListener,
@@ -73,6 +75,7 @@ from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
+    ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     EncryptionError,
@@ -117,10 +120,18 @@ from pymongo.monitoring import (
     _ServerEvent,
     _ServerHeartbeatEvent,
 )
-from pymongo.operations import SearchIndexModel
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    SearchIndexModel,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult
+from pymongo.results import BulkWriteResult, ClientBulkWriteResult
 from pymongo.server_api import ServerApi
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
@@ -134,6 +145,8 @@ from pymongo.synchronous.encryption import ClientEncryption
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
+
+SKIP_CSOT_TESTS = os.getenv("SKIP_CSOT_TESTS")
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
@@ -288,9 +301,59 @@ def parse_bulk_write_result(result):
     }
 
 
+def parse_client_bulk_write_individual(op_type, result):
+    if op_type == "insert":
+        return {"insertedId": result.inserted_id}
+    if op_type == "update":
+        if result.upserted_id:
+            return {
+                "matchedCount": result.matched_count,
+                "modifiedCount": result.modified_count,
+                "upsertedId": result.upserted_id,
+            }
+        else:
+            return {
+                "matchedCount": result.matched_count,
+                "modifiedCount": result.modified_count,
+            }
+    if op_type == "delete":
+        return {
+            "deletedCount": result.deleted_count,
+        }
+
+
+def parse_client_bulk_write_result(result):
+    insert_results, update_results, delete_results = {}, {}, {}
+    if result.has_verbose_results:
+        for idx, res in result.insert_results.items():
+            insert_results[str(idx)] = parse_client_bulk_write_individual("insert", res)
+        for idx, res in result.update_results.items():
+            update_results[str(idx)] = parse_client_bulk_write_individual("update", res)
+        for idx, res in result.delete_results.items():
+            delete_results[str(idx)] = parse_client_bulk_write_individual("delete", res)
+
+    return {
+        "deletedCount": result.deleted_count,
+        "insertedCount": result.inserted_count,
+        "matchedCount": result.matched_count,
+        "modifiedCount": result.modified_count,
+        "upsertedCount": result.upserted_count,
+        "insertResults": insert_results,
+        "updateResults": update_results,
+        "deleteResults": delete_results,
+    }
+
+
 def parse_bulk_write_error_result(error):
     write_result = BulkWriteResult(error.details, True)
     return parse_bulk_write_result(write_result)
+
+
+def parse_client_bulk_write_error_result(error):
+    write_result = error.partial_result
+    if not write_result:
+        return None
+    return parse_client_bulk_write_result(write_result)
 
 
 class NonLazyCursor:
@@ -475,6 +538,11 @@ class EntityMapUtil:
         if entity_type == "client":
             kwargs: dict = {}
             observe_events = spec.get("observeEvents", [])
+
+            # The unified tests use topologyOpeningEvent, we use topologyOpenedEvent
+            for i in range(len(observe_events)):
+                if "topologyOpeningEvent" == observe_events[i]:
+                    observe_events[i] = "topologyOpenedEvent"
             ignore_commands = spec.get("ignoreCommandMonitoringEvents", [])
             observe_sensitive_commands = spec.get("observeSensitiveCommands", False)
             ignore_commands = [cmd.lower() for cmd in ignore_commands]
@@ -784,7 +852,7 @@ class MatchEvaluatorUtil:
 
         return False
 
-    def _match_document(self, expectation, actual, is_root):
+    def _match_document(self, expectation, actual, is_root, test=False):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
@@ -794,35 +862,48 @@ class MatchEvaluatorUtil:
                 continue
 
             self.test.assertIn(key, actual)
-            self.match_result(value, actual[key], in_recursive_call=True)
+            if not self.match_result(value, actual[key], in_recursive_call=True, test=test):
+                return False
 
         if not is_root:
             expected_keys = set(expectation.keys())
             for key, value in expectation.items():
                 if value == {"$$exists": False}:
                     expected_keys.remove(key)
-            self.test.assertEqual(expected_keys, set(actual.keys()))
+            if test:
+                self.test.assertEqual(expected_keys, set(actual.keys()))
+            else:
+                return set(expected_keys).issubset(set(actual.keys()))
+        return True
 
-    def match_result(self, expectation, actual, in_recursive_call=False):
+    def match_result(self, expectation, actual, in_recursive_call=False, test=True):
         if isinstance(expectation, abc.Mapping):
-            return self._match_document(expectation, actual, is_root=not in_recursive_call)
+            return self._match_document(
+                expectation, actual, is_root=not in_recursive_call, test=test
+            )
 
         if isinstance(expectation, abc.MutableSequence):
             self.test.assertIsInstance(actual, abc.MutableSequence)
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
-                    self._match_document(e, a, is_root=not in_recursive_call)
+                    self._match_document(e, a, is_root=not in_recursive_call, test=test)
                 else:
-                    self.match_result(e, a, in_recursive_call=True)
+                    self.match_result(e, a, in_recursive_call=True, test=test)
                 return None
 
         # account for flexible numerics in element-wise comparison
         if isinstance(expectation, int) or isinstance(expectation, float):
-            self.test.assertEqual(expectation, actual)
+            if test:
+                self.test.assertEqual(expectation, actual)
+            else:
+                return expectation == actual
             return None
         else:
-            self.test.assertIsInstance(actual, type(expectation))
-            self.test.assertEqual(expectation, actual)
+            if test:
+                self.test.assertIsInstance(actual, type(expectation))
+                self.test.assertEqual(expectation, actual)
+            else:
+                return isinstance(actual, type(expectation)) and expectation == actual
             return None
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
@@ -924,6 +1005,10 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
         elif name == "topologyDescriptionChangedEvent":
             self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
+        elif name == "topologyOpeningEvent":
+            self.test.assertIsInstance(actual, TopologyOpenedEvent)
+        elif name == "topologyClosedEvent":
+            self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
             raise Exception(f"Unsupported event type {name}")
 
@@ -936,6 +1021,8 @@ def coerce_result(opname, result):
         return {"acknowledged": False}
     if opname == "bulkWrite":
         return parse_bulk_write_result(result)
+    if opname == "clientBulkWrite":
+        return parse_client_bulk_write_result(result)
     if opname == "insertOne":
         return {"insertedId": result.inserted_id}
     if opname == "insertMany":
@@ -964,7 +1051,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.20")
+    SCHEMA_VERSION = Version.from_string("1.21")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1028,8 +1115,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "retryable-writes" in cls.TEST_SPEC["description"]:
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(
+            heartbeat_frequency=0.1,
+            min_heartbeat_interval=0.1,
+            kill_cursor_frequency=0.1,
+            events_queue_frequency=0.1,
+        )
+        cls.knobs.enable()
+
     @classmethod
     def tearDownClass(cls):
+        cls.knobs.disable()
         for client in cls.mongos_clients:
             client.close()
         super().tearDownClass()
@@ -1131,20 +1228,27 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
         if error_response:
-            self.match_evaluator.match_result(error_response, exception.details)
+            if isinstance(exception, ClientBulkWriteException):
+                self.match_evaluator.match_result(error_response, exception.error.details)
+            else:
+                self.match_evaluator.match_result(error_response, exception.details)
 
         if is_error:
             # already satisfied because exception was raised
             pass
 
         if is_client_error:
+            if isinstance(exception, ClientBulkWriteException):
+                error = exception.error
+            else:
+                error = exception
             # Connection errors are considered client errors.
-            if isinstance(exception, ConnectionFailure):
-                self.assertNotIsInstance(exception, NotPrimaryError)
-            elif isinstance(exception, (InvalidOperation, ConfigurationError, EncryptionError)):
+            if isinstance(error, ConnectionFailure):
+                self.assertNotIsInstance(error, NotPrimaryError)
+            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
                 pass
             else:
-                self.assertNotIsInstance(exception, PyMongoError)
+                self.assertNotIsInstance(error, PyMongoError)
 
         if is_timeout_error:
             self.assertIsInstance(exception, PyMongoError)
@@ -1155,21 +1259,31 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if error_contains:
             if isinstance(exception, BulkWriteError):
                 errmsg = str(exception.details).lower()
+            elif isinstance(exception, ClientBulkWriteException):
+                errmsg = str(exception.details).lower()
             else:
                 errmsg = str(exception).lower()
             self.assertIn(error_contains.lower(), errmsg)
 
         if error_code:
-            self.assertEqual(error_code, exception.details.get("code"))
+            if isinstance(exception, ClientBulkWriteException):
+                self.assertEqual(error_code, exception.error.details.get("code"))
+            else:
+                self.assertEqual(error_code, exception.details.get("code"))
 
         if error_code_name:
-            self.assertEqual(error_code_name, exception.details.get("codeName"))
+            if isinstance(exception, ClientBulkWriteException):
+                self.assertEqual(error_code, exception.error.details.get("codeName"))
+            else:
+                self.assertEqual(error_code_name, exception.details.get("codeName"))
 
         if error_labels_contain:
+            if isinstance(exception, ClientBulkWriteException):
+                error = exception.error
+            else:
+                error = exception
             labels = [
-                err_label
-                for err_label in error_labels_contain
-                if exception.has_error_label(err_label)
+                err_label for err_label in error_labels_contain if error.has_error_label(err_label)
             ]
             self.assertEqual(labels, error_labels_contain)
 
@@ -1182,8 +1296,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if isinstance(exception, BulkWriteError):
                 result = parse_bulk_write_error_result(exception)
                 self.match_evaluator.match_result(expect_result, result)
+            elif isinstance(exception, ClientBulkWriteException):
+                result = parse_client_bulk_write_error_result(exception)
+                self.match_evaluator.match_result(expect_result, result)
             else:
-                self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
+                self.fail(
+                    f"expectResult can only be specified with {BulkWriteError} or {ClientBulkWriteException} exceptions"
+                )
 
         return exception
 
@@ -1461,6 +1580,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             target_opname = camel_to_snake(opname)
             if target_opname == "iterate_once":
                 target_opname = "try_next"
+            if target_opname == "client_bulk_write":
+                target_opname = "bulk_write"
             try:
                 cmd = getattr(target, target_opname)
             except AttributeError:
@@ -1482,9 +1603,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if ignore and isinstance(exc, (PyMongoError,)):
                 return exc
             if expect_error:
+                if method_name == "_collectionOperation_bulkWrite":
+                    self.skipTest("Skipping test pending PYTHON-4598")
                 return self.process_error(exc, expect_error)
             raise
         else:
+            if method_name == "_collectionOperation_bulkWrite":
+                self.skipTest("Skipping test pending PYTHON-4598")
             if expect_error:
                 self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
 
@@ -1780,6 +1905,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 assert server_connection_id is None
 
+    def process_ignore_messages(self, ignore_logs, actual_logs):
+        final_logs = []
+        for log in actual_logs:
+            ignored = False
+            for ignore_log in ignore_logs:
+                if log["data"]["message"] == ignore_log["data"][
+                    "message"
+                ] and self.match_evaluator.match_result(ignore_log, log, test=False):
+                    ignored = True
+                    break
+            if not ignored:
+                final_logs.append(log)
+        return final_logs
+
     def check_log_messages(self, operations, spec):
         def format_logs(log_list):
             client_to_log = defaultdict(list)
@@ -1787,7 +1926,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.message)
-                client = data.pop("clientId")
+                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
                 client_to_log[client].append(
                     {
                         "level": log.levelname.lower(),
@@ -1808,6 +1947,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 clientid = self.entity_map[client["client"]]._topology_settings._topology_id
                 actual_logs = formatted_logs[clientid]
                 actual_logs = [log for log in actual_logs if log["component"] in components]
+
+                ignore_logs = client.get("ignoreMessages", [])
+                if ignore_logs:
+                    actual_logs = self.process_ignore_messages(ignore_logs, actual_logs)
+
                 if client.get("ignoreExtraMessages", False):
                     actual_logs = actual_logs[: len(client["messages"])]
                 self.assertEqual(len(client["messages"]), len(actual_logs))
@@ -1844,6 +1988,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        if "csot" in self.id().lower() and SKIP_CSOT_TESTS:
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
+
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.

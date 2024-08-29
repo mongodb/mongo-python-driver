@@ -39,6 +39,7 @@ replacements = {
     "AsyncDatabaseChangeStream": "DatabaseChangeStream",
     "AsyncClusterChangeStream": "ClusterChangeStream",
     "_AsyncBulk": "_Bulk",
+    "_AsyncClientBulk": "_ClientBulk",
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
@@ -57,6 +58,7 @@ replacements = {
     "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
     "_a_grid_in_property": "_grid_in_property",
     "_a_grid_out_property": "_grid_out_property",
+    "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
@@ -91,9 +93,11 @@ replacements = {
     "asyncAssertRaisesExactly": "assertRaisesExactly",
     "get_async_mock_client": "get_mock_client",
     "aconnect": "_connect",
-    "aclose": "close",
     "async-transactions-ref": "transactions-ref",
     "async-snapshot-reads-ref": "snapshot-reads-ref",
+    "default_async": "default",
+    "aclose": "close",
+    "PyMongo|async": "PyMongo",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -151,9 +155,11 @@ converted_tests = [
     "pymongo_mocks.py",
     "utils_spec_runner.py",
     "test_client.py",
+    "test_client_bulk_write.py",
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
+    "test_encryption.py",
     "test_logger.py",
     "test_session.py",
     "test_transactions.py",
@@ -272,15 +278,26 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 # This sequence of replacements fixes the grammar issues caused by translating async -> sync
                 if "an Async" in lines[i]:
                     lines[i] = lines[i].replace("an Async", "a Async")
+                if "an 'Async" in lines[i]:
+                    lines[i] = lines[i].replace("an 'Async", "a 'Async")
                 if "An Async" in lines[i]:
                     lines[i] = lines[i].replace("An Async", "A Async")
+                if "An 'Async" in lines[i]:
+                    lines[i] = lines[i].replace("An 'Async", "A 'Async")
                 if "an asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("an asynchronous", "a")
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
+                # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
+                if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
+                    lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")
                 lines[i] = lines[i].replace(k, replacements[k])
             if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
+        if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
+            lines[i] = lines[i].replace("async ", "")
+        if "await " in lines[i] and "tailable" not in lines[i]:
+            lines[i] = lines[i].replace("await ", "")
     for i in range(len(lines)):
         for k in docstring_replacements:  # type: ignore[assignment]
             if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:

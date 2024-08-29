@@ -607,10 +607,7 @@ class MovingAverage:
 
     def add_sample(self, sample: float) -> None:
         if sample < 0:
-            # Likely system time change while waiting for hello response
-            # and not using time.monotonic. Ignore it, the next one will
-            # probably be valid.
-            return
+            raise ValueError(f"duration cannot be negative {sample}")
         if self.average is None:
             self.average = sample
         else:

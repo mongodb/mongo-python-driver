@@ -77,6 +77,7 @@ class TestCSOT(IntegrationTest):
     @client_context.require_change_streams
     def test_change_stream_can_resume_after_timeouts(self):
         coll = self.db.test
+        coll.insert_one({})
         with coll.watch() as stream:
             with pymongo.timeout(0.1):
                 with self.assertRaises(PyMongoError) as ctx:

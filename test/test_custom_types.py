@@ -764,9 +764,7 @@ class TestGridFileCustomType(IntegrationTest):
             db.fs,
             _id=5,
             filename="my_file",
-            contentType="text/html",
             chunkSize=1000,
-            aliases=["foo"],
             metadata={"foo": "red", "bar": "blue"},
             bar=3,
             baz="hello",
@@ -780,13 +778,10 @@ class TestGridFileCustomType(IntegrationTest):
         self.assertEqual("my_file", two.filename)
         self.assertEqual(5, two._id)
         self.assertEqual(11, two.length)
-        self.assertEqual("text/html", two.content_type)
         self.assertEqual(1000, two.chunk_size)
         self.assertTrue(isinstance(two.upload_date, datetime.datetime))
-        self.assertEqual(["foo"], two.aliases)
         self.assertEqual({"foo": "red", "bar": "blue"}, two.metadata)
         self.assertEqual(3, two.bar)
-        self.assertEqual(None, two.md5)
 
         for attr in [
             "_id",
@@ -805,7 +800,9 @@ class TestGridFileCustomType(IntegrationTest):
 class ChangeStreamsWCustomTypesTestMixin:
     @no_type_check
     def change_stream(self, *args, **kwargs):
-        return self.watched_target.watch(*args, **kwargs)
+        stream = self.watched_target.watch(*args, max_await_time_ms=1, **kwargs)
+        self.addCleanup(stream.close)
+        return stream
 
     @no_type_check
     def insert_and_check(self, change_stream, insert_doc, expected_doc):

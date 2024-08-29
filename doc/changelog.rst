@@ -8,9 +8,35 @@ PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
 - A new asynchronous API with full asyncio support.
-- Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
-  :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
+- Added support for In-Use Encryption range queries with MongoDB 8.0.
+  Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
+  ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
+- Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
+  :class:`~pymongo.command_cursor.CommandCursor`,
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor`,
+  and :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`
+  as an asynchronous-friendly alternative to ``list(cursor)``.
+- Added :meth:`~pymongo.mongo_client.MongoClient.bulk_write` to :class:`~pymongo.mongo_client.MongoClient`
+  and :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`,
+  enabling users to perform insert, update, and delete operations
+  against mixed namespaces in a minimized number of round trips.
+  Please see :doc:`examples/client_bulk` for more information.
+- Added support for the ``namespace`` parameter to the
+  :class:`~pymongo.operations.InsertOne`,
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`,
+  :class:`~pymongo.operations.UpdateMany`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany` operations, so
+  they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+- Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: unhashable type: 'tzfile'``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezone from dateutil.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
 
 Issues Resolved
 ...............

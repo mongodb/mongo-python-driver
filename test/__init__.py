@@ -79,16 +79,6 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 
-# The default asyncio loop implementation on Windows
-# has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
-# We explicitly use a different loop implementation here to prevent that issue
-if (
-    not _IS_SYNC
-    and sys.platform == "win32"
-    and asyncio.get_event_loop_policy() == asyncio.WindowsProactorEventLoopPolicy
-):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
-
 
 class ClientContext:
     client: MongoClient
@@ -728,9 +718,9 @@ class ClientContext:
 
     def require_failCommand_appName(self, func):
         """Run a test only if the server supports the failCommand appName."""
-        # SERVER-47195
+        # SERVER-47195 and SERVER-49336.
         return self._require(
-            lambda: (self.test_commands_enabled and self.version >= (4, 4, -1)),
+            lambda: (self.test_commands_enabled and self.version >= (4, 4, 7)),
             "failCommand appName must be supported",
             func=func,
         )
@@ -851,6 +841,10 @@ class ClientContext:
     @property
     def max_write_batch_size(self):
         return (self.hello)["maxWriteBatchSize"]
+
+    @property
+    def max_message_size_bytes(self):
+        return (self.hello)["maxMessageSizeBytes"]
 
 
 # Reusable client context
