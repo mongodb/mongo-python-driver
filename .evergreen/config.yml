@@ -632,7 +632,7 @@ functions:
         env:
           MONGODB_VERSION: "7.0"
           LAMBDA_STACK_NAME: dbx-python-lambda
-        script:
+        args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
     - command: expansions.update
       params:
@@ -1916,14 +1916,13 @@ tasks:
 
     - name: "testgcpkms-task"
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
           type: setup
           params:
             working_dir: "src"
-            shell: "bash"
-            script: |
-              . .evergreen/scripts/env.sh
-              .evergreen/run-gcpkms-test.sh
+            binary: "bash"
+            args:
+              - .evergreen/run-gcpkms-test.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -1947,13 +1946,13 @@ tasks:
 
     - name: testazurekms-task
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         params:
-          shell: bash
+          binary: bash
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
           working_dir: src
-          script: |
-            . .evergreen/scripts/env.sh
-            .evergreen/run-azurekms-test.sh
+          args:
+            - .evergreen/run-azurekms-test.sh
 
     - name: testazurekms-fail-task
       commands:
@@ -1963,14 +1962,14 @@ tasks:
         vars:
           VERSION: "latest"
           TOPOLOGY: "server"
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
         params:
-          shell: shell
+          binary: shell
           working_dir: src
-          script: |
-            . .evergreen/scripts/env.sh
-            .evergreen/run-azurekms-fail-test.sh
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - .evergreen/run-azurekms-fail-test.sh
 
     - name: "perf-6.0-standalone"
       tags: ["perf"]
