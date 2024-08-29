@@ -1489,10 +1489,11 @@ class AsyncGridOut(io.IOBase):
     async def __anext__(self) -> bytes:
         return super().__next__()
 
-    def __next__(self) -> bytes:  # noqa: F811, RUF100
-        if _IS_SYNC:
-            return super().__next__()
-        else:
+    # This is a duplicate definition of __next__ for the synchronous API
+    # due to the limitations of our synchro process
+    if not _IS_SYNC:
+
+        def __next__(self) -> bytes:  # noqa: F811, RUF100
             raise TypeError(
                 "AsyncGridOut does not support synchronous iteration. Use `async for` instead"
             )
