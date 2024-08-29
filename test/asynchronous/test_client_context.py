@@ -24,14 +24,6 @@ _IS_SYNC = False
 
 
 class TestAsyncClientContext(AsyncUnitTest):
-    @classmethod
-    async def _setup_class(cls):
-        pass
-
-    @classmethod
-    async def _tearDown_class(cls):
-        pass
-
     def test_must_connect(self):
         if "PYMONGO_MUST_CONNECT" not in os.environ:
             raise SkipTest("PYMONGO_MUST_CONNECT is not set")

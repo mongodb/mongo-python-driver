@@ -947,11 +947,11 @@ class UnitTest(PyMongoTestCase):
 
     @classmethod
     def _setup_class(cls):
-        cls._setup_class()
+        pass
 
     @classmethod
     def _tearDown_class(cls):
-        cls._tearDown_class()
+        pass
 
 
 class IntegrationTest(PyMongoTestCase):
