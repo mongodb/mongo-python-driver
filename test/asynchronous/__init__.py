@@ -949,11 +949,11 @@ class AsyncUnitTest(AsyncPyMongoTestCase):
 
     @classmethod
     async def _setup_class(cls):
-        await cls._setup_class()
+        pass
 
     @classmethod
     async def _tearDown_class(cls):
-        await cls._tearDown_class()
+        pass
 
 
 class AsyncIntegrationTest(AsyncPyMongoTestCase):

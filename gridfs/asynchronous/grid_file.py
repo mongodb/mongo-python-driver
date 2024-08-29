@@ -1194,19 +1194,9 @@ class AsyncGridIn:
                 )
 
     async def set(self, name: str, value: Any) -> None:
-        # For properties of this instance like _buffer, or descriptors set on
-        # the class like filename, use regular __setattr__
-        if name in self.__dict__ or name in self.__class__.__dict__:
-            object.__setattr__(self, name, value)
-        else:
-            # All other attributes are part of the document in db.fs.files.
-            # Store them to be sent to server on close() or if closed, send
-            # them now.
-            self._file[name] = value
-            if self._closed:
-                await self._coll.files.update_one(
-                    {"_id": self._file["_id"]}, {"$set": {name: value}}
-                )
+        self._file[name] = value
+        if self._closed:
+            await self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
     async def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
@@ -1400,10 +1390,11 @@ class AsyncGridIn:
         return False
 
 
-GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object
+GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object  # type: Any
 
 
-class AsyncGridOut(GRIDOUT_BASE_CLASS):
+class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
+
     """Class to read data out of GridFS."""
 
     def __init__(
@@ -1493,13 +1484,6 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):
 
         async def __anext__(self) -> bytes:
             return await self.readline()
-
-        # This is a duplicate definition of __next__ for the synchronous API
-        # due to the limitations of our synchro process
-        def __next__(self) -> bytes:  # noqa: F811, RUF100
-            raise TypeError(
-                "AsyncGridOut does not support synchronous iteration. Use `async for` instead"
-            )
 
     async def open(self) -> None:
         if not self._file:
@@ -1620,7 +1604,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):
         """
         return await self._read_size_or_line(size=size)
 
-    async def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
+    async def readline(self, size: int = -1) -> bytes:
         """Read one line or up to `size` bytes from the file.
 
         :param size: the maximum number of bytes to read
@@ -1631,7 +1615,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):
         """Return the current position of this file."""
         return self._position
 
-    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:  # type: ignore[override]
+    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
         """Set the current position of this file.
 
         :param pos: the position (or offset if using relative
@@ -1694,12 +1678,13 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):
         """
         return self
 
-    async def close(self) -> None:  # type: ignore[override]
+    async def close(self) -> None:
         """Make GridOut more generically file-like."""
         if self._chunk_iter:
             await self._chunk_iter.close()
             self._chunk_iter = None
-        super().close()
+        if _IS_SYNC:
+            super().close()
 
     def write(self, value: Any) -> NoReturn:
         raise io.UnsupportedOperation("write")
