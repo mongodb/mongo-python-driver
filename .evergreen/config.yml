@@ -92,12 +92,12 @@ functions:
         script: |
           # Download all the task coverage files.
           aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          bash .evergreen/combine-coverage.sh
+        binary: bash
+        args:
+          - .evergreen/combine-coverage.sh
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
