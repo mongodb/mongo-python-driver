@@ -22,30 +22,46 @@ Python Type                              BSON Type      Supported Direction
 None                                     null           both
 bool                                     boolean        both
 int [#int]_                              int32 / int64  py -> bson
-`bson.int64.Int64`                       int64          both
+:class:`bson.int64.Int64`                int64          both
 float                                    number (real)  both
 str                                      string         both
 list                                     array          both
-dict / `SON`                             object         both
-datetime.datetime [#dt]_ [#dt2]_         date           both
-`bson.regex.Regex`                       regex          both
+dict                                     object         both
+:class:`~bson.son.SON`                   object         both
+:py:class:`~collections.abc.Mapping`     object         py -> bson
+:class:`~bson.raw_bson.RawBSONDocument`  object         both [#raw]_
+datetime.datetime [#dt]_ [#dt2]_         UTC datetime   both
+:class:`~bson.datetime_ms.DatetimeMS`    UTC datetime   both [#dt3]_
+:class:`~bson.regex.Regex`               regex          both
 compiled re [#re]_                       regex          py -> bson
-`bson.binary.Binary`                     binary         both
-`bson.objectid.ObjectId`                 oid            both
-`bson.dbref.DBRef`                       dbref          both
+:class:`~bson.binary.Binary`             binary         both
+:py:class:`uuid.UUID` [#uuid]_           binary         both
+:class:`~bson.objectid.ObjectId`         oid            both
+:class:`~bson.dbref.DBRef`               dbref          both
+:class:`~bson.dbref.DBRef`               dbpointer      bson -> py
 None                                     undefined      bson -> py
-`bson.code.Code`                         code           both
+:class:`~bson.code.Code`                 code           both
 str                                      symbol         bson -> py
 bytes [#bytes]_                          binary         both
+:class:`~bson.timestamp.Timestamp`       timestamp      both
+:class:`~bson.decimal128.Decimal128`     decimal128     both
+:class:`~bson.min_key.MinKey`            min key        both
+:class:`~bson.max_key.MaxKey`            max key        both
 =======================================  =============  ===================
 
 .. [#int] A Python int will be saved as a BSON int32 or BSON int64 depending
    on its size. A BSON int32 will always decode to a Python int. A BSON
    int64 will always decode to a :class:`~bson.int64.Int64`.
-.. [#dt] datetime.datetime instances will be rounded to the nearest
-   millisecond when saved
-.. [#dt2] all datetime.datetime instances are treated as *naive*. clients
-   should always use UTC.
+.. [#raw] Decoding a bson object to :class:`~bson.raw_bson.RawBSONDocument` can be
+   optionally configured via :attr:`~bson.codec_options.CodecOptions.document_class`.
+.. [#dt] datetime.datetime instances are encoded with millisecond precision so
+   the microsecond field is truncated.
+.. [#dt2] all datetime.datetime instances are encoded as UTC. By default, they
+   are decoded as *naive* but timezone aware datetimes are also supported.
+   See :doc:`/examples/datetimes` for examples.
+.. [#dt3] To enable decode bson UTC datetime to a :class:`~bson.datetime_ms.DatetimeMS`
+   instance see :ref:`handling-out-of-range-datetimes`.
+.. [#uuid] For :py:class:`uuid.UUID` encoding and decoding behavior see :doc:`/examples/uuid`.
 .. [#re] :class:`~bson.regex.Regex` instances and regular expression
    objects from ``re.compile()`` are both saved as BSON regular expressions.
    BSON regular expressions are decoded as :class:`~bson.regex.Regex`
