@@ -411,7 +411,7 @@ class TestGridFile(IntegrationTest):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(random_string, g.read())
 
-    # # TODO: convert qcheck to async
+    # # TODO: https://jira.mongodb.org/browse/PYTHON-4708
     # def test_small_chunks(self):
     #     self.files = 0
     #     self.chunks = 0

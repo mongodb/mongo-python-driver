@@ -413,7 +413,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         g = AsyncGridOut(self.db.fs, f._id)
         self.assertEqual(random_string, await g.read())
 
-    # # TODO: convert qcheck to async
+    # # TODO: https://jira.mongodb.org/browse/PYTHON-4708
     # async def test_small_chunks(self):
     #     self.files = 0
     #     self.chunks = 0
