@@ -175,7 +175,6 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
     from pymongo.typings import ClusterTime, _Address
