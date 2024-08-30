@@ -312,6 +312,9 @@ class _ClientBulk:
                 bwc._fail(request_id, failure, duration)
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
+            # Propagate $clusterTime to the caller.
+            if "$clusterTime" in cmd:
+                reply["$clusterTime"] = cmd["$clusterTime"]
         finally:
             bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
