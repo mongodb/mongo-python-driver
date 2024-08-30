@@ -584,33 +584,47 @@ Bye"""
         self.assertEqual([b"Hope all is well.\n"], await g.readlines(17))
         self.assertEqual(b"Bye", await g.readline())
 
-    # async def test_iterator(self):
-    #     f = AsyncGridIn(self.db.fs)
-    #     await f.close()
-    #     g = AsyncGridOut(self.db.fs, f._id)
-    #     self.assertEqual([], list(g))
-    #
-    #     f = AsyncGridIn(self.db.fs)
-    #     await f.write(b"hello world\nhere are\nsome lines.")
-    #     await f.close()
-    #     g = AsyncGridOut(self.db.fs, f._id)
-    #     self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
-    #     self.assertEqual(b"", await g.read(5))
-    #     self.assertEqual([], list(g))
-    #
-    #     g = AsyncGridOut(self.db.fs, f._id)
-    #     self.assertEqual(b"hello world\n", next(iter(g)))
-    #     self.assertEqual(b"here", await g.read(4))
-    #     self.assertEqual(b" are\n", next(iter(g)))
-    #     self.assertEqual(b"some lines", await g.read(10))
-    #     self.assertEqual(b".", next(iter(g)))
-    #     self.assertRaises(StopIteration, iter(g).__next__)
-    #
-    #     f = AsyncGridIn(self.db.fs, chunk_size=2)
-    #     await f.write(b"hello world")
-    #     await f.close()
-    #     g = AsyncGridOut(self.db.fs, f._id)
-    #     self.assertEqual([b"hello world"], list(g))
+    async def test_iterator(self):
+        f = AsyncGridIn(self.db.fs)
+        await f.close()
+        g = AsyncGridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], await g.to_list())
+
+        f = AsyncGridIn(self.db.fs)
+        await f.write(b"hello world\nhere are\nsome lines.")
+        await f.close()
+        g = AsyncGridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
+        else:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], await g.to_list())
+
+        self.assertEqual(b"", await g.read(5))
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], await g.to_list())
+
+        g = AsyncGridOut(self.db.fs, f._id)
+        self.assertEqual(b"hello world\n", await anext(aiter(g)))
+        self.assertEqual(b"here", await g.read(4))
+        self.assertEqual(b" are\n", await anext(aiter(g)))
+        self.assertEqual(b"some lines", await g.read(10))
+        self.assertEqual(b".", await anext(aiter(g)))
+        with self.assertRaises(StopAsyncIteration):
+            await aiter(g).__anext__()
+
+        f = AsyncGridIn(self.db.fs, chunk_size=2)
+        await f.write(b"hello world")
+        await f.close()
+        g = AsyncGridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([b"hello world"], list(g))
+        else:
+            self.assertEqual([b"hello world"], await g.to_list())
 
     async def test_read_unaligned_buffer_size(self):
         in_data = b"This is a text that doesn't quite fit in a single 16-byte chunk."
@@ -811,7 +825,7 @@ Bye"""
             assert await client.address is not None
             await client._close_cursor_now(
                 outfile._chunk_iter._cursor.cursor_id,
-                _CursorAddress(await client.address, db.fs.chunks.full_name),
+                _CursorAddress(await client.address, db.fs.chunks.full_name),  # type: ignore[arg-type]
             )
 
             # Read the rest of the file without error.

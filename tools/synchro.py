@@ -47,6 +47,7 @@ replacements = {
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
     "anext": "next",
+    "aiter": "iter",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
     "AsyncGridFS": "GridFS",

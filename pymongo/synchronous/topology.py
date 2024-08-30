@@ -521,7 +521,7 @@ class Topology:
             if server:
                 server.pool.reset(interrupt_connections=interrupt_connections)
 
-        # Wake waiters in select_servers().
+        # Wake witers in select_servers().
         self._condition.notify_all()
 
     def on_change(

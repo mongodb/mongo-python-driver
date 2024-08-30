@@ -582,33 +582,47 @@ Bye"""
         self.assertEqual([b"Hope all is well.\n"], g.readlines(17))
         self.assertEqual(b"Bye", g.readline())
 
-    # def test_iterator(self):
-    #     f = GridIn(self.db.fs)
-    #     f.close()
-    #     g = GridOut(self.db.fs, f._id)
-    #     self.assertEqual([], list(g))
-    #
-    #     f = GridIn(self.db.fs)
-    #     f.write(b"hello world\nhere are\nsome lines.")
-    #     f.close()
-    #     g = GridOut(self.db.fs, f._id)
-    #     self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
-    #     self.assertEqual(b"", g.read(5))
-    #     self.assertEqual([], list(g))
-    #
-    #     g = GridOut(self.db.fs, f._id)
-    #     self.assertEqual(b"hello world\n", next(iter(g)))
-    #     self.assertEqual(b"here", g.read(4))
-    #     self.assertEqual(b" are\n", next(iter(g)))
-    #     self.assertEqual(b"some lines", g.read(10))
-    #     self.assertEqual(b".", next(iter(g)))
-    #     self.assertRaises(StopIteration, iter(g).__next__)
-    #
-    #     f = GridIn(self.db.fs, chunk_size=2)
-    #     f.write(b"hello world")
-    #     f.close()
-    #     g = GridOut(self.db.fs, f._id)
-    #     self.assertEqual([b"hello world"], list(g))
+    def test_iterator(self):
+        f = GridIn(self.db.fs)
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], g.to_list())
+
+        f = GridIn(self.db.fs)
+        f.write(b"hello world\nhere are\nsome lines.")
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
+        else:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], g.to_list())
+
+        self.assertEqual(b"", g.read(5))
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], g.to_list())
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b"hello world\n", next(iter(g)))
+        self.assertEqual(b"here", g.read(4))
+        self.assertEqual(b" are\n", next(iter(g)))
+        self.assertEqual(b"some lines", g.read(10))
+        self.assertEqual(b".", next(iter(g)))
+        with self.assertRaises(StopIteration):
+            iter(g).__next__()
+
+        f = GridIn(self.db.fs, chunk_size=2)
+        f.write(b"hello world")
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        if _IS_SYNC:
+            self.assertEqual([b"hello world"], list(g))
+        else:
+            self.assertEqual([b"hello world"], g.to_list())
 
     def test_read_unaligned_buffer_size(self):
         in_data = b"This is a text that doesn't quite fit in a single 16-byte chunk."
@@ -809,7 +823,7 @@ Bye"""
             assert client.address is not None
             client._close_cursor_now(
                 outfile._chunk_iter._cursor.cursor_id,
-                _CursorAddress(client.address, db.fs.chunks.full_name),
+                _CursorAddress(client.address, db.fs.chunks.full_name),  # type: ignore[arg-type]
             )
 
             # Read the rest of the file without error.

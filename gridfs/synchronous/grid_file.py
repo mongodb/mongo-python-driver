@@ -1444,6 +1444,8 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         self._position = 0
         self._file = file_document
         self._session = session
+        if not _IS_SYNC:
+            self.closed = False
 
     _id: Any = _grid_out_property("_id", "The ``'_id'`` value for this file.")
     filename: str = _grid_out_property("filename", "Name of this file.")
@@ -1471,9 +1473,16 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     _chunk_iter: Any
 
     if not _IS_SYNC:
+        closed: bool
 
         def __next__(self) -> bytes:
-            return self.readline()
+            line = self.readline()
+            if line:
+                return line
+            raise StopIteration()
+
+        def to_list(self) -> list[bytes]:
+            return [x for x in self]  # noqa: C416, RUF100
 
     def open(self) -> None:
         if not self._file:
@@ -1601,6 +1610,25 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         return self._read_size_or_line(size=size, line=True)
 
+    def readlines(self, size: int = -1) -> list[bytes]:
+        """Read one line or up to `size` bytes from the file.
+
+        :param size: the maximum number of bytes to read
+        """
+        self.open()
+        lines = []
+        remainder = int(self.length) - self._position
+        bytes_read = 0
+        while remainder > 0:
+            line = self._read_size_or_line(line=True)
+            bytes_read += len(line)
+            lines.append(line)
+            remainder = int(self.length) - self._position
+            if 0 < size < bytes_read:
+                break
+
+        return lines
+
     def tell(self) -> int:
         """Return the current position of this file."""
         return self._position
@@ -1675,6 +1703,8 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
             self._chunk_iter = None
         if _IS_SYNC:
             super().close()
+        else:
+            self.closed = True
 
     def write(self, value: Any) -> NoReturn:
         raise io.UnsupportedOperation("write")
