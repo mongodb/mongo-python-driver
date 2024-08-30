@@ -59,7 +59,7 @@ bytes [#bytes]_                          binary         both
 .. [#dt2] all datetime.datetime instances are encoded as UTC. By default, they
    are decoded as *naive* but timezone aware datetimes are also supported.
    See :doc:`/examples/datetimes` for examples.
-.. [#dt3] To enable decode bson UTC datetime to a :class:`~bson.datetime_ms.DatetimeMS`
+.. [#dt3] To enable decoding a bson UTC datetime to a :class:`~bson.datetime_ms.DatetimeMS`
    instance see :ref:`handling-out-of-range-datetimes`.
 .. [#uuid] For :py:class:`uuid.UUID` encoding and decoding behavior see :doc:`/examples/uuid`.
 .. [#re] :class:`~bson.regex.Regex` instances and regular expression
