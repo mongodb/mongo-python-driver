@@ -77,6 +77,6 @@ else:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
         return await cls.__anext__()
 
-    async def aiter(cls: Any) -> Any:
+    def aiter(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
-        return await cls.__aiter__()
+        return cls.__aiter__()
