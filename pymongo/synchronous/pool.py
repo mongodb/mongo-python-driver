@@ -323,11 +323,6 @@ class Connection:
     def apply_timeout(
         self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
     ) -> Optional[float]:
-        from pymongo.synchronous.mongo_client import MongoClient
-
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
-
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:

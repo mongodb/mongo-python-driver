@@ -335,8 +335,6 @@ class _Encrypter:
         :param client: The encrypted MongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
 
         if opts._schema_map is None:
             schema_map = None
@@ -353,11 +351,6 @@ class _Encrypter:
         def _get_internal_client(
             encrypter: _Encrypter, mongo_client: MongoClient[_DocumentTypeArg]
         ) -> MongoClient[_DocumentTypeArg]:
-            if not isinstance(mongo_client, MongoClient):
-                raise TypeError(
-                    f"MongoClient required but {mongo_client} is an instance of {type(mongo_client)}"
-                )
-
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -694,7 +687,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         if not isinstance(database, Database):
             raise TypeError(
-                f"create_encrypted_collection() requires a Database, {database} is an instance of {type(database)}"
+                f"create_encrypted_collection() requires a Database, but {database} is an instance of {type(database)}"
             )
 
         encrypted_fields = deepcopy(encrypted_fields)

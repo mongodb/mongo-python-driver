@@ -337,10 +337,6 @@ class _Encrypter:
         :param client: The encrypted AsyncMongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
-        if not isinstance(client, AsyncMongoClient):
-            raise TypeError(
-                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
-            )
 
         if opts._schema_map is None:
             schema_map = None
@@ -357,11 +353,6 @@ class _Encrypter:
         def _get_internal_client(
             encrypter: _Encrypter, mongo_client: AsyncMongoClient[_DocumentTypeArg]
         ) -> AsyncMongoClient[_DocumentTypeArg]:
-            if not isinstance(mongo_client, AsyncMongoClient):
-                raise TypeError(
-                    f"AsyncMongoClient required but {mongo_client} is an instance of {type(mongo_client)}"
-                )
-
             if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
@@ -698,7 +689,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         """
         if not isinstance(database, AsyncDatabase):
             raise TypeError(
-                f"create_encrypted_collection() requires an AsyncDatabase, {database} is an instance of {type(database)}"
+                f"create_encrypted_collection() requires an AsyncDatabase, but {database} is an instance of {type(database)}"
             )
 
         encrypted_fields = deepcopy(encrypted_fields)

@@ -323,13 +323,6 @@ class AsyncConnection:
     def apply_timeout(
         self, client: AsyncMongoClient, cmd: Optional[MutableMapping[str, Any]]
     ) -> Optional[float]:
-        from pymongo.asynchronous.mongo_client import AsyncMongoClient
-
-        if not isinstance(client, AsyncMongoClient):
-            raise TypeError(
-                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
-            )
-
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:

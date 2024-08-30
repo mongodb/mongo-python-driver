@@ -157,11 +157,8 @@ class Server:
         :param unpack_res: A callable that decodes the wire protocol response.
         :param client: A MongoClient instance.
         """
-        from pymongo.synchronous.mongo_client import MongoClient
 
         assert listeners is not None
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
 
         publish = listeners.enabled_for_commands
         start = datetime.now()

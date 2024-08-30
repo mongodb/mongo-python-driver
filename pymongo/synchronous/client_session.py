@@ -395,11 +395,6 @@ class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
     def __init__(self, opts: Optional[TransactionOptions], client: MongoClient):
-        from pymongo.synchronous.mongo_client import MongoClient
-
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
-
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -507,11 +502,6 @@ class ClientSession:
         options: SessionOptions,
         implicit: bool,
     ) -> None:
-        from pymongo.synchronous.mongo_client import MongoClient
-
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but {client} is an instance of {type(client)}")
-
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient = client
         self._server_session = server_session
