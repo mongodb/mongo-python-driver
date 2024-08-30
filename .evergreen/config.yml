@@ -1921,6 +1921,7 @@ tasks:
           params:
             working_dir: "src"
             binary: "bash"
+            include_expansions_in_env: ["DRIVERS_TOOLS"]
             args:
               - .evergreen/run-gcpkms-test.sh
 
