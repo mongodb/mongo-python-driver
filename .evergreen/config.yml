@@ -512,7 +512,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
           - .evergreen/run-mongodb-oidc-test.sh
 
@@ -933,7 +933,7 @@ task_groups:
     teardown_task:
       - command: subprocess.exec
         params:
-          shell: bash
+          binary: bash
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/teardown.sh
     setup_group_can_fail_task: true
@@ -1861,7 +1861,7 @@ tasks:
             export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
             git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
             export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/azure/run-driver-test.sh
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
@@ -1881,7 +1881,7 @@ tasks:
             # Ensure that we source the environment file created for us, set up any other variables we need,
             # and then run our test suite on the vm.
             export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            bash ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/run-driver-test.sh
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -1949,8 +1949,8 @@ tasks:
       - command: subprocess.exec
         params:
           binary: bash
-          include_expansions_in_env: ["DRIVERS_TOOLS"]
           working_dir: src
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
             - .evergreen/run-azurekms-test.sh
 
@@ -1965,7 +1965,7 @@ tasks:
       - command: subprocess.exec
         type: test
         params:
-          binary: shell
+          binary: bash
           working_dir: src
           include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
@@ -2017,8 +2017,8 @@ tasks:
             script: |
               . .evergreen/scripts/env.sh
               set -x
-              export CONFIG=${PROJECT_DIRECTORY}/.github/reviewers.txt
-              export SCRIPT="${DRIVERS_TOOLS}/.evergreen/github_app/assign-reviewer.sh"
+              export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
+              export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
               bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
               echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
