@@ -599,7 +599,9 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          . .evergreen/hatch.sh encryption:teardown
+          if [ -f $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh ]; then
+            . .evergreen/hatch.sh encryption:teardown
+          fi
           rm -rf $DRIVERS_TOOLS || true
           rm -f ./secrets-export.sh || true
 
