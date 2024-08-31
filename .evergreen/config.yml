@@ -438,6 +438,7 @@ functions:
             export SKIP_CSOT_TESTS=1
           fi
 
+          set -x
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             PYTHON_BINARY=${PYTHON_BINARY} \
             NO_EXT=${NO_EXT} \
@@ -2122,13 +2123,13 @@ axes:
         run_on: rhel83-zseries-small
         batchtime: 10080  # 7 days
         variables:
-          USE_PYTEST: 1
+          USE_PYTEST: true
       - id: rhel81-power8
         display_name: "RHEL 8.1 (POWER8)"
         run_on: rhel81-power8-small
         batchtime: 10080  # 7 days
         variables:
-          USE_PYTEST: 1
+          USE_PYTEST: true
       - id: rhel82-arm64
         display_name: "RHEL 8.2 (ARM64)"
         run_on: rhel82-arm64-small
