@@ -447,7 +447,7 @@ functions:
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            USE_PYTEST=${USE_PYTEST} \
+            SKIP_HATCH=${SKIP_HATCH} \
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
@@ -2122,13 +2122,13 @@ axes:
         run_on: rhel83-zseries-small
         batchtime: 10080  # 7 days
         variables:
-          USE_PYTEST: true
+          SKIP_HATCH: true
       - id: rhel81-power8
         display_name: "RHEL 8.1 (POWER8)"
         run_on: rhel81-power8-small
         batchtime: 10080  # 7 days
         variables:
-          USE_PYTEST: true
+          SKIP_HATCH: true
       - id: rhel82-arm64
         display_name: "RHEL 8.2 (ARM64)"
         run_on: rhel82-arm64-small
