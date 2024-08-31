@@ -284,7 +284,7 @@ class _ClientBulk:
             if bwc.publish:
                 bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
             # Process the response from the server.
-            self.client._process_response(reply, bwc.session)
+            self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         except Exception as exc:
             duration = datetime.datetime.now() - bwc.start_time
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -316,9 +316,9 @@ class _ClientBulk:
             reply = {"error": exc}
             # Process the response from the server.
             if isinstance(exc, OperationFailure):
-                self.client._process_response(exc.details, bwc.session)
+                self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             else:
-                self.client._process_response({}, bwc.session)
+                self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
         finally:
             bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
