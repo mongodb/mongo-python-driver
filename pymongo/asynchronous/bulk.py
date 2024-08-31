@@ -311,9 +311,9 @@ class _AsyncBulk:
                 bwc._fail(request_id, failure, duration)
             # Process the response from the server.
             if isinstance(exc, OperationFailure):
-                await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+                await client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             else:
-                await self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
+                await client._process_response({}, bwc.session)  # type: ignore[arg-type]
             raise
         finally:
             bwc.start_time = datetime.datetime.now()

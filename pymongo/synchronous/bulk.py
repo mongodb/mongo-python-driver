@@ -311,9 +311,9 @@ class _Bulk:
                 bwc._fail(request_id, failure, duration)
             # Process the response from the server.
             if isinstance(exc, OperationFailure):
-                self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+                client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             else:
-                self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
+                client._process_response({}, bwc.session)  # type: ignore[arg-type]
             raise
         finally:
             bwc.start_time = datetime.datetime.now()
