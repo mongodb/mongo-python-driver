@@ -16,7 +16,7 @@ if [ -n "$SKIP_HATCH" ]; then
     trap "deactivate; rm -rf $ENV_NAME" EXIT HUP
     python -m pip install -e ".[test]"
     run_hatch() {
-      bash ./.evergreen/run-tests.sh "$@"
+      bash ./.evergreen/run-tests.sh "${@:1}"
     }
 elif $PYTHON_BINARY -m hatch --version; then
     run_hatch() {
