@@ -95,9 +95,6 @@ class TestObjectId(unittest.TestCase):
         self.assertTrue(d2 - d1 < datetime.timedelta(seconds=2))
 
     def test_from_datetime(self):
-        if "PyPy 1.8.0" in sys.version:
-            # See https://bugs.pypy.org/issue1092
-            raise SkipTest("datetime.timedelta is broken in pypy 1.8.0")
         d = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
         d = d - datetime.timedelta(microseconds=d.microsecond)
         oid = ObjectId.from_datetime(d)
