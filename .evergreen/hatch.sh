@@ -15,8 +15,8 @@ if [ -n "$USE_PYTEST" ]; then
     # shellcheck disable=SC2064
     trap "deactivate; rm -rf $ENV_NAME" EXIT HUP
     python -m pip install -e ".[test]"
-    pytest
-    return
+    pytest -v --capture=tee-sys --durations=5 --maxfail=10
+    exit 0
 fi
 
 
