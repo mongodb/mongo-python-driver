@@ -438,7 +438,6 @@ functions:
             export SKIP_CSOT_TESTS=1
           fi
 
-          set -x
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             PYTHON_BINARY=${PYTHON_BINARY} \
             NO_EXT=${NO_EXT} \
