@@ -684,7 +684,7 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         if not isinstance(database, Database):
             raise TypeError(
-                f"create_encrypted_collection() requires a Database, but {database} is an instance of {type(database)}"
+                f"create_encrypted_collection() requires a Database but {type(database)} given"
             )
 
         encrypted_fields = deepcopy(encrypted_fields)

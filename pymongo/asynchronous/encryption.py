@@ -686,7 +686,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         """
         if not isinstance(database, AsyncDatabase):
             raise TypeError(
-                f"create_encrypted_collection() requires an AsyncDatabase, but {database} is an instance of {type(database)}"
+                f"create_encrypted_collection() requires an AsyncDatabase but {type(database)} given"
             )
 
         encrypted_fields = deepcopy(encrypted_fields)

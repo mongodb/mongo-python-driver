@@ -234,9 +234,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         from pymongo.synchronous.database import Database
 
         if not isinstance(database, Database):
-            raise TypeError(
-                f"Collection requires a Database, {database} is an instance of {type(database)}"
-            )
+            raise TypeError(f"Collection requires a Database but {type(database)} given")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
