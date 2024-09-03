@@ -226,14 +226,16 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         gout = AsyncGridOut(self.db.fs, 5)
         with self.assertRaises(NoFile):
-            await gout.open()
+            if not _IS_SYNC:
+                await gout.open()
             gout.name
 
         a = AsyncGridIn(self.db.fs)
         await a.close()
 
         b = AsyncGridOut(self.db.fs, a._id)
-        await b.open()
+        if not _IS_SYNC:
+            await b.open()
 
         self.assertEqual(a._id, b._id)
         self.assertEqual(0, b.length)
@@ -293,7 +295,8 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         two = AsyncGridOut(self.db.fs, 5)
 
-        await two.open()
+        if not _IS_SYNC:
+            await two.open()
 
         self.assertEqual("my_file", two.name)
         self.assertEqual("my_file", two.filename)
@@ -333,7 +336,8 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         four = AsyncGridOut(self.db.fs, file_document={})
         with self.assertRaises(NoFile):
-            await four.open()
+            if not _IS_SYNC:
+                await four.open()
             four.name
 
     async def test_write_file_like(self):
@@ -380,7 +384,8 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         await f.close()
 
         g = AsyncGridOut(self.db.fs, f._id)
-        await g.open()
+        if not _IS_SYNC:
+            await g.open()
         self.assertFalse(g.closed)
         await g.read(1)
         self.assertFalse(g.closed)
@@ -708,7 +713,8 @@ Bye"""
         self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
 
         g = AsyncGridOut(self.db.fs, f._id)
-        await g.open()
+        if not _IS_SYNC:
+            await g.open()
         self.assertEqual("a", g.bar)
         self.assertEqual("b", g.baz)
         # Versions 2.0.1 and older saved a _closed field for some reason.
@@ -769,7 +775,8 @@ Bye"""
         with self.assertRaises(NoFile):
             await outfile.read()
         with self.assertRaises(NoFile):
-            await outfile.open()
+            if not _IS_SYNC:
+                await outfile.open()
             outfile.filename
 
         infile = AsyncGridIn(fs, filename=1)

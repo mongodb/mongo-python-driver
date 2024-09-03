@@ -226,14 +226,16 @@ class TestGridFile(IntegrationTest):
 
         gout = GridOut(self.db.fs, 5)
         with self.assertRaises(NoFile):
-            gout.open()
+            if not _IS_SYNC:
+                gout.open()
             gout.name
 
         a = GridIn(self.db.fs)
         a.close()
 
         b = GridOut(self.db.fs, a._id)
-        b.open()
+        if not _IS_SYNC:
+            b.open()
 
         self.assertEqual(a._id, b._id)
         self.assertEqual(0, b.length)
@@ -293,7 +295,8 @@ class TestGridFile(IntegrationTest):
 
         two = GridOut(self.db.fs, 5)
 
-        two.open()
+        if not _IS_SYNC:
+            two.open()
 
         self.assertEqual("my_file", two.name)
         self.assertEqual("my_file", two.filename)
@@ -333,7 +336,8 @@ class TestGridFile(IntegrationTest):
 
         four = GridOut(self.db.fs, file_document={})
         with self.assertRaises(NoFile):
-            four.open()
+            if not _IS_SYNC:
+                four.open()
             four.name
 
     def test_write_file_like(self):
@@ -378,7 +382,8 @@ class TestGridFile(IntegrationTest):
         f.close()
 
         g = GridOut(self.db.fs, f._id)
-        g.open()
+        if not _IS_SYNC:
+            g.open()
         self.assertFalse(g.closed)
         g.read(1)
         self.assertFalse(g.closed)
@@ -706,7 +711,8 @@ Bye"""
         self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
 
         g = GridOut(self.db.fs, f._id)
-        g.open()
+        if not _IS_SYNC:
+            g.open()
         self.assertEqual("a", g.bar)
         self.assertEqual("b", g.baz)
         # Versions 2.0.1 and older saved a _closed field for some reason.
@@ -767,7 +773,8 @@ Bye"""
         with self.assertRaises(NoFile):
             outfile.read()
         with self.assertRaises(NoFile):
-            outfile.open()
+            if not _IS_SYNC:
+                outfile.open()
             outfile.filename
 
         infile = GridIn(fs, filename=1)
