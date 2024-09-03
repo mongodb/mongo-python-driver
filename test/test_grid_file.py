@@ -411,30 +411,31 @@ class TestGridFile(IntegrationTest):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(random_string, g.read())
 
-    # # TODO: https://jira.mongodb.org/browse/PYTHON-4708
-    # def test_small_chunks(self):
-    #     self.files = 0
-    #     self.chunks = 0
-    #
-    #     def helper(data):
-    #         f = GridIn(self.db.fs, chunkSize=1)
-    #         f.write(data)
-    #         f.close()
-    #
-    #         self.files += 1
-    #         self.chunks += len(data)
-    #
-    #         self.assertEqual(self.files, self.db.fs.files.count_documents({}))
-    #         self.assertEqual(self.chunks, self.db.fs.chunks.count_documents({}))
-    #
-    #         g = GridOut(self.db.fs, f._id)
-    #         self.assertEqual(data, g.read())
-    #
-    #         g = GridOut(self.db.fs, f._id)
-    #         self.assertEqual(data, g.read(10) + g.read(10))
-    #         return True
-    #
-    #     qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
+    # TODO: https://jira.mongodb.org/browse/PYTHON-4708
+    @client_context.require_sync
+    def test_small_chunks(self):
+        self.files = 0
+        self.chunks = 0
+
+        def helper(data):
+            f = GridIn(self.db.fs, chunkSize=1)
+            f.write(data)
+            f.close()
+
+            self.files += 1
+            self.chunks += len(data)
+
+            self.assertEqual(self.files, self.db.fs.files.count_documents({}))
+            self.assertEqual(self.chunks, self.db.fs.chunks.count_documents({}))
+
+            g = GridOut(self.db.fs, f._id)
+            self.assertEqual(data, g.read())
+
+            g = GridOut(self.db.fs, f._id)
+            self.assertEqual(data, g.read(10) + g.read(10))
+            return True
+
+        qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
 
     def test_seek(self):
         f = GridIn(self.db.fs, chunkSize=3)
@@ -848,7 +849,6 @@ Bye"""
         self.assertEqual(1, self.db.fs.chunks.count_documents({}))
 
         g = GridOut(self.db.fs, f._id)
-        g.open()
         z = zipfile.ZipFile(g)
         self.assertSequenceEqual(z.namelist(), ["test.txt"])
         self.assertEqual(z.read("test.txt"), b"hello world")

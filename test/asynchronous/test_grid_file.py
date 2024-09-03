@@ -413,30 +413,31 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         g = AsyncGridOut(self.db.fs, f._id)
         self.assertEqual(random_string, await g.read())
 
-    # # TODO: https://jira.mongodb.org/browse/PYTHON-4708
-    # async def test_small_chunks(self):
-    #     self.files = 0
-    #     self.chunks = 0
-    #
-    #     async def helper(data):
-    #         f = AsyncGridIn(self.db.fs, chunkSize=1)
-    #         await f.write(data)
-    #         await f.close()
-    #
-    #         self.files += 1
-    #         self.chunks += len(data)
-    #
-    #         self.assertEqual(self.files, await self.db.fs.files.count_documents({}))
-    #         self.assertEqual(self.chunks, await self.db.fs.chunks.count_documents({}))
-    #
-    #         g = AsyncGridOut(self.db.fs, f._id)
-    #         self.assertEqual(data, await g.read())
-    #
-    #         g = AsyncGridOut(self.db.fs, f._id)
-    #         self.assertEqual(data, await g.read(10) + await g.read(10))
-    #         return True
-    #
-    #     qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
+    # TODO: https://jira.mongodb.org/browse/PYTHON-4708
+    @async_client_context.require_sync
+    async def test_small_chunks(self):
+        self.files = 0
+        self.chunks = 0
+
+        async def helper(data):
+            f = AsyncGridIn(self.db.fs, chunkSize=1)
+            await f.write(data)
+            await f.close()
+
+            self.files += 1
+            self.chunks += len(data)
+
+            self.assertEqual(self.files, await self.db.fs.files.count_documents({}))
+            self.assertEqual(self.chunks, await self.db.fs.chunks.count_documents({}))
+
+            g = AsyncGridOut(self.db.fs, f._id)
+            self.assertEqual(data, await g.read())
+
+            g = AsyncGridOut(self.db.fs, f._id)
+            self.assertEqual(data, await g.read(10) + await g.read(10))
+            return True
+
+        qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
 
     async def test_seek(self):
         f = AsyncGridIn(self.db.fs, chunkSize=3)
@@ -850,7 +851,6 @@ Bye"""
         self.assertEqual(1, await self.db.fs.chunks.count_documents({}))
 
         g = AsyncGridOut(self.db.fs, f._id)
-        await g.open()
         z = zipfile.ZipFile(g)
         self.assertSequenceEqual(z.namelist(), ["test.txt"])
         self.assertEqual(z.read("test.txt"), b"hello world")

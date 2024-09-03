@@ -1171,17 +1171,17 @@ class GridIn:
         if name in self.__dict__ or name in self.__class__.__dict__:
             object.__setattr__(self, name, value)
         else:
-            if _IS_SYNC:
-                # All other attributes are part of the document in db.fs.files.
-                # Store them to be sent to server on close() or if closed, send
-                # them now.
-                self._file[name] = value
-                if self._closed:
+            # All other attributes are part of the document in db.fs.files.
+            # Store them to be sent to server on close() or if closed, send
+            # them now.
+            self._file[name] = value
+            if self._closed:
+                if _IS_SYNC:
                     self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
-            else:
-                raise AttributeError(
-                    "GridIn does not support __setattr__. Use GridIn.set() instead"
-                )
+                else:
+                    raise AttributeError(
+                        "GridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use GridIn.set() instead"
+                    )
 
     def set(self, name: str, value: Any) -> None:
         self._file[name] = value
@@ -1484,6 +1484,32 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         def to_list(self) -> list[bytes]:
             return [x for x in self]  # noqa: C416, RUF100
 
+        def readline(self, size: int = -1) -> bytes:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            return self._read_size_or_line(size=size, line=True)
+
+        def readlines(self, size: int = -1) -> list[bytes]:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            self.open()
+            lines = []
+            remainder = int(self.length) - self._position
+            bytes_read = 0
+            while remainder > 0:
+                line = self._read_size_or_line(line=True)
+                bytes_read += len(line)
+                lines.append(line)
+                remainder = int(self.length) - self._position
+                if 0 < size < bytes_read:
+                    break
+
+            return lines
+
     def open(self) -> None:
         if not self._file:
             _disallow_transactions(self._session)
@@ -1602,32 +1628,6 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
            on every call.
         """
         return self._read_size_or_line(size=size)
-
-    def readline(self, size: int = -1) -> bytes:
-        """Read one line or up to `size` bytes from the file.
-
-        :param size: the maximum number of bytes to read
-        """
-        return self._read_size_or_line(size=size, line=True)
-
-    def readlines(self, size: int = -1) -> list[bytes]:
-        """Read one line or up to `size` bytes from the file.
-
-        :param size: the maximum number of bytes to read
-        """
-        self.open()
-        lines = []
-        remainder = int(self.length) - self._position
-        bytes_read = 0
-        while remainder > 0:
-            line = self._read_size_or_line(line=True)
-            bytes_read += len(line)
-            lines.append(line)
-            remainder = int(self.length) - self._position
-            if 0 < size < bytes_read:
-                break
-
-        return lines
 
     def tell(self) -> int:
         """Return the current position of this file."""
