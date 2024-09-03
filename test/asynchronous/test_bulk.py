@@ -34,6 +34,7 @@ from test.utils import (
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
 from pymongo.errors import (
     BulkWriteError,
@@ -42,10 +43,10 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.operations import *
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
+
 
 class AsyncBulkTestBase(AsyncIntegrationTest):
     coll: AsyncCollection
@@ -362,7 +363,9 @@ class AsyncTestBulk(AsyncBulkTestBase):
 
     async def test_upsert_large(self):
         big = "a" * (await async_client_context.max_bson_size - 37)
-        result = await self.coll.bulk_write([UpdateOne({"x": 1}, {"$set": {"s": big}}, upsert=True)])
+        result = await self.coll.bulk_write(
+            [UpdateOne({"x": 1}, {"$set": {"s": big}}, upsert=True)]
+        )
         self.assertEqualResponse(
             {
                 "nMatched": 0,
@@ -843,7 +846,7 @@ class AsyncTestBulkUnacknowledged(AsyncBulkTestBase):
 
         async def predicate():
             return await self.coll.find_one({"_id": 1}) is None
-        
+
         await async_wait_until(predicate, 'removed {"_id": 1}')
 
     async def test_no_results_ordered_failure(self):
@@ -861,7 +864,7 @@ class AsyncTestBulkUnacknowledged(AsyncBulkTestBase):
 
         async def predicate():
             return await self.coll.count_documents({}) == 3
-        
+
         await async_wait_until(predicate, "insert 3 documents")
         self.assertEqual({"_id": 1}, await self.coll.find_one({"_id": 1}))
 
@@ -877,12 +880,12 @@ class AsyncTestBulkUnacknowledged(AsyncBulkTestBase):
 
         async def predicate():
             return await self.coll.count_documents({}) == 2
-        
+
         await async_wait_until(predicate, "insert 2 documents")
 
         async def predicate():
             return await self.coll.find_one({"_id": 1}) is None
-        
+
         await async_wait_until(predicate, 'removed {"_id": 1}')
 
     async def test_no_results_unordered_failure(self):
@@ -900,12 +903,12 @@ class AsyncTestBulkUnacknowledged(AsyncBulkTestBase):
 
         async def predicate():
             return await self.coll.count_documents({}) == 2
-        
+
         await async_wait_until(predicate, "insert 2 documents")
 
         async def predicate():
             return await self.coll.find_one({"_id": 1}) is None
-        
+
         await async_wait_until(predicate, 'removed {"_id": 1}')
 
 
@@ -1058,7 +1061,9 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     async def test_write_concern_failure_unordered(self):
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
-        result = await coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})], ordered=False)
+        result = await coll_ww.bulk_write(
+            [DeleteOne({"something": "that does no exist"})], ordered=False
+        )
         self.assertTrue(result.acknowledged)
 
         requests = [
