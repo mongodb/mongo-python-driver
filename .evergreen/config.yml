@@ -417,11 +417,10 @@ functions:
       type: test
       params:
         working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
-          . .evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
@@ -433,13 +432,12 @@ functions:
     - command: shell.exec
       type: test
       params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         script: |
           # Disable xtrace for security reasons (just in case it was accidentally set).
           set +x
           set -o errexit
-          . .evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
           PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
             PYTHON_BINARY="${PYTHON_BINARY}" \
