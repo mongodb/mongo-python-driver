@@ -240,7 +240,6 @@ class _Bulk:
         client: MongoClient,
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
-
         cmd[bwc.field] = docs
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -325,7 +324,6 @@ class _Bulk:
         client: MongoClient,
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
-
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,

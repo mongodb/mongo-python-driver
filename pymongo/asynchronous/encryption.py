@@ -598,9 +598,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         if not isinstance(key_vault_client, AsyncMongoClient):
-            raise TypeError(
-                f"AsyncMongoClient required but {key_vault_client} is an instance of {type(key_vault_client)}"
-            )
+            raise TypeError(f"AsyncMongoClient required but given {type(key_vault_client)}")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace

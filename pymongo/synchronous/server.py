@@ -157,7 +157,6 @@ class Server:
         :param unpack_res: A callable that decodes the wire protocol response.
         :param client: A MongoClient instance.
         """
-
         assert listeners is not None
 
         publish = listeners.enabled_for_commands

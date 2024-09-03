@@ -2420,9 +2420,7 @@ class _MongoClientErrorHandler:
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
         if not isinstance(client, AsyncMongoClient):
-            raise TypeError(
-                f"AsyncMongoClient required but {client} is an instance of {type(client)}"
-            )
+            raise TypeError(f"AsyncMongoClient required but given {type(client)}")
 
         self.client = client
         self.server_address = server.description.address
