@@ -184,9 +184,9 @@ class TestBulk(BulkTestBase):
 
     def test_array_filters_validation(self):
         with self.assertRaises(TypeError):
-            UpdateMany({}, {}, array_filters={})
+            UpdateMany({}, {}, array_filters={})  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            UpdateOne({}, {}, array_filters={})
+            UpdateOne({}, {}, array_filters={})  # type: ignore[arg-type]
 
     def test_array_filters_unacknowledged(self):
         coll = self.coll_w0
@@ -936,7 +936,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
             InsertOne({"x": 3}),  # Never attempted.
         ]
         with self.assertRaises(OperationFailure):
-            coll.bulk_write(requests)
+            coll.bulk_write(requests)  # type: ignore[arg-type]
         self.assertEqual({1, 2}, set(self.coll.distinct("x")))
 
 

@@ -185,9 +185,9 @@ class AsyncTestBulk(AsyncBulkTestBase):
 
     async def test_array_filters_validation(self):
         with self.assertRaises(TypeError):
-            await UpdateMany({}, {}, array_filters={})
+            await UpdateMany({}, {}, array_filters={})  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            await UpdateOne({}, {}, array_filters={})
+            await UpdateOne({}, {}, array_filters={})  # type: ignore[arg-type]
 
     async def test_array_filters_unacknowledged(self):
         coll = self.coll_w0
@@ -939,7 +939,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             InsertOne({"x": 3}),  # Never attempted.
         ]
         with self.assertRaises(OperationFailure):
-            await coll.bulk_write(requests)
+            await coll.bulk_write(requests)  # type: ignore[arg-type]
         self.assertEqual({1, 2}, set(await self.coll.distinct("x")))
 
 
