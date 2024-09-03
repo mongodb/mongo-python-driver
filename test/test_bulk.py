@@ -950,8 +950,8 @@ class TestBulkWriteConcern(BulkTestBase):
         cls.w = client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:
-            for member in client_context.hello["hosts"]:
-                if member != client_context.hello["primary"]:
+            for member in (client_context).hello["hosts"]:
+                if member != (client_context).hello["primary"]:
                     cls.secondary = single_client(*partition_node(member))
                     break
 
