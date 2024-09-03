@@ -497,7 +497,7 @@ class Topology:
                     (td_old, self._description, self._topology_id),
                 )
             )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG) and sd_old != server_description:
             _debug_log(
                 _SDAM_LOGGER,
                 topologyId=self._topology_id,
