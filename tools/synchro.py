@@ -46,6 +46,8 @@ replacements = {
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
+    "AsyncBulkTestBase": "BulkTestBase",
+    "AsyncBulkAuthorizationTestBase": "BulkAuthorizationTestBase",
     "anext": "next",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",

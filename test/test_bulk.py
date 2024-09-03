@@ -135,7 +135,7 @@ class BulkTestBase(IntegrationTest):
         self.assertEqual(expected_op, actual_op)
 
 
-class SyncTestBulk(SyncBulkTestBase):
+class TestBulk(BulkTestBase):
     def test_empty(self):
         with self.assertRaises(InvalidOperation):
             self.coll.bulk_write([])
@@ -793,7 +793,7 @@ class SyncTestBulk(SyncBulkTestBase):
         self.assertEqual(6, self.coll.count_documents({}))
 
 
-class SyncBulkAuthorizationTestBase(SyncBulkTestBase):
+class BulkAuthorizationTestBase(BulkTestBase):
     @classmethod
     @client_context.require_auth
     @client_context.require_no_api_version
@@ -822,7 +822,7 @@ class SyncBulkAuthorizationTestBase(SyncBulkTestBase):
         remove_all_users(self.db)
 
 
-class SyncTestBulkUnacknowledged(SyncBulkTestBase):
+class TestBulkUnacknowledged(BulkTestBase):
     def tearDown(self):
         self.coll.delete_many({})
 
@@ -909,7 +909,7 @@ class SyncTestBulkUnacknowledged(SyncBulkTestBase):
         wait_until(predicate, 'removed {"_id": 1}')
 
 
-class SyncTestBulkAuthorization(SyncBulkAuthorizationTestBase):
+class TestBulkAuthorization(BulkAuthorizationTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
@@ -940,7 +940,7 @@ class SyncTestBulkAuthorization(SyncBulkAuthorizationTestBase):
         self.assertEqual({1, 2}, set(self.coll.distinct("x")))
 
 
-class SyncTestBulkWriteConcern(SyncBulkTestBase):
+class TestBulkWriteConcern(BulkTestBase):
     w: Optional[int]
     secondary: MongoClient
 
