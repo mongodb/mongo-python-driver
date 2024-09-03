@@ -43,7 +43,7 @@ from gridfs.synchronous.grid_file import (
     GridOutCursor,
 )
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
+from pymongo.errors import ConfigurationError, InvalidOperation, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.helpers import iter, next
 
@@ -150,18 +150,12 @@ class TestGridFile(IntegrationTest):
 
         self.assertEqual(None, a.filename)
         self.assertEqual(None, a.name)
-        if _IS_SYNC:
-            a.filename = "my_file"
-        else:
-            a.set("filename", "my_file")
+        a.filename = "my_file"
         self.assertEqual("my_file", a.filename)
         self.assertEqual("my_file", a.name)
 
         self.assertEqual(None, a.content_type)
-        if _IS_SYNC:
-            a.content_type = "text/html"
-        else:
-            a.set("contentType", "text/html")
+        a.content_type = "text/html"
 
         self.assertEqual("text/html", a.content_type)
 
@@ -175,18 +169,12 @@ class TestGridFile(IntegrationTest):
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertRaises(AttributeError, getattr, a, "aliases")
-        if _IS_SYNC:
-            a.aliases = ["foo"]
-        else:
-            a.set("aliases", ["foo"])
+        a.aliases = ["foo"]
 
         self.assertEqual(["foo"], a.aliases)
 
         self.assertRaises(AttributeError, getattr, a, "metadata")
-        if _IS_SYNC:
-            a.metadata = {"foo": 1}
-        else:
-            a.set("metadata", {"foo": 1})
+        a.metadata = {"foo": 1}
 
         self.assertEqual({"foo": 1}, a.metadata)
 
@@ -197,6 +185,7 @@ class TestGridFile(IntegrationTest):
         if _IS_SYNC:
             a.forty_two = 42
         else:
+            self.assertRaises(AttributeError, setattr, a, "forty_two", 42)
             a.set("forty_two", 42)
 
         self.assertEqual(42, a.forty_two)

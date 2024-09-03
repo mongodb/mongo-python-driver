@@ -44,7 +44,7 @@ from gridfs.asynchronous.grid_file import (
 from gridfs.errors import NoFile
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.helpers import aiter, anext
-from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
+from pymongo.errors import ConfigurationError, InvalidOperation, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 
 _IS_SYNC = False
@@ -150,18 +150,12 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         self.assertEqual(None, a.filename)
         self.assertEqual(None, a.name)
-        if _IS_SYNC:
-            a.filename = "my_file"
-        else:
-            await a.set("filename", "my_file")
+        a.filename = "my_file"
         self.assertEqual("my_file", a.filename)
         self.assertEqual("my_file", a.name)
 
         self.assertEqual(None, a.content_type)
-        if _IS_SYNC:
-            a.content_type = "text/html"
-        else:
-            await a.set("contentType", "text/html")
+        a.content_type = "text/html"
 
         self.assertEqual("text/html", a.content_type)
 
@@ -175,18 +169,12 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertRaises(AttributeError, getattr, a, "aliases")
-        if _IS_SYNC:
-            a.aliases = ["foo"]
-        else:
-            await a.set("aliases", ["foo"])
+        a.aliases = ["foo"]
 
         self.assertEqual(["foo"], a.aliases)
 
         self.assertRaises(AttributeError, getattr, a, "metadata")
-        if _IS_SYNC:
-            a.metadata = {"foo": 1}
-        else:
-            await a.set("metadata", {"foo": 1})
+        a.metadata = {"foo": 1}
 
         self.assertEqual({"foo": 1}, a.metadata)
 
@@ -197,6 +185,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         if _IS_SYNC:
             a.forty_two = 42
         else:
+            self.assertRaises(AttributeError, setattr, a, "forty_two", 42)
             await a.set("forty_two", 42)
 
         self.assertEqual(42, a.forty_two)
