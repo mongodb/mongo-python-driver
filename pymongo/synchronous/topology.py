@@ -475,7 +475,7 @@ class Topology:
             if server:
                 server.pool.ready()
 
-        suppress_event = (self._publish_server or self._publish_tp) and sd_old == server_description
+        suppress_event = sd_old == server_description
         if self._publish_server and not suppress_event:
             assert self._events is not None
             self._events.put(
@@ -497,7 +497,7 @@ class Topology:
                     (td_old, self._description, self._topology_id),
                 )
             )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG) and not suppress_event:
             _debug_log(
                 _SDAM_LOGGER,
                 topologyId=self._topology_id,
