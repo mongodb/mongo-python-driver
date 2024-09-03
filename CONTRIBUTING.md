@@ -248,3 +248,10 @@ you are attempting to validate new spec tests in PyMongo.
 ## Making a Release
 
 Follow the [Python Driver Release Process Wiki](https://wiki.corp.mongodb.com/display/DRIVERS/Python+Driver+Release+Process).
+
+## Converting a test to async
+The `tools/convert_test_to_async.py` script takes in an existing synchronous test file and outputs a
+partially-converted asynchronous version of the same name to the `test/asynchronous` directory.
+Use this generated file as a starting point for the completed conversion.
+
+The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
