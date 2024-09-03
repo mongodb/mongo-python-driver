@@ -154,6 +154,7 @@ converted_tests = [
     "conftest.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
+    "test_bulk.py",
     "test_client.py",
     "test_client_bulk_write.py",
     "test_collection.py",
