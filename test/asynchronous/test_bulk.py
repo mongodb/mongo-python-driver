@@ -804,7 +804,7 @@ class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
         await super()._setup_class()
 
     async def asyncSetUp(self):
-        await super().setUp()
+        super().setUp()
         await async_client_context.create_user(self.db.name, "readonly", "pw", ["read"])
         await self.db.command(
             "createRole",
