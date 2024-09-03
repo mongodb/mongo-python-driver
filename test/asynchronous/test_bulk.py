@@ -948,13 +948,13 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     secondary: AsyncMongoClient
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.w = async_client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:
-            for member in async_client_context.hello["hosts"]:
-                if member != async_client_context.hello["primary"]:
+            for member in await async_client_context.hello["hosts"]:
+                if member != await async_client_context.hello["primary"]:
                     cls.secondary = single_client(*partition_node(member))
                     break
 

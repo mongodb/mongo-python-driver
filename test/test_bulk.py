@@ -945,8 +945,8 @@ class TestBulkWriteConcern(BulkTestBase):
     secondary: MongoClient
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.w = client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:
