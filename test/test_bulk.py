@@ -52,8 +52,8 @@ class BulkTestBase(IntegrationTest):
     coll_w0: Collection
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.coll = cls.db.test
         cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
 

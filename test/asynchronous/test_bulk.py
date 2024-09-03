@@ -53,8 +53,8 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
     coll_w0: AsyncCollection
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.coll = cls.db.test
         cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
 
