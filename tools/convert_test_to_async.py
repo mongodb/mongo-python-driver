@@ -75,8 +75,8 @@ replacements = {
 async_classes = [AsyncMongoClient, AsyncDatabase, AsyncCollection, AsyncCursor, AsyncCommandCursor]
 
 
-def get_async_methods():
-    result = set()
+def get_async_methods() -> set[str]:
+    result: set[str] = set()
     for x in async_classes:
         methods = {
             k
@@ -119,7 +119,7 @@ def apply_replacements(lines: list[str]) -> list[str]:
     return lines
 
 
-def process_file(input_file, output_file):
+def process_file(input_file: str, output_file: str) -> None:
     with open(input_file, "r+") as f:
         lines = f.readlines()
         lines = apply_replacements(lines)
@@ -130,7 +130,7 @@ def process_file(input_file, output_file):
             f2.truncate()
 
 
-def main():
+def main() -> None:
     args = sys.argv[1:]
     sync_file = "./test/" + args[0]
     async_file = "./" + args[0]
