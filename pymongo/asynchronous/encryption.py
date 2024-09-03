@@ -337,7 +337,6 @@ class _Encrypter:
         :param client: The encrypted AsyncMongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
-
         if opts._schema_map is None:
             schema_map = None
         else:

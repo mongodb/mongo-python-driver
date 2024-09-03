@@ -158,7 +158,6 @@ class Server:
         :param client: An AsyncMongoClient instance.
         """
         assert listeners is not None
-
         publish = listeners.enabled_for_commands
         start = datetime.now()
 
