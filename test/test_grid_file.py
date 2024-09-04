@@ -21,6 +21,7 @@ import io
 import sys
 import zipfile
 from io import BytesIO
+from test import IntegrationTest, UnitTest, client_context
 
 from pymongo.synchronous.database import Database
 
@@ -36,16 +37,20 @@ from gridfs.synchronous.grid_file import (
     _SEEK_CUR,
     _SEEK_END,
     DEFAULT_CHUNK_SIZE,
+    GridFS,
     GridIn,
     GridOut,
     GridOutCursor,
 )
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
+from pymongo.errors import ConfigurationError, InvalidOperation, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
+from pymongo.synchronous.helpers import iter, next
+
+_IS_SYNC = True
 
 
-class TestGridFileNoConnect(unittest.TestCase):
+class TestGridFileNoConnect(UnitTest):
     """Test GridFile features on a client that does not connect."""
 
     db: Database
@@ -151,6 +156,7 @@ class TestGridFile(IntegrationTest):
 
         self.assertEqual(None, a.content_type)
         a.content_type = "text/html"
+
         self.assertEqual("text/html", a.content_type)
 
         self.assertRaises(AttributeError, getattr, a, "length")
@@ -164,17 +170,24 @@ class TestGridFile(IntegrationTest):
 
         self.assertRaises(AttributeError, getattr, a, "aliases")
         a.aliases = ["foo"]
+
         self.assertEqual(["foo"], a.aliases)
 
         self.assertRaises(AttributeError, getattr, a, "metadata")
         a.metadata = {"foo": 1}
+
         self.assertEqual({"foo": 1}, a.metadata)
 
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
 
         a.close()
 
-        a.forty_two = 42
+        if _IS_SYNC:
+            a.forty_two = 42
+        else:
+            self.assertRaises(AttributeError, setattr, a, "forty_two", 42)
+            a.set("forty_two", 42)
+
         self.assertEqual(42, a.forty_two)
 
         self.assertTrue(isinstance(a._id, ObjectId))
@@ -213,12 +226,16 @@ class TestGridFile(IntegrationTest):
 
         gout = GridOut(self.db.fs, 5)
         with self.assertRaises(NoFile):
+            if not _IS_SYNC:
+                gout.open()
             gout.name
 
         a = GridIn(self.db.fs)
         a.close()
 
         b = GridOut(self.db.fs, a._id)
+        if not _IS_SYNC:
+            b.open()
 
         self.assertEqual(a._id, b._id)
         self.assertEqual(0, b.length)
@@ -278,6 +295,9 @@ class TestGridFile(IntegrationTest):
 
         two = GridOut(self.db.fs, 5)
 
+        if not _IS_SYNC:
+            two.open()
+
         self.assertEqual("my_file", two.name)
         self.assertEqual("my_file", two.filename)
         self.assertEqual(5, two._id)
@@ -316,6 +336,8 @@ class TestGridFile(IntegrationTest):
 
         four = GridOut(self.db.fs, file_document={})
         with self.assertRaises(NoFile):
+            if not _IS_SYNC:
+                four.open()
             four.name
 
     def test_write_file_like(self):
@@ -350,7 +372,8 @@ class TestGridFile(IntegrationTest):
     def test_close(self):
         f = GridIn(self.db.fs)
         f.close()
-        self.assertRaises(ValueError, f.write, "test")
+        with self.assertRaises(ValueError):
+            f.write("test")
         f.close()
 
     def test_closed(self):
@@ -359,6 +382,8 @@ class TestGridFile(IntegrationTest):
         f.close()
 
         g = GridOut(self.db.fs, f._id)
+        if not _IS_SYNC:
+            g.open()
         self.assertFalse(g.closed)
         g.read(1)
         self.assertFalse(g.closed)
@@ -380,6 +405,8 @@ class TestGridFile(IntegrationTest):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(random_string, g.read())
 
+    # TODO: https://jira.mongodb.org/browse/PYTHON-4708
+    @client_context.require_sync
     def test_small_chunks(self):
         self.files = 0
         self.chunks = 0
@@ -415,18 +442,21 @@ class TestGridFile(IntegrationTest):
         self.assertEqual(b"hello world", g.read())
         g.seek(1)
         self.assertEqual(b"ello world", g.read())
-        self.assertRaises(IOError, g.seek, -1)
+        with self.assertRaises(IOError):
+            g.seek(-1)
 
         g.seek(-3, _SEEK_END)
         self.assertEqual(b"rld", g.read())
         g.seek(0, _SEEK_END)
         self.assertEqual(b"", g.read())
-        self.assertRaises(IOError, g.seek, -100, _SEEK_END)
+        with self.assertRaises(IOError):
+            g.seek(-100, _SEEK_END)
 
         g.seek(3)
         g.seek(3, _SEEK_CUR)
         self.assertEqual(b"world", g.read())
-        self.assertRaises(IOError, g.seek, -100, _SEEK_CUR)
+        with self.assertRaises(IOError):
+            g.seek(-100, _SEEK_CUR)
 
     def test_tell(self):
         f = GridIn(self.db.fs, chunkSize=3)
@@ -519,12 +549,14 @@ Bye"""
         # Only readlines().
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(
-            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"], g.readlines()
+            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"],
+            g.readlines(),
         )
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(
-            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"], g.readlines(0)
+            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"],
+            g.readlines(0),
         )
 
         g = GridOut(self.db.fs, f._id)
@@ -550,15 +582,25 @@ Bye"""
         f = GridIn(self.db.fs)
         f.close()
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual([], list(g))
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], g.to_list())
 
         f = GridIn(self.db.fs)
         f.write(b"hello world\nhere are\nsome lines.")
         f.close()
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
+        if _IS_SYNC:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
+        else:
+            self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], g.to_list())
+
         self.assertEqual(b"", g.read(5))
-        self.assertEqual([], list(g))
+        if _IS_SYNC:
+            self.assertEqual([], list(g))
+        else:
+            self.assertEqual([], g.to_list())
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b"hello world\n", next(iter(g)))
@@ -566,13 +608,17 @@ Bye"""
         self.assertEqual(b" are\n", next(iter(g)))
         self.assertEqual(b"some lines", g.read(10))
         self.assertEqual(b".", next(iter(g)))
-        self.assertRaises(StopIteration, iter(g).__next__)
+        with self.assertRaises(StopIteration):
+            iter(g).__next__()
 
         f = GridIn(self.db.fs, chunk_size=2)
         f.write(b"hello world")
         f.close()
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual([b"hello world"], list(g))
+        if _IS_SYNC:
+            self.assertEqual([b"hello world"], list(g))
+        else:
+            self.assertEqual([b"hello world"], g.to_list())
 
     def test_read_unaligned_buffer_size(self):
         in_data = b"This is a text that doesn't quite fit in a single 16-byte chunk."
@@ -610,7 +656,8 @@ Bye"""
 
     def test_write_unicode(self):
         f = GridIn(self.db.fs)
-        self.assertRaises(TypeError, f.write, "foo")
+        with self.assertRaises(TypeError):
+            f.write("foo")
 
         f = GridIn(self.db.fs, encoding="utf-8")
         f.write("foo")
@@ -635,8 +682,12 @@ Bye"""
         self.assertRaises(AttributeError, getattr, f, "uploadDate")
 
         self.assertRaises(AttributeError, setattr, f, "_id", 5)
-        f.bar = "foo"
-        f.baz = 5
+        if _IS_SYNC:
+            f.bar = "foo"
+            f.baz = 5
+        else:
+            f.set("bar", "foo")
+            f.set("baz", 5)
 
         self.assertEqual("foo", f._id)
         self.assertEqual("foo", f.bar)
@@ -651,11 +702,17 @@ Bye"""
         self.assertTrue(f.uploadDate)
 
         self.assertRaises(AttributeError, setattr, f, "_id", 5)
-        f.bar = "a"
-        f.baz = "b"
+        if _IS_SYNC:
+            f.bar = "a"
+            f.baz = "b"
+        else:
+            f.set("bar", "a")
+            f.set("baz", "b")
         self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
 
         g = GridOut(self.db.fs, f._id)
+        if not _IS_SYNC:
+            g.open()
         self.assertEqual("a", g.bar)
         self.assertEqual("b", g.baz)
         # Versions 2.0.1 and older saved a _closed field for some reason.
@@ -713,8 +770,12 @@ Bye"""
     def test_grid_out_lazy_connect(self):
         fs = self.db.fs
         outfile = GridOut(fs, file_id=-1)
-        self.assertRaises(NoFile, outfile.read)
-        self.assertRaises(NoFile, getattr, outfile, "filename")
+        with self.assertRaises(NoFile):
+            outfile.read()
+        with self.assertRaises(NoFile):
+            if not _IS_SYNC:
+                outfile.open()
+            outfile.filename
 
         infile = GridIn(fs, filename=1)
         infile.close()
@@ -730,13 +791,15 @@ Bye"""
         client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = GridIn(fs, file_id=-1, chunk_size=1)
-        self.assertRaises(ServerSelectionTimeoutError, infile.write, b"data")
-        self.assertRaises(ServerSelectionTimeoutError, infile.close)
+        with self.assertRaises(ServerSelectionTimeoutError):
+            infile.write(b"data")
+        with self.assertRaises(ServerSelectionTimeoutError):
+            infile.close()
 
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            GridIn(rs_or_single_client(w=0).pymongo_test.fs)
+            GridIn((rs_or_single_client(w=0)).pymongo_test.fs)
 
     def test_survive_cursor_not_found(self):
         # By default the find command returns 101 documents in the first batch.
@@ -758,7 +821,7 @@ Bye"""
             assert client.address is not None
             client._close_cursor_now(
                 outfile._chunk_iter._cursor.cursor_id,
-                _CursorAddress(client.address, db.fs.chunks.full_name),
+                _CursorAddress(client.address, db.fs.chunks.full_name),  # type: ignore[arg-type]
             )
 
             # Read the rest of the file without error.
@@ -767,6 +830,7 @@ Bye"""
         # Paranoid, ensure that a getMore was actually sent.
         self.assertIn("getMore", listener.started_command_names())
 
+    @client_context.require_sync
     def test_zip(self):
         zf = BytesIO()
         z = zipfile.ZipFile(zf, "w")

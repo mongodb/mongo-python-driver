@@ -571,7 +571,10 @@ class AsyncClientContext:
         async def sec_count():
             return 0 if not self.client else len(await self.client.secondaries)
 
-        return self._require(lambda: sec_count() >= count, "Not enough secondaries available")
+        async def check():
+            return await sec_count() >= count
+
+        return self._require(check, "Not enough secondaries available")
 
     @property
     async def supports_secondary_read_pref(self):
@@ -949,11 +952,11 @@ class AsyncUnitTest(AsyncPyMongoTestCase):
 
     @classmethod
     async def _setup_class(cls):
-        await cls._setup_class()
+        pass
 
     @classmethod
     async def _tearDown_class(cls):
-        await cls._tearDown_class()
+        pass
 
 
 class AsyncIntegrationTest(AsyncPyMongoTestCase):

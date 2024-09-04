@@ -46,7 +46,10 @@ replacements = {
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
+    "AsyncBulkTestBase": "BulkTestBase",
+    "AsyncBulkAuthorizationTestBase": "BulkAuthorizationTestBase",
     "anext": "next",
+    "aiter": "iter",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
     "AsyncGridFS": "GridFS",
@@ -98,6 +101,8 @@ replacements = {
     "default_async": "default",
     "aclose": "close",
     "PyMongo|async": "PyMongo",
+    "AsyncTestGridFile": "TestGridFile",
+    "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -154,15 +159,18 @@ converted_tests = [
     "conftest.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
+    "test_bulk.py",
     "test_client.py",
     "test_client_bulk_write.py",
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
+    "test_grid_file.py",
     "test_logger.py",
     "test_session.py",
     "test_transactions.py",
+    "test_client_context.py",
 ]
 
 sync_test_files = [
@@ -294,6 +302,8 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 lines[i] = lines[i].replace(k, replacements[k])
             if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
+                if "rsApplyStop" in lines[i]:
+                    lines[i] = lines[i].replace("rsApplyStop", "rsSyncApplyStop")
         if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
             lines[i] = lines[i].replace("async ", "")
         if "await " in lines[i] and "tailable" not in lines[i]:

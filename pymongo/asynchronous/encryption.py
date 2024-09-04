@@ -194,9 +194,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
 
-    async def collection_info(
-        self, database: AsyncDatabase[Mapping[str, Any]], filter: bytes
-    ) -> Optional[bytes]:
+    async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -598,6 +596,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
+        if not isinstance(key_vault_client, AsyncMongoClient):
+            raise TypeError(f"AsyncMongoClient required but given {type(key_vault_client)}")
+
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
@@ -683,6 +684,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
+        if not isinstance(database, AsyncDatabase):
+            raise TypeError(
+                f"create_encrypted_collection() requires an AsyncDatabase but {type(database)} given"
+            )
+
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):
             if isinstance(field, dict) and field.get("keyId") is None:

@@ -209,4 +209,4 @@ jobs:
             ls
             which python
             pip install -e ".[test]"
-            PYMONGO_MUST_CONNECT=1 pytest -v test/test_client_context.py
+            PYMONGO_MUST_CONNECT=1 pytest -v -k client_context

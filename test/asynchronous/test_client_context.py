@@ -18,21 +18,21 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import SkipTest, UnitTest, client_context, unittest
+from test.asynchronous import AsyncUnitTest, SkipTest, async_client_context, unittest
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestClientContext(UnitTest):
+class TestAsyncClientContext(AsyncUnitTest):
     def test_must_connect(self):
         if "PYMONGO_MUST_CONNECT" not in os.environ:
             raise SkipTest("PYMONGO_MUST_CONNECT is not set")
 
         self.assertTrue(
-            client_context.connected,
+            async_client_context.connected,
             "client context must be connected when "
             "PYMONGO_MUST_CONNECT is set. Failed attempts:\n{}".format(
-                client_context.connection_attempt_info()
+                async_client_context.connection_attempt_info()
             ),
         )
 
@@ -41,9 +41,9 @@ class TestClientContext(UnitTest):
             raise SkipTest("TEST_SERVERLESS is not set")
 
         self.assertTrue(
-            client_context.connected and client_context.serverless,
+            async_client_context.connected and async_client_context.serverless,
             "client context must be connected to serverless when "
-            f"TEST_SERVERLESS is set. Failed attempts:\n{client_context.connection_attempt_info()}",
+            f"TEST_SERVERLESS is set. Failed attempts:\n{async_client_context.connection_attempt_info()}",
         )
 
     def test_enableTestCommands_is_disabled(self):
@@ -51,7 +51,7 @@ class TestClientContext(UnitTest):
             raise SkipTest("PYMONGO_DISABLE_TEST_COMMANDS is not set")
 
         self.assertFalse(
-            client_context.test_commands_enabled,
+            async_client_context.test_commands_enabled,
             "enableTestCommands must be disabled when PYMONGO_DISABLE_TEST_COMMANDS is set.",
         )
 
