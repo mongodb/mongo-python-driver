@@ -35,16 +35,16 @@ pytestmark = pytest.mark.mockupdb
 
 
 class TestClusterTime(unittest.TestCase):
-    def cluster_time_conversation(self, callback, replies):
+    def cluster_time_conversation(self, callback, replies, max_wire_version=6):
         cluster_time = Timestamp(0, 0)
         server = MockupDB()
 
-        # First test all commands include $clusterTime with wire version 6.
+        # First test all commands include $clusterTime with max_wire_version.
         _ = server.autoresponds(
             "ismaster",
             {
                 "minWireVersion": 0,
-                "maxWireVersion": 6,
+                "maxWireVersion": max_wire_version,
                 "$clusterTime": {"clusterTime": cluster_time},
             },
         )
@@ -167,16 +167,39 @@ class TestClusterTime(unittest.TestCase):
         request.reply(reply)
         client.close()
 
-    def test_bulk_error(self):
-        def callback(client: MongoClient[dict]) -> None:
-            client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
+    def test_collection_bulk_error(self):
+        exception = None
 
-        with self.assertRaises(OperationFailure) as context:
-            self.cluster_time_conversation(
-                callback,
-                [{"ok": 0, "errmsg": "mock error"}],
-            )
-        self.assertIn("$clusterTime", str(context.exception))
+        def callback(client: MongoClient[dict]) -> None:
+            nonlocal exception
+            with self.assertRaises(OperationFailure) as context:
+                client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
+            exception = context.exception
+
+        self.cluster_time_conversation(
+            callback,
+            [{"ok": 0, "errmsg": "mock error"}],
+        )
+        self.assertIn("$clusterTime", str(exception))
+
+    def test_client_bulk_error(self):
+        exception = None
+
+        def callback(client: MongoClient[dict]) -> None:
+            nonlocal exception
+            with self.assertRaises(OperationFailure) as context:
+                client.bulk_write(
+                    [
+                        InsertOne({}, namespace="db.collection"),
+                        InsertOne({}, namespace="db.collection"),
+                    ]
+                )
+            exception = context.exception
+
+        self.cluster_time_conversation(
+            callback, [{"ok": 0, "errmsg": "mock error"}], max_wire_version=25
+        )
+        self.assertIn("$clusterTime", str(exception))
 
 
 if __name__ == "__main__":
