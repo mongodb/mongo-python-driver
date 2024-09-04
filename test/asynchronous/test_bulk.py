@@ -950,7 +950,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     @classmethod
     async def _setup_class(cls):
         await super()._setup_class()
-        cls.w = await async_client_context.w
+        cls.w = async_client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
