@@ -4,6 +4,9 @@ Changelog
 Changes in Version 4.9.0
 -------------------------
 
+.. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
+   PyMongo 4.9 will be the last release to support MongoDB 3.6.
+
 PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
