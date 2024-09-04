@@ -919,7 +919,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         with self.assertRaises(OperationFailure):
             await coll.bulk_write([InsertOne({"x": 1})])
 
@@ -930,7 +930,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         requests = [
             InsertOne({"x": 1}),
             ReplaceOne({"x": 2}, {"x": 2}, upsert=True),
