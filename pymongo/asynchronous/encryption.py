@@ -764,9 +764,6 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 Secret Data managed object.
               - `endpoint` (string): Optional. Host with optional
                  port, e.g. "example.vault.azure.net:".
-              - `delegated` (bool): Optional. If True (recommended), the
-                KMIP server will perform encryption and decryption. If
-                delegated is not provided, defaults to false.
 
         :param key_alt_names: An optional list of string alternate
             names used to reference a key. If a key is created with alternate
