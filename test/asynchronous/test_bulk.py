@@ -817,7 +817,7 @@ class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
             roles=[],
         )
 
-        async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
+        await async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
 
     async def asyncTearDown(self):
         await self.db.command("dropRole", "noremove")
