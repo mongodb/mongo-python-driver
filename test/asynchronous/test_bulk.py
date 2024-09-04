@@ -25,10 +25,9 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils import (
+    async_rs_or_single_client_noauth,
     async_wait_until,
-    rs_or_single_client_noauth,
     single_client,
-    wait_until,
 )
 
 from bson.binary import Binary, UuidRepresentation
@@ -916,7 +915,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
     async def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = await async_rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -927,7 +926,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
     async def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = await async_rs_or_single_client_noauth(
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
