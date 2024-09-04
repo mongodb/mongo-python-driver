@@ -119,8 +119,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern or client.read_concern,
         )
 
+        from pymongo.synchronous.mongo_client import MongoClient
+
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+
+        if not isinstance(client, MongoClient):
+            raise TypeError(f"MongoClient required but given {type(client)}")
 
         if name != "$external":
             _check_name(name)

@@ -228,6 +228,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+        from pymongo.asynchronous.database import AsyncDatabase
+
+        if not isinstance(database, AsyncDatabase):
+            raise TypeError(f"AsyncCollection requires an AsyncDatabase but {type(database)} given")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
