@@ -19,20 +19,21 @@ import sys
 import uuid
 from typing import Any, Optional
 
-from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, remove_all_users, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils import (
-    rs_or_single_client_noauth,
+    async_rs_or_single_client_noauth,
+    async_wait_until,
     single_client,
-    wait_until,
 )
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
 from pymongo.errors import (
     BulkWriteError,
@@ -41,25 +42,24 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.operations import *
-from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class BulkTestBase(IntegrationTest):
-    coll: Collection
-    coll_w0: Collection
+class AsyncBulkTestBase(AsyncIntegrationTest):
+    coll: AsyncCollection
+    coll_w0: AsyncCollection
 
     @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.coll = cls.db.test
         cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
 
-    def setUp(self):
+    async def asyncSetUp(self):
         super().setUp()
-        self.coll.drop()
+        await self.coll.drop()
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -135,12 +135,12 @@ class BulkTestBase(IntegrationTest):
         self.assertEqual(expected_op, actual_op)
 
 
-class TestBulk(BulkTestBase):
-    def test_empty(self):
+class AsyncTestBulk(AsyncBulkTestBase):
+    async def test_empty(self):
         with self.assertRaises(InvalidOperation):
-            self.coll.bulk_write([])
+            await self.coll.bulk_write([])
 
-    def test_insert(self):
+    async def test_insert(self):
         expected = {
             "nMatched": 0,
             "nModified": 0,
@@ -152,12 +152,12 @@ class TestBulk(BulkTestBase):
             "writeConcernErrors": [],
         }
 
-        result = self.coll.bulk_write([InsertOne({})])
+        result = await self.coll.bulk_write([InsertOne({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.inserted_count)
-        self.assertEqual(1, self.coll.count_documents({}))
+        self.assertEqual(1, await self.coll.count_documents({}))
 
-    def _test_update_many(self, update):
+    async def _test_update_many(self, update):
         expected = {
             "nMatched": 2,
             "nModified": 2,
@@ -168,36 +168,36 @@ class TestBulk(BulkTestBase):
             "writeErrors": [],
             "writeConcernErrors": [],
         }
-        self.coll.insert_many([{}, {}])
+        await self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([UpdateMany({}, update)])
+        result = await self.coll.bulk_write([UpdateMany({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.matched_count)
         self.assertTrue(result.modified_count in (2, None))
 
-    def test_update_many(self):
-        self._test_update_many({"$set": {"foo": "bar"}})
+    async def test_update_many(self):
+        await self._test_update_many({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 1, 11)
-    def test_update_many_pipeline(self):
-        self._test_update_many([{"$set": {"foo": "bar"}}])
+    @async_client_context.require_version_min(4, 1, 11)
+    async def test_update_many_pipeline(self):
+        await self._test_update_many([{"$set": {"foo": "bar"}}])
 
-    def test_array_filters_validation(self):
+    async def test_array_filters_validation(self):
         with self.assertRaises(TypeError):
-            UpdateMany({}, {}, array_filters={})  # type: ignore[arg-type]
+            await UpdateMany({}, {}, array_filters={})  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            UpdateOne({}, {}, array_filters={})  # type: ignore[arg-type]
+            await UpdateOne({}, {}, array_filters={})  # type: ignore[arg-type]
 
-    def test_array_filters_unacknowledged(self):
+    async def test_array_filters_unacknowledged(self):
         coll = self.coll_w0
         update_one = UpdateOne({}, {"$set": {"y.$[i].b": 5}}, array_filters=[{"i.b": 1}])
         update_many = UpdateMany({}, {"$set": {"y.$[i].b": 5}}, array_filters=[{"i.b": 1}])
         with self.assertRaises(ConfigurationError):
-            coll.bulk_write([update_one])
+            await coll.bulk_write([update_one])
         with self.assertRaises(ConfigurationError):
-            coll.bulk_write([update_many])
+            await coll.bulk_write([update_many])
 
-    def _test_update_one(self, update):
+    async def _test_update_one(self, update):
         expected = {
             "nMatched": 1,
             "nModified": 1,
@@ -209,21 +209,21 @@ class TestBulk(BulkTestBase):
             "writeConcernErrors": [],
         }
 
-        self.coll.insert_many([{}, {}])
+        await self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([UpdateOne({}, update)])
+        result = await self.coll.bulk_write([UpdateOne({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
         self.assertTrue(result.modified_count in (1, None))
 
-    def test_update_one(self):
-        self._test_update_one({"$set": {"foo": "bar"}})
+    async def test_update_one(self):
+        await self._test_update_one({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 1, 11)
-    def test_update_one_pipeline(self):
-        self._test_update_one([{"$set": {"foo": "bar"}}])
+    @async_client_context.require_version_min(4, 1, 11)
+    async def test_update_one_pipeline(self):
+        await self._test_update_one([{"$set": {"foo": "bar"}}])
 
-    def test_replace_one(self):
+    async def test_replace_one(self):
         expected = {
             "nMatched": 1,
             "nModified": 1,
@@ -235,14 +235,14 @@ class TestBulk(BulkTestBase):
             "writeConcernErrors": [],
         }
 
-        self.coll.insert_many([{}, {}])
+        await self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([ReplaceOne({}, {"foo": "bar"})])
+        result = await self.coll.bulk_write([ReplaceOne({}, {"foo": "bar"})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
         self.assertTrue(result.modified_count in (1, None))
 
-    def test_remove(self):
+    async def test_remove(self):
         # Test removing all documents, ordered.
         expected = {
             "nMatched": 0,
@@ -254,15 +254,15 @@ class TestBulk(BulkTestBase):
             "writeErrors": [],
             "writeConcernErrors": [],
         }
-        self.coll.insert_many([{}, {}])
+        await self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([DeleteMany({})])
+        result = await self.coll.bulk_write([DeleteMany({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.deleted_count)
 
-    def test_remove_one(self):
+    async def test_remove_one(self):
         # Test removing one document, empty selector.
-        self.coll.insert_many([{}, {}])
+        await self.coll.insert_many([{}, {}])
         expected = {
             "nMatched": 0,
             "nModified": 0,
@@ -274,12 +274,12 @@ class TestBulk(BulkTestBase):
             "writeConcernErrors": [],
         }
 
-        result = self.coll.bulk_write([DeleteOne({})])
+        result = await self.coll.bulk_write([DeleteOne({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.deleted_count)
-        self.assertEqual(self.coll.count_documents({}), 1)
+        self.assertEqual(await self.coll.count_documents({}), 1)
 
-    def test_upsert(self):
+    async def test_upsert(self):
         expected = {
             "nMatched": 0,
             "nModified": 0,
@@ -289,31 +289,31 @@ class TestBulk(BulkTestBase):
             "upserted": [{"index": 0, "_id": "..."}],
         }
 
-        result = self.coll.bulk_write([ReplaceOne({}, {"foo": "bar"}, upsert=True)])
+        result = await self.coll.bulk_write([ReplaceOne({}, {"foo": "bar"}, upsert=True)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.upserted_count)
         assert result.upserted_ids is not None
         self.assertEqual(1, len(result.upserted_ids))
         self.assertTrue(isinstance(result.upserted_ids.get(0), ObjectId))
 
-        self.assertEqual(self.coll.count_documents({"foo": "bar"}), 1)
+        self.assertEqual(await self.coll.count_documents({"foo": "bar"}), 1)
 
-    def test_numerous_inserts(self):
+    async def test_numerous_inserts(self):
         # Ensure we don't exceed server's maxWriteBatchSize size limit.
-        n_docs = client_context.max_write_batch_size + 100
+        n_docs = await async_client_context.max_write_batch_size + 100
         requests = [InsertOne[dict]({}) for _ in range(n_docs)]
-        result = self.coll.bulk_write(requests, ordered=False)
+        result = await self.coll.bulk_write(requests, ordered=False)
         self.assertEqual(n_docs, result.inserted_count)
-        self.assertEqual(n_docs, self.coll.count_documents({}))
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
 
         # Same with ordered bulk.
-        self.coll.drop()
-        result = self.coll.bulk_write(requests)
+        await self.coll.drop()
+        result = await self.coll.bulk_write(requests)
         self.assertEqual(n_docs, result.inserted_count)
-        self.assertEqual(n_docs, self.coll.count_documents({}))
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
 
-    def test_bulk_max_message_size(self):
-        self.coll.delete_many({})
+    async def test_bulk_max_message_size(self):
+        await self.coll.delete_many({})
         self.addCleanup(self.coll.delete_many, {})
         _16_MB = 16 * 1000 * 1000
         # Generate a list of documents such that the first batched OP_MSG is
@@ -326,10 +326,10 @@ class TestBulk(BulkTestBase):
         # Fill in the remaining ~10000 bytes with small documents.
         for i in range(4, 10000):
             docs.append({"_id": i})
-        result = self.coll.insert_many(docs)
+        result = await self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
 
-    def test_generator_insert(self):
+    async def test_generator_insert(self):
         def gen():
             yield {"a": 1, "b": 1}
             yield {"a": 1, "b": 2}
@@ -337,11 +337,11 @@ class TestBulk(BulkTestBase):
             yield {"a": 3, "b": 5}
             yield {"a": 5, "b": 8}
 
-        result = self.coll.insert_many(gen())
+        result = await self.coll.insert_many(gen())
         self.assertEqual(5, len(result.inserted_ids))
 
-    def test_bulk_write_no_results(self):
-        result = self.coll_w0.bulk_write([InsertOne({})])
+    async def test_bulk_write_no_results(self):
+        result = await self.coll_w0.bulk_write([InsertOne({})])
         self.assertFalse(result.acknowledged)
         self.assertRaises(InvalidOperation, lambda: result.inserted_count)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
@@ -350,19 +350,21 @@ class TestBulk(BulkTestBase):
         self.assertRaises(InvalidOperation, lambda: result.upserted_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_ids)
 
-    def test_bulk_write_invalid_arguments(self):
+    async def test_bulk_write_invalid_arguments(self):
         # The requests argument must be a list.
         generator = (InsertOne[dict]({}) for _ in range(10))
         with self.assertRaises(TypeError):
-            self.coll.bulk_write(generator)  # type: ignore[arg-type]
+            await self.coll.bulk_write(generator)  # type: ignore[arg-type]
 
         # Document is not wrapped in a bulk write operation.
         with self.assertRaises(TypeError):
-            self.coll.bulk_write([{}])  # type: ignore[list-item]
+            await self.coll.bulk_write([{}])  # type: ignore[list-item]
 
-    def test_upsert_large(self):
-        big = "a" * (client_context.max_bson_size - 37)
-        result = self.coll.bulk_write([UpdateOne({"x": 1}, {"$set": {"s": big}}, upsert=True)])
+    async def test_upsert_large(self):
+        big = "a" * (await async_client_context.max_bson_size - 37)
+        result = await self.coll.bulk_write(
+            [UpdateOne({"x": 1}, {"$set": {"s": big}}, upsert=True)]
+        )
         self.assertEqualResponse(
             {
                 "nMatched": 0,
@@ -375,10 +377,10 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-        self.assertEqual(1, self.coll.count_documents({"x": 1}))
+        self.assertEqual(1, await self.coll.count_documents({"x": 1}))
 
-    def test_client_generated_upsert_id(self):
-        result = self.coll.bulk_write(
+    async def test_client_generated_upsert_id(self):
+        result = await self.coll.bulk_write(
             [
                 UpdateOne({"_id": 0}, {"$set": {"a": 0}}, upsert=True),
                 ReplaceOne({"a": 1}, {"_id": 1}, upsert=True),
@@ -402,11 +404,11 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_upsert_uuid_standard(self):
+    async def test_upsert_uuid_standard(self):
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         coll = self.coll.with_options(codec_options=options)
         uuids = [uuid.uuid4() for _ in range(3)]
-        result = coll.bulk_write(
+        result = await coll.bulk_write(
             [
                 UpdateOne({"_id": uuids[0]}, {"$set": {"a": 0}}, upsert=True),
                 ReplaceOne({"a": 1}, {"_id": uuids[1]}, upsert=True),
@@ -430,11 +432,11 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_upsert_uuid_unspecified(self):
+    async def test_upsert_uuid_unspecified(self):
         options = CodecOptions(uuid_representation=UuidRepresentation.UNSPECIFIED)
         coll = self.coll.with_options(codec_options=options)
         uuids = [Binary.from_uuid(uuid.uuid4()) for _ in range(3)]
-        result = coll.bulk_write(
+        result = await coll.bulk_write(
             [
                 UpdateOne({"_id": uuids[0]}, {"$set": {"a": 0}}, upsert=True),
                 ReplaceOne({"a": 1}, {"_id": uuids[1]}, upsert=True),
@@ -458,12 +460,12 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_upsert_uuid_standard_subdocuments(self):
+    async def test_upsert_uuid_standard_subdocuments(self):
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         coll = self.coll.with_options(codec_options=options)
         ids: list = [{"f": Binary(bytes(i)), "f2": uuid.uuid4()} for i in range(3)]
 
-        result = coll.bulk_write(
+        result = await coll.bulk_write(
             [
                 UpdateOne({"_id": ids[0]}, {"$set": {"a": 0}}, upsert=True),
                 ReplaceOne({"a": 1}, {"_id": ids[1]}, upsert=True),
@@ -492,8 +494,8 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_single_ordered_batch(self):
-        result = self.coll.bulk_write(
+    async def test_single_ordered_batch(self):
+        result = await self.coll.bulk_write(
             [
                 InsertOne({"a": 1}),
                 UpdateOne({"a": 1}, {"$set": {"b": 1}}),
@@ -514,8 +516,8 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_single_error_ordered_batch(self):
-        self.coll.create_index("a", unique=True)
+    async def test_single_error_ordered_batch(self):
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
@@ -523,7 +525,7 @@ class TestBulk(BulkTestBase):
             InsertOne({"b": 3, "a": 2}),
         ]
         try:
-            self.coll.bulk_write(requests)
+            await self.coll.bulk_write(requests)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -556,8 +558,8 @@ class TestBulk(BulkTestBase):
             result,
         )
 
-    def test_multiple_error_ordered_batch(self):
-        self.coll.create_index("a", unique=True)
+    async def test_multiple_error_ordered_batch(self):
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
@@ -569,7 +571,7 @@ class TestBulk(BulkTestBase):
         ]
 
         try:
-            self.coll.bulk_write(requests)
+            await self.coll.bulk_write(requests)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -602,7 +604,7 @@ class TestBulk(BulkTestBase):
             result,
         )
 
-    def test_single_unordered_batch(self):
+    async def test_single_unordered_batch(self):
         requests: list = [
             InsertOne({"a": 1}),
             UpdateOne({"a": 1}, {"$set": {"b": 1}}),
@@ -610,7 +612,7 @@ class TestBulk(BulkTestBase):
             InsertOne({"a": 3}),
             DeleteOne({"a": 3}),
         ]
-        result = self.coll.bulk_write(requests, ordered=False)
+        result = await self.coll.bulk_write(requests, ordered=False)
         self.assertEqualResponse(
             {
                 "nMatched": 1,
@@ -625,8 +627,8 @@ class TestBulk(BulkTestBase):
             result.bulk_api_result,
         )
 
-    def test_single_error_unordered_batch(self):
-        self.coll.create_index("a", unique=True)
+    async def test_single_error_unordered_batch(self):
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
@@ -635,7 +637,7 @@ class TestBulk(BulkTestBase):
         ]
 
         try:
-            self.coll.bulk_write(requests, ordered=False)
+            await self.coll.bulk_write(requests, ordered=False)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -668,8 +670,8 @@ class TestBulk(BulkTestBase):
             result,
         )
 
-    def test_multiple_error_unordered_batch(self):
-        self.coll.create_index("a", unique=True)
+    async def test_multiple_error_unordered_batch(self):
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
@@ -681,7 +683,7 @@ class TestBulk(BulkTestBase):
         ]
 
         try:
-            self.coll.bulk_write(requests, ordered=False)
+            await self.coll.bulk_write(requests, ordered=False)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -721,8 +723,8 @@ class TestBulk(BulkTestBase):
             result,
         )
 
-    def test_large_inserts_ordered(self):
-        big = "x" * client_context.max_bson_size
+    async def test_large_inserts_ordered(self):
+        big = "x" * await async_client_context.max_bson_size
         requests = [
             InsertOne({"b": 1, "a": 1}),
             InsertOne({"big": big}),
@@ -730,7 +732,7 @@ class TestBulk(BulkTestBase):
         ]
 
         try:
-            self.coll.bulk_write(requests)
+            await self.coll.bulk_write(requests)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -739,10 +741,10 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(1, result["nInserted"])
 
-        self.coll.delete_many({})
+        await self.coll.delete_many({})
 
         big = "x" * (1024 * 1024 * 4)
-        write_result = self.coll.bulk_write(
+        write_result = await self.coll.bulk_write(
             [
                 InsertOne({"a": 1, "big": big}),
                 InsertOne({"a": 2, "big": big}),
@@ -754,10 +756,10 @@ class TestBulk(BulkTestBase):
         )
 
         self.assertEqual(6, write_result.inserted_count)
-        self.assertEqual(6, self.coll.count_documents({}))
+        self.assertEqual(6, await self.coll.count_documents({}))
 
-    def test_large_inserts_unordered(self):
-        big = "x" * client_context.max_bson_size
+    async def test_large_inserts_unordered(self):
+        big = "x" * await async_client_context.max_bson_size
         requests = [
             InsertOne({"b": 1, "a": 1}),
             InsertOne({"big": big}),
@@ -765,7 +767,7 @@ class TestBulk(BulkTestBase):
         ]
 
         try:
-            self.coll.bulk_write(requests, ordered=False)
+            await self.coll.bulk_write(requests, ordered=False)
         except BulkWriteError as exc:
             details = exc.details
             self.assertEqual(exc.code, 65)
@@ -774,10 +776,10 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(2, details["nInserted"])
 
-        self.coll.delete_many({})
+        await self.coll.delete_many({})
 
         big = "x" * (1024 * 1024 * 4)
-        result = self.coll.bulk_write(
+        result = await self.coll.bulk_write(
             [
                 InsertOne({"a": 1, "big": big}),
                 InsertOne({"a": 2, "big": big}),
@@ -790,20 +792,20 @@ class TestBulk(BulkTestBase):
         )
 
         self.assertEqual(6, result.inserted_count)
-        self.assertEqual(6, self.coll.count_documents({}))
+        self.assertEqual(6, await self.coll.count_documents({}))
 
 
-class BulkAuthorizationTestBase(BulkTestBase):
+class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
     @classmethod
-    @client_context.require_auth
-    @client_context.require_no_api_version
-    def _setup_class(cls):
-        super()._setup_class()
+    @async_client_context.require_auth
+    @async_client_context.require_no_api_version
+    async def _setup_class(cls):
+        await super()._setup_class()
 
-    def setUp(self):
+    async def asyncSetUp(self):
         super().setUp()
-        client_context.create_user(self.db.name, "readonly", "pw", ["read"])
-        self.db.command(
+        await async_client_context.create_user(self.db.name, "readonly", "pw", ["read"])
+        await self.db.command(
             "createRole",
             "noremove",
             privileges=[
@@ -815,38 +817,38 @@ class BulkAuthorizationTestBase(BulkTestBase):
             roles=[],
         )
 
-        client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
+        async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
 
-    def tearDown(self):
-        self.db.command("dropRole", "noremove")
-        remove_all_users(self.db)
+    async def asyncTearDown(self):
+        await self.db.command("dropRole", "noremove")
+        await remove_all_users(self.db)
 
 
-class TestBulkUnacknowledged(BulkTestBase):
-    def tearDown(self):
-        self.coll.delete_many({})
+class AsyncTestBulkUnacknowledged(AsyncBulkTestBase):
+    async def asyncTearDown(self):
+        await self.coll.delete_many({})
 
-    def test_no_results_ordered_success(self):
+    async def test_no_results_ordered_success(self):
         requests: list = [
             InsertOne({"a": 1}),
             UpdateOne({"a": 3}, {"$set": {"b": 1}}, upsert=True),
             InsertOne({"a": 2}),
             DeleteOne({"a": 1}),
         ]
-        result = self.coll_w0.bulk_write(requests)
+        result = await self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
 
-        def predicate():
-            return self.coll.count_documents({}) == 2
+        async def predicate():
+            return await self.coll.count_documents({}) == 2
 
-        wait_until(predicate, "insert 2 documents")
+        await async_wait_until(predicate, "insert 2 documents")
 
-        def predicate():
-            return self.coll.find_one({"_id": 1}) is None
+        async def predicate():
+            return await self.coll.find_one({"_id": 1}) is None
 
-        wait_until(predicate, 'removed {"_id": 1}')
+        await async_wait_until(predicate, 'removed {"_id": 1}')
 
-    def test_no_results_ordered_failure(self):
+    async def test_no_results_ordered_failure(self):
         requests: list = [
             InsertOne({"_id": 1}),
             UpdateOne({"_id": 3}, {"$set": {"b": 1}}, upsert=True),
@@ -856,36 +858,36 @@ class TestBulkUnacknowledged(BulkTestBase):
             # Should not be executed since the batch is ordered.
             DeleteOne({"_id": 1}),
         ]
-        result = self.coll_w0.bulk_write(requests)
+        result = await self.coll_w0.bulk_write(requests)
         self.assertFalse(result.acknowledged)
 
-        def predicate():
-            return self.coll.count_documents({}) == 3
+        async def predicate():
+            return await self.coll.count_documents({}) == 3
 
-        wait_until(predicate, "insert 3 documents")
-        self.assertEqual({"_id": 1}, self.coll.find_one({"_id": 1}))
+        await async_wait_until(predicate, "insert 3 documents")
+        self.assertEqual({"_id": 1}, await self.coll.find_one({"_id": 1}))
 
-    def test_no_results_unordered_success(self):
+    async def test_no_results_unordered_success(self):
         requests: list = [
             InsertOne({"a": 1}),
             UpdateOne({"a": 3}, {"$set": {"b": 1}}, upsert=True),
             InsertOne({"a": 2}),
             DeleteOne({"a": 1}),
         ]
-        result = self.coll_w0.bulk_write(requests, ordered=False)
+        result = await self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
 
-        def predicate():
-            return self.coll.count_documents({}) == 2
+        async def predicate():
+            return await self.coll.count_documents({}) == 2
 
-        wait_until(predicate, "insert 2 documents")
+        await async_wait_until(predicate, "insert 2 documents")
 
-        def predicate():
-            return self.coll.find_one({"_id": 1}) is None
+        async def predicate():
+            return await self.coll.find_one({"_id": 1}) is None
 
-        wait_until(predicate, 'removed {"_id": 1}')
+        await async_wait_until(predicate, 'removed {"_id": 1}')
 
-    def test_no_results_unordered_failure(self):
+    async def test_no_results_unordered_failure(self):
         requests: list = [
             InsertOne({"_id": 1}),
             UpdateOne({"_id": 3}, {"$set": {"b": 1}}, upsert=True),
@@ -895,36 +897,36 @@ class TestBulkUnacknowledged(BulkTestBase):
             # Should be executed since the batch is unordered.
             DeleteOne({"_id": 1}),
         ]
-        result = self.coll_w0.bulk_write(requests, ordered=False)
+        result = await self.coll_w0.bulk_write(requests, ordered=False)
         self.assertFalse(result.acknowledged)
 
-        def predicate():
-            return self.coll.count_documents({}) == 2
+        async def predicate():
+            return await self.coll.count_documents({}) == 2
 
-        wait_until(predicate, "insert 2 documents")
+        await async_wait_until(predicate, "insert 2 documents")
 
-        def predicate():
-            return self.coll.find_one({"_id": 1}) is None
+        async def predicate():
+            return await self.coll.find_one({"_id": 1}) is None
 
-        wait_until(predicate, 'removed {"_id": 1}')
+        await async_wait_until(predicate, 'removed {"_id": 1}')
 
 
-class TestBulkAuthorization(BulkAuthorizationTestBase):
-    def test_readonly(self):
+class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
+    async def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = await async_rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
         coll.find_one()
         with self.assertRaises(OperationFailure):
-            coll.bulk_write([InsertOne({"x": 1})])
+            await coll.bulk_write([InsertOne({"x": 1})])
 
-    def test_no_remove(self):
+    async def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = await async_rs_or_single_client_noauth(
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -936,57 +938,57 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
             InsertOne({"x": 3}),  # Never attempted.
         ]
         with self.assertRaises(OperationFailure):
-            coll.bulk_write(requests)  # type: ignore[arg-type]
-        self.assertEqual({1, 2}, set(self.coll.distinct("x")))
+            await coll.bulk_write(requests)  # type: ignore[arg-type]
+        self.assertEqual({1, 2}, set(await self.coll.distinct("x")))
 
 
-class TestBulkWriteConcern(BulkTestBase):
+class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     w: Optional[int]
-    secondary: MongoClient
+    secondary: AsyncMongoClient
 
     @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.w = client_context.w
+    async def _setup_class(cls):
+        await super()._setup_class()
+        cls.w = async_client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:
-            for member in (client_context.hello)["hosts"]:
-                if member != (client_context.hello)["primary"]:
+            for member in (await async_client_context.hello)["hosts"]:
+                if member != (await async_client_context.hello)["primary"]:
                     cls.secondary = single_client(*partition_node(member))
                     break
 
     @classmethod
-    def async_tearDownClass(cls):
+    async def async_tearDownClass(cls):
         if cls.secondary:
-            cls.secondary.close()
+            await cls.secondary.close()
 
-    def cause_wtimeout(self, requests, ordered):
-        if not client_context.test_commands_enabled:
+    async def cause_wtimeout(self, requests, ordered):
+        if not async_client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled.")
 
         # Use the rsSyncApplyStop failpoint to pause replication on a
         # secondary which will cause a wtimeout error.
-        self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="alwaysOn")
+        await self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="alwaysOn")
 
         try:
             coll = self.coll.with_options(write_concern=WriteConcern(w=self.w, wtimeout=1))
-            return coll.bulk_write(requests, ordered=ordered)
+            return await coll.bulk_write(requests, ordered=ordered)
         finally:
-            self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
+            await self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
 
-    @client_context.require_replica_set
-    @client_context.require_secondaries_count(1)
-    def test_write_concern_failure_ordered(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_secondaries_count(1)
+    async def test_write_concern_failure_ordered(self):
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
-        result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
+        result = await coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
         self.assertTrue(result.acknowledged)
 
         requests: list[Any] = [InsertOne({"a": 1}), InsertOne({"a": 2})]
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            self.cause_wtimeout(requests, ordered=True)
+            await self.cause_wtimeout(requests, ordered=True)
         except BulkWriteError as exc:
             details = exc.details
             self.assertEqual(exc.code, 65)
@@ -1014,8 +1016,8 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertEqual(64, failed["code"])
         self.assertTrue(isinstance(failed["errmsg"], str))
 
-        self.coll.delete_many({})
-        self.coll.create_index("a", unique=True)
+        await self.coll.delete_many({})
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
@@ -1027,7 +1029,7 @@ class TestBulkWriteConcern(BulkTestBase):
             InsertOne({"a": 2}),
         ]
         try:
-            self.cause_wtimeout(requests, ordered=True)
+            await self.cause_wtimeout(requests, ordered=True)
         except BulkWriteError as exc:
             details = exc.details
             self.assertEqual(exc.code, 65)
@@ -1053,12 +1055,14 @@ class TestBulkWriteConcern(BulkTestBase):
         failed = details["writeErrors"][0]
         self.assertTrue("duplicate" in failed["errmsg"])
 
-    @client_context.require_replica_set
-    @client_context.require_secondaries_count(1)
-    def test_write_concern_failure_unordered(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_secondaries_count(1)
+    async def test_write_concern_failure_unordered(self):
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
-        result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})], ordered=False)
+        result = await coll_ww.bulk_write(
+            [DeleteOne({"something": "that does no exist"})], ordered=False
+        )
         self.assertTrue(result.acknowledged)
 
         requests = [
@@ -1069,7 +1073,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            self.cause_wtimeout(requests, ordered=False)
+            await self.cause_wtimeout(requests, ordered=False)
         except BulkWriteError as exc:
             details = exc.details
             self.assertEqual(exc.code, 65)
@@ -1083,8 +1087,8 @@ class TestBulkWriteConcern(BulkTestBase):
         # write concern error for each operation.
         self.assertTrue(len(details["writeConcernErrors"]) > 1)
 
-        self.coll.delete_many({})
-        self.coll.create_index("a", unique=True)
+        await self.coll.delete_many({})
+        await self.coll.create_index("a", unique=True)
         self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
@@ -1096,7 +1100,7 @@ class TestBulkWriteConcern(BulkTestBase):
             InsertOne({"a": 2}),
         ]
         try:
-            self.cause_wtimeout(requests, ordered=False)
+            await self.cause_wtimeout(requests, ordered=False)
         except BulkWriteError as exc:
             details = exc.details
             self.assertEqual(exc.code, 65)
