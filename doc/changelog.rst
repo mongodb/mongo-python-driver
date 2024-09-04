@@ -11,6 +11,8 @@ PyMongo 4.9 brings a number of improvements including:
 - Added support for In-Use Encryption range queries with MongoDB 8.0.
   Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
   ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
+- Added support for the "delegated" option for the KMIP ``master_key`` in
+  :meth:`~pymongo.encryption.ClientEncryption.create_data_key`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
 - Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
   :class:`~pymongo.command_cursor.CommandCursor`,
