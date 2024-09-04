@@ -310,10 +310,8 @@ class _AsyncBulk:
             if bwc.publish:
                 bwc._fail(request_id, failure, duration)
             # Process the response from the server.
-            if isinstance(exc, OperationFailure):
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 await client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-            else:
-                await client._process_response({}, bwc.session)  # type: ignore[arg-type]
             raise
         finally:
             bwc.start_time = datetime.datetime.now()

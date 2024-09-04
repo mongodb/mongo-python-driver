@@ -29,6 +29,7 @@ except ImportError:
 
 from bson import Timestamp
 from pymongo import DeleteMany, InsertOne, MongoClient, UpdateOne
+from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
 
@@ -165,6 +166,17 @@ class TestClusterTime(unittest.TestCase):
         self.assertEqual(request["$clusterTime"]["clusterTime"], cluster_time)
         request.reply(reply)
         client.close()
+
+    def test_bulk_error(self):
+        def callback(client: MongoClient[dict]) -> None:
+            client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
+
+        with self.assertRaises(OperationFailure) as context:
+            self.cluster_time_conversation(
+                callback,
+                [{"ok": 0, "errmsg": "mock error"}],
+            )
+        self.assertIn("$clusterTime", str(context.exception))
 
 
 if __name__ == "__main__":
