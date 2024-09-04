@@ -47,6 +47,7 @@ replacements = {
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
     "anext": "next",
+    "aiter": "iter",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
     "AsyncGridFS": "GridFS",
@@ -98,6 +99,8 @@ replacements = {
     "default_async": "default",
     "aclose": "close",
     "PyMongo|async": "PyMongo",
+    "AsyncTestGridFile": "TestGridFile",
+    "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -160,6 +163,7 @@ converted_tests = [
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
+    "test_grid_file.py",
     "test_logger.py",
     "test_session.py",
     "test_transactions.py",

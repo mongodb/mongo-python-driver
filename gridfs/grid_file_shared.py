@@ -38,13 +38,30 @@ def _a_grid_in_property(
 ) -> Any:
     """Create a GridIn property."""
 
+    warn_str = ""
+    if docstring.startswith("DEPRECATED,"):
+        warn_str = (
+            f"GridIn property '{field_name}' is deprecated and will be removed in PyMongo 5.0"
+        )
+
     def getter(self: Any) -> Any:
+        if warn_str:
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         if closed_only and not self._closed:
             raise AttributeError("can only get %r on a closed file" % field_name)
         # Protect against PHP-237
         if field_name == "length":
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
+
+    def setter(self: Any, value: Any) -> Any:
+        if warn_str:
+            warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
+        if self._closed:
+            raise InvalidOperation(
+                "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
+            )
+        self._file[field_name] = value
 
     if read_only:
         docstring += "\n\nThis attribute is read-only."
@@ -56,6 +73,8 @@ def _a_grid_in_property(
             "has been called.",
         )
 
+    if not read_only and not closed_only:
+        return property(getter, setter, doc=docstring)
     return property(getter, doc=docstring)
 
 
