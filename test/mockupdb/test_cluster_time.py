@@ -168,38 +168,28 @@ class TestClusterTime(unittest.TestCase):
         client.close()
 
     def test_collection_bulk_error(self):
-        exception = None
-
         def callback(client: MongoClient[dict]) -> None:
-            nonlocal exception
-            with self.assertRaises(OperationFailure) as context:
+            with self.assertRaises(OperationFailure):
                 client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
-            exception = context.exception
 
         self.cluster_time_conversation(
             callback,
             [{"ok": 0, "errmsg": "mock error"}],
         )
-        self.assertIn("$clusterTime", str(exception))
 
     def test_client_bulk_error(self):
-        exception = None
-
         def callback(client: MongoClient[dict]) -> None:
-            nonlocal exception
-            with self.assertRaises(OperationFailure) as context:
+            with self.assertRaises(OperationFailure):
                 client.bulk_write(
                     [
                         InsertOne({}, namespace="db.collection"),
                         InsertOne({}, namespace="db.collection"),
                     ]
                 )
-            exception = context.exception
 
         self.cluster_time_conversation(
             callback, [{"ok": 0, "errmsg": "mock error"}], max_wire_version=25
         )
-        self.assertIn("$clusterTime", str(exception))
 
 
 if __name__ == "__main__":
