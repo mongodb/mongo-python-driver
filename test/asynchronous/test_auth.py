@@ -643,7 +643,8 @@ class TestAuthURIOptions(AsyncIntegrationTest):
         # Test explicit database
         uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
         client = await async_rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            await client.admin.command("dbstats")
         self.assertTrue(await client.pymongo_test.command("dbstats"))
 
         if async_client_context.is_rs:

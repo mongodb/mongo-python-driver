@@ -631,7 +631,8 @@ class TestAuthURIOptions(IntegrationTest):
         # Test explicit database
         uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
         client = rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            client.admin.command("dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
         if client_context.is_rs:
