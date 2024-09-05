@@ -375,7 +375,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             tuple(await cursor.to_list())
 
     async def test_get_more_failure(self):
-        address = self.client.address
+        address = await self.client.address
         coll = self.client.pymongo_test.test
         cursor_id = Int64(12345)
         cursor_doc = {"id": cursor_id, "firstBatch": [], "ns": coll.full_name}
@@ -399,13 +399,13 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertTrue(isinstance(failed.duration_micros, int))
         self.assertEqual("getMore", failed.command_name)
         self.assertTrue(isinstance(failed.request_id, int))
-        self.assertEqual(await cursor.address, failed.connection_id)
+        self.assertEqual(cursor.address, failed.connection_id)
         self.assertEqual(0, failed.failure.get("ok"))
 
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_not_primary_error(self):
-        address = await anext(aiter(async_client_context.client.secondaries))
+        address = await anext(aiter(await async_client_context.client.secondaries))
         client = await async_single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         await client.admin.command("ping")
