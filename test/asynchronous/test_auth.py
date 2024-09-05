@@ -389,7 +389,7 @@ class TestSCRAM(AsyncIntegrationTest):
 
     async def test_scram_skip_empty_exchange(self):
         listener = AllowListEventListener("saslStart", "saslContinue")
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram", "sha256", "pwd", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
@@ -415,13 +415,13 @@ class TestSCRAM(AsyncIntegrationTest):
     @async_client_context.require_no_fips
     async def test_scram(self):
         # Step 1: create users
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram", "sha1", "pwd", roles=["dbOwner"], mechanisms=["SCRAM-SHA-1"]
         )
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram", "sha256", "pwd", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram",
             "both",
             "pwd",
@@ -512,10 +512,10 @@ class TestSCRAM(AsyncIntegrationTest):
         # saslprep('\u2136') becomes 'IV' and saslprep('I\u00ADX')
         # becomes 'IX'. SASLprep is only supported when the standard
         # library provides stringprep.
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram", "\u2168", "\u2163", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
-        async_client_context.create_user(
+        await async_client_context.create_user(
             "testscram", "IX", "IX", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
