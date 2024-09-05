@@ -198,7 +198,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if await self.client.is_mongos:
-            coll = await coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
+            coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
         res = await coll.find().explain()
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
@@ -307,7 +307,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if await self.client.is_mongos:
-            coll = await coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
+            coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
         cursor = await coll.aggregate([{"$project": {"_id": False, "x": 1}}], batchSize=4)
         for _ in range(4):
             await anext(cursor)
