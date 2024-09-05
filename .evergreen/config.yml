@@ -34,51 +34,14 @@ functions:
     # Applies the subitted patch, if any
     # Deprecated. Should be removed. But still needed for certain agents (ZAP)
     - command: git.apply_patch
-    # Make an evergreen exapanstion file with dynamic values
-    - command: shell.exec
+    # Make an evergreen expansion file with dynamic values
+    - command: subprocess.exec
       params:
+        include_expansions_in_env: ["is_patch", "project", "version_id"]
+        binary: bash
         working_dir: "src"
-        script: |
-           set +x
-           # Get the current unique version of this checkout
-           if [ "${is_patch}" = "true" ]; then
-              CURRENT_VERSION=$(git describe)-patch-${version_id}
-           else
-              CURRENT_VERSION=latest
-           fi
-
-           export DRIVERS_TOOLS="$(dirname $(pwd))/drivers-tools"
-           export PROJECT_DIRECTORY="$(pwd)"
-
-           # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
-           if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-              export DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
-              export PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
-           fi
-
-           export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
-           export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-
-           cat <<EOT > expansion.yml
-           CURRENT_VERSION: "$CURRENT_VERSION"
-           DRIVERS_TOOLS: "$DRIVERS_TOOLS"
-           MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"
-           MONGODB_BINARIES: "$MONGODB_BINARIES"
-           PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
-           PREPARE_SHELL: |
-              set -o errexit
-              export SKIP_LEGACY_SHELL=1
-              export DRIVERS_TOOLS="$DRIVERS_TOOLS"
-              export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
-              export MONGODB_BINARIES="$MONGODB_BINARIES"
-              export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
-
-              export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-              export PATH="$MONGODB_BINARIES:$PATH"
-              export PROJECT="${project}"
-              export PIP_QUIET=1
-           EOT
-
+        args:
+          - .evergreen/scripts/configure-env.sh
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
       params:
@@ -88,14 +51,14 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           rm -rf $DRIVERS_TOOLS
-          if [ "${project}" = "drivers-tools" ]; then
+          if [ "$PROJECT" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
-            cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
+            cp -R ${PROJECT_DIRECTORY}/ ${DRIVERS_TOOLS}
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git ${DRIVERS_TOOLS}
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -129,12 +92,12 @@ functions:
         script: |
           # Download all the task coverage files.
           aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          bash .evergreen/combine-coverage.sh
+        binary: bash
+        args:
+          - .evergreen/combine-coverage.sh
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
@@ -164,7 +127,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           mkdir out_dir
           find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
@@ -266,7 +229,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
 
           # Enable core dumps if enabled on the machine
@@ -325,13 +288,13 @@ functions:
       type: setup
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
           sleep 1
           docker ps
@@ -340,7 +303,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
@@ -350,7 +313,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
             MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
@@ -362,7 +325,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-mockupdb
@@ -373,7 +336,7 @@ functions:
        params:
          working_dir: "src"
          script: |
-           ${PREPARE_SHELL}
+           . .evergreen/scripts/env.sh
            set -o xtrace
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
 
@@ -385,7 +348,7 @@ functions:
         background: true
         include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           if [ -n "${test_encryption}" ]; then
             ./.evergreen/hatch.sh encryption:setup
           fi
@@ -397,7 +360,7 @@ functions:
         script: |
           # Disable xtrace
           set +x
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=true
           fi
@@ -497,7 +460,7 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
@@ -507,7 +470,7 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh assume-role
 
   "run aws auth test with aws EC2 credentials":
@@ -521,7 +484,7 @@ functions:
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
@@ -535,7 +498,7 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           # Test with and without AWS_ROLE_SESSION_NAME set.
           .evergreen/run-mongodb-aws-test.sh web-identity
           AWS_ROLE_SESSION_NAME="test" \
@@ -558,7 +521,7 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh env-creds
 
   "run aws auth test with aws credentials and session token as environment variables":
@@ -568,7 +531,7 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh session-creds
 
   "run aws ECS auth test":
@@ -582,12 +545,12 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           . aws_setup.sh ecs
-          export MONGODB_BINARIES="${MONGODB_BINARIES}";
+          export MONGODB_BINARIES="$MONGODB_BINARIES";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
           python aws_tester.py ecs
           cd -
@@ -597,9 +560,9 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           . .evergreen/hatch.sh encryption:teardown
-          rm -rf $DRIVERS_TOOLS || true
+          rm -rf ${DRIVERS_TOOLS} || true
           rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
@@ -607,7 +570,7 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
             perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
           done
@@ -617,20 +580,20 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
           done
           # Copy client certificate because symlinks do not work on Windows.
-          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
+          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem $MONGO_ORCHESTRATION_HOME/lib/client.pem
 
   "make files executable":
     - command: shell.exec
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
           done
@@ -640,7 +603,7 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
   "install dependencies":
@@ -648,7 +611,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
@@ -679,10 +642,10 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
+          CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
@@ -691,7 +654,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -704,7 +667,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -719,7 +682,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -732,7 +695,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -774,7 +737,7 @@ functions:
       params:
         shell: "bash"
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
           if [ -f "./aws_e2e_setup.json" ]; then
             . ./activate-authawsvenv.sh
@@ -794,7 +757,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
 
   "attach benchmark test results":
@@ -1889,7 +1852,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            ${PREPARE_SHELL}
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
@@ -1906,7 +1869,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            ${PREPARE_SHELL}
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
@@ -1974,7 +1937,7 @@ tasks:
             working_dir: "src"
             shell: "bash"
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
               SKIP_SERVERS=1 bash ./.evergreen/setup-encryption.sh
@@ -2051,7 +2014,7 @@ tasks:
             shell: "bash"
             working_dir: src
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               set -x
               export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
               export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
@@ -2067,7 +2030,7 @@ tasks:
             shell: "bash"
             working_dir: src
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               set -x
               export BASE_SHA=${revision}
               export HEAD_SHA=${github_commit}
