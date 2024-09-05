@@ -1180,14 +1180,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # TODO: Remove in https://jira.mongodb.org/browse/PYTHON-4731
         try:
             if not self._closed:
+                if _IS_SYNC:
+                    msg = (
+                        f"Unclosed {type(self)}. "
+                        f"Call {type(self)}.close() to safely shut down your client and free up resources."
+                    )
+                else:
+                    msg = (
+                        f"Unclosed {type(self)}. "
+                        f"Call await {type(self)}.close() to safely shut down your client and free up resources."
+                    )
                 warnings.warn(
-                    f"Unclosed {self}",
+                    msg,
                     ResourceWarning,
                     stacklevel=2,
                     source=self,
                 )
-            if _IS_SYNC and self._opened:
-                self.close()  # type: ignore[unused-coroutine]
         except AttributeError:
             pass
 
