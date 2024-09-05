@@ -383,8 +383,6 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
 static PyObject* decode_datetime(PyObject* self, long long millis, const codec_options_t* options){
     PyObject* naive = NULL;
     PyObject* replace = NULL;
-    PyObject* args = NULL;
-    PyObject* kwargs = NULL;
     PyObject* value = NULL;
     struct module_state *state = GETSTATE(self);
     if (!state) {
@@ -490,8 +488,6 @@ static PyObject* decode_datetime(PyObject* self, long long millis, const codec_o
 invalid:
     Py_XDECREF(naive);
     Py_XDECREF(replace);
-    Py_XDECREF(args);
-    Py_XDECREF(kwargs);
     return value;
 }
 
