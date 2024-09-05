@@ -1925,7 +1925,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for log in log_list:
                 if log.module == "ocsp_support":
                     continue
-                data = json_util.loads(log.message)
+                data = json_util.loads(log.getMessage())
                 client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
                 client_to_log[client].append(
                     {
