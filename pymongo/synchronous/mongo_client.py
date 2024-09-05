@@ -1186,7 +1186,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     source=self,
                 )
             if _IS_SYNC and self._opened:
-                self.close()
+                self.close()  # type: ignore[unused-coroutine]
         except AttributeError:
             pass
 
