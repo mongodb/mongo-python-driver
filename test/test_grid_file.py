@@ -21,17 +21,21 @@ import io
 import sys
 import zipfile
 from io import BytesIO
-from test import IntegrationTest, UnitTest, client_context
+from test import (
+    IntegrationTest,
+    UnitTest,
+    client_context,
+    qcheck,
+    unittest,
+)
 
 from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, qcheck, unittest
 from test.utils import EventListener, rs_or_single_client
 
 from bson.objectid import ObjectId
-from gridfs import GridFS
 from gridfs.errors import NoFile
 from gridfs.synchronous.grid_file import (
     _SEEK_CUR,
@@ -43,7 +47,7 @@ from gridfs.synchronous.grid_file import (
     GridOutCursor,
 )
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, InvalidOperation, ServerSelectionTimeoutError
+from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.helpers import iter, next
 
@@ -405,8 +409,6 @@ class TestGridFile(IntegrationTest):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(random_string, g.read())
 
-    # TODO: https://jira.mongodb.org/browse/PYTHON-4708
-    @client_context.require_sync
     def test_small_chunks(self):
         self.files = 0
         self.chunks = 0
