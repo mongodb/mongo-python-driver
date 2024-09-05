@@ -21,17 +21,21 @@ import io
 import sys
 import zipfile
 from io import BytesIO
-from test.asynchronous import AsyncIntegrationTest, AsyncUnitTest, async_client_context
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncUnitTest,
+    async_client_context,
+    qcheck,
+    unittest,
+)
 
 from pymongo.asynchronous.database import AsyncDatabase
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, qcheck, unittest
-from test.utils import EventListener, async_rs_or_single_client, rs_or_single_client
+from test.utils import EventListener, async_rs_or_single_client
 
 from bson.objectid import ObjectId
-from gridfs import GridFS
 from gridfs.asynchronous.grid_file import (
     _SEEK_CUR,
     _SEEK_END,
@@ -44,7 +48,7 @@ from gridfs.asynchronous.grid_file import (
 from gridfs.errors import NoFile
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.helpers import aiter, anext
-from pymongo.errors import ConfigurationError, InvalidOperation, ServerSelectionTimeoutError
+from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 
 _IS_SYNC = False
@@ -407,8 +411,6 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         g = AsyncGridOut(self.db.fs, f._id)
         self.assertEqual(random_string, await g.read())
 
-    # TODO: https://jira.mongodb.org/browse/PYTHON-4708
-    @async_client_context.require_sync
     async def test_small_chunks(self):
         self.files = 0
         self.chunks = 0
@@ -431,7 +433,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
             self.assertEqual(data, await g.read(10) + await g.read(10))
             return True
 
-        qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
+        await qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
 
     async def test_seek(self):
         f = AsyncGridIn(self.db.fs, chunkSize=3)
