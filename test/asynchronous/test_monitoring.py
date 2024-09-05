@@ -1113,7 +1113,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             {"nonce": "e474f4561c5eb40b", "ok": 1.0},
             "getnonce",
             12345,
-            self.client.address,  # type: ignore[arg-type]
+            await self.client.address,  # type: ignore[arg-type]
             None,
             database_name="pymongo_test",
         )
