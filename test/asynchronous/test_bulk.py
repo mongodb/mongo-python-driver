@@ -976,6 +976,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         finally:
             await self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
 
+    @async_client_context.require_version_max(7, 1)  # PYTHON-4560
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_ordered(self):
@@ -1055,6 +1056,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         failed = details["writeErrors"][0]
         self.assertTrue("duplicate" in failed["errmsg"])
 
+    @async_client_context.require_version_max(7, 1)  # PYTHON-4560
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_unordered(self):
