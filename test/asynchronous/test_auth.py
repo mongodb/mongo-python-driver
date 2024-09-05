@@ -338,19 +338,19 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
 
 class TestSCRAMSHA1(AsyncIntegrationTest):
     @async_client_context.require_auth
-    def asyncSetUp(self):
-        super().asyncSetUp()
-        async_client_context.create_user(
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await async_client_context.create_user(
             "pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"]
         )
 
-    def asyncTearDown(self):
-        async_client_context.drop_user("pymongo_test", "user")
-        super().asyncTearDown()
+    async def asyncTearDown(self):
+        await async_client_context.drop_user("pymongo_test", "user")
+        await super().asyncTearDown()
 
     @async_client_context.require_no_fips
     async def test_scram_sha1(self):
-        host, port = async_client_context.host, async_client_context.port
+        host, port = await async_client_context.host, await async_client_context.port
 
         client = await async_rs_or_single_client_noauth(
             "mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1" % (host, port)
@@ -373,8 +373,8 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
 class TestSCRAM(AsyncIntegrationTest):
     @async_client_context.require_auth
     @async_client_context.require_version_min(3, 7, 2)
-    def asyncSetUp(self):
-        super().asyncSetUp()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
         monitoring._SENSITIVE_COMMANDS = set()
         self.listener = AllowListEventListener("saslStart")
@@ -383,7 +383,7 @@ class TestSCRAM(AsyncIntegrationTest):
         monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
         await async_client_context.client.testscram.command("dropAllUsersFromDatabase")
         await async_client_context.client.drop_database("testscram")
-        super().asyncTearDown()
+        await super().asyncTearDown()
 
     async def test_scram_skip_empty_exchange(self):
         listener = AllowListEventListener("saslStart", "saslContinue")
@@ -491,7 +491,7 @@ class TestSCRAM(AsyncIntegrationTest):
             await client.testscram.command("dbstats")
 
         if async_client_context.is_rs:
-            host, port = async_client_context.host, async_client_context.port
+            host, port = await async_client_context.host, await async_client_context.port
             uri = "mongodb://both:pwd@%s:%d/testscram?replicaSet=%s" % (
                 host,
                 port,
@@ -505,7 +505,7 @@ class TestSCRAM(AsyncIntegrationTest):
     @unittest.skipUnless(HAVE_STRINGPREP, "Cannot test without stringprep")
     async def test_scram_saslprep(self):
         # Step 4: test SASLprep
-        host, port = async_client_context.host, async_client_context.port
+        host, port = await async_client_context.host, await async_client_context.port
         # Test the use of SASLprep on passwords. For example,
         # saslprep('\u2136') becomes 'IV' and saslprep('I\u00ADX')
         # becomes 'IX'. SASLprep is only supported when the standard
@@ -611,19 +611,21 @@ class TestSCRAM(AsyncIntegrationTest):
 
 class TestAuthURIOptions(AsyncIntegrationTest):
     @async_client_context.require_auth
-    def asyncSetUp(self):
-        super().asyncSetUp()
-        async_client_context.create_user("admin", "admin", "pass")
-        async_client_context.create_user("pymongo_test", "user", "pass", ["userAdmin", "readWrite"])
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await async_client_context.create_user("admin", "admin", "pass")
+        await async_client_context.create_user(
+            "pymongo_test", "user", "pass", ["userAdmin", "readWrite"]
+        )
 
-    def asyncTearDown(self):
-        async_client_context.drop_user("pymongo_test", "user")
-        async_client_context.drop_user("admin", "admin")
-        super().asyncTearDown()
+    async def asyncTearDown(self):
+        await async_client_context.drop_user("pymongo_test", "user")
+        await async_client_context.drop_user("admin", "admin")
+        await super().asyncTearDown()
 
     async def test_uri_options(self):
         # Test default to admin
-        host, port = async_client_context.host, async_client_context.port
+        host, port = await async_client_context.host, await async_client_context.port
         client = await async_rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
         self.assertTrue(await client.admin.command("dbstats"))
 
