@@ -29,11 +29,9 @@ from test.utils import (
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    SpecTestCreator,
     rs_or_single_client,
     set_fail_point,
 )
-from test.utils_spec_runner import SpecRunner
 from test.version import Version
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -65,9 +63,6 @@ from pymongo.operations import (
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
-# Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
-
 
 class InsertEventListener(EventListener):
     def succeeded(self, event: CommandSucceededEvent) -> None:
@@ -87,44 +82,6 @@ class InsertEventListener(EventListener):
                     },
                 }
             )
-
-
-class TestAllScenarios(SpecRunner):
-    RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
-
-    def get_object_name(self, op):
-        return op.get("object", "collection")
-
-    def get_scenario_db_name(self, scenario_def):
-        return scenario_def.get("database_name", "pymongo_test")
-
-    def get_scenario_coll_name(self, scenario_def):
-        return scenario_def.get("collection_name", "test")
-
-    def run_test_ops(self, sessions, collection, test):
-        # Transform retryable writes spec format into transactions.
-        operation = test["operation"]
-        outcome = test["outcome"]
-        if "error" in outcome:
-            operation["error"] = outcome["error"]
-        if "result" in outcome:
-            operation["result"] = outcome["result"]
-        test["operations"] = [operation]
-        super().run_test_ops(sessions, collection, test)
-
-
-def create_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    @client_context.require_no_mmap
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = SpecTestCreator(create_test, TestAllScenarios, _TEST_PATH)
-test_creator.create_tests()
 
 
 def retryable_single_statement_ops(coll):

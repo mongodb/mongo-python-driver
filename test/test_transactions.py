@@ -23,14 +23,13 @@ from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
     rs_client,
     single_client,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner
 from typing import List
 
 from bson import encode
@@ -54,8 +53,6 @@ from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
-_TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
-
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
 # 50 attempts yields a one in a quadrillion chance of a false positive
@@ -63,31 +60,7 @@ _TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TransactionsBase(SpecRunner):
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        if client_context.supports_transactions():
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
-
-    @classmethod
-    def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
-
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        if (
-            "secondary" in self.id()
-            and not client_context.is_mongos
-            and not client_context.has_secondaries
-        ):
-            raise unittest.SkipTest("No secondaries")
-
-
-class TestTransactions(TransactionsBase):
+class TestTransactions(IntegrationTest):
     RUN_ON_SERVERLESS = True
 
     @client_context.require_transactions
@@ -417,7 +390,7 @@ class PatchSessionTimeout:
         client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
-class TestTransactionsConvenientAPI(TransactionsBase):
+class TestTransactionsConvenientAPI(IntegrationTest):
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
         class _MyException(Exception):
