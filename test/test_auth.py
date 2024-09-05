@@ -332,8 +332,10 @@ class TestSASLPlain(unittest.TestCase):
         bad_user = MongoClient(auth_string("not-user", SASL_PASS))
         bad_pwd = MongoClient(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, "ping")
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, "ping")
+        with self.assertRaises(OperationFailure):
+            bad_user.admin.command("ping")
+        with self.assertRaises(OperationFailure):
+            bad_pwd.admin.command("ping")
 
 
 class TestSCRAMSHA1(IntegrationTest):
@@ -642,7 +644,8 @@ class TestAuthURIOptions(IntegrationTest):
                 client_context.replica_set_name,
             )
             client = single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                client.admin.command("dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))
@@ -650,7 +653,8 @@ class TestAuthURIOptions(IntegrationTest):
         # Test authSource
         uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
         client = rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            client.pymongo_test2.command("dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
         if client_context.is_rs:
@@ -659,7 +663,8 @@ class TestAuthURIOptions(IntegrationTest):
                 "%s;authSource=pymongo_test" % (host, port, client_context.replica_set_name)
             )
             client = single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                client.pymongo_test2.command("dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))

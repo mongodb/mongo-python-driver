@@ -332,8 +332,10 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
         bad_user = AsyncMongoClient(auth_string("not-user", SASL_PASS))
         bad_pwd = AsyncMongoClient(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, "ping")
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, "ping")
+        with self.assertRaises(OperationFailure):
+            await bad_user.admin.command("ping")
+        with self.assertRaises(OperationFailure):
+            await bad_pwd.admin.command("ping")
 
 
 class TestSCRAMSHA1(AsyncIntegrationTest):
@@ -654,7 +656,8 @@ class TestAuthURIOptions(AsyncIntegrationTest):
                 async_client_context.replica_set_name,
             )
             client = await async_single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                await client.admin.command("dbstats")
             self.assertTrue(await client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(await db.command("dbstats"))
@@ -662,7 +665,8 @@ class TestAuthURIOptions(AsyncIntegrationTest):
         # Test authSource
         uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
         client = await async_rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            await client.pymongo_test2.command("dbstats")
         self.assertTrue(await client.pymongo_test.command("dbstats"))
 
         if async_client_context.is_rs:
@@ -671,7 +675,8 @@ class TestAuthURIOptions(AsyncIntegrationTest):
                 "%s;authSource=pymongo_test" % (host, port, async_client_context.replica_set_name)
             )
             client = await async_single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                await client.pymongo_test2.command("dbstats")
             self.assertTrue(await client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(await db.command("dbstats"))
