@@ -29,6 +29,8 @@ from test.unified_format import generate_test_classes
 from pymongo import MongoClient
 from pymongo.synchronous.auth_oidc import OIDCCallback
 
+_IS_SYNC = True
+
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 

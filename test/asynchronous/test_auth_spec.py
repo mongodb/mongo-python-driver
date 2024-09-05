@@ -29,6 +29,8 @@ from test.unified_format import generate_test_classes
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.auth_oidc import OIDCCallback
 
+_IS_SYNC = False
+
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 
