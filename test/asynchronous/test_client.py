@@ -617,7 +617,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 mock_get_hosts.return_value = [(host, 1)]
                 AsyncMongoClient(host)
             AsyncMongoClient(multi_host)
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
+            logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
     @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
