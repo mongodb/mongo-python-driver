@@ -406,7 +406,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_not_primary_error(self):
-        address = await anext(aiter(await async_client_context.client.secondaries))
+        address = next(iter(await async_client_context.client.secondaries))
         client = await async_single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         await client.admin.command("ping")
