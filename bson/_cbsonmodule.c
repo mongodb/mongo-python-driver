@@ -387,6 +387,9 @@ static PyObject* decode_datetime(PyObject* self, long long millis, const codec_o
     PyObject* kwargs = NULL;
     PyObject* value = NULL;
     struct module_state *state = GETSTATE(self);
+    if (!state) {
+        goto invalid;
+    }
     if (options->datetime_conversion == DATETIME_MS){
         return datetime_ms_from_millis(self, millis);
     }
@@ -414,8 +417,8 @@ static PyObject* decode_datetime(PyObject* self, long long millis, const codec_o
                     Py_DECREF(utcoffset);
                     return 0;
                 }
-                min_millis_offset = (PyDateTime_DELTA_GET_DAYS(utcoffset) * 86400 +
-                                     PyDateTime_DELTA_GET_SECONDS(utcoffset)) * 1000 +
+                min_millis_offset = (PyDateTime_DELTA_GET_DAYS(utcoffset) * (int64_t)86400 +
+                                     PyDateTime_DELTA_GET_SECONDS(utcoffset)) * (int64_t)1000 +
                                      (PyDateTime_DELTA_GET_MICROSECONDS(utcoffset) / 1000);
             }
             Py_DECREF(utcoffset);
@@ -433,8 +436,8 @@ static PyObject* decode_datetime(PyObject* self, long long millis, const codec_o
                     Py_DECREF(utcoffset);
                     return 0;
                 }
-                max_millis_offset = (PyDateTime_DELTA_GET_DAYS(utcoffset) * 86400 +
-                                     PyDateTime_DELTA_GET_SECONDS(utcoffset)) * 1000 +
+                max_millis_offset = (PyDateTime_DELTA_GET_DAYS(utcoffset) * (int64_t)86400 +
+                                     PyDateTime_DELTA_GET_SECONDS(utcoffset)) * (int64_t)1000 +
                                      (PyDateTime_DELTA_GET_MICROSECONDS(utcoffset) / 1000);
             }
             Py_DECREF(utcoffset);
