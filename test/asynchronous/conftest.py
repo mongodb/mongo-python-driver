@@ -18,7 +18,7 @@ def event_loop_policy():
     # We explicitly use a different loop implementation here to prevent that issue
     if sys.platform == "win32":
         # Needed for Python 3.8.
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         return asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
 
     return asyncio.get_event_loop_policy()
