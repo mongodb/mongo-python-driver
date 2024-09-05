@@ -26,8 +26,8 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils import (
     async_rs_or_single_client_noauth,
+    async_single_client,
     async_wait_until,
-    single_client,
 )
 
 from bson.binary import Binary, UuidRepresentation
@@ -817,7 +817,7 @@ class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
             roles=[],
         )
 
-        async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
+        await async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
 
     async def asyncTearDown(self):
         await self.db.command("dropRole", "noremove")
@@ -919,7 +919,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         with self.assertRaises(OperationFailure):
             await coll.bulk_write([InsertOne({"x": 1})])
 
@@ -930,7 +930,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         requests = [
             InsertOne({"x": 1}),
             ReplaceOne({"x": 2}, {"x": 2}, upsert=True),
@@ -954,7 +954,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
                 if member != (await async_client_context.hello)["primary"]:
-                    cls.secondary = single_client(*partition_node(member))
+                    cls.secondary = await async_single_client(*partition_node(member))
                     break
 
     @classmethod
