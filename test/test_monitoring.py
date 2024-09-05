@@ -185,7 +185,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(cursor.to_list())
 
     def test_find_with_explain(self):
         cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
@@ -244,7 +244,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(self.client.address, succeeded.connection_id)
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(cursor.to_list())
 
     def test_find_options(self):
         query = {

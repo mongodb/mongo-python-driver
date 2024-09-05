@@ -187,7 +187,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(await cursor.to_list())
 
     async def test_find_with_explain(self):
         cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
@@ -246,7 +246,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(await self.client.address, succeeded.connection_id)
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(await cursor.to_list())
 
     async def test_find_options(self):
         query = {
@@ -405,7 +405,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_not_primary_error(self):
-        address = await anext(iter(async_client_context.client.secondaries))
+        address = await anext(aiter(async_client_context.client.secondaries))
         client = await async_single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         await client.admin.command("ping")
