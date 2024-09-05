@@ -1106,7 +1106,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
         self.listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address, None)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, await self.client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
