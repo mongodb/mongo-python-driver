@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import warnings
 import weakref
 from collections import defaultdict
 from typing import (
@@ -863,6 +864,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._opened = False
+        self._closed = False
         self._init_background()
 
         if _IS_SYNC and connect:
@@ -1171,6 +1173,22 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param name: the name of the database to get
         """
         return database.Database(self, name)
+
+    def __del__(self) -> None:
+        """Check that this MongoClient has been closed and issue a warning if not."""
+        # TODO: Remove in https://jira.mongodb.org/browse/PYTHON-4731
+        try:
+            if not self._closed:
+                warnings.warn(
+                    f"Unclosed {self}",
+                    ResourceWarning,
+                    stacklevel=2,
+                    source=self,
+                )
+            if _IS_SYNC and self._opened:
+                self.close()
+        except AttributeError:
+            pass
 
     def _close_cursor_soon(
         self,
@@ -1535,6 +1553,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
+        self._closed = True
 
     if not _IS_SYNC:
         # Add support for contextlib.closing.
