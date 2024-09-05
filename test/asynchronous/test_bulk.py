@@ -26,8 +26,8 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils import (
     async_rs_or_single_client_noauth,
+    async_single_client,
     async_wait_until,
-    single_client,
 )
 
 from bson.binary import Binary, UuidRepresentation
@@ -954,7 +954,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
                 if member != (await async_client_context.hello)["primary"]:
-                    cls.secondary = single_client(*partition_node(member))
+                    cls.secondary = await async_single_client(*partition_node(member))
                     break
 
     @classmethod
