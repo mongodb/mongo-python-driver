@@ -70,8 +70,13 @@ def _handle_reauth(func: F) -> F:
 
 if sys.version_info >= (3, 10):
     next = builtins.next
+    iter = builtins.iter
 else:
 
     def next(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
         return cls.__next__()
+
+    def iter(cls: Any) -> Any:
+        """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
+        return cls.__iter__()

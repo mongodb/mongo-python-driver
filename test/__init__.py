@@ -569,7 +569,10 @@ class ClientContext:
         def sec_count():
             return 0 if not self.client else len(self.client.secondaries)
 
-        return self._require(lambda: sec_count() >= count, "Not enough secondaries available")
+        def check():
+            return sec_count() >= count
+
+        return self._require(check, "Not enough secondaries available")
 
     @property
     def supports_secondary_read_pref(self):
@@ -947,11 +950,11 @@ class UnitTest(PyMongoTestCase):
 
     @classmethod
     def _setup_class(cls):
-        cls._setup_class()
+        pass
 
     @classmethod
     def _tearDown_class(cls):
-        cls._tearDown_class()
+        pass
 
 
 class IntegrationTest(PyMongoTestCase):

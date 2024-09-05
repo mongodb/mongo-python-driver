@@ -1925,7 +1925,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for log in log_list:
                 if log.module == "ocsp_support":
                     continue
-                data = json_util.loads(log.message)
+                data = json_util.loads(log.getMessage())
                 client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
                 client_to_log[client].append(
                     {
@@ -1954,7 +1954,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
                 if client.get("ignoreExtraMessages", False):
                     actual_logs = actual_logs[: len(client["messages"])]
-                self.assertEqual(len(client["messages"]), len(actual_logs))
+                self.assertEqual(
+                    len(client["messages"]),
+                    len(actual_logs),
+                    f"expected {client['messages']} but got {actual_logs}",
+                )
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
 

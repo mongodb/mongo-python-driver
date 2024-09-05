@@ -281,6 +281,7 @@ class _AsyncBulk:
                 )
             if bwc.publish:
                 bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
+            await client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         except Exception as exc:
             duration = datetime.datetime.now() - bwc.start_time
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -308,6 +309,9 @@ class _AsyncBulk:
 
             if bwc.publish:
                 bwc._fail(request_id, failure, duration)
+            # Process the response from the server.
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                await client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             raise
         finally:
             bwc.start_time = datetime.datetime.now()
@@ -449,7 +453,6 @@ class _AsyncBulk:
         else:
             request_id, msg, to_send = bwc.batch_command(cmd, ops)
             result = await self.write_command(bwc, cmd, request_id, msg, to_send, client)  # type: ignore[arg-type]
-        await client._process_response(result, bwc.session)  # type: ignore[arg-type]
 
         return result, to_send  # type: ignore[return-value]
 

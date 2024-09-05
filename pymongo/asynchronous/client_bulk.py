@@ -283,6 +283,8 @@ class _AsyncClientBulk:
                 )
             if bwc.publish:
                 bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
+            # Process the response from the server.
+            await self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         except Exception as exc:
             duration = datetime.datetime.now() - bwc.start_time
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -312,6 +314,11 @@ class _AsyncClientBulk:
                 bwc._fail(request_id, failure, duration)
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
+            # Process the response from the server.
+            if isinstance(exc, OperationFailure):
+                await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+            else:
+                await self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
         finally:
             bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
@@ -431,7 +438,6 @@ class _AsyncClientBulk:
         result = await self.write_command(
             bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client
         )  # type: ignore[arg-type]
-        await self.client._process_response(result, bwc.session)  # type: ignore[arg-type]
         return result, to_send_ops, to_send_ns  # type: ignore[return-value]
 
     async def _process_results_cursor(
