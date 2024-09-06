@@ -43,7 +43,8 @@ PyMongo 4.9 brings a number of improvements including:
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
   :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
 - The default value for ``connect`` in ``MongoClient`` is changed to ``False`` when running on
-  Function-as-a-service (FaaS).  On some FaaS systems, there is a ``fork()`` operation at function
+  unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
+  On some FaaS systems, there is a ``fork()`` operation at function
   startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
   `Is PyMongo Fork-Safe`_ for more information.
 

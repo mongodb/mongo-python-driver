@@ -719,6 +719,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.7
             Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
+
+        .. versionchanged:: 4.9
+            The default value of ``connect`` is changed to ``False`` when running in a
+            Function-as-a-service environment.
         """
         doc_class = document_class or dict
         self._init_kwargs: dict[str, Any] = {
