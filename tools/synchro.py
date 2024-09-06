@@ -108,7 +108,8 @@ replacements = {
 docstring_replacements: dict[tuple[str, str], str] = {
     ("MongoClient", "connect"): """If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
-            on the first operation.""",
+            on the first operation.  The default value is ``False`` when
+            running in a Function-as-a-service environment.""",
     ("Collection", "create"): """If ``True``, force collection
             creation even without options being set.""",
     ("Collection", "session"): """A
