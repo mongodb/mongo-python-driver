@@ -20,7 +20,6 @@ import pprint
 import sys
 import threading
 
-from bson import SON
 from pymongo.errors import AutoReconnect
 
 sys.path[0:0] = [""]
@@ -46,7 +45,6 @@ from pymongo.monitoring import (
     PoolClearedEvent,
 )
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")

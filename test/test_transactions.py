@@ -15,7 +15,6 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
-import os
 import sys
 from io import BytesIO
 
@@ -391,6 +390,30 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(IntegrationTest):
+    @classmethod
+    def _setup_class(cls):
+        super()._setup_class()
+        cls.mongos_clients = []
+        if client_context.supports_transactions():
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+
+    @classmethod
+    def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super()._tearDown_class()
+
+    def _set_fail_point(self, client, command_args):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
+    def set_fail_point(self, command_args):
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            self._set_fail_point(client, command_args)
+
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
         class _MyException(Exception):
