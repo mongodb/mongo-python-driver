@@ -624,4 +624,4 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
         for event in listener.started_events:
             if event.command_name == "bulkWrite":
                 bulk_write_events.append(event)
-        # self.assertEqual(len(bulk_write_events), 2)
+        self.assertEqual(len(bulk_write_events), 2)

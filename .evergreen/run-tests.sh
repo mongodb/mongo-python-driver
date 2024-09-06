@@ -253,7 +253,6 @@ PIP_QUIET=0 python -m pip list
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    TEST_ARGS="$TEST_ARGS -k test_timeout_in_multi_batch_bulk_write"
     if [ -z "$TEST_SUITES" ]; then
       python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
     else
