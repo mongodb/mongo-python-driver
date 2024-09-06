@@ -435,7 +435,7 @@ functions:
           rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         args:
           - src/.evergreen/scripts/fix-absolute-paths.sh
