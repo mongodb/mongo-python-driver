@@ -284,14 +284,67 @@ functions:
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
 
   "run tests":
-    - command: subprocess.exec
+    - command: shell.exec
       type: test
       params:
         include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-tests.sh
+        shell: bash
+        script: |
+          # Disable xtrace
+          set +x
+          . .evergreen/scripts/env.sh
+          if [ -n "${MONGODB_STARTED}" ]; then
+            export PYMONGO_MUST_CONNECT=true
+          fi
+          if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
+            export PYMONGO_DISABLE_TEST_COMMANDS=1
+          fi
+          if [ -n "${test_encryption}" ]; then
+            # Disable xtrace (just in case it was accidentally set).
+            set +x
+            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
+            export TEST_ENCRYPTION=1
+            if [ -n "${test_encryption_pyopenssl}" ]; then
+              export TEST_ENCRYPTION_PYOPENSSL=1
+            fi
+          fi
+          if [ -n "${test_crypt_shared}" ]; then
+            export TEST_CRYPT_SHARED=1
+            export CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH}
+          fi
+          if [ -n "${test_pyopenssl}" ]; then
+            export TEST_PYOPENSSL=1
+          fi
+          if [ -n "${SETDEFAULTENCODING}" ]; then
+            export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
+          fi
+          if [ -n "${test_loadbalancer}" ]; then
+            export TEST_LOADBALANCER=1
+            export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
+            export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
+          fi
+          if [ -n "${test_serverless}" ]; then
+            export TEST_SERVERLESS=1
+          fi
+          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+            export TEST_INDEX_MANAGEMENT=1
+          fi
+          if [ -n "${SKIP_CSOT_TESTS}" ]; then
+            export SKIP_CSOT_TESTS=1
+          fi
+
+          GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
+            NO_EXT=${NO_EXT} \
+            COVERAGE=${COVERAGE} \
+            COMPRESSORS=${COMPRESSORS} \
+            AUTH=${AUTH} \
+            SSL=${SSL} \
+            TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+            MONGODB_API_VERSION=${MONGODB_API_VERSION} \
+            SKIP_HATCH=${SKIP_HATCH} \
+            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -430,7 +483,9 @@ functions:
         working_dir: "src"
         script: |
           . .evergreen/scripts/env.sh
-          . .evergreen/hatch.sh encryption:teardown
+          if [ -f $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh ]; then
+            . .evergreen/hatch.sh encryption:teardown
+          fi
           rm -rf ${DRIVERS_TOOLS} || true
           rm -f ./secrets-export.sh || true
 
@@ -1931,10 +1986,14 @@ axes:
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
         batchtime: 10080  # 7 days
+        variables:
+          SKIP_HATCH: true
       - id: rhel81-power8
         display_name: "RHEL 8.1 (POWER8)"
         run_on: rhel81-power8-small
         batchtime: 10080  # 7 days
+        variables:
+          SKIP_HATCH: true
       - id: rhel82-arm64
         display_name: "RHEL 8.2 (ARM64)"
         run_on: rhel82-arm64-small

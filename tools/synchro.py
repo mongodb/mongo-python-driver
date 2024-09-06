@@ -172,6 +172,7 @@ converted_tests = [
     "test_session.py",
     "test_transactions.py",
     "test_client_context.py",
+    "test_monitoring.py",
 ]
 
 sync_test_files = [
