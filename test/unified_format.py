@@ -1102,9 +1102,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
-            if (
-                "retryable-writes" in cls.TEST_SPEC["description"]
-                or "retryable_writes" in cls.TEST_PATH
+            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
+                cls.TEST_PATH
             ):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
