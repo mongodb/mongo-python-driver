@@ -74,4 +74,6 @@ def _throw_client_bulk_write_exception(
                 "to your connection string."
             )
             raise OperationFailure(errmsg, code, full_result)
+    if isinstance(full_result["error"], BaseException):
+        raise ClientBulkWriteException(full_result, verbose_results) from full_result["error"]
     raise ClientBulkWriteException(full_result, verbose_results)
