@@ -616,8 +616,6 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
             await client.admin.command("ping")  # Init the client first.
             with self.assertRaises(ClientBulkWriteException) as context:
                 await client.bulk_write(models=models)
-            if not isinstance(context.exception.error, NetworkTimeout):
-                raise context.exception.error
             self.assertIsInstance(context.exception.error, NetworkTimeout)
 
         bulk_write_events = []
