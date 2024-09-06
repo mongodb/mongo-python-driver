@@ -285,6 +285,17 @@ functions:
 
   "run tests":
     - command: shell.exec
+      params:
+        working_dir: "src"
+        shell: bash
+        background: true
+        include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        script: |
+          . .evergreen/scripts/env.sh
+          if [ -n "${test_encryption}" ]; then
+            ./.evergreen/hatch.sh encryption:setup
+          fi
+    - command: shell.exec
       type: test
       params:
         include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
