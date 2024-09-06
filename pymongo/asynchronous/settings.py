@@ -82,7 +82,7 @@ class TopologySettings:
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
         # test suite.
-        self._stack = "".join(traceback.format_stack())
+        self._stack = "".join(traceback.format_stack()[:-2])
 
     @property
     def seeds(self) -> Collection[tuple[str, int]]:
