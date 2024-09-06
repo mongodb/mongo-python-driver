@@ -215,6 +215,8 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
     @ignore_deprecations
     async def test_gssapi_threaded(self):
+        if not _IS_SYNC:
+            return
         client = AsyncMongoClient(
             GSSAPI_HOST,
             GSSAPI_PORT,
@@ -602,6 +604,8 @@ class TestSCRAM(AsyncIntegrationTest):
         self.assertIsInstance(iterations, int)
 
     async def test_scram_threaded(self):
+        if not _IS_SYNC:
+            return
         coll = async_client_context.client.db.test
         await coll.drop()
         await coll.insert_one({"_id": 1})
