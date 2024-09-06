@@ -74,6 +74,7 @@ addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-resul
 testpaths = ["test"]
 log_cli_level = "INFO"
 faulthandler_timeout = 1500
+asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true
 filterwarnings = [
     "error",

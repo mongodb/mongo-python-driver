@@ -159,6 +159,8 @@ converted_tests = [
     "conftest.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
+    "qcheck.py",
+    "test_auth_spec.py",
     "test_bulk.py",
     "test_client.py",
     "test_client_bulk_write.py",
@@ -171,6 +173,7 @@ converted_tests = [
     "test_session.py",
     "test_transactions.py",
     "test_client_context.py",
+    "test_monitoring.py",
 ]
 
 sync_test_files = [

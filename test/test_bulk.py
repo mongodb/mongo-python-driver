@@ -974,6 +974,7 @@ class TestBulkWriteConcern(BulkTestBase):
         finally:
             self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
 
+    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
@@ -1053,6 +1054,7 @@ class TestBulkWriteConcern(BulkTestBase):
         failed = details["writeErrors"][0]
         self.assertTrue("duplicate" in failed["errmsg"])
 
+    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_unordered(self):
