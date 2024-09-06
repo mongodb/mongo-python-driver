@@ -42,6 +42,8 @@ PyMongo 4.9 brings a number of improvements including:
 - Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
   :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
+- Added a warning to unclosed MongoClient instances
+  telling users to explicitly close clients when finished with them to avoid leaking resources .
 
 Issues Resolved
 ...............
