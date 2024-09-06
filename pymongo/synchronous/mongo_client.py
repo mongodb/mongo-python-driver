@@ -263,7 +263,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             aware (otherwise they will be naive)
         :param connect: If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
-            on the first operation.
+            on the first operation.  The default value is ``False`` when
+            running in a Function-as-a-service environment.
         :param type_registry: instance of
             :class:`~bson.codec_options.TypeRegistry` to enable encoding
             and decoding of custom types.
