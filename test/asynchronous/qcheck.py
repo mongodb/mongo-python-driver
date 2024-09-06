@@ -25,7 +25,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 gen_target = 100
 reduction_attempts = 10
@@ -214,36 +214,36 @@ def simplify(case):  # TODO this is a hack
     return (False, case)
 
 
-def reduce(case, predicate, reductions=0):
+async def reduce(case, predicate, reductions=0):
     for _ in range(reduction_attempts):
         (reduced, simplified) = simplify(case)
-        if reduced and not predicate(simplified):
-            return reduce(simplified, predicate, reductions + 1)
+        if reduced and not await predicate(simplified):
+            return await reduce(simplified, predicate, reductions + 1)
     return (reductions, case)
 
 
-def isnt(predicate):
-    def is_not(x):
-        return not predicate(x)
+async def isnt(predicate):
+    async def is_not(x):
+        return not await predicate(x)
 
     return is_not
 
 
-def check(predicate, generator):
+async def check(predicate, generator):
     counter_examples = []
     for _ in range(gen_target):
         case = generator()
         try:
-            if not predicate(case):
-                reduction = reduce(case, predicate)
+            if not await predicate(case):
+                reduction = await reduce(case, predicate)
                 counter_examples.append("after {} reductions: {!r}".format(*reduction))
         except:
             counter_examples.append(f"{case!r} : {traceback.format_exc()}")
     return counter_examples
 
 
-def check_unittest(test, predicate, generator):
-    counter_examples = check(predicate, generator)
+async def check_unittest(test, predicate, generator):
+    counter_examples = await check(predicate, generator)
     if counter_examples:
         failures = len(counter_examples)
         message = "\n".join(["    -> %s" % f for f in counter_examples[:examples]])
