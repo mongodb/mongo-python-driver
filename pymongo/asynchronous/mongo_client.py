@@ -803,7 +803,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if tz_aware is None:
             tz_aware = opts.get("tz_aware", False)
         if connect is None:
-            connect = opts.get("connect", True)
+            # Default to connect=True unless on a FaaS system, which might use fork.
+            from pymongo.pool_options import _is_faas
+
+            connect = opts.get("connect", not _is_faas())
         keyword_opts["tz_aware"] = tz_aware
         keyword_opts["connect"] = connect
 
