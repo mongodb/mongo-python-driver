@@ -15,6 +15,7 @@
 """Authentication Tests."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import threading
@@ -76,8 +77,16 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = False
 
     def run(self):
-        assert self.collection.find_one({"$where": delay(1)}) is not None
-        self.success = True
+        if _IS_SYNC:
+            assert self.collection.find_one({"$where": delay(1)}) is not None
+            self.success = True
+        else:
+
+            def _run_async():
+                assert self.collection.find_one({"$where": delay(1)}) is not None
+                self.success = True
+
+            asyncio.run(_run_async())
 
 
 class TestGSSAPI(unittest.TestCase):
