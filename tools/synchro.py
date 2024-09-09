@@ -161,6 +161,7 @@ converted_tests = [
     "pymongo_mocks.py",
     "utils_spec_runner.py",
     "qcheck.py",
+    "test_auth.py",
     "test_auth_spec.py",
     "test_bulk.py",
     "test_client.py",
