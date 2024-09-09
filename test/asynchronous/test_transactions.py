@@ -15,7 +15,6 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
-import os
 import sys
 from io import BytesIO
 
@@ -23,8 +22,7 @@ from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import async_client_context, unittest
-from test.asynchronous.utils_spec_runner import AsyncSpecRunner
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     OvertCommandListener,
     async_rs_client,
@@ -54,8 +52,6 @@ from pymongo.read_preferences import ReadPreference
 
 _IS_SYNC = False
 
-_TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
-
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
 # 50 attempts yields a one in a quadrillion chance of a false positive
@@ -63,31 +59,7 @@ _TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class AsyncTransactionsBase(AsyncSpecRunner):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        if async_client_context.supports_transactions():
-            for address in async_client_context.mongoses:
-                cls.mongos_clients.append(await async_single_client("{}:{}".format(*address)))
-
-    @classmethod
-    async def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
-
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        if (
-            "secondary" in self.id()
-            and not async_client_context.is_mongos
-            and not async_client_context.has_secondaries
-        ):
-            raise unittest.SkipTest("No secondaries")
-
-
-class TestTransactions(AsyncTransactionsBase):
+class TestTransactions(AsyncIntegrationTest):
     RUN_ON_SERVERLESS = True
 
     @async_client_context.require_transactions
@@ -421,7 +393,31 @@ class PatchSessionTimeout:
         client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
-class TestTransactionsConvenientAPI(AsyncTransactionsBase):
+class TestTransactionsConvenientAPI(AsyncIntegrationTest):
+    @classmethod
+    async def _setup_class(cls):
+        await super()._setup_class()
+        cls.mongos_clients = []
+        if async_client_context.supports_transactions():
+            for address in async_client_context.mongoses:
+                cls.mongos_clients.append(await async_single_client("{}:{}".format(*address)))
+
+    @classmethod
+    async def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            await client.close()
+        await super()._tearDown_class()
+
+    async def _set_fail_point(self, client, command_args):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        await client.admin.command(cmd)
+
+    async def set_fail_point(self, command_args):
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            await self._set_fail_point(client, command_args)
+
     @async_client_context.require_transactions
     async def test_callback_raises_custom_error(self):
         class _MyException(Exception):

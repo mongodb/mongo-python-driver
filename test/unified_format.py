@@ -1100,6 +1100,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
+                cls.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+
         # Handle mongos_clients for transactions tests.
         cls.mongos_clients = []
         if (
@@ -1109,11 +1116,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         ):
             for address in client_context.mongoses:
                 cls.mongos_clients.append(single_client("{}:{}".format(*address)))
-
-        # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"]:
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
@@ -1168,9 +1170,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if "unpin after non-transient error on abort" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -2157,7 +2156,7 @@ def generate_test_classes(
                     raise ValueError(
                         f"test file '{fpath}' has unsupported schemaVersion '{schema_version}'"
                     )
-                module_dict = {"__module__": module}
+                module_dict = {"__module__": module, "TEST_PATH": test_path}
                 module_dict.update(kwargs)
                 test_klasses[class_name] = type(
                     class_name,
