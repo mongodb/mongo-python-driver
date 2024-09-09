@@ -29,6 +29,7 @@ import traceback
 import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
+from test.asynchronous.test_bulk import AsyncBulkTestBase
 from threading import Thread
 from typing import Any, Dict, Mapping
 
@@ -52,7 +53,6 @@ from test.helpers import (
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
 )
-from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
@@ -372,7 +372,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
             await target()
 
 
-class TestEncryptedBulkWrite(BulkTestBase, AsyncEncryptionIntegrationTest):
+class TestEncryptedBulkWrite(AsyncBulkTestBase, AsyncEncryptionIntegrationTest):
     async def test_upsert_uuid_standard_encrypt(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await async_rs_or_single_client(auto_encryption_opts=opts)
