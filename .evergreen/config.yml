@@ -2039,6 +2039,19 @@ tasks:
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
 
+    - name: "backport pr"
+      allowed_requesters: ["commit"]
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
+
 axes:
   # Choice of distro
   - id: platform
@@ -3013,6 +3026,13 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: "check-import-time"
+
+- name: backport-pr
+  display_name: "Backport PR"
+  run_on:
+    - rhel8.7-small
+  tasks:
+    - name: "backport pr"
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
