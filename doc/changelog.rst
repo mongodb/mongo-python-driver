@@ -44,7 +44,7 @@ PyMongo 4.9 brings a number of improvements including:
   :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
 - Added a warning to unclosed MongoClient instances
   telling users to explicitly close clients when finished with them to avoid leaking resources.
-  Here's an example of what the warning looks like:
+  For example:
 
   .. code-block::
 
