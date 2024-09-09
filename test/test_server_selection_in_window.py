@@ -20,12 +20,12 @@ import threading
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    SpecTestCreator,
     get_pool,
     rs_client,
     wait_until,
 )
 from test.utils_selection_tests import create_topology
+from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node
 from pymongo.operations import _Op
