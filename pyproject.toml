@@ -95,6 +95,9 @@ filterwarnings = [
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning:dateutil",
+    # TODO: Remove both of these in https://jira.mongodb.org/browse/PYTHON-4731
+    "ignore:Unclosed AsyncMongoClient*",
+    "ignore:Unclosed MongoClient*",
 ]
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",

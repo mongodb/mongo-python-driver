@@ -42,6 +42,16 @@ PyMongo 4.9 brings a number of improvements including:
 - Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
   :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
+- Added a warning to unclosed MongoClient instances
+  telling users to explicitly close clients when finished with them to avoid leaking resources.
+  For example:
+
+  .. code-block::
+
+    sys:1: ResourceWarning: Unclosed MongoClient opened at:
+        File "/Users/<user>/my_file.py", line 8, in <module>``
+            client = MongoClient()
+    Call MongoClient.close() to safely shut down your client and free up resources.
 - The default value for ``connect`` in ``MongoClient`` is changed to ``False`` when running on
   unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
   On some FaaS systems, there is a ``fork()`` operation at function
