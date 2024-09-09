@@ -29,8 +29,8 @@ import traceback
 import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
-from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from test.test_bulk import BulkTestBase
+from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping
 

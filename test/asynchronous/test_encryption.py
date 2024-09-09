@@ -29,8 +29,8 @@ import traceback
 import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
-from test.asynchronous.utils_spec_runner import AsyncSpecRunner, AsyncSpecTestCreator
 from test.asynchronous.test_bulk import AsyncBulkTestBase
+from test.asynchronous.utils_spec_runner import AsyncSpecRunner, AsyncSpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping
 
