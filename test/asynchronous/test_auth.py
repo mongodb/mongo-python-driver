@@ -77,16 +77,8 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = False
 
     def run(self):
-        if _IS_SYNC:
-            assert self.collection.find_one({"$where": delay(1)}) is not None
-            self.success = True
-        else:
-
-            async def _run_async():
-                assert await self.collection.find_one({"$where": delay(1)}) is not None
-                self.success = True
-
-            asyncio.run(_run_async())
+        assert self.collection.find_one({"$where": delay(1)}) is not None
+        self.success = True
 
 
 class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
