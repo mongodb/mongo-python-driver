@@ -2039,7 +2039,7 @@ tasks:
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
 
-    - name: "backport pr"
+    - name: "backport-pr"
       allowed_requesters: ["commit"]
       commands:
       - command: subprocess.exec
@@ -3032,7 +3032,7 @@ buildvariants:
   run_on:
     - rhel8.7-small
   tasks:
-    - name: "backport pr"
+    - name: "backport-pr"
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
