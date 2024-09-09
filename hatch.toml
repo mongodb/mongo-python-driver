@@ -39,7 +39,7 @@ run-manual = "pre-commit run --all-files --hook-stage manual"
 [envs.test]
 features = ["test"]
 [envs.test.scripts]
-test = "pytest -v --durations=5 --maxfail=10 {args}"
+test = "pytest -v --durations=5 {args}"
 test-eg = "bash ./.evergreen/run-tests.sh {args}"
 test-async = "pytest -v --durations=5 --maxfail=10 -m default_async {args}"
 test-mockupdb = ["pip install -U git+https://github.com/ajdavis/mongo-mockup-db@master", "test -m mockupdb"]

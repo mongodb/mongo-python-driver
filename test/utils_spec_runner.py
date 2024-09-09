@@ -202,7 +202,7 @@ class SpecTestCreator:
         def predicate():
             return self.should_run_on(scenario_def)
 
-        return client_context._require(predicate, "runOn not satisfied", method)
+        return client_context._require(lambda: predicate, "runOn not satisfied", method)
 
     def tests(self, scenario_def):
         """Allow CMAP spec test to override the location of test."""
