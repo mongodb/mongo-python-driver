@@ -29,11 +29,10 @@ from test.utils import (
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    SpecTestCreator,
     rs_or_single_client,
     set_fail_point,
 )
-from test.utils_spec_runner import SpecRunner
+from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from test.version import Version
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS

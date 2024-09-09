@@ -104,6 +104,7 @@ replacements = {
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
     "AsyncTestSpec": "TestSpec",
+    "AsyncSpecTestCreator": "SpecTestCreator",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

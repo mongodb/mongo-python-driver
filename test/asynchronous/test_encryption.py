@@ -29,7 +29,7 @@ import traceback
 import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
-from test.asynchronous.utils_spec_runner import AsyncSpecRunner
+from test.asynchronous.utils_spec_runner import AsyncSpecRunner, AsyncSpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping
 
@@ -58,14 +58,12 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
-    SpecTestCreator,
     TopologyEventListener,
     async_rs_or_single_client,
     async_wait_until,
     camel_to_snake_args,
     is_greenthread_patched,
 )
-from test.utils_spec_runner import SpecRunner
 
 from bson import DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
@@ -718,15 +716,15 @@ class AsyncTestSpec(AsyncSpecRunner):
         return errors
 
 
-def create_test(scenario_def, test, name):
+async def create_test(scenario_def, test, name):
     @async_client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
+    async def run_scenario(self):
+        await self.run_scenario(scenario_def, test)
 
     return run_scenario
 
 
-test_creator = SpecTestCreator(create_test, AsyncTestSpec, os.path.join(SPEC_PATH, "legacy"))
+test_creator = AsyncSpecTestCreator(create_test, AsyncTestSpec, os.path.join(SPEC_PATH, "legacy"))
 test_creator.create_tests()
 
 if _HAVE_PYMONGOCRYPT:

@@ -36,12 +36,11 @@ from test.utils import (
     CMAPListener,
     EventListener,
     OvertCommandListener,
-    SpecTestCreator,
     rs_client,
     rs_or_single_client,
     set_fail_point,
 )
-from test.utils_spec_runner import SpecRunner
+from test.utils_spec_runner import SpecRunner, SpecTestCreator
 
 from pymongo.monitoring import (
     ConnectionCheckedOutEvent,

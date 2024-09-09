@@ -29,7 +29,7 @@ import traceback
 import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
-from test.utils_spec_runner import SpecRunner
+from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping
 
@@ -58,14 +58,12 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
-    SpecTestCreator,
     TopologyEventListener,
     camel_to_snake_args,
     is_greenthread_patched,
     rs_or_single_client,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner
 
 from bson import DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
