@@ -214,9 +214,8 @@ class TestGSSAPI(unittest.TestCase):
             client[GSSAPI_DB].list_collection_names()
 
     @ignore_deprecations
+    @client_context.require_sync
     def test_gssapi_threaded(self):
-        if not _IS_SYNC:
-            return
         client = MongoClient(
             GSSAPI_HOST,
             GSSAPI_PORT,
@@ -593,9 +592,8 @@ class TestSCRAM(IntegrationTest):
         self.assertIsInstance(salt, bytes)
         self.assertIsInstance(iterations, int)
 
+    @client_context.require_sync
     def test_scram_threaded(self):
-        if not _IS_SYNC:
-            return
         coll = client_context.client.db.test
         coll.drop()
         coll.insert_one({"_id": 1})
