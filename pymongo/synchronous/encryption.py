@@ -25,6 +25,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Generator,
     Generic,
     Iterator,
     Mapping,
@@ -36,11 +37,15 @@ from typing import (
 )
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter  # type:ignore[import]
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
-    from pymongocrypt.state_machine import MongoCryptCallback  # type:ignore[import]
+    from pymongocrypt.synchronous.auto_encrypter import AutoEncrypter  # type:ignore[import]
+    from pymongocrypt.synchronous.explicit_encrypter import (  # type:ignore[import]
+        ExplicitEncrypter,
+    )
+    from pymongocrypt.synchronous.state_machine import (  # type:ignore[import]
+        MongoCryptCallback,
+    )
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
@@ -53,11 +58,8 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
-from pymongo.collection import Collection
 from pymongo.common import CONNECT_TIMEOUT
-from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
-from pymongo.database import Database
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
@@ -67,19 +69,26 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-from pymongo.mongo_client import MongoClient
-from pymongo.network import BLOCKING_IO_ERRORS
+from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
 from pymongo.operations import UpdateOne
-from pymongo.pool import PoolOptions, _configured_socket, _raise_connection_failure
+from pymongo.pool_options import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.pool import _configured_socket, _raise_connection_failure
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
+
+
+_IS_SYNC = True
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
@@ -167,7 +176,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _configured_socket((host, port), opts)
             try:
-                conn.sendall(message)
+                sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
@@ -185,9 +194,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
 
-    def collection_info(
-        self, database: Database[Mapping[str, Any]], filter: bytes
-    ) -> Optional[bytes]:
+    def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -241,7 +248,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             )
         return res.raw
 
-    def fetch_keys(self, filter: bytes) -> Iterator[bytes]:
+    def fetch_keys(self, filter: bytes) -> Generator[bytes, None]:
         """Yields one or more keys from the key vault.
 
         :param filter: The filter to pass to find.
@@ -371,13 +378,16 @@ class _Encrypter:
         )
 
         io_callbacks = _EncryptionIO(  # type:ignore[misc]
-            metadata_client, key_vault_coll, mongocryptd_client, opts
+            metadata_client,
+            key_vault_coll,  # type:ignore[arg-type]
+            mongocryptd_client,
+            opts,
         )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
-            MongoCryptOptions(
-                opts._kms_providers,
-                schema_map,
+            _create_mongocrypt_options(
+                kms_providers=opts._kms_providers,
+                schema_map=schema_map,
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
@@ -446,11 +456,15 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.2
     """
-    RANGEPREVIEW = "RangePreview"
-    """RangePreview.
+    RANGE = "Range"
+    """Range.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
+    .. versionadded:: 4.9
+    """
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - RangePreview.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
 
     .. versionadded:: 4.4
     """
@@ -465,12 +479,27 @@ class QueryType(str, enum.Enum):
     EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
 
-    RANGEPREVIEW = "rangePreview"
+    RANGE = "range"
     """Used to encrypt a value for a range query.
 
-    .. note:: Support for Range queries is in beta.
-       Backwards-breaking changes may be made before the final release.
-"""
+    .. versionadded:: 4.9
+    """
+
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
+
+    .. versionadded:: 4.4
+    """
+
+
+def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
+    opts = MongoCryptOptions(**kwargs)
+    # Opt into range V2 encryption.
+    if hasattr(opts, "enable_range_v2"):
+        opts.enable_range_v2 = True
+    return opts
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -559,11 +588,14 @@ class ClientEncryption(Generic[_DocumentType]):
             raise ConfigurationError(
                 "client-side field level encryption requires the pymongocrypt "
                 "library: install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'"
+                "python -m pip install --upgrade 'pymongo[encryption]'"
             )
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
+
+        if not isinstance(key_vault_client, MongoClient):
+            raise TypeError(f"MongoClient required but given {type(key_vault_client)}")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -580,7 +612,8 @@ class ClientEncryption(Generic[_DocumentType]):
             None, key_vault_coll, None, opts
         )
         self._encryption = ExplicitEncrypter(
-            self._io_callbacks, MongoCryptOptions(kms_providers, None)
+            self._io_callbacks,
+            _create_mongocrypt_options(kms_providers=kms_providers, schema_map=None),
         )
         # Use the same key vault collection as the callback.
         assert self._io_callbacks.key_vault_coll is not None
@@ -649,6 +682,11 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
+        if not isinstance(database, Database):
+            raise TypeError(
+                f"create_encrypted_collection() requires a Database but {type(database)} given"
+            )
+
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):
             if isinstance(field, dict) and field.get("keyId") is None:
@@ -724,6 +762,9 @@ class ClientEncryption(Generic[_DocumentType]):
                 Secret Data managed object.
               - `endpoint` (string): Optional. Host with optional
                  port, e.g. "example.vault.azure.net:".
+              - `delegated` (bool): Optional. If True (recommended), the
+                KMIP server will perform encryption and decryption. If
+                delegated is not provided, defaults to false.
 
         :param key_alt_names: An optional list of string alternate
             names used to reference a key. If a key is created with alternate
@@ -826,9 +867,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.9
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
@@ -878,9 +923,13 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-        :param range_opts: Experimental only, not intended for public use.
+        :param range_opts: Index options for `range` queries. See
+            :class:`RangeOpts` for some valid options.
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
+
+        .. versionchanged:: 4.9
+           Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
            ``key_id`` can now be passed in as a :class:`uuid.UUID`.
@@ -963,10 +1012,10 @@ class ClientEncryption(Generic[_DocumentType]):
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to add.
+        :param key_alt_name: The key alternate name to add.
 
         :return: The previous version of the key document.
 
@@ -995,10 +1044,10 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to remove.
+        :param key_alt_name: The key alternate name to remove.
 
         :return: Returns the previous version of the key document.
 
@@ -1037,7 +1086,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,
             or ``None`` to use the current KMS provider(s).
-        :param `master_key`: The master key fields corresponding to the new KMS
+        :param master_key: The master key fields corresponding to the new KMS
             provider when ``provider`` is not ``None``.
 
         :return: A :class:`RewrapManyDataKeyResult`.
