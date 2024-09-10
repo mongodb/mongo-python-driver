@@ -1,6 +1,11 @@
 PyMongo |release| Documentation
 ===============================
 
+.. note:: The PyMongo documentation has been migrated to the
+   `MongoDB Documentation site <https://www.mongodb.com/docs/languages/python/pymongo-driver/current>`_.
+   As of PyMongo 4.10, the ReadTheDocs site will contain the detailed changelog and API docs, while the
+   rest of the documentation will only appear on the MongoDB Documentation site.
+
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
