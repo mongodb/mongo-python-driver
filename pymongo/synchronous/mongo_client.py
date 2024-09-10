@@ -2433,8 +2433,8 @@ class _MongoClientErrorHandler:
     )
 
     def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but given {type(client)}")
+        if not isinstance(client, MongoClient) and type(client).__name__ != "MongoClient":
+            raise TypeError(f"MongoClient required but given {type(client).__name__}")
 
         self.client = client
         self.server_address = server.description.address

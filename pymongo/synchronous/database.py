@@ -124,8 +124,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
-        if not isinstance(client, MongoClient):
-            raise TypeError(f"MongoClient required but given {type(client)}")
+        if not isinstance(client, MongoClient) and type(client).__name__ != "MongoClient":
+            raise TypeError(f"MongoClient required but given {type(client).__name__}")
 
         if name != "$external":
             _check_name(name)

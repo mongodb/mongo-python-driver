@@ -596,8 +596,13 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
-        if not isinstance(key_vault_client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(key_vault_client)}")
+        if (
+            not isinstance(key_vault_client, AsyncMongoClient)
+            and type(key_vault_client).__name__ != "AsyncMongoClient"
+        ):
+            raise TypeError(
+                f"AsyncMongoClient required but given {type(key_vault_client).__name__}"
+            )
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -684,10 +689,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
-        if not isinstance(database, AsyncDatabase):
-            raise TypeError(
-                f"create_encrypted_collection() requires an AsyncDatabase but {type(database)} given"
-            )
+        if not isinstance(database, AsyncDatabase) and type(database).__name__ != "AsyncDatabase":
+            raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):

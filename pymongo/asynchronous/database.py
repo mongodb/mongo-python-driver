@@ -124,8 +124,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
-        if not isinstance(client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(client)}")
+        if not isinstance(client, AsyncMongoClient) and type(client).__name__ != "AsyncMongoClient":
+            raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         if name != "$external":
             _check_name(name)

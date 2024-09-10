@@ -233,8 +233,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("name must be an instance of str")
         from pymongo.synchronous.database import Database
 
-        if not isinstance(database, Database):
-            raise TypeError(f"Collection requires a Database but {type(database)} given")
+        if not isinstance(database, Database) and type(database).__name__ != "Database":
+            raise TypeError(f"Database required but given {type(database).__name__}")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")

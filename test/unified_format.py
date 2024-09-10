@@ -580,7 +580,7 @@ class EntityMapUtil:
             return
         elif entity_type == "database":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -602,7 +602,7 @@ class EntityMapUtil:
             return
         elif entity_type == "session":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -667,7 +667,7 @@ class EntityMapUtil:
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
-        if not isinstance(client, MongoClient):
+        if type(client).__name__ != "MongoClient":
             self.test.fail(
                 f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
