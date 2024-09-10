@@ -2571,7 +2571,7 @@ buildvariants:
   # Only test "noauth" with Python 3.8.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
+    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2677,7 +2677,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
+     python-version: ["pypy3.9", "pypy3.10", "3.13"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
