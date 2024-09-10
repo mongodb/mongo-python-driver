@@ -2039,6 +2039,19 @@ tasks:
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
 
+    - name: "backport-pr"
+      allowed_requesters: ["commit"]
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
+
 axes:
   # Choice of distro
   - id: platform
@@ -2240,6 +2253,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "/opt/python/3.12/bin/python3"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.13/bin/python3"
       - id: "pypy3.9"
         display_name: "PyPy 3.9"
         variables:
@@ -2272,6 +2289,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/Python312/python.exe"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/Python313/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2296,6 +2317,10 @@ axes:
         display_name: "32-bit Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/32/Python312/python.exe"
+      - id: "3.13"
+        display_name: "32-bit Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python313/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2559,7 +2584,7 @@ buildvariants:
   # Only test "noauth" with Python 3.8.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
+    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2665,7 +2690,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
+     python-version: ["pypy3.9", "pypy3.10", "3.13"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2788,7 +2813,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -3013,6 +3038,13 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: "check-import-time"
+
+- name: backport-pr
+  display_name: "Backport PR"
+  run_on:
+    - rhel8.7-small
+  tasks:
+    - name: "backport-pr"
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
