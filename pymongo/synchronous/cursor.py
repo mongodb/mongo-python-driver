@@ -28,7 +28,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Union,
     cast,
     overload,
@@ -37,12 +36,13 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import helpers
+from pymongo import helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.lock import _create_lock
 from pymongo.message import (
@@ -55,6 +55,7 @@ from pymongo.message import (
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
+from pymongo.synchronous.helpers import next
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
@@ -62,80 +63,12 @@ if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
-    from pymongo.pool import Connection
     from pymongo.read_preferences import _ServerMode
+    from pymongo.synchronous.client_session import ClientSession
+    from pymongo.synchronous.collection import Collection
+    from pymongo.synchronous.pool import Connection
 
-
-# These errors mean that the server has already killed the cursor so there is
-# no need to send killCursors.
-_CURSOR_CLOSED_ERRORS = frozenset(
-    [
-        43,  # CursorNotFound
-        175,  # QueryPlanKilled
-        237,  # CursorKilled
-        # On a tailable cursor, the following errors mean the capped collection
-        # rolled over.
-        # MongoDB 2.6:
-        # {'$err': 'Runner killed during getMore', 'code': 28617, 'ok': 0}
-        28617,
-        # MongoDB 3.0:
-        # {'$err': 'getMore executor error: UnknownError no details available',
-        #  'code': 17406, 'ok': 0}
-        17406,
-        # MongoDB 3.2 + 3.4:
-        # {'ok': 0.0, 'errmsg': 'GetMore command executor error:
-        #  CappedPositionLost: CollectionScan died due to failure to restore
-        #  tailable cursor position. Last seen record id: RecordId(3)',
-        #  'code': 96}
-        96,
-        # MongoDB 3.6+:
-        # {'ok': 0.0, 'errmsg': 'errmsg: "CollectionScan died due to failure to
-        #  restore tailable cursor position. Last seen record id: RecordId(3)"',
-        #  'code': 136, 'codeName': 'CappedPositionLost'}
-        136,
-    ]
-)
-
-_QUERY_OPTIONS = {
-    "tailable_cursor": 2,
-    "secondary_okay": 4,
-    "oplog_replay": 8,
-    "no_timeout": 16,
-    "await_data": 32,
-    "exhaust": 64,
-    "partial": 128,
-}
-
-
-class CursorType:
-    NON_TAILABLE = 0
-    """The standard cursor type."""
-
-    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
-    """The tailable cursor type.
-
-    Tailable cursors are only for use with capped collections. They are not
-    closed when the last data is retrieved but are kept open and the cursor
-    location marks the final document position. If more data is received
-    iteration of the cursor will continue from the last document received.
-    """
-
-    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
-    """A tailable cursor with the await option set.
-
-    Creates a tailable cursor that will wait for a few seconds after returning
-    the full result set so that it can capture and return additional data added
-    during the query.
-    """
-
-    EXHAUST = _QUERY_OPTIONS["exhaust"]
-    """An exhaust cursor.
-
-    MongoDB will stream batched results to the client without waiting for the
-    client to request each batch, reducing latency.
-    """
+_IS_SYNC = True
 
 
 class _ConnectionManager:
@@ -144,7 +77,7 @@ class _ConnectionManager:
     def __init__(self, conn: Connection, more_to_come: bool):
         self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
-        self.lock = _create_lock()
+        self._alock = _create_lock()
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come
@@ -156,15 +89,7 @@ class _ConnectionManager:
             self.conn = None
 
 
-_Sort = Union[
-    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
-]
-_Hint = Union[str, _Sort]
-
-
 class Cursor(Generic[_DocumentType]):
-    """A cursor / iterator over Mongo query results."""
-
     _query_class = _Query
     _getmore_class = _GetMore
 
@@ -204,19 +129,19 @@ class Cursor(Generic[_DocumentType]):
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
-        self.__collection: Collection[_DocumentType] = collection
-        self.__id: Any = None
-        self.__exhaust = False
-        self.__sock_mgr: Any = None
-        self.__killed = False
-        self.__session: Optional[ClientSession]
+        self._collection: Collection[_DocumentType] = collection
+        self._id: Any = None
+        self._exhaust = False
+        self._sock_mgr: Any = None
+        self._killed = False
+        self._session: Optional[ClientSession]
 
         if session:
-            self.__session = session
-            self.__explicit_session = True
+            self._session = session
+            self._explicit_session = True
         else:
-            self.__session = None
-            self.__explicit_session = False
+            self._session = None
+            self._explicit_session = False
 
         spec: Mapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
@@ -225,7 +150,7 @@ class Cursor(Generic[_DocumentType]):
         if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
         validate_boolean("no_cursor_timeout", no_cursor_timeout)
-        if no_cursor_timeout and not self.__explicit_session:
+        if no_cursor_timeout and not self._explicit_session:
             warnings.warn(
                 "use an explicit session with no_cursor_timeout=True "
                 "otherwise the cursor may still timeout after "
@@ -254,41 +179,33 @@ class Cursor(Generic[_DocumentType]):
             allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
-            projection = helpers._fields_list_to_dict(projection, "projection")
+            projection = helpers_shared._fields_list_to_dict(projection, "projection")
 
         if let is not None:
             validate_is_document_type("let", let)
 
-        self.__let = let
-        self.__spec = spec
-        self.__has_filter = filter is not None
-        self.__projection = projection
-        self.__skip = skip
-        self.__limit = limit
-        self.__batch_size = batch_size
-        self.__ordering = sort and helpers._index_document(sort) or None
-        self.__max_scan = max_scan
-        self.__explain = False
-        self.__comment = comment
-        self.__max_time_ms = max_time_ms
-        self.__max_await_time_ms: Optional[int] = None
-        self.__max: Optional[Union[dict[Any, Any], _Sort]] = max
-        self.__min: Optional[Union[dict[Any, Any], _Sort]] = min
-        self.__collation = validate_collation_or_none(collation)
-        self.__return_key = return_key
-        self.__show_record_id = show_record_id
-        self.__allow_disk_use = allow_disk_use
-        self.__snapshot = snapshot
-        self.__hint: Union[str, dict[str, Any], None]
-        self.__set_hint(hint)
-
-        # Exhaust cursor support
-        if cursor_type == CursorType.EXHAUST:
-            if self.__collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
-            if limit:
-                raise InvalidOperation("Can't use limit and exhaust together.")
-            self.__exhaust = True
+        self._let = let
+        self._spec = spec
+        self._has_filter = filter is not None
+        self._projection = projection
+        self._skip = skip
+        self._limit = limit
+        self._batch_size = batch_size
+        self._ordering = sort and helpers_shared._index_document(sort) or None
+        self._max_scan = max_scan
+        self._explain = False
+        self._comment = comment
+        self._max_time_ms = max_time_ms
+        self._max_await_time_ms: Optional[int] = None
+        self._max: Optional[Union[dict[Any, Any], _Sort]] = max
+        self._min: Optional[Union[dict[Any, Any], _Sort]] = min
+        self._collation = validate_collation_or_none(collation)
+        self._return_key = return_key
+        self._show_record_id = show_record_id
+        self._allow_disk_use = allow_disk_use
+        self._snapshot = snapshot
+        self._hint: Union[str, dict[str, Any], None]
+        self._set_hint(hint)
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -296,61 +213,61 @@ class Cursor(Generic[_DocumentType]):
         # server uses limit(0) to mean 'no limit'. So we set __empty
         # in that case and check for it when iterating. We also unset
         # it anytime we change __limit.
-        self.__empty = False
+        self._empty = False
 
-        self.__data: deque = deque()
-        self.__address: Optional[_Address] = None
-        self.__retrieved = 0
+        self._data: deque = deque()
+        self._address: Optional[_Address] = None
+        self._retrieved = 0
 
-        self.__codec_options = collection.codec_options
+        self._codec_options = collection.codec_options
         # Read preference is set when the initial find is sent.
-        self.__read_preference: Optional[_ServerMode] = None
-        self.__read_concern = collection.read_concern
+        self._read_preference: Optional[_ServerMode] = None
+        self._read_concern = collection.read_concern
 
-        self.__query_flags = cursor_type
+        self._query_flags = cursor_type
+        self._cursor_type = cursor_type
         if no_cursor_timeout:
-            self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
+            self._query_flags |= _QUERY_OPTIONS["no_timeout"]
         if allow_partial_results:
-            self.__query_flags |= _QUERY_OPTIONS["partial"]
+            self._query_flags |= _QUERY_OPTIONS["partial"]
         if oplog_replay:
-            self.__query_flags |= _QUERY_OPTIONS["oplog_replay"]
+            self._query_flags |= _QUERY_OPTIONS["oplog_replay"]
 
         # The namespace to use for find/getMore commands.
-        self.__dbname = collection.database.name
-        self.__collname = collection.name
+        self._dbname = collection.database.name
+        self._collname = collection.name
+
+        # Checking exhaust cursor support requires network IO
+        if _IS_SYNC:
+            self._exhaust_checked = True
+            self._supports_exhaust()  # type: ignore[unused-coroutine]
+        else:
+            self._exhaust = cursor_type == CursorType.EXHAUST
+            self._exhaust_checked = False
+
+    def _supports_exhaust(self) -> None:
+        # Exhaust cursor support
+        if self._cursor_type == CursorType.EXHAUST:
+            if self._collection.database.client.is_mongos:
+                raise InvalidOperation("Exhaust cursors are not supported by mongos")
+            if self._limit:
+                raise InvalidOperation("Can't use limit and exhaust together.")
+            self._exhaust = True
 
     @property
     def collection(self) -> Collection[_DocumentType]:
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
         """
-        return self.__collection
+        return self._collection
 
     @property
     def retrieved(self) -> int:
         """The number of documents retrieved so far."""
-        return self.__retrieved
+        return self._retrieved
 
     def __del__(self) -> None:
-        self.__die()
-
-    def rewind(self) -> Cursor[_DocumentType]:
-        """Rewind this cursor to its unevaluated state.
-
-        Reset this cursor if it has been partially or completely evaluated.
-        Any options that are present on the cursor will remain in effect.
-        Future iterating performed on this cursor will cause new queries to
-        be sent to the server, even if the resultant data has already been
-        retrieved by this cursor.
-        """
-        self.close()
-        self.__data = deque()
-        self.__id = None
-        self.__address = None
-        self.__retrieved = 0
-        self.__killed = False
-
-        return self
+        self._die_no_lock()
 
     def clone(self) -> Cursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -365,8 +282,8 @@ class Cursor(Generic[_DocumentType]):
     def _clone(self, deepcopy: bool = True, base: Optional[Cursor] = None) -> Cursor:
         """Internal clone helper."""
         if not base:
-            if self.__explicit_session:
-                base = self._clone_base(self.__session)
+            if self._explicit_session:
+                base = self._clone_base(self._session)
             else:
                 base = self._clone_base(None)
 
@@ -394,11 +311,10 @@ class Cursor(Generic[_DocumentType]):
             "snapshot",
             "exhaust",
             "has_filter",
+            "cursor_type",
         )
         data = {
-            k: v
-            for k, v in self.__dict__.items()
-            if k.startswith("_Cursor__") and k[9:] in values_to_clone
+            k: v for k, v in self.__dict__.items() if k.startswith("_") and k[1:] in values_to_clone
         }
         if deepcopy:
             data = self._deepcopy(data)
@@ -407,73 +323,40 @@ class Cursor(Generic[_DocumentType]):
 
     def _clone_base(self, session: Optional[ClientSession]) -> Cursor:
         """Creates an empty Cursor object for information to be copied into."""
-        return self.__class__(self.__collection, session=session)
+        return self.__class__(self._collection, session=session)
 
-    def __die(self, synchronous: bool = False) -> None:
-        """Closes this cursor."""
-        try:
-            already_killed = self.__killed
-        except AttributeError:
-            # __init__ did not run to completion (or at all).
-            return
-
-        self.__killed = True
-        if self.__id and not already_killed:
-            cursor_id = self.__id
-            assert self.__address is not None
-            address = _CursorAddress(self.__address, f"{self.__dbname}.{self.__collname}")
-        else:
-            # Skip killCursors.
-            cursor_id = 0
-            address = None
-        self.__collection.database.client._cleanup_cursor(
-            synchronous,
-            cursor_id,
-            address,
-            self.__sock_mgr,
-            self.__session,
-            self.__explicit_session,
-        )
-        if not self.__explicit_session:
-            self.__session = None
-        self.__sock_mgr = None
-
-    def close(self) -> None:
-        """Explicitly close / kill this cursor."""
-        self.__die(True)
-
-    def __query_spec(self) -> Mapping[str, Any]:
+    def _query_spec(self) -> Mapping[str, Any]:
         """Get the spec to use for a query."""
         operators: dict[str, Any] = {}
-        if self.__ordering:
-            operators["$orderby"] = self.__ordering
-        if self.__explain:
+        if self._ordering:
+            operators["$orderby"] = self._ordering
+        if self._explain:
             operators["$explain"] = True
-        if self.__hint:
-            operators["$hint"] = self.__hint
-        if self.__let:
-            operators["let"] = self.__let
-        if self.__comment:
-            operators["$comment"] = self.__comment
-        if self.__max_scan:
-            operators["$maxScan"] = self.__max_scan
-        if self.__max_time_ms is not None:
-            operators["$maxTimeMS"] = self.__max_time_ms
-        if self.__max:
-            operators["$max"] = self.__max
-        if self.__min:
-            operators["$min"] = self.__min
-        if self.__return_key is not None:
-            operators["$returnKey"] = self.__return_key
-        if self.__show_record_id is not None:
+        if self._hint:
+            operators["$hint"] = self._hint
+        if self._let:
+            operators["let"] = self._let
+        if self._comment:
+            operators["$comment"] = self._comment
+        if self._max_scan:
+            operators["$maxScan"] = self._max_scan
+        if self._max_time_ms is not None:
+            operators["$maxTimeMS"] = self._max_time_ms
+        if self._max:
+            operators["$max"] = self._max
+        if self._min:
+            operators["$min"] = self._min
+        if self._return_key is not None:
+            operators["$returnKey"] = self._return_key
+        if self._show_record_id is not None:
             # This is upgraded to showRecordId for MongoDB 3.2+ "find" command.
-            operators["$showDiskLoc"] = self.__show_record_id
-        if self.__snapshot is not None:
-            operators["$snapshot"] = self.__snapshot
+            operators["$showDiskLoc"] = self._show_record_id
+        if self._snapshot is not None:
+            operators["$snapshot"] = self._snapshot
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
-            spec = dict(self.__spec)
+            spec = dict(self._spec)
 
             # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:
@@ -487,16 +370,14 @@ class Cursor(Generic[_DocumentType]):
         # that breaks commands like count and find_and_modify.
         # Checking spec.keys()[0] covers the case that the spec
         # was passed as an instance of SON or OrderedDict.
-        elif "query" in self.__spec and (
-            len(self.__spec) == 1 or next(iter(self.__spec)) == "query"
-        ):
-            return {"$query": self.__spec}
+        elif "query" in self._spec and (len(self._spec) == 1 or next(iter(self._spec)) == "query"):
+            return {"$query": self._spec}
 
-        return self.__spec
+        return self._spec
 
-    def __check_okay_to_chain(self) -> None:
+    def _check_okay_to_chain(self) -> None:
         """Check if it is okay to chain more options onto this cursor."""
-        if self.__retrieved or self.__id is not None:
+        if self._retrieved or self._id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
     def add_option(self, mask: int) -> Cursor[_DocumentType]:
@@ -507,16 +388,16 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(mask, int):
             raise TypeError("mask must be an int")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
         if mask & _QUERY_OPTIONS["exhaust"]:
-            if self.__limit:
+            if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self.__collection.database.client.is_mongos:
+            if self._collection.database.client.is_mongos:
                 raise InvalidOperation("Exhaust cursors are not supported by mongos")
-            self.__exhaust = True
+            self._exhaust = True
 
-        self.__query_flags |= mask
+        self._query_flags |= mask
         return self
 
     def remove_option(self, mask: int) -> Cursor[_DocumentType]:
@@ -527,12 +408,12 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(mask, int):
             raise TypeError("mask must be an int")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
         if mask & _QUERY_OPTIONS["exhaust"]:
-            self.__exhaust = False
+            self._exhaust = False
 
-        self.__query_flags &= ~mask
+        self._query_flags &= ~mask
         return self
 
     def allow_disk_use(self, allow_disk_use: bool) -> Cursor[_DocumentType]:
@@ -551,9 +432,9 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(allow_disk_use, bool):
             raise TypeError("allow_disk_use must be a bool")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
-        self.__allow_disk_use = allow_disk_use
+        self._allow_disk_use = allow_disk_use
         return self
 
     def limit(self, limit: int) -> Cursor[_DocumentType]:
@@ -570,12 +451,12 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(limit, int):
             raise TypeError("limit must be an integer")
-        if self.__exhaust:
+        if self._exhaust:
             raise InvalidOperation("Can't use limit and exhaust together.")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
-        self.__empty = False
-        self.__limit = limit
+        self._empty = False
+        self._limit = limit
         return self
 
     def batch_size(self, batch_size: int) -> Cursor[_DocumentType]:
@@ -600,9 +481,9 @@ class Cursor(Generic[_DocumentType]):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
-        self.__batch_size = batch_size
+        self._batch_size = batch_size
         return self
 
     def skip(self, skip: int) -> Cursor[_DocumentType]:
@@ -620,9 +501,9 @@ class Cursor(Generic[_DocumentType]):
             raise TypeError("skip must be an integer")
         if skip < 0:
             raise ValueError("skip must be >= 0")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
-        self.__skip = skip
+        self._skip = skip
         return self
 
     def max_time_ms(self, max_time_ms: Optional[int]) -> Cursor[_DocumentType]:
@@ -639,9 +520,9 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(max_time_ms, int) and max_time_ms is not None:
             raise TypeError("max_time_ms must be an integer or None")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
-        self.__max_time_ms = max_time_ms
+        self._max_time_ms = max_time_ms
         return self
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
@@ -662,11 +543,11 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
 
         # Ignore max_await_time_ms if not tailable or await_data is False.
-        if self.__query_flags & CursorType.TAILABLE_AWAIT:
-            self.__max_await_time_ms = max_await_time_ms
+        if self._query_flags & CursorType.TAILABLE_AWAIT:
+            self._max_await_time_ms = max_await_time_ms
 
         return self
 
@@ -718,44 +599,47 @@ class Cursor(Generic[_DocumentType]):
 
         :param index: An integer or slice index to be applied to this cursor
         """
-        self.__check_okay_to_chain()
-        self.__empty = False
-        if isinstance(index, slice):
-            if index.step is not None:
-                raise IndexError("Cursor instances do not support slice steps")
+        if _IS_SYNC:
+            self._check_okay_to_chain()
+            self._empty = False
+            if isinstance(index, slice):
+                if index.step is not None:
+                    raise IndexError("Cursor instances do not support slice steps")
 
-            skip = 0
-            if index.start is not None:
-                if index.start < 0:
+                skip = 0
+                if index.start is not None:
+                    if index.start < 0:
+                        raise IndexError("Cursor instances do not support negative indices")
+                    skip = index.start
+
+                if index.stop is not None:
+                    limit = index.stop - skip
+                    if limit < 0:
+                        raise IndexError(
+                            "stop index must be greater than start index for slice %r" % index
+                        )
+                    if limit == 0:
+                        self._empty = True
+                else:
+                    limit = 0
+
+                self._skip = skip
+                self._limit = limit
+                return self
+
+            if isinstance(index, int):
+                if index < 0:
                     raise IndexError("Cursor instances do not support negative indices")
-                skip = index.start
-
-            if index.stop is not None:
-                limit = index.stop - skip
-                if limit < 0:
-                    raise IndexError(
-                        "stop index must be greater than start index for slice %r" % index
-                    )
-                if limit == 0:
-                    self.__empty = True
-            else:
-                limit = 0
-
-            self.__skip = skip
-            self.__limit = limit
-            return self
-
-        if isinstance(index, int):
-            if index < 0:
-                raise IndexError("Cursor instances do not support negative indices")
-            clone = self.clone()
-            clone.skip(index + self.__skip)
-            clone.limit(-1)  # use a hard limit
-            clone.__query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
-            for doc in clone:
-                return doc
-            raise IndexError("no such item for Cursor instance")
-        raise TypeError("index %r cannot be applied to Cursor instances" % index)
+                clone = self.clone()
+                clone.skip(index + self._skip)
+                clone.limit(-1)  # use a hard limit
+                clone._query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
+                for doc in clone:  # type: ignore[attr-defined]
+                    return doc
+                raise IndexError("no such item for Cursor instance")
+            raise TypeError("index %r cannot be applied to Cursor instances" % index)
+        else:
+            raise IndexError("Cursor does not support indexing")
 
     def max_scan(self, max_scan: Optional[int]) -> Cursor[_DocumentType]:
         """**DEPRECATED** - Limit the number of documents to scan when
@@ -772,8 +656,8 @@ class Cursor(Generic[_DocumentType]):
           MongoDB 4.0. Use :meth:`max_time_ms` instead to limit server side
           execution time.
         """
-        self.__check_okay_to_chain()
-        self.__max_scan = max_scan
+        self._check_okay_to_chain()
+        self._max_scan = max_scan
         return self
 
     def max(self, spec: _Sort) -> Cursor[_DocumentType]:
@@ -794,8 +678,8 @@ class Cursor(Generic[_DocumentType]):
         if not isinstance(spec, (list, tuple)):
             raise TypeError("spec must be an instance of list or tuple")
 
-        self.__check_okay_to_chain()
-        self.__max = dict(spec)
+        self._check_okay_to_chain()
+        self._max = dict(spec)
         return self
 
     def min(self, spec: _Sort) -> Cursor[_DocumentType]:
@@ -816,8 +700,8 @@ class Cursor(Generic[_DocumentType]):
         if not isinstance(spec, (list, tuple)):
             raise TypeError("spec must be an instance of list or tuple")
 
-        self.__check_okay_to_chain()
-        self.__min = dict(spec)
+        self._check_okay_to_chain()
+        self._min = dict(spec)
         return self
 
     def sort(
@@ -863,38 +747,10 @@ class Cursor(Generic[_DocumentType]):
         :param direction: only used if `key_or_list` is a single
             key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
-        self.__check_okay_to_chain()
-        keys = helpers._index_list(key_or_list, direction)
-        self.__ordering = helpers._index_document(keys)
+        self._check_okay_to_chain()
+        keys = helpers_shared._index_list(key_or_list, direction)
+        self._ordering = helpers_shared._index_document(keys)
         return self
-
-    def distinct(self, key: str) -> list:
-        """Get a list of distinct values for `key` among all documents
-        in the result set of this query.
-
-        Raises :class:`TypeError` if `key` is not an instance of
-        :class:`str`.
-
-        The :meth:`distinct` method obeys the
-        :attr:`~pymongo.collection.Collection.read_preference` of the
-        :class:`~pymongo.collection.Collection` instance on which
-        :meth:`~pymongo.collection.Collection.find` was called.
-
-        :param key: name of key for which we want to get the distinct values
-
-        .. seealso:: :meth:`pymongo.collection.Collection.distinct`
-        """
-        options: dict[str, Any] = {}
-        if self.__spec:
-            options["query"] = self.__spec
-        if self.__max_time_ms is not None:
-            options["maxTimeMS"] = self.__max_time_ms
-        if self.__comment:
-            options["comment"] = self.__comment
-        if self.__collation is not None:
-            options["collation"] = self.__collation
-
-        return self.__collection.distinct(key, session=self.__session, **options)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
@@ -909,22 +765,22 @@ class Cursor(Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
         c = self.clone()
-        c.__explain = True
+        c._explain = True
 
         # always use a hard limit for explains
-        if c.__limit:
-            c.__limit = -abs(c.__limit)
+        if c._limit:
+            c._limit = -abs(c._limit)
         return next(c)
 
-    def __set_hint(self, index: Optional[_Hint]) -> None:
+    def _set_hint(self, index: Optional[_Hint]) -> None:
         if index is None:
-            self.__hint = None
+            self._hint = None
             return
 
         if isinstance(index, str):
-            self.__hint = index
+            self._hint = index
         else:
-            self.__hint = helpers._index_document(index)
+            self._hint = helpers_shared._index_document(index)
 
     def hint(self, index: Optional[_Hint]) -> Cursor[_DocumentType]:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
@@ -946,8 +802,8 @@ class Cursor(Generic[_DocumentType]):
 
         :param index: index to hint on (as an index specifier)
         """
-        self.__check_okay_to_chain()
-        self.__set_hint(index)
+        self._check_okay_to_chain()
+        self._set_hint(index)
         return self
 
     def comment(self, comment: Any) -> Cursor[_DocumentType]:
@@ -960,8 +816,8 @@ class Cursor(Generic[_DocumentType]):
 
         .. versionadded:: 2.7
         """
-        self.__check_okay_to_chain()
-        self.__comment = comment
+        self._check_okay_to_chain()
+        self._comment = comment
         return self
 
     def where(self, code: Union[str, Code]) -> Cursor[_DocumentType]:
@@ -991,19 +847,19 @@ class Cursor(Generic[_DocumentType]):
         .. _$expr: https://mongodb.com/docs/manual/reference/operator/query/expr/
         .. _$where: https://mongodb.com/docs/manual/reference/operator/query/where/
         """
-        self.__check_okay_to_chain()
+        self._check_okay_to_chain()
         if not isinstance(code, Code):
             code = Code(code)
 
         # Avoid overwriting a filter argument that was given by the user
         # when updating the spec.
         spec: dict[str, Any]
-        if self.__has_filter:
-            spec = dict(self.__spec)
+        if self._has_filter:
+            spec = dict(self._spec)
         else:
-            spec = cast(dict, self.__spec)
+            spec = cast(dict, self._spec)
         spec["$where"] = code
-        self.__spec = spec
+        self._spec = spec
         return self
 
     def collation(self, collation: Optional[_CollationIn]) -> Cursor[_DocumentType]:
@@ -1017,92 +873,9 @@ class Cursor(Generic[_DocumentType]):
 
         :param collation: An instance of :class:`~pymongo.collation.Collation`.
         """
-        self.__check_okay_to_chain()
-        self.__collation = validate_collation_or_none(collation)
+        self._check_okay_to_chain()
+        self._collation = validate_collation_or_none(collation)
         return self
-
-    def __send_message(self, operation: Union[_Query, _GetMore]) -> None:
-        """Send a query or getmore operation and handles the response.
-
-        If operation is ``None`` this is an exhaust cursor, which reads
-        the next result batch off the exhaust socket instead of
-        sending getMore messages to the server.
-
-        Can raise ConnectionFailure.
-        """
-        client = self.__collection.database.client
-        # OP_MSG is required to support exhaust cursors with encryption.
-        if client._encrypter and self.__exhaust:
-            raise InvalidOperation("exhaust cursors do not support auto encryption")
-
-        try:
-            response = client._run_operation(
-                operation, self._unpack_response, address=self.__address
-            )
-        except OperationFailure as exc:
-            if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
-                # Don't send killCursors because the cursor is already closed.
-                self.__killed = True
-            if exc.timeout:
-                self.__die(False)
-            else:
-                self.close()
-            # If this is a tailable cursor the error is likely
-            # due to capped collection roll over. Setting
-            # self.__killed to True ensures Cursor.alive will be
-            # False. No need to re-raise.
-            if (
-                exc.code in _CURSOR_CLOSED_ERRORS
-                and self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]
-            ):
-                return
-            raise
-        except ConnectionFailure:
-            self.__killed = True
-            self.close()
-            raise
-        except Exception:
-            self.close()
-            raise
-
-        self.__address = response.address
-        if isinstance(response, PinnedResponse):
-            if not self.__sock_mgr:
-                self.__sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
-
-        cmd_name = operation.name
-        docs = response.docs
-        if response.from_command:
-            if cmd_name != "explain":
-                cursor = docs[0]["cursor"]
-                self.__id = cursor["id"]
-                if cmd_name == "find":
-                    documents = cursor["firstBatch"]
-                    # Update the namespace used for future getMore commands.
-                    ns = cursor.get("ns")
-                    if ns:
-                        self.__dbname, self.__collname = ns.split(".", 1)
-                else:
-                    documents = cursor["nextBatch"]
-                self.__data = deque(documents)
-                self.__retrieved += len(documents)
-            else:
-                self.__id = 0
-                self.__data = deque(docs)
-                self.__retrieved += len(docs)
-        else:
-            assert isinstance(response.data, _OpReply)
-            self.__id = response.data.cursor_id
-            self.__data = deque(docs)
-            self.__retrieved += response.data.number_returned
-
-        if self.__id == 0:
-            # Don't wait for garbage collection to call __del__, return the
-            # socket and the session to the pool now.
-            self.close()
-
-        if self.__limit and self.__id and self.__limit <= self.__retrieved:
-            self.close()
 
     def _unpack_response(
         self,
@@ -1114,75 +887,11 @@ class Cursor(Generic[_DocumentType]):
     ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
-    def _read_preference(self) -> _ServerMode:
-        if self.__read_preference is None:
+    def _get_read_preference(self) -> _ServerMode:
+        if self._read_preference is None:
             # Save the read preference for getMore commands.
-            self.__read_preference = self.__collection._read_preference_for(self.session)
-        return self.__read_preference
-
-    def _refresh(self) -> int:
-        """Refreshes the cursor with more data from Mongo.
-
-        Returns the length of self.__data after refresh. Will exit early if
-        self.__data is already non-empty. Raises OperationFailure when the
-        cursor cannot be refreshed due to an error on the query.
-        """
-        if len(self.__data) or self.__killed:
-            return len(self.__data)
-
-        if not self.__session:
-            self.__session = self.__collection.database.client._ensure_session()
-
-        if self.__id is None:  # Query
-            if (self.__min or self.__max) and not self.__hint:
-                raise InvalidOperation(
-                    "Passing a 'hint' is required when using the min/max query"
-                    " option to ensure the query utilizes the correct index"
-                )
-            q = self._query_class(
-                self.__query_flags,
-                self.__collection.database.name,
-                self.__collection.name,
-                self.__skip,
-                self.__query_spec(),
-                self.__projection,
-                self.__codec_options,
-                self._read_preference(),
-                self.__limit,
-                self.__batch_size,
-                self.__read_concern,
-                self.__collation,
-                self.__session,
-                self.__collection.database.client,
-                self.__allow_disk_use,
-                self.__exhaust,
-            )
-            self.__send_message(q)
-        elif self.__id:  # Get More
-            if self.__limit:
-                limit = self.__limit - self.__retrieved
-                if self.__batch_size:
-                    limit = min(limit, self.__batch_size)
-            else:
-                limit = self.__batch_size
-            # Exhaust cursors don't send getMore messages.
-            g = self._getmore_class(
-                self.__dbname,
-                self.__collname,
-                limit,
-                self.__id,
-                self.__codec_options,
-                self._read_preference(),
-                self.__session,
-                self.__collection.database.client,
-                self.__max_await_time_ms,
-                self.__sock_mgr,
-                self.__exhaust,
-                self.__comment,
-            )
-            self.__send_message(g)
-
-        return len(self.__data)
+            self._read_preference = self._collection._read_preference_for(self.session)
+        return self._read_preference
 
     @property
     def alive(self) -> bool:
@@ -1204,7 +913,7 @@ class Cursor(Generic[_DocumentType]):
           return False after :meth:`next` fails to retrieve the next batch
           of results from the server.
         """
-        return bool(len(self.__data) or (not self.__killed))
+        return bool(len(self._data) or (not self._killed))
 
     @property
     def cursor_id(self) -> Optional[int]:
@@ -1212,7 +921,7 @@ class Cursor(Generic[_DocumentType]):
 
         .. versionadded:: 2.2
         """
-        return self.__id
+        return self._id
 
     @property
     def address(self) -> Optional[tuple[str, Any]]:
@@ -1221,7 +930,7 @@ class Cursor(Generic[_DocumentType]):
         .. versionchanged:: 3.0
            Renamed from "conn_id".
         """
-        return self.__address
+        return self._address
 
     @property
     def session(self) -> Optional[ClientSession]:
@@ -1229,29 +938,9 @@ class Cursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self.__explicit_session:
-            return self.__session
+        if self._explicit_session:
+            return self._session
         return None
-
-    def __iter__(self) -> Cursor[_DocumentType]:
-        return self
-
-    def next(self) -> _DocumentType:
-        """Advance the cursor."""
-        if self.__empty:
-            raise StopIteration
-        if len(self.__data) or self._refresh():
-            return self.__data.popleft()
-        else:
-            raise StopIteration
-
-    __next__ = next
-
-    def __enter__(self) -> Cursor[_DocumentType]:
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
 
     def __copy__(self) -> Cursor[_DocumentType]:
         """Support function for `copy.copy()`.
@@ -1311,6 +1000,321 @@ class Cursor(Generic[_DocumentType]):
                     key = copy.deepcopy(key, memo)  # noqa: PLW2901
                 y[key] = value
         return y
+
+    def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:
+        self._killed = True
+        if self._id and not already_killed:
+            cursor_id = self._id
+            assert self._address is not None
+            address = _CursorAddress(self._address, f"{self._dbname}.{self._collname}")
+        else:
+            # Skip killCursors.
+            cursor_id = 0
+            address = None
+        return cursor_id, address
+
+    def _die_no_lock(self) -> None:
+        """Closes this cursor without acquiring a lock."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        self._collection.database.client._cleanup_cursor_no_lock(
+            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+        )
+        if not self._explicit_session:
+            self._session = None
+        self._sock_mgr = None
+
+    def _die_lock(self) -> None:
+        """Closes this cursor."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        self._collection.database.client._cleanup_cursor_lock(
+            cursor_id,
+            address,
+            self._sock_mgr,
+            self._session,
+            self._explicit_session,
+        )
+        if not self._explicit_session:
+            self._session = None
+        self._sock_mgr = None
+
+    def close(self) -> None:
+        """Explicitly close / kill this cursor."""
+        self._die_lock()
+
+    def distinct(self, key: str) -> list:
+        """Get a list of distinct values for `key` among all documents
+        in the result set of this query.
+
+        Raises :class:`TypeError` if `key` is not an instance of
+        :class:`str`.
+
+        The :meth:`distinct` method obeys the
+        :attr:`~pymongo.collection.Collection.read_preference` of the
+        :class:`~pymongo.collection.Collection` instance on which
+        :meth:`~pymongo.collection.Collection.find` was called.
+
+        :param key: name of key for which we want to get the distinct values
+
+        .. seealso:: :meth:`pymongo.collection.Collection.distinct`
+        """
+        options: dict[str, Any] = {}
+        if self._spec:
+            options["query"] = self._spec
+        if self._max_time_ms is not None:
+            options["maxTimeMS"] = self._max_time_ms
+        if self._comment:
+            options["comment"] = self._comment
+        if self._collation is not None:
+            options["collation"] = self._collation
+
+        return self._collection.distinct(key, session=self._session, **options)
+
+    def _send_message(self, operation: Union[_Query, _GetMore]) -> None:
+        """Send a query or getmore operation and handles the response.
+
+        If operation is ``None`` this is an exhaust cursor, which reads
+        the next result batch off the exhaust socket instead of
+        sending getMore messages to the server.
+
+        Can raise ConnectionFailure.
+        """
+        client = self._collection.database.client
+        # OP_MSG is required to support exhaust cursors with encryption.
+        if client._encrypter and self._exhaust:
+            raise InvalidOperation("exhaust cursors do not support auto encryption")
+
+        try:
+            response = client._run_operation(
+                operation, self._unpack_response, address=self._address
+            )
+        except OperationFailure as exc:
+            if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
+                # Don't send killCursors because the cursor is already closed.
+                self._killed = True
+            if exc.timeout:
+                self._die_no_lock()
+            else:
+                self.close()
+            # If this is a tailable cursor the error is likely
+            # due to capped collection roll over. Setting
+            # self._killed to True ensures Cursor.alive will be
+            # False. No need to re-raise.
+            if (
+                exc.code in _CURSOR_CLOSED_ERRORS
+                and self._query_flags & _QUERY_OPTIONS["tailable_cursor"]
+            ):
+                return
+            raise
+        except ConnectionFailure:
+            self._killed = True
+            self.close()
+            raise
+        except Exception:
+            self.close()
+            raise
+
+        self._address = response.address
+        if isinstance(response, PinnedResponse):
+            if not self._sock_mgr:
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
+
+        cmd_name = operation.name
+        docs = response.docs
+        if response.from_command:
+            if cmd_name != "explain":
+                cursor = docs[0]["cursor"]
+                self._id = cursor["id"]
+                if cmd_name == "find":
+                    documents = cursor["firstBatch"]
+                    # Update the namespace used for future getMore commands.
+                    ns = cursor.get("ns")
+                    if ns:
+                        self._dbname, self._collname = ns.split(".", 1)
+                else:
+                    documents = cursor["nextBatch"]
+                self._data = deque(documents)
+                self._retrieved += len(documents)
+            else:
+                self._id = 0
+                self._data = deque(docs)
+                self._retrieved += len(docs)
+        else:
+            assert isinstance(response.data, _OpReply)
+            self._id = response.data.cursor_id
+            self._data = deque(docs)
+            self._retrieved += response.data.number_returned
+
+        if self._id == 0:
+            # Don't wait for garbage collection to call __del__, return the
+            # socket and the session to the pool now.
+            self.close()
+
+        if self._limit and self._id and self._limit <= self._retrieved:
+            self.close()
+
+    def _refresh(self) -> int:
+        """Refreshes the cursor with more data from Mongo.
+
+        Returns the length of self._data after refresh. Will exit early if
+        self._data is already non-empty. Raises OperationFailure when the
+        cursor cannot be refreshed due to an error on the query.
+        """
+        if len(self._data) or self._killed:
+            return len(self._data)
+
+        if not self._session:
+            self._session = self._collection.database.client._ensure_session()
+
+        if self._id is None:  # Query
+            if (self._min or self._max) and not self._hint:
+                raise InvalidOperation(
+                    "Passing a 'hint' is required when using the min/max query"
+                    " option to ensure the query utilizes the correct index"
+                )
+            q = self._query_class(
+                self._query_flags,
+                self._collection.database.name,
+                self._collection.name,
+                self._skip,
+                self._query_spec(),
+                self._projection,
+                self._codec_options,
+                self._get_read_preference(),
+                self._limit,
+                self._batch_size,
+                self._read_concern,
+                self._collation,
+                self._session,
+                self._collection.database.client,
+                self._allow_disk_use,
+                self._exhaust,
+            )
+            self._send_message(q)
+        elif self._id:  # Get More
+            if self._limit:
+                limit = self._limit - self._retrieved
+                if self._batch_size:
+                    limit = min(limit, self._batch_size)
+            else:
+                limit = self._batch_size
+            # Exhaust cursors don't send getMore messages.
+            g = self._getmore_class(
+                self._dbname,
+                self._collname,
+                limit,
+                self._id,
+                self._codec_options,
+                self._get_read_preference(),
+                self._session,
+                self._collection.database.client,
+                self._max_await_time_ms,
+                self._sock_mgr,
+                self._exhaust,
+                self._comment,
+            )
+            self._send_message(g)
+
+        return len(self._data)
+
+    def rewind(self) -> Cursor[_DocumentType]:
+        """Rewind this cursor to its unevaluated state.
+
+        Reset this cursor if it has been partially or completely evaluated.
+        Any options that are present on the cursor will remain in effect.
+        Future iterating performed on this cursor will cause new queries to
+        be sent to the server, even if the resultant data has already been
+        retrieved by this cursor.
+        """
+        self.close()
+        self._data = deque()
+        self._id = None
+        self._address = None
+        self._retrieved = 0
+        self._killed = False
+
+        return self
+
+    def next(self) -> _DocumentType:
+        """Advance the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
+        if self._empty:
+            raise StopIteration
+        if len(self._data) or self._refresh():
+            return self._data.popleft()
+        else:
+            raise StopIteration
+
+    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+        """Get all or some documents from the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
+        if self._empty:
+            return False
+        if len(self._data) or self._refresh():
+            if total is None:
+                result.extend(self._data)
+                self._data.clear()
+            else:
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())
+            return True
+        else:
+            return False
+
+    def __next__(self) -> _DocumentType:
+        return self.next()
+
+    def __iter__(self) -> Cursor[_DocumentType]:
+        return self
+
+    def __enter__(self) -> Cursor[_DocumentType]:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
+        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
+
+        To use::
+
+          >>> cursor.to_list()
+
+        Or, so read at most n items from the cursor::
+
+          >>> cursor.to_list(n)
+
+        If the cursor is empty or has no more results, an empty list will be returned.
+
+        .. versionadded:: 4.9
+        """
+        res: list[_DocumentType] = []
+        remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        while self.alive:
+            if not self._next_batch(res, remaining):
+                break
+            if length is not None:
+                remaining = length - len(res)
+                if remaining == 0:
+                    break
+        return res
 
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):
