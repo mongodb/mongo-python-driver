@@ -12,18 +12,20 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Tools to parse mongo client options."""
+"""Tools to parse mongo client options.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
-from pymongo.auth import MongoCredential, _build_credentials_tuple
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
-from pymongo.pool import PoolOptions
+from pymongo.pool_options import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
     _ServerMode,
@@ -36,6 +38,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
+    from pymongo.auth_shared import MongoCredential
     from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.topology_description import _ServerSelector
@@ -48,6 +51,8 @@ def _parse_credentials(
     mechanism = options.get("authmechanism", "DEFAULT" if username else None)
     source = options.get("authsource")
     if username or mechanism:
+        from pymongo.auth_shared import _build_credentials_tuple
+
         return _build_credentials_tuple(mechanism, source, username, password, options, database)
     return None
 
@@ -139,7 +144,11 @@ def _parse_ssl_options(options: Mapping[str, Any]) -> tuple[Optional[SSLContext]
 
 
 def _parse_pool_options(
-    username: str, password: str, database: Optional[str], options: Mapping[str, Any]
+    username: str,
+    password: str,
+    database: Optional[str],
+    options: Mapping[str, Any],
+    is_sync: bool,
 ) -> PoolOptions:
     """Parse connection pool options."""
     credentials = _parse_credentials(username, password, database, options)
@@ -178,19 +187,25 @@ def _parse_pool_options(
         server_api=server_api,
         load_balanced=load_balanced,
         credentials=credentials,
+        is_sync=is_sync,
     )
 
 
 class ClientOptions:
-    """Read only configuration options for a MongoClient.
+    """Read only configuration options for an AsyncMongoClient/MongoClient.
 
     Should not be instantiated directly by application developers. Access
-    a client's options via :attr:`pymongo.mongo_client.MongoClient.options`
+    a client's options via :attr:`pymongo.mongo_client.AsyncMongoClient.options` or :attr:`pymongo.mongo_client.MongoClient.options`
     instead.
     """
 
     def __init__(
-        self, username: str, password: str, database: Optional[str], options: Mapping[str, Any]
+        self,
+        username: str,
+        password: str,
+        database: Optional[str],
+        options: Mapping[str, Any],
+        is_sync: bool = True,
     ):
         self.__options = options
         self.__codec_options = _parse_codec_options(options)
@@ -201,7 +216,7 @@ class ClientOptions:
         self.__server_selection_timeout = options.get(
             "serverselectiontimeoutms", common.SERVER_SELECTION_TIMEOUT
         )
-        self.__pool_options = _parse_pool_options(username, password, database, options)
+        self.__pool_options = _parse_pool_options(username, password, database, options, is_sync)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get("replicaset")
         self.__write_concern = _parse_write_concern(options)

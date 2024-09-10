@@ -17,6 +17,7 @@ context.
 """
 from __future__ import annotations
 
+import asyncio
 import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
@@ -25,10 +26,11 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
+import cryptography.x509 as x509
+import service_identity
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
-from pymongo._lazy_import import lazy_import
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
@@ -37,14 +39,9 @@ from pymongo.socket_checker import SocketChecker as _SocketChecker
 from pymongo.socket_checker import _errno_from_exception
 from pymongo.write_concern import validate_boolean
 
-_x509 = lazy_import("cryptography.x509")
-_service_identity = lazy_import("service_identity")
-_service_identity_pyopenssl = lazy_import("service_identity.pyopenssl")
-
 if TYPE_CHECKING:
     from ssl import VerifyMode
 
-    from cryptography.x509 import Certificate
 
 _T = TypeVar("_T")
 
@@ -93,6 +90,9 @@ def _is_ip_address(address: Any) -> bool:
 # According to the docs for socket.send it can raise
 # WantX509LookupError and should be retried.
 BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
+BLOCKING_IO_READ_ERROR = _SSL.WantReadError
+BLOCKING_IO_WRITE_ERROR = _SSL.WantWriteError
+BLOCKING_IO_LOOKUP_ERROR = _SSL.WantX509LookupError
 
 
 def _ragged_eof(exc: BaseException) -> bool:
@@ -184,7 +184,7 @@ class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self) -> None:
-        self.trusted_ca_certs: Optional[list[Certificate]] = None
+        self.trusted_ca_certs: Optional[list[x509.Certificate]] = None
         self.check_ocsp_endpoint: Optional[bool] = None
         self.ocsp_response_cache = _OCSPCache()
 
@@ -295,7 +295,7 @@ class SSLContext:
         # Password callback MUST be set first or it will be ignored.
         if password:
 
-            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: bytes) -> bytes:
+            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: Optional[bytes]) -> bytes:
                 # XXX:We could check the password length against what OpenSSL
                 # tells us is the max, but we can't raise an exception, so...
                 # warn?
@@ -335,12 +335,14 @@ class SSLContext:
     def _load_wincerts(self, store: str) -> None:
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
+        assert cert_store is not None
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
+
         for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
             if encoding == "x509_asn":
                 if trust is True or oid in trust:
                     cert_store.add_cert(
-                        _crypto.X509.from_cryptography(_x509.load_der_x509_certificate(cert))
+                        _crypto.X509.from_cryptography(x509.load_der_x509_certificate(cert))
                     )
 
     def load_default_certs(self) -> None:
@@ -366,6 +368,58 @@ class SSLContext:
         # Note: See PyOpenSSL's docs for limitations, which are similar
         # but not that same as CPython's.
         self._ctx.set_default_verify_paths()
+
+    async def a_wrap_socket(
+        self,
+        sock: _socket.socket,
+        server_side: bool = False,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        server_hostname: Optional[str] = None,
+        session: Optional[_SSL.Session] = None,
+    ) -> _sslConn:
+        """Wrap an existing Python socket connection and return a TLS socket
+        object.
+        """
+        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
+        loop = asyncio.get_running_loop()
+        if session:
+            ssl_conn.set_session(session)
+        if server_side is True:
+            ssl_conn.set_accept_state()
+        else:
+            # SNI
+            if server_hostname and not _is_ip_address(server_hostname):
+                # XXX: Do this in a callback registered with
+                # SSLContext.set_info_callback? See Twisted for an example.
+                ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
+            if self.verify_mode != _stdlibssl.CERT_NONE:
+                # Request a stapled OCSP response.
+                await loop.run_in_executor(None, ssl_conn.request_ocsp)
+            ssl_conn.set_connect_state()
+        # If this wasn't true the caller of wrap_socket would call
+        # do_handshake()
+        if do_handshake_on_connect:
+            # XXX: If we do hostname checking in a callback we can get rid
+            # of this call to do_handshake() since the handshake
+            # will happen automatically later.
+            await loop.run_in_executor(None, ssl_conn.do_handshake)
+            # XXX: Do this in a callback registered with
+            # SSLContext.set_info_callback? See Twisted for an example.
+            if self.check_hostname and server_hostname is not None:
+                from service_identity import pyopenssl
+
+                try:
+                    if _is_ip_address(server_hostname):
+                        pyopenssl.verify_ip_address(ssl_conn, server_hostname)
+                    else:
+                        pyopenssl.verify_hostname(ssl_conn, server_hostname)
+                except (  # type:ignore[misc]
+                    service_identity.SICertificateError,
+                    service_identity.SIVerificationError,
+                ) as exc:
+                    raise _CertificateError(str(exc)) from None
+        return ssl_conn
 
     def wrap_socket(
         self,
@@ -404,14 +458,16 @@ class SSLContext:
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:
+                from service_identity import pyopenssl
+
                 try:
                     if _is_ip_address(server_hostname):
-                        _service_identity_pyopenssl.verify_ip_address(ssl_conn, server_hostname)
+                        pyopenssl.verify_ip_address(ssl_conn, server_hostname)
                     else:
-                        _service_identity_pyopenssl.verify_hostname(ssl_conn, server_hostname)
-                except (
-                    _service_identity.SICertificateError,
-                    _service_identity.SIVerificationError,
+                        pyopenssl.verify_hostname(ssl_conn, server_hostname)
+                except (  # type:ignore[misc]
+                    service_identity.SICertificateError,
+                    service_identity.SIVerificationError,
                 ) as exc:
                     raise _CertificateError(str(exc)) from None
         return ssl_conn

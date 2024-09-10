@@ -20,7 +20,6 @@ import pprint
 import sys
 import threading
 
-from bson import SON
 from pymongo.errors import AutoReconnect
 
 sys.path[0:0] = [""]
@@ -34,23 +33,18 @@ from test import (
 )
 from test.utils import (
     CMAPListener,
-    EventListener,
     OvertCommandListener,
-    SpecTestCreator,
-    rs_client,
     rs_or_single_client,
     set_fail_point,
 )
-from test.utils_spec_runner import SpecRunner
 
-from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.write_concern import WriteConcern
+from pymongo.synchronous.mongo_client import MongoClient
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")
@@ -72,81 +66,6 @@ class TestClientOptions(PyMongoTestCase):
         self.assertEqual(client.options.retry_reads, True)
         client = MongoClient("mongodb://h/?retryReads=false", connect=False)
         self.assertEqual(client.options.retry_reads, False)
-
-
-class TestSpec(SpecRunner):
-    RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
-
-    @classmethod
-    @client_context.require_failCommand_fail_point
-    # TODO: remove this once PYTHON-1948 is done.
-    @client_context.require_no_mmap
-    def setUpClass(cls):
-        super().setUpClass()
-
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        skip_names = ["listCollectionObjects", "listIndexNames", "listDatabaseObjects"]
-        for name in skip_names:
-            if name.lower() in test["description"].lower():
-                self.skipTest(f"PyMongo does not support {name}")
-
-        # Serverless does not support $out and collation.
-        if client_context.serverless:
-            for operation in test["operations"]:
-                if operation["name"] == "aggregate":
-                    for stage in operation["arguments"]["pipeline"]:
-                        if "$out" in stage:
-                            self.skipTest("MongoDB Serverless does not support $out")
-                if "collation" in operation["arguments"]:
-                    self.skipTest("MongoDB Serverless does not support collations")
-
-        # Skip changeStream related tests on MMAPv1 and serverless.
-        test_name = self.id().rsplit(".")[-1]
-        if "changestream" in test_name.lower():
-            if client_context.storage_engine == "mmapv1":
-                self.skipTest("MMAPv1 does not support change streams.")
-            if client_context.serverless:
-                self.skipTest("Serverless does not support change streams.")
-
-    def get_scenario_coll_name(self, scenario_def):
-        """Override a test's collection name to support GridFS tests."""
-        if "bucket_name" in scenario_def:
-            return scenario_def["bucket_name"]
-        return super().get_scenario_coll_name(scenario_def)
-
-    def setup_scenario(self, scenario_def):
-        """Override a test's setup to support GridFS tests."""
-        if "bucket_name" in scenario_def:
-            data = scenario_def["data"]
-            db_name = self.get_scenario_db_name(scenario_def)
-            db = client_context.client[db_name]
-            # Create a bucket for the retryable reads GridFS tests with as few
-            # majority writes as possible.
-            wc = WriteConcern(w="majority")
-            if data:
-                db["fs.chunks"].drop()
-                db["fs.files"].drop()
-                db["fs.chunks"].insert_many(data["fs.chunks"])
-                db.get_collection("fs.files", write_concern=wc).insert_many(data["fs.files"])
-            else:
-                db.get_collection("fs.chunks").drop()
-                db.get_collection("fs.files", write_concern=wc).drop()
-        else:
-            super().setup_scenario(scenario_def)
-
-
-def create_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = SpecTestCreator(create_test, TestSpec, _TEST_PATH)
-test_creator.create_tests()
 
 
 class FindThread(threading.Thread):

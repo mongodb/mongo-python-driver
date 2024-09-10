@@ -5,6 +5,7 @@
     {
       "client": {
         "id": "client",
+        "useMultipleMongoses": false,
         "observeLogMessages": {
           "command": "debug"
         }

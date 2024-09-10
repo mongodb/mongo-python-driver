@@ -20,10 +20,15 @@ import os
 import sys
 import unittest
 
+import pytest
+
 sys.path[0:0] = [""]
 
 import pymongo
 from pymongo.errors import ServerSelectionTimeoutError
+
+pytestmark = pytest.mark.ocsp
+
 
 CA_FILE = os.environ.get("CA_FILE")
 OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"
@@ -41,11 +46,7 @@ else:
 
 
 def _connect(options):
-    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS={}&tlsCAFile={}&{}").format(
-        TIMEOUT_MS,
-        CA_FILE,
-        options,
-    )
+    uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS={TIMEOUT_MS}&tlsCAFile={CA_FILE}&{options}"
     print(uri)
     client = pymongo.MongoClient(uri)
     client.admin.command("ping")

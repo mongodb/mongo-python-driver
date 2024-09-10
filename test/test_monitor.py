@@ -22,15 +22,14 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, connected, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
-    connected,
     single_client,
     wait_until,
 )
 
-from pymongo.periodic_executor import _EXECUTORS
+from pymongo.synchronous.periodic_executor import _EXECUTORS
 
 
 def unregistered(ref):

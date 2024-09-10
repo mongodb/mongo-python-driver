@@ -26,10 +26,9 @@ from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, client_context, unittest
+from test import IntegrationTest, SkipTest, client_context, connected, unittest
 from test.utils import (
     OvertCommandListener,
-    connected,
     one,
     rs_client,
     single_client,
@@ -40,7 +39,6 @@ from test.version import Version
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.message import _maybe_add_read_preference
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (
     MovingAverage,
     Nearest,
@@ -53,6 +51,7 @@ from pymongo.read_preferences import (
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, readable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 

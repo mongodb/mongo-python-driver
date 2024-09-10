@@ -1,10 +1,123 @@
 Changelog
 =========
 
+Changes in Version 4.9.0
+-------------------------
+
+.. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
+   PyMongo 4.9 will be the last release to support MongoDB 3.6.
+
+PyMongo 4.9 brings a number of improvements including:
+
+- Added support for MongoDB 8.0.
+- Added support for Python 3.13.
+- A new asynchronous API with full asyncio support.
+- Added support for In-Use Encryption range queries with MongoDB 8.0.
+  Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
+  ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
+- Added support for the "delegated" option for the KMIP ``master_key`` in
+  :meth:`~pymongo.encryption.ClientEncryption.create_data_key`.
+- pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
+- Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
+  :class:`~pymongo.command_cursor.CommandCursor`,
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor`,
+  and :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`
+  as an asynchronous-friendly alternative to ``list(cursor)``.
+- Added :meth:`~pymongo.mongo_client.MongoClient.bulk_write` to :class:`~pymongo.mongo_client.MongoClient`
+  and :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`,
+  enabling users to perform insert, update, and delete operations
+  against mixed namespaces in a minimized number of round trips.
+  Please see :doc:`examples/client_bulk` for more information.
+- Added support for the ``namespace`` parameter to the
+  :class:`~pymongo.operations.InsertOne`,
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`,
+  :class:`~pymongo.operations.UpdateMany`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany` operations, so
+  they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+- Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: unhashable type: 'tzfile'``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezone from dateutil.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
+- Added a warning to unclosed MongoClient instances
+  telling users to explicitly close clients when finished with them to avoid leaking resources.
+  For example:
+
+  .. code-block::
+
+    sys:1: ResourceWarning: Unclosed MongoClient opened at:
+        File "/Users/<user>/my_file.py", line 8, in <module>``
+            client = MongoClient()
+    Call MongoClient.close() to safely shut down your client and free up resources.
+- The default value for ``connect`` in ``MongoClient`` is changed to ``False`` when running on
+  unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
+  On some FaaS systems, there is a ``fork()`` operation at function
+  startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
+  `Is PyMongo Fork-Safe`_ for more information.
+
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _Is PyMongo Fork-Safe : https://www.mongodb.com/docs/languages/python/pymongo-driver/current/faq/#is-pymongo-fork-safe-
+.. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
+
+
 Changes in Version 4.8.0
 -------------------------
 
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
+
+PyMongo 4.8 brings a number of improvements including:
+
+- The handshake metadata for "os.name" on Windows has been simplified to "Windows" to improve import time.
+- The repr of ``bson.binary.Binary`` is now redacted when the subtype is SENSITIVE_SUBTYPE(8).
+- Secure Software Development Life Cycle automation for release process.
+  GitHub Releases now include a Software Bill of Materials, and signature
+  files corresponding to the distribution files released on PyPI.
+- Fixed a bug in change streams where both ``startAtOperationTime`` and ``resumeToken``
+  could be added to a retry attempt, which caused the retry to fail.
+- Fallback to stdlib ``ssl`` module when ``pyopenssl`` import fails with AttributeError.
+- Improved performance of MongoClient operations, especially when many operations are being run concurrently.
+
+Unavoidable breaking changes
+............................
+
+- Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
+  and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
+  Additionally, ``pip`` >= 21.3 is now required for editable installs.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.8 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37057
+
+Changes in Version 4.7.3
+-------------------------
+
+Version 4.7.3 has further fixes for lazily loading modules.
+
+- Use deferred imports instead of importlib lazy module loading.
+- Improve import time on Windows.
+- Reduce verbosity of "Waiting for suitable server to become available" log message from info to debug.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.7.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.7.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39865
 
 Changes in Version 4.7.2
 -------------------------

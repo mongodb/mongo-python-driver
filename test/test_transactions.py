@@ -15,30 +15,25 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
-import os
 import sys
 from io import BytesIO
 
+from gridfs.synchronous.grid_file import GridFS, GridFSBucket
+
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    SpecTestCreator,
     rs_client,
     single_client,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner
 from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from gridfs import GridFS, GridFSBucket
-from pymongo import WriteConcern, client_session
-from pymongo.client_session import TransactionOptions
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo import WriteConcern
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
@@ -49,8 +44,13 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous import client_session
+from pymongo.synchronous.client_session import TransactionOptions
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.helpers import next
 
-_TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
+_IS_SYNC = True
 
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
@@ -59,31 +59,7 @@ _TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TransactionsBase(SpecRunner):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        if client_context.supports_transactions():
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
-
-    @classmethod
-    def tearDownClass(cls):
-        for client in cls.mongos_clients:
-            client.close()
-        super().tearDownClass()
-
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        if (
-            "secondary" in self.id()
-            and not client_context.is_mongos
-            and not client_context.has_secondaries
-        ):
-            raise unittest.SkipTest("No secondaries")
-
-
-class TestTransactions(TransactionsBase):
+class TestTransactions(IntegrationTest):
     RUN_ON_SERVERLESS = True
 
     @client_context.require_transactions
@@ -123,14 +99,14 @@ class TestTransactions(TransactionsBase):
         coll.insert_one({})
         with client.start_session() as s:
             with s.start_transaction(write_concern=WriteConcern(w=1)):
-                self.assertTrue(coll.insert_one({}, session=s).acknowledged)
-                self.assertTrue(coll.insert_many([{}, {}], session=s).acknowledged)
-                self.assertTrue(coll.bulk_write([InsertOne({})], session=s).acknowledged)
-                self.assertTrue(coll.replace_one({}, {}, session=s).acknowledged)
-                self.assertTrue(coll.update_one({}, {"$set": {"a": 1}}, session=s).acknowledged)
-                self.assertTrue(coll.update_many({}, {"$set": {"a": 1}}, session=s).acknowledged)
-                self.assertTrue(coll.delete_one({}, session=s).acknowledged)
-                self.assertTrue(coll.delete_many({}, session=s).acknowledged)
+                self.assertTrue((coll.insert_one({}, session=s)).acknowledged)
+                self.assertTrue((coll.insert_many([{}, {}], session=s)).acknowledged)
+                self.assertTrue((coll.bulk_write([InsertOne({})], session=s)).acknowledged)
+                self.assertTrue((coll.replace_one({}, {}, session=s)).acknowledged)
+                self.assertTrue((coll.update_one({}, {"$set": {"a": 1}}, session=s)).acknowledged)
+                self.assertTrue((coll.update_many({}, {"$set": {"a": 1}}, session=s)).acknowledged)
+                self.assertTrue((coll.delete_one({}, session=s)).acknowledged)
+                self.assertTrue((coll.delete_many({}, session=s)).acknowledged)
                 coll.find_one_and_delete({}, session=s)
                 coll.find_one_and_replace({}, {}, session=s)
                 coll.find_one_and_update({}, {"$set": {"a": 1}}, session=s)
@@ -259,7 +235,7 @@ class TestTransactions(TransactionsBase):
             return gfs.find(*args, **kwargs).next()
 
         def gridfs_open_upload_stream(*args, **kwargs):
-            bucket.open_upload_stream(*args, **kwargs).write(b"1")
+            (bucket.open_upload_stream(*args, **kwargs)).write(b"1")
 
         gridfs_ops = [
             (gfs.put, (b"123",)),
@@ -363,6 +339,13 @@ class TestTransactions(TransactionsBase):
         # Make sure the collection exists.
         coll.insert_one({})
         self.assertEqual(client.topology_description.topology_type_name, "Single")
+
+        def find(*args, **kwargs):
+            return coll.find(*args, **kwargs)
+
+        def find_raw_batches(*args, **kwargs):
+            return coll.find_raw_batches(*args, **kwargs)
+
         ops = [
             (coll.bulk_write, [[InsertOne[dict]({})]]),
             (coll.insert_one, [{}]),
@@ -379,16 +362,16 @@ class TestTransactions(TransactionsBase):
             (coll.count_documents, [{}]),
             (coll.distinct, ["foo"]),
             (coll.aggregate, [[]]),
-            (coll.find, [{}]),
+            (find, [{}]),
             (coll.aggregate_raw_batches, [[]]),
-            (coll.find_raw_batches, [{}]),
+            (find_raw_batches, [{}]),
             (coll.database.command, ["find", coll.name]),
         ]
         for f, args in ops:
             with client.start_session() as s, s.start_transaction():
                 res = f(*args, session=s)  # type:ignore[operator]
                 if isinstance(res, (CommandCursor, Cursor)):
-                    list(res)
+                    res.to_list()
 
 
 class PatchSessionTimeout:
@@ -406,7 +389,31 @@ class PatchSessionTimeout:
         client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
-class TestTransactionsConvenientAPI(TransactionsBase):
+class TestTransactionsConvenientAPI(IntegrationTest):
+    @classmethod
+    def _setup_class(cls):
+        super()._setup_class()
+        cls.mongos_clients = []
+        if client_context.supports_transactions():
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+
+    @classmethod
+    def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super()._tearDown_class()
+
+    def _set_fail_point(self, client, command_args):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
+    def set_fail_point(self, command_args):
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            self._set_fail_point(client, command_args)
+
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
         class _MyException(Exception):

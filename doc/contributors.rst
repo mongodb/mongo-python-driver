@@ -100,3 +100,5 @@ The following is a list of people who have contributed to
 - Stephan Hof (stephan-hof)
 - Casey Clements (caseyclements)
 - Ivan Lukyanchikov (ilukyanchikov)
+- Terry Patterson
+- Romain Morotti

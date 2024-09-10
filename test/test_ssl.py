@@ -21,13 +21,19 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import HAVE_IPADDRESS, IntegrationTest, SkipTest, client_context, unittest
+from test import (
+    HAVE_IPADDRESS,
+    IntegrationTest,
+    SkipTest,
+    client_context,
+    connected,
+    remove_all_users,
+    unittest,
+)
 from test.utils import (
     EventListener,
     cat_files,
-    connected,
     ignore_deprecations,
-    remove_all_users,
 )
 from urllib.parse import quote_plus
 

@@ -58,6 +58,7 @@ from requests import post as _post
 from requests.exceptions import RequestException as _RequestException
 
 from pymongo import _csot
+from pymongo.ocsp_cache import _next_update, _this_update
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric import (
@@ -275,13 +276,18 @@ def _verify_response(issuer: Certificate, response: OCSPResponse) -> int:
 
     # Note that we are not using a "tolerance period" as discussed in
     # https://tools.ietf.org/rfc/rfc5019.txt?
-    now = _datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    this_update = _this_update(response)
+    now = _datetime.now(tz=timezone.utc)
+    if this_update and this_update.tzinfo is None:
+        # Make naive to match cryptography.
+        now = now.replace(tzinfo=None)
     # RFC6960, Section 3.2, Number 5
-    if response.this_update > now:
+    if this_update and this_update > now:
         _LOGGER.debug("thisUpdate is in the future")
         return 0
     # RFC6960, Section 3.2, Number 6
-    if response.next_update and response.next_update < now:
+    next_update = _next_update(response)
+    if next_update and next_update < now:
         _LOGGER.debug("nextUpdate is in the past")
         return 0
     return 1

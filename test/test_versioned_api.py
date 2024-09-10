@@ -22,8 +22,8 @@ from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import OvertCommandListener, rs_or_single_client
 
-from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi, ServerApiVersion
+from pymongo.synchronous.mongo_client import MongoClient
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "versioned-api")
 

@@ -40,8 +40,6 @@ from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
-from pymongo.auth import MECHANISMS
-from pymongo.auth_oidc import OIDCCallback
 from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
@@ -55,7 +53,8 @@ from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession
+    from pymongo.typings import _AgnosticClientSession
+
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -69,7 +68,8 @@ MAX_WRITE_BATCH_SIZE = 1000
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "3.6"
 MIN_SUPPORTED_WIRE_VERSION = 6
-MAX_SUPPORTED_WIRE_VERSION = 21
+# MongoDB 8.0
+MAX_SUPPORTED_WIRE_VERSION = 25
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
@@ -380,6 +380,8 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
+    from pymongo.auth_shared import MECHANISMS
+
     if value not in MECHANISMS:
         raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
     return value
@@ -444,6 +446,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
                 props[key] = value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
+                from pymongo.auth_oidc_shared import OIDCCallback
+
                 if not isinstance(value, OIDCCallback):
                     raise ValueError("callback must be an OIDCCallback object")
                 props[key] = value
@@ -452,8 +456,11 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         return props
 
     value = validate_string(option, value)
+    value = unquote_plus(value)
     for opt in value.split(","):
         key, _, val = opt.partition(":")
+        if not val:
+            raise ValueError("Malformed auth mechanism properties")
         if key not in _MECHANISM_PROPS:
             # Try not to leak the token.
             if "AWS_SESSION_TOKEN" in key:
@@ -471,7 +478,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
         else:
-            props[key] = unquote_plus(val)
+            props[key] = val
 
     return props
 
@@ -897,7 +904,7 @@ class BaseObject:
     ) -> None:
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
-        self.__codec_options = codec_options
+        self._codec_options = codec_options
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
@@ -905,24 +912,24 @@ class BaseObject:
                 "pymongo.read_preferences for valid "
                 "options."
             )
-        self.__read_preference = read_preference
+        self._read_preference = read_preference
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
                 "write_concern must be an instance of pymongo.write_concern.WriteConcern"
             )
-        self.__write_concern = write_concern
+        self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError("read_concern must be an instance of pymongo.read_concern.ReadConcern")
-        self.__read_concern = read_concern
+        self._read_concern = read_concern
 
     @property
     def codec_options(self) -> CodecOptions:
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
         """
-        return self.__codec_options
+        return self._codec_options
 
     @property
     def write_concern(self) -> WriteConcern:
@@ -932,9 +939,9 @@ class BaseObject:
         .. versionchanged:: 3.0
           The :attr:`write_concern` attribute is now read only.
         """
-        return self.__write_concern
+        return self._write_concern
 
-    def _write_concern_for(self, session: Optional[ClientSession]) -> WriteConcern:
+    def _write_concern_for(self, session: Optional[_AgnosticClientSession]) -> WriteConcern:
         """Read only access to the write concern of this instance or session."""
         # Override this operation's write concern with the transaction's.
         if session and session.in_transaction:
@@ -948,14 +955,14 @@ class BaseObject:
         .. versionchanged:: 3.0
           The :attr:`read_preference` attribute is now read only.
         """
-        return self.__read_preference
+        return self._read_preference
 
-    def _read_preference_for(self, session: Optional[ClientSession]) -> _ServerMode:
+    def _read_preference_for(self, session: Optional[_AgnosticClientSession]) -> _ServerMode:
         """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:
-            return session._txn_read_preference() or self.__read_preference
-        return self.__read_preference
+            return session._txn_read_preference() or self._read_preference
+        return self._read_preference
 
     @property
     def read_concern(self) -> ReadConcern:
@@ -964,7 +971,7 @@ class BaseObject:
 
         .. versionadded:: 3.2
         """
-        return self.__read_concern
+        return self._read_concern
 
 
 class _CaseInsensitiveDictionary(MutableMapping[str, Any]):

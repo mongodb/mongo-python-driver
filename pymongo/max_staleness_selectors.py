@@ -35,6 +35,8 @@ from pymongo.server_type import SERVER_TYPE
 
 if TYPE_CHECKING:
     from pymongo.server_selectors import Selection
+
+
 # Constant defined in Max Staleness Spec: An idle primary writes a no-op every
 # 10 seconds to refresh secondaries' lastWriteDate values.
 IDLE_WRITE_PERIOD = 10

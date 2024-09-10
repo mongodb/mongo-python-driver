@@ -26,7 +26,7 @@ BSON_IGNORE = []
 GRIDFS_IGNORE = [
     "ASCENDING",
     "DESCENDING",
-    "ClientSession",
+    "AsyncClientSession",
     "Collection",
     "ObjectId",
     "validate_string",
@@ -66,6 +66,161 @@ class TestDefaultExports(unittest.TestCase):
 
     def test_bson(self):
         self.check_module(bson, BSON_IGNORE)
+
+    def test_pymongo_imports(self):
+        import pymongo
+        from pymongo.auth import MECHANISMS
+        from pymongo.auth_oidc import (
+            OIDCCallback,
+            OIDCCallbackContext,
+            OIDCCallbackResult,
+            OIDCIdPInfo,
+        )
+        from pymongo.change_stream import (
+            ChangeStream,
+            ClusterChangeStream,
+            CollectionChangeStream,
+            DatabaseChangeStream,
+        )
+        from pymongo.client_options import ClientOptions
+        from pymongo.client_session import ClientSession, SessionOptions, TransactionOptions
+        from pymongo.collation import (
+            Collation,
+            CollationAlternate,
+            CollationCaseFirst,
+            CollationMaxVariable,
+            CollationStrength,
+            validate_collation_or_none,
+        )
+        from pymongo.collection import Collection, ReturnDocument
+        from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+        from pymongo.cursor import Cursor, RawBatchCursor
+        from pymongo.database import Database
+        from pymongo.driver_info import DriverInfo
+        from pymongo.encryption import (
+            Algorithm,
+            ClientEncryption,
+            QueryType,
+            RewrapManyDataKeyResult,
+        )
+        from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
+        from pymongo.errors import (
+            AutoReconnect,
+            BulkWriteError,
+            CollectionInvalid,
+            ConfigurationError,
+            ConnectionFailure,
+            CursorNotFound,
+            DocumentTooLarge,
+            DuplicateKeyError,
+            EncryptedCollectionError,
+            EncryptionError,
+            ExecutionTimeout,
+            InvalidName,
+            InvalidOperation,
+            NetworkTimeout,
+            NotPrimaryError,
+            OperationFailure,
+            ProtocolError,
+            PyMongoError,
+            ServerSelectionTimeoutError,
+            WaitQueueTimeoutError,
+            WriteConcernError,
+            WriteError,
+            WTimeoutError,
+        )
+        from pymongo.event_loggers import (
+            CommandLogger,
+            ConnectionPoolLogger,
+            HeartbeatLogger,
+            ServerLogger,
+            TopologyLogger,
+        )
+        from pymongo.mongo_client import MongoClient
+        from pymongo.monitoring import (
+            CommandFailedEvent,
+            CommandListener,
+            CommandStartedEvent,
+            CommandSucceededEvent,
+            ConnectionCheckedInEvent,
+            ConnectionCheckedOutEvent,
+            ConnectionCheckOutFailedEvent,
+            ConnectionCheckOutFailedReason,
+            ConnectionCheckOutStartedEvent,
+            ConnectionClosedEvent,
+            ConnectionClosedReason,
+            ConnectionCreatedEvent,
+            ConnectionPoolListener,
+            ConnectionReadyEvent,
+            PoolClearedEvent,
+            PoolClosedEvent,
+            PoolCreatedEvent,
+            PoolReadyEvent,
+            ServerClosedEvent,
+            ServerDescriptionChangedEvent,
+            ServerHeartbeatFailedEvent,
+            ServerHeartbeatListener,
+            ServerHeartbeatStartedEvent,
+            ServerHeartbeatSucceededEvent,
+            ServerListener,
+            ServerOpeningEvent,
+            TopologyClosedEvent,
+            TopologyDescriptionChangedEvent,
+            TopologyEvent,
+            TopologyListener,
+            TopologyOpenedEvent,
+            register,
+        )
+        from pymongo.operations import (
+            DeleteMany,
+            DeleteOne,
+            IndexModel,
+            SearchIndexModel,
+            UpdateMany,
+            UpdateOne,
+        )
+        from pymongo.pool import PoolOptions
+        from pymongo.read_concern import ReadConcern
+        from pymongo.read_preferences import (
+            Nearest,
+            Primary,
+            PrimaryPreferred,
+            ReadPreference,
+            SecondaryPreferred,
+        )
+        from pymongo.results import (
+            BulkWriteResult,
+            DeleteResult,
+            InsertManyResult,
+            InsertOneResult,
+            UpdateResult,
+        )
+        from pymongo.server_api import ServerApi, ServerApiVersion
+        from pymongo.server_description import ServerDescription
+        from pymongo.topology_description import TopologyDescription
+        from pymongo.uri_parser import (
+            parse_host,
+            parse_ipv6_literal_host,
+            parse_uri,
+            parse_userinfo,
+            split_hosts,
+            split_options,
+            validate_options,
+        )
+        from pymongo.write_concern import WriteConcern, validate_boolean
+
+    def test_gridfs_imports(self):
+        import gridfs
+        from gridfs.errors import CorruptGridFile, FileExists, GridFSError, NoFile
+        from gridfs.grid_file import (
+            GridFS,
+            GridFSBucket,
+            GridIn,
+            GridOut,
+            GridOutChunkIterator,
+            GridOutCursor,
+            GridOutIterator,
+        )
 
 
 if __name__ == "__main__":

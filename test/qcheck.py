@@ -25,6 +25,8 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
 
+_IS_SYNC = True
+
 gen_target = 100
 reduction_attempts = 10
 examples = 5
@@ -221,7 +223,10 @@ def reduce(case, predicate, reductions=0):
 
 
 def isnt(predicate):
-    return lambda x: not predicate(x)
+    def is_not(x):
+        return not predicate(x)
+
+    return is_not
 
 
 def check(predicate, generator):

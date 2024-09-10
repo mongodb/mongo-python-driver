@@ -16,10 +16,11 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.request import Request, urlopen
 
 
 def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
+    from urllib.request import Request, urlopen
+
     url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"
     url += f"?audience={resource}"
     headers = {"Metadata-Flavor": "Google"}

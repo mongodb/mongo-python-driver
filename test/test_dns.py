@@ -27,7 +27,7 @@ from test.utils import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.uri_parser import parse_uri, split_hosts
 
 

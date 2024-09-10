@@ -49,11 +49,11 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import _check_command_response, _check_write_command_response
+from pymongo.helpers_shared import _check_command_response, _check_write_command_response
 from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
 from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
+from pymongo.synchronous.settings import TopologySettings
+from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 
@@ -286,8 +286,8 @@ class TestIgnoreStaleErrors(IntegrationTest):
             barrier.wait()
             raise AutoReconnect("mock Connection.command error")
 
-        for sock in pool.conns:
-            sock.command = mock_command
+        for conn in pool.conns:
+            conn.command = mock_command
 
         def insert_command(i):
             try:

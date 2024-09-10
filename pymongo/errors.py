@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Exceptions raised by PyMongo."""
+"""Exceptions raised by PyMongo.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
@@ -21,6 +24,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Un
 from bson.errors import InvalidDocument
 
 if TYPE_CHECKING:
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.typings import _DocumentOut
 
 
@@ -303,6 +307,62 @@ class BulkWriteError(OperationFailure):
         if werrs and werrs[-1].get("code") == 50:
             return True
         return False
+
+
+class ClientBulkWriteException(OperationFailure):
+    """Exception class for client-level bulk write errors."""
+
+    details: _DocumentOut
+    verbose: bool
+
+    def __init__(self, results: _DocumentOut, verbose: bool) -> None:
+        super().__init__("batch op errors occurred", 65, results)
+        self.verbose = verbose
+
+    def __reduce__(self) -> tuple[Any, Any]:
+        return self.__class__, (self.details,)
+
+    @property
+    def error(self) -> Optional[Any]:
+        """A top-level error that occurred when attempting to
+        communicate with the server or execute the bulk write.
+
+        This value may not be populated if the exception was
+        thrown due to errors occurring on individual writes.
+        """
+        return self.details.get("error", None)
+
+    @property
+    def write_concern_errors(self) -> Optional[list[WriteConcernError]]:
+        """Write concern errors that occurred during the bulk write.
+
+        This list may have multiple items if more than one
+        server command was required to execute the bulk write.
+        """
+        return self.details.get("writeConcernErrors", [])
+
+    @property
+    def write_errors(self) -> Optional[list[WriteError]]:
+        """Errors that occurred during the execution of individual write operations.
+
+        This list will contain at most one entry if the bulk write was ordered.
+        """
+        return self.details.get("writeErrors", {})
+
+    @property
+    def partial_result(self) -> Optional[ClientBulkWriteResult]:
+        """The results of any successful operations that were
+        performed before the error was encountered.
+        """
+        from pymongo.results import ClientBulkWriteResult
+
+        if self.details.get("anySuccessful"):
+            return ClientBulkWriteResult(
+                self.details,  # type: ignore[arg-type]
+                acknowledged=True,
+                has_verbose_results=self.verbose,
+            )
+        return None
 
 
 class InvalidOperation(PyMongoError):

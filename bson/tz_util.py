@@ -39,6 +39,9 @@ class FixedOffset(tzinfo):
     def __getinitargs__(self) -> Tuple[timedelta, str]:
         return self.__offset, self.__name
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__offset!r}, {self.__name!r})"
+
     def utcoffset(self, dt: Optional[datetime]) -> timedelta:
         return self.__offset
 

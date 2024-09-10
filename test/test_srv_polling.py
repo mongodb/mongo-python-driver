@@ -27,8 +27,8 @@ from test.utils import FunctionCallRecorder, wait_until
 import pymongo
 from pymongo import common
 from pymongo.errors import ConfigurationError
-from pymongo.mongo_client import MongoClient
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
+from pymongo.srv_resolver import _have_dnspython
+from pymongo.synchronous.mongo_client import MongoClient
 
 WAIT_TIME = 0.1
 
@@ -79,7 +79,7 @@ class SrvPollingKnobs:
     def disable(self):
         common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval  # type: ignore
         pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
-            self.old_dns_resolver_response  # type: ignore
+            self.old_dns_resolver_response
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -148,7 +148,7 @@ class TestSrvPolling(unittest.TestCase):
         return True
 
     def run_scenario(self, dns_response, expect_change):
-        self.assertEqual(_HAVE_DNSPYTHON, True)
+        self.assertEqual(_have_dnspython(), True)
         if callable(dns_response):
             dns_resolver_response = dns_response
         else:

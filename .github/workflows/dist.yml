@@ -1,0 +1,146 @@
+name: Python Dist
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+.post[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+[a-b][0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+  workflow_dispatch:
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+
+concurrency:
+  group: dist-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -eux {0}
+
+jobs:
+  build_wheels:
+    name: Build wheels for ${{ matrix.buildplat[1] }}
+    runs-on: ${{ matrix.buildplat[0] }}
+    strategy:
+      # Ensure that a wheel builder finishes even if another fails
+      fail-fast: false
+      matrix:
+        # Github Actions doesn't support pairing matrix values together, let's improvise
+        # https://github.com/github/feedback/discussions/7835#discussioncomment-1769026
+        buildplat:
+        - [ubuntu-20.04, "manylinux_x86_64", "cp3*-manylinux_x86_64"]
+        - [ubuntu-20.04, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
+        - [ubuntu-20.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
+        - [ubuntu-20.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
+        - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
+        - [windows-2019, "win_amd6", "cp3*-win_amd64"]
+        - [windows-2019, "win32", "cp3*-win32"]
+        - [macos-14, "macos", "cp*-macosx_*"]
+
+    steps:
+      - name: Checkout pymongo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          cache: 'pip'
+          python-version: 3.8
+          cache-dependency-path: 'pyproject.toml'
+          allow-prereleases: true
+
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Install cibuildwheel
+        # Note: the default manylinux is manylinux2014
+        run: |
+          python -m pip install -U pip
+          python -m pip install "cibuildwheel>=2.17,<3"
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: ${{ matrix.buildplat[2] }}
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Build manylinux1 wheels
+        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
+        env:
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
+          CIBW_MANYLINUX_I686_IMAGE: manylinux1
+          CIBW_BUILD: "cp38-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Assert all versions in wheelhouse
+        if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
+        run: |
+          ls wheelhouse/*cp38*.whl
+          ls wheelhouse/*cp39*.whl
+          ls wheelhouse/*cp310*.whl
+          ls wheelhouse/*cp311*.whl
+          ls wheelhouse/*cp312*.whl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.buildplat[1] }}
+          path: ./wheelhouse/*.whl
+          if-no-files-found: error
+
+  make_sdist:
+    name: Make SDist
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          # Build sdist on lowest supported Python
+          python-version: '3.8'
+
+      - name: Build SDist
+        run: |
+          set -ex
+          python -m pip install -U pip build
+          python -m build --sdist .
+
+      - name: Test SDist
+        run: |
+          python -m pip install dist/*.gz
+          cd ..
+          python -c "from pymongo import has_c; assert has_c()"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "sdist"
+          path: ./dist/*.tar.gz
+
+  collect_dist:
+    runs-on: ubuntu-latest
+    needs: [build_wheels, make_sdist]
+    name: Download Wheels
+    steps:
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v4
+      - name: Flatten directory
+        working-directory: .
+        run: |
+          find . -mindepth 2 -type f -exec mv {} . \;
+          find . -type d -empty -delete
+      - uses: actions/upload-artifact@v4
+        with:
+          name: all-dist-${{ github.run_id }}
+          path: "./*"

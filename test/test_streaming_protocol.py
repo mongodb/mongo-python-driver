@@ -141,7 +141,6 @@ class TestStreamingProtocol(IntegrationTest):
         self.assertEqual(1, len(events))
         self.assertGreater(events[0].new_description.round_trip_time, 0)
 
-    @client_context.require_version_min(4, 9, -1)
     @client_context.require_failCommand_appName
     def test_monitor_waits_after_server_check_error(self):
         # This test implements:

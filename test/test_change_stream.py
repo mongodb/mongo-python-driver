@@ -40,7 +40,6 @@ from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
-from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
@@ -48,6 +47,7 @@ from pymongo.errors import (
 )
 from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
+from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.write_concern import WriteConcern
 
 
@@ -117,7 +117,7 @@ class TestChangeStreamBase(IntegrationTest):
     def kill_change_stream_cursor(self, change_stream):
         """Cause a cursor not found error on the next getMore."""
         cursor = change_stream._cursor
-        address = _CursorAddress(cursor.address, cursor._CommandCursor__ns)
+        address = _CursorAddress(cursor.address, cursor._ns)
         client = self.watched_collection().database.client
         client._close_cursor_now(cursor.cursor_id, address)
 
@@ -136,7 +136,7 @@ class APITestsMixin:
             self.assertEqual(1000, change_stream._max_await_time_ms)
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, CommandCursor)
-            self.assertEqual(1000, change_stream._cursor._CommandCursor__max_await_time_ms)
+            self.assertEqual(1000, change_stream._cursor._max_await_time_ms)
             self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
             _ = change_stream.next()
             resume_token = change_stream.resume_token
@@ -1020,21 +1020,32 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
             self.assertEqual(change["ns"]["coll"], self.watched_collection().name)
             self.assertEqual(change["fullDocument"], raw_doc)
 
+    @client_context.require_version_min(4, 0)  # Needed for start_at_operation_time.
     def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
+        optime = self.db.command("ping")["operationTime"]
+        self.watched_collection().insert_many(
+            [
+                {"_id": Binary(uuid.uuid4().bytes, id_subtype)}
+                for id_subtype in (STANDARD, PYTHON_LEGACY)
+            ]
+        )
         for uuid_representation in ALL_UUID_REPRESENTATIONS:
-            for id_subtype in (STANDARD, PYTHON_LEGACY):
-                options = self.watched_collection().codec_options.with_options(
-                    uuid_representation=uuid_representation
-                )
-                coll = self.watched_collection(codec_options=options)
-                with coll.watch() as change_stream:
-                    coll.insert_one({"_id": Binary(uuid.uuid4().bytes, id_subtype)})
-                    _ = change_stream.next()
-                    resume_token = change_stream.resume_token
+            options = self.watched_collection().codec_options.with_options(
+                uuid_representation=uuid_representation
+            )
+            coll = self.watched_collection(codec_options=options)
+            with coll.watch(start_at_operation_time=optime, max_await_time_ms=1) as change_stream:
+                _ = change_stream.next()
+                resume_token_1 = change_stream.resume_token
+                _ = change_stream.next()
+                resume_token_2 = change_stream.resume_token
 
-                # Should not error.
-                coll.watch(resume_after=resume_token)
+            # Should not error.
+            with coll.watch(resume_after=resume_token_1):
+                pass
+            with coll.watch(resume_after=resume_token_2):
+                pass
 
     def test_document_id_order(self):
         """Test with document _ids that need their order preserved."""
@@ -1053,7 +1064,8 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
             # The resume token is always a document.
             self.assertIsInstance(resume_token, document_class)
             # Should not error.
-            coll.watch(resume_after=resume_token)
+            with coll.watch(resume_after=resume_token):
+                pass
             coll.delete_many({})
 
     def test_read_concern(self):

@@ -31,15 +31,15 @@ from test.utils import joinall, one, rs_client, rs_or_single_client, single_clie
 import gridfs
 from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
-from gridfs.grid_file import DEFAULT_CHUNK_SIZE, GridOutCursor
-from pymongo.database import Database
+from gridfs.synchronous.grid_file import DEFAULT_CHUNK_SIZE, GridOutCursor
 from pymongo.errors import (
     ConfigurationError,
     NotPrimaryError,
     ServerSelectionTimeoutError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
 
 
 class JustWrite(threading.Thread):
@@ -346,7 +346,7 @@ class TestGridfs(IntegrationTest):
         one.close()
 
         # Attempt to upload a file with more chunks to the same _id.
-        with patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", DEFAULT_CHUNK_SIZE):
+        with patch("gridfs.synchronous.grid_file._UPLOAD_BUFFER_SIZE", DEFAULT_CHUNK_SIZE):
             two = self.fs.new_file(_id=123)
             self.assertRaises(FileExists, two.write, b"x" * DEFAULT_CHUNK_SIZE * 3)
         # Original file is still readable (no extra chunks were uploaded).
@@ -440,6 +440,12 @@ class TestGridfs(IntegrationTest):
         gout = next(cursor)
         self.assertEqual(b"test2+", gout.read())
         self.assertRaises(StopIteration, cursor.__next__)
+        cursor.rewind()
+        items = cursor.to_list()
+        self.assertEqual(len(items), 2)
+        cursor.rewind()
+        items = cursor.to_list(1)
+        self.assertEqual(len(items), 1)
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 

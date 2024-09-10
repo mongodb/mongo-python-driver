@@ -20,11 +20,15 @@ import os
 import sys
 import threading
 
+import pytest
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import ExceptionCatchingThread, get_pool, rs_client, wait_until
+
+pytestmark = pytest.mark.load_balancer
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "load_balancer")

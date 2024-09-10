@@ -41,8 +41,8 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.mongo_client import MongoClient
 
 
 class JustWrite(threading.Thread):
@@ -282,7 +282,7 @@ class TestGridfs(IntegrationTest):
         )
         self.assertEqual(b"custom id", self.fs.open_download_stream(oid).read())
 
-    @patch("gridfs.grid_file._UPLOAD_BUFFER_CHUNKS", 3)
+    @patch("gridfs.synchronous.grid_file._UPLOAD_BUFFER_CHUNKS", 3)
     @client_context.require_failCommand_fail_point
     def test_upload_bulk_write_error(self):
         # Test BulkWriteError from insert_many is converted to an insert_one style error.
@@ -305,7 +305,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(3, self.db.fs.chunks.count_documents({"files_id": gin._id}))
         gin.abort()
 
-    @patch("gridfs.grid_file._UPLOAD_BUFFER_CHUNKS", 10)
+    @patch("gridfs.synchronous.grid_file._UPLOAD_BUFFER_CHUNKS", 10)
     def test_upload_batching(self):
         with self.fs.open_upload_stream("test_file", chunk_size_bytes=1) as gin:
             gin.write(b"s" * (10 - 1))
@@ -401,7 +401,7 @@ class TestGridfs(IntegrationTest):
         self.assertRaises(NoFile, self.fs.open_download_stream_by_name, "first_name")
         self.assertEqual(b"testing", self.fs.open_download_stream_by_name("second_name").read())
 
-    @patch("gridfs.grid_file._UPLOAD_BUFFER_SIZE", 5)
+    @patch("gridfs.synchronous.grid_file._UPLOAD_BUFFER_SIZE", 5)
     def test_abort(self):
         gin = self.fs.open_upload_stream("test_filename", chunk_size_bytes=5)
         gin.write(b"test1")

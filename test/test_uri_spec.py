@@ -24,11 +24,12 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from test import clear_warning_registry, unittest
+from test import unittest
+from test.helpers import clear_warning_registry
 
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
-from pymongo.compression_support import _HAVE_SNAPPY
-from pymongo.uri_parser import SRV_SCHEME, parse_uri
+from pymongo.compression_support import _have_snappy
+from pymongo.uri_parser import parse_uri
 
 CONN_STRING_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), os.path.join("connection_string", "test")
@@ -95,7 +96,7 @@ def run_scenario_in_dir(target_workdir):
 def create_test(test, test_workdir):
     def run_scenario(self):
         compressors = (test.get("options") or {}).get("compressors", [])
-        if "snappy" in compressors and not _HAVE_SNAPPY:
+        if "snappy" in compressors and not _have_snappy():
             self.skipTest("This test needs the snappy module.")
         valid = True
         warning = False

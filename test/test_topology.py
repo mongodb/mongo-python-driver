@@ -29,15 +29,15 @@ from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
-from pymongo.monitor import Monitor
-from pymongo.pool import PoolOptions
 from pymongo.read_preferences import ReadPreference, Secondary
-from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext, _filter_servers
+from pymongo.synchronous.monitor import Monitor
+from pymongo.synchronous.pool import PoolOptions
+from pymongo.synchronous.server import Server
+from pymongo.synchronous.settings import TopologySettings
+from pymongo.synchronous.topology import Topology, _ErrorContext, _filter_servers
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 
@@ -548,8 +548,8 @@ class TestMultiServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 "setName": "rs",
                 "hosts": ["a"],
-                "minWireVersion": 22,
-                "maxWireVersion": 24,
+                "minWireVersion": 26,
+                "maxWireVersion": 27,
             },
         )
 
@@ -559,7 +559,7 @@ class TestMultiServerTopology(TopologyTest):
             # Error message should say which server failed and why.
             self.assertEqual(
                 str(e),
-                "Server at a:27017 requires wire version 22, but this version "
+                "Server at a:27017 requires wire version 26, but this version "
                 "of PyMongo only supports up to %d." % (common.MAX_SUPPORTED_WIRE_VERSION,),
             )
         else:

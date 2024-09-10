@@ -9,6 +9,10 @@
 
       Alias for :class:`pymongo.mongo_client.MongoClient`.
 
+   .. data:: AsyncMongoClient
+
+      Alias for :class:`pymongo.asynchronous.mongo_client.AsyncMongoClient`.
+
    .. data:: ReadPreference
 
       Alias for :class:`pymongo.read_preferences.ReadPreference`.
@@ -27,8 +31,9 @@
 Sub-modules:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
+   asynchronous/index
    auth_oidc
    change_stream
    client_options

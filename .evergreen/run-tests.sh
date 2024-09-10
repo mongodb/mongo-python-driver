@@ -30,14 +30,13 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
+TEST_SUITES=""
 TEST_ARGS="${*:1}"
-PYTHON=$(which python)
-# TODO: Remove when we drop PyPy 3.8 support.
-OLD_PYPY=$(python -c "import sys; print(sys.implementation.name.lower() == 'pypy' and sys.implementation.version < (7, 3, 12))")
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
+set +x
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 # Try to source local Drivers Secrets
@@ -49,7 +48,6 @@ else
 fi
 
 if [ "$AUTH" != "noauth" ]; then
-    set +x
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
@@ -70,10 +68,10 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_PASSWORD="pwd123"
     fi
     echo "Added auth, DB_USER: $DB_USER"
-    set -x
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
+    python -m pip install '.[gssapi]'
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
@@ -98,7 +96,7 @@ if [ -n "$TEST_LOADBALANCER" ]; then
     export LOAD_BALANCER=1
     export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI:-mongodb://127.0.0.1:8000/?loadBalanced=true}"
     export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI:-mongodb://127.0.0.1:8001/?loadBalanced=true}"
-    export TEST_ARGS="test/test_load_balancer.py"
+    export TEST_SUITES="load_balancer"
 fi
 
 if [ "$SSL" != "nossl" ]; then
@@ -113,10 +111,6 @@ fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
     python -m pip install '.[snappy]'
-    if [ "$OLD_PYPY" == "True" ]; then
-        pip install "python-snappy<0.7.0"
-    fi
-    PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     python -m pip install zstandard
 fi
@@ -127,13 +121,13 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+    # Check for libmongocrypt checkout.
+    if [ ! -d "libmongocrypt" ]; then
+        echo "Run encryption setup first!"
+        exit 1
+    fi
 
     python -m pip install '.[encryption]'
-
-    # Install libmongocrypt if necessary.
-    if [ ! -d "libmongocrypt" ]; then
-        bash ./.evergreen/setup-libmongocrypt.sh
-    fi
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
@@ -158,6 +152,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     if [ ! -d "libmongocrypt_git" ]; then
       git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
     fi
+    python -m pip install -U setuptools
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
@@ -177,9 +172,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         export PATH=$CRYPT_SHARED_DIR:$PATH
     fi
     # Only run the encryption tests.
-    if [ -z "$TEST_ARGS" ]; then
-        TEST_ARGS="test/test_encryption.py"
-    fi
+    TEST_SUITES="encryption"
 fi
 
 if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
@@ -192,10 +185,7 @@ if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
       echo "MONGODB_URI unexpectedly contains user credentials in FLE test!";
       exit 1
     fi
-
-    if [ -z "$TEST_ARGS" ]; then
-        TEST_ARGS="test/test_on_demand_csfle.py"
-    fi
+    TEST_SUITES="csfle"
 fi
 
 if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
@@ -204,39 +194,39 @@ if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
     set +x
     export DB_PASSWORD="${DRIVERS_ATLAS_LAMBDA_PASSWORD}"
     set -x
-    TEST_ARGS="test/test_index_management.py"
+    TEST_SUITES="index_management"
 fi
 
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
-    TEST_ARGS="test/test_data_lake.py"
+    TEST_SUITES="data_lake"
 fi
 
 if [ -n "$TEST_ATLAS" ]; then
-    TEST_ARGS="test/atlas/test_connection.py"
+    TEST_SUITES="atlas"
 fi
 
 if [ -n "$TEST_OCSP" ]; then
     python -m pip install ".[ocsp]"
-    TEST_ARGS="test/ocsp/test_ocsp.py"
+    TEST_SUITES="ocsp"
 fi
 
 if [ -n "$TEST_AUTH_AWS" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_aws/test_auth_aws.py"
+    TEST_SUITES="auth_aws"
 fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
     python -m pip install ".[aws]"
-    TEST_ARGS="test/auth_oidc/test_auth_oidc.py $TEST_ARGS"
+    TEST_SUITES="auth_oidc"
 fi
 
 if [ -n "$PERF_TEST" ]; then
     python -m pip install simplejson
     start_time=$(date +%s)
-    TEST_ARGS="test/performance/perf_test.py"
+    TEST_SUITES="perf"
 fi
 
-echo "Running $AUTH tests over $SSL with python $PYTHON"
+echo "Running $AUTH tests over $SSL with python $(which python)"
 python -c 'import sys; print(sys.version)'
 
 
@@ -245,7 +235,7 @@ python -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
+PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
@@ -263,7 +253,11 @@ PIP_QUIET=0 python -m pip list
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
+    if [ -z "$TEST_SUITES" ]; then
+      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
+    else
+      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 -m $TEST_SUITES $TEST_ARGS
+    fi
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi

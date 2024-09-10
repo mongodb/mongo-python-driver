@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test suite for pymongo, bson, and gridfs."""
+"""Synchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
+import asyncio
 import base64
+import contextlib
 import gc
 import multiprocessing
 import os
@@ -28,6 +30,29 @@ import time
 import traceback
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
+from test.helpers import (
+    COMPRESSORS,
+    IS_SRV,
+    MONGODB_API_VERSION,
+    MULTI_MONGOS_LB_URI,
+    TEST_LOADBALANCER,
+    TEST_SERVERLESS,
+    TLS_OPTIONS,
+    SystemCertsPatcher,
+    client_knobs,
+    db_pwd,
+    db_user,
+    global_knobs,
+    host,
+    is_server_resolvable,
+    port,
+    print_running_topology,
+    print_thread_stacks,
+    print_thread_tracebacks,
+    sanitize_cmd,
+    sanitize_reply,
+)
 
 try:
     import ipaddress
@@ -36,212 +61,23 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from contextlib import contextmanager
-from functools import wraps
+from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo import common, message
 from pymongo.common import partition_node
-from pymongo.database import Database
 from pymongo.hello import HelloCompat
-from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
 
-if HAVE_SSL:
-    import ssl
-
-# Enable debug output for uncollectable objects. PyPy does not have set_debug.
-if hasattr(gc, "set_debug"):
-    gc.set_debug(
-        gc.DEBUG_UNCOLLECTABLE | getattr(gc, "DEBUG_OBJECTS", 0) | getattr(gc, "DEBUG_INSTANCES", 0)
-    )
-
-# The host and port of a single mongod or mongos, or the seed host
-# for a replica set.
-host = os.environ.get("DB_IP", "localhost")
-port = int(os.environ.get("DB_PORT", 27017))
-IS_SRV = "mongodb+srv" in host
-
-db_user = os.environ.get("DB_USER", "user")
-db_pwd = os.environ.get("DB_PASSWORD", "password")
-
-CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certificates")
-CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
-CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
-
-TLS_OPTIONS: Dict = {"tls": True}
-if CLIENT_PEM:
-    TLS_OPTIONS["tlsCertificateKeyFile"] = CLIENT_PEM
-if CA_PEM:
-    TLS_OPTIONS["tlsCAFile"] = CA_PEM
-
-COMPRESSORS = os.environ.get("COMPRESSORS")
-MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
-TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
-TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
-SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
-MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
-
-if TEST_LOADBALANCER:
-    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
-    host, port = res["nodelist"][0]
-    db_user = res["username"] or db_user
-    db_pwd = res["password"] or db_pwd
-elif TEST_SERVERLESS:
-    TEST_LOADBALANCER = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
-    host, port = res["nodelist"][0]
-    db_user = res["username"] or db_user
-    db_pwd = res["password"] or db_pwd
-    TLS_OPTIONS = {"tls": True}
-    # Spec says serverless tests must be run with compression.
-    COMPRESSORS = COMPRESSORS or "zlib"
-
-
-# Shared KMS data.
-LOCAL_MASTER_KEY = base64.b64decode(
-    b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ"
-    b"5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
-)
-AWS_CREDS = {
-    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
-    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
-}
-AWS_CREDS_2 = {
-    "accessKeyId": os.environ.get("FLE_AWS_KEY2", ""),
-    "secretAccessKey": os.environ.get("FLE_AWS_SECRET2", ""),
-}
-AZURE_CREDS = {
-    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
-    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
-    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
-}
-GCP_CREDS = {
-    "email": os.environ.get("FLE_GCP_EMAIL", ""),
-    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
-}
-KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
-
-# Ensure Evergreen metadata doesn't result in truncation
-os.environ.setdefault("MONGOB_LOG_MAX_DOCUMENT_LENGTH", "2000")
-
-
-def is_server_resolvable():
-    """Returns True if 'server' is resolvable."""
-    socket_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(1)
-    try:
-        try:
-            socket.gethostbyname("server")
-            return True
-        except OSError:
-            return False
-    finally:
-        socket.setdefaulttimeout(socket_timeout)
-
-
-def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
-    cmd = SON([("createUser", user)])
-    # X509 doesn't use a password
-    if pwd:
-        cmd["pwd"] = pwd
-    cmd["roles"] = roles or ["root"]
-    cmd.update(**kwargs)
-    return authdb.command(cmd)
-
-
-class client_knobs:
-    def __init__(
-        self,
-        heartbeat_frequency=None,
-        min_heartbeat_interval=None,
-        kill_cursor_frequency=None,
-        events_queue_frequency=None,
-    ):
-        self.heartbeat_frequency = heartbeat_frequency
-        self.min_heartbeat_interval = min_heartbeat_interval
-        self.kill_cursor_frequency = kill_cursor_frequency
-        self.events_queue_frequency = events_queue_frequency
-
-        self.old_heartbeat_frequency = None
-        self.old_min_heartbeat_interval = None
-        self.old_kill_cursor_frequency = None
-        self.old_events_queue_frequency = None
-        self._enabled = False
-        self._stack = None
-
-    def enable(self):
-        self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
-        self.old_min_heartbeat_interval = common.MIN_HEARTBEAT_INTERVAL
-        self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
-        self.old_events_queue_frequency = common.EVENTS_QUEUE_FREQUENCY
-
-        if self.heartbeat_frequency is not None:
-            common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
-
-        if self.min_heartbeat_interval is not None:
-            common.MIN_HEARTBEAT_INTERVAL = self.min_heartbeat_interval
-
-        if self.kill_cursor_frequency is not None:
-            common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
-
-        if self.events_queue_frequency is not None:
-            common.EVENTS_QUEUE_FREQUENCY = self.events_queue_frequency
-        self._enabled = True
-        # Store the allocation traceback to catch non-disabled client_knobs.
-        self._stack = "".join(traceback.format_stack())
-
-    def __enter__(self):
-        self.enable()
-
-    @no_type_check
-    def disable(self):
-        common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
-        common.MIN_HEARTBEAT_INTERVAL = self.old_min_heartbeat_interval
-        common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
-        common.EVENTS_QUEUE_FREQUENCY = self.old_events_queue_frequency
-        self._enabled = False
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disable()
-
-    def __call__(self, func):
-        def make_wrapper(f):
-            @wraps(f)
-            def wrap(*args, **kwargs):
-                with self:
-                    return f(*args, **kwargs)
-
-            return wrap
-
-        return make_wrapper(func)
-
-    def __del__(self):
-        if self._enabled:
-            msg = (
-                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={}, "
-                "MIN_HEARTBEAT_INTERVAL={}, KILL_CURSOR_FREQUENCY={}, "
-                "EVENTS_QUEUE_FREQUENCY={}, stack:\n{}".format(
-                    common.HEARTBEAT_FREQUENCY,
-                    common.MIN_HEARTBEAT_INTERVAL,
-                    common.KILL_CURSOR_FREQUENCY,
-                    common.EVENTS_QUEUE_FREQUENCY,
-                    self._stack,
-                )
-            )
-            self.disable()
-            raise Exception(msg)
-
-
-def _all_users(db):
-    return {u["user"] for u in db.command("usersInfo").get("users", [])}
+_IS_SYNC = True
 
 
 class ClientContext:
@@ -277,6 +113,7 @@ class ClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self._fips_enabled = None
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -313,7 +150,8 @@ class ClientContext:
         auth_part = ""
         if client_context.auth_enabled:
             auth_part = f"{quote_plus(db_user)}:{quote_plus(db_pwd)}@"
-        return f"mongodb://{auth_part}{self.pair}/?{opts_part}"
+        pair = self.pair
+        return f"mongodb://{auth_part}{pair}/?{opts_part}"
 
     @property
     def hello(self):
@@ -352,8 +190,7 @@ class ClientContext:
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info: Any = self.client.admin.command("buildInfo")
-            if "dataLake" in build_info:
+            if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = self._connect(host, port, username=db_user, password=db_pwd)
@@ -468,7 +305,7 @@ class ClientContext:
                             self.test_commands_enabled = True
                     self.has_ipv6 = self._server_started_with_ipv6()
 
-            self.is_mongos = self.hello.get("msg") == "isdbgrid"
+            self.is_mongos = (self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
                 address = self.client.address
                 self.mongoses.append(address)
@@ -523,6 +360,17 @@ class ClientContext:
         except AttributeError:
             # Raised if self.server_status is None.
             return None
+
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
+            self._fips_enabled = True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            self._fips_enabled = False
+        return self._fips_enabled
 
     def check_auth_type(self, auth_type):
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
@@ -593,15 +441,33 @@ class ClientContext:
 
     def _require(self, condition, msg, func=None):
         def make_wrapper(f):
+            if iscoroutinefunction(f):
+                wraps_async = True
+            else:
+                wraps_async = False
+
             @wraps(f)
             def wrap(*args, **kwargs):
                 self.init()
                 # Always raise SkipTest if we can't connect to MongoDB
                 if not self.connected:
-                    raise SkipTest(f"Cannot connect to MongoDB on {self.pair}")
-                if condition():
-                    return f(*args, **kwargs)
-                raise SkipTest(msg)
+                    pair = self.pair
+                    raise SkipTest(f"Cannot connect to MongoDB on {pair}")
+                if iscoroutinefunction(condition) and condition():
+                    if wraps_async:
+                        return f(*args, **kwargs)
+                    else:
+                        return f(*args, **kwargs)
+                elif condition():
+                    if wraps_async:
+                        return f(*args, **kwargs)
+                    else:
+                        return f(*args, **kwargs)
+                if "self.pair" in msg:
+                    new_msg = msg.replace("self.pair", self.pair)
+                else:
+                    new_msg = msg
+                raise SkipTest(new_msg)
 
             return wrap
 
@@ -624,7 +490,7 @@ class ClientContext:
         """Run a test only if we can connect to MongoDB."""
         return self._require(
             lambda: True,  # _require checks if we're connected
-            f"Cannot connect to MongoDB on {self.pair}",
+            "Cannot connect to MongoDB on self.pair",
             func=func,
         )
 
@@ -632,7 +498,7 @@ class ClientContext:
         """Run a test only if we are connected to Atlas Data Lake."""
         return self._require(
             lambda: self.is_data_lake,
-            f"Not connected to Atlas Data Lake on {self.pair}",
+            "Not connected to Atlas Data Lake on self.pair",
             func=func,
         )
 
@@ -671,12 +537,24 @@ class ClientContext:
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
         )
 
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
+        )
+
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
         return self._require(
             lambda: not self.auth_enabled,
             "Authentication must not be enabled on the server",
             func=func,
+        )
+
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_replica_set(self, func):
@@ -691,7 +569,10 @@ class ClientContext:
         def sec_count():
             return 0 if not self.client else len(self.client.secondaries)
 
-        return self._require(lambda: sec_count() >= count, "Not enough secondaries available")
+        def check():
+            return sec_count() >= count
+
+        return self._require(check, "Not enough secondaries available")
 
     @property
     def supports_secondary_read_pref(self):
@@ -799,7 +680,7 @@ class ClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = list(client_context.client.config.shards.find())
+            shards = client_context.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -840,9 +721,9 @@ class ClientContext:
 
     def require_failCommand_appName(self, func):
         """Run a test only if the server supports the failCommand appName."""
-        # SERVER-47195
+        # SERVER-47195 and SERVER-49336.
         return self._require(
-            lambda: (self.test_commands_enabled and self.version >= (4, 4, -1)),
+            lambda: (self.test_commands_enabled and self.version >= (4, 4, 7)),
             "failCommand appName must be supported",
             func=func,
         )
@@ -933,6 +814,12 @@ class ClientContext:
             func=func,
         )
 
+    def require_sync(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
@@ -952,43 +839,19 @@ class ClientContext:
 
     @property
     def max_bson_size(self):
-        return self.hello["maxBsonObjectSize"]
+        return (self.hello)["maxBsonObjectSize"]
 
     @property
     def max_write_batch_size(self):
-        return self.hello["maxWriteBatchSize"]
+        return (self.hello)["maxWriteBatchSize"]
+
+    @property
+    def max_message_size_bytes(self):
+        return (self.hello)["maxMessageSizeBytes"]
 
 
 # Reusable client context
 client_context = ClientContext()
-
-
-def sanitize_cmd(cmd):
-    cp = cmd.copy()
-    cp.pop("$clusterTime", None)
-    cp.pop("$db", None)
-    cp.pop("$readPreference", None)
-    cp.pop("lsid", None)
-    if MONGODB_API_VERSION:
-        # Stable API parameters
-        cp.pop("apiVersion", None)
-    # OP_MSG encoding may move the payload type one field to the
-    # end of the command. Do the same here.
-    name = next(iter(cp))
-    try:
-        identifier = message._FIELD_MAP[name]
-        docs = cp.pop(identifier)
-        cp[identifier] = docs
-    except KeyError:
-        pass
-    return cp
-
-
-def sanitize_reply(reply):
-    cp = reply.copy()
-    cp.pop("$clusterTime", None)
-    cp.pop("operationTime", None)
-    return cp
 
 
 class PyMongoTestCase(unittest.TestCase):
@@ -1068,40 +931,56 @@ class PyMongoTestCase(unittest.TestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
-def print_thread_tracebacks() -> None:
-    """Print all Python thread tracebacks."""
-    for thread_id, frame in sys._current_frames().items():
-        sys.stderr.write(f"\n--- Traceback for thread {thread_id} ---\n")
-        traceback.print_stack(frame, file=sys.stderr)
+class UnitTest(PyMongoTestCase):
+    """Async base class for TestCases that don't require a connection to MongoDB."""
 
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
 
-def print_thread_stacks(pid: int) -> None:
-    """Print all C-level thread stacks for a given process id."""
-    if sys.platform == "darwin":
-        cmd = ["lldb", "--attach-pid", f"{pid}", "--batch", "--one-line", '"thread backtrace all"']
-    else:
-        cmd = ["gdb", f"--pid={pid}", "--batch", '--eval-command="thread apply all bt"']
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
 
-    try:
-        res = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8"
-        )
-    except Exception as exc:
-        sys.stderr.write(f"Could not print C-level thread stacks because {cmd[0]} failed: {exc}")
-    else:
-        sys.stderr.write(res.stdout)
+    @classmethod
+    def _setup_class(cls):
+        pass
+
+    @classmethod
+    def _tearDown_class(cls):
+        pass
 
 
 class IntegrationTest(PyMongoTestCase):
-    """Base class for TestCases that need a connection to MongoDB to pass."""
+    """Async base class for TestCases that need a connection to MongoDB to pass."""
 
     client: MongoClient[dict]
     db: Database
     credentials: Dict[str, str]
 
     @classmethod
-    @client_context.require_connection
     def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    @client_context.require_connection
+    def _setup_class(cls):
         if client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if client_context.serverless and not getattr(cls, "RUN_ON_SERVERLESS", False):
@@ -1112,6 +991,10 @@ class IntegrationTest(PyMongoTestCase):
             cls.credentials = {"username": db_user, "password": db_pwd}
         else:
             cls.credentials = {}
+
+    @classmethod
+    def _tearDown_class(cls):
+        pass
 
     def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
@@ -1125,7 +1008,7 @@ class IntegrationTest(PyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
-class MockClientTest(unittest.TestCase):
+class MockClientTest(UnitTest):
     """Base class for TestCases that use MockClient.
 
     This class is *not* an IntegrationTest: if properly written, MockClient
@@ -1138,8 +1021,26 @@ class MockClientTest(unittest.TestCase):
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
     @classmethod
-    @client_context.require_no_load_balancer
     def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    @client_context.require_no_load_balancer
+    def _setup_class(cls):
+        pass
+
+    @classmethod
+    def _tearDown_class(cls):
         pass
 
     def setUp(self):
@@ -1154,65 +1055,11 @@ class MockClientTest(unittest.TestCase):
         super().tearDown()
 
 
-# Global knobs to speed up the test suite.
-global_knobs = client_knobs(events_queue_frequency=0.05)
-
-
 def setup():
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
-
-
-def _get_executors(topology):
-    executors = []
-    for server in topology._servers.values():
-        # Some MockMonitor do not have an _executor.
-        if hasattr(server._monitor, "_executor"):
-            executors.append(server._monitor._executor)
-        if hasattr(server._monitor, "_rtt_monitor"):
-            executors.append(server._monitor._rtt_monitor._executor)
-    executors.append(topology._Topology__events_executor)
-    if topology._srv_monitor:
-        executors.append(topology._srv_monitor._executor)
-
-    return [e for e in executors if e is not None]
-
-
-def print_running_topology(topology):
-    running = [e for e in _get_executors(topology) if not e._stopped]
-    if running:
-        print(
-            "WARNING: found Topology with running threads:\n"
-            f"  Threads: {running}\n"
-            f"  Topology: {topology}\n"
-            f"  Creation traceback:\n{topology._settings._stack}"
-        )
-
-
-def print_running_clients():
-    from pymongo.topology import Topology
-
-    processed = set()
-    # Avoid false positives on the main test client.
-    # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
-    c = client_context.client
-    if c:
-        processed.add(c._topology._topology_id)
-    # Call collect to manually cleanup any would-be gc'd clients to avoid
-    # false positives.
-    gc.collect()
-    for obj in gc.get_objects():
-        try:
-            if isinstance(obj, Topology):
-                # Avoid printing the same Topology multiple times.
-                if obj._topology_id in processed:
-                    continue
-                print_running_topology(obj)
-                processed.add(obj._topology_id)
-        except ReferenceError:
-            pass
 
 
 def teardown():
@@ -1249,31 +1096,60 @@ def test_cases(suite):
             yield from test_cases(suite_or_case)
 
 
-# Helper method to workaround https://bugs.python.org/issue21724
-def clear_warning_registry():
-    """Clear the __warningregistry__ for all modules."""
-    for _, module in list(sys.modules.items()):
-        if hasattr(module, "__warningregistry__"):
-            module.__warningregistry__ = {}  # type:ignore[attr-defined]
+def print_running_clients():
+    from pymongo.synchronous.topology import Topology
+
+    processed = set()
+    # Avoid false positives on the main test client.
+    # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
+    c = client_context.client
+    if c:
+        processed.add(c._topology._topology_id)
+    # Call collect to manually cleanup any would-be gc'd clients to avoid
+    # false positives.
+    gc.collect()
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, Topology):
+                # Avoid printing the same Topology multiple times.
+                if obj._topology_id in processed:
+                    continue
+                print_running_topology(obj)
+                processed.add(obj._topology_id)
+        except ReferenceError:
+            pass
 
 
-class SystemCertsPatcher:
-    def __init__(self, ca_certs):
-        if (
-            ssl.OPENSSL_VERSION.lower().startswith("libressl")
-            and sys.platform == "darwin"
-            and not _ssl.IS_PYOPENSSL
-        ):
-            raise SkipTest(
-                "LibreSSL on OSX doesn't support setting CA certificates "
-                "using SSL_CERT_FILE environment variable."
-            )
-        self.original_certs = os.environ.get("SSL_CERT_FILE")
-        # Tell OpenSSL where CA certificates live.
-        os.environ["SSL_CERT_FILE"] = ca_certs
+def _all_users(db):
+    return {u["user"] for u in (db.command("usersInfo")).get("users", [])}
 
-    def disable(self):
-        if self.original_certs is None:
-            os.environ.pop("SSL_CERT_FILE")
-        else:
-            os.environ["SSL_CERT_FILE"] = self.original_certs
+
+def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([("createUser", user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd["pwd"] = pwd
+    cmd["roles"] = roles or ["root"]
+    cmd.update(**kwargs)
+    return authdb.command(cmd)
+
+
+def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    with warnings.catch_warnings():
+        # Ignore warning that ping is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        client.admin.command("ping")  # Force connection.
+
+    return client
+
+
+def drop_collections(db: Database):
+    # Drop all non-system collections in this database.
+    for coll in db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
+        db.drop_collection(coll)
+
+
+def remove_all_users(db: Database):
+    db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": client_context.w})

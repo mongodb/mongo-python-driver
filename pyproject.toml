@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=63.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>1.24","setuptools>=65.0","hatch-requirements-txt>=0.4.1"]
+build-backend = "hatchling.build"
 
 [project]
 name = "pymongo"
@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Typing :: Typed",
 ]
@@ -45,24 +46,36 @@ Documentation = "https://pymongo.readthedocs.io"
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
-[tool.setuptools.dynamic]
-version = {attr = "pymongo._version.__version__"}
+# Used to call hatch_build.py
+[tool.hatch.build.hooks.custom]
 
-[tool.setuptools.packages.find]
-include = ["bson","gridfs", "pymongo"]
+[tool.hatch.version]
+path = "pymongo/_version.py"
+validate-bump = false
 
-[tool.setuptools.package-data]
-bson=["py.typed", "*.pyi"]
-pymongo=["py.typed", "*.pyi"]
-gridfs=["py.typed", "*.pyi"]
+[tool.hatch.build.targets.wheel]
+packages = ["bson","gridfs", "pymongo"]
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+aws = ["requirements/aws.txt"]
+docs = ["requirements/docs.txt"]
+encryption = ["requirements/encryption.txt"]
+gssapi = ["requirements/gssapi.txt"]
+ocsp = ["requirements/ocsp.txt"]
+snappy = ["requirements/snappy.txt"]
+test = ["requirements/test.txt"]
+zstd = ["requirements/zstd.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"
-addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
-norecursedirs = ["test/*"]
 faulthandler_timeout = 1500
+asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true
 filterwarnings = [
     "error",
@@ -83,6 +96,24 @@ filterwarnings = [
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning:dateutil",
+    # TODO: Remove both of these in https://jira.mongodb.org/browse/PYTHON-4731
+    "ignore:Unclosed AsyncMongoClient*",
+    "ignore:Unclosed MongoClient*",
+]
+markers = [
+    "auth_aws: tests that rely on pymongo-auth-aws",
+    "auth_oidc: tests that rely on oidc auth",
+    "ocsp: tests that rely on ocsp",
+    "atlas: tests that rely on atlas",
+    "data_lake: tests that rely on atlas data lake",
+    "perf: benchmark tests",
+    "index_management: index management tests",
+    "csfle: client-side field-level encryption tests",
+    "encryption: encryption tests",
+    "load_balancer: load balancer tests",
+    "mockupdb: tests that rely on mockupdb",
+    "default: default test suite",
+    "default_async: default async test suite",
 ]
 
 [tool.mypy]
@@ -98,6 +129,20 @@ disable_error_code = ["no-untyped-def", "no-untyped-call"]
 [[tool.mypy.overrides]]
 module = ["service_identity.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pymongo.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine"]
+
+[[tool.mypy.overrides]]
+module = ["pymongo.asynchronous.*"]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = ["gridfs.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
 target-version = "py37"
@@ -126,6 +171,7 @@ select = [
   "UP",          # pyupgrade
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
+  "ASYNC",       # flake8-async
 ]
 ignore = [
   "PLR",    # Design related pylint codes
@@ -168,6 +214,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "UP031", "F401", "B023", "F811"]
 "tools/*.py" = ["T201"]
 "green_framework_test.py" = ["T201"]
+"hatch_build.py" = ["S"]
 
 [tool.coverage.run]
 branch = true

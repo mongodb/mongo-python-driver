@@ -34,7 +34,7 @@ from bson.binary import *
 from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo.common import validate_uuid_representation
-from pymongo.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 

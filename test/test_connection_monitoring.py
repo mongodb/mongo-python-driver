@@ -60,8 +60,8 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.pool import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.pool import PoolState, _PoolClosedError
 from pymongo.topology_description import updated_topology_description
 
 OBJECT_TYPES = {
@@ -220,6 +220,11 @@ class TestCMAP(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
+        if (
+            scenario_def["description"]
+            == "clear with interruptInUseConnections = true closes pending connections"
+        ):
+            self.skipTest("Skip pending PYTHON-4414")
         self.logs: list = []
         self.assertEqual(scenario_def["version"], 1)
         self.assertIn(scenario_def["style"], ["unit", "integration"])
@@ -395,6 +400,7 @@ class TestCMAP(IntegrationTest):
         failed_event = listener.events[3]
         self.assertEqual(failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
+    @client_context.require_no_fips
     def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
         client = single_client_noauth(

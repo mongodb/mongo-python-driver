@@ -13,7 +13,10 @@
 # permissions and limitations under the License.
 
 
-"""Tools to parse and validate a MongoDB URI."""
+"""Tools to parse and validate a MongoDB URI.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import re
@@ -40,7 +43,7 @@ from pymongo.common import (
     get_validated_options,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.srv_resolver import _have_dnspython, _SrvResolver
 from pymongo.typings import _Address
 
 if TYPE_CHECKING:
@@ -143,8 +146,21 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
             )
         host, port = host.split(":", 1)
     if isinstance(port, str):
-        if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError(f"Port must be an integer between 0 and 65535: {port!r}")
+        if not port.isdigit():
+            # Special case check for mistakes like "mongodb://localhost:27017 ".
+            if all(c.isspace() or c.isdigit() for c in port):
+                for c in port:
+                    if c.isspace():
+                        raise ValueError(f"Port contains whitespace character: {c!r}")
+
+            # A non-digit port indicates that the URI is invalid, likely because the password
+            # or username were not escaped.
+            raise ValueError(
+                "Port contains non-digit characters. Hint: username and password must be escaped according to "
+                "RFC 3986, use urllib.parse.quote_plus"
+            )
+        if int(port) > 65535 or int(port) <= 0:
+            raise ValueError("Port must be an integer between 0 and 65535")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
@@ -472,7 +488,7 @@ def parse_uri(
         is_srv = False
         scheme_free = uri[SCHEME_LEN:]
     elif uri.startswith(SRV_SCHEME):
-        if not _HAVE_DNSPYTHON:
+        if not _have_dnspython():
             python_path = sys.executable or "python"
             raise ConfigurationError(
                 'The "dnspython" module must be '
@@ -494,16 +510,11 @@ def parse_uri(
     collection = None
     options = _CaseInsensitiveDictionary()
 
-    host_part, _, path_part = scheme_free.partition("/")
-    if not host_part:
-        host_part = path_part
-        path_part = ""
-
-    if path_part:
-        dbase, _, opts = path_part.partition("?")
+    host_plus_db_part, _, opts = scheme_free.partition("?")
+    if "/" in host_plus_db_part:
+        host_part, _, dbase = host_plus_db_part.partition("/")
     else:
-        # There was no slash in scheme_free, check for a sole "?".
-        host_part, _, opts = host_part.partition("?")
+        host_part = host_plus_db_part
 
     if dbase:
         dbase = unquote_plus(dbase)
