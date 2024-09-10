@@ -31,15 +31,14 @@ from test.utils import (
 )
 
 from bson.json_util import object_hook
-from pymongo import MongoClient
+from pymongo import MongoClient, monitoring
+from pymongo.common import clean_node
 from pymongo.errors import ConnectionFailure, NotPrimaryError
-from pymongo.synchronous import monitoring
+from pymongo.hello import Hello
+from pymongo.server_description import ServerDescription
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.common import clean_node
-from pymongo.synchronous.hello import Hello
 from pymongo.synchronous.monitor import Monitor
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sdam_monitoring")
@@ -123,7 +122,7 @@ def compare_events(expected_dict, actual):
 
     elif expected_type == "topology_opening_event":
         if not isinstance(actual, monitoring.TopologyOpenedEvent):
-            return False, "Expected TopologyOpeningEvent, got %s" % (actual.__class__)
+            return False, "Expected TopologyOpenedEvent, got %s" % (actual.__class__)
 
     elif expected_type == "topology_description_changed_event":
         if not isinstance(actual, monitoring.TopologyDescriptionChangedEvent):
@@ -180,7 +179,7 @@ class TestAllScenarios(IntegrationTest):
 
 def create_test(scenario_def):
     def run_scenario(self):
-        with client_knobs(events_queue_frequency=0.1):
+        with client_knobs(events_queue_frequency=0.05, min_heartbeat_interval=0.05):
             _run_scenario(self)
 
     def _run_scenario(self):
@@ -217,7 +216,7 @@ def create_test(scenario_def):
                 )
 
                 # Wait some time to catch possible lagging extra events.
-                time.sleep(0.5)
+                wait_until(lambda: topology._events.empty(), "publish lagging events")
 
                 i = 0
                 while i < expected_len:
@@ -274,7 +273,9 @@ class TestSdamMonitoring(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         # Speed up the tests by decreasing the event publish frequency.
-        cls.knobs = client_knobs(events_queue_frequency=0.1)
+        cls.knobs = client_knobs(
+            events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1
+        )
         cls.knobs.enable()
         cls.listener = ServerAndTopologyEventListener()
         retry_writes = client_context.supports_transactions()

@@ -36,7 +36,7 @@ guaranteed monotonic reads, even when reading from replica set secondaries.
 
 .. seealso:: The MongoDB documentation on `causal-consistency <https://dochub.mongodb.org/core/causal-consistency>`_.
 
-.. _transactions-ref:
+.. _async-transactions-ref:
 
 Transactions
 ============
@@ -44,8 +44,8 @@ Transactions
 .. versionadded:: 3.7
 
 MongoDB 4.0 adds support for transactions on replica set primaries. A
-transaction is associated with a :class:`ClientSession`. To start a transaction
-on a session, use :meth:`ClientSession.start_transaction` in a with-statement.
+transaction is associated with a :class:`AsyncClientSession`. To start a transaction
+on a session, use :meth:`AsyncClientSession.start_transaction` in a with-statement.
 Then, execute an operation within the transaction by passing the session to the
 operation:
 
@@ -63,9 +63,9 @@ operation:
           )
 
 Upon normal completion of ``async with session.start_transaction()`` block, the
-transaction automatically calls :meth:`ClientSession.commit_transaction`.
+transaction automatically calls :meth:`AsyncClientSession.commit_transaction`.
 If the block exits with an exception, the transaction automatically calls
-:meth:`ClientSession.abort_transaction`.
+:meth:`AsyncClientSession.abort_transaction`.
 
 In general, multi-document transactions only support read/write (CRUD)
 operations on existing collections. However, MongoDB 4.4 adds support for
@@ -93,7 +93,7 @@ running either commitTransaction or abortTransaction, the session is unpinned.
 
 .. seealso:: The MongoDB documentation on `transactions <https://dochub.mongodb.org/core/transactions>`_.
 
-.. _snapshot-reads-ref:
+.. _async-snapshot-reads-ref:
 
 Snapshot Reads
 ==============
@@ -102,7 +102,7 @@ Snapshot Reads
 
 MongoDB 5.0 adds support for snapshot reads. Snapshot reads are requested by
 passing the ``snapshot`` option to
-:meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
+:meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.start_session`.
 If ``snapshot`` is True, all read operations that use this session read data
 from the same snapshot timestamp. The server chooses the latest
 majority-committed snapshot timestamp when executing the first read operation
@@ -123,11 +123,11 @@ Snapshot Reads Limitations
 Snapshot reads sessions are incompatible with ``causal_consistency=True``.
 Only the following read operations are supported in a snapshot reads session:
 
-- :meth:`~pymongo.collection.AsyncCollection.find`
-- :meth:`~pymongo.collection.AsyncCollection.find_one`
-- :meth:`~pymongo.collection.AsyncCollection.aggregate`
-- :meth:`~pymongo.collection.AsyncCollection.count_documents`
-- :meth:`~pymongo.collection.AsyncCollection.distinct` (on unsharded collections)
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.find`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.count_documents`
+- :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` (on unsharded collections)
 
 Classes
 =======
@@ -144,6 +144,7 @@ from typing import (
     Any,
     AsyncContextManager,
     Callable,
+    Coroutine,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -157,8 +158,6 @@ from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
-from pymongo.asynchronous.operations import _Op
-from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -167,23 +166,25 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.helpers_constants import _RETRYABLE_ERROR_CODES
+from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
+from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
-    from pymongo.asynchronous.typings import ClusterTime, _Address
+    from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = False
 
 
 class SessionOptions:
-    """Options for a new :class:`ClientSession`.
+    """Options for a new :class:`AsyncClientSession`.
 
     :param causal_consistency: If True, read operations are causally
         ordered within the session. Defaults to True when the ``snapshot``
@@ -246,7 +247,7 @@ class SessionOptions:
 
 
 class TransactionOptions:
-    """Options for :meth:`ClientSession.start_transaction`.
+    """Options for :meth:`AsyncClientSession.start_transaction`.
 
     :param read_concern: The
         :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
@@ -336,8 +337,8 @@ class TransactionOptions:
 
 
 def _validate_session_write_concern(
-    session: Optional[ClientSession], write_concern: Optional[WriteConcern]
-) -> Optional[ClientSession]:
+    session: Optional[AsyncClientSession], write_concern: Optional[WriteConcern]
+) -> Optional[AsyncClientSession]:
     """Validate that an explicit session is not used with an unack'ed write.
 
     Returns the session to use for the next operation.
@@ -362,7 +363,7 @@ def _validate_session_write_concern(
 class _TransactionContext:
     """Internal transaction context manager for start_transaction."""
 
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: AsyncClientSession):
         self.__session = session
 
     async def __aenter__(self) -> _TransactionContext:
@@ -391,7 +392,7 @@ class _TxnState:
 
 
 class _Transaction:
-    """Internal class to hold transaction information in a ClientSession."""
+    """Internal class to hold transaction information in a AsyncClientSession."""
 
     def __init__(self, opts: Optional[TransactionOptions], client: AsyncMongoClient):
         self.opts = opts
@@ -410,12 +411,12 @@ class _Transaction:
         return self.state == _TxnState.STARTING
 
     @property
-    def pinned_conn(self) -> Optional[Connection]:
+    def pinned_conn(self) -> Optional[AsyncConnection]:
         if self.active() and self.conn_mgr:
             return self.conn_mgr.conn
         return None
 
-    def pin(self, server: Server, conn: Connection) -> None:
+    def pin(self, server: Server, conn: AsyncConnection) -> None:
         self.sharded = True
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
@@ -481,17 +482,17 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 
-class ClientSession:
+class AsyncClientSession:
     """A session for ordering sequential operations.
 
-    :class:`ClientSession` instances are **not thread-safe or fork-safe**.
+    :class:`AsyncClientSession` instances are **not thread-safe or fork-safe**.
     They can only be used by one thread or process at a time. A single
-    :class:`ClientSession` cannot be used to run multiple operations
+    :class:`AsyncClientSession` cannot be used to run multiple operations
     concurrently.
 
     Should not be initialized directly by application developers - to create a
-    :class:`ClientSession`, call
-    :meth:`~pymongo.mongo_client.AsyncMongoClient.start_session`.
+    :class:`AsyncClientSession`, call
+    :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.start_session`.
     """
 
     def __init__(
@@ -531,11 +532,17 @@ class ClientSession:
                 self._client._return_server_session(self._server_session)
                 self._server_session = None
 
+    def _end_implicit_session(self) -> None:
+        # Implicit sessions can't be part of transactions or pinned connections
+        if self._server_session is not None:
+            self._client._return_server_session(self._server_session)
+            self._server_session = None
+
     def _check_ended(self) -> None:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    async def __aenter__(self) -> ClientSession:
+    async def __aenter__(self) -> AsyncClientSession:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -543,7 +550,7 @@ class ClientSession:
 
     @property
     def client(self) -> AsyncMongoClient:
-        """The :class:`~pymongo.mongo_client.AsyncMongoClient` this session was
+        """The :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
         created from.
         """
         return self._client
@@ -554,14 +561,14 @@ class ClientSession:
         return self._options
 
     @property
-    async def session_id(self) -> Mapping[str, Any]:
+    def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
         self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.session_id
 
     @property
-    async def _transaction_id(self) -> Int64:
+    def _transaction_id(self) -> Int64:
         """The current transaction id for the underlying server session."""
         self._materialize(self._client.topology_description.logical_session_timeout_minutes)
         return self._server_session.transaction_id
@@ -592,7 +599,7 @@ class ClientSession:
 
     async def with_transaction(
         self,
-        callback: Callable[[ClientSession], _T],
+        callback: Callable[[AsyncClientSession], Coroutine[Any, Any, _T]],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -640,25 +647,25 @@ class ClientSession:
         however, ``with_transaction`` will return without taking further
         action.
 
-        :class:`ClientSession` instances are **not thread-safe or fork-safe**.
+        :class:`AsyncClientSession` instances are **not thread-safe or fork-safe**.
         Consequently, the ``callback`` must not attempt to execute multiple
         operations concurrently.
 
         When ``callback`` raises an exception, ``with_transaction``
         automatically aborts the current transaction. When ``callback`` or
-        :meth:`~ClientSession.commit_transaction` raises an exception that
+        :meth:`~AsyncClientSession.commit_transaction` raises an exception that
         includes the ``"TransientTransactionError"`` error label,
         ``with_transaction`` starts a new transaction and re-executes
         the ``callback``.
 
-        When :meth:`~ClientSession.commit_transaction` raises an exception with
+        When :meth:`~AsyncClientSession.commit_transaction` raises an exception with
         the ``"UnknownTransactionCommitResult"`` error label,
         ``with_transaction`` retries the commit until the result of the
         transaction is known.
 
         This method will cease retrying after 120 seconds has elapsed. This
         timeout is not configurable and any exception raised by the
-        ``callback`` or by :meth:`ClientSession.commit_transaction` after the
+        ``callback`` or by :meth:`AsyncClientSession.commit_transaction` after the
         timeout is reached will be re-raised. Applications that desire a
         different timeout duration should not use this method.
 
@@ -687,7 +694,7 @@ class ClientSession:
                 read_concern, write_concern, read_preference, max_commit_time_ms
             )
             try:
-                ret = callback(self)
+                ret = await callback(self)
             except Exception as exc:
                 if self.in_transaction:
                     await self.abort_transaction()
@@ -844,7 +851,7 @@ class ClientSession:
         """
 
         async def func(
-            _session: Optional[ClientSession], conn: Connection, _retryable: bool
+            _session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable: bool
         ) -> dict[str, Any]:
             return await self._finish_transaction(conn, command_name)
 
@@ -852,7 +859,7 @@ class ClientSession:
             func, self, None, retryable=True, operation=_Op.ABORT
         )
 
-    async def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
+    async def _finish_transaction(self, conn: AsyncConnection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
         opts = self._transaction.opts
         assert opts
@@ -891,8 +898,8 @@ class ClientSession:
         """Update the cluster time for this session.
 
         :param cluster_time: The
-            :data:`~pymongo.client_session.ClientSession.cluster_time` from
-            another `ClientSession` instance.
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.cluster_time` from
+            another `AsyncClientSession` instance.
         """
         if not isinstance(cluster_time, _Mapping):
             raise TypeError("cluster_time must be a subclass of collections.Mapping")
@@ -912,8 +919,8 @@ class ClientSession:
         """Update the operation time for this session.
 
         :param operation_time: The
-            :data:`~pymongo.client_session.ClientSession.operation_time` from
-            another `ClientSession` instance.
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.operation_time` from
+            another `AsyncClientSession` instance.
         """
         if not isinstance(operation_time, Timestamp):
             raise TypeError("operation_time must be an instance of bson.timestamp.Timestamp")
@@ -960,11 +967,11 @@ class ClientSession:
         return None
 
     @property
-    def _pinned_connection(self) -> Optional[Connection]:
+    def _pinned_connection(self) -> Optional[AsyncConnection]:
         """The connection this transaction was started on."""
         return self._transaction.pinned_conn
 
-    def _pin(self, server: Server, conn: Connection) -> None:
+    def _pin(self, server: Server, conn: AsyncConnection) -> None:
         """Pin this session to the given Server or to the given connection."""
         self._transaction.pin(server, conn)
 
@@ -993,7 +1000,7 @@ class ClientSession:
         command: MutableMapping[str, Any],
         is_retryable: bool,
         read_preference: _ServerMode,
-        conn: Connection,
+        conn: AsyncConnection,
     ) -> None:
         if not conn.supports_sessions:
             if not self._implicit:
@@ -1036,7 +1043,7 @@ class ClientSession:
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def _update_read_concern(self, cmd: MutableMapping[str, Any], conn: Connection) -> None:
+    def _update_read_concern(self, cmd: MutableMapping[str, Any], conn: AsyncConnection) -> None:
         if self.options.causal_consistency and self.operation_time is not None:
             cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
@@ -1048,7 +1055,7 @@ class ClientSession:
                 rc["atClusterTime"] = self._snapshot_time
 
     def __copy__(self) -> NoReturn:
-        raise TypeError("A ClientSession cannot be copied, create a new session instead")
+        raise TypeError("A AsyncClientSession cannot be copied, create a new session instead")
 
 
 class _EmptyServerSession:
@@ -1126,7 +1133,7 @@ class _ServerSessionPool(collections.deque):
     def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
-        # sessions from a __del__ method (like in Cursor.__die), so it can't
+        # sessions from a __del__ method (like in AsyncCursor.__die), so it can't
         # clear stale sessions there. In case many sessions were returned via
         # __del__, check for stale sessions here too.
         self._clear_stale(session_timeout_minutes)

@@ -19,8 +19,6 @@ import datetime
 import os
 import sys
 
-from pymongo.synchronous.operations import _Op
-
 sys.path[0:0] = [""]
 
 from test import unittest
@@ -28,11 +26,12 @@ from test.pymongo_mocks import DummyMonitor
 from test.utils import MockPool, parse_read_preference
 
 from bson import json_util
+from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
-from pymongo.synchronous.common import HEARTBEAT_FREQUENCY, clean_node
-from pymongo.synchronous.hello import Hello, HelloCompat
-from pymongo.synchronous.server_description import ServerDescription
-from pymongo.synchronous.server_selectors import writable_server_selector
+from pymongo.hello import Hello, HelloCompat
+from pymongo.operations import _Op
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
 

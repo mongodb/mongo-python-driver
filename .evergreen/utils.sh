@@ -43,6 +43,7 @@ find_python3() {
 createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
+
     # Prefer venv
     VENV="$PYTHON -m venv"
     if [ "$(uname -s)" = "Darwin" ]; then
@@ -66,7 +67,6 @@ createvirtualenv () {
 
     export PIP_QUIET=1
     python -m pip install --upgrade pip
-    python -m pip install --upgrade tox
 }
 
 # Usage:

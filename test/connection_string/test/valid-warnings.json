@@ -107,7 +107,9 @@
         }
       ],
       "auth": null,
-      "options": null
+      "options": {
+        "authMechanism": "MONGODB-OIDC"
+      }
     }
   ]
 }

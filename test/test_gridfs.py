@@ -37,9 +37,9 @@ from pymongo.errors import (
     NotPrimaryError,
     ServerSelectionTimeoutError,
 )
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.read_preferences import ReadPreference
 
 
 class JustWrite(threading.Thread):
@@ -440,6 +440,12 @@ class TestGridfs(IntegrationTest):
         gout = next(cursor)
         self.assertEqual(b"test2+", gout.read())
         self.assertRaises(StopIteration, cursor.__next__)
+        cursor.rewind()
+        items = cursor.to_list()
+        self.assertEqual(len(items), 2)
+        cursor.rewind()
+        items = cursor.to_list(1)
+        self.assertEqual(len(items), 1)
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 

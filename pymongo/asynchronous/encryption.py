@@ -50,7 +50,7 @@ try:
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
-    MongoCryptCallback = object
+    AsyncMongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
@@ -59,16 +59,13 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.common import CONNECT_TIMEOUT
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import UpdateOne
-from pymongo.asynchronous.pool import PoolOptions, _configured_socket, _raise_connection_failure
-from pymongo.asynchronous.typings import _DocumentType, _DocumentTypeArg
-from pymongo.asynchronous.uri_parser import parse_host
+from pymongo.asynchronous.pool import _configured_socket, _raise_connection_failure
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -78,9 +75,13 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, async_sendall
+from pymongo.operations import UpdateOne
+from pymongo.pool_options import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
+from pymongo.typings import _DocumentType, _DocumentTypeArg
+from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -193,9 +194,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
 
-    async def collection_info(
-        self, database: AsyncDatabase[Mapping[str, Any]], filter: bytes
-    ) -> Optional[bytes]:
+    async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -206,10 +205,10 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
-        async with self.client_ref()[database].list_collections(
+        async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
-            for doc in cursor:
+            async for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
             return None
 
@@ -259,7 +258,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :return: A generator which yields the requested keys from the key vault.
         """
         assert self.key_vault_coll is not None
-        async with await self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
+        async with self.key_vault_coll.find(RawBSONDocument(filter)) as cursor:
             async for key in cursor:
                 yield key.raw
 
@@ -303,7 +302,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
 
 class RewrapManyDataKeyResult:
-    """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
+    """Result object returned by a :meth:`~AsyncClientEncryption.rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
     """
@@ -315,7 +314,7 @@ class RewrapManyDataKeyResult:
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
         """The result of the bulk write operation used to update the key vault
         collection with one or more rewrapped data keys. If
-        :meth:`~ClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
+        :meth:`~AsyncClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
         no bulk write operation will be executed and this field will be
         ``None``.
         """
@@ -381,13 +380,16 @@ class _Encrypter:
         )
 
         io_callbacks = _EncryptionIO(  # type:ignore[misc]
-            metadata_client, key_vault_coll, mongocryptd_client, opts
+            metadata_client,
+            key_vault_coll,  # type:ignore[arg-type]
+            mongocryptd_client,
+            opts,
         )
         self._auto_encrypter = AsyncAutoEncrypter(
             io_callbacks,
-            MongoCryptOptions(
-                opts._kms_providers,
-                schema_map,
+            _create_mongocrypt_options(
+                kms_providers=opts._kms_providers,
+                schema_map=schema_map,
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
@@ -459,7 +461,14 @@ class Algorithm(str, enum.Enum):
     RANGE = "Range"
     """Range.
 
-    .. versionadded:: 4.8
+    .. versionadded:: 4.9
+    """
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - RangePreview.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
+
+    .. versionadded:: 4.4
     """
 
 
@@ -475,10 +484,27 @@ class QueryType(str, enum.Enum):
     RANGE = "range"
     """Used to encrypt a value for a range query.
 
-"""
+    .. versionadded:: 4.9
+    """
+
+    RANGEPREVIEW = "RangePreview"
+    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
+
+    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
+
+    .. versionadded:: 4.4
+    """
 
 
-class ClientEncryption(Generic[_DocumentType]):
+def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
+    opts = MongoCryptOptions(**kwargs)
+    # Opt into range V2 encryption.
+    if hasattr(opts, "enable_range_v2"):
+        opts.enable_range_v2 = True
+    return opts
+
+
+class AsyncClientEncryption(Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
     def __init__(
@@ -491,7 +517,7 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> None:
         """Explicit client-side field level encryption.
 
-        The ClientEncryption class encapsulates explicit operations on a key
+        The AsyncClientEncryption class encapsulates explicit operations on a key
         vault collection that cannot be done directly on an AsyncMongoClient. Similar
         to configuring auto encryption on an AsyncMongoClient, it is constructed with
         an AsyncMongoClient (to a MongoDB cluster containing the key vault
@@ -564,11 +590,14 @@ class ClientEncryption(Generic[_DocumentType]):
             raise ConfigurationError(
                 "client-side field level encryption requires the pymongocrypt "
                 "library: install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'"
+                "python -m pip install --upgrade 'pymongo[encryption]'"
             )
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
+
+        if not isinstance(key_vault_client, AsyncMongoClient):
+            raise TypeError(f"AsyncMongoClient required but given {type(key_vault_client)}")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -585,7 +614,8 @@ class ClientEncryption(Generic[_DocumentType]):
             None, key_vault_coll, None, opts
         )
         self._encryption = AsyncExplicitEncrypter(
-            self._io_callbacks, MongoCryptOptions(kms_providers, None)
+            self._io_callbacks,
+            _create_mongocrypt_options(kms_providers=kms_providers, schema_map=None),
         )
         # Use the same key vault collection as the callback.
         assert self._io_callbacks.key_vault_coll is not None
@@ -644,7 +674,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method.
-        See the documentation for :meth:`~pymongo.database.AsyncDatabase.create_collection` for all valid options.
+        See the documentation for :meth:`~pymongo.asynchronous.database.AsyncDatabase.create_collection` for all valid options.
 
         :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
 
@@ -654,6 +684,11 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
+        if not isinstance(database, AsyncDatabase):
+            raise TypeError(
+                f"create_encrypted_collection() requires an AsyncDatabase but {type(database)} given"
+            )
+
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):
             if isinstance(field, dict) and field.get("keyId") is None:
@@ -729,6 +764,9 @@ class ClientEncryption(Generic[_DocumentType]):
                 Secret Data managed object.
               - `endpoint` (string): Optional. Host with optional
                  port, e.g. "example.vault.azure.net:".
+              - `delegated` (bool): Optional. If True (recommended), the
+                KMIP server will perform encryption and decryption. If
+                delegated is not provided, defaults to false.
 
         :param key_alt_names: An optional list of string alternate
             names used to reference a key. If a key is created with alternate
@@ -836,7 +874,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
@@ -892,7 +930,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :return: The encrypted expression, a :class:`~bson.RawBSONDocument`.
 
-        .. versionchanged:: 4.8
+        .. versionchanged:: 4.9
            Added the `range_opts` parameter.
 
         .. versionchanged:: 4.7
@@ -946,17 +984,17 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return await self._key_vault_coll.find_one({"_id": id})
 
-    async def get_keys(self) -> AsyncCursor[RawBSONDocument]:
+    def get_keys(self) -> AsyncCursor[RawBSONDocument]:
         """Get all of the data keys.
 
-        :return: An instance of :class:`~pymongo.cursor.Cursor` over the data key
+        :return: An instance of :class:`~pymongo.asynchronous.cursor.AsyncCursor` over the data key
           documents.
 
         .. versionadded:: 4.2
         """
         self._check_closed()
         assert self._key_vault_coll is not None
-        return await self._key_vault_coll.find({})
+        return self._key_vault_coll.find({})
 
     async def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
@@ -976,10 +1014,10 @@ class ClientEncryption(Generic[_DocumentType]):
     async def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to add.
+        :param key_alt_name: The key alternate name to add.
 
         :return: The previous version of the key document.
 
@@ -1008,10 +1046,10 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
 
-        :param `id`: The UUID of a key a which must be a
+        :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
-        :param `key_alt_name`: The key alternate name to remove.
+        :param key_alt_name: The key alternate name to remove.
 
         :return: Returns the previous version of the key document.
 
@@ -1050,7 +1088,7 @@ class ClientEncryption(Generic[_DocumentType]):
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,
             or ``None`` to use the current KMS provider(s).
-        :param `master_key`: The master key fields corresponding to the new KMS
+        :param master_key: The master key fields corresponding to the new KMS
             provider when ``provider`` is not ``None``.
 
         :return: A :class:`RewrapManyDataKeyResult`.
@@ -1097,7 +1135,7 @@ class ClientEncryption(Generic[_DocumentType]):
         result = await self._key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
 
-    async def __aenter__(self) -> ClientEncryption[_DocumentType]:
+    async def __aenter__(self) -> AsyncClientEncryption[_DocumentType]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -1105,7 +1143,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
     def _check_closed(self) -> None:
         if self._encryption is None:
-            raise InvalidOperation("Cannot use closed ClientEncryption")
+            raise InvalidOperation("Cannot use closed AsyncClientEncryption")
 
     async def close(self) -> None:
         """Release resources.
@@ -1113,7 +1151,7 @@ class ClientEncryption(Generic[_DocumentType]):
         Note that using this class in a with-statement will automatically call
         :meth:`close`::
 
-            with ClientEncryption(...) as client_encryption:
+            with AsyncClientEncryption(...) as client_encryption:
                 encrypted = client_encryption.encrypt(value, ...)
                 decrypted = client_encryption.decrypt(encrypted)
 

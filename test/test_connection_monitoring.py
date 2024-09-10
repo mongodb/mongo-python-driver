@@ -45,7 +45,7 @@ from pymongo.errors import (
     PyMongoError,
     WaitQueueTimeoutError,
 )
-from pymongo.synchronous.monitoring import (
+from pymongo.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
@@ -60,9 +60,9 @@ from pymongo.synchronous.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.pool import PoolState, _PoolClosedError
-from pymongo.synchronous.read_preferences import ReadPreference
-from pymongo.synchronous.topology_description import updated_topology_description
+from pymongo.topology_description import updated_topology_description
 
 OBJECT_TYPES = {
     # Event types.
@@ -400,6 +400,7 @@ class TestCMAP(IntegrationTest):
         failed_event = listener.events[3]
         self.assertEqual(failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
+    @client_context.require_no_fips
     def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
         client = single_client_noauth(

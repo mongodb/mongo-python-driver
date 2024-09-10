@@ -19,3 +19,4 @@ from pymongo.synchronous.command_cursor import *  # noqa: F403
 from pymongo.synchronous.command_cursor import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = ["CommandCursor", "RawBatchCommandCursor"]  # noqa: F405

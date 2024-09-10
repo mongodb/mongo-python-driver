@@ -65,7 +65,17 @@ class PeriodicExecutor:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
     def _run_async(self) -> None:
-        asyncio.run(self._run())  # type: ignore[func-returns-value]
+        # The default asyncio loop implementation on Windows
+        # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
+        # We explicitly use a different loop implementation here to prevent that issue
+        if sys.platform == "win32":
+            loop = asyncio.SelectorEventLoop()
+            try:
+                loop.run_until_complete(self._run())  # type: ignore[func-returns-value]
+            finally:
+                loop.close()
+        else:
+            asyncio.run(self._run())  # type: ignore[func-returns-value]
 
     def open(self) -> None:
         """Start. Multiple calls have no effect.

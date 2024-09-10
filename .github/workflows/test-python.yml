@@ -27,10 +27,10 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install Python dependencies
         run: |
-          python -m pip install -U pip tox
+          python -m pip install -U pip hatch
       - name: Run linters
         run: |
-          tox -m lint-manual
+          hatch run lint:run-manual
       - name: Run compilation
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
@@ -38,7 +38,7 @@ jobs:
           python tools/fail_if_no_c.py
       - name: Run typecheck
         run: |
-          tox -m typecheck
+          hatch run typing:check
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
@@ -51,7 +51,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.8", "3.11", "pypy-3.9"]
+        python-version: ["3.8", "pypy-3.9", "3.13"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -61,16 +61,23 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+          allow-prereleases: true
       - name: Install dependencies
         run: |
-          pip install -q tox
+          pip install -U pip
+          if [ "${{ matrix.python-version }}" == "3.13" ]; then
+            pip install --pre cffi setuptools
+            pip install --no-build-isolation hatch
+          else
+            pip install hatch
+          fi
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: 6.0
       - name: Run tests
         run: |
-          tox -m test
+          hatch run test:test
 
   doctest:
     runs-on: ubuntu-latest
@@ -85,14 +92,14 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install -q tox
+          pip install -U hatch pip
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: '8.0.0-rc4'
       - name: Run tests
         run: |
-          tox -m doc-test
+          hatch run doctest:test
 
   docs:
     name: Docs Checks
@@ -107,10 +114,10 @@ jobs:
           python-version: '3.8'
       - name: Install dependencies
         run: |
-          pip install -q tox
+          pip install -U pip hatch
       - name: Build docs
         run: |
-          tox -m doc
+          hatch run doc:build
 
   linkcheck:
     name: Link Check
@@ -125,10 +132,10 @@ jobs:
           python-version: '3.8'
       - name: Install dependencies
         run: |
-          pip install -q tox
+          pip install -U pip hatch
       - name: Build docs
         run: |
-          tox -m linkcheck
+          hatch run doc:linkcheck
 
   typing:
     name: Typing Tests
@@ -145,10 +152,10 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install -q tox
+          pip install -U pip hatch
       - name: Run typecheck
         run: |
-          tox -m typecheck
+          hatch run typing:check
 
   make_sdist:
     runs-on: ubuntu-latest
@@ -195,11 +202,11 @@ jobs:
             python-version: '3.8'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@1.10.0
-        - name: Run Test
+        - name: Run connect test from sdist
           shell: bash
           run: |
             cd sdist/test
             ls
             which python
             pip install -e ".[test]"
-            pytest -v
+            PYMONGO_MUST_CONNECT=1 pytest -v -k client_context

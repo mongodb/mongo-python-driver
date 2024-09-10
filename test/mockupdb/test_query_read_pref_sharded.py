@@ -17,17 +17,27 @@ from __future__ import annotations
 
 import unittest
 
-from mockupdb import MockupDB, OpMsg, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, OpMsg, going
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.synchronous.read_preferences import (
+from pymongo.read_preferences import (
     Nearest,
     Primary,
     PrimaryPreferred,
     Secondary,
     SecondaryPreferred,
 )
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestQueryAndReadModeSharded(unittest.TestCase):

@@ -15,77 +15,33 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
-import abc
-import os
 import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
-from urllib.parse import quote
 
 import bson
 from bson.binary import Binary
-from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
-from pymongo._gcp_helpers import _get_gcp_response
+from pymongo.auth_oidc_shared import (
+    CALLBACK_VERSION,
+    HUMAN_CALLBACK_TIMEOUT_SECONDS,
+    MACHINE_CALLBACK_TIMEOUT_SECONDS,
+    TIME_BETWEEN_CALLS_SECONDS,
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+    OIDCIdPInfo,
+    _OIDCProperties,
+)
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers_constants import _AUTHENTICATION_FAILURE_CODE
+from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
 
 if TYPE_CHECKING:
-    from pymongo.synchronous.auth import MongoCredential
+    from pymongo.auth_shared import MongoCredential
     from pymongo.synchronous.pool import Connection
 
 _IS_SYNC = True
-
-
-@dataclass
-class OIDCIdPInfo:
-    issuer: str
-    clientId: Optional[str] = field(default=None)
-    requestScopes: Optional[list[str]] = field(default=None)
-
-
-@dataclass
-class OIDCCallbackContext:
-    timeout_seconds: float
-    username: str
-    version: int
-    refresh_token: Optional[str] = field(default=None)
-    idp_info: Optional[OIDCIdPInfo] = field(default=None)
-
-
-@dataclass
-class OIDCCallbackResult:
-    access_token: str
-    expires_in_seconds: Optional[float] = field(default=None)
-    refresh_token: Optional[str] = field(default=None)
-
-
-class OIDCCallback(abc.ABC):
-    """A base class for defining OIDC callbacks."""
-
-    @abc.abstractmethod
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        """Convert the given BSON value into our own type."""
-
-
-@dataclass
-class _OIDCProperties:
-    callback: Optional[OIDCCallback] = field(default=None)
-    human_callback: Optional[OIDCCallback] = field(default=None)
-    environment: Optional[str] = field(default=None)
-    allowed_hosts: list[str] = field(default_factory=list)
-    token_resource: Optional[str] = field(default=None)
-    username: str = ""
-
-
-"""Mechanism properties for MONGODB-OIDC authentication."""
-
-TOKEN_BUFFER_MINUTES = 5
-HUMAN_CALLBACK_TIMEOUT_SECONDS = 5 * 60
-CALLBACK_VERSION = 1
-MACHINE_CALLBACK_TIMEOUT_SECONDS = 60
-TIME_BETWEEN_CALLS_SECONDS = 0.1
 
 
 def _get_authenticator(
@@ -115,48 +71,6 @@ def _get_authenticator(
     # Get or create the cache data.
     credentials.cache.data = _OIDCAuthenticator(username=principal_name, properties=properties)
     return credentials.cache.data
-
-
-class _OIDCTestCallback(OIDCCallback):
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("OIDC_TOKEN_FILE")
-        if not token_file:
-            raise RuntimeError(
-                'MONGODB-OIDC with an "test" provider requires "OIDC_TOKEN_FILE" to be set'
-            )
-        with open(token_file) as fid:
-            return OIDCCallbackResult(access_token=fid.read().strip())
-
-
-class _OIDCAWSCallback(OIDCCallback):
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
-        if not token_file:
-            raise RuntimeError(
-                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
-            )
-        with open(token_file) as fid:
-            return OIDCCallbackResult(access_token=fid.read().strip())
-
-
-class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_resource: str) -> None:
-        self.token_resource = quote(token_resource)
-
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
-        return OIDCCallbackResult(
-            access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
-        )
-
-
-class _OIDCGCPCallback(OIDCCallback):
-    def __init__(self, token_resource: str) -> None:
-        self.token_resource = quote(token_resource)
-
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_gcp_response(self.token_resource, context.timeout_seconds)
-        return OIDCCallbackResult(access_token=resp["access_token"])
 
 
 @dataclass

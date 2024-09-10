@@ -26,7 +26,7 @@ BSON_IGNORE = []
 GRIDFS_IGNORE = [
     "ASCENDING",
     "DESCENDING",
-    "ClientSession",
+    "AsyncClientSession",
     "Collection",
     "ObjectId",
     "validate_string",

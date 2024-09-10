@@ -20,12 +20,14 @@ import traceback
 from typing import Any, Collection, Optional, Type, Union
 
 from bson.objectid import ObjectId
-from pymongo.asynchronous import common, monitor, pool
-from pymongo.asynchronous.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
-from pymongo.asynchronous.pool import Pool, PoolOptions
-from pymongo.asynchronous.server_description import ServerDescription
-from pymongo.asynchronous.topology_description import TOPOLOGY_TYPE, _ServerSelector
+from pymongo import common
+from pymongo.asynchronous import monitor, pool
+from pymongo.asynchronous.pool import Pool
+from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.errors import ConfigurationError
+from pymongo.pool_options import PoolOptions
+from pymongo.server_description import ServerDescription
+from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
 
 _IS_SYNC = False
 
@@ -80,7 +82,7 @@ class TopologySettings:
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
         # test suite.
-        self._stack = "".join(traceback.format_stack())
+        self._stack = "".join(traceback.format_stack()[:-2])
 
     @property
     def seeds(self) -> Collection[tuple[str, int]]:

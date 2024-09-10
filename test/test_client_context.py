@@ -18,10 +18,12 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import SkipTest, client_context, unittest
+from test import SkipTest, UnitTest, client_context, unittest
+
+_IS_SYNC = True
 
 
-class TestClientContext(unittest.TestCase):
+class TestClientContext(UnitTest):
     def test_must_connect(self):
         if "PYMONGO_MUST_CONNECT" not in os.environ:
             raise SkipTest("PYMONGO_MUST_CONNECT is not set")

@@ -90,6 +90,9 @@ def _is_ip_address(address: Any) -> bool:
 # According to the docs for socket.send it can raise
 # WantX509LookupError and should be retried.
 BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
+BLOCKING_IO_READ_ERROR = _SSL.WantReadError
+BLOCKING_IO_WRITE_ERROR = _SSL.WantWriteError
+BLOCKING_IO_LOOKUP_ERROR = _SSL.WantX509LookupError
 
 
 def _ragged_eof(exc: BaseException) -> bool:
@@ -292,7 +295,7 @@ class SSLContext:
         # Password callback MUST be set first or it will be ignored.
         if password:
 
-            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: bytes) -> bytes:
+            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: Optional[bytes]) -> bytes:
                 # XXX:We could check the password length against what OpenSSL
                 # tells us is the max, but we can't raise an exception, so...
                 # warn?
@@ -332,6 +335,7 @@ class SSLContext:
     def _load_wincerts(self, store: str) -> None:
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
+        assert cert_store is not None
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
 
         for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore

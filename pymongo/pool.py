@@ -19,3 +19,4 @@ from pymongo.synchronous.pool import *  # noqa: F403
 from pymongo.synchronous.pool import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = ["PoolOptions"]  # noqa: F405

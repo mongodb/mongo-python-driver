@@ -33,20 +33,18 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot
-from pymongo.asynchronous import helpers as _async_helpers
-from pymongo.asynchronous import message as _async_message
-from pymongo.asynchronous.common import MAX_MESSAGE_SIZE
-from pymongo.asynchronous.compression_support import _NO_COMPRESSION, decompress
-from pymongo.asynchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.asynchronous.message import _UNPACK_REPLY, _OpMsg, _OpReply
-from pymongo.asynchronous.monitoring import _is_speculative_authenticate
+from pymongo import _csot, helpers_shared, message
+from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.compression_support import _NO_COMPRESSION, decompress
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     ProtocolError,
     _OperationCancelled,
 )
+from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _POLL_TIMEOUT,
     _UNPACK_COMPRESSION_HEADER,
@@ -58,27 +56,27 @@ from pymongo.socket_checker import _errno_from_exception
 
 if TYPE_CHECKING:
     from bson import CodecOptions
-    from pymongo.asynchronous.client_session import ClientSession
-    from pymongo.asynchronous.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.monitoring import _EventListeners
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.read_preferences import _ServerMode
-    from pymongo.asynchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
 
 
 async def command(
-    conn: Connection,
+    conn: AsyncConnection,
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
-    session: Optional[ClientSession],
+    session: Optional[AsyncClientSession],
     client: Optional[AsyncMongoClient],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
@@ -97,13 +95,13 @@ async def command(
 ) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
-    :param conn: a Connection instance
+    :param conn: a AsyncConnection instance
     :param dbname: name of the database on which to run the command
     :param spec: a command document as an ordered dict type, eg SON.
     :param is_mongos: are we connected to a mongos?
     :param read_preference: a read preference
     :param codec_options: a CodecOptions instance
-    :param session: optional ClientSession instance.
+    :param session: optional AsyncClientSession instance.
     :param client: optional AsyncMongoClient instance for updating $clusterTime.
     :param check: raise OperationFailure if there are errors
     :param allowable_errors: errors to ignore if `check` is True
@@ -130,7 +128,7 @@ async def command(
     orig = spec
     if is_mongos and not use_op_msg:
         assert read_preference is not None
-        spec = _async_message._maybe_add_read_preference(spec, read_preference)
+        spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec["readConcern"] = read_concern.document
@@ -158,22 +156,20 @@ async def command(
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
-        request_id, msg, size, max_doc_size = _async_message._op_msg(
+        request_id, msg, size, max_doc_size = message._op_msg(
             flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
         if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            _async_message._raise_document_too_large(name, size, max_bson_size)
+            message._raise_document_too_large(name, size, max_bson_size)
     else:
-        request_id, msg, size = _async_message._query(
+        request_id, msg, size = message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
 
-    if max_bson_size is not None and size > max_bson_size + _async_message._COMMAND_OVERHEAD:
-        _async_message._raise_document_too_large(
-            name, size, max_bson_size + _async_message._COMMAND_OVERHEAD
-        )
+    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
     if client is not None:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -220,7 +216,7 @@ async def command(
             if client:
                 await client._process_response(response_doc, session)
             if check:
-                _async_helpers._check_command_response(
+                helpers_shared._check_command_response(
                     response_doc,
                     conn.max_wire_version,
                     allowable_errors,
@@ -231,7 +227,7 @@ async def command(
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
-            failure = _async_message._convert_exception(exc)
+            failure = message._convert_exception(exc)
         if client is not None:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -301,7 +297,7 @@ async def command(
         )
 
     if client and client._encrypter and reply:
-        decrypted = client._encrypter.decrypt(reply.raw_command_response())
+        decrypted = await client._encrypter.decrypt(reply.raw_command_response())
         response_doc = cast(
             "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
         )
@@ -310,7 +306,7 @@ async def command(
 
 
 async def receive_message(
-    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: AsyncConnection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
@@ -355,7 +351,7 @@ async def receive_message(
     return unpack_reply(data)
 
 
-async def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
+async def wait_for_read(conn: AsyncConnection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     sock = conn.conn
     timed_out = False
@@ -390,7 +386,7 @@ async def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
 
 
 async def _receive_data_on_socket(
-    conn: Connection, length: int, deadline: Optional[float]
+    conn: AsyncConnection, length: int, deadline: Optional[float]
 ) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)

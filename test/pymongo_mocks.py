@@ -20,13 +20,14 @@ import weakref
 from functools import partial
 from test import client_context
 
+from pymongo import MongoClient, common
 from pymongo.errors import AutoReconnect, NetworkTimeout
-from pymongo.synchronous import common
-from pymongo.synchronous.hello import Hello, HelloCompat
-from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.hello import Hello, HelloCompat
+from pymongo.server_description import ServerDescription
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import Pool
-from pymongo.synchronous.server_description import ServerDescription
+
+_IS_SYNC = True
 
 
 class MockPool(Pool):
@@ -77,7 +78,7 @@ class DummyMonitor:
         self.opened = False
 
 
-class MockMonitor(Monitor):
+class SyncMockMonitor(Monitor):
     def __init__(self, client, server_description, topology, pool, topology_settings):
         # MockMonitor gets a 'client' arg, regular monitors don't. Weakref it
         # to avoid cycles.
@@ -141,12 +142,31 @@ class MockClient(MongoClient):
         self.mock_rtts = {}
 
         kwargs["_pool_class"] = partial(MockPool, self)
-        kwargs["_monitor_class"] = partial(MockMonitor, self)
+        kwargs["_monitor_class"] = partial(SyncMockMonitor, self)
 
         client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
 
         super().__init__(*args, **client_options)
+
+    @classmethod
+    def get_mock_client(
+        cls,
+        standalones,
+        members,
+        mongoses,
+        hello_hosts=None,
+        arbiters=None,
+        down_hosts=None,
+        *args,
+        **kwargs,
+    ):
+        c = MockClient(
+            standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
+        )
+
+        c._connect()
+        return c
 
     def kill_host(self, host):
         """Host is like 'a:1'."""

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import gc
 import multiprocessing
 import os
@@ -30,7 +31,7 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
-from test import (
+from test.helpers import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -39,15 +40,14 @@ from test import (
     TEST_SERVERLESS,
     TLS_OPTIONS,
     SystemCertsPatcher,
-    _all_users,
-    _create_user,
+    client_knobs,
     db_pwd,
     db_user,
     global_knobs,
     host,
     is_server_resolvable,
     port,
-    print_running_clients,
+    print_running_topology,
     print_thread_stacks,
     print_thread_tracebacks,
     sanitize_cmd,
@@ -61,26 +61,21 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from contextlib import asynccontextmanager, contextmanager
-from functools import wraps
+from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.asynchronous import common, message
-from pymongo.asynchronous.common import partition_node
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.hello_compat import HelloCompat
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.uri_parser import parse_uri
+from pymongo.common import partition_node
+from pymongo.hello import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-
-if HAVE_SSL:
-    import ssl
 
 _IS_SYNC = False
 
@@ -118,6 +113,7 @@ class AsyncClientContext:
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
+        self._fips_enabled = None
         if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -194,8 +190,7 @@ class AsyncClientContext:
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info: Any = await self.client.admin.command("buildInfo")
-            if "dataLake" in build_info:
+            if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = await self._connect(host, port, username=db_user, password=db_pwd)
@@ -232,8 +227,8 @@ class AsyncClientContext:
             if self.auth_enabled:
                 if not self.serverless and not IS_SRV:
                     # See if db_user already exists.
-                    if not self._check_user_provided():
-                        _create_user(self.client.admin, db_user, db_pwd)
+                    if not await self._check_user_provided():
+                        await _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = await self._connect(
                     host,
@@ -308,7 +303,7 @@ class AsyncClientContext:
                         params = self.cmd_line["parsed"].get("setParameter", {})
                         if params.get("enableTestCommands") == "1":
                             self.test_commands_enabled = True
-                    self.has_ipv6 = self._server_started_with_ipv6()
+                    self.has_ipv6 = await self._server_started_with_ipv6()
 
             self.is_mongos = (await self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
@@ -368,6 +363,17 @@ class AsyncClientContext:
             # Raised if self.server_status is None.
             return None
 
+    @property
+    def fips_enabled(self):
+        if self._fips_enabled is not None:
+            return self._fips_enabled
+        try:
+            subprocess.check_call(["fips-mode-setup", "--is-enabled"])
+            self._fips_enabled = True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            self._fips_enabled = False
+        return self._fips_enabled
+
     def check_auth_type(self, auth_type):
         auth_mechs = self.server_parameters.get("authenticationMechanisms", [])
         return auth_type in auth_mechs
@@ -383,7 +389,7 @@ class AsyncClientContext:
         )
 
         try:
-            return db_user in _all_users(client.admin)
+            return db_user in await _all_users(client.admin)
         except pymongo.errors.OperationFailure as e:
             assert e.details is not None
             msg = e.details.get("errmsg", "")
@@ -475,9 +481,9 @@ class AsyncClientContext:
             return decorate
         return make_wrapper(func)
 
-    def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
+    async def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
         kwargs["writeConcern"] = {"w": self.w}
-        return _create_user(self.client[dbname], user, pwd, roles, **kwargs)
+        return await _create_user(self.client[dbname], user, pwd, roles, **kwargs)
 
     async def drop_user(self, dbname, user):
         await self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
@@ -533,12 +539,24 @@ class AsyncClientContext:
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
         )
 
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
+        )
+
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
         return self._require(
             lambda: not self.auth_enabled,
             "Authentication must not be enabled on the server",
             func=func,
+        )
+
+    def require_no_fips(self, func):
+        """Run a test only if the host does not have FIPS enabled."""
+        return self._require(
+            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_replica_set(self, func):
@@ -553,7 +571,10 @@ class AsyncClientContext:
         async def sec_count():
             return 0 if not self.client else len(await self.client.secondaries)
 
-        return self._require(lambda: sec_count() >= count, "Not enough secondaries available")
+        async def check():
+            return await sec_count() >= count
+
+        return self._require(check, "Not enough secondaries available")
 
     @property
     async def supports_secondary_read_pref(self):
@@ -661,7 +682,7 @@ class AsyncClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = await (await async_client_context.client.config.shards.find()).to_list()
+            shards = await async_client_context.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -702,9 +723,9 @@ class AsyncClientContext:
 
     def require_failCommand_appName(self, func):
         """Run a test only if the server supports the failCommand appName."""
-        # SERVER-47195
+        # SERVER-47195 and SERVER-49336.
         return self._require(
-            lambda: (self.test_commands_enabled and self.version >= (4, 4, -1)),
+            lambda: (self.test_commands_enabled and self.version >= (4, 4, 7)),
             "failCommand appName must be supported",
             func=func,
         )
@@ -795,6 +816,12 @@ class AsyncClientContext:
             func=func,
         )
 
+    def require_sync(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
@@ -819,6 +846,10 @@ class AsyncClientContext:
     @property
     async def max_write_batch_size(self):
         return (await self.hello)["maxWriteBatchSize"]
+
+    @property
+    async def max_message_size_bytes(self):
+        return (await self.hello)["maxMessageSizeBytes"]
 
 
 # Reusable client context
@@ -902,6 +933,32 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
+class AsyncUnitTest(AsyncPyMongoTestCase):
+    """Async base class for TestCases that don't require a connection to MongoDB."""
+
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    async def _setup_class(cls):
+        pass
+
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
+
+
 class AsyncIntegrationTest(AsyncPyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
 
@@ -917,6 +974,13 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             asyncio.run(cls._setup_class())
 
     @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
     @async_client_context.require_connection
     async def _setup_class(cls):
         if async_client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
@@ -930,6 +994,10 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
+
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
         for c in collections:
@@ -940,6 +1008,53 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
     def patch_system_certs(self, ca_certs):
         patcher = SystemCertsPatcher(ca_certs)
         self.addCleanup(patcher.disable)
+
+
+class AsyncMockClientTest(AsyncUnitTest):
+    """Base class for TestCases that use MockClient.
+
+    This class is *not* an IntegrationTest: if properly written, MockClient
+    tests do not require a running server.
+
+    The class temporarily overrides HEARTBEAT_FREQUENCY to speed up tests.
+    """
+
+    # MockClients tests that use replicaSet, directConnection=True, pass
+    # multiple seed addresses, or wait for heartbeat events are incompatible
+    # with loadBalanced=True.
+    @classmethod
+    def setUpClass(cls):
+        if _IS_SYNC:
+            cls._setup_class()
+        else:
+            asyncio.run(cls._setup_class())
+
+    @classmethod
+    def tearDownClass(cls):
+        if _IS_SYNC:
+            cls._tearDown_class()
+        else:
+            asyncio.run(cls._tearDown_class())
+
+    @classmethod
+    @async_client_context.require_no_load_balancer
+    async def _setup_class(cls):
+        pass
+
+    @classmethod
+    async def _tearDown_class(cls):
+        pass
+
+    def setUp(self):
+        super().setUp()
+
+        self.client_knobs = client_knobs(heartbeat_frequency=0.001, min_heartbeat_interval=0.001)
+
+        self.client_knobs.enable()
+
+    def tearDown(self):
+        self.client_knobs.disable()
+        super().tearDown()
 
 
 async def async_setup():
@@ -981,3 +1096,62 @@ def test_cases(suite):
         else:
             # unittest.TestSuite
             yield from test_cases(suite_or_case)
+
+
+def print_running_clients():
+    from pymongo.asynchronous.topology import Topology
+
+    processed = set()
+    # Avoid false positives on the main test client.
+    # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
+    c = async_client_context.client
+    if c:
+        processed.add(c._topology._topology_id)
+    # Call collect to manually cleanup any would-be gc'd clients to avoid
+    # false positives.
+    gc.collect()
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, Topology):
+                # Avoid printing the same Topology multiple times.
+                if obj._topology_id in processed:
+                    continue
+                print_running_topology(obj)
+                processed.add(obj._topology_id)
+        except ReferenceError:
+            pass
+
+
+async def _all_users(db):
+    return {u["user"] for u in (await db.command("usersInfo")).get("users", [])}
+
+
+async def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([("createUser", user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd["pwd"] = pwd
+    cmd["roles"] = roles or ["root"]
+    cmd.update(**kwargs)
+    return await authdb.command(cmd)
+
+
+async def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    with warnings.catch_warnings():
+        # Ignore warning that ping is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        await client.admin.command("ping")  # Force connection.
+
+    return client
+
+
+async def drop_collections(db: AsyncDatabase):
+    # Drop all non-system collections in this database.
+    for coll in await db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
+        await db.drop_collection(coll)
+
+
+async def remove_all_users(db: AsyncDatabase):
+    await db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": async_client_context.w})

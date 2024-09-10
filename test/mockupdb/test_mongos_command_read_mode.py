@@ -16,15 +16,25 @@ from __future__ import annotations
 import itertools
 import unittest
 
-from mockupdb import MockupDB, OpMsg, going
+import pytest
+
+try:
+    from mockupdb import MockupDB, OpMsg, going
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient, ReadPreference
-from pymongo.synchronous.read_preferences import (
+from pymongo.read_preferences import (
     _MONGOS_MODES,
     make_read_preference,
     read_pref_mode_from_name,
 )
+
+pytestmark = pytest.mark.mockupdb
 
 
 class TestMongosCommandReadMode(unittest.TestCase):

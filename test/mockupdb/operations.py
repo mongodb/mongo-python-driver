@@ -15,7 +15,12 @@ from __future__ import annotations
 
 from collections import namedtuple
 
-from mockupdb import OpMsgReply, OpReply
+try:
+    from mockupdb import OpMsgReply, OpReply
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
 
 from pymongo import ReadPreference
 
@@ -51,67 +56,69 @@ secondaries in a replica set, or select a mongos for secondary reads in a
 sharded cluster (PYTHON-868).
 """
 
-not_master_reply = OpMsgReply(ok=0, errmsg="not master")
+if _HAVE_MOCKUPDB:
+    not_master_reply = OpMsgReply(ok=0, errmsg="not master")
 
-operations = [
-    Operation(
-        "find_one",
-        lambda client: client.db.collection.find_one(),
-        reply={"cursor": {"id": 0, "firstBatch": []}},
-        op_type="may-use-secondary",
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "count_documents",
-        lambda client: client.db.collection.count_documents({}),
-        reply={"n": 1},
-        op_type="may-use-secondary",
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "estimated_document_count",
-        lambda client: client.db.collection.estimated_document_count(),
-        reply={"n": 1},
-        op_type="may-use-secondary",
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "aggregate",
-        lambda client: client.db.collection.aggregate([]),
-        reply={"cursor": {"id": 0, "firstBatch": []}},
-        op_type="may-use-secondary",
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "options",
-        lambda client: client.db.collection.options(),
-        reply={"cursor": {"id": 0, "firstBatch": []}},
-        op_type="must-use-primary",
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "command",
-        lambda client: client.db.command("foo"),
-        reply={"ok": 1},
-        op_type="must-use-primary",  # Ignores client's read preference.
-        not_master=not_master_reply,
-    ),
-    Operation(
-        "secondary command",
-        lambda client: client.db.command("foo", read_preference=ReadPreference.SECONDARY),
-        reply={"ok": 1},
-        op_type="always-use-secondary",
-        not_master=OpReply(ok=0, errmsg="node is recovering"),
-    ),
-    Operation(
-        "listIndexes",
-        lambda client: client.db.collection.index_information(),
-        reply={"cursor": {"id": 0, "firstBatch": []}},
-        op_type="must-use-primary",
-        not_master=not_master_reply,
-    ),
-]
-
+    operations = [
+        Operation(
+            "find_one",
+            lambda client: client.db.collection.find_one(),
+            reply={"cursor": {"id": 0, "firstBatch": []}},
+            op_type="may-use-secondary",
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "count_documents",
+            lambda client: client.db.collection.count_documents({}),
+            reply={"n": 1},
+            op_type="may-use-secondary",
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "estimated_document_count",
+            lambda client: client.db.collection.estimated_document_count(),
+            reply={"n": 1},
+            op_type="may-use-secondary",
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "aggregate",
+            lambda client: client.db.collection.aggregate([]),
+            reply={"cursor": {"id": 0, "firstBatch": []}},
+            op_type="may-use-secondary",
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "options",
+            lambda client: client.db.collection.options(),
+            reply={"cursor": {"id": 0, "firstBatch": []}},
+            op_type="must-use-primary",
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "command",
+            lambda client: client.db.command("foo"),
+            reply={"ok": 1},
+            op_type="must-use-primary",  # Ignores client's read preference.
+            not_master=not_master_reply,
+        ),
+        Operation(
+            "secondary command",
+            lambda client: client.db.command("foo", read_preference=ReadPreference.SECONDARY),
+            reply={"ok": 1},
+            op_type="always-use-secondary",
+            not_master=OpReply(ok=0, errmsg="node is recovering"),
+        ),
+        Operation(
+            "listIndexes",
+            lambda client: client.db.collection.index_information(),
+            reply={"cursor": {"id": 0, "firstBatch": []}},
+            op_type="must-use-primary",
+            not_master=not_master_reply,
+        ),
+    ]
+else:
+    operations = []
 
 _ops_by_name = {op.name: op for op in operations}
 

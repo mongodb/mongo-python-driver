@@ -27,6 +27,7 @@ import threading
 import time
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
@@ -36,18 +37,13 @@ from typing import Any, List
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import AsyncMongoClient
+from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers_constants import _SENSITIVE_COMMANDS
+from pymongo.hello import HelloCompat
+from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
-from pymongo.read_concern import ReadConcern
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import monitoring, operations, read_preferences
-from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.hello_compat import HelloCompat
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.monitoring import (
+from pymongo.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
@@ -60,11 +56,15 @@ from pymongo.synchronous.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.synchronous.operations import _Op
+from pymongo.operations import _Op
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
+from pymongo.server_selectors import any_server_selector, writable_server_selector
+from pymongo.server_type import SERVER_TYPE
+from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
-from pymongo.synchronous.read_preferences import ReadPreference
-from pymongo.synchronous.server_selectors import any_server_selector, writable_server_selector
-from pymongo.synchronous.uri_parser import parse_uri
+from pymongo.uri_parser import parse_uri
 from pymongo.write_concern import WriteConcern
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
@@ -622,7 +622,10 @@ async def _async_mongo_client(host, port, authenticate=True, directConnection=No
         ):
             client_options["username"] = db_user
             client_options["password"] = db_pwd
-    return AsyncMongoClient(uri, port, **client_options)
+    client = AsyncMongoClient(uri, port, **client_options)
+    if client._options.connect:
+        await client.aconnect()
+    return client
 
 
 def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
@@ -844,32 +847,11 @@ def server_started_with_auth(client):
     return "--auth" in argv or "--keyFile" in argv
 
 
-def drop_collections(db):
-    # Drop all non-system collections in this database.
-    for coll in db.list_collection_names(filter={"name": {"$regex": r"^(?!system\.)"}}):
-        db.drop_collection(coll)
-
-
-def remove_all_users(db):
-    db.command("dropAllUsersFromDatabase", 1, writeConcern={"w": client_context.w})
-
-
 def joinall(threads):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
     for t in threads:
         t.join(300)
         assert not t.is_alive(), "Thread %s hung" % t
-
-
-def connected(client):
-    """Convenience to wait for a newly-constructed client to connect."""
-    with warnings.catch_warnings():
-        # Ignore warning that ping is always routed to primary even
-        # if client's read preference isn't PRIMARY.
-        warnings.simplefilter("ignore", UserWarning)
-        client.admin.command("ping")  # Force connection.
-
-    return client
 
 
 def wait_until(predicate, success_description, timeout=10):
@@ -958,6 +940,20 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
         raise AssertionError("%s not raised" % cls)
 
 
+async def asyncAssertRaisesExactly(cls, fn, *args, **kwargs):
+    """
+    Unlike the standard assertRaises, this checks that a function raises a
+    specific class of exception, and not a subclass. E.g., check that
+    MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
+    """
+    try:
+        await fn(*args, **kwargs)
+    except Exception as e:
+        assert e.__class__ == cls, f"got {e.__class__.__name__}, expected {cls.__name__}"
+    else:
+        raise AssertionError("%s not raised" % cls)
+
+
 @contextlib.contextmanager
 def _ignore_deprecations():
     with warnings.catch_warnings():
@@ -968,11 +964,18 @@ def _ignore_deprecations():
 def ignore_deprecations(wrapped=None):
     """A context manager or a decorator."""
     if wrapped:
+        if iscoroutinefunction(wrapped):
 
-        @functools.wraps(wrapped)
-        def wrapper(*args, **kwargs):
-            with _ignore_deprecations():
-                return wrapped(*args, **kwargs)
+            @functools.wraps(wrapped)
+            async def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return await wrapped(*args, **kwargs)
+        else:
+
+            @functools.wraps(wrapped)
+            def wrapper(*args, **kwargs):
+                with _ignore_deprecations():
+                    return wrapped(*args, **kwargs)
 
         return wrapper
 
@@ -1248,10 +1251,10 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
-        elif c2s == "requests":
+        elif "bulk_write" in opname and (c2s == "requests" or c2s == "models"):
             # Parse each request into a bulk write model.
             requests = []
-            for request in arguments["requests"]:
+            for request in arguments[c2s]:
                 if "name" in request:
                     # CRUD v2 format
                     bulk_model = camel_to_upper_camel(request["name"])
@@ -1263,7 +1266,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                     bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
                     bulk_arguments = camel_to_snake_args(spec)
                 requests.append(bulk_class(**dict(bulk_arguments)))
-            arguments["requests"] = requests
+            arguments[c2s] = requests
         elif arg_name == "session":
             arguments["session"] = entity_map[arguments["session"]]
         elif opname == "open_download_stream" and arg_name == "id":

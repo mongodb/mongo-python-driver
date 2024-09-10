@@ -18,20 +18,20 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pymongo.asynchronous import common
-from pymongo.asynchronous.collation import validate_collation_or_none
-from pymongo.asynchronous.read_preferences import ReadPreference, _AggWritePref
+from pymongo import common
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.client_session import ClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.command_cursor import AsyncCommandCursor
     from pymongo.asynchronous.database import AsyncDatabase
-    from pymongo.asynchronous.pool import Connection
-    from pymongo.asynchronous.read_preferences import _ServerMode
+    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
-    from pymongo.asynchronous.typings import _DocumentType, _Pipeline
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.typings import _DocumentType, _Pipeline
 
 _IS_SYNC = False
 
@@ -40,8 +40,8 @@ class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.
 
     Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.AsyncCollection.aggregate`, or
-    :meth:`pymongo.database.AsyncDatabase.aggregate` instead.
+    :meth:`pymongo.asynchronous.collection.AsyncCollection.aggregate`, or
+    :meth:`pymongo.asynchronous.database.AsyncDatabase.aggregate` instead.
     """
 
     def __init__(
@@ -53,7 +53,7 @@ class _AggregationCommand:
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         user_fields: Optional[MutableMapping[str, Any]] = None,
-        result_processor: Optional[Callable[[Mapping[str, Any], Connection], None]] = None,
+        result_processor: Optional[Callable[[Mapping[str, Any], AsyncConnection], None]] = None,
         comment: Any = None,
     ) -> None:
         if "explain" in options:
@@ -121,7 +121,7 @@ class _AggregationCommand:
         raise NotImplementedError
 
     def get_read_preference(
-        self, session: Optional[ClientSession]
+        self, session: Optional[AsyncClientSession]
     ) -> Union[_AggWritePref, _ServerMode]:
         if self._write_preference:
             return self._write_preference
@@ -132,9 +132,9 @@ class _AggregationCommand:
 
     async def get_cursor(
         self,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         server: Server,
-        conn: Connection,
+        conn: AsyncConnection,
         read_preference: _ServerMode,
     ) -> AsyncCommandCursor[_DocumentType]:
         # Serialize command.

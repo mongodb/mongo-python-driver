@@ -28,7 +28,10 @@ from pymongo.asynchronous.database import AsyncDatabase
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
+    AsyncIntegrationTest,
+    async_client_context,
+)
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
@@ -47,14 +50,11 @@ from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
-from pymongo.asynchronous.bulk import BulkWriteError
 from pymongo.asynchronous.collection import AsyncCollection, ReturnDocument
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.operations import *
-from pymongo.asynchronous.read_preferences import ReadPreference
+from pymongo.bulk_shared import BulkWriteError
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ConfigurationError,
@@ -67,7 +67,10 @@ from pymongo.errors import (
     OperationFailure,
     WriteConcernError,
 )
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
     DeleteResult,
     InsertManyResult,
@@ -472,8 +475,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_index_haystack(self):
         db = self.db
         await db.test.drop()
-        _id = await db.test.insert_one(
-            {"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"}
+        _id = (
+            await db.test.insert_one({"pos": {"long": 34.2, "lat": 33.3}, "type": "restaurant"})
         ).inserted_id
         await db.test.insert_one({"pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"})
         await db.test.insert_one({"pos": {"long": 59.1, "lat": 87.2}, "type": "office"})
@@ -511,9 +514,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         )
 
         # MongoDB 2.6 text search. Create 'score' field in projection.
-        cursor = await db.test.find(
-            {"$text": {"$search": "spam"}}, {"score": {"$meta": "textScore"}}
-        )
+        cursor = db.test.find({"$text": {"$search": "spam"}}, {"score": {"$meta": "textScore"}})
 
         # Sort by 'score' field.
         cursor.sort([("score", {"$meta": "textScore"})])
@@ -538,7 +539,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         query = {"geo": {"$within": {"$geometry": poly}}}
 
         # This query will error without a 2dsphere index.
-        await db.test.find(query)
+        db.test.find(query)
         await db.test.drop_indexes()
 
     async def test_index_hashed(self):
@@ -639,32 +640,32 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"x": 6, "a": 1})
 
         # Operations that use the partial index.
-        explain = await (await db.test.find({"x": 6, "a": 1})).explain()
+        explain = await db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
-        explain = await (await db.test.find({"x": {"$gt": 1}, "a": 1})).explain()
+        explain = await db.test.find({"x": {"$gt": 1}, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
-        explain = await (await db.test.find({"x": 6, "a": {"$lte": 1}})).explain()
+        explain = await db.test.find({"x": 6, "a": {"$lte": 1}}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "IXSCAN")
         self.assertEqual("x_1", stage.get("indexName"))
         self.assertTrue(stage.get("isPartial"))
 
         # Operations that do not use the partial index.
-        explain = await (await db.test.find({"x": 6, "a": {"$lte": 1.6}})).explain()
+        explain = await db.test.find({"x": 6, "a": {"$lte": 1.6}}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
-        explain = await (await db.test.find({"x": 6})).explain()
+        explain = await db.test.find({"x": 6}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
 
         # Test drop_indexes.
         await db.test.drop_index("x_1")
-        explain = await (await db.test.find({"x": 6, "a": 1})).explain()
+        explain = await db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain["queryPlanner"]["winningPlan"], "COLLSCAN")
         self.assertNotEqual({}, stage)
 
@@ -676,49 +677,49 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one(doc)
 
         # Test field inclusion
-        doc = await anext(await db.test.find({}, ["_id"]))
+        doc = await anext(db.test.find({}, ["_id"]))
         self.assertEqual(list(doc), ["_id"])
-        doc = await anext(await db.test.find({}, ["a"]))
+        doc = await anext(db.test.find({}, ["a"]))
         l = list(doc)
         l.sort()
         self.assertEqual(l, ["_id", "a"])
-        doc = await anext(await db.test.find({}, ["b"]))
+        doc = await anext(db.test.find({}, ["b"]))
         l = list(doc)
         l.sort()
         self.assertEqual(l, ["_id", "b"])
-        doc = await anext(await db.test.find({}, ["c"]))
+        doc = await anext(db.test.find({}, ["c"]))
         l = list(doc)
         l.sort()
         self.assertEqual(l, ["_id", "c"])
-        doc = await anext(await db.test.find({}, ["a"]))
+        doc = await anext(db.test.find({}, ["a"]))
         self.assertEqual(doc["a"], 1)
-        doc = await anext(await db.test.find({}, ["b"]))
+        doc = await anext(db.test.find({}, ["b"]))
         self.assertEqual(doc["b"], 5)
-        doc = await anext(await db.test.find({}, ["c"]))
+        doc = await anext(db.test.find({}, ["c"]))
         self.assertEqual(doc["c"], {"d": 5, "e": 10})
 
         # Test inclusion of fields with dots
-        doc = await anext(await db.test.find({}, ["c.d"]))
+        doc = await anext(db.test.find({}, ["c.d"]))
         self.assertEqual(doc["c"], {"d": 5})
-        doc = await anext(await db.test.find({}, ["c.e"]))
+        doc = await anext(db.test.find({}, ["c.e"]))
         self.assertEqual(doc["c"], {"e": 10})
-        doc = await anext(await db.test.find({}, ["b", "c.e"]))
+        doc = await anext(db.test.find({}, ["b", "c.e"]))
         self.assertEqual(doc["c"], {"e": 10})
 
-        doc = await anext(await db.test.find({}, ["b", "c.e"]))
+        doc = await anext(db.test.find({}, ["b", "c.e"]))
         l = list(doc)
         l.sort()
         self.assertEqual(l, ["_id", "b", "c"])
-        doc = await anext(await db.test.find({}, ["b", "c.e"]))
+        doc = await anext(db.test.find({}, ["b", "c.e"]))
         self.assertEqual(doc["b"], 5)
 
         # Test field exclusion
-        doc = await anext(await db.test.find({}, {"a": False, "b": 0}))
+        doc = await anext(db.test.find({}, {"a": False, "b": 0}))
         l = list(doc)
         l.sort()
         self.assertEqual(l, ["_id", "c"])
 
-        doc = await anext(await db.test.find({}, {"_id": False}))
+        doc = await anext(db.test.find({}, {"_id": False}))
         l = list(doc)
         self.assertFalse("_id" in l)
 
@@ -1145,23 +1146,23 @@ class AsyncTestCollection(AsyncIntegrationTest):
             {"x": 1, "mike": "awesome", "extra thing": "abcdefghijklmnopqrstuvwxyz"}
         )
         self.assertEqual(1, await db.test.count_documents({}))
-        doc = await anext(await db.test.find({}))
+        doc = await anext(db.test.find({}))
         self.assertTrue("x" in doc)
-        doc = await anext(await db.test.find({}))
+        doc = await anext(db.test.find({}))
         self.assertTrue("mike" in doc)
-        doc = await anext(await db.test.find({}))
+        doc = await anext(db.test.find({}))
         self.assertTrue("extra thing" in doc)
-        doc = await anext(await db.test.find({}, ["x", "mike"]))
+        doc = await anext(db.test.find({}, ["x", "mike"]))
         self.assertTrue("x" in doc)
-        doc = await anext(await db.test.find({}, ["x", "mike"]))
+        doc = await anext(db.test.find({}, ["x", "mike"]))
         self.assertTrue("mike" in doc)
-        doc = await anext(await db.test.find({}, ["x", "mike"]))
+        doc = await anext(db.test.find({}, ["x", "mike"]))
         self.assertFalse("extra thing" in doc)
-        doc = await anext(await db.test.find({}, ["mike"]))
+        doc = await anext(db.test.find({}, ["mike"]))
         self.assertFalse("x" in doc)
-        doc = await anext(await db.test.find({}, ["mike"]))
+        doc = await anext(db.test.find({}, ["mike"]))
         self.assertTrue("mike" in doc)
-        doc = await anext(await db.test.find({}, ["mike"]))
+        doc = await anext(db.test.find({}, ["mike"]))
         self.assertFalse("extra thing" in doc)
 
     @no_type_check
@@ -1185,15 +1186,11 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"x": "hello_mikey"})
         await db.test.insert_one({"x": "hello_test"})
 
-        self.assertEqual(len(await (await db.test.find()).to_list()), 4)
-        self.assertEqual(
-            len(await (await db.test.find({"x": re.compile("^hello.*")})).to_list()), 4
-        )
-        self.assertEqual(len(await (await db.test.find({"x": re.compile("ello")})).to_list()), 4)
-        self.assertEqual(len(await (await db.test.find({"x": re.compile("^hello$")})).to_list()), 0)
-        self.assertEqual(
-            len(await (await db.test.find({"x": re.compile("^hello_mi.*$")})).to_list()), 2
-        )
+        self.assertEqual(len(await db.test.find().to_list()), 4)
+        self.assertEqual(len(await db.test.find({"x": re.compile("^hello.*")}).to_list()), 4)
+        self.assertEqual(len(await db.test.find({"x": re.compile("ello")}).to_list()), 4)
+        self.assertEqual(len(await db.test.find({"x": re.compile("^hello$")}).to_list()), 0)
+        self.assertEqual(len(await db.test.find({"x": re.compile("^hello_mi.*$")}).to_list()), 2)
 
     async def test_id_can_be_anything(self):
         db = self.db
@@ -1211,7 +1208,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one(obj)
         self.assertEqual(obj["_id"], numeric)
 
-        async for x in await db.test.find():
+        async for x in db.test.find():
             self.assertEqual(x["hello"], "world")
             self.assertTrue("_id" in x)
 
@@ -1642,7 +1639,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             with await self.db.test.aggregate([], {}):  # type:ignore
                 pass
 
-        with self.assertRaisesRegex(ValueError, "must be a ClientSession"):
+        with self.assertRaisesRegex(ValueError, "must be an AsyncClientSession"):
             await try_invalid_session()
 
     async def test_large_limit(self):
@@ -1655,7 +1652,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         i = 0
         y = 0
-        async for doc in (await db.test_large_limit.find(limit=1900)).sort([("x", 1)]):
+        async for doc in db.test_large_limit.find(limit=1900).sort([("x", 1)]):
             i += 1
             y += doc["x"]
 
@@ -1670,7 +1667,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(10, await db.test.count_documents({}))
 
         total = 0
-        async for x in await db.test.find({}, skip=4, limit=2):
+        async for x in db.test.find({}, skip=4, limit=2):
             total += x["x"]
 
         self.assertEqual(9, total)
@@ -1706,7 +1703,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(10, await db.foo.count_documents({}))
 
         x = 0
-        async for doc in await db.foo.find():
+        async for doc in db.foo.find():
             self.assertEqual(x, doc["x"])
             x += 1
 
@@ -1781,9 +1778,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
         async def to_list(things):
             return [thing["x"] async for thing in things]
 
-        self.assertEqual([2, 1, 3], await to_list(await db.test.find()))
-        self.assertEqual([1, 2, 3], await to_list(await db.test.find(sort=[("x", 1)])))
-        self.assertEqual([3, 2, 1], await to_list(await db.test.find(sort=[("x", -1)])))
+        self.assertEqual([2, 1, 3], await to_list(db.test.find()))
+        self.assertEqual([1, 2, 3], await to_list(db.test.find(sort=[("x", 1)])))
+        self.assertEqual([3, 2, 1], await to_list(db.test.find(sort=[("x", -1)])))
 
         with self.assertRaises(TypeError):
             await db.test.find(sort=5)
@@ -1794,25 +1791,26 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     # TODO doesn't actually test functionality, just that it doesn't blow up
     async def test_cursor_timeout(self):
-        await (await self.db.test.find(no_cursor_timeout=True)).to_list()
-        await (await self.db.test.find(no_cursor_timeout=False)).to_list()
+        await self.db.test.find(no_cursor_timeout=True).to_list()
+        await self.db.test.find(no_cursor_timeout=False).to_list()
 
     async def test_exhaust(self):
         if await async_is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):
-                await self.db.test.find(cursor_type=CursorType.EXHAUST)
+                await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
             return
 
         # Limit is incompatible with exhaust.
         with self.assertRaises(InvalidOperation):
-            await self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
-        cur = await self.db.test.find(cursor_type=CursorType.EXHAUST)
+            await anext(self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5))
+        cur = self.db.test.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)
-        cur = await self.db.test.find(limit=5)
+            await cur.next()
+        cur = self.db.test.find(limit=5)
         with self.assertRaises(InvalidOperation):
             await cur.add_option(64)
-        cur = await self.db.test.find()
+        cur = self.db.test.find()
         await cur.add_option(64)
         with self.assertRaises(InvalidOperation):
             cur.limit(5)
@@ -1826,7 +1824,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         pool = await async_get_pool(client)
 
         # Make sure the socket is returned after exhaustion.
-        cur = await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         await anext(cur)
         self.assertEqual(0, len(pool.conns))
         async for _ in cur:
@@ -1834,14 +1832,14 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(1, len(pool.conns))
 
         # Same as previous but don't call next()
-        async for _ in await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
+        async for _ in client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
             pass
         self.assertEqual(1, len(pool.conns))
 
         # If the Cursor instance is discarded before being completely iterated
         # and the socket has pending data (more_to_come=True) we have to close
         # and discard the socket.
-        cur = await client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
         if async_client_context.version.at_least(4, 2):
             # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
             # first getMore.
@@ -1870,7 +1868,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         self.assertEqual([1, 2, 3], distinct)
 
-        distinct = await (await test.find({"a": {"$gt": 1}})).distinct("a")
+        distinct = await test.find({"a": {"$gt": 1}}).distinct("a")
         distinct.sort()
         self.assertEqual([2, 3], distinct)
 
@@ -1896,16 +1894,14 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.insert_one({"bar": "foo"})
 
         self.assertEqual(1, await self.db.test.count_documents({"query": {"$ne": None}}))
-        self.assertEqual(
-            1, len(await (await self.db.test.find({"query": {"$ne": None}})).to_list())
-        )
+        self.assertEqual(1, len(await self.db.test.find({"query": {"$ne": None}}).to_list()))
 
     async def test_min_query(self):
         await self.db.drop_collection("test")
         await self.db.test.insert_many([{"x": 1}, {"x": 2}])
         await self.db.test.create_index("x")
 
-        cursor = await self.db.test.find({"$min": {"x": 2}, "$query": {}}, hint="x_1")
+        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}}, hint="x_1")
 
         docs = await cursor.to_list()
         self.assertEqual(1, len(docs))
@@ -2003,7 +1999,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db["Employés"].replace_one({"x": 1}, {"x": 2})
         await db["Employés"].delete_many({})
         await db["Employés"].find_one()
-        await (await db["Employés"].find()).to_list()
+        await db["Employés"].find().to_list()
 
     async def test_drop_indexes_non_existent(self):
         await self.db.drop_collection("test")
@@ -2161,7 +2157,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             [2],
             [
                 i["i"]
-                async for i in await c.find(
+                async for i in c.find(
                     {
                         "$and": [
                             {
@@ -2188,7 +2184,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             [0, 1, 2],
             [
                 i["i"]
-                async for i in await c.find(
+                async for i in c.find(
                     {
                         "$or": [
                             {
@@ -2217,7 +2213,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await c.insert_one({"r": re.compile(".*")})
 
         self.assertTrue(isinstance((await c.find_one())["r"], Regex))  # type: ignore
-        async for doc in await c.find():
+        async for doc in c.find():
             self.assertTrue(isinstance(doc["r"], Regex))
 
     def test_find_command_generation(self):
@@ -2242,10 +2238,14 @@ class AsyncTestCollection(AsyncIntegrationTest):
     @async_client_context.require_version_min(5, 0, 0)
     async def test_helpers_with_let(self):
         c = self.db.test
+
+        async def afind(*args, **kwargs):
+            return c.find(*args, **kwargs)
+
         helpers = [
             (c.delete_many, ({}, {})),
             (c.delete_one, ({}, {})),
-            (c.find, ({})),
+            (afind, ({})),
             (c.update_many, ({}, {"$inc": {"x": 3}})),
             (c.update_one, ({}, {"$inc": {"x": 3}})),
             (c.find_one_and_delete, ({}, {})),

@@ -33,18 +33,17 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
-from pymongo import _csot
+from pymongo import _csot, common
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
-from pymongo.synchronous import common
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.synchronous.change_stream import DatabaseChangeStream
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.common import _ecoc_coll_name, _esc_coll_name
-from pymongo.synchronous.operations import _Op
-from pymongo.synchronous.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
     import bson
@@ -120,8 +119,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern or client.read_concern,
         )
 
+        from pymongo.synchronous.mongo_client import MongoClient
+
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+
+        if not isinstance(client, MongoClient):
+            raise TypeError(f"MongoClient required but given {type(client)}")
 
         if name != "$external":
             _check_name(name)
@@ -151,7 +155,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
           >>> db1.read_preference
           Primary()
-          >>> from pymongo.synchronous.read_preferences import Secondary
+          >>> from pymongo.read_preferences import Secondary
           >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()
@@ -345,8 +349,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. code-block:: python
 
-           async with db.watch() as stream:
-               async for change in stream:
+           with db.watch() as stream:
+               for change in stream:
                    print(change)
 
         The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
@@ -361,8 +365,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    async for insert_change in stream:
+                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
@@ -490,7 +494,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
-        :param `check_exists`: if True (the default), send a listCollections command to
+        :param check_exists: if True (the default), send a listCollections command to
             check if the collection already exists before creation.
         :param kwargs: additional keyword arguments will
             be passed as options for the `create collection command`_
@@ -811,23 +815,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         For example, a command like ``{buildinfo: 1}`` can be sent
         using:
 
-        >>> await db.command("buildinfo")
+        >>> db.command("buildinfo")
         OR
-        >>> await db.command({"buildinfo": 1})
+        >>> db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> await db.command("count", collection_name)
+        >>> db.command("count", collection_name)
         OR
-        >>> await db.command({"count": collection_name})
+        >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> await db.command("count", collection_name, query=query)
+        >>> db.command("count", collection_name, query=query)
         OR
-        >>> await db.command({"count": collection_name, "query": query})
+        >>> db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).
@@ -948,7 +952,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           read preference configured for the transaction.
           Otherwise, defaults to
           :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
-        :param codec_options`: A :class:`~bson.codec_options.CodecOptions`
+        :param codec_options: A :class:`~bson.codec_options.CodecOptions`
           instance.
         :param session: A
           :class:`~pymongo.client_session.ClientSession`.

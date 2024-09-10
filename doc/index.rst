@@ -16,6 +16,9 @@ everything you need to know to use **PyMongo**.
 :doc:`tutorial`
   Start here for a quick overview.
 
+:doc:`async-tutorial`
+  Start here for a quick overview of the asynchronous API.
+
 :doc:`examples/index`
   Examples of how to perform specific tasks.
 
@@ -105,8 +108,8 @@ following command from the root directory of the **PyMongo** source:
 
 .. code-block:: bash
 
-  $ pip install tox
-  $ tox -m doc
+  $ pip install hatch
+  $ hatch run doc:build
 
 Indices and tables
 ------------------
@@ -121,6 +124,7 @@ Indices and tables
    atlas
    installation
    tutorial
+   async-tutorial
    examples/index
    faq
    compatibility-policy

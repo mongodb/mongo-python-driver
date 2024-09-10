@@ -36,17 +36,16 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _create_lock
-from pymongo.synchronous import helpers
-from pymongo.synchronous.collation import validate_collation_or_none
-from pymongo.synchronous.common import (
+from pymongo import helpers_shared
+from pymongo.collation import validate_collation_or_none
+from pymongo.common import (
     validate_is_document_type,
     validate_is_mapping,
 )
-from pymongo.synchronous.helpers import next
-from pymongo.synchronous.message import (
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import _create_lock
+from pymongo.message import (
     _CursorAddress,
     _GetMore,
     _OpMsg,
@@ -55,18 +54,19 @@ from pymongo.synchronous.message import (
     _RawBatchGetMore,
     _RawBatchQuery,
 )
-from pymongo.synchronous.response import PinnedResponse
-from pymongo.synchronous.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+from pymongo.response import PinnedResponse
+from pymongo.synchronous.helpers import next
+from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
-    from pymongo.synchronous.read_preferences import _ServerMode
 
 _IS_SYNC = True
 
@@ -179,7 +179,7 @@ class Cursor(Generic[_DocumentType]):
             allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
-            projection = helpers._fields_list_to_dict(projection, "projection")
+            projection = helpers_shared._fields_list_to_dict(projection, "projection")
 
         if let is not None:
             validate_is_document_type("let", let)
@@ -191,7 +191,7 @@ class Cursor(Generic[_DocumentType]):
         self._skip = skip
         self._limit = limit
         self._batch_size = batch_size
-        self._ordering = sort and helpers._index_document(sort) or None
+        self._ordering = sort and helpers_shared._index_document(sort) or None
         self._max_scan = max_scan
         self._explain = False
         self._comment = comment
@@ -237,6 +237,14 @@ class Cursor(Generic[_DocumentType]):
         self._dbname = collection.database.name
         self._collname = collection.name
 
+        # Checking exhaust cursor support requires network IO
+        if _IS_SYNC:
+            self._exhaust_checked = True
+            self._supports_exhaust()  # type: ignore[unused-coroutine]
+        else:
+            self._exhaust = cursor_type == CursorType.EXHAUST
+            self._exhaust_checked = False
+
     def _supports_exhaust(self) -> None:
         # Exhaust cursor support
         if self._cursor_type == CursorType.EXHAUST:
@@ -259,8 +267,7 @@ class Cursor(Generic[_DocumentType]):
         return self._retrieved
 
     def __del__(self) -> None:
-        if _IS_SYNC:
-            self._die()  # type: ignore[unused-coroutine]
+        self._die_no_lock()
 
     def clone(self) -> Cursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -520,7 +527,7 @@ class Cursor(Generic[_DocumentType]):
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Cursor[_DocumentType]:
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor_shared.CursorType.TAILABLE_AWAIT` cursor. For all other
+        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
@@ -705,27 +712,27 @@ class Cursor(Generic[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
-            async for doc in collection.find().sort('field', pymongo.ASCENDING):
+            for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
-            async for doc in collection.find().sort([
+            for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
         Text search results can be sorted by relevance::
 
-            cursor = await db.test.find(
+            cursor = db.test.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
-            async for doc in cursor:
+            for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -741,8 +748,8 @@ class Cursor(Generic[_DocumentType]):
             key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
         self._check_okay_to_chain()
-        keys = helpers._index_list(key_or_list, direction)
-        self._ordering = helpers._index_document(keys)
+        keys = helpers_shared._index_list(key_or_list, direction)
+        self._ordering = helpers_shared._index_document(keys)
         return self
 
     def explain(self) -> _DocumentType:
@@ -773,7 +780,7 @@ class Cursor(Generic[_DocumentType]):
         if isinstance(index, str):
             self._hint = index
         else:
-            self._hint = helpers._index_document(index)
+            self._hint = helpers_shared._index_document(index)
 
     def hint(self, index: Optional[_Hint]) -> Cursor[_DocumentType]:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
@@ -824,7 +831,7 @@ class Cursor(Generic[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
@@ -897,7 +904,7 @@ class Cursor(Generic[_DocumentType]):
 
         With regular cursors, simply use a for loop instead of :attr:`alive`::
 
-            async for doc in collection.find():
+            for doc in collection.find():
                 print(doc)
 
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
@@ -994,14 +1001,7 @@ class Cursor(Generic[_DocumentType]):
                 y[key] = value
         return y
 
-    def _die(self, synchronous: bool = False) -> None:
-        """Closes this cursor."""
-        try:
-            already_killed = self._killed
-        except AttributeError:
-            # ___init__ did not run to completion (or at all).
-            return
-
+    def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:
         self._killed = True
         if self._id and not already_killed:
             cursor_id = self._id
@@ -1011,8 +1011,34 @@ class Cursor(Generic[_DocumentType]):
             # Skip killCursors.
             cursor_id = 0
             address = None
-        self._collection.database.client._cleanup_cursor(
-            synchronous,
+        return cursor_id, address
+
+    def _die_no_lock(self) -> None:
+        """Closes this cursor without acquiring a lock."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        self._collection.database.client._cleanup_cursor_no_lock(
+            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+        )
+        if not self._explicit_session:
+            self._session = None
+        self._sock_mgr = None
+
+    def _die_lock(self) -> None:
+        """Closes this cursor."""
+        try:
+            already_killed = self._killed
+        except AttributeError:
+            # ___init__ did not run to completion (or at all).
+            return
+
+        cursor_id, address = self._prepare_to_die(already_killed)
+        self._collection.database.client._cleanup_cursor_lock(
             cursor_id,
             address,
             self._sock_mgr,
@@ -1025,7 +1051,7 @@ class Cursor(Generic[_DocumentType]):
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
-        self._die(True)
+        self._die_lock()
 
     def distinct(self, key: str) -> list:
         """Get a list of distinct values for `key` among all documents
@@ -1078,7 +1104,7 @@ class Cursor(Generic[_DocumentType]):
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
             if exc.timeout:
-                self._die(False)
+                self._die_no_lock()
             else:
                 self.close()
             # If this is a tailable cursor the error is likely
@@ -1102,7 +1128,7 @@ class Cursor(Generic[_DocumentType]):
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
-                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
 
         cmd_name = operation.name
         docs = response.docs
@@ -1222,12 +1248,33 @@ class Cursor(Generic[_DocumentType]):
 
     def next(self) -> _DocumentType:
         """Advance the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
         if self._empty:
             raise StopIteration
         if len(self._data) or self._refresh():
             return self._data.popleft()
         else:
             raise StopIteration
+
+    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+        """Get all or some documents from the cursor."""
+        if not self._exhaust_checked:
+            self._exhaust_checked = True
+            self._supports_exhaust()
+        if self._empty:
+            return False
+        if len(self._data) or self._refresh():
+            if total is None:
+                result.extend(self._data)
+                self._data.clear()
+            else:
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())
+            return True
+        else:
+            return False
 
     def __next__(self) -> _DocumentType:
         return self.next()
@@ -1241,8 +1288,33 @@ class Cursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def to_list(self) -> list[_DocumentType]:
-        return [x for x in self]  # noqa: C416,RUF100
+    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
+        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
+
+        To use::
+
+          >>> cursor.to_list()
+
+        Or, so read at most n items from the cursor::
+
+          >>> cursor.to_list(n)
+
+        If the cursor is empty or has no more results, an empty list will be returned.
+
+        .. versionadded:: 4.9
+        """
+        res: list[_DocumentType] = []
+        remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        while self.alive:
+            if not self._next_batch(res, remaining):
+                break
+            if length is not None:
+                remaining = length - len(res)
+                if remaining == 0:
+                    break
+        return res
 
 
 class RawBatchCursor(Cursor, Generic[_DocumentType]):

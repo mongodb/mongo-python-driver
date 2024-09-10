@@ -19,3 +19,7 @@ from pymongo.synchronous.collection import *  # noqa: F403
 from pymongo.synchronous.collection import __doc__ as original_doc
 
 __doc__ = original_doc
+__all__ = [  # noqa: F405
+    "Collection",
+    "ReturnDocument",
+]

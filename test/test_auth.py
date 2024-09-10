@@ -15,6 +15,7 @@
 """Authentication Tests."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import threading
@@ -33,13 +34,15 @@ from test.utils import (
     single_client_noauth,
 )
 
-from pymongo import MongoClient
-from pymongo.asynchronous.auth import HAVE_KERBEROS, _build_credentials_tuple
+from pymongo import MongoClient, monitoring
+from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.errors import OperationFailure
+from pymongo.hello import HelloCompat
+from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
-from pymongo.synchronous import monitoring
-from pymongo.synchronous.hello_compat import HelloCompat
-from pymongo.synchronous.read_preferences import ReadPreference
+from pymongo.synchronous.auth import HAVE_KERBEROS
+
+_IS_SYNC = True
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get("GSSAPI_HOST")
@@ -203,6 +206,7 @@ class TestGSSAPI(unittest.TestCase):
             client[GSSAPI_DB].list_collection_names()
 
     @ignore_deprecations
+    @client_context.require_sync
     def test_gssapi_threaded(self):
         client = MongoClient(
             GSSAPI_HOST,
@@ -330,8 +334,10 @@ class TestSASLPlain(unittest.TestCase):
         bad_user = MongoClient(auth_string("not-user", SASL_PASS))
         bad_pwd = MongoClient(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, "ping")
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, "ping")
+        with self.assertRaises(OperationFailure):
+            bad_user.admin.command("ping")
+        with self.assertRaises(OperationFailure):
+            bad_pwd.admin.command("ping")
 
 
 class TestSCRAMSHA1(IntegrationTest):
@@ -344,6 +350,7 @@ class TestSCRAMSHA1(IntegrationTest):
         client_context.drop_user("pymongo_test", "user")
         super().tearDown()
 
+    @client_context.require_no_fips
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
 
@@ -405,6 +412,7 @@ class TestSCRAM(IntegrationTest):
         else:
             self.assertEqual(started, ["saslStart", "saslContinue", "saslContinue"])
 
+    @client_context.require_no_fips
     def test_scram(self):
         # Step 1: create users
         client_context.create_user(
@@ -576,6 +584,7 @@ class TestSCRAM(IntegrationTest):
         self.assertIsInstance(salt, bytes)
         self.assertIsInstance(iterations, int)
 
+    @client_context.require_sync
     def test_scram_threaded(self):
         coll = client_context.client.db.test
         coll.drop()
@@ -627,7 +636,8 @@ class TestAuthURIOptions(IntegrationTest):
         # Test explicit database
         uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
         client = rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            client.admin.command("dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
         if client_context.is_rs:
@@ -637,7 +647,8 @@ class TestAuthURIOptions(IntegrationTest):
                 client_context.replica_set_name,
             )
             client = single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.admin.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                client.admin.command("dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))
@@ -645,7 +656,8 @@ class TestAuthURIOptions(IntegrationTest):
         # Test authSource
         uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
         client = rs_or_single_client_noauth(uri)
-        self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+        with self.assertRaises(OperationFailure):
+            client.pymongo_test2.command("dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
         if client_context.is_rs:
@@ -654,7 +666,8 @@ class TestAuthURIOptions(IntegrationTest):
                 "%s;authSource=pymongo_test" % (host, port, client_context.replica_set_name)
             )
             client = single_client_noauth(uri)
-            self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
+            with self.assertRaises(OperationFailure):
+                client.pymongo_test2.command("dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))

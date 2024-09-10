@@ -15,77 +15,33 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
-import abc
-import os
 import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
-from urllib.parse import quote
 
 import bson
 from bson.binary import Binary
-from pymongo._azure_helpers import _get_azure_response
 from pymongo._csot import remaining
-from pymongo._gcp_helpers import _get_gcp_response
+from pymongo.auth_oidc_shared import (
+    CALLBACK_VERSION,
+    HUMAN_CALLBACK_TIMEOUT_SECONDS,
+    MACHINE_CALLBACK_TIMEOUT_SECONDS,
+    TIME_BETWEEN_CALLS_SECONDS,
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+    OIDCIdPInfo,
+    _OIDCProperties,
+)
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers_constants import _AUTHENTICATION_FAILURE_CODE
+from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.auth import MongoCredential
-    from pymongo.asynchronous.pool import Connection
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.auth_shared import MongoCredential
 
 _IS_SYNC = False
-
-
-@dataclass
-class OIDCIdPInfo:
-    issuer: str
-    clientId: Optional[str] = field(default=None)
-    requestScopes: Optional[list[str]] = field(default=None)
-
-
-@dataclass
-class OIDCCallbackContext:
-    timeout_seconds: float
-    username: str
-    version: int
-    refresh_token: Optional[str] = field(default=None)
-    idp_info: Optional[OIDCIdPInfo] = field(default=None)
-
-
-@dataclass
-class OIDCCallbackResult:
-    access_token: str
-    expires_in_seconds: Optional[float] = field(default=None)
-    refresh_token: Optional[str] = field(default=None)
-
-
-class OIDCCallback(abc.ABC):
-    """A base class for defining OIDC callbacks."""
-
-    @abc.abstractmethod
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        """Convert the given BSON value into our own type."""
-
-
-@dataclass
-class _OIDCProperties:
-    callback: Optional[OIDCCallback] = field(default=None)
-    human_callback: Optional[OIDCCallback] = field(default=None)
-    environment: Optional[str] = field(default=None)
-    allowed_hosts: list[str] = field(default_factory=list)
-    token_resource: Optional[str] = field(default=None)
-    username: str = ""
-
-
-"""Mechanism properties for MONGODB-OIDC authentication."""
-
-TOKEN_BUFFER_MINUTES = 5
-HUMAN_CALLBACK_TIMEOUT_SECONDS = 5 * 60
-CALLBACK_VERSION = 1
-MACHINE_CALLBACK_TIMEOUT_SECONDS = 60
-TIME_BETWEEN_CALLS_SECONDS = 0.1
 
 
 def _get_authenticator(
@@ -117,48 +73,6 @@ def _get_authenticator(
     return credentials.cache.data
 
 
-class _OIDCTestCallback(OIDCCallback):
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("OIDC_TOKEN_FILE")
-        if not token_file:
-            raise RuntimeError(
-                'MONGODB-OIDC with an "test" provider requires "OIDC_TOKEN_FILE" to be set'
-            )
-        with open(token_file) as fid:
-            return OIDCCallbackResult(access_token=fid.read().strip())
-
-
-class _OIDCAWSCallback(OIDCCallback):
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
-        if not token_file:
-            raise RuntimeError(
-                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
-            )
-        with open(token_file) as fid:
-            return OIDCCallbackResult(access_token=fid.read().strip())
-
-
-class _OIDCAzureCallback(OIDCCallback):
-    def __init__(self, token_resource: str) -> None:
-        self.token_resource = quote(token_resource)
-
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_azure_response(self.token_resource, context.username, context.timeout_seconds)
-        return OIDCCallbackResult(
-            access_token=resp["access_token"], expires_in_seconds=resp["expires_in"]
-        )
-
-
-class _OIDCGCPCallback(OIDCCallback):
-    def __init__(self, token_resource: str) -> None:
-        self.token_resource = quote(token_resource)
-
-    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
-        resp = _get_gcp_response(self.token_resource, context.timeout_seconds)
-        return OIDCCallbackResult(access_token=resp["access_token"])
-
-
 @dataclass
 class _OIDCAuthenticator:
     username: str
@@ -170,7 +84,7 @@ class _OIDCAuthenticator:
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_call_time: float = field(default=0)
 
-    async def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    async def reauthenticate(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
         """Handle a reauthenticate from the server."""
         # Invalidate the token for the connection.
         self._invalidate(conn)
@@ -179,7 +93,7 @@ class _OIDCAuthenticator:
             return await self._authenticate_machine(conn)
         return await self._authenticate_human(conn)
 
-    async def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    async def authenticate(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
         """Handle an initial authenticate request."""
         # First handle speculative auth.
         # If it succeeded, we are done.
@@ -203,7 +117,7 @@ class _OIDCAuthenticator:
             return None
         return self._get_start_command({"jwt": self.access_token})
 
-    async def _authenticate_machine(self, conn: Connection) -> Mapping[str, Any]:
+    async def _authenticate_machine(self, conn: AsyncConnection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If
         # authentication fails with error code 18, invalidate the access token,
         # fetch a new access token, and try to authenticate again. If authentication
@@ -217,7 +131,7 @@ class _OIDCAuthenticator:
                 raise
         return await self._sasl_start_jwt(conn)
 
-    async def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    async def _authenticate_human(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
         # If we have a cached access token, try a JwtStepRequest.
         # authentication fails with error code 18, invalidate the access token,
         # and try to authenticate again.  If authentication fails for any other
@@ -307,7 +221,7 @@ class _OIDCAuthenticator:
         return self.access_token
 
     async def _run_command(
-        self, conn: Connection, cmd: MutableMapping[str, Any]
+        self, conn: AsyncConnection, cmd: MutableMapping[str, Any]
     ) -> Mapping[str, Any]:
         try:
             return await conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
@@ -321,7 +235,7 @@ class _OIDCAuthenticator:
             return False
         return err.code == _AUTHENTICATION_FAILURE_CODE
 
-    def _invalidate(self, conn: Connection) -> None:
+    def _invalidate(self, conn: AsyncConnection) -> None:
         # Ignore the invalidation if a token gen id is given and is less than our
         # current token gen id.
         token_gen_id = conn.oidc_token_gen_id or 0
@@ -330,7 +244,7 @@ class _OIDCAuthenticator:
         self.access_token = None
 
     async def _sasl_continue_jwt(
-        self, conn: Connection, start_resp: Mapping[str, Any]
+        self, conn: AsyncConnection, start_resp: Mapping[str, Any]
     ) -> Mapping[str, Any]:
         self.access_token = None
         self.refresh_token = None
@@ -342,7 +256,7 @@ class _OIDCAuthenticator:
         cmd = self._get_continue_command({"jwt": access_token}, start_resp)
         return await self._run_command(conn, cmd)
 
-    async def _sasl_start_jwt(self, conn: Connection) -> Mapping[str, Any]:
+    async def _sasl_start_jwt(self, conn: AsyncConnection) -> Mapping[str, Any]:
         access_token = self._get_access_token()
         conn.oidc_token_gen_id = self.token_gen_id
         cmd = self._get_start_command({"jwt": access_token})
@@ -370,7 +284,7 @@ class _OIDCAuthenticator:
 
 
 async def _authenticate_oidc(
-    credentials: MongoCredential, conn: Connection, reauthenticate: bool
+    credentials: MongoCredential, conn: AsyncConnection, reauthenticate: bool
 ) -> Optional[Mapping[str, Any]]:
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, conn.address)

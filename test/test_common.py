@@ -20,8 +20,8 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.utils import connected, rs_or_single_client, single_client
+from test import IntegrationTest, client_context, connected, unittest
+from test.utils import rs_or_single_client, single_client
 
 from bson.binary import PYTHON_LEGACY, STANDARD, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions

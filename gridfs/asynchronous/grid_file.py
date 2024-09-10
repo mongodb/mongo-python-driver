@@ -42,13 +42,12 @@ from gridfs.grid_file_shared import (
     _clear_entity_type_registry,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.asynchronous.client_session import ClientSession
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.common import validate_string
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.helpers import _check_write_command_response, anext
-from pymongo.asynchronous.read_preferences import ReadPreference, _ServerMode
+from pymongo.asynchronous.helpers import anext
+from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -57,11 +56,13 @@ from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
 )
+from pymongo.helpers_shared import _check_write_command_response
+from pymongo.read_preferences import ReadPreference, _ServerMode
 
 _IS_SYNC = False
 
 
-def _disallow_transactions(session: Optional[ClientSession]) -> None:
+def _disallow_transactions(session: Optional[AsyncClientSession]) -> None:
     if session and session.in_transaction:
         raise InvalidOperation("GridFS does not support multi-document transactions")
 
@@ -153,9 +154,9 @@ class AsyncGridFS:
         """
         async with AsyncGridIn(self._collection, **kwargs) as grid_file:
             await grid_file.write(data)
-            return await grid_file._id
+            return grid_file._id
 
-    async def get(self, file_id: Any, session: Optional[ClientSession] = None) -> AsyncGridOut:
+    async def get(self, file_id: Any, session: Optional[AsyncClientSession] = None) -> AsyncGridOut:
         """Get a file from GridFS by ``"_id"``.
 
         Returns an instance of :class:`~gridfs.grid_file.GridOut`,
@@ -163,7 +164,7 @@ class AsyncGridFS:
 
         :param file_id: ``"_id"`` of the file to get
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -178,7 +179,7 @@ class AsyncGridFS:
         self,
         filename: Optional[str] = None,
         version: Optional[int] = -1,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> AsyncGridOut:
         """Get a file from GridFS by ``"filename"`` or metadata fields.
@@ -205,7 +206,7 @@ class AsyncGridFS:
         :param version: version of the file to get (defaults
             to -1, the most recent version uploaded)
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
@@ -219,7 +220,7 @@ class AsyncGridFS:
             query["filename"] = filename
 
         _disallow_transactions(session)
-        cursor = await self._files.find(query, session=session)
+        cursor = self._files.find(query, session=session)
         if version is None:
             version = -1
         if version < 0:
@@ -234,7 +235,10 @@ class AsyncGridFS:
             raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
     async def get_last_version(
-        self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any
+        self,
+        filename: Optional[str] = None,
+        session: Optional[AsyncClientSession] = None,
+        **kwargs: Any,
     ) -> AsyncGridOut:
         """Get the most recent version of a file in GridFS by ``"filename"``
         or metadata fields.
@@ -244,7 +248,7 @@ class AsyncGridFS:
 
         :param filename: ``"filename"`` of the file to get, or `None`
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: find files by custom metadata.
 
         .. versionchanged:: 3.6
@@ -253,7 +257,7 @@ class AsyncGridFS:
         return await self.get_version(filename=filename, session=session, **kwargs)
 
     # TODO add optional safe mode for chunk removal?
-    async def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
+    async def delete(self, file_id: Any, session: Optional[AsyncClientSession] = None) -> None:
         """Delete a file from GridFS by ``"_id"``.
 
         Deletes all data belonging to the file with ``"_id"``:
@@ -269,7 +273,7 @@ class AsyncGridFS:
 
         :param file_id: ``"_id"`` of the file to delete
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -281,12 +285,12 @@ class AsyncGridFS:
         await self._files.delete_one({"_id": file_id}, session=session)
         await self._chunks.delete_many({"files_id": file_id}, session=session)
 
-    async def list(self, session: Optional[ClientSession] = None) -> list[str]:
+    async def list(self, session: Optional[AsyncClientSession] = None) -> list[str]:
         """List the names of all files stored in this instance of
         :class:`GridFS`.
 
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -306,7 +310,7 @@ class AsyncGridFS:
     async def find_one(
         self,
         filter: Optional[Any] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         *args: Any,
         **kwargs: Any,
     ) -> Optional[AsyncGridOut]:
@@ -327,7 +331,7 @@ class AsyncGridFS:
         :param args: any additional positional arguments are
             the same as the arguments to :meth:`find`.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
@@ -370,7 +374,7 @@ class AsyncGridFS:
         :meth:`~pymongo.collection.Collection.find`
         in :class:`~pymongo.collection.Collection`.
 
-        If a :class:`~pymongo.client_session.ClientSession` is passed to
+        If a :class:`~pymongo.client_session.AsyncClientSession` is passed to
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
@@ -406,7 +410,7 @@ class AsyncGridFS:
     async def exists(
         self,
         document_or_id: Optional[Any] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> bool:
         """Check if a file exists in this instance of :class:`GridFS`.
@@ -438,7 +442,7 @@ class AsyncGridFS:
         :param document_or_id: query document, or _id of the
             document to check for
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
         :param kwargs: keyword arguments are used as a
             query document, if they're present.
 
@@ -525,7 +529,7 @@ class AsyncGridFSBucket:
         filename: str,
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> AsyncGridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
@@ -556,7 +560,7 @@ class AsyncGridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -580,7 +584,7 @@ class AsyncGridFSBucket:
         filename: str,
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> AsyncGridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
@@ -615,7 +619,7 @@ class AsyncGridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -641,7 +645,7 @@ class AsyncGridFSBucket:
         source: Any,
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> ObjectId:
         """Uploads a user file to a GridFS bucket.
 
@@ -672,7 +676,7 @@ class AsyncGridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -692,7 +696,7 @@ class AsyncGridFSBucket:
         source: Any,
         chunk_size_bytes: Optional[int] = None,
         metadata: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> None:
         """Uploads a user file to a GridFS bucket with a custom file id.
 
@@ -724,7 +728,7 @@ class AsyncGridFSBucket:
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -735,7 +739,7 @@ class AsyncGridFSBucket:
             await gin.write(source)
 
     async def open_download_stream(
-        self, file_id: Any, session: Optional[ClientSession] = None
+        self, file_id: Any, session: Optional[AsyncClientSession] = None
     ) -> AsyncGridOut:
         """Opens a Stream from which the application can read the contents of
         the stored file specified by file_id.
@@ -755,7 +759,7 @@ class AsyncGridFSBucket:
 
         :param file_id: The _id of the file to be downloaded.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -768,7 +772,7 @@ class AsyncGridFSBucket:
 
     @_csot.apply
     async def download_to_stream(
-        self, file_id: Any, destination: Any, session: Optional[ClientSession] = None
+        self, file_id: Any, destination: Any, session: Optional[AsyncClientSession] = None
     ) -> None:
         """Downloads the contents of the stored file specified by file_id and
         writes the contents to `destination`.
@@ -790,7 +794,7 @@ class AsyncGridFSBucket:
         :param file_id: The _id of the file to be downloaded.
         :param destination: a file-like object implementing :meth:`write`.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -803,7 +807,7 @@ class AsyncGridFSBucket:
                 destination.write(chunk)
 
     @_csot.apply
-    async def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
+    async def delete(self, file_id: Any, session: Optional[AsyncClientSession] = None) -> None:
         """Given an file_id, delete this stored file's files collection document
         and associated chunks from a GridFS bucket.
 
@@ -819,7 +823,7 @@ class AsyncGridFSBucket:
 
         :param file_id: The _id of the file to be deleted.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -859,7 +863,7 @@ class AsyncGridFSBucket:
         :meth:`~pymongo.collection.Collection.find`
         in :class:`~pymongo.collection.Collection`.
 
-        If a :class:`~pymongo.client_session.ClientSession` is passed to
+        If a :class:`~pymongo.client_session.AsyncClientSession` is passed to
         :meth:`find`, all returned :class:`~gridfs.grid_file.GridOut` instances
         are associated with that session.
 
@@ -878,7 +882,7 @@ class AsyncGridFSBucket:
         return AsyncGridOutCursor(self._collection, *args, **kwargs)
 
     async def open_download_stream_by_name(
-        self, filename: str, revision: int = -1, session: Optional[ClientSession] = None
+        self, filename: str, revision: int = -1, session: Optional[AsyncClientSession] = None
     ) -> AsyncGridOut:
         """Opens a Stream from which the application can read the contents of
         `filename` and optional `revision`.
@@ -902,7 +906,7 @@ class AsyncGridFSBucket:
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         :Note: Revision numbers are defined as follows:
 
@@ -919,7 +923,7 @@ class AsyncGridFSBucket:
         validate_string("filename", filename)
         query = {"filename": filename}
         _disallow_transactions(session)
-        cursor = await self._files.find(query, session=session)
+        cursor = self._files.find(query, session=session)
         if revision < 0:
             skip = abs(revision) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -937,7 +941,7 @@ class AsyncGridFSBucket:
         filename: str,
         destination: Any,
         revision: int = -1,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> None:
         """Write the contents of `filename` (with optional `revision`) to
         `destination`.
@@ -961,7 +965,7 @@ class AsyncGridFSBucket:
             filename and different uploadDate) of the file to retrieve.
             Defaults to -1 (the most recent revision).
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         :Note: Revision numbers are defined as follows:
 
@@ -985,7 +989,7 @@ class AsyncGridFSBucket:
                 destination.write(chunk)
 
     async def rename(
-        self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None
+        self, file_id: Any, new_filename: str, session: Optional[AsyncClientSession] = None
     ) -> None:
         """Renames the stored file with the specified file_id.
 
@@ -1002,7 +1006,7 @@ class AsyncGridFSBucket:
         :param file_id: The _id of the file to be renamed.
         :param new_filename: The new name of the file.
         :param session: a
-            :class:`~pymongo.client_session.ClientSession`
+            :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -1024,7 +1028,7 @@ class AsyncGridIn:
     def __init__(
         self,
         root_collection: AsyncCollection,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> None:
         """Write a file to GridFS
@@ -1059,7 +1063,7 @@ class AsyncGridIn:
 
         :param root_collection: root collection to write to
         :param session: a
-            :class:`~pymongo.client_session.ClientSession` to use for all
+            :class:`~pymongo.client_session.AsyncClientSession` to use for all
             commands
         :param kwargs: Any: file level options (see above)
 
@@ -1172,22 +1176,6 @@ class AsyncGridIn:
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if _IS_SYNC:
-            # For properties of this instance like _buffer, or descriptors set on
-            # the class like filename, use regular __setattr__
-            if name in self.__dict__ or name in self.__class__.__dict__:
-                object.__setattr__(self, name, value)
-            else:
-                # All other attributes are part of the document in db.fs.files.
-                # Store them to be sent to server on close() or if closed, send
-                # them now.
-                self._file[name] = value
-                if self._closed:
-                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
-        else:
-            object.__setattr__(self, name, value)
-
-    async def set(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
         # the class like filename, use regular __setattr__
         if name in self.__dict__ or name in self.__class__.__dict__:
@@ -1198,9 +1186,17 @@ class AsyncGridIn:
             # them now.
             self._file[name] = value
             if self._closed:
-                await self._coll.files.update_one(
-                    {"_id": self._file["_id"]}, {"$set": {name: value}}
-                )
+                if _IS_SYNC:
+                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+                else:
+                    raise AttributeError(
+                        "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
+                    )
+
+    async def set(self, name: str, value: Any) -> None:
+        self._file[name] = value
+        if self._closed:
+            await self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
     async def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
@@ -1394,7 +1390,11 @@ class AsyncGridIn:
         return False
 
 
-class AsyncGridOut(io.IOBase):
+GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object  # type: Any
+
+
+class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
+
     """Class to read data out of GridFS."""
 
     def __init__(
@@ -1402,7 +1402,7 @@ class AsyncGridOut(io.IOBase):
         root_collection: AsyncCollection,
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> None:
         """Read a file from GridFS
 
@@ -1420,7 +1420,7 @@ class AsyncGridOut(io.IOBase):
         :param file_document: file document from
             `root_collection.files`
         :param session: a
-            :class:`~pymongo.client_session.ClientSession` to use for all
+            :class:`~pymongo.client_session.AsyncClientSession` to use for all
             commands
 
         .. versionchanged:: 3.8
@@ -1454,6 +1454,8 @@ class AsyncGridOut(io.IOBase):
         self._position = 0
         self._file = file_document
         self._session = session
+        if not _IS_SYNC:
+            self.closed = False
 
     _id: Any = _a_grid_out_property("_id", "The ``'_id'`` value for this file.")
     filename: str = _a_grid_out_property("filename", "Name of this file.")
@@ -1479,6 +1481,44 @@ class AsyncGridOut(io.IOBase):
 
     _file: Any
     _chunk_iter: Any
+
+    if not _IS_SYNC:
+        closed: bool
+
+        async def __anext__(self) -> bytes:
+            line = await self.readline()
+            if line:
+                return line
+            raise StopAsyncIteration()
+
+        async def to_list(self) -> list[bytes]:
+            return [x async for x in self]  # noqa: C416, RUF100
+
+        async def readline(self, size: int = -1) -> bytes:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            return await self._read_size_or_line(size=size, line=True)
+
+        async def readlines(self, size: int = -1) -> list[bytes]:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            await self.open()
+            lines = []
+            remainder = int(self.length) - self._position
+            bytes_read = 0
+            while remainder > 0:
+                line = await self._read_size_or_line(line=True)
+                bytes_read += len(line)
+                lines.append(line)
+                remainder = int(self.length) - self._position
+                if 0 < size < bytes_read:
+                    break
+
+            return lines
 
     async def open(self) -> None:
         if not self._file:
@@ -1507,6 +1547,7 @@ class AsyncGridOut(io.IOBase):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
+        await self.open()
         received = len(self._buffer) - self._buffer_pos
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
@@ -1598,18 +1639,11 @@ class AsyncGridOut(io.IOBase):
         """
         return await self._read_size_or_line(size=size)
 
-    async def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
-        """Read one line or up to `size` bytes from the file.
-
-        :param size: the maximum number of bytes to read
-        """
-        return await self._read_size_or_line(size=size, line=True)
-
     def tell(self) -> int:
         """Return the current position of this file."""
         return self._position
 
-    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:  # type: ignore[override]
+    async def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
         """Set the current position of this file.
 
         :param pos: the position (or offset if using relative
@@ -1672,12 +1706,15 @@ class AsyncGridOut(io.IOBase):
         """
         return self
 
-    async def close(self) -> None:  # type: ignore[override]
+    async def close(self) -> None:
         """Make GridOut more generically file-like."""
         if self._chunk_iter:
             await self._chunk_iter.close()
             self._chunk_iter = None
-        super().close()
+        if _IS_SYNC:
+            super().close()
+        else:
+            self.closed = True
 
     def write(self, value: Any) -> NoReturn:
         raise io.UnsupportedOperation("write")
@@ -1734,7 +1771,7 @@ class _AsyncGridOutChunkIterator:
         self,
         grid_out: AsyncGridOut,
         chunks: AsyncCollection,
-        session: Optional[ClientSession],
+        session: Optional[AsyncClientSession],
         next_chunk: Any,
     ) -> None:
         self._id = grid_out._id
@@ -1756,12 +1793,12 @@ class _AsyncGridOutChunkIterator:
     def __aiter__(self) -> _AsyncGridOutChunkIterator:
         return self
 
-    async def _create_cursor(self) -> None:
+    def _create_cursor(self) -> None:
         filter = {"files_id": self._id}
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
         _disallow_transactions(self._session)
-        self._cursor = await self._chunks.find(filter, sort=[("n", 1)], session=self._session)
+        self._cursor = self._chunks.find(filter, sort=[("n", 1)], session=self._session)
 
     async def _next_with_retry(self) -> Mapping[str, Any]:
         """Return the next chunk and retry once on CursorNotFound.
@@ -1771,13 +1808,13 @@ class _AsyncGridOutChunkIterator:
         server's default cursor timeout).
         """
         if self._cursor is None:
-            await self._create_cursor()
+            self._create_cursor()
             assert self._cursor is not None
         try:
             return await self._cursor.next()
         except CursorNotFound:
             await self._cursor.close()
-            await self._create_cursor()
+            self._create_cursor()
             return await self._cursor.next()
 
     async def next(self) -> Mapping[str, Any]:
@@ -1824,7 +1861,9 @@ class _AsyncGridOutChunkIterator:
 
 
 class AsyncGridOutIterator:
-    def __init__(self, grid_out: AsyncGridOut, chunks: AsyncCollection, session: ClientSession):
+    def __init__(
+        self, grid_out: AsyncGridOut, chunks: AsyncCollection, session: AsyncClientSession
+    ):
         self._chunk_iter = _AsyncGridOutChunkIterator(grid_out, chunks, session, 0)
 
     def __aiter__(self) -> AsyncGridOutIterator:
@@ -1851,7 +1890,7 @@ class AsyncGridOutCursor(AsyncCursor):
         no_cursor_timeout: bool = False,
         sort: Optional[Any] = None,
         batch_size: int = 0,
-        session: Optional[ClientSession] = None,
+        session: Optional[AsyncClientSession] = None,
     ) -> None:
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
@@ -1886,6 +1925,17 @@ class AsyncGridOutCursor(AsyncCursor):
         next_file = await super().next()
         return AsyncGridOut(self._root_collection, file_document=next_file, session=self.session)
 
+    async def to_list(self, length: Optional[int] = None) -> list[AsyncGridOut]:
+        """Convert the cursor to a list."""
+        if length is None:
+            return [x async for x in self]  # noqa: C416,RUF100
+        if length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        ret = []
+        for _ in range(length):
+            ret.append(await self.next())
+        return ret
+
     __anext__ = next
 
     def add_option(self, *args: Any, **kwargs: Any) -> NoReturn:
@@ -1894,6 +1944,6 @@ class AsyncGridOutCursor(AsyncCursor):
     def remove_option(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def _clone_base(self, session: Optional[ClientSession]) -> AsyncGridOutCursor:
+    def _clone_base(self, session: Optional[AsyncClientSession]) -> AsyncGridOutCursor:
         """Creates an empty GridOutCursor for information to be copied into."""
         return AsyncGridOutCursor(self._root_collection, session=session)

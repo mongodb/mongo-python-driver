@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Typing :: Typed",
 ]
@@ -50,6 +51,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.hatch.version]
 path = "pymongo/_version.py"
+validate-bump = false
 
 [tool.hatch.build.targets.wheel]
 packages = ["bson","gridfs", "pymongo"]
@@ -69,11 +71,11 @@ zstd = ["requirements/zstd.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"
-addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
-norecursedirs = ["test/*"]
 faulthandler_timeout = 1500
+asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true
 filterwarnings = [
     "error",
@@ -94,6 +96,24 @@ filterwarnings = [
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning:dateutil",
+    # TODO: Remove both of these in https://jira.mongodb.org/browse/PYTHON-4731
+    "ignore:Unclosed AsyncMongoClient*",
+    "ignore:Unclosed MongoClient*",
+]
+markers = [
+    "auth_aws: tests that rely on pymongo-auth-aws",
+    "auth_oidc: tests that rely on oidc auth",
+    "ocsp: tests that rely on ocsp",
+    "atlas: tests that rely on atlas",
+    "data_lake: tests that rely on atlas data lake",
+    "perf: benchmark tests",
+    "index_management: index management tests",
+    "csfle: client-side field-level encryption tests",
+    "encryption: encryption tests",
+    "load_balancer: load balancer tests",
+    "mockupdb: tests that rely on mockupdb",
+    "default: default test suite",
+    "default_async: default async test suite",
 ]
 
 [tool.mypy]
@@ -111,7 +131,7 @@ module = ["service_identity.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["pymongo.synchronous.*", "gridfs.synchronous.*"]
+module = ["pymongo.synchronous.*"]
 warn_unused_ignores = false
 disable_error_code = ["unused-coroutine"]
 
@@ -119,6 +139,10 @@ disable_error_code = ["unused-coroutine"]
 module = ["pymongo.asynchronous.*"]
 warn_unused_ignores = false
 
+[[tool.mypy.overrides]]
+module = ["gridfs.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
 target-version = "py37"

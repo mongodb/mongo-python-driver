@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 
 from test import unittest
 
-from pymongo.synchronous.read_preferences import MovingAverage
+from pymongo.read_preferences import MovingAverage
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "server_selection/rtt")

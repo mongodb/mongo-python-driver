@@ -28,23 +28,30 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.synchronous.helpers import _check_command_response, _handle_reauth
-from pymongo.synchronous.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.synchronous.message import _convert_exception, _GetMore, _OpMsg, _Query
-from pymongo.synchronous.response import PinnedResponse, Response
+from pymongo.helpers_shared import _check_command_response
+from pymongo.logger import (
+    _COMMAND_LOGGER,
+    _SDAM_LOGGER,
+    _CommandStatusMessage,
+    _debug_log,
+    _SDAMStatusMessage,
+)
+from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.response import PinnedResponse, Response
+from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
     from queue import Queue
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
+    from pymongo.monitoring import _EventListeners
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_description import ServerDescription
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.monitoring import _EventListeners
     from pymongo.synchronous.pool import Connection, Pool
-    from pymongo.synchronous.read_preferences import _ServerMode
-    from pymongo.synchronous.server_description import ServerDescription
-    from pymongo.synchronous.typings import _DocumentOut
+    from pymongo.typings import _DocumentOut
 
 _IS_SYNC = True
 
@@ -98,12 +105,34 @@ class Server:
                     (self._description.address, self._topology_id),
                 )
             )
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                topologyId=self._topology_id,
+                serverHost=self._description.address[0],
+                serverPort=self._description.address[1],
+                message=_SDAMStatusMessage.STOP_SERVER,
+            )
+
         self._monitor.close()
         self._pool.close()
 
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
+
+    def operation_to_command(
+        self, operation: Union[_Query, _GetMore], conn: Connection, apply_timeout: bool = False
+    ) -> tuple[dict[str, Any], str]:
+        cmd, db = operation.as_command(conn, apply_timeout)
+        # Support auto encryption
+        if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
+            cmd = operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
+                operation.db, cmd, operation.codec_options
+            )
+        operation.update_command(cmd)
+
+        return cmd, db
 
     @_handle_reauth
     def run_operation(
@@ -126,21 +155,21 @@ class Server:
         :param read_preference: The read preference to use.
         :param listeners: Instance of _EventListeners or None.
         :param unpack_res: A callable that decodes the wire protocol response.
+        :param client: A MongoClient instance.
         """
-        duration = None
         assert listeners is not None
         publish = listeners.enabled_for_commands
         start = datetime.now()
 
         use_cmd = operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        cmd, dbn = self.operation_to_command(operation, conn, use_cmd)
         if more_to_come:
             request_id = 0
         else:
             message = operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
-        cmd, dbn = operation.as_command(conn)
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -159,7 +188,6 @@ class Server:
             )
 
         if publish:
-            cmd, dbn = operation.as_command(conn)
             if "$db" not in cmd:
                 cmd["$db"] = dbn
             assert listeners is not None
@@ -195,7 +223,7 @@ class Server:
             )
             if use_cmd:
                 first = docs[0]
-                operation.client._process_response(first, operation.session)
+                operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
                 _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             duration = datetime.now() - start
@@ -278,7 +306,7 @@ class Server:
             )
 
         # Decrypt response.
-        client = operation.client
+        client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
                 decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -286,7 +314,7 @@ class Server:
 
         response: Response
 
-        if client._should_pin_cursor(operation.session) or operation.exhaust:
+        if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
             conn.pin_cursor()
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the
