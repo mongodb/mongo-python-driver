@@ -2240,6 +2240,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "/opt/python/3.12/bin/python3"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.13/bin/python3"
       - id: "pypy3.9"
         display_name: "PyPy 3.9"
         variables:
@@ -2272,6 +2276,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/Python312/python.exe"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/Python313/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2296,6 +2304,10 @@ axes:
         display_name: "32-bit Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/32/Python312/python.exe"
+      - id: "3.13"
+        display_name: "32-bit Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python313/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2788,7 +2800,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:

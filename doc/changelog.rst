@@ -10,6 +10,7 @@ Changes in Version 4.9.0
 PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
+- Added support for Python 3.13.
 - A new asynchronous API with full asyncio support.
 - Added support for In-Use Encryption range queries with MongoDB 8.0.
   Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
