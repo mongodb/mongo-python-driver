@@ -595,7 +595,8 @@ class ClientEncryption(Generic[_DocumentType]):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         if not isinstance(key_vault_client, MongoClient):
-            raise TypeError(f"MongoClient required but given {type(key_vault_client)}")
+            if not any(cls.__name__ == "MongoClient" for cls in key_vault_client.__mro__):
+                raise TypeError(f"MongoClient required but given {type(key_vault_client).__name__}")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -683,9 +684,8 @@ class ClientEncryption(Generic[_DocumentType]):
 
         """
         if not isinstance(database, Database):
-            raise TypeError(
-                f"create_encrypted_collection() requires a Database but {type(database)} given"
-            )
+            if not any(cls.__name__ == "Database" for cls in database.__mro__):
+                raise TypeError(f"Database required but given {type(database).__name__}")
 
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):
