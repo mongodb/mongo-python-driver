@@ -29,7 +29,6 @@ from test.test_custom_types import DECIMAL_CODECOPTS
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     OvertCommandListener,
-    async_rs_or_single_client,
     async_wait_until,
 )
 
@@ -208,7 +207,7 @@ class TestDatabase(AsyncIntegrationTest):
 
     async def test_list_collection_names_filter(self):
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         db = client[self.db.name]
         await db.capped.drop()
         await db.create_collection("capped", capped=True, size=4096)
@@ -235,7 +234,7 @@ class TestDatabase(AsyncIntegrationTest):
 
     async def test_check_exists(self):
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         self.addAsyncCleanup(client.close)
         db = client[self.db.name]
         await db.drop_collection("unique")
@@ -326,7 +325,7 @@ class TestDatabase(AsyncIntegrationTest):
         await self.client.drop_database("pymongo_test")
 
     async def test_list_collection_names_single_socket(self):
-        client = await async_rs_or_single_client(maxPoolSize=1)
+        client = await self.async_rs_or_single_client(maxPoolSize=1)
         await client.drop_database("test_collection_names_single_socket")
         db = client.test_collection_names_single_socket
         for i in range(200):

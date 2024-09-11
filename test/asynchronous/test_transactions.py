@@ -27,8 +27,6 @@ from test.asynchronous import async_client_context, unittest
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 from test.utils import (
     OvertCommandListener,
-    async_rs_client,
-    async_single_client,
     wait_until,
 )
 from typing import List
@@ -69,13 +67,7 @@ class AsyncTransactionsBase(AsyncSpecRunner):
         await super()._setup_class()
         if async_client_context.supports_transactions():
             for address in async_client_context.mongoses:
-                cls.mongos_clients.append(await async_single_client("{}:{}".format(*address)))
-
-    @classmethod
-    async def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
+                cls.mongos_clients.append(await cls.async_single_client("{}:{}".format(*address)))
 
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
@@ -120,7 +112,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
-        client = await async_rs_client(w=0)
+        client = await self.async_rs_client(w=0)
         self.addAsyncCleanup(client.close)
         db = client.test
         coll = db.test
@@ -178,7 +170,9 @@ class TestTransactions(AsyncTransactionsBase):
     async def test_unpin_for_next_transaction(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = await async_rs_client(async_client_context.mongos_seeds(), localThresholdMS=1000)
+        client = await self.async_rs_client(
+            async_client_context.mongos_seeds(), localThresholdMS=1000
+        )
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -206,7 +200,9 @@ class TestTransactions(AsyncTransactionsBase):
     async def test_unpin_for_non_transaction_operation(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = await async_rs_client(async_client_context.mongos_seeds(), localThresholdMS=1000)
+        client = await self.async_rs_client(
+            async_client_context.mongos_seeds(), localThresholdMS=1000
+        )
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -335,7 +331,7 @@ class TestTransactions(AsyncTransactionsBase):
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
+        client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         await coll.delete_many({})
         listener.reset()
@@ -364,7 +360,7 @@ class TestTransactions(AsyncTransactionsBase):
 
     @async_client_context.require_transactions
     async def test_transaction_direct_connection(self):
-        client = await async_single_client()
+        client = await self.async_single_client()
         self.addAsyncCleanup(client.close)
         coll = client.pymongo_test.test
 
@@ -454,7 +450,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
+        client = await self.async_rs_client(event_listeners=[listener])
         self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 
@@ -483,7 +479,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
+        client = await self.async_rs_client(event_listeners=[listener])
         self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 
@@ -518,7 +514,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
+        client = await self.async_rs_client(event_listeners=[listener])
         self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 

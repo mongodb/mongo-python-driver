@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import os
 from test import IntegrationTest, unittest
-from test.utils import single_client
 from unittest.mock import patch
 
 from bson import json_util
@@ -85,7 +84,7 @@ class TestLogger(IntegrationTest):
                     self.assertEqual(last_3_bytes, str_to_repeat)
 
     def test_logging_without_listeners(self):
-        c = single_client()
+        c = self.single_client()
         self.assertEqual(len(c._event_listeners.event_listeners()), 0)
         with self.assertLogs("pymongo.connection", level="DEBUG") as cm:
             c.db.test.insert_one({"x": "1"})

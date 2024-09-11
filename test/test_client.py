@@ -67,10 +67,6 @@ from test.utils import (
     is_greenthread_patched,
     lazy_client_trial,
     one,
-    rs_client,
-    rs_or_single_client,
-    rs_or_single_client_noauth,
-    single_client,
     wait_until,
 )
 
@@ -131,7 +127,9 @@ class ClientUnitTest(UnitTest):
 
     @classmethod
     def _setup_class(cls):
-        cls.client = rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
+        cls.client = ClientUnitTest.unmanaged_rs_or_single_client(
+            connect=False, serverSelectionTimeoutMS=100
+        )
 
     @classmethod
     def _tearDown_class(cls):
@@ -261,7 +259,7 @@ class ClientUnitTest(UnitTest):
         self.assertNotIsInstance(client, Iterable)
 
     def test_get_default_database(self):
-        with rs_or_single_client(
+        with self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
             connect=False,
         ) as c:
@@ -279,7 +277,7 @@ class ClientUnitTest(UnitTest):
             self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
             self.assertEqual(write_concern, db.write_concern)
 
-        with rs_or_single_client(
+        with self.rs_or_single_client(
             "mongodb://%s:%d/" % (client_context.host, client_context.port),
             connect=False,
         ) as c:
@@ -287,7 +285,7 @@ class ClientUnitTest(UnitTest):
 
     def test_get_default_database_error(self):
         # URI with no database.
-        with rs_or_single_client(
+        with self.rs_or_single_client(
             "mongodb://%s:%d/" % (client_context.host, client_context.port),
             connect=False,
         ) as c:
@@ -299,11 +297,11 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        with rs_or_single_client(uri, connect=False) as c:
+        with self.rs_or_single_client(uri, connect=False) as c:
             self.assertEqual(Database(c, "foo"), c.get_default_database())
 
     def test_get_database_default(self):
-        with rs_or_single_client(
+        with self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
             connect=False,
         ) as c:
@@ -311,7 +309,7 @@ class ClientUnitTest(UnitTest):
 
     def test_get_database_default_error(self):
         # URI with no database.
-        c = rs_or_single_client(
+        c = self.rs_or_single_client(
             "mongodb://%s:%d/" % (client_context.host, client_context.port),
             connect=False,
         )
@@ -324,7 +322,7 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        c = rs_or_single_client(uri, connect=False)
+        c = self.rs_or_single_client(uri, connect=False)
         self.assertEqual(Database(c, "foo"), c.get_database())
         c.close()
 
@@ -337,7 +335,7 @@ class ClientUnitTest(UnitTest):
             MongoClient("mongodb://host/?readpreference=primary&readpreferencetags=dc:east")
 
     def test_read_preference(self):
-        with rs_or_single_client(
+        with self.rs_or_single_client(
             "mongodb://host", connect=False, readpreference=ReadPreference.NEAREST.mongos_mode
         ) as c:
             self.assertEqual(c.read_preference, ReadPreference.NEAREST)
@@ -684,7 +682,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
-            client = rs_or_single_client()
+            client = self.rs_or_single_client()
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
@@ -695,7 +693,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
-            client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
+            client = self.rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
@@ -709,7 +707,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
-            client = rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
+            client = self.rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
                 pass
@@ -723,7 +721,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_reaper_removes_stale(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
-            client = rs_or_single_client(maxIdleTimeMS=500)
+            client = self.rs_or_single_client(maxIdleTimeMS=500)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn_one:
                 pass
@@ -740,13 +738,13 @@ class TestClient(IntegrationTest):
 
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
-            client = rs_or_single_client()
+            client = self.rs_or_single_client()
             self.addCleanup(client.close)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
-            client = rs_or_single_client(minPoolSize=10)
+            client = self.rs_or_single_client(minPoolSize=10)
             self.addCleanup(client.close)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             wait_until(
@@ -766,7 +764,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
-            client = rs_or_single_client(maxIdleTimeMS=500)
+            client = self.rs_or_single_client(maxIdleTimeMS=500)
             self.addCleanup(client.close)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
@@ -781,7 +779,7 @@ class TestClient(IntegrationTest):
             self.assertTrue(new_con in server._pool.conns)
 
             # Test that connections are reused if maxIdleTimeMS is not set.
-            client = rs_or_single_client()
+            client = self.rs_or_single_client()
             self.addCleanup(client.close)
             server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
             with server._pool.checkout() as conn:
@@ -823,27 +821,27 @@ class TestClient(IntegrationTest):
 
     def test_init_disconnected(self):
         host, port = client_context.host, client_context.port
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
 
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         self.assertIsInstance(c.is_mongos, bool)
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         self.assertEqual(c.codec_options, CodecOptions())
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.addCleanup(c.close)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
@@ -870,12 +868,12 @@ class TestClient(IntegrationTest):
 
     def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        with rs_or_single_client(seed, connect=False) as c:
+        with self.rs_or_single_client(seed, connect=False) as c:
             self.assertEqual(client_context.client, c)
             # Explicitly test inequality
             self.assertFalse(client_context.client != c)
 
-        with rs_or_single_client("invalid.com", connect=False) as c:
+        with self.rs_or_single_client("invalid.com", connect=False) as c:
             self.assertNotEqual(client_context.client, c)
             self.assertTrue(client_context.client != c)
 
@@ -897,10 +895,10 @@ class TestClient(IntegrationTest):
 
     def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = rs_or_single_client(seed, connect=False)
+        c = self.rs_or_single_client(seed, connect=False)
         self.addCleanup(c.close)
         self.assertIn(c, {client_context.client})
-        c = rs_or_single_client("invalid.com", connect=False)
+        c = self.rs_or_single_client("invalid.com", connect=False)
         self.addCleanup(c.close)
         self.assertNotIn(c, {client_context.client})
 
@@ -974,7 +972,7 @@ class TestClient(IntegrationTest):
         for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
             self.assertIs(type(helper_doc), dict)
             self.assertEqual(helper_doc.keys(), cmd_doc.keys())
-        client = rs_or_single_client(document_class=SON)
+        client = self.rs_or_single_client(document_class=SON)
         self.addCleanup(client.close)
         for doc in client.list_databases():
             self.assertIs(type(doc), dict)
@@ -1014,7 +1012,7 @@ class TestClient(IntegrationTest):
         self.client.drop_database("pymongo_test")
 
         if client_context.is_rs:
-            wc_client = rs_or_single_client(w=len(client_context.nodes) + 1)
+            wc_client = self.rs_or_single_client(w=len(client_context.nodes) + 1)
             with self.assertRaises(WriteConcernError):
                 wc_client.drop_database("pymongo_test2")
 
@@ -1024,7 +1022,7 @@ class TestClient(IntegrationTest):
         self.assertNotIn("pymongo_test2", dbs)
 
     def test_close(self):
-        test_client = rs_or_single_client()
+        test_client = self.rs_or_single_client()
         coll = test_client.pymongo_test.bar
         test_client.close()
         with self.assertRaises(InvalidOperation):
@@ -1034,7 +1032,7 @@ class TestClient(IntegrationTest):
         if sys.platform.startswith("java"):
             # We can't figure out how to make this test reliable with Jython.
             raise SkipTest("Can't test with Jython")
-        test_client = rs_or_single_client()
+        test_client = self.rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
         test_client._process_periodic_tasks()
@@ -1061,14 +1059,14 @@ class TestClient(IntegrationTest):
         self.assertTrue(test_client._topology._opened)
         test_client.close()
         self.assertFalse(test_client._topology._opened)
-        test_client = rs_or_single_client()
+        test_client = self.rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
         test_client._process_periodic_tasks()
         self.assertTrue(test_client._topology._opened)
         test_client.close()
 
     def test_close_stops_kill_cursors_thread(self):
-        client = rs_client()
+        client = self.rs_client()
         client.test.test.find_one()
         self.assertFalse(client._kill_cursors_executor._stopped)
 
@@ -1084,7 +1082,7 @@ class TestClient(IntegrationTest):
 
     def test_uri_connect_option(self):
         # Ensure that topology is not opened if connect=False.
-        client = rs_client(connect=False)
+        client = self.rs_client(connect=False)
         self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
@@ -1101,14 +1099,14 @@ class TestClient(IntegrationTest):
         client.close()
 
     def test_close_does_not_open_servers(self):
-        client = rs_client(connect=False)
+        client = self.rs_client(connect=False)
         topology = client._topology
         self.assertEqual(topology._servers, {})
         client.close()
         self.assertEqual(topology._servers, {})
 
     def test_close_closes_sockets(self):
-        client = rs_client()
+        client = self.rs_client()
         self.addCleanup(client.close)
         client.test.test.find_one()
         topology = client._topology
@@ -1135,30 +1133,30 @@ class TestClient(IntegrationTest):
         client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
 
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client_noauth("mongodb://a:b@%s:%d" % (host, port)))
+            connected(self.rs_or_single_client_noauth("mongodb://a:b@%s:%d" % (host, port)))
 
         # No error.
-        connected(rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port)))
+        connected(self.rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port)))
 
         # Wrong database.
         uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client_noauth(uri))
+            connected(self.rs_or_single_client_noauth(uri))
 
         # No error.
         connected(
-            rs_or_single_client_noauth("mongodb://user:pass@%s:%d/pymongo_test" % (host, port))
+            self.rs_or_single_client_noauth("mongodb://user:pass@%s:%d/pymongo_test" % (host, port))
         )
 
         # Auth with lazy connection.
         (
-            rs_or_single_client_noauth(
+            self.rs_or_single_client_noauth(
                 "mongodb://user:pass@%s:%d/pymongo_test" % (host, port), connect=False
             )
         ).pymongo_test.test.find_one()
 
         # Wrong password.
-        bad_client = rs_or_single_client_noauth(
+        bad_client = self.rs_or_single_client_noauth(
             "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port), connect=False
         )
 
@@ -1170,7 +1168,7 @@ class TestClient(IntegrationTest):
         client_context.create_user("admin", "ad min", "pa/ss")
         self.addCleanup(client_context.drop_user, "admin", "ad min")
 
-        c = rs_or_single_client_noauth(username="ad min", password="pa/ss")
+        c = self.rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
         # Username and password aren't in strings that will likely be logged.
         self.assertNotIn("ad min", repr(c))
@@ -1182,13 +1180,13 @@ class TestClient(IntegrationTest):
         c.server_info()
 
         with self.assertRaises(OperationFailure):
-            (rs_or_single_client_noauth(username="ad min", password="foo")).server_info()
+            (self.rs_or_single_client_noauth(username="ad min", password="foo")).server_info()
 
     @client_context.require_auth
     @client_context.require_no_fips
     def test_lazy_auth_raises_operation_failure(self):
         host = client_context.host
-        lazy_client = rs_or_single_client_noauth(
+        lazy_client = self.rs_or_single_client_noauth(
             f"mongodb://user:wrong@{host}/pymongo_test", connect=False
         )
 
@@ -1206,7 +1204,7 @@ class TestClient(IntegrationTest):
 
         uri = "mongodb://%s" % encoded_socket
         # Confirm we can do operations via the socket.
-        client = rs_or_single_client(uri)
+        client = self.rs_or_single_client(uri)
         self.addCleanup(client.close)
         client.pymongo_test.test.insert_one({"dummy": "object"})
         dbs = client.list_database_names()
@@ -1230,7 +1228,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
-        c = rs_or_single_client(document_class=SON)
+        c = self.rs_or_single_client(document_class=SON)
         self.addCleanup(c.close)
         db = c.pymongo_test
 
@@ -1238,7 +1236,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(isinstance(db.test.find_one(), SON))
 
     def test_timeouts(self):
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             connectTimeoutMS=10500,
             socketTimeoutMS=10500,
             maxIdleTimeMS=10500,
@@ -1252,34 +1250,34 @@ class TestClient(IntegrationTest):
         self.assertEqual(10.5, client.options.server_selection_timeout)
 
     def test_socket_timeout_ms_validation(self):
-        c = rs_or_single_client(socketTimeoutMS=10 * 1000)
+        c = self.rs_or_single_client(socketTimeoutMS=10 * 1000)
         self.addCleanup(c.close)
         self.assertEqual(10, (get_pool(c)).opts.socket_timeout)
 
-        c = connected(rs_or_single_client(socketTimeoutMS=None))
+        c = connected(self.rs_or_single_client(socketTimeoutMS=None))
         self.addCleanup(c.close)
         self.assertEqual(None, (get_pool(c)).opts.socket_timeout)
 
-        c = connected(rs_or_single_client(socketTimeoutMS=0))
+        c = connected(self.rs_or_single_client(socketTimeoutMS=0))
         self.addCleanup(c.close)
         self.assertEqual(None, (get_pool(c)).opts.socket_timeout)
 
         with self.assertRaises(ValueError):
-            with rs_or_single_client(socketTimeoutMS=-1):
+            with self.rs_or_single_client(socketTimeoutMS=-1):
                 pass
 
         with self.assertRaises(ValueError):
-            with rs_or_single_client(socketTimeoutMS=1e10):
+            with self.rs_or_single_client(socketTimeoutMS=1e10):
                 pass
 
         with self.assertRaises(ValueError):
-            with rs_or_single_client(socketTimeoutMS="foo"):
+            with self.rs_or_single_client(socketTimeoutMS="foo"):
                 pass
 
     def test_socket_timeout(self):
         no_timeout = self.client
         timeout_sec = 1
-        timeout = rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
+        timeout = self.rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
         self.addCleanup(timeout.close)
 
         no_timeout.pymongo_test.drop_collection("test")
@@ -1330,7 +1328,7 @@ class TestClient(IntegrationTest):
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     def test_waitQueueTimeoutMS(self):
-        client = rs_or_single_client(waitQueueTimeoutMS=2000)
+        client = self.rs_or_single_client(waitQueueTimeoutMS=2000)
         self.addCleanup(client.close)
         self.assertEqual((get_pool(client)).opts.wait_queue_timeout, 2)
 
@@ -1344,7 +1342,7 @@ class TestClient(IntegrationTest):
     def test_tz_aware(self):
         self.assertRaises(ValueError, MongoClient, tz_aware="foo")
 
-        aware = rs_or_single_client(tz_aware=True)
+        aware = self.rs_or_single_client(tz_aware=True)
         self.addCleanup(aware.close)
         naive = self.client
         aware.pymongo_test.drop_collection("test")
@@ -1374,7 +1372,7 @@ class TestClient(IntegrationTest):
         if client_context.is_rs:
             uri += "/?replicaSet=" + (client_context.replica_set_name or "")
 
-        client = rs_or_single_client_noauth(uri)
+        client = self.rs_or_single_client_noauth(uri)
         self.addCleanup(client.close)
         client.pymongo_test.test.insert_one({"dummy": "object"})
         client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
@@ -1384,7 +1382,7 @@ class TestClient(IntegrationTest):
         self.assertTrue("pymongo_test_bernie" in dbs)
 
     def test_contextlib(self):
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         client.pymongo_test.drop_collection("test")
         client.pymongo_test.test.insert_one({"foo": "bar"})
 
@@ -1398,7 +1396,7 @@ class TestClient(IntegrationTest):
                 self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
                 client.pymongo_test.test.find_one()
-            client = rs_or_single_client()
+            client = self.rs_or_single_client()
             with client as client:
                 self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
@@ -1476,7 +1474,7 @@ class TestClient(IntegrationTest):
         # response to getLastError. PYTHON-395. We need a new client here
         # to avoid race conditions caused by replica set failover or idle
         # socket reaping.
-        client = single_client()
+        client = self.single_client()
         self.addCleanup(client.close)
         client.pymongo_test.test.find_one()
         pool = get_pool(client)
@@ -1501,7 +1499,7 @@ class TestClient(IntegrationTest):
         client_context.client.drop_database("test_lazy_connect_w0")
         self.addCleanup(client_context.client.drop_database, "test_lazy_connect_w0")
 
-        client = rs_or_single_client(connect=False, w=0)
+        client = self.rs_or_single_client(connect=False, w=0)
         self.addCleanup(client.close)
         client.test_lazy_connect_w0.test.insert_one({})
 
@@ -1510,7 +1508,7 @@ class TestClient(IntegrationTest):
 
         wait_until(predicate, "find one document")
 
-        client = rs_or_single_client(connect=False, w=0)
+        client = self.rs_or_single_client(connect=False, w=0)
         self.addCleanup(client.close)
         client.test_lazy_connect_w0.test.update_one({}, {"$set": {"x": 1}})
 
@@ -1519,7 +1517,7 @@ class TestClient(IntegrationTest):
 
         wait_until(predicate, "update one document")
 
-        client = rs_or_single_client(connect=False, w=0)
+        client = self.rs_or_single_client(connect=False, w=0)
         self.addCleanup(client.close)
         client.test_lazy_connect_w0.test.delete_one({})
 
@@ -1532,7 +1530,7 @@ class TestClient(IntegrationTest):
     def test_exhaust_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(maxPoolSize=1, retryReads=False)
+        client = self.rs_or_single_client(maxPoolSize=1, retryReads=False)
         self.addCleanup(client.close)
         collection = client.pymongo_test.test
         pool = get_pool(client)
@@ -1559,7 +1557,9 @@ class TestClient(IntegrationTest):
         # when authenticating a new socket with cached credentials.
 
         # Get a client with one socket so we detect if it's leaked.
-        c = connected(rs_or_single_client(maxPoolSize=1, waitQueueTimeoutMS=1, retryReads=False))
+        c = connected(
+            self.rs_or_single_client(maxPoolSize=1, waitQueueTimeoutMS=1, retryReads=False)
+        )
 
         # Cause a network error on the actual socket.
         pool = get_pool(c)
@@ -1576,7 +1576,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_replica_set
     def test_connect_to_standalone_using_replica_set_name(self):
-        with single_client(replicaSet="anything", serverSelectionTimeoutMS=100) as client:
+        with self.single_client(replicaSet="anything", serverSelectionTimeoutMS=100) as client:
             with self.assertRaises(AutoReconnect):
                 client.test.test.find_one()
 
@@ -1586,7 +1586,7 @@ class TestClient(IntegrationTest):
         # the topology before the getMore message is sent. Test that
         # MongoClient._run_operation_with_response handles the error.
         with self.assertRaises(AutoReconnect):
-            client = rs_client(connect=False, serverSelectionTimeoutMS=100)
+            client = self.rs_client(connect=False, serverSelectionTimeoutMS=100)
             client._run_operation(
                 operation=message._GetMore(
                     "pymongo_test",
@@ -1634,7 +1634,7 @@ class TestClient(IntegrationTest):
                 client_context.host,
                 client_context.port,
             )
-            client = single_client(uri, event_listeners=[listener])
+            client = self.single_client(uri, event_listeners=[listener])
             wait_until(
                 lambda: len(listener.results) >= 2, "record two ServerHeartbeatStartedEvents"
             )
@@ -1735,12 +1735,12 @@ class TestClient(IntegrationTest):
         options = client_context.default_client_options
         if "compressors" in options and "zlib" in options["compressors"]:
             for level in range(-1, 10):
-                with single_client(zlibcompressionlevel=level) as client:
+                with self.single_client(zlibcompressionlevel=level) as client:
                     # No error
                     client.pymongo_test.test.find_one()
 
     def test_reset_during_update_pool(self):
-        client = rs_or_single_client(minPoolSize=10)
+        client = self.rs_or_single_client(minPoolSize=10)
         self.addCleanup(client.close)
         client.admin.command("ping")
         pool = get_pool(client)
@@ -1787,7 +1787,7 @@ class TestClient(IntegrationTest):
 
     def test_background_connections_do_not_hold_locks(self):
         min_pool_size = 10
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             serverSelectionTimeoutMS=3000, minPoolSize=min_pool_size, connect=False
         )
         self.addCleanup(client.close)
@@ -1821,14 +1821,14 @@ class TestClient(IntegrationTest):
     @client_context.require_replica_set
     def test_direct_connection(self):
         # direct_connection=True should result in Single topology.
-        client = rs_or_single_client(directConnection=True)
+        client = self.rs_or_single_client(directConnection=True)
         client.admin.command("ping")
         self.assertEqual(len(client.nodes), 1)
         self.assertEqual(client._topology_settings.get_topology_type(), TOPOLOGY_TYPE.Single)
         client.close()
 
         # direct_connection=False should result in RS topology.
-        client = rs_or_single_client(directConnection=False)
+        client = self.rs_or_single_client(directConnection=False)
         client.admin.command("ping")
         self.assertGreaterEqual(len(client.nodes), 1)
         self.assertIn(
@@ -1872,7 +1872,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_network_error_message(self):
-        client = single_client(retryReads=False)
+        client = self.single_client(retryReads=False)
         self.addCleanup(client.close)
         client.admin.command("ping")  # connect
         with self.fail_point(
@@ -1885,7 +1885,7 @@ class TestClient(IntegrationTest):
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     def test_process_periodic_tasks(self):
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         coll = client.db.collection
         coll.insert_many([{} for _ in range(5)])
         cursor = coll.find(batch_size=2)
@@ -1982,7 +1982,7 @@ class TestClient(IntegrationTest):
 
                 if "AWS_REGION" not in env_vars:
                     os.environ["AWS_REGION"] = ""
-            with rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
+            with self.rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
                 client.admin.command("ping")
                 options = client.options
                 self.assertEqual(options.pool_options.metadata, metadata)
@@ -2081,7 +2081,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = connected(rs_or_single_client(maxPoolSize=1))
+        client = connected(self.rs_or_single_client(maxPoolSize=1))
         self.addCleanup(client.close)
 
         collection = client.pymongo_test.test
@@ -2105,7 +2105,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_getmore_server_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(maxPoolSize=1)
+        client = self.rs_or_single_client(maxPoolSize=1)
         self.addCleanup(client.close)
         collection = client.pymongo_test.test
         collection.drop()
@@ -2145,7 +2145,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = connected(rs_or_single_client(maxPoolSize=1, retryReads=False))
+        client = connected(self.rs_or_single_client(maxPoolSize=1, retryReads=False))
         self.addCleanup(client.close)
         collection = client.pymongo_test.test
         pool = get_pool(client)
@@ -2167,7 +2167,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_getmore_network_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(maxPoolSize=1)
+        client = self.rs_or_single_client(maxPoolSize=1)
         self.addCleanup(client.close)
         collection = client.pymongo_test.test
         collection.drop()
@@ -2217,7 +2217,7 @@ class TestExhaustCursor(IntegrationTest):
             raise SkipTest("Must be running monkey patched by gevent")
         from gevent import Timeout, spawn
 
-        client = rs_or_single_client(maxPoolSize=1)
+        client = self.rs_or_single_client(maxPoolSize=1)
         coll = client.pymongo_test.test
         coll.insert_one({})
 
@@ -2249,7 +2249,7 @@ class TestExhaustCursor(IntegrationTest):
             raise SkipTest("Must be running monkey patched by gevent")
         from gevent import Timeout, spawn
 
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
         pool = get_pool(client)
@@ -2286,7 +2286,7 @@ class TestClientLazyConnect(IntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
 
     def _get_client(self):
-        return rs_or_single_client(connect=False)
+        return self.rs_or_single_client(connect=False)
 
     @client_context.require_sync
     def test_insert_one(self):

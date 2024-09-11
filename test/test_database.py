@@ -28,7 +28,6 @@ from test.test_custom_types import DECIMAL_CODECOPTS
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     OvertCommandListener,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -207,7 +206,7 @@ class TestDatabase(IntegrationTest):
 
     def test_list_collection_names_filter(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         db = client[self.db.name]
         db.capped.drop()
         db.create_collection("capped", capped=True, size=4096)
@@ -234,7 +233,7 @@ class TestDatabase(IntegrationTest):
 
     def test_check_exists(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         db = client[self.db.name]
         db.drop_collection("unique")
@@ -323,7 +322,7 @@ class TestDatabase(IntegrationTest):
         self.client.drop_database("pymongo_test")
 
     def test_list_collection_names_single_socket(self):
-        client = rs_or_single_client(maxPoolSize=1)
+        client = self.rs_or_single_client(maxPoolSize=1)
         client.drop_database("test_collection_names_single_socket")
         db = client.test_collection_names_single_socket
         for i in range(200):

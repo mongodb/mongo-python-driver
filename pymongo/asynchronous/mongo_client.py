@@ -865,6 +865,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._opened = False
+        self._has_resources = False
         self._closed = False
         self._init_background()
 

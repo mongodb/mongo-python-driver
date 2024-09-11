@@ -26,8 +26,6 @@ sys.path[0:0] = [""]
 from test import client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    rs_client,
-    single_client,
     wait_until,
 )
 from test.utils_spec_runner import SpecRunner
@@ -69,13 +67,7 @@ class TransactionsBase(SpecRunner):
         super()._setup_class()
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
-
-    @classmethod
-    def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
+                cls.mongos_clients.append(cls.single_client("{}:{}".format(*address)))
 
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
@@ -120,7 +112,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
-        client = rs_client(w=0)
+        client = self.rs_client(w=0)
         self.addCleanup(client.close)
         db = client.test
         coll = db.test
@@ -174,7 +166,7 @@ class TestTransactions(TransactionsBase):
     def test_unpin_for_next_transaction(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
+        client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -202,7 +194,7 @@ class TestTransactions(TransactionsBase):
     def test_unpin_for_non_transaction_operation(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
+        client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -331,7 +323,7 @@ class TestTransactions(TransactionsBase):
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         coll.delete_many({})
         listener.reset()
@@ -360,7 +352,7 @@ class TestTransactions(TransactionsBase):
 
     @client_context.require_transactions
     def test_transaction_direct_connection(self):
-        client = single_client()
+        client = self.single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
 
@@ -450,7 +442,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test
 
@@ -479,7 +471,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test
 
@@ -512,7 +504,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test
 
