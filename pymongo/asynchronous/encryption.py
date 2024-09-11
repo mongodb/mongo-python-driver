@@ -597,7 +597,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         if not isinstance(key_vault_client, AsyncMongoClient):
-            if not any(cls.__name__ == "AsyncMongoClient" for cls in key_vault_client.__mro__):
+            if not any(
+                cls.__name__ == "AsyncMongoClient" for cls in type(key_vault_client).__mro__
+            ):
                 raise TypeError(
                     f"AsyncMongoClient required but given {type(key_vault_client).__name__}"
                 )
@@ -688,7 +690,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
 
         """
         if not isinstance(database, AsyncDatabase):
-            if not any(cls.__name__ == "AsyncDatabase" for cls in database.__mro__):
+            if not any(cls.__name__ == "AsyncDatabase" for cls in type(database).__mro__):
                 raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
         encrypted_fields = deepcopy(encrypted_fields)
