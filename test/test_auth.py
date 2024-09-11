@@ -27,10 +27,6 @@ from test.utils import (
     AllowListEventListener,
     delay,
     ignore_deprecations,
-    rs_or_single_client,
-    rs_or_single_client_noauth,
-    single_client,
-    single_client_noauth,
 )
 
 from pymongo import MongoClient, monitoring
@@ -348,7 +344,7 @@ class TestSCRAMSHA1(IntegrationTest):
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             "mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1" % (host, port)
         )
         client.pymongo_test.command("dbstats")
@@ -359,7 +355,7 @@ class TestSCRAMSHA1(IntegrationTest):
                 "@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1"
                 "&replicaSet=%s" % (host, port, client_context.replica_set_name)
             )
-            client = single_client_noauth(uri)
+            client = self.single_client_noauth(uri)
             client.pymongo_test.command("dbstats")
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             db.command("dbstats")
@@ -387,7 +383,7 @@ class TestSCRAM(IntegrationTest):
             "testscram", "sha256", "pwd", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", event_listeners=[listener]
         )
         client.testscram.command("dbstats")
@@ -424,36 +420,38 @@ class TestSCRAM(IntegrationTest):
         )
 
         # Step 2: verify auth success cases
-        client = rs_or_single_client_noauth(username="sha1", password="pwd", authSource="testscram")
+        client = self.rs_or_single_client_noauth(
+            username="sha1", password="pwd", authSource="testscram"
+        )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha1", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         client.testscram.command("dbstats")
 
         # Step 2: SCRAM-SHA-1 and SCRAM-SHA-256
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         client.testscram.command("dbstats")
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         client.testscram.command("dbstats")
 
         self.listener.reset()
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", event_listeners=[self.listener]
         )
         client.testscram.command("dbstats")
@@ -466,19 +464,19 @@ class TestSCRAM(IntegrationTest):
             self.assertEqual(started.command.get("mechanism"), "SCRAM-SHA-256")
 
         # Step 3: verify auth failure conditions
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha1", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         with self.assertRaises(OperationFailure):
             client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         with self.assertRaises(OperationFailure):
             client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="not-a-user", password="pwd", authSource="testscram"
         )
         with self.assertRaises(OperationFailure):
@@ -491,7 +489,7 @@ class TestSCRAM(IntegrationTest):
                 port,
                 client_context.replica_set_name,
             )
-            client = single_client_noauth(uri)
+            client = self.single_client_noauth(uri)
             client.testscram.command("dbstats")
             db = client.get_database("testscram", read_preference=ReadPreference.SECONDARY)
             db.command("dbstats")
@@ -511,12 +509,12 @@ class TestSCRAM(IntegrationTest):
             "testscram", "IX", "IX", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="\u2168", password="\u2163", authSource="testscram"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="\u2168",
             password="\u2163",
             authSource="testscram",
@@ -524,17 +522,17 @@ class TestSCRAM(IntegrationTest):
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="\u2168", password="IV", authSource="testscram"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="IX", password="I\u00ADX", authSource="testscram"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="IX",
             password="I\u00ADX",
             authSource="testscram",
@@ -542,25 +540,29 @@ class TestSCRAM(IntegrationTest):
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             username="IX", password="IX", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth(
+        client = self.rs_or_single_client_noauth(
             "mongodb://\u2168:\u2163@%s:%d/testscram" % (host, port)
         )
         client.testscram.command("dbstats")
-        client = rs_or_single_client_noauth("mongodb://\u2168:IV@%s:%d/testscram" % (host, port))
+        client = self.rs_or_single_client_noauth(
+            "mongodb://\u2168:IV@%s:%d/testscram" % (host, port)
+        )
         client.testscram.command("dbstats")
 
-        client = rs_or_single_client_noauth("mongodb://IX:I\u00ADX@%s:%d/testscram" % (host, port))
+        client = self.rs_or_single_client_noauth(
+            "mongodb://IX:I\u00ADX@%s:%d/testscram" % (host, port)
+        )
         client.testscram.command("dbstats")
-        client = rs_or_single_client_noauth("mongodb://IX:IX@%s:%d/testscram" % (host, port))
+        client = self.rs_or_single_client_noauth("mongodb://IX:IX@%s:%d/testscram" % (host, port))
         client.testscram.command("dbstats")
 
     def test_cache(self):
-        client = single_client()
+        client = self.single_client()
         credentials = client.options.pool_options._credentials
         cache = credentials.cache
         self.assertIsNotNone(cache)
@@ -584,7 +586,7 @@ class TestSCRAM(IntegrationTest):
         coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.db.test
         threads = []
@@ -612,7 +614,7 @@ class TestAuthURIOptions(IntegrationTest):
     def test_uri_options(self):
         # Test default to admin
         host, port = client_context.host, client_context.port
-        client = rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
+        client = self.rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
         self.assertTrue(client.admin.command("dbstats"))
 
         if client_context.is_rs:
@@ -621,14 +623,14 @@ class TestAuthURIOptions(IntegrationTest):
                 port,
                 client_context.replica_set_name,
             )
-            client = single_client_noauth(uri)
+            client = self.single_client_noauth(uri)
             self.assertTrue(client.admin.command("dbstats"))
             db = client.get_database("admin", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))
 
         # Test explicit database
         uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
-        client = rs_or_single_client_noauth(uri)
+        client = self.rs_or_single_client_noauth(uri)
         self.assertRaises(OperationFailure, client.admin.command, "dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
@@ -638,7 +640,7 @@ class TestAuthURIOptions(IntegrationTest):
                 port,
                 client_context.replica_set_name,
             )
-            client = single_client_noauth(uri)
+            client = self.single_client_noauth(uri)
             self.assertRaises(OperationFailure, client.admin.command, "dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
@@ -646,7 +648,7 @@ class TestAuthURIOptions(IntegrationTest):
 
         # Test authSource
         uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
-        client = rs_or_single_client_noauth(uri)
+        client = self.rs_or_single_client_noauth(uri)
         self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))
 
@@ -655,7 +657,7 @@ class TestAuthURIOptions(IntegrationTest):
                 "mongodb://user:pass@%s:%d/pymongo_test2?replicaSet="
                 "%s;authSource=pymongo_test" % (host, port, client_context.replica_set_name)
             )
-            client = single_client_noauth(uri)
+            client = self.single_client_noauth(uri)
             self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
             self.assertTrue(client.pymongo_test.command("dbstats"))
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)

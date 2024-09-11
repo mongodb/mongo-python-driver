@@ -806,7 +806,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
     def _setup_class(cls):
         super()._setup_class()
         cls.listener = OvertCommandListener()
-        cls.client = PyMongoTestCase.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
         cls.client.db.coll.drop()
         cls.vault = create_key_vault(cls.client.keyvault.datakeys)
 
@@ -828,7 +828,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         opts = AutoEncryptionOpts(
             cls.KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas, kms_tls_options=KMS_TLS_OPTS
         )
-        cls.client_encrypted = PyMongoTestCase.unmanaged_rs_or_single_client(
+        cls.client_encrypted = cls.unmanaged_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
         cls.client_encryption = ClientEncryption(
@@ -1196,7 +1196,7 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
 
         opts = AutoEncryptionOpts({"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys")
         cls.listener = OvertCommandListener()
-        cls.client_encrypted = PyMongoTestCase.unmanaged_rs_or_single_client(
+        cls.client_encrypted = cls.unmanaged_rs_or_single_client(
             auto_encryption_opts=opts, event_listeners=[cls.listener]
         )
         cls.coll_encrypted = cls.client_encrypted.db.coll

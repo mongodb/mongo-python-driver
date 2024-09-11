@@ -951,9 +951,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
                 if member != (await async_client_context.hello)["primary"]:
-                    cls.secondary = await AsyncTestBulkWriteConcern.unmanaged_async_single_client(
-                        *partition_node(member)
-                    )
+                    cls.secondary = await cls.unmanaged_async_single_client(*partition_node(member))
                     break
 
     @classmethod

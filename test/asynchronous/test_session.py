@@ -88,7 +88,7 @@ class TestSession(AsyncIntegrationTest):
         await super()._setup_class()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client()
+        cls.client2 = await cls.unmanaged_async_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
         cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
@@ -836,9 +836,7 @@ class TestCausalConsistency(AsyncUnitTest):
     @classmethod
     async def _setup_class(cls):
         cls.listener = SessionTestListener()
-        cls.client = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
-            event_listeners=[cls.listener]
-        )
+        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     async def _tearDown_class(cls):

@@ -22,7 +22,7 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, client_knobs, sanitize_cmd, unittest
-from test.utils import EventListener, rs_or_single_client, single_client, wait_until
+from test.utils import EventListener, wait_until
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -42,7 +42,9 @@ class TestCommandMonitoring(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.listener = EventListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener], retryWrites=False)
+        cls.client = cls.unmanaged_rs_or_single_client(
+            event_listeners=[cls.listener], retryWrites=False
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -390,7 +392,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_secondaries_count(1)
     def test_not_primary_error(self):
         address = next(iter(client_context.client.secondaries))
-        client = single_client(*address, event_listeners=[self.listener])
+        client = self.single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         client.admin.command("ping")
         self.listener.reset()
@@ -1125,7 +1127,7 @@ class TestGlobalListener(IntegrationTest):
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
-        cls.client = single_client()
+        cls.client = cls.unmanaged_single_client()
         # Get one (authenticated) socket in the pool.
         cls.client.pymongo_test.command("ping")
 

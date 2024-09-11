@@ -24,7 +24,6 @@ from test.utils import (
     CMAPListener,
     ensure_all_connected,
     repl_set_step_down,
-    rs_or_single_client,
 )
 
 from bson import SON
@@ -43,7 +42,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.listener = CMAPListener()
-        cls.client = rs_or_single_client(
+        cls.client = cls.unmanaged_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
         )
 

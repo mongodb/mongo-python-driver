@@ -22,7 +22,6 @@ from test.utils import (
     OvertCommandListener,
     SpecTestCreator,
     get_pool,
-    rs_client,
     wait_until,
 )
 from test.utils_selection_tests import create_topology
@@ -134,7 +133,7 @@ class TestProse(IntegrationTest):
         listener = OvertCommandListener()
         # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
         # varying RTTs.
-        client = rs_client(
+        client = self.rs_client(
             client_context.mongos_seeds(),
             appName="loadBalancingTest",
             event_listeners=[listener],

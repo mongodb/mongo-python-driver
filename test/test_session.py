@@ -87,7 +87,7 @@ class TestSession(IntegrationTest):
         super()._setup_class()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = PyMongoTestCase.unmanaged_rs_or_single_client()
+        cls.client2 = cls.unmanaged_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
         cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
@@ -835,7 +835,7 @@ class TestCausalConsistency(UnitTest):
     @classmethod
     def _setup_class(cls):
         cls.listener = SessionTestListener()
-        cls.client = PyMongoTestCase.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def _tearDown_class(cls):

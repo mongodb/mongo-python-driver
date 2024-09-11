@@ -949,9 +949,7 @@ class TestBulkWriteConcern(BulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (client_context.hello)["hosts"]:
                 if member != (client_context.hello)["primary"]:
-                    cls.secondary = TestBulkWriteConcern.unmanaged_single_client(
-                        *partition_node(member)
-                    )
+                    cls.secondary = cls.unmanaged_single_client(*partition_node(member))
                     break
 
     @classmethod

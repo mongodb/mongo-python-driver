@@ -129,7 +129,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     @classmethod
     async def _setup_class(cls):
-        cls.client = await AsyncClientUnitTest.unmanaged_async_rs_or_single_client(
+        cls.client = await cls.unmanaged_async_rs_or_single_client(
             connect=False, serverSelectionTimeoutMS=100
         )
 

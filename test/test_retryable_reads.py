@@ -37,8 +37,6 @@ from test.utils import (
     EventListener,
     OvertCommandListener,
     SpecTestCreator,
-    rs_client,
-    rs_or_single_client,
     set_fail_point,
 )
 from test.utils_spec_runner import SpecRunner
@@ -174,7 +172,9 @@ class TestPoolPausedError(IntegrationTest):
             self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
-        client = rs_or_single_client(maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener])
+        client = self.rs_or_single_client(
+            maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
+        )
         self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
@@ -244,13 +244,13 @@ class TestRetryableReads(IntegrationTest):
         mongos_clients = []
 
         for mongos in client_context.mongos_seeds().split(","):
-            client = rs_or_single_client(mongos)
+            client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
             self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             client_context.mongos_seeds(),
             appName="retryableReadTest",
             event_listeners=[listener],

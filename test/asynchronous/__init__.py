@@ -1005,7 +1005,7 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Make a direct connection. Don't authenticate."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(
+        return await cls._unmanaged_async_mongo_client(
             h, p, authenticate=False, directConnection=True, **kwargs
         )
 
@@ -1014,41 +1014,35 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Make a direct connection. Don't authenticate."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(
-            h, p, directConnection=True, **kwargs
-        )
+        return await cls._unmanaged_async_mongo_client(h, p, directConnection=True, **kwargs)
 
     @classmethod
     async def unmanaged_async_rs_client(
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Connect to the replica set and authenticate if necessary."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(h, p, **kwargs)
+        return await cls._unmanaged_async_mongo_client(h, p, **kwargs)
 
     @classmethod
     async def unmanaged_async_rs_client_noauth(
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Make a direct connection. Don't authenticate."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(
-            h, p, authenticate=False, **kwargs
-        )
+        return await cls._unmanaged_async_mongo_client(h, p, authenticate=False, **kwargs)
 
     @classmethod
     async def unmanaged_async_rs_or_single_client_noauth(
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Make a direct connection. Don't authenticate."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(
-            h, p, authenticate=False, **kwargs
-        )
+        return await cls._unmanaged_async_mongo_client(h, p, authenticate=False, **kwargs)
 
     @classmethod
     async def unmanaged_async_rs_or_single_client(
         cls, h: Any = None, p: Any = None, **kwargs: Any
     ) -> AsyncMongoClient[dict]:
         """Make a direct connection. Don't authenticate."""
-        return await AsyncPyMongoTestCase._unmanaged_async_mongo_client(h, p, **kwargs)
+        return await cls._unmanaged_async_mongo_client(h, p, **kwargs)
 
     async def async_single_client_noauth(
         self, h: Any = None, p: Any = None, **kwargs: Any

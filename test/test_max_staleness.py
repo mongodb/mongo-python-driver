@@ -24,8 +24,7 @@ from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
-from test.utils import rs_or_single_client
+from test import PyMongoTestCase, client_context, unittest
 from test.utils_selection_tests import create_selection_tests
 
 from pymongo import MongoClient
@@ -40,7 +39,7 @@ class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
     pass
 
 
-class TestMaxStaleness(unittest.TestCase):
+class TestMaxStaleness(PyMongoTestCase):
     def test_max_staleness(self):
         client = MongoClient()
         self.assertEqual(-1, client.read_preference.max_staleness)
@@ -81,7 +80,7 @@ class TestMaxStaleness(unittest.TestCase):
 
     def test_max_staleness_float(self):
         with self.assertRaises(TypeError) as ctx:
-            rs_or_single_client(maxStalenessSeconds=1.5, readPreference="nearest")
+            self.rs_or_single_client(maxStalenessSeconds=1.5, readPreference="nearest")
 
         self.assertIn("must be an integer", str(ctx.exception))
 
@@ -96,7 +95,7 @@ class TestMaxStaleness(unittest.TestCase):
     def test_max_staleness_zero(self):
         # Zero is too small.
         with self.assertRaises(ValueError) as ctx:
-            rs_or_single_client(maxStalenessSeconds=0, readPreference="nearest")
+            self.rs_or_single_client(maxStalenessSeconds=0, readPreference="nearest")
 
         self.assertIn("must be a positive integer", str(ctx.exception))
 
@@ -111,7 +110,7 @@ class TestMaxStaleness(unittest.TestCase):
     @client_context.require_replica_set
     def test_last_write_date(self):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
-        client = rs_or_single_client(heartbeatFrequencyMS=500)
+        client = self.rs_or_single_client(heartbeatFrequencyMS=500)
         client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
         time.sleep(1)

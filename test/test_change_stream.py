@@ -32,7 +32,6 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -65,7 +64,7 @@ class TestChangeStreamBase(IntegrationTest):
     def client_with_listener(self, *commands):
         """Return a client with a AllowListEventListener."""
         listener = AllowListEventListener(*commands)
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
 
@@ -166,7 +165,7 @@ class APITestsMixin:
     @no_type_check
     def test_try_next_runs_one_getmore(self):
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
         listener.reset()
@@ -216,7 +215,7 @@ class APITestsMixin:
     @no_type_check
     def test_batch_size_is_honored(self):
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
         listener.reset()
@@ -453,7 +452,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
 
@@ -1090,7 +1089,7 @@ class TestAllLegacyScenarios(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.listener = AllowListEventListener("aggregate", "getMore")
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):

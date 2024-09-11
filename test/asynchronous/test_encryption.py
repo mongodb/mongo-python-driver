@@ -810,9 +810,7 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
     async def _setup_class(cls):
         await super()._setup_class()
         cls.listener = OvertCommandListener()
-        cls.client = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
-            event_listeners=[cls.listener]
-        )
+        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
         await cls.client.db.coll.drop()
         cls.vault = await create_key_vault(cls.client.keyvault.datakeys)
 
@@ -834,7 +832,7 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
         opts = AutoEncryptionOpts(
             cls.KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas, kms_tls_options=KMS_TLS_OPTS
         )
-        cls.client_encrypted = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
+        cls.client_encrypted = await cls.unmanaged_async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
         cls.client_encryption = AsyncClientEncryption(
@@ -1204,7 +1202,7 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
 
         opts = AutoEncryptionOpts({"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys")
         cls.listener = OvertCommandListener()
-        cls.client_encrypted = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
+        cls.client_encrypted = await cls.unmanaged_async_rs_or_single_client(
             auto_encryption_opts=opts, event_listeners=[cls.listener]
         )
         cls.coll_encrypted = cls.client_encrypted.db.coll
