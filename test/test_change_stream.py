@@ -50,6 +50,8 @@ from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.write_concern import WriteConcern
 
+_IS_SYNC = True
+
 
 class TestChangeStreamBase(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
@@ -310,7 +312,7 @@ class APITestsMixin:
     @no_type_check
     def test_next_blocks(self):
         """Test that next blocks until a change is readable"""
-        # Use a short await time to speed up the test.
+        # Use a short time to speed up the test.
         with self.change_stream(max_await_time_ms=250) as change_stream:
             self._test_next_blocks(change_stream)
 
@@ -325,7 +327,7 @@ class APITestsMixin:
     @no_type_check
     def test_concurrent_close(self):
         """Ensure a ChangeStream can be closed from another thread."""
-        # Use a short await time to speed up the test.
+        # Use a short time to speed up the test.
         with self.change_stream(max_await_time_ms=250) as change_stream:
 
             def iterate_cursor():
