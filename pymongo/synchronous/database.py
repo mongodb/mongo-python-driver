@@ -125,6 +125,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("name must be an instance of str")
 
         if not isinstance(client, MongoClient):
+            # This is for compatibility with mocked and subclassed types, such as in Motor
             if not any(cls.__name__ == "MongoClient" for cls in type(client).__mro__):
                 raise TypeError(f"MongoClient required but given {type(client).__name__}")
 
