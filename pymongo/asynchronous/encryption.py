@@ -597,7 +597,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         if not isinstance(key_vault_client, AsyncMongoClient):
-            # This is for compatibility with mocked and subclassed types, such as in Motor
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
             if not any(
                 cls.__name__ == "AsyncMongoClient" for cls in type(key_vault_client).__mro__
             ):
@@ -691,7 +691,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
 
         """
         if not isinstance(database, AsyncDatabase):
-            # This is for compatibility with mocked and subclassed types, such as in Motor
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
             if not any(cls.__name__ == "AsyncDatabase" for cls in type(database).__mro__):
                 raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
