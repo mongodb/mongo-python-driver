@@ -231,7 +231,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         from pymongo.asynchronous.database import AsyncDatabase
 
         if not isinstance(database, AsyncDatabase):
-            if not any(cls.__name__ == "AsyncDatabase" for cls in database.__mro__):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncDatabase" for cls in type(database).__mro__):
                 raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
         if not name or ".." in name:

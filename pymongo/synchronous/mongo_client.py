@@ -2434,7 +2434,8 @@ class _MongoClientErrorHandler:
 
     def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
         if not isinstance(client, MongoClient):
-            if not any(cls.__name__ == "MongoClient" for cls in client.__mro__):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "MongoClient" for cls in type(client).__mro__):
                 raise TypeError(f"MongoClient required but given {type(client).__name__}")
 
         self.client = client

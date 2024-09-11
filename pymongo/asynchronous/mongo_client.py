@@ -2446,7 +2446,8 @@ class _MongoClientErrorHandler:
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
         if not isinstance(client, AsyncMongoClient):
-            if not any(cls.__name__ == "AsyncMongoClient" for cls in client.__mro__):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncMongoClient" for cls in type(client).__mro__):
                 raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         self.client = client
