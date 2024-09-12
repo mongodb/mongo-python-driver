@@ -594,7 +594,6 @@ class TestSCRAM(AsyncIntegrationTest):
 
         # The first thread to call find() will authenticate
         client = await self.async_rs_or_single_client()
-        self.addAsyncCleanup(client.close)
         coll = client.db.test
         threads = []
         for _ in range(4):

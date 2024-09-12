@@ -353,7 +353,6 @@ class TestCursor(AsyncIntegrationTest):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
@@ -1261,7 +1260,6 @@ class TestCursor(AsyncIntegrationTest):
 
         listener = AllowListEventListener("killCursors")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test_close_kills_cursors
 
         # Add some test data.
@@ -1300,7 +1298,6 @@ class TestCursor(AsyncIntegrationTest):
     async def test_timeout_kills_cursor_asynchronously(self):
         listener = AllowListEventListener("killCursors")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
@@ -1358,7 +1355,6 @@ class TestCursor(AsyncIntegrationTest):
     async def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener("find", "getMore")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
             "test", read_preference=ReadPreference.PRIMARY_PREFERRED
@@ -1788,7 +1784,6 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         c = client.pymongo_test.test
         await c.delete_many({})
         await c.insert_many([{"_id": i} for i in range(3)])

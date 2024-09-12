@@ -787,7 +787,6 @@ class TestSession(IntegrationTest):
         # Ensure the collection exists.
         self.client.pymongo_test.test_unacked_writes.insert_one({})
         client = self.rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -1137,7 +1136,6 @@ class TestClusterTime(IntegrationTest):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
         client = self.rs_or_single_client(event_listeners=[listener], heartbeatFrequencyMS=999999)
-        self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])

@@ -31,7 +31,7 @@ import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
 from test.asynchronous.test_bulk import AsyncBulkTestBase
 from threading import Thread
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 import pytest
 
@@ -109,13 +109,12 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     async def test_crypt_shared(self):
         # Test that we can pick up crypt_shared lib automatically
-        client = AsyncMongoClient(
+        self.simple_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 KMS_PROVIDERS, "keyvault.datakeys", crypt_shared_lib_required=True
             ),
             connect=False,
         )
-        self.addAsyncCleanup(client.aclose)
 
     @unittest.skipIf(_HAVE_PYMONGOCRYPT, "pymongocrypt is installed")
     def test_init_requires_pymongocrypt(self):
@@ -196,19 +195,16 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
 
 class TestClientOptions(AsyncPyMongoTestCase):
     async def test_default(self):
-        client = AsyncMongoClient(connect=False)
-        self.addAsyncCleanup(client.aclose)
+        client = self.simple_client(connect=False)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, None)
 
-        client = AsyncMongoClient(auto_encryption_opts=None, connect=False)
-        self.addAsyncCleanup(client.aclose)
+        client = self.simple_client(auto_encryption_opts=None, connect=False)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, None)
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     async def test_kwargs(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
-        client = AsyncMongoClient(auto_encryption_opts=opts, connect=False)
-        self.addAsyncCleanup(client.aclose)
+        client = self.simple_client(auto_encryption_opts=opts, connect=False)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, opts)
 
 
@@ -228,6 +224,34 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
     def assertBinaryUUID(self, val):
         self.assertIsInstance(val, Binary)
         self.assertEqual(val.subtype, UUID_SUBTYPE)
+
+    def create_client_encryption(
+        self,
+        kms_providers: Mapping[str, Any],
+        key_vault_namespace: str,
+        key_vault_client: AsyncMongoClient,
+        codec_options: Mapping[str, Any],
+        kms_tls_options: Optional[Mapping[str, Any]] = None,
+    ):
+        client_encryption = AsyncClientEncryption(
+            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+        )
+        self.addAsyncCleanup(client_encryption.close)
+        return client_encryption
+
+    @classmethod
+    def unmanaged_create_client_encryption(
+        cls,
+        kms_providers: Mapping[str, Any],
+        key_vault_namespace: str,
+        key_vault_client: AsyncMongoClient,
+        codec_options: Mapping[str, Any],
+        kms_tls_options: Optional[Mapping[str, Any]] = None,
+    ):
+        client_encryption = AsyncClientEncryption(
+            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+        )
+        return client_encryption
 
 
 # Location of JSON test files.
@@ -261,7 +285,6 @@ def bson_data(*paths):
 class TestClientSimple(AsyncEncryptionIntegrationTest):
     async def _test_auto_encrypt(self, opts):
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
 
         # Create the encrypted field's data key.
         key_vault = await create_key_vault(
@@ -343,7 +366,6 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
     async def test_use_after_close(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
 
         await client.admin.command("ping")
         await client.aclose()
@@ -361,7 +383,6 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
     async def test_fork(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
 
         async def target():
             with warnings.catch_warnings():
@@ -376,7 +397,6 @@ class TestEncryptedBulkWrite(AsyncBulkTestBase, AsyncEncryptionIntegrationTest):
     async def test_upsert_uuid_standard_encrypt(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
 
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         encrypted_coll = client.pymongo_test.test
@@ -417,7 +437,6 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
     async def test_raise_max_wire_version_error(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
         msg = "Auto-encryption requires a minimum MongoDB version of 4.2"
         with self.assertRaisesRegex(ConfigurationError, msg):
             await client.test.test.insert_one({})
@@ -431,7 +450,6 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
     async def test_raise_unsupported_error(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client.aclose)
         msg = "find_raw_batches does not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
             await client.test.test.find_raw_batches({})
@@ -450,10 +468,9 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
 
 class TestExplicitSimple(AsyncEncryptionIntegrationTest):
     async def test_encrypt_decrypt(self):
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, OPTS
         )
-        self.addAsyncCleanup(client_encryption.close)
         # Use standard UUID representation.
         key_vault = async_client_context.client.keyvault.get_collection(
             "datakeys", codec_options=OPTS
@@ -495,10 +512,9 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
         self.assertEqual(decrypted_ssn, doc["ssn"])
 
     async def test_validation(self):
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, OPTS
         )
-        self.addAsyncCleanup(client_encryption.close)
 
         msg = "value to decrypt must be a bson.binary.Binary with subtype 6"
         with self.assertRaisesRegex(TypeError, msg):
@@ -512,10 +528,9 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
             await client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
 
     async def test_bson_errors(self):
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, OPTS
         )
-        self.addAsyncCleanup(client_encryption.close)
 
         # Attempt to encrypt an unencodable object.
         unencodable_value = object()
@@ -528,7 +543,7 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
 
     async def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, "codec_options must be"):
-            AsyncClientEncryption(
+            self.create_client_encryption(
                 KMS_PROVIDERS,
                 "keyvault.datakeys",
                 async_client_context.client,
@@ -536,10 +551,9 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
             )
 
         opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
-        client_encryption_legacy = AsyncClientEncryption(
+        client_encryption_legacy = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, opts
         )
-        self.addAsyncCleanup(client_encryption_legacy.close)
 
         # Create the encrypted field's data key.
         key_id = await client_encryption_legacy.create_data_key("local")
@@ -554,10 +568,9 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
 
         # Encrypt the same UUID with STANDARD codec options.
         opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, opts
         )
-        self.addAsyncCleanup(client_encryption.close)
         encrypted_standard = await client_encryption.encrypt(
             value, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id=key_id
         )
@@ -573,7 +586,7 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
         self.assertNotEqual(await client_encryption.decrypt(encrypted_legacy), value)
 
     async def test_close(self):
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, OPTS
         )
         await client_encryption.close()
@@ -589,7 +602,7 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
             await client_encryption.decrypt(Binary(b"", 6))
 
     async def test_with_statement(self):
-        async with AsyncClientEncryption(
+        async with self.create_client_encryption(
             KMS_PROVIDERS, "keyvault.datakeys", async_client_context.client, OPTS
         ) as client_encryption:
             pass
@@ -836,7 +849,7 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
         cls.client_encrypted = await cls.unmanaged_async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
-        cls.client_encryption = AsyncClientEncryption(
+        cls.client_encryption = cls.unmanaged_create_client_encryption(
             cls.KMS_PROVIDERS, "keyvault.datakeys", cls.client, OPTS, kms_tls_options=KMS_TLS_OPTS
         )
 
@@ -926,7 +939,6 @@ class TestExternalKeyVault(AsyncEncryptionIntegrationTest):
             key_vault_client = await self.async_rs_or_single_client(
                 username="fake-user", password="fake-pwd"
             )
-            self.addAsyncCleanup(key_vault_client.close)
         else:
             key_vault_client = async_client_context.client
         opts = AutoEncryptionOpts(
@@ -939,12 +951,10 @@ class TestExternalKeyVault(AsyncEncryptionIntegrationTest):
         client_encrypted = await self.async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
-        self.addAsyncCleanup(client_encrypted.close)
 
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             self.kms_providers(), "keyvault.datakeys", key_vault_client, OPTS
         )
-        self.addAsyncCleanup(client_encryption.close)
 
         if with_external_key_vault:
             # Authentication error.
@@ -993,7 +1003,6 @@ class TestViews(AsyncEncryptionIntegrationTest):
         client_encrypted = await self.async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
-        self.addAsyncCleanup(client_encrypted.aclose)
 
         with self.assertRaisesRegex(EncryptionError, "cannot auto encrypt a view"):
             await client_encrypted.db.view.insert_one({})
@@ -1051,16 +1060,14 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
         self.addAsyncCleanup(vault.drop)
 
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client_encrypted.close)
 
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             self.kms_providers(),
             "keyvault.datakeys",
             async_client_context.client,
             OPTS,
             kms_tls_options=KMS_TLS_OPTS,
         )
-        self.addAsyncCleanup(client_encryption.close)
 
         corpus = self.fix_up_curpus(json_data("corpus", "corpus.json"))
         corpus_copied: SON = SON()
@@ -1291,7 +1298,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             "gcp": GCP_CREDS,
             "kmip": KMIP_CREDS,
         }
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             kms_providers=kms_providers,
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
@@ -1303,7 +1310,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
         kms_providers_invalid["azure"]["identityPlatformEndpoint"] = "doesnotexist.invalid:443"
         kms_providers_invalid["gcp"]["endpoint"] = "doesnotexist.invalid:443"
         kms_providers_invalid["kmip"]["endpoint"] = "doesnotexist.local:5698"
-        self.client_encryption_invalid = AsyncClientEncryption(
+        self.client_encryption_invalid = self.create_client_encryption(
             kms_providers=kms_providers_invalid,
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
@@ -1484,7 +1491,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             await self.client_encryption.create_data_key("kmip", key)
 
 
-class AzureGCPEncryptionTestMixin:
+class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
     DEK = None
     KMS_PROVIDER_MAP = None
     KEYVAULT_DB = "keyvault"
@@ -1496,7 +1503,7 @@ class AzureGCPEncryptionTestMixin:
         await create_key_vault(keyvault, self.DEK)
 
     async def _test_explicit(self, expectation):
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             async_client_context.client,
@@ -1607,7 +1614,6 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
         self.client_test = await self.async_rs_or_single_client(
             maxPoolSize=1, readConcernLevel="majority", w="majority", uuidRepresentation="standard"
         )
-        self.addAsyncCleanup(self.client_test.aclose)
 
         self.client_keyvault_listener = OvertCommandListener()
         self.client_keyvault = await self.async_rs_or_single_client(
@@ -1616,7 +1622,6 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
             w="majority",
             event_listeners=[self.client_keyvault_listener],
         )
-        self.addAsyncCleanup(self.client_keyvault.aclose)
 
         await self.client_test.keyvault.datakeys.drop()
         await self.client_test.db.coll.drop()
@@ -1629,7 +1634,7 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
             codec_options=OPTS,
         )
 
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=self.client_test,
@@ -1662,8 +1667,6 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
 
         result = await client_encrypted.db.coll.find_one({"_id": 0})
         self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
-
-        self.addAsyncCleanup(client_encrypted.close)
 
     async def test_case_1(self):
         await self._run_test(
@@ -1840,7 +1843,7 @@ class TestDecryptProse(AsyncEncryptionIntegrationTest):
         await create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
 
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
         )
         keyID = await self.client_encryption.create_data_key("local")
@@ -1858,7 +1861,6 @@ class TestDecryptProse(AsyncEncryptionIntegrationTest):
         self.encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=opts, retryReads=False, event_listeners=[self.listener]
         )
-        self.addAsyncCleanup(self.encrypted_client.close)
 
     async def test_01_command_error(self):
         async with self.fail_point(
@@ -1936,7 +1938,6 @@ class TestBypassSpawningMongocryptdProse(AsyncEncryptionIntegrationTest):
             ],
         )
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client_encrypted.close)
         with self.assertRaisesRegex(EncryptionError, "Timeout"):
             await client_encrypted.db.coll.insert_one({"encrypted": "test"})
 
@@ -1951,13 +1952,11 @@ class TestBypassSpawningMongocryptdProse(AsyncEncryptionIntegrationTest):
             ],
         )
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client_encrypted.close)
         await client_encrypted.db.coll.insert_one({"unencrypted": "test"})
         # Validate that mongocryptd was not spawned:
-        mongocryptd_client = AsyncMongoClient(
+        mongocryptd_client = self.simple_client(
             "mongodb://localhost:27027/?serverSelectionTimeoutMS=500"
         )
-        self.addAsyncCleanup(mongocryptd_client.close)
         with self.assertRaises(ServerSelectionTimeoutError):
             await mongocryptd_client.admin.command("ping")
 
@@ -1980,14 +1979,12 @@ class TestBypassSpawningMongocryptdProse(AsyncEncryptionIntegrationTest):
             crypt_shared_lib_required=True,
         )
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client_encrypted.aclose)
         await client_encrypted.db.coll.drop()
         await client_encrypted.db.coll.insert_one({"encrypted": "test"})
         self.assertEncrypted((await async_client_context.client.db.coll.find_one({}))["encrypted"])
-        no_mongocryptd_client = AsyncMongoClient(
+        no_mongocryptd_client = self.simple_client(
             host="mongodb://localhost:47021/db?serverSelectionTimeoutMS=1000"
         )
-        self.addAsyncCleanup(no_mongocryptd_client.aclose)
         with self.assertRaises(ServerSelectionTimeoutError):
             await no_mongocryptd_client.db.command("ping")
 
@@ -2022,7 +2019,6 @@ class TestBypassSpawningMongocryptdProse(AsyncEncryptionIntegrationTest):
             crypt_shared_lib_required=False,
         )
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(client_encrypted.aclose)
         await client_encrypted.db.coll.drop()
         await client_encrypted.db.coll.insert_one({"encrypted": "test"})
         server.shutdown()
@@ -2036,10 +2032,9 @@ class TestKmsTLSProse(AsyncEncryptionIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.patch_system_certs(CA_PEM)
-        self.client_encrypted = AsyncClientEncryption(
+        self.client_encrypted = self.create_client_encryption(
             {"aws": AWS_CREDS}, "keyvault.datakeys", self.client, OPTS
         )
-        self.addAsyncCleanup(self.client_encrypted.close)
 
     async def test_invalid_kms_certificate_expired(self):
         key = {
@@ -2084,36 +2079,32 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             "gcp": {"tlsCAFile": CA_PEM},
             "kmip": {"tlsCAFile": CA_PEM},
         }
-        self.client_encryption_no_client_cert = AsyncClientEncryption(
+        self.client_encryption_no_client_cert = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
-        self.addAsyncCleanup(self.client_encryption_no_client_cert.close)
         # 2, same providers as above but with tlsCertificateKeyFile.
         kms_tls_opts = copy.deepcopy(kms_tls_opts_ca_only)
         for p in kms_tls_opts:
             kms_tls_opts[p]["tlsCertificateKeyFile"] = CLIENT_PEM
-        self.client_encryption_with_tls = AsyncClientEncryption(
+        self.client_encryption_with_tls = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts
         )
-        self.addAsyncCleanup(self.client_encryption_with_tls.close)
         # 3, update endpoints to expired host.
         providers: dict = copy.deepcopy(providers)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9000"
         providers["gcp"]["endpoint"] = "127.0.0.1:9000"
         providers["kmip"]["endpoint"] = "127.0.0.1:9000"
-        self.client_encryption_expired = AsyncClientEncryption(
+        self.client_encryption_expired = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
-        self.addAsyncCleanup(self.client_encryption_expired.close)
         # 3, update endpoints to invalid host.
         providers: dict = copy.deepcopy(providers)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9001"
         providers["gcp"]["endpoint"] = "127.0.0.1:9001"
         providers["kmip"]["endpoint"] = "127.0.0.1:9001"
-        self.client_encryption_invalid_hostname = AsyncClientEncryption(
+        self.client_encryption_invalid_hostname = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_ca_only
         )
-        self.addAsyncCleanup(self.client_encryption_invalid_hostname.close)
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
         self.cert_error = (
@@ -2151,7 +2142,7 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             "gcp:with_tls": with_cert,
             "kmip:with_tls": with_cert,
         }
-        self.client_encryption_with_names = AsyncClientEncryption(
+        self.client_encryption_with_names = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts_4
         )
 
@@ -2233,10 +2224,9 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
     async def test_05_tlsDisableOCSPEndpointCheck_is_permitted(self):
         providers = {"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}}
         options = {"aws": {"tlsDisableOCSPEndpointCheck": True}}
-        encryption = AsyncClientEncryption(
+        encryption = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
         )
-        self.addAsyncCleanup(encryption.close)
         ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
         if not hasattr(ctx, "check_ocsp_endpoint"):
             raise self.skipTest("OCSP not enabled")
@@ -2286,7 +2276,7 @@ class TestUniqueIndexOnKeyAltNamesProse(AsyncEncryptionIntegrationTest):
         self.client = async_client_context.client
         await create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
         )
         self.def_key_id = await self.client_encryption.create_data_key(
@@ -2328,17 +2318,15 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
         key_vault = await create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(key_vault.drop)
         self.key_vault_client = self.client
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
         )
-        self.addAsyncCleanup(self.client_encryption.close)
         opts = AutoEncryptionOpts(
             {"local": {"key": LOCAL_MASTER_KEY}},
             key_vault.full_name,
             bypass_query_analysis=True,
         )
         self.encrypted_client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        self.addAsyncCleanup(self.encrypted_client.aclose)
 
     async def test_01_insert_encrypted_indexed_and_find(self):
         val = "encrypted indexed value"
@@ -2465,14 +2453,13 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
         await self.client.keyvault.drop_collection("datakeys")
 
         # Step 2. Create a ``AsyncClientEncryption`` object named ``client_encryption1``
-        client_encryption1 = AsyncClientEncryption(
+        client_encryption1 = self.create_client_encryption(
             key_vault_client=self.client,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
             kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
-        self.addAsyncCleanup(client_encryption1.close)
 
         # Step 3. Call ``client_encryption1.create_data_key`` with ``src_provider``.
         key_id = await client_encryption1.create_data_key(
@@ -2486,15 +2473,13 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
 
         # Step 5. Create a ``AsyncClientEncryption`` object named ``client_encryption2``
         client2 = await self.async_rs_or_single_client()
-        self.addAsyncCleanup(client2.aclose)
-        client_encryption2 = AsyncClientEncryption(
+        client_encryption2 = self.create_client_encryption(
             key_vault_client=client2,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
             kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
-        self.addAsyncCleanup(client_encryption2.close)
 
         # Step 6. Call ``client_encryption2.rewrap_many_data_key`` with an empty ``filter``.
         rewrap_many_data_key_result = await client_encryption2.rewrap_many_data_key(
@@ -2529,7 +2514,7 @@ class TestOnDemandAWSCredentials(AsyncEncryptionIntegrationTest):
 
     @unittest.skipIf(any(AWS_CREDS.values()), "AWS environment credentials are set")
     async def test_01_failure(self):
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             kms_providers={"aws": {}},
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
@@ -2540,7 +2525,7 @@ class TestOnDemandAWSCredentials(AsyncEncryptionIntegrationTest):
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def test_02_success(self):
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             kms_providers={"aws": {}},
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
@@ -2561,7 +2546,6 @@ class TestQueryableEncryptionDocsExample(AsyncEncryptionIntegrationTest):
         # and cleanup.
         async def AsyncMongoClient(**kwargs):
             c = await self.async_rs_or_single_client(**kwargs)
-            self.addAsyncCleanup(c.aclose)
             return c
 
         # Drop data from prior test runs.
@@ -2572,7 +2556,7 @@ class TestQueryableEncryptionDocsExample(AsyncEncryptionIntegrationTest):
 
         # Create two data keys.
         key_vault_client = await AsyncMongoClient()
-        client_encryption = AsyncClientEncryption(
+        client_encryption = self.create_client_encryption(
             kms_providers_map, "keyvault.datakeys", key_vault_client, CodecOptions()
         )
         key1_id = await client_encryption.create_data_key("local")
@@ -2653,10 +2637,9 @@ class TestRangeQueryProse(AsyncEncryptionIntegrationTest):
         key_vault = await create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(key_vault.drop)
         self.key_vault_client = self.client
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
         )
-        self.addAsyncCleanup(self.client_encryption.close)
         opts = AutoEncryptionOpts(
             {"local": {"key": LOCAL_MASTER_KEY}},
             key_vault.full_name,
@@ -2664,7 +2647,6 @@ class TestRangeQueryProse(AsyncEncryptionIntegrationTest):
         )
         self.encrypted_client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
         self.db = self.encrypted_client.db
-        self.addAsyncCleanup(self.encrypted_client.aclose)
 
     async def run_expression_find(
         self, name, expression, expected_elems, range_opts, use_expr=False, key_id=None
@@ -2861,10 +2843,9 @@ class TestRangeQueryDefaultsProse(AsyncEncryptionIntegrationTest):
         await super().asyncSetUp()
         await self.client.drop_database(self.db)
         self.key_vault_client = self.client
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys", self.key_vault_client, OPTS
         )
-        self.addAsyncCleanup(self.client_encryption.close)
         self.key_id = await self.client_encryption.create_data_key("local")
         opts = RangeOpts(min=0, max=1000)
         self.payload_defaults = await self.client_encryption.encrypt(
@@ -2897,13 +2878,12 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
         await self.client.drop_database(self.db)
         self.key_vault = await create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addAsyncCleanup(self.key_vault.drop)
-        self.client_encryption = AsyncClientEncryption(
+        self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}},
             self.key_vault.full_name,
             self.client,
             OPTS,
         )
-        self.addAsyncCleanup(self.client_encryption.close)
 
     async def test_01_simple_create(self):
         coll, _ = await self.client_encryption.create_encrypted_collection(
@@ -3119,10 +3099,9 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
 
     async def asyncSetUp(self) -> None:
         self.listener = OvertCommandListener()
-        self.mongocryptd_client = AsyncMongoClient(
+        self.mongocryptd_client = self.simple_client(
             f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]
         )
-        self.addAsyncCleanup(self.mongocryptd_client.aclose)
 
         hello = await self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)

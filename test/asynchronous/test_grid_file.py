@@ -792,8 +792,7 @@ Bye"""
         await outfile.readchunk()
 
     async def test_grid_in_lazy_connect(self):
-        client = AsyncMongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
-        self.addAsyncCleanup(client.close)
+        client = self.simple_client("badhost", connect=False, serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = AsyncGridIn(fs, file_id=-1, chunk_size=1)
         with self.assertRaises(ServerSelectionTimeoutError):

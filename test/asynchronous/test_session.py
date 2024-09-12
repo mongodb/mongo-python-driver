@@ -788,7 +788,6 @@ class TestSession(AsyncIntegrationTest):
         # Ensure the collection exists.
         await self.client.pymongo_test.test_unacked_writes.insert_one({})
         client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addAsyncCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -1154,7 +1153,6 @@ class TestClusterTime(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             event_listeners=[listener], heartbeatFrequencyMS=999999
         )
-        self.addAsyncCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         await collection.insert_many([{} for _ in range(10)])

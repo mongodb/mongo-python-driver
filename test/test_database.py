@@ -234,7 +234,6 @@ class TestDatabase(IntegrationTest):
     def test_check_exists(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         db = client[self.db.name]
         db.drop_collection("unique")
         db.create_collection("unique", check_exists=True)

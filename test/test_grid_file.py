@@ -790,8 +790,7 @@ Bye"""
         outfile.readchunk()
 
     def test_grid_in_lazy_connect(self):
-        client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
-        self.addCleanup(client.close)
+        client = self.simple_client("badhost", connect=False, serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = GridIn(fs, file_id=-1, chunk_size=1)
         with self.assertRaises(ServerSelectionTimeoutError):
