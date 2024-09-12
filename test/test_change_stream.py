@@ -49,6 +49,7 @@ from pymongo.errors import (
 from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True

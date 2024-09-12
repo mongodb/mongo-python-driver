@@ -42,6 +42,7 @@ from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binar
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.command_cursor import CommandAsyncCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
