@@ -1088,8 +1088,8 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         """
         return await self._async_mongo_client(h, p, **kwargs)
 
-    def simple_client(self, **kwargs: Any) -> AsyncMongoClient:
-        client = AsyncMongoClient(**kwargs)
+    def simple_client(self, h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient:
+        client = AsyncMongoClient(h, p, **kwargs)
         self.addAsyncCleanup(client.close)
         return client
 

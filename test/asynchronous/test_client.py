@@ -142,7 +142,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self._caplog = caplog
 
     async def test_keyword_arg_defaults(self):
-        async with AsyncMongoClient(
+        client = self.simple_client(
             socketTimeoutMS=None,
             connectTimeoutMS=20000,
             waitQueueTimeoutMS=None,
@@ -154,36 +154,36 @@ class AsyncClientUnitTest(AsyncUnitTest):
             tlsCAFile=None,
             connect=False,
             serverSelectionTimeoutMS=12000,
-        ) as client:
-            options = client.options
-            pool_opts = options.pool_options
-            self.assertEqual(None, pool_opts.socket_timeout)
-            # socket.Socket.settimeout takes a float in seconds
-            self.assertEqual(20.0, pool_opts.connect_timeout)
-            self.assertEqual(None, pool_opts.wait_queue_timeout)
-            self.assertEqual(None, pool_opts._ssl_context)
-            self.assertEqual(None, options.replica_set_name)
-            self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
-            self.assertAlmostEqual(12, client.options.server_selection_timeout)
+        )
+
+        options = client.options
+        pool_opts = options.pool_options
+        self.assertEqual(None, pool_opts.socket_timeout)
+        # socket.Socket.settimeout takes a float in seconds
+        self.assertEqual(20.0, pool_opts.connect_timeout)
+        self.assertEqual(None, pool_opts.wait_queue_timeout)
+        self.assertEqual(None, pool_opts._ssl_context)
+        self.assertEqual(None, options.replica_set_name)
+        self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
+        self.assertAlmostEqual(12, client.options.server_selection_timeout)
 
     async def test_connect_timeout(self):
-        client = AsyncMongoClient(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
+        client = self.simple_client(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
         pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
-        await client.close()
-        client = AsyncMongoClient(connect=False, connectTimeoutMS=0, socketTimeoutMS=0)
+
+        client = self.simple_client(connect=False, connectTimeoutMS=0, socketTimeoutMS=0)
         pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
-        await client.close()
-        client = AsyncMongoClient(
+
+        client = await self.async_single_client(
             "mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0", connect=False
         )
         pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
-        await client.close()
 
     def test_types(self):
         self.assertRaises(TypeError, AsyncMongoClient, 1)
@@ -195,8 +195,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertRaises(ConfigurationError, AsyncMongoClient, [])
 
     async def test_max_pool_size_zero(self):
-        async with AsyncMongoClient(maxPoolSize=0):
-            pass
+        self.simple_client(maxPoolSize=0)
 
     def test_uri_detection(self):
         self.assertRaises(ConfigurationError, AsyncMongoClient, "/foo")
@@ -261,38 +260,36 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertNotIsInstance(client, Iterable)
 
     async def test_get_default_database(self):
-        async with await self.async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
             connect=False,
-        ) as c:
-            self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
-            # Test that default doesn't override the URI value.
-            self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database("bar"))
+        )
+        self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
+        # Test that default doesn't override the URI value.
+        self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database("bar"))
 
-            codec_options = CodecOptions(tz_aware=True)
-            write_concern = WriteConcern(w=2, j=True)
-            db = c.get_default_database(
-                None, codec_options, ReadPreference.SECONDARY, write_concern
-            )
-            self.assertEqual("foo", db.name)
-            self.assertEqual(codec_options, db.codec_options)
-            self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
-            self.assertEqual(write_concern, db.write_concern)
+        codec_options = CodecOptions(tz_aware=True)
+        write_concern = WriteConcern(w=2, j=True)
+        db = c.get_default_database(None, codec_options, ReadPreference.SECONDARY, write_concern)
+        self.assertEqual("foo", db.name)
+        self.assertEqual(codec_options, db.codec_options)
+        self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
+        self.assertEqual(write_concern, db.write_concern)
 
-        async with await self.async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
             connect=False,
-        ) as c:
-            self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database("foo"))
+        )
+        self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database("foo"))
 
     async def test_get_default_database_error(self):
         # URI with no database.
-        async with await self.async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
             connect=False,
-        ) as c:
-            self.assertRaises(ConfigurationError, c.get_default_database)
+        )
+        self.assertRaises(ConfigurationError, c.get_default_database)
 
     async def test_get_default_database_with_authsource(self):
         # Ensure we distinguish database name from authSource.
@@ -300,16 +297,16 @@ class AsyncClientUnitTest(AsyncUnitTest):
             await async_client_context.host,
             await async_client_context.port,
         )
-        async with await self.async_rs_or_single_client(uri, connect=False) as c:
-            self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
+        c = await self.async_rs_or_single_client(uri, connect=False)
+        self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
 
     async def test_get_database_default(self):
-        async with await self.async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
             connect=False,
-        ) as c:
-            self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
+        )
+        self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
 
     async def test_get_database_default_error(self):
         # URI with no database.
@@ -318,7 +315,6 @@ class AsyncClientUnitTest(AsyncUnitTest):
             connect=False,
         )
         self.assertRaises(ConfigurationError, c.get_database)
-        await c.close()
 
     async def test_get_database_default_with_authsource(self):
         # Ensure we distinguish database name from authSource.
@@ -328,92 +324,88 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
         c = await self.async_rs_or_single_client(uri, connect=False)
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
-        await c.close()
 
-    def test_primary_read_pref_with_tags(self):
+    async def test_primary_read_pref_with_tags(self):
         # No tags allowed with "primary".
         with self.assertRaises(ConfigurationError):
-            AsyncMongoClient("mongodb://host/?readpreferencetags=dc:east")
+            await self.async_single_client("mongodb://host/?readpreferencetags=dc:east")
 
         with self.assertRaises(ConfigurationError):
-            AsyncMongoClient("mongodb://host/?readpreference=primary&readpreferencetags=dc:east")
+            await self.async_single_client(
+                "mongodb://host/?readpreference=primary&readpreferencetags=dc:east"
+            )
 
     async def test_read_preference(self):
-        async with await self.async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://host", connect=False, readpreference=ReadPreference.NEAREST.mongos_mode
-        ) as c:
-            self.assertEqual(c.read_preference, ReadPreference.NEAREST)
+        )
+        self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
     async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
-        async with AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false") as client:
-            options = client.options
-            self.assertEqual(options.pool_options.metadata, metadata)
-        async with AsyncMongoClient("foo", 27017, appname="foobar", connect=False) as client:
-            options = client.options
-            self.assertEqual(options.pool_options.metadata, metadata)
+        client = await self.async_single_client("mongodb://foo:27017/?appname=foobar&connect=false")
+        options = client.options
+        self.assertEqual(options.pool_options.metadata, metadata)
+        client = await self.async_single_client("foo", 27017, appname="foobar", connect=False)
+        options = client.options
+        self.assertEqual(options.pool_options.metadata, metadata)
         # No error
-        async with AsyncMongoClient(appname="x" * 128):
-            pass
+        self.simple_client(appname="x" * 128)
         with self.assertRaises(ValueError):
-            async with AsyncMongoClient(appname="x" * 129):
-                pass
+            self.simple_client(appname="x" * 129)
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, "Foo", 1, "a")
         self.assertRaises(TypeError, DriverInfo, version="1", platform="a")
         self.assertRaises(TypeError, DriverInfo)
         with self.assertRaises(TypeError):
-            async with AsyncMongoClient(driver=1):
-                pass
+            self.simple_client(driver=1)
         with self.assertRaises(TypeError):
-            async with AsyncMongoClient(driver="abc"):
-                pass
+            self.simple_client(driver="abc")
         with self.assertRaises(TypeError):
-            async with AsyncMongoClient(driver=("Foo", "1", "a")):
-                pass
+            self.simple_client(driver=("Foo", "1", "a"))
         # Test appending to driver info.
         metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
-        async with AsyncMongoClient(
+        client = await self.async_single_client(
             "foo",
             27017,
             appname="foobar",
             driver=DriverInfo("FooDriver", "1.2.3", None),
             connect=False,
-        ) as client:
-            options = client.options
-            self.assertEqual(options.pool_options.metadata, metadata)
+        )
+        options = client.options
+        self.assertEqual(options.pool_options.metadata, metadata)
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
-        async with AsyncMongoClient(
+        client = await self.async_single_client(
             "foo",
             27017,
             appname="foobar",
             driver=DriverInfo("FooDriver", "1.2.3", "FooPlatform"),
             connect=False,
-        ) as client:
-            options = client.options
-            self.assertEqual(options.pool_options.metadata, metadata)
+        )
+        options = client.options
+        self.assertEqual(options.pool_options.metadata, metadata)
         # Test truncating driver info metadata.
-        async with AsyncMongoClient(
+        client = await self.async_single_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
-        ) as client:
-            options = client.options
-            self.assertLessEqual(
-                len(bson.encode(options.pool_options.metadata)),
-                _MAX_METADATA_SIZE,
-            )
-        async with AsyncMongoClient(
+        )
+        options = client.options
+        self.assertLessEqual(
+            len(bson.encode(options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        client = await self.async_single_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
-        ) as client:
-            options = client.options
-            self.assertLessEqual(
-                len(bson.encode(options.pool_options.metadata)),
-                _MAX_METADATA_SIZE,
-            )
+        )
+        options = client.options
+        self.assertLessEqual(
+            len(bson.encode(options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     async def test_container_metadata(self):
@@ -421,10 +413,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
         metadata["driver"]["name"] = "PyMongo|async"
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
-        client = AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
+        client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
         self.assertEqual(options.pool_options.metadata["env"], metadata["env"])
-        await client.close()
 
     async def test_kwargs_codec_options(self):
         class MyFloatType:
@@ -448,7 +439,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         uuid_representation_label = "javaLegacy"
         unicode_decode_error_handler = "ignore"
         tzinfo = utc
-        async with AsyncMongoClient(
+        c = self.simple_client(
             document_class=document_class,
             type_registry=type_registry,
             tz_aware=tz_aware,
@@ -456,18 +447,16 @@ class AsyncClientUnitTest(AsyncUnitTest):
             unicode_decode_error_handler=unicode_decode_error_handler,
             tzinfo=tzinfo,
             connect=False,
-        ) as c:
-            self.assertEqual(c.codec_options.document_class, document_class)
-            self.assertEqual(c.codec_options.type_registry, type_registry)
-            self.assertEqual(c.codec_options.tz_aware, tz_aware)
-            self.assertEqual(
-                c.codec_options.uuid_representation,
-                _UUID_REPRESENTATIONS[uuid_representation_label],
-            )
-            self.assertEqual(
-                c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler
-            )
-            self.assertEqual(c.codec_options.tzinfo, tzinfo)
+        )
+        self.assertEqual(c.codec_options.document_class, document_class)
+        self.assertEqual(c.codec_options.type_registry, type_registry)
+        self.assertEqual(c.codec_options.tz_aware, tz_aware)
+        self.assertEqual(
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label],
+        )
+        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(c.codec_options.tzinfo, tzinfo)
 
     async def test_uri_codec_options(self):
         # Ensure codec options are passed in correctly
@@ -486,38 +475,36 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 datetime_conversion,
             )
         )
-        async with AsyncMongoClient(uri, connect=False) as c:
-            self.assertEqual(c.codec_options.tz_aware, True)
-            self.assertEqual(
-                c.codec_options.uuid_representation,
-                _UUID_REPRESENTATIONS[uuid_representation_label],
-            )
-            self.assertEqual(
-                c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler
-            )
-            self.assertEqual(
-                c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
-            )
+        c = self.simple_client(uri, connect=False)
+        self.assertEqual(c.codec_options.tz_aware, True)
+        self.assertEqual(
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label],
+        )
+        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(
+            c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
+        )
 
         # Change the passed datetime_conversion to a number and re-assert.
         uri = uri.replace(datetime_conversion, f"{int(DatetimeConversion[datetime_conversion])}")
-        async with AsyncMongoClient(uri, connect=False) as c:
-            self.assertEqual(
-                c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
-            )
+        c = self.simple_client(uri, connect=False)
+        self.assertEqual(
+            c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
+        )
 
     async def test_uri_option_precedence(self):
         # Ensure kwarg options override connection string options.
         uri = "mongodb://localhost/?ssl=true&replicaSet=name&readPreference=primary"
-        async with AsyncMongoClient(
+        c = self.simple_client(
             uri, ssl=False, replicaSet="newname", readPreference="secondaryPreferred"
-        ) as c:
-            clopts = c.options
-            opts = clopts._options
+        )
+        clopts = c.options
+        opts = clopts._options
 
-            self.assertEqual(opts["tls"], False)
-            self.assertEqual(clopts.replica_set_name, "newname")
-            self.assertEqual(clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(opts["tls"], False)
+        self.assertEqual(clopts.replica_set_name, "newname")
+        self.assertEqual(clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
     async def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
@@ -540,9 +527,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         async def test_scenario(args, kwargs, expected_value):
             patched_resolver.reset()
-            async with AsyncMongoClient(*args, **kwargs):
-                for _, kw in patched_resolver.call_list():
-                    self.assertAlmostEqual(kw["lifetime"], expected_value)
+            self.simple_client(*args, **kwargs)
+            for _, kw in patched_resolver.call_list():
+                self.assertAlmostEqual(kw["lifetime"], expected_value)
 
         # No timeout specified.
         await test_scenario((base_uri,), {}, CONNECT_TIMEOUT)
@@ -560,60 +547,53 @@ class AsyncClientUnitTest(AsyncUnitTest):
     async def test_uri_security_options(self):
         # Ensure that we don't silently override security-related options.
         with self.assertRaises(InvalidURI):
-            async with AsyncMongoClient("mongodb://localhost/?ssl=true", tls=False, connect=False):
-                pass
+            self.simple_client("mongodb://localhost/?ssl=true", tls=False, connect=False)
 
         # Matching SSL and TLS options should not cause errors.
-        async with AsyncMongoClient(
-            "mongodb://localhost/?ssl=false", tls=False, connect=False
-        ) as c:
-            self.assertEqual(c.options._options["tls"], False)
+        c = self.simple_client("mongodb://localhost/?ssl=false", tls=False, connect=False)
+        self.assertEqual(c.options._options["tls"], False)
 
         # Conflicting tlsInsecure options should raise an error.
         with self.assertRaises(InvalidURI):
-            async with AsyncMongoClient(
+            self.simple_client(
                 "mongodb://localhost/?tlsInsecure=true",
                 connect=False,
                 tlsAllowInvalidHostnames=True,
-            ):
-                pass
+            )
 
         # Conflicting legacy tlsInsecure options should also raise an error.
         with self.assertRaises(InvalidURI):
-            async with AsyncMongoClient(
+            self.simple_client(
                 "mongodb://localhost/?tlsInsecure=true",
                 connect=False,
                 tlsAllowInvalidCertificates=False,
-            ):
-                pass
+            )
 
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
-            async with AsyncMongoClient(ssl=True, tls=False):
-                pass
+            self.simple_client(ssl=True, tls=False)
 
     async def test_event_listeners(self):
-        async with AsyncMongoClient(event_listeners=[], connect=False) as c:
-            self.assertEqual(c.options.event_listeners, [])
-            listeners = [
-                event_loggers.CommandLogger(),
-                event_loggers.HeartbeatLogger(),
-                event_loggers.ServerLogger(),
-                event_loggers.TopologyLogger(),
-                event_loggers.ConnectionPoolLogger(),
-            ]
-        async with AsyncMongoClient(event_listeners=listeners, connect=False) as c:
-            self.assertEqual(c.options.event_listeners, listeners)
+        c = self.simple_client(event_listeners=[], connect=False)
+        self.assertEqual(c.options.event_listeners, [])
+        listeners = [
+            event_loggers.CommandLogger(),
+            event_loggers.HeartbeatLogger(),
+            event_loggers.ServerLogger(),
+            event_loggers.TopologyLogger(),
+            event_loggers.ConnectionPoolLogger(),
+        ]
+        c = self.simple_client(event_listeners=listeners, connect=False)
+        self.assertEqual(c.options.event_listeners, listeners)
 
     async def test_client_options(self):
-        c = AsyncMongoClient(connect=False)
+        c = self.simple_client(connect=False)
         self.assertIsInstance(c.options, ClientOptions)
         self.assertIsInstance(c.options.pool_options, PoolOptions)
         self.assertEqual(c.options.server_selection_timeout, 30)
         self.assertEqual(c.options.pool_options.max_idle_time_seconds, None)
         self.assertIsInstance(c.options.retry_writes, bool)
         self.assertIsInstance(c.options.retry_reads, bool)
-        await c.close()
 
     def test_validate_suggestion(self):
         """Validate kwargs in constructor."""
@@ -659,16 +639,13 @@ class AsyncClientUnitTest(AsyncUnitTest):
             )
             for host in normal_hosts:
                 with self.assertWarns(UserWarning):
-                    async with AsyncMongoClient(host):
-                        pass
+                    self.simple_client(host)
             for host in srv_hosts:
                 mock_get_hosts.return_value = [(host, 1)]
                 with self.assertWarns(UserWarning):
-                    async with AsyncMongoClient(host):
-                        pass
+                    self.simple_client(host)
             with self.assertWarns(UserWarning):
-                async with AsyncMongoClient(multi_host):
-                    pass
+                self.simple_client(multi_host)
 
 
 class TestClient(AsyncIntegrationTest):
@@ -693,7 +670,6 @@ class TestClient(AsyncIntegrationTest):
                 pass
             self.assertEqual(1, len(server._pool.conns))
             self.assertTrue(conn in server._pool.conns)
-            await client.close()
 
     async def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -709,7 +685,6 @@ class TestClient(AsyncIntegrationTest):
             self.assertGreaterEqual(len(server._pool.conns), 1)
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
             wait_until(lambda: len(server._pool.conns) >= 1, "replace stale socket")
-            await client.close()
 
     async def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -727,7 +702,6 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(1, len(server._pool.conns))
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
             wait_until(lambda: len(server._pool.conns) == 1, "replace stale socket")
-            await client.close()
 
     async def test_max_idle_time_reaper_removes_stale(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -747,7 +721,6 @@ class TestClient(AsyncIntegrationTest):
                 lambda: len(server._pool.conns) == 0,
                 "stale socket reaped and new one NOT added to the pool",
             )
-            await client.close()
 
     async def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -825,20 +798,20 @@ class TestClient(AsyncIntegrationTest):
         AsyncMongoClient.HOST = "somedomainthatdoesntexist.org"
         AsyncMongoClient.PORT = 123456789
         with self.assertRaises(AutoReconnect):
-            async with AsyncMongoClient(serverSelectionTimeoutMS=10, **kwargs) as c:
-                await connected(c)
-
-        async with AsyncMongoClient(host, port, **kwargs) as c:
-            # Override the defaults. No error.
+            c = self.simple_client(serverSelectionTimeoutMS=10, **kwargs)
             await connected(c)
+
+        c = self.simple_client(host, port, **kwargs)
+        # Override the defaults. No error.
+        await connected(c)
 
         # Set good defaults.
         AsyncMongoClient.HOST = host
         AsyncMongoClient.PORT = port
 
         # No error.
-        async with AsyncMongoClient(**kwargs) as c:
-            await connected(c)
+        c = self.simple_client(**kwargs)
+        await connected(c)
 
     async def test_init_disconnected(self):
         host, port = await async_client_context.host, await async_client_context.port
@@ -889,27 +862,23 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        async with await self.async_rs_or_single_client(seed, connect=False) as c:
-            self.assertEqual(async_client_context.client, c)
-            # Explicitly test inequality
-            self.assertFalse(async_client_context.client != c)
+        c = await self.async_rs_or_single_client(seed, connect=False)
+        self.assertEqual(async_client_context.client, c)
+        # Explicitly test inequality
+        self.assertFalse(async_client_context.client != c)
 
-        async with await self.async_rs_or_single_client("invalid.com", connect=False) as c:
-            self.assertNotEqual(async_client_context.client, c)
-            self.assertTrue(async_client_context.client != c)
+        c = await self.async_rs_or_single_client("invalid.com", connect=False)
+        self.assertNotEqual(async_client_context.client, c)
+        self.assertTrue(async_client_context.client != c)
 
-        c1 = AsyncMongoClient("a", connect=False)
-        c2 = AsyncMongoClient("b", connect=False)
-        self.addAsyncCleanup(c1.close)
-        self.addAsyncCleanup(c2.close)
+        c1 = self.simple_client("a", connect=False)
+        c2 = self.simple_client("b", connect=False)
 
         # Seeds differ:
         self.assertNotEqual(c1, c2)
 
-        c1 = AsyncMongoClient(["a", "b", "c"], connect=False)
-        c2 = AsyncMongoClient(["c", "a", "b"], connect=False)
-        self.addAsyncCleanup(c1.close)
-        self.addAsyncCleanup(c2.close)
+        c1 = self.simple_client(["a", "b", "c"], connect=False)
+        c2 = self.simple_client(["c", "a", "b"], connect=False)
 
         # Same seeds but out of order still compares equal:
         self.assertEqual(c1, c2)
@@ -1084,7 +1053,6 @@ class TestClient(AsyncIntegrationTest):
         # The killCursors task should not need to re-open the topology.
         await test_client._process_periodic_tasks()
         self.assertTrue(test_client._topology._opened)
-        await test_client.close()
 
     async def test_close_stops_kill_cursors_thread(self):
         client = await self.async_rs_client()
@@ -1115,9 +1083,6 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue(client._topology._opened)
         kc_thread = client._kill_cursors_executor._thread
         self.assertTrue(kc_thread and kc_thread.is_alive())
-
-        # Tear down.
-        await client.close()
 
     async def test_close_does_not_open_servers(self):
         client = await self.async_rs_client(connect=False)
@@ -1245,10 +1210,10 @@ class TestClient(AsyncIntegrationTest):
 
         # Confirm it fails with a missing socket.
         with self.assertRaises(ConnectionFailure):
-            async with AsyncMongoClient(
+            c = self.simple_client(
                 "mongodb://%2Ftmp%2Fnon-existent.sock", serverSelectionTimeoutMS=100
-            ) as c:
-                await connected(c)
+            )
+            await connected(c)
 
     async def test_document_class(self):
         c = self.client
@@ -1613,11 +1578,9 @@ class TestClient(AsyncIntegrationTest):
 
     @async_client_context.require_no_replica_set
     async def test_connect_to_standalone_using_replica_set_name(self):
-        async with await self.async_single_client(
-            replicaSet="anything", serverSelectionTimeoutMS=100
-        ) as client:
-            with self.assertRaises(AutoReconnect):
-                await client.test.test.find_one()
+        client = await self.async_single_client(replicaSet="anything", serverSelectionTimeoutMS=100)
+        with self.assertRaises(AutoReconnect):
+            await client.test.test.find_one()
 
     @async_client_context.require_replica_set
     async def test_stale_getmore(self):
@@ -1673,7 +1636,7 @@ class TestClient(AsyncIntegrationTest):
                 await async_client_context.host,
                 await async_client_context.port,
             )
-            client = await self.async_single_client(uri, event_listeners=[listener])
+            await self.async_single_client(uri, event_listeners=[listener])
             wait_until(
                 lambda: len(listener.results) >= 2, "record two ServerHeartbeatStartedEvents"
             )
@@ -1682,7 +1645,6 @@ class TestClient(AsyncIntegrationTest):
             # closer to 0.5 sec with heartbeatFrequencyMS configured.
             self.assertAlmostEqual(heartbeat_times[1] - heartbeat_times[0], 0.5, delta=2)
 
-            await client.close()
         finally:
             ServerHeartbeatStartedEvent.__init__ = old_init  # type: ignore
 
@@ -1699,84 +1661,84 @@ class TestClient(AsyncIntegrationTest):
             return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=4"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
-            self.assertEqual(opts.zlib_compression_level, 4)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
+        self.assertEqual(opts.zlib_compression_level, 4)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-1"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
+        self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, [])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, [])
+        self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, [])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, [])
+        self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar,zlib"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
+        self.assertEqual(opts.zlib_compression_level, -1)
 
         # According to the connection string spec, unsupported values
         # just raise a warning and are ignored.
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=10"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
+        self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-2"
-        async with AsyncMongoClient(uri, connect=False) as client:
-            opts = compression_settings(client)
-            self.assertEqual(opts.compressors, ["zlib"])
-            self.assertEqual(opts.zlib_compression_level, -1)
+        client = self.simple_client(uri, connect=False)
+        opts = compression_settings(client)
+        self.assertEqual(opts.compressors, ["zlib"])
+        self.assertEqual(opts.zlib_compression_level, -1)
 
         if not _have_snappy():
             uri = "mongodb://localhost:27017/?compressors=snappy"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, [])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, [])
         else:
             uri = "mongodb://localhost:27017/?compressors=snappy"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, ["snappy"])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ["snappy"])
             uri = "mongodb://localhost:27017/?compressors=snappy,zlib"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, ["snappy", "zlib"])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ["snappy", "zlib"])
 
         if not _have_zstd():
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, [])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, [])
         else:
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, ["zstd"])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ["zstd"])
             uri = "mongodb://localhost:27017/?compressors=zstd,zlib"
-            async with AsyncMongoClient(uri, connect=False) as client:
-                opts = compression_settings(client)
-                self.assertEqual(opts.compressors, ["zstd", "zlib"])
+            client = self.simple_client(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ["zstd", "zlib"])
 
         options = async_client_context.default_client_options
         if "compressors" in options and "zlib" in options["compressors"]:
             for level in range(-1, 10):
-                async with await self.async_single_client(zlibcompressionlevel=level) as client:
-                    # No error
-                    await client.pymongo_test.test.find_one()
+                client = await self.async_single_client(zlibcompressionlevel=level)
+                # No error
+                await client.pymongo_test.test.find_one()
 
     async def test_reset_during_update_pool(self):
         client = await self.async_rs_or_single_client(minPoolSize=10)
@@ -1864,7 +1826,6 @@ class TestClient(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertEqual(len(client.nodes), 1)
         self.assertEqual(client._topology_settings.get_topology_type(), TOPOLOGY_TYPE.Single)
-        await client.close()
 
         # direct_connection=False should result in RS topology.
         client = await self.async_rs_or_single_client(directConnection=False)
@@ -1874,7 +1835,6 @@ class TestClient(AsyncIntegrationTest):
             client._topology_settings.get_topology_type(),
             [TOPOLOGY_TYPE.ReplicaSetNoPrimary, TOPOLOGY_TYPE.ReplicaSetWithPrimary],
         )
-        await client.close()
 
         # directConnection=True, should error with multiple hosts as a list.
         with self.assertRaises(ConfigurationError):
@@ -2021,12 +1981,10 @@ class TestClient(AsyncIntegrationTest):
 
                 if "AWS_REGION" not in env_vars:
                     os.environ["AWS_REGION"] = ""
-            async with await self.async_rs_or_single_client(
-                serverSelectionTimeoutMS=10000
-            ) as client:
-                await client.admin.command("ping")
-                options = client.options
-                self.assertEqual(options.pool_options.metadata, metadata)
+            client = await self.async_rs_or_single_client(serverSelectionTimeoutMS=10000)
+            await client.admin.command("ping")
+            options = client.options
+            self.assertEqual(options.pool_options.metadata, metadata)
 
     async def test_handshake_01_aws(self):
         await self._test_handshake(
