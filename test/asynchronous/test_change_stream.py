@@ -97,13 +97,15 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         await coll.insert_one({})
 
         if invalidate:
-            with await self.change_stream([{"$match": {"operationType": "invalidate"}}]) as cs:
+            async with await self.change_stream(
+                [{"$match": {"operationType": "invalidate"}}]
+            ) as cs:
                 if isinstance(cs._target, AsyncMongoClient):
                     self.skipTest("cluster-level change streams cannot be invalidated")
                 self.generate_invalidate_event(cs)
                 return cs.next()["_id"]
         else:
-            with await self.change_stream() as cs:
+            async with await self.change_stream() as cs:
                 await coll.insert_one({"data": 1})
                 return cs.next()["_id"]
 
@@ -233,7 +235,7 @@ class APITestsMixin:
         self.addAsyncCleanup(coll.drop)
         # Expected batchSize.
         expected = {"batchSize": 23}
-        with await self.change_stream_with_client(
+        async with await self.change_stream_with_client(
             client, max_await_time_ms=250, batch_size=23
         ) as stream:
             # Confirm that batchSize is honored for initial batch.
@@ -263,7 +265,7 @@ class APITestsMixin:
     @no_type_check
     async def _test_full_pipeline(self, expected_cs_stage):
         client, listener = await self.client_with_listener("aggregate")
-        with await self.change_stream_with_client(client, [{"$project": {"foo": 0}}]) as _:
+        async with await self.change_stream_with_client(client, [{"$project": {"foo": 0}}]) as _:
             pass
 
         self.assertEqual(1, len(listener.started_events))
@@ -283,7 +285,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_iteration(self):
-        with await self.change_stream(batch_size=2) as change_stream:
+        async with await self.change_stream(batch_size=2) as change_stream:
             num_inserted = 10
             self.watched_collection().insert_many([{} for _ in range(num_inserted)])
             inserts_received = 0
@@ -317,7 +319,7 @@ class APITestsMixin:
     async def test_next_blocks(self):
         """Test that next blocks until a change is readable"""
         # Use a short wait time to speed up the test.
-        with await self.change_stream(max_await_time_ms=250) as change_stream:
+        async with await self.change_stream(max_await_time_ms=250) as change_stream:
             await self._test_next_blocks(change_stream)
 
     @no_type_check
@@ -332,7 +334,7 @@ class APITestsMixin:
     async def test_concurrent_close(self):
         """Ensure a AsyncChangeStream can be closed from another thread."""
         # Use a short wait time to speed up the test.
-        with await self.change_stream(max_await_time_ms=250) as change_stream:
+        async with await self.change_stream(max_await_time_ms=250) as change_stream:
 
             def iterate_cursor():
                 try:
@@ -366,7 +368,7 @@ class APITestsMixin:
             "db": self.watched_collection().database.name,
             "coll": self.watched_collection().name,
         }
-        with await self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             # Insert.
             inserted_doc = {"_id": ObjectId(), "foo": "bar"}
             self.watched_collection().insert_one(inserted_doc)
@@ -847,13 +849,13 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
 
     async def test_simple(self):
         collnames = self.generate_unique_collnames(3)
-        with await self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             for db, collname in product(self.dbs, collnames):
                 self._insert_and_check(change_stream, db, collname, {"_id": collname})
 
     async def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
-        with await self.client.admin.aggregate(
+        async with await self.client.admin.aggregate(
             [{"$changeStream": {"allChangesForCluster": True}}], maxAwaitTimeMS=250
         ) as change_stream:
             self._test_next_blocks(change_stream)
