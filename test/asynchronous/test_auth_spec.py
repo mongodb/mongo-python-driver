@@ -26,15 +26,15 @@ sys.path[0:0] = [""]
 from test import unittest
 from test.unified_format import generate_test_classes
 
-from pymongo import MongoClient
-from pymongo.synchronous.auth_oidc import OIDCCallback
+from pymongo import AsyncMongoClient
+from pymongo.asynchronous.auth_oidc import OIDCCallback
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 
-class TestAuthSpec(unittest.TestCase):
+class TestAuthSpec(unittest.IsolatedAsyncioTestCase):
     pass
 
 
@@ -52,9 +52,9 @@ def create_test(test_case):
         if not valid:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
-                self.assertRaises(Exception, MongoClient, uri, connect=False)
+                self.assertRaises(Exception, AsyncMongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            client = AsyncMongoClient(uri, connect=False)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)

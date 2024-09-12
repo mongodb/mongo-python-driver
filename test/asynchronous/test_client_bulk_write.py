@@ -35,6 +35,7 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     ClientBulkWriteException,
     DocumentTooLarge,
+    InvalidOperation,
     NetworkTimeout,
 )
 from pymongo.operations import *

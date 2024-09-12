@@ -24,20 +24,14 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
-from test.utils import (
-    async_wait_until,
-)
+from test.utils import async_wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
-from pymongo.errors import (
-    BulkWriteError,
-    ConfigurationError,
-    OperationFailure,
-)
+from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 
@@ -814,7 +808,7 @@ class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
             roles=[],
         )
 
-        async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
+        await async_client_context.create_user(self.db.name, "noremove", "pw", ["noremove"])
 
     async def asyncTearDown(self):
         await self.db.command("dropRole", "noremove")
@@ -916,7 +910,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         with self.assertRaises(OperationFailure):
             await coll.bulk_write([InsertOne({"x": 1})])
 
@@ -927,7 +921,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
-        coll.find_one()
+        await coll.find_one()
         requests = [
             InsertOne({"x": 1}),
             ReplaceOne({"x": 2}, {"x": 2}, upsert=True),
@@ -973,6 +967,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         finally:
             await self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
 
+    @async_client_context.require_version_max(7, 1)  # PYTHON-4560
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_ordered(self):
@@ -1052,6 +1047,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         failed = details["writeErrors"][0]
         self.assertTrue("duplicate" in failed["errmsg"])
 
+    @async_client_context.require_version_max(7, 1)  # PYTHON-4560
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_unordered(self):

@@ -721,6 +721,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.7
             Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
+
+        .. versionchanged:: 4.9
+            The default value of ``connect`` is changed to ``False`` when running in a
+            Function-as-a-service environment.
         """
         doc_class = document_class or dict
         self._init_kwargs: dict[str, Any] = {
@@ -804,7 +808,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if tz_aware is None:
             tz_aware = opts.get("tz_aware", False)
         if connect is None:
-            connect = opts.get("connect", True)
+            # Default to connect=True unless on a FaaS system, which might use fork.
+            from pymongo.pool_options import _is_faas
+
+            connect = opts.get("connect", not _is_faas())
         keyword_opts["tz_aware"] = tz_aware
         keyword_opts["connect"] = connect
 
@@ -865,7 +872,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._opened = False
-        self._has_resources = False
         self._closed = False
         self._init_background()
 
@@ -1179,7 +1185,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def __del__(self) -> None:
         """Check that this AsyncMongoClient has been closed and issue a warning if not."""
         try:
-            if not self._closed:
+            if self._opened and not self._closed:
                 warnings.warn(
                     (
                         f"Unclosed {type(self).__name__} opened at:\n{self._topology_settings._stack}"
@@ -2440,7 +2446,9 @@ class _MongoClientErrorHandler:
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
         if not isinstance(client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(client)}")
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncMongoClient" for cls in type(client).__mro__):
+                raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         self.client = client
         self.server_address = server.description.address

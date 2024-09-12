@@ -29,6 +29,7 @@ import traceback
 import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
+from test.asynchronous.test_bulk import AsyncBulkTestBase
 from threading import Thread
 from typing import Any, Dict, Mapping
 

@@ -629,15 +629,12 @@ class ClientUnitTest(UnitTest):
         )
         with self.assertLogs("pymongo", level="INFO") as cm:
             for host in normal_hosts:
-                with MongoClient(host):
-                    pass
+                MongoClient(host, connect=False)
             for host in srv_hosts:
                 mock_get_hosts.return_value = [(host, 1)]
-                with MongoClient(host):
-                    pass
-            with MongoClient(multi_host):
-                pass
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
+                MongoClient(host, connect=False)
+            MongoClient(multi_host, connect=False)
+            logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
     @patch("pymongo.srv_resolver._SrvResolver.get_hosts")

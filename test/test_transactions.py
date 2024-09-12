@@ -15,20 +15,19 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
-import os
 import sys
 from io import BytesIO
+from test.utils_spec_runner import SpecRunner
 
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner
 from typing import List
 
 from bson import encode
@@ -52,8 +51,6 @@ from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
-_TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
-
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
 # 50 attempts yields a one in a quadrillion chance of a false positive
@@ -67,7 +64,7 @@ class TransactionsBase(SpecRunner):
         super()._setup_class()
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.single_client("{}:{}".format(*address)))
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
@@ -410,6 +407,30 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(TransactionsBase):
+    @classmethod
+    def _setup_class(cls):
+        super()._setup_class()
+        cls.mongos_clients = []
+        if client_context.supports_transactions():
+            for address in client_context.mongoses:
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
+
+    @classmethod
+    def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super()._tearDown_class()
+
+    def _set_fail_point(self, client, command_args):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
+    def set_fail_point(self, command_args):
+        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        for client in clients:
+            self._set_fail_point(client, command_args)
+
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
         class _MyException(Exception):

@@ -68,7 +68,7 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context
+from test import IntegrationTest, PyMongoTestCase, client_context
 
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
@@ -365,7 +365,7 @@ class TestDecode(unittest.TestCase):
         doc["a"] = 2
 
 
-class TestDocumentType(unittest.TestCase):
+class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()

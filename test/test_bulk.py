@@ -24,19 +24,13 @@ from pymongo.synchronous.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, remove_all_users, unittest
-from test.utils import (
-    wait_until,
-)
+from test.utils import wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.common import partition_node
-from pymongo.errors import (
-    BulkWriteError,
-    ConfigurationError,
-    OperationFailure,
-)
+from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
@@ -971,6 +965,7 @@ class TestBulkWriteConcern(BulkTestBase):
         finally:
             self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
 
+    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
@@ -1050,6 +1045,7 @@ class TestBulkWriteConcern(BulkTestBase):
         failed = details["writeErrors"][0]
         self.assertTrue("duplicate" in failed["errmsg"])
 
+    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_unordered(self):

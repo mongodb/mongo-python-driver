@@ -345,7 +345,7 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(iterate_file(fstr))
 
     def test_gridfs_lazy_connect(self):
-        client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=0)
+        client = self.single_client("badhost", connect=False, serverSelectionTimeoutMS=0)
         cdb = client.db
         gfs = gridfs.GridFSBucket(cdb)
         self.assertRaises(ServerSelectionTimeoutError, gfs.delete, 0)

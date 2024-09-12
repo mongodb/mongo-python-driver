@@ -35,15 +35,15 @@ class TestLogger(IntegrationTest):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 db.test.insert_many(docs)
 
-                cmd_started_log = json_util.loads(cm.records[0].message)
+                cmd_started_log = json_util.loads(cm.records[0].getMessage())
                 self.assertEqual(len(cmd_started_log["command"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
-                cmd_succeeded_log = json_util.loads(cm.records[1].message)
+                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 db.test.find({}).to_list()
-                cmd_succeeded_log = json_util.loads(cm.records[1].message)
+                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
                 self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
     def test_configured_truncation_limit(self):
@@ -53,14 +53,14 @@ class TestLogger(IntegrationTest):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 db.command(cmd)
 
-                cmd_started_log = json_util.loads(cm.records[0].message)
+                cmd_started_log = json_util.loads(cm.records[0].getMessage())
                 self.assertEqual(len(cmd_started_log["command"]), 5 + 3)
 
-                cmd_succeeded_log = json_util.loads(cm.records[1].message)
+                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), 5 + 3)
                 with self.assertRaises(OperationFailure):
                     db.command({"notARealCommand": True})
-                cmd_failed_log = json_util.loads(cm.records[-1].message)
+                cmd_failed_log = json_util.loads(cm.records[-1].getMessage())
                 self.assertEqual(len(cmd_failed_log["failure"]), 5 + 3)
 
     def test_truncation_multi_byte_codepoints(self):
@@ -76,7 +76,7 @@ class TestLogger(IntegrationTest):
             with patch.dict("os.environ", {"MONGOB_LOG_MAX_DOCUMENT_LENGTH": length}):
                 with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                     self.db.test.insert_one({"x": multi_byte_char_str})
-                    cmd_started_log = json_util.loads(cm.records[0].message)["command"]
+                    cmd_started_log = json_util.loads(cm.records[0].getMessage())["command"]
 
                     cmd_started_log = cmd_started_log[:-3]
                     last_3_bytes = cmd_started_log.encode()[-3:].decode()

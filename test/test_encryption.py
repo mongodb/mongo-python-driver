@@ -29,6 +29,7 @@ import traceback
 import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
+from test.test_bulk import BulkTestBase
 from threading import Thread
 from typing import Any, Dict, Mapping
 

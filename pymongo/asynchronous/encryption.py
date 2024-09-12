@@ -597,7 +597,13 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         if not isinstance(key_vault_client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(key_vault_client)}")
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(
+                cls.__name__ == "AsyncMongoClient" for cls in type(key_vault_client).__mro__
+            ):
+                raise TypeError(
+                    f"AsyncMongoClient required but given {type(key_vault_client).__name__}"
+                )
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -685,9 +691,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
 
         """
         if not isinstance(database, AsyncDatabase):
-            raise TypeError(
-                f"create_encrypted_collection() requires an AsyncDatabase but {type(database)} given"
-            )
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncDatabase" for cls in type(database).__mro__):
+                raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
         encrypted_fields = deepcopy(encrypted_fields)
         for i, field in enumerate(encrypted_fields["fields"]):

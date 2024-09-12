@@ -624,7 +624,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 AsyncMongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
     @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
-    async def test_detected_environment_logging(self, mock_get_hosts):
+    def test_detected_environment_logging(self, mock_get_hosts):
         normal_hosts = [
             "normal.host.com",
             "host.cosmos.azure.com",
@@ -637,15 +637,12 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
         with self.assertLogs("pymongo", level="INFO") as cm:
             for host in normal_hosts:
-                async with AsyncMongoClient(host):
-                    pass
+                AsyncMongoClient(host, connect=False)
             for host in srv_hosts:
                 mock_get_hosts.return_value = [(host, 1)]
-                async with AsyncMongoClient(host):
-                    pass
-            async with AsyncMongoClient(multi_host):
-                pass
-            logs = [record.message for record in cm.records if record.name == "pymongo.client"]
+                AsyncMongoClient(host, connect=False)
+            AsyncMongoClient(multi_host, connect=False)
+            logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
     @patch("pymongo.srv_resolver._SrvResolver.get_hosts")

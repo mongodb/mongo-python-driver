@@ -22,7 +22,7 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, PyMongoTestCase, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
 from test.utils import (
@@ -413,7 +413,7 @@ class TCPServer(socketserver.TCPServer):
         self.server_close()
 
 
-class TestHeartbeatStartOrdering(unittest.TestCase):
+class TestHeartbeatStartOrdering(PyMongoTestCase):
     def test_heartbeat_start_ordering(self):
         events = []
         listener = HeartbeatEventsListListener(events)
@@ -421,7 +421,7 @@ class TestHeartbeatStartOrdering(unittest.TestCase):
         server.events = events
         server_thread = threading.Thread(target=server.handle_request_and_shutdown)
         server_thread.start()
-        _c = MongoClient(
+        _c = self.single_client(
             "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
         )
         server_thread.join()

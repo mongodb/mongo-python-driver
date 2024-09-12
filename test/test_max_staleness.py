@@ -41,42 +41,44 @@ class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
 
 class TestMaxStaleness(PyMongoTestCase):
     def test_max_staleness(self):
-        client = MongoClient()
+        client = self.single_client()
         self.assertEqual(-1, client.read_preference.max_staleness)
 
-        client = MongoClient("mongodb://a/?readPreference=secondary")
+        client = self.single_client("mongodb://a/?readPreference=secondary")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
         # These tests are specified in max-staleness-tests.rst.
         with self.assertRaises(ConfigurationError):
             # Default read pref "primary" can't be used with max staleness.
-            MongoClient("mongodb://a/?maxStalenessSeconds=120")
+            self.single_client("mongodb://a/?maxStalenessSeconds=120")
 
         with self.assertRaises(ConfigurationError):
             # Read pref "primary" can't be used with max staleness.
-            MongoClient("mongodb://a/?readPreference=primary&maxStalenessSeconds=120")
+            self.single_client("mongodb://a/?readPreference=primary&maxStalenessSeconds=120")
 
-        client = MongoClient("mongodb://host/?maxStalenessSeconds=-1")
+        client = self.single_client("mongodb://host/?maxStalenessSeconds=-1")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
-        client = MongoClient("mongodb://host/?readPreference=primary&maxStalenessSeconds=-1")
+        client = self.single_client("mongodb://host/?readPreference=primary&maxStalenessSeconds=-1")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
-        client = MongoClient("mongodb://host/?readPreference=secondary&maxStalenessSeconds=120")
+        client = self.single_client(
+            "mongodb://host/?readPreference=secondary&maxStalenessSeconds=120"
+        )
         self.assertEqual(120, client.read_preference.max_staleness)
 
-        client = MongoClient("mongodb://a/?readPreference=secondary&maxStalenessSeconds=1")
+        client = self.single_client("mongodb://a/?readPreference=secondary&maxStalenessSeconds=1")
         self.assertEqual(1, client.read_preference.max_staleness)
 
-        client = MongoClient("mongodb://a/?readPreference=secondary&maxStalenessSeconds=-1")
+        client = self.single_client("mongodb://a/?readPreference=secondary&maxStalenessSeconds=-1")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
-        client = MongoClient(maxStalenessSeconds=-1, readPreference="nearest")
+        client = self.single_client(maxStalenessSeconds=-1, readPreference="nearest")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
         with self.assertRaises(TypeError):
             # Prohibit None.
-            MongoClient(maxStalenessSeconds=None, readPreference="nearest")
+            self.single_client(maxStalenessSeconds=None, readPreference="nearest")
 
     def test_max_staleness_float(self):
         with self.assertRaises(TypeError) as ctx:
@@ -86,7 +88,9 @@ class TestMaxStaleness(PyMongoTestCase):
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
-            client = MongoClient("mongodb://host/?maxStalenessSeconds=1.5&readPreference=nearest")
+            client = self.single_client(
+                "mongodb://host/?maxStalenessSeconds=1.5&readPreference=nearest"
+            )
 
             # Option was ignored.
             self.assertEqual(-1, client.read_preference.max_staleness)
@@ -101,7 +105,9 @@ class TestMaxStaleness(PyMongoTestCase):
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
-            client = MongoClient("mongodb://host/?maxStalenessSeconds=0&readPreference=nearest")
+            client = self.single_client(
+                "mongodb://host/?maxStalenessSeconds=0&readPreference=nearest"
+            )
 
             # Option was ignored.
             self.assertEqual(-1, client.read_preference.max_staleness)

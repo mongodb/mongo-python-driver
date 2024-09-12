@@ -578,7 +578,7 @@ class EntityMapUtil:
             return
         elif entity_type == "database":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -600,7 +600,7 @@ class EntityMapUtil:
             return
         elif entity_type == "session":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -665,7 +665,7 @@ class EntityMapUtil:
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
-        if not isinstance(client, MongoClient):
+        if type(client).__name__ != "MongoClient":
             self.test.fail(
                 f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
@@ -1098,6 +1098,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
+                cls.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+
         # Handle mongos_clients for transactions tests.
         cls.mongos_clients = []
         if (
@@ -1106,12 +1113,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             and not client_context.serverless
         ):
             for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.single_client("{}:{}".format(*address)))
-
-        # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"]:
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
@@ -1166,9 +1168,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if "unpin after non-transient error on abort" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1923,7 +1922,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for log in log_list:
                 if log.module == "ocsp_support":
                     continue
-                data = json_util.loads(log.message)
+                data = json_util.loads(log.getMessage())
                 client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
                 client_to_log[client].append(
                     {
@@ -2155,7 +2154,7 @@ def generate_test_classes(
                     raise ValueError(
                         f"test file '{fpath}' has unsupported schemaVersion '{schema_version}'"
                     )
-                module_dict = {"__module__": module}
+                module_dict = {"__module__": module, "TEST_PATH": test_path}
                 module_dict.update(kwargs)
                 test_klasses[class_name] = type(
                     class_name,

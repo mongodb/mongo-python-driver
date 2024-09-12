@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 
 from bson import has_c as has_bson_c
 from pymongo import MongoClient
@@ -17,6 +18,9 @@ from pymongo.monitoring import (
     ConnectionPoolListener,
     ServerHeartbeatListener,
 )
+
+# Ensure there are no warnings raised in normal operation.
+warnings.simplefilter("error")
 
 open_connections = 0
 heartbeat_count = 0
