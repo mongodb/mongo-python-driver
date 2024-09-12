@@ -49,8 +49,9 @@ from bson import (
     decode_iter,
     encode,
     is_valid,
+    json_util,
 )
-from bson.binary import USER_DEFINED_SUBTYPE, Binary, UuidRepresentation
+from bson.binary import USER_DEFINED_SUBTYPE, Binary, BinaryVectorDtype, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -63,7 +64,6 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
-from bson.vector import DTYPES, BinaryVector
 
 
 class NotADict(abc.MutableMapping):
@@ -149,11 +149,9 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
-        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", b"\x10", 3)})
-        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", DTYPES.BOOL, 3)})
-        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", b"\x03")})
-        helper({"a binary vector": BinaryVector(b"\x01\x0f\xff", DTYPES.INT8)})
-        helper({"a binary vector": BinaryVector(b"\xcd\xcc\x8c\xbf\xc7H7P", DTYPES.FLOAT32)})
+        helper({"binary packed bit vector": Binary(b"\x10\x00\x7f\x07", 9)})
+        helper({"binary int8 vector": Binary(b"\x03\x00\x7f\x07", 9)})
+        helper({"binary float32 vector": Binary(b"'\x00\x00\x00\xfeB\x00\x00\xe0@", 9)})
         helper(SON([("test dst", datetime.datetime(1993, 4, 4, 2))]))
         helper(SON([("test negative dst", datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
@@ -454,16 +452,18 @@ class TestBSON(unittest.TestCase):
             b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x80\x74\x65\x73\x74\x00",
         )
         self.assertEqual(
-            encode({"vector_int8": BinaryVector.from_list([-128, -1, 127], DTYPES.INT8)}),
-            b"\x1c\x00\x00\x00\x05vector_int8\x00\x03\x00\x00\x00\t\x03\x00\x80\xff\x7f\x00",
+            encode({"vector_int8": Binary.from_vector([-128, -1, 127], BinaryVectorDtype.INT8)}),
+            b"\x1c\x00\x00\x00\x05vector_int8\x00\x05\x00\x00\x00\t\x03\x00\x80\xff\x7f\x00",
         )
         self.assertEqual(
-            encode({"vector_bool": BinaryVector.from_list([1, 127], DTYPES.BOOL)}),
-            b"\x1b\x00\x00\x00\x05vector_bool\x00\x02\x00\x00\x00\t\x10\x00\x01\x7f\x00",
+            encode({"vector_bool": Binary.from_vector([1, 127], BinaryVectorDtype.PACKED_BIT)}),
+            b"\x1b\x00\x00\x00\x05vector_bool\x00\x04\x00\x00\x00\t\x10\x00\x01\x7f\x00",
         )
         self.assertEqual(
-            encode({"vector_float32": BinaryVector.from_list([-1.1, 1.1e10], DTYPES.FLOAT32)}),
-            b"$\x00\x00\x00\x05vector_float32\x00\x08\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
+            encode(
+                {"vector_float32": Binary.from_vector([-1.1, 1.1e10], BinaryVectorDtype.FLOAT32)}
+            ),
+            b"$\x00\x00\x00\x05vector_float32\x00\n\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
         )
         self.assertEqual(encode({"test": None}), b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(
@@ -728,6 +728,40 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(isinstance(bin, Binary))
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
+
+    def test_vector(self):
+        list_vector = [127, 7]
+        # As INT8, vector has length 2
+        binary_vector = Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
+        vector = binary_vector.as_vector()
+        assert vector.data == list_vector
+        # test encoding roundtrip
+        assert {"vector": binary_vector} == decode(encode({"vector": binary_vector}))
+        # test json roundtrip # TODO - Is this the wrong place?
+        assert binary_vector == json_util.loads(json_util.dumps(binary_vector))
+
+        # For vectors of bits, aka PACKED_BIT type, vector has length 8 * 2
+        packed_bit_binary = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT)
+        packed_bit_vec = packed_bit_binary.as_vector()
+        assert packed_bit_vec.data == list_vector
+        # If we wish to see the bit vector unpacked to its true length, we can
+        unpacked_vec = packed_bit_binary.as_vector(BinaryVectorDtype.INT8)
+        assert len(unpacked_vec.data) == 8 * len(list_vector)
+        assert set(unpacked_vec.data) == {0, 1}
+
+        # A padding parameter permits vectors of length that aren't divisible by 8
+        # The following ignores the last 3 bits in list_vector,
+        # hence it's length is 8 * len(list_vector) - padding
+        padding = 3
+        padded_vec = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT, padding=padding)
+        assert padded_vec.as_vector().data == list_vector
+        assert (
+            len(padded_vec.as_vector(BinaryVectorDtype.INT8).data) == 8 * len(list_vector) - padding
+        )
+
+        # FLOAT32 is also implemented
+        float_binary = Binary.from_vector(list_vector, BinaryVectorDtype.FLOAT32)
+        assert all(isinstance(d, float) for d in float_binary.as_vector().data)
 
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.

@@ -13,7 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Tuple, Type, Union
+import struct
+from dataclasses import dataclass
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Type, Union
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -203,16 +206,48 @@ USER_DEFINED_SUBTYPE = 128
 """
 
 
+class BinaryVectorDtype(Enum):
+    """Datatypes of vector subtype.
+
+    The PACKED_BIT value represents a special case where vector values themselves
+    can only hold two values (0 or 1) but these are packed together into groups of 8,
+    a byte. In Python, these are displayed as ints in range(0,128).
+    """
+
+    INT8 = b"\x03"
+    FLOAT32 = b"\x27"
+    PACKED_BIT = b"\x10"
+
+
+# Map from bytes to enum value, for decoding.
+DTYPE_FROM_HEX = {key.value: key for key in BinaryVectorDtype}
+
+
+@dataclass
+class BinaryVector:
+    """Vector of numbers along with metadata for binary interoperability.
+
+    dtype specifies the data type stored in binary.
+    padding specifies the number of bits in the final byte that are to be ignored
+    when a vector element's size is less than a byte
+    and the length of the vector is not a multiple of 8."""
+
+    data: list[float | int]
+    dtype: BinaryVectorDtype
+    padding: Optional[int] = 0
+
+
 class Binary(bytes):
     """Representation of BSON binary data.
+
+    # TODO Add Vector subtype description
 
     This is necessary because we want to represent Python strings as
     the BSON string type. We need to wrap binary data so we can tell
     the difference between what should be considered binary data and
     what should be considered a string when we encode to BSON.
 
-    Raises TypeError if `data` is not an instance of :class:`bytes`
-    or `subtype` is not an instance of :class:`int`.
+    Raises TypeError if subtype` is not an instance of :class:`int`.
     Raises ValueError if `subtype` is not in [0, 256).
 
     .. note::
@@ -343,6 +378,92 @@ class Binary(bytes):
         raise ValueError(
             f"cannot decode subtype {self.subtype} to {UUID_REPRESENTATION_NAMES[uuid_representation]}"
         )
+
+    @classmethod
+    def from_vector(
+        cls: Type[Binary],
+        vector: list[int, float],
+        dtype: BinaryVectorDtype,
+        padding: Optional[int] = 0,
+    ) -> Binary:
+        """Create a BSON Binary Vector subtype from a list of python objects.
+
+        The data type and byte padding are prepended to the vector itself.
+
+        :param vector: List of values
+        :param dtype: Data type of the values
+        :param padding: For fractional bytes, number of bits to ignore at end of vector.
+        :return: Binary packed data identified by dtype and padding.
+        """
+        if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
+            format_str = "b"
+        elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
+            format_str = "B"
+        elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
+            format_str = "f"
+        else:
+            raise NotImplementedError("%s not yet supported" % dtype)
+
+        metadata = struct.pack("<sB", dtype.value, padding)
+        data = struct.pack(f"{len(vector)}{format_str}", *vector)
+        return cls(metadata + data, subtype=VECTOR_SUBTYPE)
+
+    def as_vector(
+        self, dtype: Optional[BinaryVectorDtype] = None, padding: Optional[int] = 0
+    ) -> BinaryVector:
+        """Create a list of python objects.
+
+        The binary representation was created with a specific dtype and padding.
+        The optional kwargs allow one to view data in other formats,
+        which is particularly useful when one wishes to see binary/bit vectors
+        as INT8, hence with their proper lengths.
+
+        :param dtype: Optional dtype to use instead of self.dtype
+        :param padding: Optional number of bytes to discard instead of self.padding
+        :return: List of numbers.
+        """
+
+        position = 0
+        orig_dtype, orig_padding = struct.unpack_from("<sB", self, position)
+        position += 2
+        orig_dtype = BinaryVectorDtype(orig_dtype)
+        dtype = dtype or orig_dtype
+        padding = padding or orig_padding
+        n_values = len(self) - position
+
+        if dtype == BinaryVectorDtype.PACKED_BIT:
+            # data packed as uint8
+            dtype_format = "B"
+            unpacked_uint8s = struct.unpack_from(f"{n_values}{dtype_format}", self, position)
+            return BinaryVector(list(unpacked_uint8s), dtype, padding)
+
+        elif dtype == BinaryVectorDtype.INT8:
+            if orig_dtype == BinaryVectorDtype.PACKED_BIT:
+                # Special case for when wishes to see UNPACKED embedding
+                unpacked_uint8s = struct.unpack_from(f"{n_values}B", self, position)
+                bits = []
+                for uint8 in unpacked_uint8s:
+                    bits.extend([int(bit) for bit in f"{uint8:08b}"])
+                if padding and padding > 0:
+                    unpacked_data = bits[:-padding]
+                else:
+                    unpacked_data = bits
+                return BinaryVector(list(unpacked_data), dtype, padding)
+
+            else:
+                dtype_format = "b"
+                format_string = f"{n_values}{dtype_format}"
+                unpacked_data = struct.unpack_from(format_string, self, position)
+                return BinaryVector(list(unpacked_data), dtype, padding)
+
+        elif dtype == BinaryVectorDtype.FLOAT32:
+            n_bytes = len(self) - position
+            n_values = n_bytes // 4
+            assert n_bytes % 4 == 0
+            unpacked_data = struct.unpack_from(f"{n_values}f", self, position)
+            return BinaryVector(list(unpacked_data), dtype, padding)
+        else:
+            raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
 
     @property
     def subtype(self) -> int:

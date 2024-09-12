@@ -137,7 +137,6 @@ from bson.regex import Regex
 from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from bson.vector import BinaryVector
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
@@ -161,7 +160,6 @@ __all__ = [
     "STANDARD",
     "UUID_SUBTYPE",
     "Binary",
-    "BinaryVector",
     "UuidRepresentation",
     "Code",
     "DEFAULT_CODEC_OPTIONS",
@@ -383,7 +381,7 @@ def _get_binary(
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
     position += 5
-    if subtype == 2:  #
+    if subtype == 2:
         length2 = _UNPACK_INT_FROM(data, position)[0]
         position += 4
         if length2 != length - 4:
@@ -408,12 +406,6 @@ def _get_binary(
     # Decode subtype 0 to 'bytes'.
     if subtype == 0:
         value = data[position:end]
-    # Decode subtype 9 to vector.
-    elif subtype == 9:
-        dtype, padding = struct.unpack_from("<sB", data, position)
-        position += 2
-        end = position + length
-        value = BinaryVector(data[position:end], dtype=dtype, padding=padding)
     else:
         value = Binary(data[position:end], subtype)
 
@@ -634,7 +626,7 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
     try:
         if _raw_document_class(opts.document_class):
             return opts.document_class(data, opts)  # type:ignore[call-arg]
-        _, end = _get_object_size(data, 0, len(data))  # todo - how does this work
+        _, end = _get_object_size(data, 0, len(data))
         return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
         raise
@@ -768,12 +760,6 @@ def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> byte
     return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
 
 
-def _encode_vector(name: bytes, value: Any, dummy0: Any, dummy1: Any) -> bytes:
-    """Encode bson.binary.BinaryVector, a subtype of Binary."""
-    metadata = struct.pack("<iBsB", len(value), value.subtype, value.dtype.value, value.padding)
-    return b"\x05" + name + metadata + value
-
-
 def _encode_uuid(name: bytes, value: uuid.UUID, dummy: Any, opts: CodecOptions[Any]) -> bytes:
     """Encode uuid.UUID."""
     uuid_representation = opts.uuid_representation
@@ -902,7 +888,6 @@ _ENCODERS = {
     tuple: _encode_list,
     type(None): _encode_none,
     uuid.UUID: _encode_uuid,
-    BinaryVector: _encode_vector,
     Binary: _encode_binary,
     Int64: _encode_long,
     Code: _encode_code,
