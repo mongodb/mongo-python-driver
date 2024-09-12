@@ -15,6 +15,7 @@
 """Test the change_stream module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import random
 import string
@@ -303,7 +304,7 @@ class APITestsMixin:
         t = threading.Thread(target=lambda: changes.append(change_stream.next()))
         t.start()
         # Sleep for a bit to prove that the call to await await anext() blocks.
-        time.sleep(1)
+        await asyncio.sleep(1)
         self.assertTrue(t.is_alive())
         self.assertFalse(changes)
         await self.watched_collection().insert_one(inserted_doc)
@@ -347,7 +348,7 @@ class APITestsMixin:
             t = threading.Thread(target=iterate_cursor)
             t.start()
             await self.watched_collection().insert_one({})
-            time.sleep(1)
+            await asyncio.sleep(1)
             change_stream.close()
             t.join(3)
             self.assertFalse(t.is_alive())
@@ -1113,7 +1114,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
         super().asyncSetUp()
         self.listener.reset()
 
-    def asyncSetUpCluster(self, scenario_dict):
+    async def asyncSetUpCluster(self, scenario_dict):
         assets = [
             (scenario_dict["database_name"], scenario_dict["collection_name"]),
             (
@@ -1125,7 +1126,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
             await self.client.drop_database(db)
             await self.client[db].create_collection(coll)
 
-    def setFailPoint(self, scenario_dict):
+    async def setFailPoint(self, scenario_dict):
         fail_point = scenario_dict.get("failPoint")
         if fail_point is None:
             return

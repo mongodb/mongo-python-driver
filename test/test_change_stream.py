@@ -15,6 +15,7 @@
 """Test the change_stream module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import random
 import string
