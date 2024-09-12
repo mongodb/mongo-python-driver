@@ -110,7 +110,6 @@ class TestTransactions(TransactionsBase):
     def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = self.rs_client(w=0)
-        self.addCleanup(client.close)
         db = client.test
         coll = db.test
         coll.insert_one({})
@@ -168,7 +167,6 @@ class TestTransactions(TransactionsBase):
         coll = client.test.test
         # Create the collection.
         coll.insert_one({})
-        self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
@@ -196,7 +194,6 @@ class TestTransactions(TransactionsBase):
         coll = client.test.test
         # Create the collection.
         coll.insert_one({})
-        self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
@@ -324,7 +321,6 @@ class TestTransactions(TransactionsBase):
         coll = client[self.db.name].test
         coll.delete_many({})
         listener.reset()
-        self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
         ops: List[InsertOne[RawBSONDocument]] = [
@@ -350,7 +346,6 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_transaction_direct_connection(self):
         client = self.single_client()
-        self.addCleanup(client.close)
         coll = client.pymongo_test.test
 
         # Make sure the collection exists.
@@ -464,7 +459,6 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):
@@ -493,7 +487,6 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):
@@ -526,7 +519,6 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):

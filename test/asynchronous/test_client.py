@@ -816,27 +816,20 @@ class TestClient(AsyncIntegrationTest):
     async def test_init_disconnected(self):
         host, port = await async_client_context.host, await async_client_context.port
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         # is_primary causes client to block until connected
         self.assertIsInstance(await c.is_primary, bool)
-
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertIsInstance(await c.is_mongos, bool)
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertEqual(c.codec_options, CodecOptions())
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertFalse(await c.primary)
         self.assertFalse(await c.secondaries)
         c = await self.async_rs_or_single_client(connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         self.assertIsNone(await c.address)  # PYTHON-2981
@@ -849,14 +842,12 @@ class TestClient(AsyncIntegrationTest):
 
         bad_host = "somedomainthatdoesntexist.org"
         c = AsyncMongoClient(bad_host, port, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
-        self.addAsyncCleanup(c.close)
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
 
     async def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
         c = AsyncMongoClient(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
-        self.addAsyncCleanup(c.close)
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
 
@@ -886,10 +877,8 @@ class TestClient(AsyncIntegrationTest):
     async def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
         c = await self.async_rs_or_single_client(seed, connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertIn(c, {async_client_context.client})
         c = await self.async_rs_or_single_client("invalid.com", connect=False)
-        self.addAsyncCleanup(c.close)
         self.assertNotIn(c, {async_client_context.client})
 
     async def test_host_w_port(self):
@@ -1225,7 +1214,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertFalse(isinstance(await db.test.find_one(), SON))
 
         c = await self.async_rs_or_single_client(document_class=SON)
-        self.addAsyncCleanup(c.close)
+
         db = c.pymongo_test
 
         self.assertEqual(SON, c.codec_options.document_class)
@@ -1247,15 +1236,12 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_socket_timeout_ms_validation(self):
         c = await self.async_rs_or_single_client(socketTimeoutMS=10 * 1000)
-        self.addAsyncCleanup(c.close)
         self.assertEqual(10, (await async_get_pool(c)).opts.socket_timeout)
 
         c = await connected(await self.async_rs_or_single_client(socketTimeoutMS=None))
-        self.addAsyncCleanup(c.close)
         self.assertEqual(None, (await async_get_pool(c)).opts.socket_timeout)
 
         c = await connected(await self.async_rs_or_single_client(socketTimeoutMS=0))
-        self.addAsyncCleanup(c.close)
         self.assertEqual(None, (await async_get_pool(c)).opts.socket_timeout)
 
         with self.assertRaises(ValueError):
@@ -2359,7 +2345,6 @@ class TestMongoClientFailover(AsyncMockClientTest):
             replicaSet="rs",
             heartbeatFrequencyMS=500,
         )
-        self.addAsyncCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2386,7 +2371,6 @@ class TestMongoClientFailover(AsyncMockClientTest):
             retryReads=False,
             serverSelectionTimeoutMS=1000,
         )
-        self.addAsyncCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2421,7 +2405,6 @@ class TestMongoClientFailover(AsyncMockClientTest):
                 retryReads=False,
                 serverSelectionTimeoutMS=1000,
             )
-            self.addAsyncCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, 6)
@@ -2497,7 +2480,6 @@ class TestClientPool(AsyncMockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addAsyncCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(await c.address, ("a", 1))
@@ -2527,7 +2509,6 @@ class TestClientPool(AsyncMockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addAsyncCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(await c.address, ("c", 3))

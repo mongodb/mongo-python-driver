@@ -112,7 +112,6 @@ class TestTransactions(AsyncTransactionsBase):
     async def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = await self.async_rs_client(w=0)
-        self.addAsyncCleanup(client.close)
         db = client.test
         coll = db.test
         await coll.insert_one({})
@@ -176,7 +175,6 @@ class TestTransactions(AsyncTransactionsBase):
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
-        self.addAsyncCleanup(client.close)
         async with client.start_session() as s:
             # Session is pinned to Mongos.
             async with await s.start_transaction():
@@ -206,7 +204,6 @@ class TestTransactions(AsyncTransactionsBase):
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
-        self.addAsyncCleanup(client.close)
         async with client.start_session() as s:
             # Session is pinned to Mongos.
             async with await s.start_transaction():
@@ -334,7 +331,6 @@ class TestTransactions(AsyncTransactionsBase):
         coll = client[self.db.name].test
         await coll.delete_many({})
         listener.reset()
-        self.addAsyncCleanup(client.close)
         self.addAsyncCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
         ops: List[InsertOne[RawBSONDocument]] = [
@@ -360,7 +356,6 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_transaction_direct_connection(self):
         client = await self.async_single_client()
-        self.addAsyncCleanup(client.close)
         coll = client.pymongo_test.test
 
         # Make sure the collection exists.
@@ -476,7 +471,6 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 
         async def callback(session):
@@ -505,7 +499,6 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 
         async def callback(session):
@@ -540,7 +533,6 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         coll = client[self.db.name].test
 
         async def callback(session):

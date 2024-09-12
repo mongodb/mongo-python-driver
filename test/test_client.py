@@ -790,27 +790,20 @@ class TestClient(IntegrationTest):
     def test_init_disconnected(self):
         host, port = client_context.host, client_context.port
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
-
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         self.assertIsInstance(c.is_mongos, bool)
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         self.assertEqual(c.codec_options, CodecOptions())
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
         c = self.rs_or_single_client(connect=False)
-        self.addCleanup(c.close)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         self.assertIsNone(c.address)  # PYTHON-2981
@@ -823,14 +816,12 @@ class TestClient(IntegrationTest):
 
         bad_host = "somedomainthatdoesntexist.org"
         c = MongoClient(bad_host, port, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
-        self.addCleanup(c.close)
         with self.assertRaises(ConnectionFailure):
             c.pymongo_test.test.find_one()
 
     def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
         c = MongoClient(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
-        self.addCleanup(c.close)
         with self.assertRaises(ConnectionFailure):
             c.pymongo_test.test.find_one()
 
@@ -860,10 +851,8 @@ class TestClient(IntegrationTest):
     def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
         c = self.rs_or_single_client(seed, connect=False)
-        self.addCleanup(c.close)
         self.assertIn(c, {client_context.client})
         c = self.rs_or_single_client("invalid.com", connect=False)
-        self.addCleanup(c.close)
         self.assertNotIn(c, {client_context.client})
 
     def test_host_w_port(self):
@@ -1189,7 +1178,7 @@ class TestClient(IntegrationTest):
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c = self.rs_or_single_client(document_class=SON)
-        self.addCleanup(c.close)
+
         db = c.pymongo_test
 
         self.assertEqual(SON, c.codec_options.document_class)
@@ -1211,15 +1200,12 @@ class TestClient(IntegrationTest):
 
     def test_socket_timeout_ms_validation(self):
         c = self.rs_or_single_client(socketTimeoutMS=10 * 1000)
-        self.addCleanup(c.close)
         self.assertEqual(10, (get_pool(c)).opts.socket_timeout)
 
         c = connected(self.rs_or_single_client(socketTimeoutMS=None))
-        self.addCleanup(c.close)
         self.assertEqual(None, (get_pool(c)).opts.socket_timeout)
 
         c = connected(self.rs_or_single_client(socketTimeoutMS=0))
-        self.addCleanup(c.close)
         self.assertEqual(None, (get_pool(c)).opts.socket_timeout)
 
         with self.assertRaises(ValueError):
@@ -2315,7 +2301,6 @@ class TestMongoClientFailover(MockClientTest):
             replicaSet="rs",
             heartbeatFrequencyMS=500,
         )
-        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2342,7 +2327,6 @@ class TestMongoClientFailover(MockClientTest):
             retryReads=False,
             serverSelectionTimeoutMS=1000,
         )
-        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2377,7 +2361,6 @@ class TestMongoClientFailover(MockClientTest):
                 retryReads=False,
                 serverSelectionTimeoutMS=1000,
             )
-            self.addCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, 6)
@@ -2453,7 +2436,6 @@ class TestClientPool(MockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(c.address, ("a", 1))
@@ -2483,7 +2465,6 @@ class TestClientPool(MockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(c.address, ("c", 3))
