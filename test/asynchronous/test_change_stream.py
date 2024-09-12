@@ -162,12 +162,14 @@ class APITestsMixin:
         await coll.insert_one({})
         self.addAsyncCleanup(coll.drop)
         with self.change_stream(max_await_time_ms=250) as stream:
-            self.assertIsNone(stream.try_next())  # No changes initially.
+            self.assertIsNone(await stream.try_next())  # No changes initially.
             await coll.insert_one({})  # Generate a change.
             # On sharded clusters, even majority-committed changes only show
             # up once an event that sorts after it shows up on the other
             # shard. So, we wait on try_next to eventually return changes.
-            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+            await async_wait_until(
+                lambda: await stream.try_next() is not None, "get change from try_next"
+            )
 
     @no_type_check
     async def test_try_next_runs_one_getmore(self):
@@ -189,16 +191,18 @@ class APITestsMixin:
 
             # Confirm that only a single getMore is run even when no documents
             # are returned.
-            self.assertIsNone(stream.try_next())
+            self.assertIsNone(await stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore"])
             listener.reset()
-            self.assertIsNone(stream.try_next())
+            self.assertIsNone(await stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore"])
             listener.reset()
 
             # Get at least one change before resuming.
             await coll.insert_one({"_id": 2})
-            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+            await async_wait_until(
+                lambda: await stream.try_next() is not None, "get change from try_next"
+            )
             listener.reset()
 
             # Cause the next request to initiate the resume process.
@@ -209,15 +213,17 @@ class APITestsMixin:
             # - getMore, fail
             # - resume with aggregate command
             # - no results, return immediately without another getMore
-            self.assertIsNone(stream.try_next())
+            self.assertIsNone(await stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore", "aggregate"])
             listener.reset()
 
             # Stream still works after a resume.
             await coll.insert_one({"_id": 3})
-            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+            await async_wait_until(
+                lambda: await stream.try_next() is not None, "get change from try_next"
+            )
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
-            self.assertIsNone(stream.try_next())
+            self.assertIsNone(await stream.try_next())
 
     @no_type_check
     async def test_batch_size_is_honored(self):
@@ -243,7 +249,7 @@ class APITestsMixin:
             self.assertEqual(cmd["cursor"], expected)
             listener.reset()
             # Confirm that batchSize is honored by getMores.
-            self.assertIsNone(stream.try_next())
+            self.assertIsNone(await stream.try_next())
             cmd = listener.started_events[0].command
             key = next(iter(expected))
             self.assertEqual(expected[key], cmd[key])
@@ -858,7 +864,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
         async with await self.client.admin.aggregate(
             [{"$changeStream": {"allChangesForCluster": True}}], maxAwaitTimeMS=250
         ) as change_stream:
-            self._test_next_blocks(change_stream)
+            await self._test_next_blocks(change_stream)
 
     async def test_full_pipeline(self):
         """$changeStream must be the first stage in a change stream pipeline
