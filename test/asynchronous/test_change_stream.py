@@ -414,7 +414,7 @@ class APITestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 1, 1)
     async def test_start_after(self):
-        resume_token = self.get_resume_token(invalidate=True)
+        resume_token = await self.get_resume_token(invalidate=True)
 
         # resume_after cannot resume after invalidate.
         with self.assertRaises(OperationFailure):
@@ -430,7 +430,7 @@ class APITestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 1, 1)
     async def test_start_after_resume_process_with_changes(self):
-        resume_token = self.get_resume_token(invalidate=True)
+        resume_token = await self.get_resume_token(invalidate=True)
 
         with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
             self.watched_collection().insert_one({"_id": 2})
@@ -449,7 +449,7 @@ class APITestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 2)
     async def test_start_after_resume_process_without_changes(self):
-        resume_token = self.get_resume_token(invalidate=True)
+        resume_token = await self.get_resume_token(invalidate=True)
 
         with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
             self.assertIsNone(change_stream.try_next())
@@ -669,7 +669,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     @async_client_context.require_version_max(4, 0, 7)
     async def test_resumetoken_empty_batch_legacy(self):
-        resume_point = self.get_resume_token()
+        resume_point = await self.get_resume_token()
 
         # Empty resume token when neither resumeAfter or startAfter specified.
         with self.change_stream() as change_stream:
@@ -716,7 +716,7 @@ class ProseSpecTestsMixin:
     async def _test_resumetoken_uniterated_nonempty_batch(self, resume_option):
         # When the batch is not empty and hasn't been iterated at all.
         # Resume token should be same as the resume option used.
-        resume_point = self.get_resume_token()
+        resume_point = await self.get_resume_token()
 
         # Insert some documents so that firstBatch isn't empty.
         self.watched_collection(write_concern=WriteConcern("majority")).insert_many(
@@ -747,7 +747,7 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_min(4, 1, 1)
     async def test_startafter_resume_uses_startafter_after_empty_getMore(self):
         # Resume should use startAfter after no changes have been returned.
-        resume_point = self.get_resume_token()
+        resume_point = await self.get_resume_token()
 
         client, listener = self._client_with_listener("aggregate")
         with await self.change_stream_with_client(
@@ -767,7 +767,7 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_min(4, 1, 1)
     async def test_startafter_resume_uses_resumeafter_after_nonempty_getMore(self):
         # Resume should use resumeAfter after some changes have been returned.
-        resume_point = self.get_resume_token()
+        resume_point = await self.get_resume_token()
 
         client, listener = self._client_with_listener("aggregate")
         with await self.change_stream_with_client(
