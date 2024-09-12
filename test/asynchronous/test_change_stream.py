@@ -28,7 +28,7 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test import AsyncIntegrationTest, Version, async_client_context, unittest
+from test.asynchronous import AsyncIntegrationTest, Version, async_client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
