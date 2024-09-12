@@ -111,7 +111,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         """Get an operationTime. Advances the operation clock beyond the most
         recently returned timestamp.
         """
-        optime = await self.client.admin.command("ping")["operationTime"]
+        optime = (await self.client.admin.command("ping"))["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
 
     def insert_one_and_check(self, change_stream, doc):
@@ -119,7 +119,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         raise NotImplementedError
 
     def kill_change_stream_cursor(self, change_stream):
-        """Cause a cursor not found error on the await anext getMore."""
+        """Cause a cursor not found error on the next getMore."""
         cursor = change_stream._cursor
         address = _CursorAddress(cursor.address, cursor._ns)
         client = self.watched_collection().database.client
@@ -164,10 +164,8 @@ class APITestsMixin:
             await coll.insert_one({})  # Generate a change.
             # On sharded clusters, even majority-committed changes only show
             # up once an event that sorts after it shows up on the other
-            # shard. So, we wait on try_await anext to eventually return changes.
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_await anext"
-            )
+            # shard. So, we wait on try_next to eventually return changes.
+            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
 
     @no_type_check
     async def test_try_next_runs_one_getmore(self):
@@ -198,12 +196,10 @@ class APITestsMixin:
 
             # Get at least one change before resuming.
             await coll.insert_one({"_id": 2})
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_await anext"
-            )
+            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
             listener.reset()
 
-            # Cause the await anext request to initiate the resume process.
+            # Cause the next request to initiate the resume process.
             self.kill_change_stream_cursor(stream)
             listener.reset()
 
@@ -217,9 +213,7 @@ class APITestsMixin:
 
             # Stream still works after a resume.
             await coll.insert_one({"_id": 3})
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_await anext"
-            )
+            async_wait_until(lambda: stream.try_next() is not None, "get change from try_next")
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(stream.try_next())
 
@@ -306,7 +300,7 @@ class APITestsMixin:
         changes = []
         t = threading.Thread(target=lambda: changes.append(change_stream.next()))
         t.start()
-        # Sleep for a bit to prove that the call to await await anext() blocks.
+        # Sleep for a bit to prove that the call to next() blocks.
         await asyncio.sleep(1)
         self.assertTrue(t.is_alive())
         self.assertFalse(changes)
@@ -321,7 +315,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_next_blocks(self):
-        """Test that await anext blocks until a change is readable"""
+        """Test that next blocks until a change is readable"""
         # Use a short wait time to speed up the test.
         with await self.change_stream(max_await_time_ms=250) as change_stream:
             await self._test_next_blocks(change_stream)
@@ -336,7 +330,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_concurrent_close(self):
-        """Ensure a AsyncChangeStream can be await aclosed from another thread."""
+        """Ensure a AsyncChangeStream can be closed from another thread."""
         # Use a short wait time to speed up the test.
         with await self.change_stream(max_await_time_ms=250) as change_stream:
 
@@ -512,7 +506,7 @@ class ProseSpecTestsMixin:
             self.watched_collection().insert_one({})
             with self.assertRaises(expected_exception):
                 await anext(change_stream)
-            # The cursor should now be await aclosed.
+            # The cursor should now be closed.
             with self.assertRaises(StopIteration):
                 await anext(change_stream)
 
@@ -559,7 +553,7 @@ class ProseSpecTestsMixin:
     async def test_resume_on_error(self):
         with self.change_stream() as change_stream:
             self.insert_one_and_check(change_stream, {"_id": 1})
-            # Cause a cursor not found error on the await anext getMore.
+            # Cause a cursor not found error on the next getMore.
             self.kill_change_stream_cursor(change_stream)
             self.insert_one_and_check(change_stream, {"_id": 2})
 
@@ -582,7 +576,7 @@ class ProseSpecTestsMixin:
 
     # Prose test no. 5 - REMOVED
     # Prose test no. 6 - SKIPPED
-    # Reason: readPreference is not configurable using the await watch() helpers
+    # Reason: readPreference is not configurable using the watch() helpers
     #   so we can skip this test. Also, PyMongo performs server selection for
     #   each operation which ensure compliance with this prose test.
 
@@ -606,7 +600,7 @@ class ProseSpecTestsMixin:
 
         with self.change_stream() as change_stream:
             self.insert_one_and_check(change_stream, {"_id": 1})
-            # Cause a cursor not found error on the await anext getMore.
+            # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
             self.kill_change_stream_cursor(change_stream)
             cursor.close = raise_error
@@ -814,15 +808,15 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     @classmethod
     @async_client_context.require_version_min(4, 0, 0, -1)
     @async_client_context.require_change_streams
-    def asyncSetUpClass(cls):
-        super().asyncSetUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
-    async def asyncTearDownClass(cls):
+    async def _tearDown_class(cls):
         for db in cls.dbs:
             await cls.client.drop_database(db)
-        super().asyncTearDownClass()
+        super()._tearDown_class()
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client.watch(*args, **kwargs)
@@ -875,8 +869,8 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
     @classmethod
     @async_client_context.require_version_min(4, 0, 0, -1)
     @async_client_context.require_change_streams
-    def asyncSetUpClass(cls):
-        super().asyncSetUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client[self.db.name].watch(*args, **kwargs)
@@ -962,8 +956,8 @@ class TestAsyncCollectionAsyncChangeStream(
 ):
     @classmethod
     @async_client_context.require_change_streams
-    def asyncSetUpClass(cls):
-        super().asyncSetUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
 
     async def asyncSetUp(self):
         # Use a new collection for each test.
@@ -1107,15 +1101,15 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
 
     @classmethod
     @async_client_context.require_connection
-    async def asyncSetUpClass(cls):
-        super().asyncSetUpClass()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.listener = AllowListEventListener("aggregate", "getMore")
         cls.client = await async_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
-    def asyncTearDownClass(cls):
+    async def _tearDown_class(cls):
         cls.client.close()
-        super().asyncTearDownClass()
+        await super()._tearDown_class()
 
     def asyncSetUp(self):
         super().asyncSetUp()

@@ -111,7 +111,7 @@ class TestChangeStreamBase(IntegrationTest):
         """Get an operationTime. Advances the operation clock beyond the most
         recently returned timestamp.
         """
-        optime = self.client.admin.command("ping")["operationTime"]
+        optime = (self.client.admin.command("ping"))["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
 
     def insert_one_and_check(self, change_stream, doc):
@@ -802,15 +802,15 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         for db in cls.dbs:
             cls.client.drop_database(db)
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client.watch(*args, **kwargs)
@@ -863,8 +863,8 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client[self.db.name].watch(*args, **kwargs)
@@ -948,8 +948,8 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
 class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecTestsMixin):
     @classmethod
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -1091,15 +1091,15 @@ class TestAllLegacyScenarios(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.listener = AllowListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def setUp(self):
         super().setUp()
