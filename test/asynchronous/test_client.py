@@ -1881,11 +1881,11 @@ class TestClient(AsyncIntegrationTest):
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
 
     async def test_srv_max_hosts_kwarg(self):
-        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
-        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
-        client = AsyncMongoClient(
+        client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)

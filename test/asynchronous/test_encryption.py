@@ -230,7 +230,7 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
         key_vault_client: AsyncMongoClient,
-        codec_options: Mapping[str, Any],
+        codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ):
         client_encryption = AsyncClientEncryption(
@@ -245,7 +245,7 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
         key_vault_client: AsyncMongoClient,
-        codec_options: Mapping[str, Any],
+        codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ):
         client_encryption = AsyncClientEncryption(

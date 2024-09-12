@@ -230,7 +230,7 @@ class EncryptionIntegrationTest(IntegrationTest):
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
         key_vault_client: MongoClient,
-        codec_options: Mapping[str, Any],
+        codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ):
         client_encryption = ClientEncryption(
@@ -245,7 +245,7 @@ class EncryptionIntegrationTest(IntegrationTest):
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
         key_vault_client: MongoClient,
-        codec_options: Mapping[str, Any],
+        codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
     ):
         client_encryption = ClientEncryption(

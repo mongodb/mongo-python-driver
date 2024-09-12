@@ -1839,11 +1839,11 @@ class TestClient(IntegrationTest):
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
 
     def test_srv_max_hosts_kwarg(self):
-        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
-        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
-        client = MongoClient(
+        client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
