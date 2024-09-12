@@ -331,7 +331,7 @@ class APITestsMixin:
     @no_type_check
     async def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
-        with self.watched_collection().aggregate(
+        async with await self.watched_collection().aggregate(
             [{"$changeStream": {}}], maxAwaitTimeMS=250
         ) as change_stream:
             await self._test_next_blocks(change_stream)
