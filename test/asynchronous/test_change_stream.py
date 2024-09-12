@@ -144,7 +144,7 @@ class APITestsMixin:
             self.assertIsInstance(change_stream._cursor, AsyncCommandCursor)
             self.assertEqual(1000, change_stream._cursor._max_await_time_ms)
             self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
-            _ = change_stream.next()
+            _ = await change_stream.next()
             resume_token = change_stream.resume_token
         with self.assertRaises(TypeError):
             self.change_stream(pipeline={})
@@ -381,7 +381,7 @@ class APITestsMixin:
             # Insert.
             inserted_doc = {"_id": ObjectId(), "foo": "bar"}
             self.watched_collection().insert_one(inserted_doc)
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["ns"], expected_ns)
@@ -389,7 +389,7 @@ class APITestsMixin:
             # Update.
             update_spec = {"$set": {"new": 1}, "$unset": {"foo": 1}}
             self.watched_collection().update_one(inserted_doc, update_spec)
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "update")
             self.assertEqual(change["ns"], expected_ns)
@@ -401,14 +401,14 @@ class APITestsMixin:
             self.assertEqual(expected_update_description, change["updateDescription"])
             # Replace.
             self.watched_collection().replace_one({"new": 1}, {"foo": "bar"})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "replace")
             self.assertEqual(change["ns"], expected_ns)
             self.assertEqual(change["fullDocument"], inserted_doc)
             # Delete.
             self.watched_collection().delete_one({"foo": "bar"})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "delete")
             self.assertEqual(change["ns"], expected_ns)
@@ -428,7 +428,7 @@ class APITestsMixin:
         # start_after can resume after invalidate.
         with self.change_stream(start_after=resume_token) as change_stream:
             self.watched_collection().insert_one({"_id": 2})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
@@ -439,7 +439,7 @@ class APITestsMixin:
 
         with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
             self.watched_collection().insert_one({"_id": 2})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
@@ -447,7 +447,7 @@ class APITestsMixin:
             self.kill_change_stream_cursor(change_stream)
 
             self.watched_collection().insert_one({"_id": 3})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 3})
 
@@ -461,7 +461,7 @@ class APITestsMixin:
             self.kill_change_stream_cursor(change_stream)
 
             self.watched_collection().insert_one({"_id": 2})
-            change = change_stream.next()
+            change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
@@ -805,10 +805,10 @@ class ProseSpecTestsMixin:
             [{"$changeStreamSplitLargeEvent": {}}], full_document_before_change="required"
         ) as change_stream:
             await coll.update_one({"_id": 1}, {"$set": {"value": "z" * 10 * 1024 * 1024}})
-            doc_1 = change_stream.next()
+            doc_1 = await change_stream.next()
             self.assertIn("splitEvent", doc_1)
             self.assertEqual(doc_1["splitEvent"], {"fragment": 1, "of": 2})
-            doc_2 = change_stream.next()
+            doc_2 = await change_stream.next()
             self.assertIn("splitEvent", doc_2)
             self.assertEqual(doc_2["splitEvent"], {"fragment": 2, "of": 2})
 
@@ -896,7 +896,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         dropped_colls = await self.db.list_collection_names()
         # Drop the watched database to get an invalidate event.
         self.generate_invalidate_event(change_stream)
-        change = change_stream.next()
+        change = await change_stream.next()
         # 4.1+ returns "drop" events for each collection in dropped database
         # and a "dropAsyncDatabase" event for the database itself.
         if change["operationType"] == "drop":
@@ -905,19 +905,19 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
                 ns = change["ns"]
                 self.assertEqual(ns["db"], change_stream._target.name)
                 self.assertIn(ns["coll"], dropped_colls)
-                change = change_stream.next()
+                change = await change_stream.next()
             self.assertEqual(change["operationType"], "dropAsyncDatabase")
             self.assertTrue(change["_id"])
             self.assertEqual(change["ns"], {"db": change_stream._target.name})
-            # Get await anext change.
-            change = change_stream.next()
+            # Get next change.
+            change = await change_stream.next()
         self.assertTrue(change["_id"])
         self.assertEqual(change["operationType"], "invalidate")
         self.assertNotIn("ns", change)
         self.assertNotIn("fullDocument", change)
         # The AsyncChangeStream should be dead.
         with self.assertRaises(StopIteration):
-            change_stream.next()
+            await change_stream.next()
 
     async def _test_invalidate_stops_iteration(self, change_stream):
         # Drop the watched database to get an invalidate event.
@@ -929,7 +929,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         self.assertEqual(change["operationType"], "invalidate")
         # Change stream must not allow further iteration.
         with self.assertRaises(StopIteration):
-            change_stream.next()
+            await change_stream.next()
         with self.assertRaises(StopIteration):
             await anext(change_stream)
 
@@ -996,14 +996,14 @@ class TestAsyncCollectionAsyncChangeStream(
         self.assertEqual(change["operationType"], "invalidate")
         # Change stream must not allow further iteration.
         with self.assertRaises(StopIteration):
-            change_stream.next()
+            await change_stream.next()
         with self.assertRaises(StopIteration):
             await anext(change_stream)
 
     async def _test_get_invalidate_event(self, change_stream):
         # Drop the watched database to get an invalidate event.
         await change_stream._target.drop()
-        change = change_stream.next()
+        change = await change_stream.next()
         # 4.1+ returns a "drop" change document.
         if change["operationType"] == "drop":
             self.assertTrue(change["_id"])
@@ -1012,14 +1012,14 @@ class TestAsyncCollectionAsyncChangeStream(
                 {"db": change_stream._target.database.name, "coll": change_stream._target.name},
             )
             # Last change should be invalidate.
-            change = change_stream.next()
+            change = await change_stream.next()
         self.assertTrue(change["_id"])
         self.assertEqual(change["operationType"], "invalidate")
         self.assertNotIn("ns", change)
         self.assertNotIn("fullDocument", change)
         # The AsyncChangeStream should be dead.
         with self.assertRaises(StopIteration):
-            change_stream.next()
+            await change_stream.next()
 
     async def insert_one_and_check(self, change_stream, doc):
         self.watched_collection().insert_one(doc)
@@ -1062,9 +1062,9 @@ class TestAsyncCollectionAsyncChangeStream(
             with await coll.watch(
                 start_at_operation_time=optime, max_await_time_ms=1
             ) as change_stream:
-                _ = change_stream.next()
+                _ = await change_stream.next()
                 resume_token_1 = change_stream.resume_token
-                _ = change_stream.next()
+                _ = await change_stream.next()
                 resume_token_2 = change_stream.resume_token
 
             # Should not error.
@@ -1084,7 +1084,7 @@ class TestAsyncCollectionAsyncChangeStream(
             coll = self.watched_collection(codec_options=options)
             with await coll.watch() as change_stream:
                 await coll.insert_one(random_doc)
-                _ = change_stream.next()
+                _ = await change_stream.next()
                 resume_token = change_stream.resume_token
 
             # The resume token is always a document.
