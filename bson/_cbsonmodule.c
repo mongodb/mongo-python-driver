@@ -1743,6 +1743,45 @@ int write_dict(PyObject* self, buffer_t buffer,
         while (PyDict_Next(dict, &pos, &key, &value)) {
             if (!decode_and_write_pair(self, buffer, key, value,
                                     check_keys, options, top_level)) {
+                if (PyErr_Occurred()) {
+                    PyObject *etype, *evalue, *etrace;
+                    PyErr_Fetch(&etype, &evalue, &etrace);
+                    PyObject *InvalidDocument = _error("InvalidDocument");
+
+                    if (PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
+
+                        if (InvalidDocument) {
+                            Py_DECREF(etype);
+                            etype = InvalidDocument;
+
+                            if (evalue) {
+                                PyObject *msg = PyObject_Str(evalue);
+                                Py_DECREF(evalue);
+
+                                if (msg) {
+                                    // Prepend doc to the existing message
+                                    PyObject *dict_str = PyObject_Str(dict);
+                                    PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", PyUnicode_AsUTF8(dict_str), PyUnicode_AsUTF8(msg));
+                                    Py_DECREF(dict_str);
+
+                                    if (new_msg) {
+                                        evalue = new_msg;
+                                        Py_DECREF(new_msg);
+                                    }
+                                    else{
+                                    evalue = msg;
+                                    }
+
+                                     Py_DECREF(msg);
+
+                                }
+                            }
+                            PyErr_NormalizeException(&etype, &evalue, &etrace);
+                        }
+                    }
+                    PyErr_Restore(etype, evalue, etrace);
+                    Py_DECREF(InvalidDocument);
+                }
                 return 0;
             }
         }
