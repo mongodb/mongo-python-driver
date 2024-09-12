@@ -168,7 +168,7 @@ class APITestsMixin:
             # up once an event that sorts after it shows up on the other
             # shard. So, we wait on try_next to eventually return changes.
             await async_wait_until(
-                lambda: await stream.try_next() is not None, "get change from try_next"
+                lambda: stream.try_next() is not None, "get change from try_next"
             )
 
     @no_type_check
@@ -201,7 +201,7 @@ class APITestsMixin:
             # Get at least one change before resuming.
             await coll.insert_one({"_id": 2})
             await async_wait_until(
-                lambda: await stream.try_next() is not None, "get change from try_next"
+                lambda: stream.try_next() is not None, "get change from try_next"
             )
             listener.reset()
 
@@ -220,7 +220,7 @@ class APITestsMixin:
             # Stream still works after a resume.
             await coll.insert_one({"_id": 3})
             await async_wait_until(
-                lambda: await stream.try_next() is not None, "get change from try_next"
+                lambda: stream.try_next() is not None, "get change from try_next"
             )
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(await stream.try_next())
