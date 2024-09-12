@@ -285,7 +285,7 @@ class APITestsMixin:
         """$changeStream must be the first stage in a change stream pipeline
         sent to the server.
         """
-        self._test_full_pipeline({})
+        await self._test_full_pipeline({})
 
     @no_type_check
     async def test_iteration(self):
@@ -868,7 +868,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
         """$changeStream must be the first stage in a change stream pipeline
         sent to the server.
         """
-        self._test_full_pipeline({"allChangesForCluster": True})
+        await self._test_full_pipeline({"allChangesForCluster": True})
 
 
 class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
