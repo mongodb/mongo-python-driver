@@ -303,13 +303,14 @@ class APITestsMixin:
             self._test_invalidate_stops_iteration(change_stream)
 
     @no_type_check
-    async def _test_next_blocks(self, change_stream):
+    @async_client_context.require_sync
+    def _test_next_blocks(self, change_stream):
         inserted_doc = {"_id": ObjectId()}
         changes = []
         t = threading.Thread(target=lambda: changes.append(change_stream.next()))
         t.start()
         # Sleep for a bit to prove that the call to next() blocks.
-        await asyncio.sleep(1)
+        time.sleep(1)
         self.assertTrue(t.is_alive())
         self.assertFalse(changes)
         self.watched_collection().insert_one(inserted_doc)
@@ -322,19 +323,21 @@ class APITestsMixin:
         self.assertEqual(changes[0]["fullDocument"], inserted_doc)
 
     @no_type_check
+    @async_client_context.require_sync
     async def test_next_blocks(self):
         """Test that next blocks until a change is readable"""
         # Use a short wait time to speed up the test.
         async with await self.change_stream(max_await_time_ms=250) as change_stream:
-            await self._test_next_blocks(change_stream)
+            self._test_next_blocks(change_stream)
 
     @no_type_check
+    @async_client_context.require_sync
     async def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
         async with await self.watched_collection().aggregate(
             [{"$changeStream": {}}], maxAwaitTimeMS=250
         ) as change_stream:
-            await self._test_next_blocks(change_stream)
+            self._test_next_blocks(change_stream)
 
     @no_type_check
     async def test_concurrent_close(self):
@@ -859,12 +862,13 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
             for db, collname in product(self.dbs, collnames):
                 self._insert_and_check(change_stream, db, collname, {"_id": collname})
 
+    @async_client_context.require_sync
     async def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
         async with await self.client.admin.aggregate(
             [{"$changeStream": {"allChangesForCluster": True}}], maxAwaitTimeMS=250
         ) as change_stream:
-            await self._test_next_blocks(change_stream)
+            self._test_next_blocks(change_stream)
 
     async def test_full_pipeline(self):
         """$changeStream must be the first stage in a change stream pipeline

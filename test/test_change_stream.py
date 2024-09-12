@@ -293,6 +293,7 @@ class APITestsMixin:
             self._test_invalidate_stops_iteration(change_stream)
 
     @no_type_check
+    @client_context.require_sync
     def _test_next_blocks(self, change_stream):
         inserted_doc = {"_id": ObjectId()}
         changes = []
@@ -312,6 +313,7 @@ class APITestsMixin:
         self.assertEqual(changes[0]["fullDocument"], inserted_doc)
 
     @no_type_check
+    @client_context.require_sync
     def test_next_blocks(self):
         """Test that next blocks until a change is readable"""
         # Use a short wait time to speed up the test.
@@ -319,6 +321,7 @@ class APITestsMixin:
             self._test_next_blocks(change_stream)
 
     @no_type_check
+    @client_context.require_sync
     def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
         with self.watched_collection().aggregate(
@@ -845,6 +848,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
             for db, collname in product(self.dbs, collnames):
                 self._insert_and_check(change_stream, db, collname, {"_id": collname})
 
+    @client_context.require_sync
     def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
         with self.client.admin.aggregate(
