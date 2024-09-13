@@ -185,7 +185,7 @@ class APITestsMixin:
         # skip any "create" events.
         await coll.insert_one({"_id": 1})
         self.addAsyncCleanup(coll.drop)
-        with await self.change_stream_with_client(client, max_await_time_ms=250) as stream:
+        async with await self.change_stream_with_client(client, max_await_time_ms=250) as stream:
             self.assertEqual(listener.started_command_names(), ["aggregate"])
             listener.reset()
 
@@ -526,7 +526,7 @@ class ProseSpecTestsMixin:
         """AsyncChangeStream must continuously track the last seen resumeToken."""
         client, listener = self._client_with_listener("aggregate", "getMore")
         coll = self.watched_collection(write_concern=WriteConcern("majority"))
-        with await self.change_stream_with_client(client) as change_stream:
+        async with await self.change_stream_with_client(client) as change_stream:
             self.assertEqual(
                 change_stream.resume_token, expected_rt_getter(change_stream, listener)
             )
@@ -624,7 +624,7 @@ class ProseSpecTestsMixin:
     async def test_start_at_operation_time_caching(self):
         # Case 1: change stream not started with startAtOperationTime
         client, listener = self.client_with_listener("aggregate")
-        with await self.change_stream_with_client(client) as cs:
+        async with await self.change_stream_with_client(client) as cs:
             self.kill_change_stream_cursor(cs)
             cs.try_next()
         cmd = listener.started_events[-1].command
@@ -633,7 +633,9 @@ class ProseSpecTestsMixin:
         # Case 2: change stream started with startAtOperationTime
         listener.reset()
         optime = self.get_start_at_operation_time()
-        with await self.change_stream_with_client(client, start_at_operation_time=optime) as cs:
+        async with await self.change_stream_with_client(
+            client, start_at_operation_time=optime
+        ) as cs:
             self.kill_change_stream_cursor(cs)
             cs.try_next()
         cmd = listener.started_events[-1].command
@@ -651,7 +653,7 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_min(4, 0, 7)
     async def test_resumetoken_empty_batch(self):
         client, listener = self._client_with_listener("getMore")
-        with await self.change_stream_with_client(client) as change_stream:
+        async with await self.change_stream_with_client(client) as change_stream:
             self.assertIsNone(change_stream.try_next())
             resume_token = change_stream.resume_token
 
@@ -663,7 +665,7 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_min(4, 0, 7)
     async def test_resumetoken_exhausted_batch(self):
         client, listener = self._client_with_listener("getMore")
-        with await self.change_stream_with_client(client) as change_stream:
+        async with await self.change_stream_with_client(client) as change_stream:
             self._populate_and_exhaust_change_stream(change_stream)
             resume_token = change_stream.resume_token
 
@@ -755,7 +757,7 @@ class ProseSpecTestsMixin:
         resume_point = await self.get_resume_token()
 
         client, listener = self._client_with_listener("aggregate")
-        with await self.change_stream_with_client(
+        async with await self.change_stream_with_client(
             client, start_after=resume_point
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
@@ -775,7 +777,7 @@ class ProseSpecTestsMixin:
         resume_point = await self.get_resume_token()
 
         client, listener = self._client_with_listener("aggregate")
-        with await self.change_stream_with_client(
+        async with await self.change_stream_with_client(
             client, start_after=resume_point
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
@@ -801,7 +803,7 @@ class ProseSpecTestsMixin:
             "test_split_large_change", changeStreamPreAndPostImages={"enabled": True}
         )
         await coll.insert_one({"_id": 1, "value": "q" * 10 * 1024 * 1024})
-        with await coll.watch(
+        async with await coll.watch(
             [{"$changeStreamSplitLargeEvent": {}}], full_document_before_change="required"
         ) as change_stream:
             await coll.update_one({"_id": 1}, {"$set": {"value": "z" * 10 * 1024 * 1024}})
@@ -976,9 +978,9 @@ class TestAsyncCollectionAsyncChangeStream(
         self.watched_collection().drop()
         self.watched_collection().insert_one({})
 
-    def change_stream_with_client(self, client, *args, **kwargs):
+    async def change_stream_with_client(self, client, *args, **kwargs):
         return (
-            client[self.db.name]
+            await client[self.db.name]
             .get_collection(self.watched_collection().name)
             .watch(*args, **kwargs)
         )
@@ -1034,7 +1036,7 @@ class TestAsyncCollectionAsyncChangeStream(
     async def test_raw(self):
         """Test with RawBSONDocument."""
         raw_coll = self.watched_collection(codec_options=DEFAULT_RAW_BSON_OPTIONS)
-        with await raw_coll.watch() as change_stream:
+        async with await raw_coll.watch() as change_stream:
             raw_doc = RawBSONDocument(encode({"_id": 1}))
             self.watched_collection().insert_one(raw_doc)
             change = await anext(change_stream)
@@ -1059,7 +1061,7 @@ class TestAsyncCollectionAsyncChangeStream(
                 uuid_representation=uuid_representation
             )
             coll = self.watched_collection(codec_options=options)
-            with await coll.watch(
+            async with await coll.watch(
                 start_at_operation_time=optime, max_await_time_ms=1
             ) as change_stream:
                 _ = await change_stream.next()
@@ -1068,9 +1070,9 @@ class TestAsyncCollectionAsyncChangeStream(
                 resume_token_2 = change_stream.resume_token
 
             # Should not error.
-            with await coll.watch(resume_after=resume_token_1):
+            async with await coll.watch(resume_after=resume_token_1):
                 pass
-            with await coll.watch(resume_after=resume_token_2):
+            async with await coll.watch(resume_after=resume_token_2):
                 pass
 
     async def test_document_id_order(self):
@@ -1082,7 +1084,7 @@ class TestAsyncCollectionAsyncChangeStream(
                 document_class=document_class
             )
             coll = self.watched_collection(codec_options=options)
-            with await coll.watch() as change_stream:
+            async with await coll.watch() as change_stream:
                 await coll.insert_one(random_doc)
                 _ = await change_stream.next()
                 resume_token = change_stream.resume_token
@@ -1090,7 +1092,7 @@ class TestAsyncCollectionAsyncChangeStream(
             # The resume token is always a document.
             self.assertIsInstance(resume_token, document_class)
             # Should not error.
-            with await coll.watch(resume_after=resume_token):
+            async with await coll.watch(resume_after=resume_token):
                 pass
             await coll.delete_many({})
 
@@ -1103,7 +1105,7 @@ class TestAsyncCollectionAsyncChangeStream(
 
         # Does not error.
         coll = self.watched_collection(read_concern=ReadConcern("majority"))
-        with await coll.watch():
+        async with await coll.watch():
             pass
 
 
