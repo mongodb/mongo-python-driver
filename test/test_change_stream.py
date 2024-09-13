@@ -101,11 +101,11 @@ class TestChangeStreamBase(IntegrationTest):
                 if isinstance(cs._target, MongoClient):
                     self.skipTest("cluster-level change streams cannot be invalidated")
                 self.generate_invalidate_event(cs)
-                return cs.next()["_id"]
+                return (cs.next())["_id"]
         else:
             with self.change_stream() as cs:
                 coll.insert_one({"data": 1})
-                return cs.next()["_id"]
+                return (cs.next())["_id"]
 
     def get_start_at_operation_time(self):
         """Get an operationTime. Advances the operation clock beyond the most

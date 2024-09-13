@@ -103,11 +103,11 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
                 if isinstance(cs._target, AsyncMongoClient):
                     self.skipTest("cluster-level change streams cannot be invalidated")
                 self.generate_invalidate_event(cs)
-                return cs.next()["_id"]
+                return (await cs.next())["_id"]
         else:
             async with await self.change_stream() as cs:
                 await coll.insert_one({"data": 1})
-                return cs.next()["_id"]
+                return (await cs.next())["_id"]
 
     async def get_start_at_operation_time(self):
         """Get an operationTime. Advances the operation clock beyond the most
