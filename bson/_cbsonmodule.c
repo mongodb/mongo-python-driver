@@ -279,7 +279,7 @@ static PyObject* datetime_from_millis(long long millis) {
      * micros = diff * 1000                       111000
      * Resulting in datetime(1, 1, 1, 1, 1, 1, 111000) -- the expected result
      */
-    PyObject* datetime;
+    PyObject* datetime = NULL;
     int diff = (int)(((millis % 1000) + 1000) % 1000);
     int microseconds = diff * 1000;
     Time64_T seconds = (millis - diff) / 1000;
@@ -1790,7 +1790,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* result;
     unsigned char check_keys;
     unsigned char top_level = 1;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     PyObject* raw_bson_document_bytes_obj;
@@ -2620,7 +2620,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     /* TODO: Support buffer protocol */
     char* string;
     PyObject* bson;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     unsigned position;
     unsigned max;
@@ -2732,7 +2732,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     int32_t size;
     Py_ssize_t total_size;
     const char* string;
-    PyObject* bson;
+    PyObject* bson = NULL;
     codec_options_t options;
     PyObject* result = NULL;
     PyObject* options_obj;
