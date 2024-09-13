@@ -150,8 +150,6 @@ try:
 except ImportError:
     _USE_C = False
 
-_USE_C = False  # TODO Replace
-
 __all__ = [
     "ALL_UUID_SUBTYPES",
     "CSHARP_LEGACY",
