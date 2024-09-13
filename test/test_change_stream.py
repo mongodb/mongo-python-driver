@@ -1044,7 +1044,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
     @client_context.require_version_min(4, 0)  # Needed for start_at_operation_time.
     def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
-        optime = self.db.command("ping")["operationTime"]
+        optime = (self.db.command("ping"))["operationTime"]
         self.watched_collection().insert_many(
             [
                 {"_id": Binary(uuid.uuid4().bytes, id_subtype)}
