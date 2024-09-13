@@ -588,7 +588,7 @@ class ProseSpecTestsMixin:
         client, listener = await self._client_with_listener("aggregate", "getMore")
         async with self.fail_point(fail_point):
             try:
-                _ = self.change_stream_with_client(client)
+                _ = await self.change_stream_with_client(client)
             except OperationFailure:
                 pass
 
@@ -751,14 +751,14 @@ class ProseSpecTestsMixin:
     @no_type_check
     @async_client_context.require_no_mongos
     async def test_resumetoken_uniterated_nonempty_batch_resumeafter(self):
-        self._test_resumetoken_uniterated_nonempty_batch("resume_after")
+        await self._test_resumetoken_uniterated_nonempty_batch("resume_after")
 
     # Prose test no. 14
     @no_type_check
     @async_client_context.require_no_mongos
     @async_client_context.require_version_min(4, 1, 1)
     async def test_resumetoken_uniterated_nonempty_batch_startafter(self):
-        self._test_resumetoken_uniterated_nonempty_batch("start_after")
+        await self._test_resumetoken_uniterated_nonempty_batch("start_after")
 
     # Prose test no. 17
     @no_type_check
