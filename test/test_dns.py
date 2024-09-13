@@ -22,16 +22,15 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, PyMongoTestCase, client_context, unittest
 from test.utils import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.uri_parser import parse_uri, split_hosts
 
 
-class TestDNSRepl(unittest.TestCase):
+class TestDNSRepl(PyMongoTestCase):
     TEST_PATH = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "replica-set"
     )
@@ -42,7 +41,7 @@ class TestDNSRepl(unittest.TestCase):
         pass
 
 
-class TestDNSLoadBalanced(unittest.TestCase):
+class TestDNSLoadBalanced(PyMongoTestCase):
     TEST_PATH = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "load-balanced"
     )
@@ -53,7 +52,7 @@ class TestDNSLoadBalanced(unittest.TestCase):
         pass
 
 
-class TestDNSSharded(unittest.TestCase):
+class TestDNSSharded(PyMongoTestCase):
     TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "sharded")
     load_balanced = False
 
@@ -120,7 +119,7 @@ def create_test(test_case):
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
 
-                client = MongoClient(uri, **copts)
+                client = PyMongoTestCase.unmanaged_single_client(uri, **copts)
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
@@ -133,6 +132,7 @@ def create_test(test_case):
                     client.admin.command("ping")
                 # XXX: we should block until SRV poller runs at least once
                 # and re-run these assertions.
+                client.close()
         else:
             try:
                 parse_uri(uri)
@@ -157,37 +157,37 @@ create_tests(TestDNSLoadBalanced)
 create_tests(TestDNSSharded)
 
 
-class TestParsingErrors(unittest.TestCase):
+class TestParsingErrors(PyMongoTestCase):
     def test_invalid_host(self):
         self.assertRaisesRegex(
             ConfigurationError,
             "Invalid URI host: mongodb is not",
-            MongoClient,
+            self.simple_client,
             "mongodb+srv://mongodb",
         )
         self.assertRaisesRegex(
             ConfigurationError,
             "Invalid URI host: mongodb.com is not",
-            MongoClient,
+            self.simple_client,
             "mongodb+srv://mongodb.com",
         )
         self.assertRaisesRegex(
             ConfigurationError,
             "Invalid URI host: an IP address is not",
-            MongoClient,
+            self.simple_client,
             "mongodb+srv://127.0.0.1",
         )
         self.assertRaisesRegex(
             ConfigurationError,
             "Invalid URI host: an IP address is not",
-            MongoClient,
+            self.simple_client,
             "mongodb+srv://[::1]",
         )
 
 
 class TestCaseInsensitive(IntegrationTest):
     def test_connect_case_insensitive(self):
-        client = MongoClient("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
+        client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
         self.addCleanup(client.close)
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 

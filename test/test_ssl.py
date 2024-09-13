@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from test import (
     HAVE_IPADDRESS,
     IntegrationTest,
+    PyMongoTestCase,
     SkipTest,
     client_context,
     connected,
@@ -82,45 +83,45 @@ MONGODB_X509_USERNAME = "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=cl
 # use 'localhost' for the hostname of all hosts.
 
 
-class TestClientSSL(unittest.TestCase):
+class TestClientSSL(PyMongoTestCase):
     @unittest.skipIf(HAVE_SSL, "The ssl module is available, can't test what happens without it.")
     def test_no_ssl_module(self):
         # Explicit
-        self.assertRaises(ConfigurationError, MongoClient, ssl=True)
+        self.assertRaises(ConfigurationError, self.simple_client, ssl=True)
 
         # Implied
-        self.assertRaises(ConfigurationError, MongoClient, tlsCertificateKeyFile=CLIENT_PEM)
+        self.assertRaises(ConfigurationError, self.simple_client, tlsCertificateKeyFile=CLIENT_PEM)
 
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
     @ignore_deprecations
     def test_config_ssl(self):
         # Tests various ssl configurations
-        self.assertRaises(ValueError, MongoClient, ssl="foo")
+        self.assertRaises(ValueError, self.simple_client, ssl="foo")
         self.assertRaises(
-            ConfigurationError, MongoClient, tls=False, tlsCertificateKeyFile=CLIENT_PEM
+            ConfigurationError, self.simple_client, tls=False, tlsCertificateKeyFile=CLIENT_PEM
         )
-        self.assertRaises(TypeError, MongoClient, ssl=0)
-        self.assertRaises(TypeError, MongoClient, ssl=5.5)
-        self.assertRaises(TypeError, MongoClient, ssl=[])
+        self.assertRaises(TypeError, self.simple_client, ssl=0)
+        self.assertRaises(TypeError, self.simple_client, ssl=5.5)
+        self.assertRaises(TypeError, self.simple_client, ssl=[])
 
-        self.assertRaises(IOError, MongoClient, tlsCertificateKeyFile="NoSuchFile")
-        self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=True)
-        self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=[])
+        self.assertRaises(IOError, self.simple_client, tlsCertificateKeyFile="NoSuchFile")
+        self.assertRaises(TypeError, self.simple_client, tlsCertificateKeyFile=True)
+        self.assertRaises(TypeError, self.simple_client, tlsCertificateKeyFile=[])
 
         # Test invalid combinations
         self.assertRaises(
-            ConfigurationError, MongoClient, tls=False, tlsCertificateKeyFile=CLIENT_PEM
+            ConfigurationError, self.simple_client, tls=False, tlsCertificateKeyFile=CLIENT_PEM
         )
-        self.assertRaises(ConfigurationError, MongoClient, tls=False, tlsCAFile=CA_PEM)
-        self.assertRaises(ConfigurationError, MongoClient, tls=False, tlsCRLFile=CRL_PEM)
+        self.assertRaises(ConfigurationError, self.simple_client, tls=False, tlsCAFile=CA_PEM)
+        self.assertRaises(ConfigurationError, self.simple_client, tls=False, tlsCRLFile=CRL_PEM)
         self.assertRaises(
-            ConfigurationError, MongoClient, tls=False, tlsAllowInvalidCertificates=False
-        )
-        self.assertRaises(
-            ConfigurationError, MongoClient, tls=False, tlsAllowInvalidHostnames=False
+            ConfigurationError, self.simple_client, tls=False, tlsAllowInvalidCertificates=False
         )
         self.assertRaises(
-            ConfigurationError, MongoClient, tls=False, tlsDisableOCSPEndpointCheck=False
+            ConfigurationError, self.simple_client, tls=False, tlsAllowInvalidHostnames=False
+        )
+        self.assertRaises(
+            ConfigurationError, self.simple_client, tls=False, tlsDisableOCSPEndpointCheck=False
         )
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
@@ -174,7 +175,7 @@ class TestSSL(IntegrationTest):
         if not hasattr(ssl, "SSLContext") and not _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
-                MongoClient,
+                self.simple_client,
                 "localhost",
                 ssl=True,
                 tlsCertificateKeyFile=CLIENT_ENCRYPTED_PEM,
@@ -184,7 +185,7 @@ class TestSSL(IntegrationTest):
             )
         else:
             connected(
-                MongoClient(
+                self.simple_client(
                     "localhost",
                     ssl=True,
                     tlsCertificateKeyFile=CLIENT_ENCRYPTED_PEM,
@@ -201,7 +202,7 @@ class TestSSL(IntegrationTest):
                 "&tlsCAFile=%s&serverSelectionTimeoutMS=5000"
             )
             connected(
-                MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
+                self.simple_client(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
             )
 
     @client_context.require_tlsCertificateKeyFile
@@ -215,7 +216,7 @@ class TestSSL(IntegrationTest):
         #
 
         # test that setting tlsCertificateKeyFile causes ssl to be set to True
-        client = MongoClient(
+        client = self.simple_client(
             client_context.host,
             client_context.port,
             tlsAllowInvalidCertificates=True,
@@ -223,7 +224,7 @@ class TestSSL(IntegrationTest):
         )
         response = client.admin.command(HelloCompat.LEGACY_CMD)
         if "setName" in response:
-            client = MongoClient(
+            client = self.simple_client(
                 client_context.pair,
                 replicaSet=response["setName"],
                 w=len(response["hosts"]),
@@ -242,7 +243,7 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
-        client = MongoClient(
+        client = self.simple_client(
             "localhost",
             ssl=True,
             tlsCertificateKeyFile=CLIENT_PEM,
@@ -257,7 +258,7 @@ class TestSSL(IntegrationTest):
                     "Cannot validate hostname in the certificate"
                 )
 
-            client = MongoClient(
+            client = self.simple_client(
                 "localhost",
                 replicaSet=response["setName"],
                 w=len(response["hosts"]),
@@ -270,7 +271,7 @@ class TestSSL(IntegrationTest):
         self.assertClientWorks(client)
 
         if HAVE_IPADDRESS:
-            client = MongoClient(
+            client = self.simple_client(
                 "127.0.0.1",
                 ssl=True,
                 tlsCertificateKeyFile=CLIENT_PEM,
@@ -292,7 +293,7 @@ class TestSSL(IntegrationTest):
             "mongodb://localhost/?ssl=true&tlsCertificateKeyFile=%s&tlsAllowInvalidCertificates"
             "=%s&tlsCAFile=%s&tlsAllowInvalidHostnames=false"
         )
-        client = MongoClient(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
+        client = self.simple_client(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
         self.assertClientWorks(client)
 
     @client_context.require_tlsCertificateKeyFile
@@ -316,7 +317,7 @@ class TestSSL(IntegrationTest):
 
         with self.assertRaises(ConnectionFailure):
             connected(
-                MongoClient(
+                self.simple_client(
                     "server",
                     ssl=True,
                     tlsCertificateKeyFile=CLIENT_PEM,
@@ -328,7 +329,7 @@ class TestSSL(IntegrationTest):
             )
 
         connected(
-            MongoClient(
+            self.simple_client(
                 "server",
                 ssl=True,
                 tlsCertificateKeyFile=CLIENT_PEM,
@@ -343,7 +344,7 @@ class TestSSL(IntegrationTest):
         if "setName" in response:
             with self.assertRaises(ConnectionFailure):
                 connected(
-                    MongoClient(
+                    self.simple_client(
                         "server",
                         replicaSet=response["setName"],
                         ssl=True,
@@ -356,7 +357,7 @@ class TestSSL(IntegrationTest):
                 )
 
             connected(
-                MongoClient(
+                self.simple_client(
                     "server",
                     replicaSet=response["setName"],
                     ssl=True,
@@ -375,7 +376,7 @@ class TestSSL(IntegrationTest):
         if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
-                MongoClient,
+                self.simple_client,
                 "localhost",
                 ssl=True,
                 tlsCAFile=CA_PEM,
@@ -384,7 +385,7 @@ class TestSSL(IntegrationTest):
             )
         else:
             connected(
-                MongoClient(
+                self.simple_client(
                     "localhost",
                     ssl=True,
                     tlsCAFile=CA_PEM,
@@ -395,7 +396,7 @@ class TestSSL(IntegrationTest):
 
             with self.assertRaises(ConnectionFailure):
                 connected(
-                    MongoClient(
+                    self.simple_client(
                         "localhost",
                         ssl=True,
                         tlsCAFile=CA_PEM,
@@ -406,7 +407,7 @@ class TestSSL(IntegrationTest):
                 )
 
             uri_fmt = "mongodb://localhost/?ssl=true&tlsCAFile=%s&serverSelectionTimeoutMS=1000"
-            connected(MongoClient(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
+            connected(self.simple_client(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
 
             uri_fmt = (
                 "mongodb://localhost/?ssl=true&tlsCRLFile=%s"
@@ -414,7 +415,7 @@ class TestSSL(IntegrationTest):
             )
             with self.assertRaises(ConnectionFailure):
                 connected(
-                    MongoClient(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
+                    self.simple_client(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
                 )
 
     @client_context.require_tlsCertificateKeyFile
@@ -431,12 +432,14 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(ConnectionFailure):
             # Server cert is verified but hostname matching fails
             connected(
-                MongoClient("server", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials)  # type: ignore[arg-type]
+                self.simple_client(
+                    "server", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials
+                )  # type: ignore[arg-type]
             )
 
         # Server cert is verified. Disable hostname matching.
         connected(
-            MongoClient(
+            self.simple_client(
                 "server",
                 ssl=True,
                 tlsAllowInvalidHostnames=True,
@@ -447,12 +450,14 @@ class TestSSL(IntegrationTest):
 
         # Server cert and hostname are verified.
         connected(
-            MongoClient("localhost", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials)  # type: ignore[arg-type]
+            self.simple_client(
+                "localhost", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials
+            )  # type: ignore[arg-type]
         )
 
         # Server cert and hostname are verified.
         connected(
-            MongoClient(
+            self.simple_client(
                 "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=1000",
                 **self.credentials,  # type: ignore[arg-type]
             )
@@ -472,7 +477,7 @@ class TestSSL(IntegrationTest):
         ssl_support.HAVE_WINCERTSTORE = False
         try:
             with self.assertRaises(ConfigurationError):
-                MongoClient("mongodb://localhost/?ssl=true")
+                self.simple_client("mongodb://localhost/?ssl=true")
         finally:
             ssl_support.HAVE_CERTIFI = have_certifi
             ssl_support.HAVE_WINCERTSTORE = have_wincertstore
@@ -536,7 +541,7 @@ class TestSSL(IntegrationTest):
             ],
         )
 
-        noauth = MongoClient(
+        noauth = self.simple_client(
             client_context.pair,
             ssl=True,
             tlsAllowInvalidCertificates=True,
@@ -548,7 +553,7 @@ class TestSSL(IntegrationTest):
             noauth.pymongo_test.test.find_one()
 
         listener = EventListener()
-        auth = MongoClient(
+        auth = self.simple_client(
             client_context.pair,
             authMechanism="MONGODB-X509",
             ssl=True,
@@ -572,7 +577,7 @@ class TestSSL(IntegrationTest):
             host,
             port,
         )
-        client = MongoClient(
+        client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         self.addCleanup(client.close)
@@ -580,7 +585,7 @@ class TestSSL(IntegrationTest):
         client.pymongo_test.test.find_one()
 
         uri = "mongodb://%s:%d/?authMechanism=MONGODB-X509" % (host, port)
-        client = MongoClient(
+        client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         self.addCleanup(client.close)
@@ -593,7 +598,7 @@ class TestSSL(IntegrationTest):
             port,
         )
 
-        bad_client = MongoClient(
+        bad_client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         self.addCleanup(bad_client.close)
@@ -601,7 +606,7 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
 
-        bad_client = MongoClient(
+        bad_client = self.simple_client(
             client_context.pair,
             username="not the username",
             authMechanism="MONGODB-X509",
@@ -622,7 +627,7 @@ class TestSSL(IntegrationTest):
         )
         try:
             connected(
-                MongoClient(
+                self.simple_client(
                     uri,
                     ssl=True,
                     tlsAllowInvalidCertificates=True,
@@ -648,7 +653,7 @@ class TestSSL(IntegrationTest):
         self.addCleanup(remove, temp_ca_bundle)
         # Add the CA cert file to the bundle.
         cat_files(temp_ca_bundle, CA_BUNDLE_PEM, CA_PEM)
-        with MongoClient(
+        with self.simple_client(
             "localhost", tls=True, tlsCertificateKeyFile=CLIENT_PEM, tlsCAFile=temp_ca_bundle
         ) as client:
             self.assertTrue(client.admin.command("ping"))

@@ -408,7 +408,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
-    async def test_container_metadata(self):
+    def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         metadata["driver"]["name"] = "PyMongo|async"
         metadata["env"] = {}
