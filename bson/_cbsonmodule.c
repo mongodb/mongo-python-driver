@@ -1749,7 +1749,6 @@ int write_dict(PyObject* self, buffer_t buffer,
                     PyObject *InvalidDocument = _error("InvalidDocument");
 
                     if (PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
-
                         if (InvalidDocument) {
                             Py_DECREF(etype);
                             etype = InvalidDocument;
@@ -1766,21 +1765,19 @@ int write_dict(PyObject* self, buffer_t buffer,
 
                                     if (new_msg) {
                                         evalue = new_msg;
-                                        Py_DECREF(new_msg);
                                     }
-                                    else{
+                                    else {
                                     evalue = msg;
                                     }
-
-                                     Py_DECREF(msg);
-
                                 }
                             }
                             PyErr_NormalizeException(&etype, &evalue, &etrace);
                         }
                     }
+                    else {
+                        Py_DECREF(InvalidDocument);
+                    }
                     PyErr_Restore(etype, evalue, etrace);
-                    Py_DECREF(InvalidDocument);
                 }
                 return 0;
             }
