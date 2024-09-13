@@ -730,6 +730,9 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(id, transformed)
 
     def test_vector(self):
+        """Tests of subtype 9"""
+        # We start with valid cases, across the 3 dtypes implemented.
+        # Work with a simple vector that can be interpreted as int8, float32, or ubyte
         list_vector = [127, 7]
         # As INT8, vector has length 2
         binary_vector = Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
@@ -737,7 +740,7 @@ class TestBSON(unittest.TestCase):
         assert vector.data == list_vector
         # test encoding roundtrip
         assert {"vector": binary_vector} == decode(encode({"vector": binary_vector}))
-        # test json roundtrip # TODO - Is this the wrong place?
+        # test json roundtrip
         assert binary_vector == json_util.loads(json_util.dumps(binary_vector))
 
         # For vectors of bits, aka PACKED_BIT type, vector has length 8 * 2
@@ -759,13 +762,33 @@ class TestBSON(unittest.TestCase):
             len(padded_vec.as_vector(BinaryVectorDtype.INT8).data) == 8 * len(list_vector) - padding
         )
 
+        # It is worthwhile explicitly showing the values encoded to BSON
+        padded_doc = {"padded_vec": padded_vec}
+        assert (
+            encode(padded_doc)
+            == b"\x1a\x00\x00\x00\x05padded_vec\x00\x04\x00\x00\x00\t\x10\x03\x7f\x07\x00"
+        )
+        # and dumped to json
+        assert (
+            json_util.dumps(padded_doc)
+            == '{"padded_vec": {"$binary": {"base64": "EAN/Bw==", "subType": "09"}}}'
+        )
+
         # FLOAT32 is also implemented
         float_binary = Binary.from_vector(list_vector, BinaryVectorDtype.FLOAT32)
         assert all(isinstance(d, float) for d in float_binary.as_vector().data)
 
-    # The C extension was segfaulting on unicode RegExs, so we have this test
-    # that doesn't really test anything but the lack of a segfault.
+        # Now some invalid cases
+        for x in [-1, 257]:
+            try:
+                Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
+            except struct.error as e:
+                assert str(e) == "ubyte format requires 0 <= number <= 255"
+
     def test_unicode_regex(self):
+        """Tests we do not get a segfault for C extension on unicode RegExs.
+        This had been happening.
+        """
         regex = re.compile("revisi\xf3n")
         decode(encode({"regex": regex}))
 
