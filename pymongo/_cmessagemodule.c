@@ -540,7 +540,7 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
@@ -597,7 +597,7 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
@@ -873,7 +873,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
