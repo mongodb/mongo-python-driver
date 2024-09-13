@@ -346,14 +346,15 @@ class APITestsMixin:
             self._test_next_blocks(change_stream)
 
     @no_type_check
-    async def test_concurrent_close(self):
-        """Ensure a AsyncChangeStream can be closed from another thread."""
+    @async_client_context.require_sync
+    def test_concurrent_close(self):
+        """Ensure a ChangeStream can be closed from another thread."""
         # Use a short wait time to speed up the test.
-        async with await self.change_stream(max_await_time_ms=250) as change_stream:
+        with self.change_stream(max_await_time_ms=250) as change_stream:
 
-            async def iterate_cursor():
+            def iterate_cursor():
                 try:
-                    async for _ in change_stream:
+                    for _ in change_stream:
                         pass
                 except OperationFailure as e:
                     if e.code != 237:  # AsyncCursorKilled error code
@@ -361,9 +362,9 @@ class APITestsMixin:
 
             t = threading.Thread(target=iterate_cursor)
             t.start()
-            await self.watched_collection().insert_one({})
-            await asyncio.sleep(1)
-            await change_stream.close()
+            self.watched_collection().insert_one({})
+            asyncio.sleep(1)
+            change_stream.close()
             t.join(3)
             self.assertFalse(t.is_alive())
 

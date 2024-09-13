@@ -342,6 +342,7 @@ class APITestsMixin:
             self._test_next_blocks(change_stream)
 
     @no_type_check
+    @client_context.require_sync
     def test_concurrent_close(self):
         """Ensure a ChangeStream can be closed from another thread."""
         # Use a short wait time to speed up the test.
