@@ -529,7 +529,7 @@ class ProseSpecTestsMixin:
             with self.assertRaises(expected_exception):
                 await anext(change_stream)
             # The cursor should now be closed.
-            with self.assertRaises(StopIteration):
+            with self.assertRaises(StopAsyncIteration):
                 await anext(change_stream)
 
     @no_type_check
@@ -551,12 +551,12 @@ class ProseSpecTestsMixin:
     # Prose test no. 1
     @async_client_context.require_version_min(4, 0, 7)
     async def test_update_resume_token(self):
-        self._test_update_resume_token(self._get_expected_resume_token)
+        await self._test_update_resume_token(self._get_expected_resume_token)
 
     # Prose test no. 1
     @async_client_context.require_version_max(4, 0, 7)
     async def test_update_resume_token_legacy(self):
-        self._test_update_resume_token(self._get_expected_resume_token_legacy)
+        await self._test_update_resume_token(self._get_expected_resume_token_legacy)
 
     # Prose test no. 2
     @async_client_context.require_version_min(4, 1, 8)
@@ -586,7 +586,7 @@ class ProseSpecTestsMixin:
         # Set non-retryable error on aggregate command.
         fail_point = {"mode": {"times": 1}, "data": {"errorCode": 2, "failCommands": ["aggregate"]}}
         client, listener = await self._client_with_listener("aggregate", "getMore")
-        with self.fail_point(fail_point):
+        async with self.fail_point(fail_point):
             try:
                 _ = self.change_stream_with_client(client)
             except OperationFailure:
@@ -737,7 +737,7 @@ class ProseSpecTestsMixin:
         resume_point = await self.get_resume_token()
 
         # Insert some documents so that firstBatch isn't empty.
-        self.watched_collection(write_concern=WriteConcern("majority")).insert_many(
+        await self.watched_collection(write_concern=WriteConcern("majority")).insert_many(
             [{"a": 1}, {"b": 2}, {"c": 3}]
         )
 
@@ -793,7 +793,7 @@ class ProseSpecTestsMixin:
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
             await self.watched_collection().insert_one({})
-            next(change_stream)  # Changes
+            await anext(change_stream)  # Changes
             await self.kill_change_stream_cursor(change_stream)
             await change_stream.try_next()  # Resume attempt
 
@@ -929,7 +929,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         self.assertNotIn("ns", change)
         self.assertNotIn("fullDocument", change)
         # The AsyncChangeStream should be dead.
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await change_stream.next()
 
     async def _test_invalidate_stops_iteration(self, change_stream):
@@ -941,9 +941,9 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         # Last change must be invalidate.
         self.assertEqual(change["operationType"], "invalidate")
         # Change stream must not allow further iteration.
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await change_stream.next()
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await anext(change_stream)
 
     async def _insert_and_check(self, change_stream, collname, doc):
@@ -1010,9 +1010,9 @@ class TestAsyncCollectionAsyncChangeStream(
         # Last change must be invalidate.
         self.assertEqual(change["operationType"], "invalidate")
         # Change stream must not allow further iteration.
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await change_stream.next()
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await anext(change_stream)
 
     async def _test_get_invalidate_event(self, change_stream):
@@ -1033,7 +1033,7 @@ class TestAsyncCollectionAsyncChangeStream(
         self.assertNotIn("ns", change)
         self.assertNotIn("fullDocument", change)
         # The AsyncChangeStream should be dead.
-        with self.assertRaises(StopIteration):
+        with self.assertRaises(StopAsyncIteration):
             await change_stream.next()
 
     async def insert_one_and_check(self, change_stream, doc):
@@ -1063,7 +1063,7 @@ class TestAsyncCollectionAsyncChangeStream(
     async def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
         optime = await self.db.command("ping")["operationTime"]
-        self.watched_collection().insert_many(
+        await self.watched_collection().insert_many(
             [
                 {"_id": Binary(uuid.uuid4().bytes, id_subtype)}
                 for id_subtype in (STANDARD, PYTHON_LEGACY)
