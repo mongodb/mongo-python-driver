@@ -79,7 +79,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         collname = ".".join(self.id().rsplit(".", 2)[1:])
         return self.db.get_collection(collname, *args, **kwargs)
 
-    def generate_invalidate_event(self, change_stream):
+    async def generate_invalidate_event(self, change_stream):
         """Cause a change stream invalidate event."""
         raise NotImplementedError
 
@@ -102,7 +102,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
             ) as cs:
                 if isinstance(cs._target, AsyncMongoClient):
                     self.skipTest("cluster-level change streams cannot be invalidated")
-                self.generate_invalidate_event(cs)
+                await self.generate_invalidate_event(cs)
                 return (await cs.next())["_id"]
         else:
             async with await self.change_stream() as cs:
@@ -394,7 +394,7 @@ class APITestsMixin:
             self.assertEqual(change["fullDocument"], inserted_doc)
             # Update.
             update_spec = {"$set": {"new": 1}, "$unset": {"foo": 1}}
-            self.watched_collection().update_one(inserted_doc, update_spec)
+            await self.watched_collection().update_one(inserted_doc, update_spec)
             change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "update")
@@ -406,21 +406,21 @@ class APITestsMixin:
                 expected_update_description["truncatedArrays"] = []
             self.assertEqual(expected_update_description, change["updateDescription"])
             # Replace.
-            self.watched_collection().replace_one({"new": 1}, {"foo": "bar"})
+            await self.watched_collection().replace_one({"new": 1}, {"foo": "bar"})
             change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "replace")
             self.assertEqual(change["ns"], expected_ns)
             self.assertEqual(change["fullDocument"], inserted_doc)
             # Delete.
-            self.watched_collection().delete_one({"foo": "bar"})
+            await self.watched_collection().delete_one({"foo": "bar"})
             change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "delete")
             self.assertEqual(change["ns"], expected_ns)
             self.assertNotIn("fullDocument", change)
             # Invalidate.
-            self._test_get_invalidate_event(change_stream)
+            await self._test_get_invalidate_event(change_stream)
 
     @no_type_check
     @async_client_context.require_version_min(4, 1, 1)
@@ -844,10 +844,10 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client.watch(*args, **kwargs)
 
-    def generate_invalidate_event(self, change_stream):
+    async def generate_invalidate_event(self, change_stream):
         self.skipTest("cluster-level change streams cannot be invalidated")
 
-    def _test_get_invalidate_event(self, change_stream):
+    async def _test_get_invalidate_event(self, change_stream):
         # Cluster-level change streams don't get invalidated.
         pass
 
@@ -907,7 +907,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         # Cache collection names.
         dropped_colls = await self.db.list_collection_names()
         # Drop the watched database to get an invalidate event.
-        self.generate_invalidate_event(change_stream)
+        await self.generate_invalidate_event(change_stream)
         change = await change_stream.next()
         # 4.1+ returns "drop" events for each collection in dropped database
         # and a "dropAsyncDatabase" event for the database itself.
@@ -1000,7 +1000,7 @@ class TestAsyncCollectionAsyncChangeStream(
         await change_stream._target.drop()
 
     async def _test_invalidate_stops_iteration(self, change_stream):
-        self.generate_invalidate_event(change_stream)
+        await self.generate_invalidate_event(change_stream)
         # Check drop and dropAsyncDatabase events.
         for change in change_stream:
             self.assertIn(change["operationType"], ("drop", "invalidate"))
