@@ -535,7 +535,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     async def _test_update_resume_token(self, expected_rt_getter):
         """AsyncChangeStream must continuously track the last seen resumeToken."""
-        client, listener = self._client_with_listener("aggregate", "getMore")
+        client, listener = await self._client_with_listener("aggregate", "getMore")
         coll = self.watched_collection(write_concern=WriteConcern("majority"))
         async with await self.change_stream_with_client(client) as change_stream:
             self.assertEqual(
@@ -562,13 +562,13 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_min(4, 1, 8)
     async def test_raises_error_on_missing_id_418plus(self):
         # Server returns an error on 4.1.8+
-        self._test_raises_error_on_missing_id(OperationFailure)
+        await self._test_raises_error_on_missing_id(OperationFailure)
 
     # Prose test no. 2
     @async_client_context.require_version_max(4, 1, 8)
     async def test_raises_error_on_missing_id_418minus(self):
         # PyMongo raises an error
-        self._test_raises_error_on_missing_id(InvalidOperation)
+        await self._test_raises_error_on_missing_id(InvalidOperation)
 
     # Prose test no. 3
     @no_type_check
@@ -585,7 +585,7 @@ class ProseSpecTestsMixin:
     async def test_no_resume_attempt_if_aggregate_command_fails(self):
         # Set non-retryable error on aggregate command.
         fail_point = {"mode": {"times": 1}, "data": {"errorCode": 2, "failCommands": ["aggregate"]}}
-        client, listener = self._client_with_listener("aggregate", "getMore")
+        client, listener = await self._client_with_listener("aggregate", "getMore")
         with self.fail_point(fail_point):
             try:
                 _ = self.change_stream_with_client(client)
@@ -663,7 +663,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 0, 7)
     async def test_resumetoken_empty_batch(self):
-        client, listener = self._client_with_listener("getMore")
+        client, listener = await self._client_with_listener("getMore")
         async with await self.change_stream_with_client(client) as change_stream:
             self.assertIsNone(await change_stream.try_next())
             resume_token = change_stream.resume_token
@@ -675,7 +675,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 0, 7)
     async def test_resumetoken_exhausted_batch(self):
-        client, listener = self._client_with_listener("getMore")
+        client, listener = await self._client_with_listener("getMore")
         async with await self.change_stream_with_client(client) as change_stream:
             await self._populate_and_exhaust_change_stream(change_stream)
             resume_token = change_stream.resume_token
@@ -767,7 +767,7 @@ class ProseSpecTestsMixin:
         # Resume should use startAfter after no changes have been returned.
         resume_point = await self.get_resume_token()
 
-        client, listener = self._client_with_listener("aggregate")
+        client, listener = await self._client_with_listener("aggregate")
         async with await self.change_stream_with_client(
             client, start_after=resume_point
         ) as change_stream:
@@ -787,7 +787,7 @@ class ProseSpecTestsMixin:
         # Resume should use resumeAfter after some changes have been returned.
         resume_point = await self.get_resume_token()
 
-        client, listener = self._client_with_listener("aggregate")
+        client, listener = await self._client_with_listener("aggregate")
         async with await self.change_stream_with_client(
             client, start_after=resume_point
         ) as change_stream:
