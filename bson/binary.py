@@ -16,7 +16,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -232,7 +232,7 @@ class BinaryVector:
     when a vector element's size is less than a byte
     and the length of the vector is not a multiple of 8."""
 
-    data: list[float | int]
+    data: Sequence[float | int]
     dtype: BinaryVectorDtype
     padding: Optional[int] = 0
 
@@ -434,34 +434,34 @@ class Binary(bytes):
         if dtype == BinaryVectorDtype.PACKED_BIT:
             # data packed as uint8
             dtype_format = "B"
-            unpacked_uint8s = struct.unpack_from(f"{n_values}{dtype_format}", self, position)
-            return BinaryVector(list(unpacked_uint8s), dtype, padding)
+            unpacked_uint8s = list(struct.unpack_from(f"{n_values}{dtype_format}", self, position))
+            return BinaryVector(unpacked_uint8s, dtype, padding)
 
         elif dtype == BinaryVectorDtype.INT8:
             if orig_dtype == BinaryVectorDtype.PACKED_BIT:
                 # Special case for when wishes to see UNPACKED embedding
-                unpacked_uint8s = struct.unpack_from(f"{n_values}B", self, position)
+                unpacked_uint8s = list(struct.unpack_from(f"{n_values}B", self, position))
                 bits = []
                 for uint8 in unpacked_uint8s:
                     bits.extend([int(bit) for bit in f"{uint8:08b}"])
                 if padding and padding > 0:
-                    unpacked_data = bits[:-padding]
+                    unpacked_data: list[int] = bits[:-padding]
                 else:
                     unpacked_data = bits
-                return BinaryVector(list(unpacked_data), dtype, padding)
+                return BinaryVector(unpacked_data, dtype, padding)
 
             else:
                 dtype_format = "b"
                 format_string = f"{n_values}{dtype_format}"
-                unpacked_data = struct.unpack_from(format_string, self, position)
-                return BinaryVector(list(unpacked_data), dtype, padding)
+                unpacked_data = list(struct.unpack_from(format_string, self, position))
+                return BinaryVector(unpacked_data, dtype, padding)
 
         elif dtype == BinaryVectorDtype.FLOAT32:
             n_bytes = len(self) - position
             n_values = n_bytes // 4
             assert n_bytes % 4 == 0
-            unpacked_data = struct.unpack_from(f"{n_values}f", self, position)
-            return BinaryVector(list(unpacked_data), dtype, padding)
+            unpacked_data = list(struct.unpack_from(f"{n_values}f", self, position))
+            return BinaryVector(unpacked_data, dtype, padding)
         else:
             raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
 
