@@ -58,13 +58,13 @@ _IS_SYNC = False
 class TestAsyncChangeStreamBase(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
-    def change_stream_with_client(self, client, *args, **kwargs):
+    async def change_stream_with_client(self, client, *args, **kwargs):
         """Create a change stream using the given client and return it."""
         raise NotImplementedError
 
-    def change_stream(self, *args, **kwargs):
+    async def change_stream(self, *args, **kwargs):
         """Create a change stream using the default client and return it."""
-        return self.change_stream_with_client(self.client, *args, **kwargs)
+        return await self.change_stream_with_client(self.client, *args, **kwargs)
 
     async def client_with_listener(self, *commands):
         """Return a client with a AllowListEventListener."""
@@ -116,7 +116,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         optime = (await self.client.admin.command("ping"))["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
 
-    def insert_one_and_check(self, change_stream, doc):
+    async def insert_one_and_check(self, change_stream, doc):
         """Insert a document and check that it shows up in the change stream."""
         raise NotImplementedError
 
@@ -131,7 +131,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
 class APITestsMixin:
     @no_type_check
     async def test_watch(self):
-        with self.change_stream(
+        async with await self.change_stream(
             [{"$project": {"foo": 0}}],
             full_document="updateLookup",
             max_await_time_ms=1000,
@@ -143,15 +143,15 @@ class APITestsMixin:
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, AsyncCommandCursor)
             self.assertEqual(1000, change_stream._cursor._max_await_time_ms)
-            self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
+            await self.watched_collection(write_concern=WriteConcern("majority")).insert_one({})
             _ = await change_stream.next()
             resume_token = change_stream.resume_token
         with self.assertRaises(TypeError):
-            self.change_stream(pipeline={})
+            await self.change_stream(pipeline={})
         with self.assertRaises(TypeError):
-            self.change_stream(full_document={})
+            await self.change_stream(full_document={})
         # No Error.
-        with self.change_stream(resume_after=resume_token):
+        async with await self.change_stream(resume_after=resume_token):
             pass
 
     @no_type_check
@@ -161,7 +161,7 @@ class APITestsMixin:
         await coll.drop()
         await coll.insert_one({})
         self.addAsyncCleanup(coll.drop)
-        with self.change_stream(max_await_time_ms=250) as stream:
+        async with await self.change_stream(max_await_time_ms=250) as stream:
             self.assertIsNone(await stream.try_next())  # No changes initially.
             await coll.insert_one({})  # Generate a change.
 
@@ -270,9 +270,9 @@ class APITestsMixin:
         ndocs = 3
         await coll.insert_many([{"data": i} for i in range(ndocs)])
 
-        with self.change_stream(start_at_operation_time=optime) as cs:
+        async with await self.change_stream(start_at_operation_time=optime) as cs:
             for _i in range(ndocs):
-                cs.next()
+                await cs.next()
 
     @no_type_check
     async def _test_full_pipeline(self, expected_cs_stage):
@@ -299,7 +299,7 @@ class APITestsMixin:
     async def test_iteration(self):
         async with await self.change_stream(batch_size=2) as change_stream:
             num_inserted = 10
-            self.watched_collection().insert_many([{} for _ in range(num_inserted)])
+            await self.watched_collection().insert_many([{} for _ in range(num_inserted)])
             inserts_received = 0
             for change in change_stream:
                 self.assertEqual(change["operationType"], "insert")
@@ -361,7 +361,7 @@ class APITestsMixin:
 
             t = threading.Thread(target=iterate_cursor)
             t.start()
-            self.watched_collection().insert_one({})
+            await self.watched_collection().insert_one({})
             await asyncio.sleep(1)
             await change_stream.close()
             t.join(3)
@@ -371,7 +371,7 @@ class APITestsMixin:
     async def test_unknown_full_document(self):
         """Must rely on the server to raise an error on unknown fullDocument."""
         try:
-            with self.change_stream(full_document="notValidatedByPyMongo"):
+            async with await self.change_stream(full_document="notValidatedByPyMongo"):
                 pass
         except OperationFailure:
             pass
@@ -386,7 +386,7 @@ class APITestsMixin:
         async with await self.change_stream() as change_stream:
             # Insert.
             inserted_doc = {"_id": ObjectId(), "foo": "bar"}
-            self.watched_collection().insert_one(inserted_doc)
+            await self.watched_collection().insert_one(inserted_doc)
             change = await change_stream.next()
             self.assertTrue(change["_id"])
             self.assertEqual(change["operationType"], "insert")
@@ -429,11 +429,11 @@ class APITestsMixin:
 
         # resume_after cannot resume after invalidate.
         with self.assertRaises(OperationFailure):
-            self.change_stream(resume_after=resume_token)
+            await self.change_stream(resume_after=resume_token)
 
         # start_after can resume after invalidate.
-        with self.change_stream(start_after=resume_token) as change_stream:
-            self.watched_collection().insert_one({"_id": 2})
+        async with await self.change_stream(start_after=resume_token) as change_stream:
+            await self.watched_collection().insert_one({"_id": 2})
             change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
@@ -443,8 +443,10 @@ class APITestsMixin:
     async def test_start_after_resume_process_with_changes(self):
         resume_token = await self.get_resume_token(invalidate=True)
 
-        with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
-            self.watched_collection().insert_one({"_id": 2})
+        async with await self.change_stream(
+            start_after=resume_token, max_await_time_ms=250
+        ) as change_stream:
+            await self.watched_collection().insert_one({"_id": 2})
             change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
@@ -452,7 +454,7 @@ class APITestsMixin:
             self.assertIsNone(await change_stream.try_next())
             self.kill_change_stream_cursor(change_stream)
 
-            self.watched_collection().insert_one({"_id": 3})
+            await self.watched_collection().insert_one({"_id": 3})
             change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 3})
@@ -462,11 +464,13 @@ class APITestsMixin:
     async def test_start_after_resume_process_without_changes(self):
         resume_token = await self.get_resume_token(invalidate=True)
 
-        with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
+        async with await self.change_stream(
+            start_after=resume_token, max_await_time_ms=250
+        ) as change_stream:
             self.assertIsNone(await change_stream.try_next())
             self.kill_change_stream_cursor(change_stream)
 
-            self.watched_collection().insert_one({"_id": 2})
+            await self.watched_collection().insert_one({"_id": 2})
             change = await change_stream.next()
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
@@ -482,7 +486,7 @@ class ProseSpecTestsMixin:
 
     @no_type_check
     async def _populate_and_exhaust_change_stream(self, change_stream, batch_size=3):
-        self.watched_collection().insert_many([{"data": k} for k in range(batch_size)])
+        await self.watched_collection().insert_many([{"data": k} for k in range(batch_size)])
         for _ in range(batch_size):
             change = await anext(change_stream)
         return change
@@ -519,8 +523,8 @@ class ProseSpecTestsMixin:
         """AsyncChangeStream will raise an exception if the server response is
         missing the resume token.
         """
-        with self.change_stream([{"$project": {"_id": 0}}]) as change_stream:
-            self.watched_collection().insert_one({})
+        async with await self.change_stream([{"$project": {"_id": 0}}]) as change_stream:
+            await self.watched_collection().insert_one({})
             with self.assertRaises(expected_exception):
                 await anext(change_stream)
             # The cursor should now be closed.
@@ -568,11 +572,11 @@ class ProseSpecTestsMixin:
     # Prose test no. 3
     @no_type_check
     async def test_resume_on_error(self):
-        with self.change_stream() as change_stream:
-            self.insert_one_and_check(change_stream, {"_id": 1})
+        async with await self.change_stream() as change_stream:
+            await self.insert_one_and_check(change_stream, {"_id": 1})
             # Cause a cursor not found error on the next getMore.
             self.kill_change_stream_cursor(change_stream)
-            self.insert_one_and_check(change_stream, {"_id": 2})
+            await self.insert_one_and_check(change_stream, {"_id": 2})
 
     # Prose test no. 4
     @no_type_check
@@ -600,12 +604,12 @@ class ProseSpecTestsMixin:
     # Prose test no. 7
     @no_type_check
     async def test_initial_empty_batch(self):
-        with self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             # The first batch should be empty.
             self.assertFalse(change_stream._cursor._has_next())
             cursor_id = change_stream._cursor.cursor_id
             self.assertTrue(cursor_id)
-            self.insert_one_and_check(change_stream, {})
+            await self.insert_one_and_check(change_stream, {})
             # Make sure we're still using the same cursor.
             self.assertEqual(cursor_id, change_stream._cursor.cursor_id)
 
@@ -615,13 +619,13 @@ class ProseSpecTestsMixin:
         def raise_error():
             raise ServerSelectionTimeoutError("mock error")
 
-        with self.change_stream() as change_stream:
-            self.insert_one_and_check(change_stream, {"_id": 1})
+        async with await self.change_stream() as change_stream:
+            await self.insert_one_and_check(change_stream, {"_id": 1})
             # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
             self.kill_change_stream_cursor(change_stream)
             cursor.close = raise_error
-            self.insert_one_and_check(change_stream, {"_id": 2})
+            await self.insert_one_and_check(change_stream, {"_id": 2})
 
     # Prose test no. 9
     @no_type_check
@@ -672,7 +676,7 @@ class ProseSpecTestsMixin:
     async def test_resumetoken_exhausted_batch(self):
         client, listener = self._client_with_listener("getMore")
         async with await self.change_stream_with_client(client) as change_stream:
-            self._populate_and_exhaust_change_stream(change_stream)
+            await self._populate_and_exhaust_change_stream(change_stream)
             resume_token = change_stream.resume_token
 
         response = listener.succeeded_events[-1].reply
@@ -685,12 +689,12 @@ class ProseSpecTestsMixin:
         resume_point = await self.get_resume_token()
 
         # Empty resume token when neither resumeAfter or startAfter specified.
-        with self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             await change_stream.try_next()
             self.assertIsNone(change_stream.resume_token)
 
         # Resume token value is same as resumeAfter.
-        with self.change_stream(resume_after=resume_point) as change_stream:
+        async with await self.change_stream(resume_after=resume_point) as change_stream:
             await change_stream.try_next()
             resume_token = change_stream.resume_token
             self.assertEqual(resume_token, resume_point)
@@ -700,14 +704,14 @@ class ProseSpecTestsMixin:
     @async_client_context.require_version_max(4, 0, 7)
     async def test_resumetoken_exhausted_batch_legacy(self):
         # Resume token is _id of last change.
-        with self.change_stream() as change_stream:
-            change = self._populate_and_exhaust_change_stream(change_stream)
+        async with await self.change_stream() as change_stream:
+            change = await self._populate_and_exhaust_change_stream(change_stream)
             self.assertEqual(change_stream.resume_token, change["_id"])
             resume_point = change["_id"]
 
         # Resume token is _id of last change even if resumeAfter is specified.
-        with self.change_stream(resume_after=resume_point) as change_stream:
-            change = self._populate_and_exhaust_change_stream(change_stream)
+        async with await self.change_stream(resume_after=resume_point) as change_stream:
+            change = await self._populate_and_exhaust_change_stream(change_stream)
             self.assertEqual(change_stream.resume_token, change["_id"])
 
     # Prose test no. 13
@@ -715,8 +719,8 @@ class ProseSpecTestsMixin:
     async def test_resumetoken_partially_iterated_batch(self):
         # When batch has been iterated up to but not including the last element.
         # Resume token should be _id of previous change document.
-        with self.change_stream() as change_stream:
-            self.watched_collection(write_concern=WriteConcern("majority")).insert_many(
+        async with await self.change_stream() as change_stream:
+            await self.watched_collection(write_concern=WriteConcern("majority")).insert_many(
                 [{"data": k} for k in range(3)]
             )
             for _ in range(2):
@@ -737,7 +741,7 @@ class ProseSpecTestsMixin:
         )
 
         # Resume token should be same as the resume option.
-        with self.change_stream(**{resume_option: resume_point}) as change_stream:
+        async with await self.change_stream(**{resume_option: resume_point}) as change_stream:
             self.assertTrue(change_stream._cursor._has_next())
             resume_token = change_stream.resume_token
         self.assertEqual(resume_token, resume_point)
@@ -787,7 +791,7 @@ class ProseSpecTestsMixin:
             client, start_after=resume_point
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
-            self.watched_collection().insert_one({})
+            await self.watched_collection().insert_one({})
             next(change_stream)  # Changes
             self.kill_change_stream_cursor(change_stream)
             await change_stream.try_next()  # Resume attempt
@@ -859,10 +863,10 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
         self.assertEqual(change["ns"], {"db": db.name, "coll": collname})
         self.assertEqual(change["fullDocument"], doc)
 
-    def insert_one_and_check(self, change_stream, doc):
+    async def insert_one_and_check(self, change_stream, doc):
         db = random.choice(self.dbs)
         collname = self.id()
-        self._insert_and_check(change_stream, db, collname, doc)
+        await self._insert_and_check(change_stream, db, collname, doc)
 
     async def test_simple(self):
         collnames = self.generate_unique_collnames(3)
@@ -949,12 +953,12 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         self.assertEqual(change["ns"], {"db": self.db.name, "coll": collname})
         self.assertEqual(change["fullDocument"], doc)
 
-    def insert_one_and_check(self, change_stream, doc):
-        self._insert_and_check(change_stream, self.id(), doc)
+    async def insert_one_and_check(self, change_stream, doc):
+        await self._insert_and_check(change_stream, self.id(), doc)
 
     async def test_simple(self):
         collnames = self.generate_unique_collnames(3)
-        with self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             for collname in collnames:
                 self._insert_and_check(
                     change_stream, collname, {"_id": Binary.from_uuid(uuid.uuid4())}
@@ -965,7 +969,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         other_db = self.client.pymongo_test_temp
         self.assertNotEqual(other_db, self.db, msg="Isolation must be tested on separate DBs")
         collname = self.id()
-        with self.change_stream() as change_stream:
+        async with await self.change_stream() as change_stream:
             await other_db[collname].insert_one({"_id": Binary.from_uuid(uuid.uuid4())})
             self._insert_and_check(change_stream, collname, {"_id": Binary.from_uuid(uuid.uuid4())})
         await self.client.drop_database(other_db)
@@ -981,8 +985,8 @@ class TestAsyncCollectionAsyncChangeStream(
 
     async def asyncSetUp(self):
         # Use a new collection for each test.
-        self.watched_collection().drop()
-        self.watched_collection().insert_one({})
+        await self.watched_collection().drop()
+        await self.watched_collection().insert_one({})
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return (
@@ -1030,7 +1034,7 @@ class TestAsyncCollectionAsyncChangeStream(
             await change_stream.next()
 
     async def insert_one_and_check(self, change_stream, doc):
-        self.watched_collection().insert_one(doc)
+        await self.watched_collection().insert_one(doc)
         change = await anext(change_stream)
         self.assertEqual(change["operationType"], "insert")
         self.assertEqual(
@@ -1044,7 +1048,7 @@ class TestAsyncCollectionAsyncChangeStream(
         raw_coll = self.watched_collection(codec_options=DEFAULT_RAW_BSON_OPTIONS)
         async with await raw_coll.watch() as change_stream:
             raw_doc = RawBSONDocument(encode({"_id": 1}))
-            self.watched_collection().insert_one(raw_doc)
+            await self.watched_collection().insert_one(raw_doc)
             change = await anext(change_stream)
             self.assertIsInstance(change, RawBSONDocument)
             self.assertEqual(change["operationType"], "insert")
