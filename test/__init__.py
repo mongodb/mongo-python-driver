@@ -1080,6 +1080,14 @@ class PyMongoTestCase(unittest.TestCase):
         self.addCleanup(client.close)
         return client
 
+    @classmethod
+    def unmanaged_simple_client(cls, h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient:
+        if not h and not p:
+            client = MongoClient(**kwargs)
+        else:
+            client = MongoClient(h, p, **kwargs)
+        return client
+
     def disable_replication(self, client):
         """Disable replication on all secondaries."""
         for h, p in client.secondaries:

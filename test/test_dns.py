@@ -119,7 +119,7 @@ def create_test(test_case):
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
 
-                client = PyMongoTestCase.unmanaged_rs_or_single_client(uri, **copts)
+                client = PyMongoTestCase.unmanaged_simple_client(uri, **copts)
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:

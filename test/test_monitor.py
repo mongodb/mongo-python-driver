@@ -49,7 +49,7 @@ def get_executors(client):
 class TestMonitor(IntegrationTest):
     def create_client(self):
         listener = ServerAndTopologyEventListener()
-        client = self.simple_client(event_listeners=[listener])
+        client = self.single_client(event_listeners=[listener])
         connected(client)
         return client
 

@@ -1096,6 +1096,16 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(client.close)
         return client
 
+    @classmethod
+    def unmanaged_simple_client(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient:
+        if not h and not p:
+            client = AsyncMongoClient(**kwargs)
+        else:
+            client = AsyncMongoClient(h, p, **kwargs)
+        return client
+
     async def disable_replication(self, client):
         """Disable replication on all secondaries."""
         for h, p in client.secondaries:
