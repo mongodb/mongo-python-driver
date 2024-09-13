@@ -1073,7 +1073,10 @@ class PyMongoTestCase(unittest.TestCase):
         return self._async_mongo_client(h, p, **kwargs)
 
     def simple_client(self, h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient:
-        client = MongoClient(h, p, **kwargs)
+        if not h and not p:
+            client = MongoClient(**kwargs)
+        else:
+            client = MongoClient(h, p, **kwargs)
         self.addCleanup(client.close)
         return client
 
