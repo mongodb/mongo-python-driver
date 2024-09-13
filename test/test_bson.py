@@ -1001,7 +1001,6 @@ class TestBSON(unittest.TestCase):
             encode({"t": Wrapper(1)})
 
     def test_doc_in_invalid_document_error_message(self):
-
         class Wrapper:
             def __init__(self, val):
                 self.val = val
@@ -1011,9 +1010,7 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual("1", repr(Wrapper(1)))
         doc = {"t": Wrapper(1)}
-        with self.assertRaisesRegex(
-            InvalidDocument, "Invalid document {}".format(doc)
-        ):
+        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
             encode(doc)
 
 
