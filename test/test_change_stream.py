@@ -162,10 +162,14 @@ class APITestsMixin:
         with self.change_stream(max_await_time_ms=250) as stream:
             self.assertIsNone(stream.try_next())  # No changes initially.
             coll.insert_one({})  # Generate a change.
+
             # On sharded clusters, even majority-committed changes only show
             # up once an event that sorts after it shows up on the other
             # shard. So, we wait on try_next to eventually return changes.
-            wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+            def _wait_until():
+                return stream.try_next() is not None
+
+            wait_until(_wait_until, "get change from try_next")
 
     @no_type_check
     def test_try_next_runs_one_getmore(self):
@@ -196,7 +200,11 @@ class APITestsMixin:
 
             # Get at least one change before resuming.
             coll.insert_one({"_id": 2})
-            wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+
+            def _wait_until():
+                return stream.try_next()
+
+            wait_until(_wait_until, "get change from try_next")
             listener.reset()
 
             # Cause the next request to initiate the resume process.
@@ -213,7 +221,11 @@ class APITestsMixin:
 
             # Stream still works after a resume.
             coll.insert_one({"_id": 3})
-            wait_until(lambda: stream.try_next() is not None, "get change from try_next")
+
+            def _wait_until():
+                return stream.try_next()
+
+            wait_until(_wait_until, "get change from try_next")
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(stream.try_next())
 

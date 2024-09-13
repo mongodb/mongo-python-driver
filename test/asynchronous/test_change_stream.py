@@ -164,12 +164,14 @@ class APITestsMixin:
         with self.change_stream(max_await_time_ms=250) as stream:
             self.assertIsNone(await stream.try_next())  # No changes initially.
             await coll.insert_one({})  # Generate a change.
+
             # On sharded clusters, even majority-committed changes only show
             # up once an event that sorts after it shows up on the other
             # shard. So, we wait on try_next to eventually return changes.
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_next"
-            )
+            async def _wait_until():
+                return await stream.try_next() is not None
+
+            await async_wait_until(_wait_until, "get change from try_next")
 
     @no_type_check
     async def test_try_next_runs_one_getmore(self):
@@ -200,9 +202,11 @@ class APITestsMixin:
 
             # Get at least one change before resuming.
             await coll.insert_one({"_id": 2})
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_next"
-            )
+
+            async def _wait_until():
+                return await stream.try_next()
+
+            await async_wait_until(_wait_until, "get change from try_next")
             listener.reset()
 
             # Cause the next request to initiate the resume process.
@@ -219,9 +223,11 @@ class APITestsMixin:
 
             # Stream still works after a resume.
             await coll.insert_one({"_id": 3})
-            await async_wait_until(
-                lambda: stream.try_next() is not None, "get change from try_next"
-            )
+
+            async def _wait_until():
+                return await stream.try_next()
+
+            await async_wait_until(_wait_until, "get change from try_next")
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(await stream.try_next())
 
@@ -357,7 +363,7 @@ class APITestsMixin:
             t.start()
             self.watched_collection().insert_one({})
             await asyncio.sleep(1)
-            change_stream.close()
+            await change_stream.close()
             t.join(3)
             self.assertFalse(t.is_alive())
 
@@ -443,7 +449,7 @@ class APITestsMixin:
             self.assertEqual(change["operationType"], "insert")
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
-            self.assertIsNone(change_stream.try_next())
+            self.assertIsNone(await change_stream.try_next())
             self.kill_change_stream_cursor(change_stream)
 
             self.watched_collection().insert_one({"_id": 3})
@@ -457,7 +463,7 @@ class APITestsMixin:
         resume_token = await self.get_resume_token(invalidate=True)
 
         with self.change_stream(start_after=resume_token, max_await_time_ms=250) as change_stream:
-            self.assertIsNone(change_stream.try_next())
+            self.assertIsNone(await change_stream.try_next())
             self.kill_change_stream_cursor(change_stream)
 
             self.watched_collection().insert_one({"_id": 2})
@@ -626,7 +632,7 @@ class ProseSpecTestsMixin:
         client, listener = self.client_with_listener("aggregate")
         async with await self.change_stream_with_client(client) as cs:
             self.kill_change_stream_cursor(cs)
-            cs.try_next()
+            await cs.try_next()
         cmd = listener.started_events[-1].command
         self.assertIsNotNone(cmd["pipeline"][0]["$changeStream"].get("startAtOperationTime"))
 
@@ -637,7 +643,7 @@ class ProseSpecTestsMixin:
             client, start_at_operation_time=optime
         ) as cs:
             self.kill_change_stream_cursor(cs)
-            cs.try_next()
+            await cs.try_next()
         cmd = listener.started_events[-1].command
         self.assertEqual(
             cmd["pipeline"][0]["$changeStream"].get("startAtOperationTime"),
@@ -654,7 +660,7 @@ class ProseSpecTestsMixin:
     async def test_resumetoken_empty_batch(self):
         client, listener = self._client_with_listener("getMore")
         async with await self.change_stream_with_client(client) as change_stream:
-            self.assertIsNone(change_stream.try_next())
+            self.assertIsNone(await change_stream.try_next())
             resume_token = change_stream.resume_token
 
         response = listener.succeeded_events[0].reply
@@ -680,12 +686,12 @@ class ProseSpecTestsMixin:
 
         # Empty resume token when neither resumeAfter or startAfter specified.
         with self.change_stream() as change_stream:
-            change_stream.try_next()
+            await change_stream.try_next()
             self.assertIsNone(change_stream.resume_token)
 
         # Resume token value is same as resumeAfter.
         with self.change_stream(resume_after=resume_point) as change_stream:
-            change_stream.try_next()
+            await change_stream.try_next()
             resume_token = change_stream.resume_token
             self.assertEqual(resume_token, resume_point)
 
@@ -761,9 +767,9 @@ class ProseSpecTestsMixin:
             client, start_after=resume_point
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
-            change_stream.try_next()  # No changes
+            await change_stream.try_next()  # No changes
             self.kill_change_stream_cursor(change_stream)
-            change_stream.try_next()  # Resume attempt
+            await change_stream.try_next()  # Resume attempt
 
         response = listener.started_events[-1]
         self.assertIsNone(response.command["pipeline"][0]["$changeStream"].get("resumeAfter"))
@@ -784,7 +790,7 @@ class ProseSpecTestsMixin:
             self.watched_collection().insert_one({})
             next(change_stream)  # Changes
             self.kill_change_stream_cursor(change_stream)
-            change_stream.try_next()  # Resume attempt
+            await change_stream.try_next()  # Resume attempt
 
         response = listener.started_events[-1]
         self.assertIsNotNone(response.command["pipeline"][0]["$changeStream"].get("resumeAfter"))
@@ -1122,7 +1128,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
 
     @classmethod
     async def _tearDown_class(cls):
-        cls.client.close()
+        await cls.client.close()
         await super()._tearDown_class()
 
     def asyncSetUp(self):
