@@ -120,12 +120,12 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
         """Insert a document and check that it shows up in the change stream."""
         raise NotImplementedError
 
-    def kill_change_stream_cursor(self, change_stream):
+    async def kill_change_stream_cursor(self, change_stream):
         """Cause a cursor not found error on the next getMore."""
         cursor = change_stream._cursor
         address = _CursorAddress(cursor.address, cursor._ns)
         client = self.watched_collection().database.client
-        client._close_cursor_now(cursor.cursor_id, address)
+        await client._close_cursor_now(cursor.cursor_id, address)
 
 
 class APITestsMixin:
@@ -210,7 +210,7 @@ class APITestsMixin:
             listener.reset()
 
             # Cause the next request to initiate the resume process.
-            self.kill_change_stream_cursor(stream)
+            await self.kill_change_stream_cursor(stream)
             listener.reset()
 
             # The sequence should be:
@@ -264,7 +264,7 @@ class APITestsMixin:
     @no_type_check
     @async_client_context.require_version_min(4, 0, 0)
     async def test_start_at_operation_time(self):
-        optime = self.get_start_at_operation_time()
+        optime = await self.get_start_at_operation_time()
 
         coll = self.watched_collection(write_concern=WriteConcern("majority"))
         ndocs = 3
@@ -301,12 +301,12 @@ class APITestsMixin:
             num_inserted = 10
             await self.watched_collection().insert_many([{} for _ in range(num_inserted)])
             inserts_received = 0
-            for change in change_stream:
+            async for change in change_stream:
                 self.assertEqual(change["operationType"], "insert")
                 inserts_received += 1
                 if inserts_received == num_inserted:
                     break
-            self._test_invalidate_stops_iteration(change_stream)
+            await self._test_invalidate_stops_iteration(change_stream)
 
     @no_type_check
     @async_client_context.require_sync
@@ -351,9 +351,9 @@ class APITestsMixin:
         # Use a short wait time to speed up the test.
         async with await self.change_stream(max_await_time_ms=250) as change_stream:
 
-            def iterate_cursor():
+            async def iterate_cursor():
                 try:
-                    for _ in change_stream:
+                    async for _ in change_stream:
                         pass
                 except OperationFailure as e:
                     if e.code != 237:  # AsyncCursorKilled error code
@@ -452,7 +452,7 @@ class APITestsMixin:
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
             self.assertIsNone(await change_stream.try_next())
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
 
             await self.watched_collection().insert_one({"_id": 3})
             change = await change_stream.next()
@@ -468,7 +468,7 @@ class APITestsMixin:
             start_after=resume_token, max_await_time_ms=250
         ) as change_stream:
             self.assertIsNone(await change_stream.try_next())
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
 
             await self.watched_collection().insert_one({"_id": 2})
             change = await change_stream.next()
@@ -575,7 +575,7 @@ class ProseSpecTestsMixin:
         async with await self.change_stream() as change_stream:
             await self.insert_one_and_check(change_stream, {"_id": 1})
             # Cause a cursor not found error on the next getMore.
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
             await self.insert_one_and_check(change_stream, {"_id": 2})
 
     # Prose test no. 4
@@ -623,7 +623,7 @@ class ProseSpecTestsMixin:
             await self.insert_one_and_check(change_stream, {"_id": 1})
             # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
             cursor.close = raise_error
             await self.insert_one_and_check(change_stream, {"_id": 2})
 
@@ -635,18 +635,18 @@ class ProseSpecTestsMixin:
         # Case 1: change stream not started with startAtOperationTime
         client, listener = self.client_with_listener("aggregate")
         async with await self.change_stream_with_client(client) as cs:
-            self.kill_change_stream_cursor(cs)
+            await self.kill_change_stream_cursor(cs)
             await cs.try_next()
         cmd = listener.started_events[-1].command
         self.assertIsNotNone(cmd["pipeline"][0]["$changeStream"].get("startAtOperationTime"))
 
         # Case 2: change stream started with startAtOperationTime
         listener.reset()
-        optime = self.get_start_at_operation_time()
+        optime = await self.get_start_at_operation_time()
         async with await self.change_stream_with_client(
             client, start_at_operation_time=optime
         ) as cs:
-            self.kill_change_stream_cursor(cs)
+            await self.kill_change_stream_cursor(cs)
             await cs.try_next()
         cmd = listener.started_events[-1].command
         self.assertEqual(
@@ -772,7 +772,7 @@ class ProseSpecTestsMixin:
         ) as change_stream:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
             await change_stream.try_next()  # No changes
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
             await change_stream.try_next()  # Resume attempt
 
         response = listener.started_events[-1]
@@ -793,7 +793,7 @@ class ProseSpecTestsMixin:
             self.assertFalse(change_stream._cursor._has_next())  # No changes
             await self.watched_collection().insert_one({})
             next(change_stream)  # Changes
-            self.kill_change_stream_cursor(change_stream)
+            await self.kill_change_stream_cursor(change_stream)
             await change_stream.try_next()  # Resume attempt
 
         response = listener.started_events[-1]
@@ -839,7 +839,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     async def _tearDown_class(cls):
         for db in cls.dbs:
             await cls.client.drop_database(db)
-        super()._tearDown_class()
+        await super()._tearDown_class()
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client.watch(*args, **kwargs)
@@ -851,7 +851,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
         # Cluster-level change streams don't get invalidated.
         pass
 
-    def _test_invalidate_stops_iteration(self, change_stream):
+    async def _test_invalidate_stops_iteration(self, change_stream):
         # Cluster-level change streams don't get invalidated.
         pass
 
@@ -872,7 +872,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
         collnames = self.generate_unique_collnames(3)
         async with await self.change_stream() as change_stream:
             for db, collname in product(self.dbs, collnames):
-                self._insert_and_check(change_stream, db, collname, {"_id": collname})
+                await self._insert_and_check(change_stream, db, collname, {"_id": collname})
 
     @async_client_context.require_sync
     async def test_aggregate_cursor_blocks(self):
@@ -910,7 +910,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         await self.generate_invalidate_event(change_stream)
         change = await change_stream.next()
         # 4.1+ returns "drop" events for each collection in dropped database
-        # and a "dropAsyncDatabase" event for the database itself.
+        # and a "dropDatabase" event for the database itself.
         if change["operationType"] == "drop":
             self.assertTrue(change["_id"])
             for _ in range(len(dropped_colls)):
@@ -918,7 +918,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
                 self.assertEqual(ns["db"], change_stream._target.name)
                 self.assertIn(ns["coll"], dropped_colls)
                 change = await change_stream.next()
-            self.assertEqual(change["operationType"], "dropAsyncDatabase")
+            self.assertEqual(change["operationType"], "dropDatabase")
             self.assertTrue(change["_id"])
             self.assertEqual(change["ns"], {"db": change_stream._target.name})
             # Get next change.
@@ -934,9 +934,9 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
     async def _test_invalidate_stops_iteration(self, change_stream):
         # Drop the watched database to get an invalidate event.
         await change_stream._client.drop_database(self.db.name)
-        # Check drop and dropAsyncDatabase events.
-        for change in change_stream:
-            self.assertIn(change["operationType"], ("drop", "dropAsyncDatabase", "invalidate"))
+        # Check drop and dropDatabase events.
+        async for change in change_stream:
+            self.assertIn(change["operationType"], ("drop", "dropDatabase", "invalidate"))
         # Last change must be invalidate.
         self.assertEqual(change["operationType"], "invalidate")
         # Change stream must not allow further iteration.
@@ -960,7 +960,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         collnames = self.generate_unique_collnames(3)
         async with await self.change_stream() as change_stream:
             for collname in collnames:
-                self._insert_and_check(
+                await self._insert_and_check(
                     change_stream, collname, {"_id": Binary.from_uuid(uuid.uuid4())}
                 )
 
@@ -971,7 +971,9 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
         collname = self.id()
         async with await self.change_stream() as change_stream:
             await other_db[collname].insert_one({"_id": Binary.from_uuid(uuid.uuid4())})
-            self._insert_and_check(change_stream, collname, {"_id": Binary.from_uuid(uuid.uuid4())})
+            await self._insert_and_check(
+                change_stream, collname, {"_id": Binary.from_uuid(uuid.uuid4())}
+            )
         await self.client.drop_database(other_db)
 
 
@@ -1001,8 +1003,8 @@ class TestAsyncCollectionAsyncChangeStream(
 
     async def _test_invalidate_stops_iteration(self, change_stream):
         await self.generate_invalidate_event(change_stream)
-        # Check drop and dropAsyncDatabase events.
-        for change in change_stream:
+        # Check drop and dropDatabase events.
+        async for change in change_stream:
             self.assertIn(change["operationType"], ("drop", "invalidate"))
         # Last change must be invalidate.
         self.assertEqual(change["operationType"], "invalidate")
