@@ -20,6 +20,7 @@ import sys
 import time
 import warnings
 
+from pymongo import MongoClient
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -87,7 +88,7 @@ class TestMaxStaleness(PyMongoTestCase):
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
-            client = self.single_client(
+            client = self.simple_client(
                 "mongodb://host/?maxStalenessSeconds=1.5&readPreference=nearest"
             )
 
@@ -104,7 +105,7 @@ class TestMaxStaleness(PyMongoTestCase):
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
-            client = self.single_client(
+            client = self.simple_client(
                 "mongodb://host/?maxStalenessSeconds=0&readPreference=nearest"
             )
 
