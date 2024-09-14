@@ -240,12 +240,16 @@ class BinaryVector:
 class Binary(bytes):
     """Representation of BSON binary data.
 
-    # TODO Add Vector subtype description
-
-    This is necessary because we want to represent Python strings as
-    the BSON string type. We need to wrap binary data so we can tell
+    We want to represent Python strings as the BSON string type.
+    We need to wrap binary data so that we can tell
     the difference between what should be considered binary data and
     what should be considered a string when we encode to BSON.
+
+    Subtype 9 provides a space-efficient representation of 1-dimensional vector data.
+    Its data is prepended with two bytes of metadata.
+    The first (dtype) describes its data type, such as float32 or int8.
+    The second (padding) prescribes the number of bits to ignore in the final byte.
+    This is relevant when the element size of the dtype is not a multiple of 8.
 
     Raises TypeError if subtype` is not an instance of :class:`int`.
     Raises ValueError if `subtype` is not in [0, 256).
@@ -259,8 +263,9 @@ class Binary(bytes):
         <https://bsonspec.org/spec.html>`_
         to use
 
-    .. versionchanged:: 3.9
-      Support any bytes-like type that implements the buffer protocol.
+    .. versionchanged::
+    3.9 Support any bytes-like type that implements the buffer protocol.
+    4.9 Addition of vector subtype.
     """
 
     _type_marker = 5
