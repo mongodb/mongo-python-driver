@@ -1185,7 +1185,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __del__(self) -> None:
         """Check that this MongoClient has been closed and issue a warning if not."""
         try:
-            if not self._closed:
+            if self._opened and not self._closed:
                 warnings.warn(
                     (
                         f"Unclosed {type(self).__name__} opened at:\n{self._topology_settings._stack}"
