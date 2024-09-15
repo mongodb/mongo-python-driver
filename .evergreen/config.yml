@@ -2107,7 +2107,7 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           SKIP_HATCH: true
-      - id: rhel82-arm64
+      - id: rhel8-arm64
         display_name: "RHEL 8 (ARM64)"
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
