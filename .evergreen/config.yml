@@ -2112,7 +2112,7 @@ axes:
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-      - id: windows-2022-small
+      - id: window
         display_name: "Windows 64"
         run_on: windows-2022-small
         batchtime: 10080  # 7 days
@@ -2470,7 +2470,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel92-fips
+      - rhel9-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2547,9 +2547,9 @@ buildvariants:
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      - rhel83-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel81-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel82-arm64 # Added in 4.4.2 (SERVER-48282)
+      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
+      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
+      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2724,7 +2724,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
@@ -2733,7 +2733,7 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
-        platform: windows-64-vsMulti-small
+        platform: windows
         python-version-windows: "*"
         auth-ssl: "*"
       then:
@@ -2795,7 +2795,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-enterprise-auth"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
@@ -2907,7 +2907,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: ["3.8", "3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
@@ -2932,7 +2932,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8, macos, windows-64-vsMulti-small ]
+    platform: [ rhel8, macos, windows ]
   display_name: "OIDC Auth ${platform}"
   tasks:
     - name: testoidc_task_group
@@ -2981,7 +2981,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
-    platform: [windows-64-vsMulti-small]
+    platform: [windows]
     python-version-windows: "*"
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
