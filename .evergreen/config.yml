@@ -2083,8 +2083,8 @@ axes:
         display_name: "RHEL 8.x"
         run_on: rhel87-small
         batchtime: 10080  # 7 days
-      - id: rhel92-fips
-        display_name: "RHEL 9.2 FIPS"
+      - id: rhel9-fips
+        display_name: "RHEL 9 FIPS"
         run_on: rhel92-fips
         batchtime: 10080  # 7 days
       - id: ubuntu-22.04
@@ -2095,26 +2095,26 @@ axes:
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
-      - id: rhel83-zseries
-        display_name: "RHEL 8.3 (zSeries)"
-        run_on: rhel83-zseries-small
+      - id: rhel8-zseries
+        display_name: "RHEL 8 (zSeries)"
+        run_on: rhel8-zseries-small
         batchtime: 10080  # 7 days
         variables:
           SKIP_HATCH: true
-      - id: rhel81-power8
-        display_name: "RHEL 8.1 (POWER8)"
-        run_on: rhel81-power8-small
+      - id: rhel8-power8
+        display_name: "RHEL 8 (POWER8)"
+        run_on: rhel8-power-small
         batchtime: 10080  # 7 days
         variables:
           SKIP_HATCH: true
       - id: rhel82-arm64
-        display_name: "RHEL 8.2 (ARM64)"
+        display_name: "RHEL 8 (ARM64)"
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-      - id: windows-64-vsMulti-small
+      - id: windows-2022-small
         display_name: "Windows 64"
-        run_on: windows-64-vsMulti-small
+        run_on: windows-2022-small
         batchtime: 10080  # 7 days
         variables:
           skip_ECS_auth_test: true
@@ -2606,7 +2606,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
     ssl: "ssl"
@@ -2698,7 +2698,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
@@ -2706,7 +2706,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version-32-bit"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows-32: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
