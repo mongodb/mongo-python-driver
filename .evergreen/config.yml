@@ -2112,7 +2112,7 @@ axes:
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-      - id: window
+      - id: windows
         display_name: "Windows 64"
         run_on: windows-2022-small
         batchtime: 10080  # 7 days
