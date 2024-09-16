@@ -161,7 +161,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
         client = AsyncMongoClient(mech_uri)
         await client[GSSAPI_DB].collection.find_one()
 
-        set_name = await client.admin.command(HelloCompat.LEGACY_CMD).get("setName")
+        set_name = async_client_context.replica_set_name
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
@@ -234,7 +234,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
             thread.join()
             self.assertTrue(thread.success)
 
-        set_name = await client.admin.command(HelloCompat.LEGACY_CMD).get("setName")
+        set_name = async_client_context.replica_set_name
         if set_name:
             client = AsyncMongoClient(
                 GSSAPI_HOST,
@@ -288,7 +288,7 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
         client = AsyncMongoClient(uri)
         await client.ldap.test.find_one()
 
-        set_name = await client.admin.command(HelloCompat.LEGACY_CMD).get("setName")
+        set_name = async_client_context.replica_set_name
         if set_name:
             client = AsyncMongoClient(
                 SASL_HOST,
