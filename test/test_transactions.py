@@ -66,6 +66,13 @@ class TransactionsBase(SpecRunner):
             for address in client_context.mongoses:
                 cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
+    @classmethod
+    def _tearDown_class(cls):
+        super()._tearDown_class()
+        if cls.mongos_clients:
+            for client in cls.mongos_clients:
+                client.close()
+
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
         if (

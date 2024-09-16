@@ -54,7 +54,7 @@ def create_test(test_case):
                 warnings.simplefilter("default")
                 self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
