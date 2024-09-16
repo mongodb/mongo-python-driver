@@ -2114,7 +2114,7 @@ axes:
         variables:
       - id: windows
         display_name: "Windows 64"
-        run_on: windows-2022-small
+        run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
         variables:
           skip_ECS_auth_test: true
