@@ -164,6 +164,7 @@ class APITestsMixin:
         async with await self.change_stream(max_await_time_ms=250) as stream:
             self.assertIsNone(await stream.try_next())  # No changes initially.
             await coll.insert_one({})  # Generate a change.
+
             # On sharded clusters, even majority-committed changes only show
             # up once an event that sorts after it shows up on the other
             # shard. So, we wait on try_next to eventually return changes.
