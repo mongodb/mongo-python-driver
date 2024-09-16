@@ -1193,7 +1193,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     ),
                     ResourceWarning,
                     stacklevel=2,
-                    source=self,
                 )
         except AttributeError:
             pass
