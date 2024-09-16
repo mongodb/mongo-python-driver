@@ -1449,7 +1449,7 @@ class TestCursor(IntegrationTest):
             "mode": {"times": 2},
             "data": {"failCommands": ["aggregate"], "blockConnection": True, "blockTimeMS": 10000},
         }
-        cursor = client.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        cursor = client.db.test.aggregate([{"$changeStream": {}}])
         with self.fail_point(fail_command):
             with self.assertRaises(PyMongoError) as ctx:
                 cursor.to_list()
