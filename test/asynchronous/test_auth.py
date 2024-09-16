@@ -23,7 +23,13 @@ from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, SkipTest, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    SkipTest,
+    async_client_context,
+    unittest,
+)
 from test.utils import AllowListEventListener, delay, ignore_deprecations
 
 from pymongo import AsyncMongoClient, monitoring
@@ -73,7 +79,7 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = True
 
 
-class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
+class TestGSSAPI(AsyncPyMongoTestCase):
     mech_properties: str
     service_realm_required: bool
 
@@ -130,7 +136,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         if not self.service_realm_required:
             # Without authMechanismProperties.
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -141,11 +147,11 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
             await client[GSSAPI_DB].collection.find_one()
 
             # Log in using URI, without authMechanismProperties.
-            client = AsyncMongoClient(uri)
+            client = self.simple_client(uri)
             await client[GSSAPI_DB].collection.find_one()
 
         # Authenticate with authMechanismProperties.
-        client = AsyncMongoClient(
+        client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
@@ -158,14 +164,14 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         # Log in using URI, with authMechanismProperties.
         mech_uri = uri + f"&authMechanismProperties={self.mech_properties}"
-        client = AsyncMongoClient(mech_uri)
+        client = self.simple_client(mech_uri)
         await client[GSSAPI_DB].collection.find_one()
 
         set_name = async_client_context.replica_set_name
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
-                client = AsyncMongoClient(
+                client = self.simple_client(
                     GSSAPI_HOST,
                     GSSAPI_PORT,
                     username=GSSAPI_PRINCIPAL,
@@ -177,11 +183,11 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
                 await client[GSSAPI_DB].list_collection_names()
 
                 uri = uri + f"&replicaSet={set_name!s}"
-                client = AsyncMongoClient(uri)
+                client = self.simple_client(uri)
                 await client[GSSAPI_DB].list_collection_names()
 
             # With authMechanismProperties
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -194,13 +200,13 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
             await client[GSSAPI_DB].list_collection_names()
 
             mech_uri = mech_uri + f"&replicaSet={set_name!s}"
-            client = AsyncMongoClient(mech_uri)
+            client = self.simple_client(mech_uri)
             await client[GSSAPI_DB].list_collection_names()
 
     @ignore_deprecations
     @async_client_context.require_sync
     async def test_gssapi_threaded(self):
-        client = AsyncMongoClient(
+        client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
@@ -236,7 +242,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         set_name = async_client_context.replica_set_name
         if set_name:
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -259,14 +265,14 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(thread.success)
 
 
-class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
+class TestSASLPlain(AsyncPyMongoTestCase):
     @classmethod
     def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
             raise SkipTest("Must set SASL_HOST, SASL_USER, and SASL_PASS to test SASL")
 
     async def test_sasl_plain(self):
-        client = AsyncMongoClient(
+        client = self.simple_client(
             SASL_HOST,
             SASL_PORT,
             username=SASL_USER,
@@ -285,12 +291,12 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
             SASL_PORT,
             SASL_DB,
         )
-        client = AsyncMongoClient(uri)
+        client = self.simple_client(uri)
         await client.ldap.test.find_one()
 
         set_name = async_client_context.replica_set_name
         if set_name:
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 SASL_HOST,
                 SASL_PORT,
                 replicaSet=set_name,
@@ -309,7 +315,7 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
                 SASL_DB,
                 str(set_name),
             )
-            client = AsyncMongoClient(uri)
+            client = self.simple_client(uri)
             await client.ldap.test.find_one()
 
     async def test_sasl_plain_bad_credentials(self):
@@ -323,8 +329,8 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
             )
             return uri
 
-        bad_user = AsyncMongoClient(auth_string("not-user", SASL_PASS))
-        bad_pwd = AsyncMongoClient(auth_string(SASL_USER, "not-pwd"))
+        bad_user = self.simple_client(auth_string("not-user", SASL_PASS))
+        bad_pwd = self.simple_client(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
         with self.assertRaises(OperationFailure):
             await bad_user.admin.command("ping")

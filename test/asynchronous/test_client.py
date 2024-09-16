@@ -178,7 +178,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
 
-        client = await self.async_single_client(
+        client = await self.simple_client(
             "mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0", connect=False
         )
         pool_opts = client.options.pool_options
@@ -345,10 +345,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
         metadata = copy.deepcopy(_METADATA)
         metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
-        client = await self.async_single_client("mongodb://foo:27017/?appname=foobar&connect=false")
+        client = await self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
-        client = await self.async_single_client("foo", 27017, appname="foobar", connect=False)
+        client = await self.simple_client("foo", 27017, appname="foobar", connect=False)
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # No error

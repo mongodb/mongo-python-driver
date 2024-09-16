@@ -421,7 +421,7 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
         server.events = events
         server_thread = threading.Thread(target=server.handle_request_and_shutdown)
         server_thread.start()
-        _c = self.single_client(
+        _c = self.simple_client(
             "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
         )
         server_thread.join()

@@ -174,7 +174,7 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
 
-        client = self.single_client(
+        client = self.simple_client(
             "mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0", connect=False
         )
         pool_opts = client.options.pool_options
@@ -337,10 +337,10 @@ class ClientUnitTest(UnitTest):
         metadata = copy.deepcopy(_METADATA)
         metadata["driver"]["name"] = "PyMongo"
         metadata["application"] = {"name": "foobar"}
-        client = self.single_client("mongodb://foo:27017/?appname=foobar&connect=false")
+        client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
-        client = self.single_client("foo", 27017, appname="foobar", connect=False)
+        client = self.simple_client("foo", 27017, appname="foobar", connect=False)
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # No error
