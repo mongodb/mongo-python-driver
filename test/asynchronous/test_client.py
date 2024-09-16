@@ -368,7 +368,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         # Test appending to driver info.
         metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
-        client = await self.async_single_client(
+        client = await self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -378,7 +378,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
-        client = await self.async_single_client(
+        client = await self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -388,7 +388,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # Test truncating driver info metadata.
-        client = await self.async_single_client(
+        client = await self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
@@ -397,7 +397,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
-        client = await self.async_single_client(
+        client = await self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )

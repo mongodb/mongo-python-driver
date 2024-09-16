@@ -360,7 +360,7 @@ class ClientUnitTest(UnitTest):
         # Test appending to driver info.
         metadata["driver"]["name"] = "PyMongo|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
-        client = self.single_client(
+        client = self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -370,7 +370,7 @@ class ClientUnitTest(UnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
-        client = self.single_client(
+        client = self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -380,7 +380,7 @@ class ClientUnitTest(UnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # Test truncating driver info metadata.
-        client = self.single_client(
+        client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
@@ -389,7 +389,7 @@ class ClientUnitTest(UnitTest):
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
-        client = self.single_client(
+        client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
