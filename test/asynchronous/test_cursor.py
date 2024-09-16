@@ -1455,8 +1455,8 @@ class TestCursor(AsyncIntegrationTest):
         client = await self.async_single_client(timeoutMS=1000)
         fail_command = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 2},
-            "data": {"failCommands": ["aggregate"], "blockConnection": True, "blockTimeMS": 10000},
+            "mode": {"times": 1},
+            "data": {"failCommands": ["aggregate"], "blockTimeMS": 10000},
         }
         cursor = await client.db.test.aggregate([{"$changeStream": {}}])
         async with self.fail_point(fail_command):

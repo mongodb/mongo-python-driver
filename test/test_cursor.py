@@ -1446,8 +1446,8 @@ class TestCursor(IntegrationTest):
         client = single_client(timeoutMS=1000)
         fail_command = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 2},
-            "data": {"failCommands": ["aggregate"], "blockConnection": True, "blockTimeMS": 10000},
+            "mode": {"times": 1},
+            "data": {"failCommands": ["aggregate"], "blockTimeMS": 10000},
         }
         cursor = client.db.test.aggregate([{"$changeStream": {}}])
         with self.fail_point(fail_command):
