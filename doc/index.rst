@@ -100,8 +100,6 @@ pull request.
 Changes
 -------
 See the :doc:`changelog` for a full list of changes to PyMongo.
-For older versions of the documentation please see the
-`archive list <http://api.mongodb.org/python/>`_.
 
 About This Documentation
 ------------------------
