@@ -34,6 +34,7 @@ from test.utils import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,
+    delay,
     ignore_deprecations,
     wait_until,
 )
@@ -44,7 +45,7 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import Collation
-from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
+from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
 from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -1410,6 +1411,15 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list(3)
         self.assertEqual(len(docs), 2)
 
+    async def test_to_list_csot_applied(self):
+        client = await self.async_single_client(timeoutMS=1000)
+        coll = client.pymongo.test
+        await coll.insert_many([{} for _ in range(5)])
+        cursor = coll.find({"$where": delay(2)})
+        with self.assertRaises(PyMongoError) as ctx:
+            await cursor.to_list()
+        self.assertTrue(ctx.exception.timeout)
+
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1438,6 +1448,20 @@ class TestCursor(AsyncIntegrationTest):
 
         result = await db.test.aggregate([pipeline])
         self.assertEqual(len(await result.to_list(1)), 1)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list_csot_applied(self):
+        client = await self.async_single_client(timeoutMS=1000)
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 2},
+            "data": {"failCommands": ["aggregate"], "blockConnection": True, "blockTimeMS": 10000},
+        }
+        cursor = await client.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        async with self.fail_point(fail_command):
+            with self.assertRaises(PyMongoError) as ctx:
+                await cursor.to_list()
+            self.assertTrue(ctx.exception.timeout)
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
