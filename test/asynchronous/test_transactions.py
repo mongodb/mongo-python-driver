@@ -59,21 +59,6 @@ UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
 class AsyncTransactionsBase(AsyncSpecRunner):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        if async_client_context.supports_transactions():
-            for address in async_client_context.mongoses:
-                cls.mongos_clients.append(
-                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
-                )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
-
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
         if (

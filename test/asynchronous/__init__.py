@@ -235,6 +235,9 @@ class AsyncClientContext:
                     if not await self._check_user_provided():
                         await _create_user(self.client.admin, db_user, db_pwd)
 
+                if self.client:
+                    await self.client.close()
+
                 self.client = await self._connect(
                     host,
                     port,
@@ -261,9 +264,9 @@ class AsyncClientContext:
             if "setName" in hello:
                 self.replica_set_name = str(hello["setName"])
                 self.is_rs = True
+                if self.client:
+                    await self.client.close()
                 if self.auth_enabled:
-                    if self.client:
-                        await self.client.close()
                     # It doesn't matter which member we use as the seed here.
                     self.client = pymongo.AsyncMongoClient(
                         host,
@@ -274,8 +277,6 @@ class AsyncClientContext:
                         **self.default_client_options,
                     )
                 else:
-                    if self.client:
-                        await self.client.close()
                     self.client = pymongo.AsyncMongoClient(
                         host, port, replicaSet=self.replica_set_name, **self.default_client_options
                     )

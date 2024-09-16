@@ -235,6 +235,9 @@ class ClientContext:
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
 
+                if self.client:
+                    self.client.close()
+
                 self.client = self._connect(
                     host,
                     port,
@@ -261,9 +264,9 @@ class ClientContext:
             if "setName" in hello:
                 self.replica_set_name = str(hello["setName"])
                 self.is_rs = True
+                if self.client:
+                    self.client.close()
                 if self.auth_enabled:
-                    if self.client:
-                        self.client.close()
                     # It doesn't matter which member we use as the seed here.
                     self.client = pymongo.MongoClient(
                         host,
@@ -274,8 +277,6 @@ class ClientContext:
                         **self.default_client_options,
                     )
                 else:
-                    if self.client:
-                        self.client.close()
                     self.client = pymongo.MongoClient(
                         host, port, replicaSet=self.replica_set_name, **self.default_client_options
                     )

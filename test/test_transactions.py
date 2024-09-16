@@ -59,19 +59,6 @@ UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
 class TransactionsBase(SpecRunner):
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        if client_context.supports_transactions():
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
-
-    @classmethod
-    def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
-
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)
         if (
