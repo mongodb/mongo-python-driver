@@ -2081,7 +2081,7 @@ axes:
         batchtime: 10080  # 7 days
       - id: rhel8
         display_name: "RHEL 8.x"
-        run_on: rhel87-small
+        run_on: rhel8.8-small
         batchtime: 10080  # 7 days
       - id: rhel9-fips
         display_name: "RHEL 9 FIPS"
