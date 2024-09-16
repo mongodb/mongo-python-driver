@@ -48,9 +48,11 @@ else:
 def _connect(options):
     uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS={TIMEOUT_MS}&tlsCAFile={CA_FILE}&{options}"
     print(uri)
-    client = pymongo.MongoClient(uri)
-    client.admin.command("ping")
-    client.close()
+    try:
+        client = pymongo.MongoClient(uri)
+        client.admin.command("ping")
+    finally:
+        client.close()
 
 
 class TestOCSP(unittest.TestCase):
