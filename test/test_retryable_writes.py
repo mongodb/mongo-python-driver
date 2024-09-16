@@ -298,7 +298,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     def test_server_selection_timeout_not_retried(self):
         """A ServerSelectionTimeoutError is not retried."""
         listener = OvertCommandListener()
-        client = self.single_client(
+        client = self.simple_client(
             "somedomainthatdoesntexist.org",
             serverSelectionTimeoutMS=1,
             retryWrites=True,
