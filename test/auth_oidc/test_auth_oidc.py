@@ -23,6 +23,7 @@ import unittest
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
+from test import PyMongoTestCase
 from typing import Dict
 
 import pytest
@@ -56,7 +57,7 @@ globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
 pytestmark = pytest.mark.auth_oidc
 
 
-class OIDCTestBase(unittest.TestCase):
+class OIDCTestBase(PyMongoTestCase):
     @classmethod
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
@@ -150,7 +151,9 @@ class TestAuthOIDCHuman(OIDCTestBase):
         if not len(args):
             args = [self.uri_single]
 
-        return MongoClient(*args, authmechanismproperties=props, **kwargs)
+        client = self.simple_client(*args, authmechanismproperties=props, **kwargs)
+
+        return client
 
     def test_1_1_single_principal_implicit_username(self):
         # Create default OIDC client with authMechanism=MONGODB-OIDC.

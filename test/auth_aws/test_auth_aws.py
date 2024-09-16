@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from test import PyMongoTestCase
 from unittest.mock import patch
 
 import pytest
@@ -185,14 +186,14 @@ class TestAuthAWS(unittest.TestCase):
             client2.get_database().test.find_one()
 
 
-class TestAWSLambdaExamples(unittest.TestCase):
+class TestAWSLambdaExamples(PyMongoTestCase):
     def test_shared_client(self):
         # Start AWS Lambda Example 1
         import os
 
         from pymongo import MongoClient
 
-        client = MongoClient(host=os.environ["MONGODB_URI"])
+        client = self.simple_client(host=os.environ["MONGODB_URI"])
 
         def lambda_handler(event, context):
             return client.db.command("ping")
