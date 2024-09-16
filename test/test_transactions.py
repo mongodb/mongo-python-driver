@@ -68,10 +68,9 @@ class TransactionsBase(SpecRunner):
 
     @classmethod
     def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            client.close()
         super()._tearDown_class()
-        if cls.mongos_clients:
-            for client in cls.mongos_clients:
-                client.close()
 
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)

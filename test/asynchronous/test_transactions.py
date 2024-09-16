@@ -70,10 +70,9 @@ class AsyncTransactionsBase(AsyncSpecRunner):
 
     @classmethod
     async def _tearDown_class(cls):
+        for client in cls.mongos_clients:
+            await client.close()
         await super()._tearDown_class()
-        if cls.mongos_clients:
-            for client in cls.mongos_clients:
-                await client.close()
 
     def maybe_skip_scenario(self, test):
         super().maybe_skip_scenario(test)

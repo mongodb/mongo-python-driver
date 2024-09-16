@@ -20,6 +20,7 @@ import json
 import os
 import sys
 import warnings
+from test.asynchronous import AsyncPyMongoTestCase
 
 sys.path[0:0] = [""]
 
@@ -34,7 +35,7 @@ _IS_SYNC = False
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 
-class TestAuthSpec(unittest.IsolatedAsyncioTestCase):
+class TestAuthSpec(AsyncPyMongoTestCase):
     pass
 
 
