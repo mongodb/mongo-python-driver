@@ -209,9 +209,13 @@ USER_DEFINED_SUBTYPE = 128
 class BinaryVectorDtype(Enum):
     """Datatypes of vector subtype.
 
+    FLOAT32: Pack floats as float32
+    INT8: Pack ints in [-128, 127] as signed int8
+    PACKED_BIT: Pack ints in [0, 255] as unsigned uint8
+
     The PACKED_BIT value represents a special case where vector values themselves
     can only hold two values (0 or 1) but these are packed together into groups of 8,
-    a byte. In Python, these are displayed as ints in range(0,128).
+    a byte. In Python, these are displayed as ints in range [0, 255]
     """
 
     INT8 = b"\x03"
@@ -263,9 +267,11 @@ class Binary(bytes):
         <https://bsonspec.org/spec.html>`_
         to use
 
-    .. versionchanged::
-    3.9 Support any bytes-like type that implements the buffer protocol.
-    4.9 Addition of vector subtype.
+    .. versionchanged:: 3.9
+       Support any bytes-like type that implements the buffer protocol.
+
+    .. versionchanged:: 4.9
+       Addition of vector subtype.
     """
 
     _type_marker = 5
