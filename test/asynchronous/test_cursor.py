@@ -1450,6 +1450,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(await result.to_list(1)), 1)
 
     @async_client_context.require_change_streams
+    @async_client_context.require_failCommand_fail_point
     async def test_command_cursor_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=1000)
         fail_command = {

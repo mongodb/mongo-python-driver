@@ -1441,6 +1441,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(result.to_list(1)), 1)
 
     @client_context.require_change_streams
+    @client_context.require_failCommand_fail_point
     def test_command_cursor_to_list_csot_applied(self):
         client = single_client(timeoutMS=1000)
         fail_command = {
