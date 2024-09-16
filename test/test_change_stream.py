@@ -28,7 +28,13 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, Version, client_context, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    Version,
+    client_context,
+    unittest,
+)
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
@@ -69,7 +75,6 @@ class TestChangeStreamBase(IntegrationTest):
         """Return a client with a AllowListEventListener."""
         listener = AllowListEventListener(*commands)
         client = self.rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         return client, listener
 
     def watched_collection(self, *args, **kwargs):
@@ -472,7 +477,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
-        client = self.rs_or_single_client(event_listeners=[listener])
+        client = PyMongoTestCase.unmanaged_rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
 
