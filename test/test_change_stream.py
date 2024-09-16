@@ -202,7 +202,7 @@ class APITestsMixin:
             coll.insert_one({"_id": 2})
 
             def _wait_until():
-                return stream.try_next()
+                return stream.try_next() is not None
 
             wait_until(_wait_until, "get change from try_next")
             listener.reset()
@@ -223,7 +223,7 @@ class APITestsMixin:
             coll.insert_one({"_id": 3})
 
             def _wait_until():
-                return stream.try_next()
+                return stream.try_next() is not None
 
             wait_until(_wait_until, "get change from try_next")
             self.assertEqual(set(listener.started_command_names()), {"getMore"})
