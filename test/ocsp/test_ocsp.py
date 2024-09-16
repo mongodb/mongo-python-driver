@@ -50,6 +50,7 @@ def _connect(options):
     print(uri)
     client = pymongo.MongoClient(uri)
     client.admin.command("ping")
+    client.close()
 
 
 class TestOCSP(unittest.TestCase):

@@ -94,6 +94,7 @@ class OIDCTestBase(unittest.TestCase):
             yield
         finally:
             client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+            client.close()
 
 
 @pytest.mark.auth_oidc
