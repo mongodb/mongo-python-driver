@@ -1459,6 +1459,7 @@ class TestCursor(AsyncIntegrationTest):
         with pymongo.timeout(2):
             await client.admin.command("ping")
         coll = client.pymongo.test
+        await coll.insert_many([{} for _ in range(5)])
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 5},
