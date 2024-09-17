@@ -1403,10 +1403,13 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(docs), 2)
 
     def test_to_list_csot_applied(self):
-        client = self.single_client(timeoutMS=1000)
+        client = self.single_client(timeoutMS=500)
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(2):
+            client.admin.command("ping")
         coll = client.pymongo.test
         coll.insert_many([{} for _ in range(5)])
-        cursor = coll.find({"$where": delay(2)})
+        cursor = coll.find({"$where": delay(1)})
         with self.assertRaises(PyMongoError) as ctx:
             cursor.to_list()
         self.assertTrue(ctx.exception.timeout)
@@ -1442,15 +1445,17 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_command_cursor_to_list_csot_applied(self):
-        client = self.single_client(timeoutMS=1000)
+        client = self.single_client(timeoutMS=500)
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(2):
+            client.admin.command("ping")
         coll = client.pymongo.test
-        coll.insert_many([{} for _ in range(10)])
         fail_command = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 2},
-            "data": {"failCommands": ["getMore"], "blockTimeMS": 2000},
+            "mode": {"times": 5},
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 1000},
         }
-        cursor = client.db.test.aggregate([], batchSize=5)
+        cursor = coll.aggregate([], batchSize=1)
         with self.fail_point(fail_command):
             with self.assertRaises(PyMongoError) as ctx:
                 cursor.to_list()
