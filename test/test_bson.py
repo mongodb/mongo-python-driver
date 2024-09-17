@@ -782,8 +782,10 @@ class TestBSON(unittest.TestCase):
         for x in [-1, 257]:
             try:
                 Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
-            except struct.error as e:
-                assert "format requires 0 <= number <= 255" in str(e)
+            except Exception as exc:
+                self.assertTrue(isinstance(exc, struct.error))
+            else:
+                self.fail("Failed to raise an exception.")
 
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
