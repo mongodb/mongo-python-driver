@@ -380,6 +380,7 @@ class TestClientSimple(EncryptionIntegrationTest):
         is_greenthread_patched(),
         "gevent and eventlet do not support POSIX-style forking.",
     )
+    @client_context.require_sync
     def test_fork(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = self.rs_or_single_client(auto_encryption_opts=opts)
