@@ -16,8 +16,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
-import contextlib
 import gc
 import multiprocessing
 import os
@@ -27,7 +25,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
@@ -54,6 +51,8 @@ from test.helpers import (
     sanitize_reply,
 )
 
+from pymongo.uri_parser import parse_uri
+
 try:
     import ipaddress
 
@@ -78,6 +77,12 @@ from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 
 _IS_SYNC = False
+
+
+def _connection_string(h):
+    if h.startswith(("mongodb://", "mongodb+srv://")):
+        return h
+    return f"mongodb://{h!s}"
 
 
 class AsyncClientContext:
@@ -230,6 +235,9 @@ class AsyncClientContext:
                     if not await self._check_user_provided():
                         await _create_user(self.client.admin, db_user, db_pwd)
 
+                if self.client:
+                    await self.client.close()
+
                 self.client = await self._connect(
                     host,
                     port,
@@ -256,6 +264,8 @@ class AsyncClientContext:
             if "setName" in hello:
                 self.replica_set_name = str(hello["setName"])
                 self.is_rs = True
+                if self.client:
+                    await self.client.close()
                 if self.auth_enabled:
                     # It doesn't matter which member we use as the seed here.
                     self.client = pymongo.AsyncMongoClient(
@@ -320,6 +330,7 @@ class AsyncClientContext:
                         hello = await mongos_client.admin.command(HelloCompat.LEGACY_CMD)
                         if hello.get("msg") == "isdbgrid":
                             self.mongoses.append(next_address)
+                        await mongos_client.close()
 
     async def init(self):
         with self.conn_lock:
@@ -537,12 +548,6 @@ class AsyncClientContext:
         """Run a test only if the server is running with auth enabled."""
         return self._require(
             lambda: self.auth_enabled, "Authentication is not enabled on the server", func=func
-        )
-
-    def require_no_fips(self, func):
-        """Run a test only if the host does not have FIPS enabled."""
-        return self._require(
-            lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
     def require_no_auth(self, func):
@@ -931,6 +936,188 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
                     proc.join(1)
                 self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")
             self.assertEqual(proc.exitcode, 0)
+
+    @classmethod
+    async def _unmanaged_async_mongo_client(
+        cls, host, port, authenticate=True, directConnection=None, **kwargs
+    ):
+        """Create a new client over SSL/TLS if necessary."""
+        host = host or await async_client_context.host
+        port = port or await async_client_context.port
+        client_options: dict = async_client_context.default_client_options.copy()
+        if async_client_context.replica_set_name and not directConnection:
+            client_options["replicaSet"] = async_client_context.replica_set_name
+        if directConnection is not None:
+            client_options["directConnection"] = directConnection
+        client_options.update(kwargs)
+
+        uri = _connection_string(host)
+        auth_mech = kwargs.get("authMechanism", "")
+        if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
+            # Only add the default username or password if one is not provided.
+            res = parse_uri(uri)
+            if (
+                not res["username"]
+                and not res["password"]
+                and "username" not in client_options
+                and "password" not in client_options
+            ):
+                client_options["username"] = db_user
+                client_options["password"] = db_pwd
+        client = AsyncMongoClient(uri, port, **client_options)
+        if client._options.connect:
+            await client.aconnect()
+        return client
+
+    async def _async_mongo_client(
+        self, host, port, authenticate=True, directConnection=None, **kwargs
+    ):
+        """Create a new client over SSL/TLS if necessary."""
+        host = host or await async_client_context.host
+        port = port or await async_client_context.port
+        client_options: dict = async_client_context.default_client_options.copy()
+        if async_client_context.replica_set_name and not directConnection:
+            client_options["replicaSet"] = async_client_context.replica_set_name
+        if directConnection is not None:
+            client_options["directConnection"] = directConnection
+        client_options.update(kwargs)
+
+        uri = _connection_string(host)
+        auth_mech = kwargs.get("authMechanism", "")
+        if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
+            # Only add the default username or password if one is not provided.
+            res = parse_uri(uri)
+            if (
+                not res["username"]
+                and not res["password"]
+                and "username" not in client_options
+                and "password" not in client_options
+            ):
+                client_options["username"] = db_user
+                client_options["password"] = db_pwd
+        client = AsyncMongoClient(uri, port, **client_options)
+        if client._options.connect:
+            await client.aconnect()
+        self.addAsyncCleanup(client.close)
+        return client
+
+    @classmethod
+    async def unmanaged_async_single_client_noauth(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await cls._unmanaged_async_mongo_client(
+            h, p, authenticate=False, directConnection=True, **kwargs
+        )
+
+    @classmethod
+    async def unmanaged_async_single_client(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await cls._unmanaged_async_mongo_client(h, p, directConnection=True, **kwargs)
+
+    @classmethod
+    async def unmanaged_async_rs_client(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Connect to the replica set and authenticate if necessary."""
+        return await cls._unmanaged_async_mongo_client(h, p, **kwargs)
+
+    @classmethod
+    async def unmanaged_async_rs_client_noauth(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await cls._unmanaged_async_mongo_client(h, p, authenticate=False, **kwargs)
+
+    @classmethod
+    async def unmanaged_async_rs_or_single_client_noauth(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await cls._unmanaged_async_mongo_client(h, p, authenticate=False, **kwargs)
+
+    @classmethod
+    async def unmanaged_async_rs_or_single_client(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await cls._unmanaged_async_mongo_client(h, p, **kwargs)
+
+    async def async_single_client_noauth(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection. Don't authenticate."""
+        return await self._async_mongo_client(
+            h, p, authenticate=False, directConnection=True, **kwargs
+        )
+
+    async def async_single_client(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Make a direct connection, and authenticate if necessary."""
+        return await self._async_mongo_client(h, p, directConnection=True, **kwargs)
+
+    async def async_rs_client_noauth(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Connect to the replica set. Don't authenticate."""
+        return await self._async_mongo_client(h, p, authenticate=False, **kwargs)
+
+    async def async_rs_client(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Connect to the replica set and authenticate if necessary."""
+        return await self._async_mongo_client(h, p, **kwargs)
+
+    async def async_rs_or_single_client_noauth(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[dict]:
+        """Connect to the replica set if there is one, otherwise the standalone.
+
+        Like rs_or_single_client, but does not authenticate.
+        """
+        return await self._async_mongo_client(h, p, authenticate=False, **kwargs)
+
+    async def async_rs_or_single_client(
+        self, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient[Any]:
+        """Connect to the replica set if there is one, otherwise the standalone.
+
+        Authenticates if necessary.
+        """
+        return await self._async_mongo_client(h, p, **kwargs)
+
+    def simple_client(self, h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient:
+        if not h and not p:
+            client = AsyncMongoClient(**kwargs)
+        else:
+            client = AsyncMongoClient(h, p, **kwargs)
+        self.addAsyncCleanup(client.close)
+        return client
+
+    @classmethod
+    def unmanaged_simple_client(
+        cls, h: Any = None, p: Any = None, **kwargs: Any
+    ) -> AsyncMongoClient:
+        if not h and not p:
+            client = AsyncMongoClient(**kwargs)
+        else:
+            client = AsyncMongoClient(h, p, **kwargs)
+        return client
+
+    async def disable_replication(self, client):
+        """Disable replication on all secondaries."""
+        for h, p in client.secondaries:
+            secondary = await self.async_single_client(h, p)
+            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
+
+    async def enable_replication(self, client):
+        """Enable replication on all secondaries."""
+        for h, p in client.secondaries:
+            secondary = await self.async_single_client(h, p)
+            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
 
 
 class AsyncUnitTest(AsyncPyMongoTestCase):

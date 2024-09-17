@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener, rs_or_single_client
+from test.utils import EventListener
 
 from bson.dbref import DBRef
 from pymongo.operations import IndexModel
@@ -109,7 +109,7 @@ class TestComment(IntegrationTest):
     @client_context.require_replica_set
     def test_database_helpers(self):
         listener = EventListener()
-        db = rs_or_single_client(event_listeners=[listener]).db
+        db = self.rs_or_single_client(event_listeners=[listener]).db
         helpers = [
             (db.watch, []),
             (db.command, ["hello"]),
@@ -126,7 +126,7 @@ class TestComment(IntegrationTest):
     @client_context.require_replica_set
     def test_client_helpers(self):
         listener = EventListener()
-        cli = rs_or_single_client(event_listeners=[listener])
+        cli = self.rs_or_single_client(event_listeners=[listener])
         helpers = [
             (cli.watch, []),
             (cli.list_databases, []),
@@ -141,7 +141,7 @@ class TestComment(IntegrationTest):
     @client_context.require_version_min(4, 7, -1)
     def test_collection_helpers(self):
         listener = EventListener()
-        db = rs_or_single_client(event_listeners=[listener])[self.db.name]
+        db = self.rs_or_single_client(event_listeners=[listener])[self.db.name]
         coll = db.get_collection("test")
 
         helpers = [

@@ -306,7 +306,7 @@ static PyObject* datetime_from_millis(long long millis) {
             if (evalue) {
                 PyObject* err_msg = PyObject_Str(evalue);
                 if (err_msg) {
-                    PyObject* appendage = PyUnicode_FromString(" (Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO')). See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes");
+                    PyObject* appendage = PyUnicode_FromString(" (Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO')). See: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes");
                     if (appendage) {
                         PyObject* msg = PyUnicode_Concat(err_msg, appendage);
                         if (msg) {

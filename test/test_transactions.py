@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 from io import BytesIO
+from test.utils_spec_runner import SpecRunner
 
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 
@@ -25,8 +26,6 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    rs_client,
-    single_client,
     wait_until,
 )
 from typing import List
@@ -59,7 +58,18 @@ _IS_SYNC = True
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TestTransactions(IntegrationTest):
+class TransactionsBase(SpecRunner):
+    def maybe_skip_scenario(self, test):
+        super().maybe_skip_scenario(test)
+        if (
+            "secondary" in self.id()
+            and not client_context.is_mongos
+            and not client_context.has_secondaries
+        ):
+            raise unittest.SkipTest("No secondaries")
+
+
+class TestTransactions(TransactionsBase):
     RUN_ON_SERVERLESS = True
 
     @client_context.require_transactions
@@ -92,8 +102,7 @@ class TestTransactions(IntegrationTest):
     @client_context.require_transactions
     def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
-        client = rs_client(w=0)
-        self.addCleanup(client.close)
+        client = self.rs_client(w=0)
         db = client.test
         coll = db.test
         coll.insert_one({})
@@ -146,12 +155,11 @@ class TestTransactions(IntegrationTest):
     def test_unpin_for_next_transaction(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
+        client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         coll.insert_one({})
-        self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
@@ -174,12 +182,11 @@ class TestTransactions(IntegrationTest):
     def test_unpin_for_non_transaction_operation(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
+        client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         coll.insert_one({})
-        self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
@@ -303,11 +310,10 @@ class TestTransactions(IntegrationTest):
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         coll.delete_many({})
         listener.reset()
-        self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
         ops: List[InsertOne[RawBSONDocument]] = [
@@ -332,8 +338,7 @@ class TestTransactions(IntegrationTest):
 
     @client_context.require_transactions
     def test_transaction_direct_connection(self):
-        client = single_client()
-        self.addCleanup(client.close)
+        client = self.single_client()
         coll = client.pymongo_test.test
 
         # Make sure the collection exists.
@@ -389,14 +394,14 @@ class PatchSessionTimeout:
         client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
-class TestTransactionsConvenientAPI(IntegrationTest):
+class TestTransactionsConvenientAPI(TransactionsBase):
     @classmethod
     def _setup_class(cls):
         super()._setup_class()
         cls.mongos_clients = []
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
     @classmethod
     def _tearDown_class(cls):
@@ -446,8 +451,7 @@ class TestTransactionsConvenientAPI(IntegrationTest):
     @client_context.require_transactions
     def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         def callback(session):
@@ -475,8 +479,7 @@ class TestTransactionsConvenientAPI(IntegrationTest):
     @client_context.require_transactions
     def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         def callback(session):
@@ -508,8 +511,7 @@ class TestTransactionsConvenientAPI(IntegrationTest):
     @client_context.require_transactions
     def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         def callback(session):

@@ -21,7 +21,6 @@ import uuid
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, connected, unittest
-from test.utils import rs_or_single_client, single_client
 
 from bson.binary import PYTHON_LEGACY, STANDARD, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
@@ -111,10 +110,10 @@ class TestCommon(IntegrationTest):
         )
 
     def test_write_concern(self):
-        c = rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)
 
-        c = rs_or_single_client(connect=False, w=2, wTimeoutMS=1000)
+        c = self.rs_or_single_client(connect=False, w=2, wTimeoutMS=1000)
         wc = WriteConcern(w=2, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
 
@@ -134,7 +133,7 @@ class TestCommon(IntegrationTest):
 
     def test_mongo_client(self):
         pair = client_context.pair
-        m = rs_or_single_client(w=0)
+        m = self.rs_or_single_client(w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}
@@ -143,17 +142,19 @@ class TestCommon(IntegrationTest):
         coll = coll.with_options(write_concern=WriteConcern(w=1))
         self.assertRaises(OperationFailure, coll.insert_one, doc)
 
-        m = rs_or_single_client()
+        m = self.rs_or_single_client()
         coll = m.pymongo_test.write_concern_test
         new_coll = coll.with_options(write_concern=WriteConcern(w=0))
         self.assertTrue(new_coll.insert_one(doc))
         self.assertRaises(OperationFailure, coll.insert_one, doc)
 
-        m = rs_or_single_client(f"mongodb://{pair}/", replicaSet=client_context.replica_set_name)
+        m = self.rs_or_single_client(
+            f"mongodb://{pair}/", replicaSet=client_context.replica_set_name
+        )
 
         coll = m.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert_one, doc)
-        m = rs_or_single_client(
+        m = self.rs_or_single_client(
             f"mongodb://{pair}/?w=0", replicaSet=client_context.replica_set_name
         )
 
@@ -161,8 +162,8 @@ class TestCommon(IntegrationTest):
         coll.insert_one(doc)
 
         # Equality tests
-        direct = connected(single_client(w=0))
-        direct2 = connected(single_client(f"mongodb://{pair}/?w=0", **self.credentials))
+        direct = connected(self.single_client(w=0))
+        direct2 = connected(self.single_client(f"mongodb://{pair}/?w=0", **self.credentials))
         self.assertEqual(direct, direct2)
         self.assertFalse(direct != direct2)
 

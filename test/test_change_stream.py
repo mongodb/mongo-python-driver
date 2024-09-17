@@ -28,12 +28,17 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, Version, client_context, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    Version,
+    client_context,
+    unittest,
+)
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -69,8 +74,7 @@ class TestChangeStreamBase(IntegrationTest):
     def client_with_listener(self, *commands):
         """Return a client with a AllowListEventListener."""
         listener = AllowListEventListener(*commands)
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         return client, listener
 
     def watched_collection(self, *args, **kwargs):
@@ -174,7 +178,7 @@ class APITestsMixin:
     @no_type_check
     def test_try_next_runs_one_getmore(self):
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
         listener.reset()
@@ -232,7 +236,7 @@ class APITestsMixin:
     @no_type_check
     def test_batch_size_is_honored(self):
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
         listener.reset()
@@ -473,7 +477,7 @@ class ProseSpecTestsMixin:
     @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
-        client = rs_or_single_client(event_listeners=[listener])
+        client = PyMongoTestCase.unmanaged_rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
 
@@ -1111,7 +1115,7 @@ class TestAllLegacyScenarios(IntegrationTest):
     def _setup_class(cls):
         super()._setup_class()
         cls.listener = AllowListEventListener("aggregate", "getMore")
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def _tearDown_class(cls):

@@ -29,13 +29,12 @@ except ImportError:
 
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestCursor(unittest.TestCase):
+class TestCursor(PyMongoTestCase):
     def test_getmore_load_balanced(self):
         server = MockupDB()
         server.autoresponds(
@@ -50,7 +49,7 @@ class TestCursor(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri, loadBalanced=True)
+        client = self.simple_client(server.uri, loadBalanced=True)
         self.addCleanup(client.close)
         collection = client.db.coll
         cursor = collection.find()
@@ -77,7 +76,7 @@ class TestRetryableErrorCodeCatch(PyMongoTestCase):
         self.addCleanup(server.stop)
         server.autoresponds("ismaster", maxWireVersion=6)
 
-        client = MongoClient(server.uri)
+        client = self.simple_client(server.uri)
 
         with going(lambda: server.receives(OpMsg({"find": "collection"})).command_err(code=code)):
             cursor = client.db.collection.find()
