@@ -207,7 +207,7 @@ static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
  *
  * Returns a new ref */
 static PyObject* _error(char* name) {
-    PyObject* error;
+    PyObject* error = NULL;
     PyObject* errors = PyImport_ImportModule("bson.errors");
     if (!errors) {
         return NULL;
@@ -294,7 +294,7 @@ static PyObject* datetime_from_millis(long long millis) {
                                           timeinfo.tm_sec,
                                           microseconds);
     if(!datetime) {
-        PyObject *etype, *evalue, *etrace;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
 
         /*
         * Calling _error clears the error state, so fetch it first.
@@ -350,8 +350,8 @@ static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
         return NULL;
     }
 
-    PyObject* dt;
-    PyObject* ll_millis;
+    PyObject* dt = NULL;
+    PyObject* ll_millis = NULL;
 
     if (!(ll_millis = PyLong_FromLongLong(millis))){
         return NULL;
