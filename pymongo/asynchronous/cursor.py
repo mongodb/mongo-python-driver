@@ -295,7 +295,6 @@ class AsyncCursor(Generic[_DocumentType]):
             "limit",
             "max_time_ms",
             "max_await_time_ms",
-            "timeout",
             "comment",
             "max",
             "min",
