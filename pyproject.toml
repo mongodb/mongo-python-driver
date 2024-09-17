@@ -42,7 +42,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://www.mongodb.org"
-Documentation = "https://pymongo.readthedocs.io"
+Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/"
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
