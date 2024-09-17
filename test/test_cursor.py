@@ -1443,7 +1443,7 @@ class TestCursor(IntegrationTest):
         result = db.test.aggregate([pipeline])
         self.assertEqual(len(result.to_list(1)), 1)
 
-    @client_context.require_failCommand_fail_point
+    @client_context.require_failCommand_blockConnection
     def test_command_cursor_to_list_csot_applied(self):
         client = self.single_client(timeoutMS=500)
         # Initialize the client with a larger timeout to help make test less flakey

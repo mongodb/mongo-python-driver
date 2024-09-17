@@ -1452,7 +1452,7 @@ class TestCursor(AsyncIntegrationTest):
         result = await db.test.aggregate([pipeline])
         self.assertEqual(len(await result.to_list(1)), 1)
 
-    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_failCommand_blockConnection
     async def test_command_cursor_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=500)
         # Initialize the client with a larger timeout to help make test less flakey
