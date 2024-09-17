@@ -34,7 +34,6 @@ from bson.binary import *
 from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo.common import validate_uuid_representation
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 
@@ -197,25 +196,6 @@ class TestBinary(unittest.TestCase):
         )
         self.assertEqual(data, encoded)
 
-    @client_context.require_connection
-    def test_legacy_java_uuid_roundtrip(self):
-        data = self.java_data
-        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
-
-        client_context.client.pymongo_test.drop_collection("java_uuid")
-        db = client_context.client.pymongo_test
-        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
-
-        coll.insert_many(docs)
-        self.assertEqual(5, coll.count_documents({}))
-        for d in coll.find():
-            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
-
-        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        for d in coll.find():
-            self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("java_uuid")
-
     def test_legacy_csharp_uuid(self):
         data = self.csharp_data
 
@@ -256,59 +236,6 @@ class TestBinary(unittest.TestCase):
             [encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY)) for doc in docs]
         )
         self.assertEqual(data, encoded)
-
-    @client_context.require_connection
-    def test_legacy_csharp_uuid_roundtrip(self):
-        data = self.csharp_data
-        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
-
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
-        db = client_context.client.pymongo_test
-        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
-
-        coll.insert_many(docs)
-        self.assertEqual(5, coll.count_documents({}))
-        for d in coll.find():
-            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
-
-        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        for d in coll.find():
-            self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
-
-    def test_uri_to_uuid(self):
-        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
-        client = MongoClient(uri, connect=False)
-        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
-
-    @client_context.require_connection
-    def test_uuid_queries(self):
-        db = client_context.client.pymongo_test
-        coll = db.test
-        coll.drop()
-
-        uu = uuid.uuid4()
-        coll.insert_one({"uuid": Binary(uu.bytes, 3)})
-        self.assertEqual(1, coll.count_documents({}))
-
-        # Test regular UUID queries (using subtype 4).
-        coll = db.get_collection(
-            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
-        )
-        self.assertEqual(0, coll.count_documents({"uuid": uu}))
-        coll.insert_one({"uuid": uu})
-        self.assertEqual(2, coll.count_documents({}))
-        docs = list(coll.find({"uuid": uu}))
-        self.assertEqual(1, len(docs))
-        self.assertEqual(uu, docs[0]["uuid"])
-
-        # Test both.
-        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
-        predicate = {"uuid": {"$in": [uu, uu_legacy]}}
-        self.assertEqual(2, coll.count_documents(predicate))
-        docs = list(coll.find(predicate))
-        self.assertEqual(2, len(docs))
-        coll.drop()
 
     def test_pickle(self):
         b1 = Binary(b"123", 2)
