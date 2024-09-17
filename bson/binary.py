@@ -209,13 +209,17 @@ USER_DEFINED_SUBTYPE = 128
 class BinaryVectorDtype(Enum):
     """Datatypes of vector subtype.
 
-    FLOAT32: Pack floats as float32
-    INT8: Pack ints in [-128, 127] as signed int8
-    PACKED_BIT: Pack ints in [0, 255] as unsigned uint8
+    :param FLOAT32: (0x27) Pack list of :class:`float` as float32
+    :param INT8: (0x03) Pack list of :class:`int` in [-128, 127] as signed int8
+    :param PACKED_BIT: (0x10) Pack list of :class:`int` in [0, 255] as unsigned uint8
 
-    The PACKED_BIT value represents a special case where vector values themselves
-    can only hold two values (0 or 1) but these are packed together into groups of 8,
+    The `PACKED_BIT` value represents a special case where vector values themselves
+    can only be of two values (0 or 1) but these are packed together into groups of 8,
     a byte. In Python, these are displayed as ints in range [0, 255]
+
+    Each value is of type bytes with a length of one.
+
+    .. versionadded:: 4.9
     """
 
     INT8 = b"\x03"
@@ -231,10 +235,14 @@ DTYPE_FROM_HEX = {key.value: key for key in BinaryVectorDtype}
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
 
-    dtype specifies the data type stored in binary.
-    padding specifies the number of bits in the final byte that are to be ignored
-    when a vector element's size is less than a byte
-    and the length of the vector is not a multiple of 8."""
+    :param data: Sequence of numbers representing the mathematical vector.
+    :param dtype:  The data type stored in binary
+    :param padding: The number of bits in the final byte that are to be ignored
+      when a vector element's size is less than a byte
+      and the length of the vector is not a multiple of 8.
+
+    .. versionadded:: 4.9
+    """
 
     data: Sequence[float | int]
     dtype: BinaryVectorDtype
@@ -397,14 +405,19 @@ class Binary(bytes):
         dtype: BinaryVectorDtype,
         padding: Optional[int] = 0,
     ) -> Binary:
-        """Create a BSON Binary Vector subtype from a list of python objects.
+        """Create a BSON :class:`~bson.binary.Binary` of Vector subtype from a list of Numbers.
 
-        The data type and byte padding are prepended to the vector itself.
+        To interpret the representation of the numbers, a data type must be included.
+        See :class:`~bson.binary.BinaryVectorDtype` for available types and descriptions.
+
+        The dtype and padding are prepended to the binary data's value.
 
         :param vector: List of values
         :param dtype: Data type of the values
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
+
+        .. versionadded:: 4.9
         """
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
@@ -432,6 +445,8 @@ class Binary(bytes):
         :param dtype: Optional dtype to use instead of self.dtype
         :param padding: Optional number of bytes to discard instead of self.padding
         :return: List of numbers.
+
+        .. versionadded:: 4.9
         """
 
         position = 0
