@@ -1440,14 +1440,15 @@ class TestCursor(IntegrationTest):
         result = db.test.aggregate([pipeline])
         self.assertEqual(len(result.to_list(1)), 1)
 
-    @client_context.require_change_streams
     @client_context.require_failCommand_fail_point
     def test_command_cursor_to_list_csot_applied(self):
-        client = single_client(timeoutMS=1000)
+        client = self.single_client(timeoutMS=1000)
+        coll = client.pymongo.test
+        coll.insert_many([{} for _ in range(10)])
         fail_command = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
-            "data": {"failCommands": ["getMore"], "blockTimeMS": 10000},
+            "mode": {"times": 2},
+            "data": {"failCommands": ["getMore"], "blockTimeMS": 2000},
         }
         cursor = client.db.test.aggregate([], batchSize=5)
         with self.fail_point(fail_command):

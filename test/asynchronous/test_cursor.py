@@ -1452,12 +1452,14 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_failCommand_fail_point
     async def test_command_cursor_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=1000)
+        coll = client.pymongo.test
+        await coll.insert_many([{} for _ in range(10)])
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
-            "data": {"failCommands": ["getMore"], "blockTimeMS": 10000},
+            "data": {"failCommands": ["getMore"], "blockTimeMS": 2000},
         }
-        cursor = await client.db.test.aggregate([], batchSize=1)
+        cursor = await client.db.test.aggregate([], batchSize=5)
         async with self.fail_point(fail_command):
             with self.assertRaises(PyMongoError) as ctx:
                 await cursor.to_list()
