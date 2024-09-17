@@ -95,6 +95,8 @@ Unavoidable breaking changes
   Additionally, ``pip`` >= 21.3 is now required for editable installs.
 - We no longer support the ``srv`` or ``tls`` extras, since ``dnspython`` is included as a dependency in PyMongo 4.7+.
   Instead of ``pip install pymongo[srv]`` or ``pip install pymongo[tls]``, use ``pip install pymongo``.
+- We no longer support the ``tls`` extra, which was only valid for Python 2.
+  Instead of ``pip install pymongo[tls]`` or ``pip install pymongo[tls]``, use ``pip install pymongo``.
 
 Issues Resolved
 ...............
