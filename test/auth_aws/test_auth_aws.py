@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from test import PyMongoTestCase
 from unittest.mock import patch
 
 import pytest
@@ -36,7 +37,7 @@ from pymongo.uri_parser import parse_uri
 pytestmark = pytest.mark.auth_aws
 
 
-class TestAuthAWS(unittest.TestCase):
+class TestAuthAWS(PyMongoTestCase):
     uri: str
 
     @classmethod
@@ -69,7 +70,7 @@ class TestAuthAWS(unittest.TestCase):
             self.skipTest("Not testing cached credentials")
 
         # Make a connection to ensure that we enable caching.
-        client = MongoClient(self.uri)
+        client = self.simple_client(self.uri)
         client.get_database().test.find_one()
         client.close()
 
@@ -79,7 +80,7 @@ class TestAuthAWS(unittest.TestCase):
         auth.set_cached_credentials(None)
         self.assertEqual(auth.get_cached_credentials(), None)
 
-        client = MongoClient(self.uri)
+        client = self.simple_client(self.uri)
         client.get_database().test.find_one()
         client.close()
         return auth.get_cached_credentials()
@@ -90,8 +91,7 @@ class TestAuthAWS(unittest.TestCase):
 
     def test_cache_about_to_expire(self):
         creds = self.setup_cache()
-        client = MongoClient(self.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(self.uri)
 
         # Make the creds about to expire.
         creds = auth.get_cached_credentials()
@@ -107,8 +107,7 @@ class TestAuthAWS(unittest.TestCase):
     def test_poisoned_cache(self):
         creds = self.setup_cache()
 
-        client = MongoClient(self.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(self.uri)
 
         # Poison the creds with invalid password.
         assert creds is not None
@@ -130,8 +129,7 @@ class TestAuthAWS(unittest.TestCase):
         self.assertIsNotNone(creds)
         os.environ.copy()
 
-        client = MongoClient(self.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(self.uri)
 
         client.get_database().test.find_one()
 
@@ -149,8 +147,7 @@ class TestAuthAWS(unittest.TestCase):
 
         auth.set_cached_credentials(None)
 
-        client2 = MongoClient(self.uri)
-        self.addCleanup(client2.close)
+        client2 = self.simple_client(self.uri)
 
         with patch.dict("os.environ", mock_env):
             self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
@@ -166,8 +163,7 @@ class TestAuthAWS(unittest.TestCase):
         if creds.token:
             mock_env["AWS_SESSION_TOKEN"] = creds.token
 
-        client = MongoClient(self.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(self.uri)
 
         with patch.dict(os.environ, mock_env):
             self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], creds.username)
@@ -177,22 +173,19 @@ class TestAuthAWS(unittest.TestCase):
 
         mock_env["AWS_ACCESS_KEY_ID"] = "foo"
 
-        client2 = MongoClient(self.uri)
-        self.addCleanup(client2.close)
+        client2 = self.simple_client(self.uri)
 
         with patch.dict("os.environ", mock_env), self.assertRaises(OperationFailure):
             self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
             client2.get_database().test.find_one()
 
 
-class TestAWSLambdaExamples(unittest.TestCase):
+class TestAWSLambdaExamples(PyMongoTestCase):
     def test_shared_client(self):
         # Start AWS Lambda Example 1
         import os
 
-        from pymongo import MongoClient
-
-        client = MongoClient(host=os.environ["MONGODB_URI"])
+        client = self.simple_client(host=os.environ["MONGODB_URI"])
 
         def lambda_handler(event, context):
             return client.db.command("ping")
@@ -203,9 +196,7 @@ class TestAWSLambdaExamples(unittest.TestCase):
         # Start AWS Lambda Example 2
         import os
 
-        from pymongo import MongoClient
-
-        client = MongoClient(
+        client = self.simple_client(
             host=os.environ["MONGODB_URI"],
             authSource="$external",
             authMechanism="MONGODB-AWS",

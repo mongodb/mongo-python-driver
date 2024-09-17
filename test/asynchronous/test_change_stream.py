@@ -28,12 +28,17 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, Version, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    Version,
+    async_client_context,
+    unittest,
+)
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
-    async_rs_or_single_client,
     async_wait_until,
 )
 
@@ -69,8 +74,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
     async def client_with_listener(self, *commands):
         """Return a client with a AllowListEventListener."""
         listener = AllowListEventListener(*commands)
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         return client, listener
 
     def watched_collection(self, *args, **kwargs):
@@ -176,7 +180,7 @@ class APITestsMixin:
     @no_type_check
     async def test_try_next_runs_one_getmore(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         await client.admin.command("ping")
         listener.reset()
@@ -234,7 +238,7 @@ class APITestsMixin:
     @no_type_check
     async def test_batch_size_is_honored(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         await client.admin.command("ping")
         listener.reset()
@@ -481,7 +485,9 @@ class ProseSpecTestsMixin:
     @no_type_check
     async def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
+            event_listeners=[listener]
+        )
         self.addAsyncCleanup(client.close)
         return client, listener
 
@@ -1131,7 +1137,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
     async def _setup_class(cls):
         await super()._setup_class()
         cls.listener = AllowListEventListener("aggregate", "getMore")
-        cls.client = await async_rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     async def _tearDown_class(cls):

@@ -23,16 +23,14 @@ from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, SkipTest, async_client_context, unittest
-from test.utils import (
-    AllowListEventListener,
-    async_rs_or_single_client,
-    async_rs_or_single_client_noauth,
-    async_single_client,
-    async_single_client_noauth,
-    delay,
-    ignore_deprecations,
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    SkipTest,
+    async_client_context,
+    unittest,
 )
+from test.utils import AllowListEventListener, delay, ignore_deprecations
 
 from pymongo import AsyncMongoClient, monitoring
 from pymongo.asynchronous.auth import HAVE_KERBEROS
@@ -81,7 +79,7 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = True
 
 
-class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
+class TestGSSAPI(AsyncPyMongoTestCase):
     mech_properties: str
     service_realm_required: bool
 
@@ -138,7 +136,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         if not self.service_realm_required:
             # Without authMechanismProperties.
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -149,11 +147,11 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
             await client[GSSAPI_DB].collection.find_one()
 
             # Log in using URI, without authMechanismProperties.
-            client = AsyncMongoClient(uri)
+            client = self.simple_client(uri)
             await client[GSSAPI_DB].collection.find_one()
 
         # Authenticate with authMechanismProperties.
-        client = AsyncMongoClient(
+        client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
@@ -166,14 +164,14 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         # Log in using URI, with authMechanismProperties.
         mech_uri = uri + f"&authMechanismProperties={self.mech_properties}"
-        client = AsyncMongoClient(mech_uri)
+        client = self.simple_client(mech_uri)
         await client[GSSAPI_DB].collection.find_one()
 
         set_name = async_client_context.replica_set_name
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
-                client = AsyncMongoClient(
+                client = self.simple_client(
                     GSSAPI_HOST,
                     GSSAPI_PORT,
                     username=GSSAPI_PRINCIPAL,
@@ -185,11 +183,11 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
                 await client[GSSAPI_DB].list_collection_names()
 
                 uri = uri + f"&replicaSet={set_name!s}"
-                client = AsyncMongoClient(uri)
+                client = self.simple_client(uri)
                 await client[GSSAPI_DB].list_collection_names()
 
             # With authMechanismProperties
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -202,13 +200,13 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
             await client[GSSAPI_DB].list_collection_names()
 
             mech_uri = mech_uri + f"&replicaSet={set_name!s}"
-            client = AsyncMongoClient(mech_uri)
+            client = self.simple_client(mech_uri)
             await client[GSSAPI_DB].list_collection_names()
 
     @ignore_deprecations
     @async_client_context.require_sync
     async def test_gssapi_threaded(self):
-        client = AsyncMongoClient(
+        client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
@@ -244,7 +242,7 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
 
         set_name = async_client_context.replica_set_name
         if set_name:
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 GSSAPI_HOST,
                 GSSAPI_PORT,
                 username=GSSAPI_PRINCIPAL,
@@ -267,14 +265,14 @@ class TestGSSAPI(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(thread.success)
 
 
-class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
+class TestSASLPlain(AsyncPyMongoTestCase):
     @classmethod
     def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
             raise SkipTest("Must set SASL_HOST, SASL_USER, and SASL_PASS to test SASL")
 
     async def test_sasl_plain(self):
-        client = AsyncMongoClient(
+        client = self.simple_client(
             SASL_HOST,
             SASL_PORT,
             username=SASL_USER,
@@ -293,12 +291,12 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
             SASL_PORT,
             SASL_DB,
         )
-        client = AsyncMongoClient(uri)
+        client = self.simple_client(uri)
         await client.ldap.test.find_one()
 
         set_name = async_client_context.replica_set_name
         if set_name:
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 SASL_HOST,
                 SASL_PORT,
                 replicaSet=set_name,
@@ -317,7 +315,7 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
                 SASL_DB,
                 str(set_name),
             )
-            client = AsyncMongoClient(uri)
+            client = self.simple_client(uri)
             await client.ldap.test.find_one()
 
     async def test_sasl_plain_bad_credentials(self):
@@ -331,8 +329,8 @@ class TestSASLPlain(unittest.IsolatedAsyncioTestCase):
             )
             return uri
 
-        bad_user = AsyncMongoClient(auth_string("not-user", SASL_PASS))
-        bad_pwd = AsyncMongoClient(auth_string(SASL_USER, "not-pwd"))
+        bad_user = self.simple_client(auth_string("not-user", SASL_PASS))
+        bad_pwd = self.simple_client(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
         with self.assertRaises(OperationFailure):
             await bad_user.admin.command("ping")
@@ -356,7 +354,7 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
     async def test_scram_sha1(self):
         host, port = await async_client_context.host, await async_client_context.port
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             "mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1" % (host, port)
         )
         await client.pymongo_test.command("dbstats")
@@ -367,7 +365,7 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
                 "@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1"
                 "&replicaSet=%s" % (host, port, async_client_context.replica_set_name)
             )
-            client = await async_single_client_noauth(uri)
+            client = await self.async_single_client_noauth(uri)
             await client.pymongo_test.command("dbstats")
             db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
             await db.command("dbstats")
@@ -395,7 +393,7 @@ class TestSCRAM(AsyncIntegrationTest):
             "testscram", "sha256", "pwd", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", event_listeners=[listener]
         )
         await client.testscram.command("dbstats")
@@ -432,38 +430,38 @@ class TestSCRAM(AsyncIntegrationTest):
         )
 
         # Step 2: verify auth success cases
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha1", password="pwd", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha1", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         await client.testscram.command("dbstats")
 
         # Step 2: SCRAM-SHA-1 and SCRAM-SHA-256
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         await client.testscram.command("dbstats")
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         await client.testscram.command("dbstats")
 
         self.listener.reset()
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", event_listeners=[self.listener]
         )
         await client.testscram.command("dbstats")
@@ -476,19 +474,19 @@ class TestSCRAM(AsyncIntegrationTest):
             self.assertEqual(started.command.get("mechanism"), "SCRAM-SHA-256")
 
         # Step 3: verify auth failure conditions
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha1", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         with self.assertRaises(OperationFailure):
             await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="sha256", password="pwd", authSource="testscram", authMechanism="SCRAM-SHA-1"
         )
         with self.assertRaises(OperationFailure):
             await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="not-a-user", password="pwd", authSource="testscram"
         )
         with self.assertRaises(OperationFailure):
@@ -501,7 +499,7 @@ class TestSCRAM(AsyncIntegrationTest):
                 port,
                 async_client_context.replica_set_name,
             )
-            client = await async_single_client_noauth(uri)
+            client = await self.async_single_client_noauth(uri)
             await client.testscram.command("dbstats")
             db = client.get_database("testscram", read_preference=ReadPreference.SECONDARY)
             await db.command("dbstats")
@@ -521,12 +519,12 @@ class TestSCRAM(AsyncIntegrationTest):
             "testscram", "IX", "IX", roles=["dbOwner"], mechanisms=["SCRAM-SHA-256"]
         )
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="\u2168", password="\u2163", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="\u2168",
             password="\u2163",
             authSource="testscram",
@@ -534,17 +532,17 @@ class TestSCRAM(AsyncIntegrationTest):
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="\u2168", password="IV", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="IX", password="I\u00ADX", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="IX",
             password="I\u00ADX",
             authSource="testscram",
@@ -552,31 +550,31 @@ class TestSCRAM(AsyncIntegrationTest):
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             username="IX", password="IX", authSource="testscram", authMechanism="SCRAM-SHA-256"
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             "mongodb://\u2168:\u2163@%s:%d/testscram" % (host, port)
         )
         await client.testscram.command("dbstats")
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             "mongodb://\u2168:IV@%s:%d/testscram" % (host, port)
         )
         await client.testscram.command("dbstats")
 
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             "mongodb://IX:I\u00ADX@%s:%d/testscram" % (host, port)
         )
         await client.testscram.command("dbstats")
-        client = await async_rs_or_single_client_noauth(
+        client = await self.async_rs_or_single_client_noauth(
             "mongodb://IX:IX@%s:%d/testscram" % (host, port)
         )
         await client.testscram.command("dbstats")
 
     async def test_cache(self):
-        client = await async_single_client()
+        client = await self.async_single_client()
         credentials = client.options.pool_options._credentials
         cache = credentials.cache
         self.assertIsNotNone(cache)
@@ -601,8 +599,7 @@ class TestSCRAM(AsyncIntegrationTest):
         await coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
-        client = await async_rs_or_single_client()
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client()
         coll = client.db.test
         threads = []
         for _ in range(4):
@@ -631,7 +628,9 @@ class TestAuthURIOptions(AsyncIntegrationTest):
     async def test_uri_options(self):
         # Test default to admin
         host, port = await async_client_context.host, await async_client_context.port
-        client = await async_rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
+        client = await self.async_rs_or_single_client_noauth(
+            "mongodb://admin:pass@%s:%d" % (host, port)
+        )
         self.assertTrue(await client.admin.command("dbstats"))
 
         if async_client_context.is_rs:
@@ -640,14 +639,14 @@ class TestAuthURIOptions(AsyncIntegrationTest):
                 port,
                 async_client_context.replica_set_name,
             )
-            client = await async_single_client_noauth(uri)
+            client = await self.async_single_client_noauth(uri)
             self.assertTrue(await client.admin.command("dbstats"))
             db = client.get_database("admin", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(await db.command("dbstats"))
 
         # Test explicit database
         uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
-        client = await async_rs_or_single_client_noauth(uri)
+        client = await self.async_rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
             await client.admin.command("dbstats")
         self.assertTrue(await client.pymongo_test.command("dbstats"))
@@ -658,7 +657,7 @@ class TestAuthURIOptions(AsyncIntegrationTest):
                 port,
                 async_client_context.replica_set_name,
             )
-            client = await async_single_client_noauth(uri)
+            client = await self.async_single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
                 await client.admin.command("dbstats")
             self.assertTrue(await client.pymongo_test.command("dbstats"))
@@ -667,7 +666,7 @@ class TestAuthURIOptions(AsyncIntegrationTest):
 
         # Test authSource
         uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
-        client = await async_rs_or_single_client_noauth(uri)
+        client = await self.async_rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
             await client.pymongo_test2.command("dbstats")
         self.assertTrue(await client.pymongo_test.command("dbstats"))
@@ -677,7 +676,7 @@ class TestAuthURIOptions(AsyncIntegrationTest):
                 "mongodb://user:pass@%s:%d/pymongo_test2?replicaSet="
                 "%s;authSource=pymongo_test" % (host, port, async_client_context.replica_set_name)
             )
-            client = await async_single_client_noauth(uri)
+            client = await self.async_single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
                 await client.pymongo_test2.command("dbstats")
             self.assertTrue(await client.pymongo_test.command("dbstats"))

@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
-from test.utils import HeartbeatEventListener, MockPool, single_client, wait_until
+from test.utils import HeartbeatEventListener, MockPool, wait_until
 
 from pymongo.errors import ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
@@ -40,7 +40,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
                         raise responses[1]
                     return Hello(responses[1]), 99
 
-            m = single_client(
+            m = self.single_client(
                 h=uri, event_listeners=(listener,), _monitor_class=MockMonitor, _pool_class=MockPool
             )
 

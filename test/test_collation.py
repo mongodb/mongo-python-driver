@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener, rs_or_single_client
+from test.utils import EventListener
 from typing import Any
 
 from pymongo.collation import (
@@ -99,7 +99,7 @@ class TestCollation(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.listener = EventListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation("en_US")
         cls.warn_context = warnings.catch_warnings()

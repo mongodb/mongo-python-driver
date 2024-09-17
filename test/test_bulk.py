@@ -24,22 +24,13 @@ from pymongo.synchronous.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, remove_all_users, unittest
-from test.utils import (
-    rs_or_single_client_noauth,
-    single_client,
-    wait_until,
-)
+from test.utils import wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.common import partition_node
-from pymongo.errors import (
-    BulkWriteError,
-    ConfigurationError,
-    InvalidOperation,
-    OperationFailure,
-)
+from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
@@ -913,7 +904,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = self.rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -924,7 +915,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth(
+        cli = self.rs_or_single_client_noauth(
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -952,7 +943,7 @@ class TestBulkWriteConcern(BulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (client_context.hello)["hosts"]:
                 if member != (client_context.hello)["primary"]:
-                    cls.secondary = single_client(*partition_node(member))
+                    cls.secondary = cls.unmanaged_single_client(*partition_node(member))
                     break
 
     @classmethod

@@ -29,6 +29,7 @@ sys.path[0:0] = [""]
 
 from test import (  # TODO: fix sync imports in PYTHON-4528
     IntegrationTest,
+    UnitTest,
     client_context,
     unittest,
 )
@@ -37,8 +38,6 @@ from test.utils import (
     EventListener,
     get_pool,
     is_mongos,
-    rs_or_single_client,
-    single_client,
     wait_until,
 )
 
@@ -81,14 +80,20 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 
-class TestCollectionNoConnect(unittest.TestCase):
+class TestCollectionNoConnect(UnitTest):
     """Test Collection features on a client that does not connect."""
 
     db: Database
+    client: MongoClient
 
     @classmethod
-    def setUpClass(cls):
-        cls.db = MongoClient(connect=False).pymongo_test
+    def _setup_class(cls):
+        cls.client = MongoClient(connect=False)
+        cls.db = cls.client.pymongo_test
+
+    @classmethod
+    def _tearDown_class(cls):
+        cls.client.close()
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -1800,8 +1805,7 @@ class TestCollection(IntegrationTest):
         # Insert enough documents to require more than one batch
         self.db.test.insert_many([{"i": i} for i in range(150)])
 
-        client = rs_or_single_client(maxPoolSize=1)
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(maxPoolSize=1)
         pool = get_pool(client)
 
         # Make sure the socket is returned after exhaustion.
@@ -2077,7 +2081,7 @@ class TestCollection(IntegrationTest):
 
     def test_find_one_and_write_concern(self):
         listener = EventListener()
-        db = (single_client(event_listeners=[listener]))[self.db.name]
+        db = (self.single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))
         # default WriteConcern.

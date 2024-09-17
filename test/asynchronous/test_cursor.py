@@ -34,7 +34,6 @@ from test.utils import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,
-    async_rs_or_single_client,
     ignore_deprecations,
     wait_until,
 )
@@ -232,7 +231,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (await async_rs_or_single_client(event_listeners=[listener]))[
+        coll = (await self.async_rs_or_single_client(event_listeners=[listener]))[
             self.db.name
         ].pymongo_test
 
@@ -353,8 +352,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_explain_with_read_concern(self):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
@@ -1261,8 +1259,7 @@ class TestCursor(AsyncIntegrationTest):
         await self.client._process_periodic_tasks()
 
         listener = AllowListEventListener("killCursors")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_close_kills_cursors
 
         # Add some test data.
@@ -1300,8 +1297,7 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_failCommand_appName
     async def test_timeout_kills_cursor_asynchronously(self):
         listener = AllowListEventListener("killCursors")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
@@ -1358,8 +1354,7 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener("find", "getMore")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
             "test", read_preference=ReadPreference.PRIMARY_PREFERRED
@@ -1463,7 +1458,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
@@ -1493,7 +1488,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
@@ -1514,7 +1509,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
@@ -1577,7 +1572,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
     async def test_monitoring(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
@@ -1643,7 +1638,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
@@ -1674,7 +1669,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["aggregate"], "closeConnection": True}}
         ):
@@ -1698,7 +1693,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
@@ -1744,7 +1739,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
     async def test_monitoring(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
@@ -1788,8 +1783,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     @async_client_context.require_no_mongos
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.delete_many({})
         await c.insert_many([{"_id": i} for i in range(3)])
