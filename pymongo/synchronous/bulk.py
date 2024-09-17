@@ -313,8 +313,6 @@ class _Bulk:
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             raise
-        finally:
-            bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
 
     def unack_write(
@@ -403,8 +401,6 @@ class _Bulk:
                 assert bwc.start_time is not None
                 bwc._fail(request_id, failure, duration)
             raise
-        finally:
-            bwc.start_time = datetime.datetime.now()
         return result  # type: ignore[return-value]
 
     def _execute_batch_unack(
