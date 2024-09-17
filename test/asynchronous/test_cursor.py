@@ -1456,9 +1456,9 @@ class TestCursor(AsyncIntegrationTest):
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
-            "data": {"failCommands": ["aggregate"], "blockTimeMS": 10000},
+            "data": {"failCommands": ["getMore"], "blockTimeMS": 10000},
         }
-        cursor = await client.db.test.aggregate([{"$changeStream": {}}])
+        cursor = await client.db.test.aggregate([], batchSize=5)
         async with self.fail_point(fail_command):
             with self.assertRaises(PyMongoError) as ctx:
                 await cursor.to_list()
