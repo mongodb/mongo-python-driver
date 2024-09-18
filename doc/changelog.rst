@@ -11,7 +11,8 @@ PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
 - Added support for Python 3.13.
-- A new asynchronous API with full asyncio support.
+- A new beta asynchronous API with full asyncio support.
+  This new asynchronous API is a work-in-progress that may change during the beta period before the full release.
 - Added support for In-Use Encryption range queries with MongoDB 8.0.
   Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
   ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
