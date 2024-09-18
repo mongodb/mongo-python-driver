@@ -71,7 +71,7 @@ class _ALock:
                 return False
             if not blocking:
                 return False
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.001)
 
     def release(self) -> None:
         self._lock.release()
@@ -115,7 +115,7 @@ class _ACondition:
                 return False
             if not blocking:
                 return False
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.001)
 
     async def wait(self, timeout: Optional[float] = None) -> bool:
         """Wait until notified.
