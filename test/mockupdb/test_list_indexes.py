@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -28,18 +29,16 @@ except ImportError:
 
 
 from bson import SON
-from pymongo import MongoClient
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestListIndexes(unittest.TestCase):
+class TestListIndexes(PyMongoTestCase):
     def test_list_indexes_command(self):
         server = MockupDB(auto_ismaster={"maxWireVersion": 6})
         server.run()
         self.addCleanup(server.stop)
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
         with going(client.test.collection.list_indexes) as cursor:
             request = server.receives(listIndexes="collection", namespace="test")
             request.reply({"cursor": {"firstBatch": [{"name": "index_0"}], "id": 123}})

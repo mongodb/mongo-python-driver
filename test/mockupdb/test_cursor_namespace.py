@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -32,7 +33,7 @@ from pymongo import MongoClient
 pytestmark = pytest.mark.mockupdb
 
 
-class TestCursorNamespace(unittest.TestCase):
+class TestCursorNamespace(PyMongoTestCase):
     server: MockupDB
     client: MongoClient
 
@@ -40,7 +41,7 @@ class TestCursorNamespace(unittest.TestCase):
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
         cls.server.run()
-        cls.client = MongoClient(cls.server.uri)
+        cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
     @classmethod
     def tearDownClass(cls):
@@ -88,7 +89,7 @@ class TestCursorNamespace(unittest.TestCase):
         self._test_cursor_namespace(op, "listIndexes")
 
 
-class TestKillCursorsNamespace(unittest.TestCase):
+class TestKillCursorsNamespace(PyMongoTestCase):
     server: MockupDB
     client: MongoClient
 
@@ -96,7 +97,7 @@ class TestKillCursorsNamespace(unittest.TestCase):
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
         cls.server.run()
-        cls.client = MongoClient(cls.server.uri)
+        cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
     @classmethod
     def tearDownClass(cls):
