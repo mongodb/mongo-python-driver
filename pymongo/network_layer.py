@@ -16,15 +16,21 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import socket
 import struct
 import sys
+import time
 from asyncio import AbstractEventLoop, Future
 from typing import (
+    TYPE_CHECKING,
+    Optional,
     Union,
 )
 
-from pymongo import ssl_support
+from pymongo import _csot, ssl_support
+from pymongo.errors import _OperationCancelled
+from pymongo.socket_checker import _errno_from_exception
 
 try:
     from ssl import SSLError, SSLSocket
@@ -50,6 +56,10 @@ except ImportError:
         BLOCKING_IO_READ_ERROR,
         BLOCKING_IO_WRITE_ERROR,
     )
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.synchronous.pool import Connection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
@@ -131,3 +141,106 @@ else:
 
 def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
+
+
+async def async_receive_data(
+    conn: AsyncConnection, length: int, deadline: Optional[float]
+) -> memoryview:
+    sock = conn.conn
+    sock_timeout = sock.gettimeout()
+    if deadline:
+        # When the timeout has expired perform one final check to
+        # see if the socket is readable. This helps avoid spurious
+        # timeouts on AWS Lambda and other FaaS environments.
+        timeout = max(deadline - time.monotonic(), 0)
+    else:
+        timeout = sock_timeout
+
+    sock.settimeout(0.0)
+    loop = asyncio.get_event_loop()
+    try:
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
+            return await asyncio.wait_for(_async_receive_ssl(sock, length, loop), timeout=timeout)
+        else:
+            return await asyncio.wait_for(_async_receive(sock, length, loop), timeout=timeout)  # type: ignore[arg-type]
+    except asyncio.TimeoutError as exc:
+        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
+        raise socket.timeout("timed out") from exc
+    finally:
+        sock.settimeout(sock_timeout)
+
+
+async def _async_receive(conn: socket.socket, length: int, loop: AbstractEventLoop) -> memoryview:
+    mv = memoryview(bytearray(length))
+    bytes_read = 0
+    while bytes_read < length:
+        chunk_length = await loop.sock_recv_into(conn, mv[bytes_read:])
+        if chunk_length == 0:
+            raise OSError("connection closed")
+        bytes_read += chunk_length
+    return mv
+
+
+async def _async_receive_ssl(conn: _sslConn, length: int, loop: AbstractEventLoop) -> memoryview:  # noqa: ARG001
+    return memoryview(b"")
+
+
+# Sync version:
+def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
+    """Block until at least one byte is read, or a timeout, or a cancel."""
+    sock = conn.conn
+    timed_out = False
+    # Check if the connection's socket has been manually closed
+    if sock.fileno() == -1:
+        return
+    while True:
+        # SSLSocket can have buffered data which won't be caught by select.
+        if hasattr(sock, "pending") and sock.pending() > 0:
+            readable = True
+        else:
+            # Wait up to 500ms for the socket to become readable and then
+            # check for cancellation.
+            if deadline:
+                remaining = deadline - time.monotonic()
+                # When the timeout has expired perform one final check to
+                # see if the socket is readable. This helps avoid spurious
+                # timeouts on AWS Lambda and other FaaS environments.
+                if remaining <= 0:
+                    timed_out = True
+                timeout = max(min(remaining, _POLL_TIMEOUT), 0)
+            else:
+                timeout = _POLL_TIMEOUT
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+        if conn.cancel_context.cancelled:
+            raise _OperationCancelled("operation cancelled")
+        if readable:
+            return
+        if timed_out:
+            raise socket.timeout("timed out")
+
+
+def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
+    buf = bytearray(length)
+    mv = memoryview(buf)
+    bytes_read = 0
+    while bytes_read < length:
+        try:
+            wait_for_read(conn, deadline)
+            # CSOT: Update timeout. When the timeout has expired perform one
+            # final non-blocking recv. This helps avoid spurious timeouts when
+            # the response is actually already buffered on the client.
+            if _csot.get_timeout() and deadline is not None:
+                conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
+            chunk_length = conn.conn.recv_into(mv[bytes_read:])
+        except BLOCKING_IO_ERRORS:
+            raise socket.timeout("timed out") from None
+        except OSError as exc:
+            if _errno_from_exception(exc) == errno.EINTR:
+                continue
+            raise
+        if chunk_length == 0:
+            raise OSError("connection closed")
+
+        bytes_read += chunk_length
+
+    return mv
