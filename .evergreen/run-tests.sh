@@ -224,6 +224,9 @@ if [ -n "$PERF_TEST" ]; then
     python -m pip install simplejson
     start_time=$(date +%s)
     TEST_SUITES="perf"
+    # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
+    # affects the benchmark results.
+    TEST_ARGS="test/performance/perf_test.py $TEST_ARGS"
 fi
 
 echo "Running $AUTH tests over $SSL with python $(which python)"
