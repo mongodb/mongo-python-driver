@@ -2512,8 +2512,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
      * Wrap any non-InvalidBSON errors in InvalidBSON.
      */
     if (PyErr_Occurred()) {
-        PyObject *etype, *evalue, *etrace;
-        PyObject *InvalidBSON;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+        PyObject *InvalidBSON = NULL;
 
         /*
          * Calling _error clears the error state, so fetch it first.
@@ -2585,8 +2585,8 @@ static int _element_to_dict(PyObject* self, const char* string,
     if (!*name) {
         /* If NULL is returned then wrap the UnicodeDecodeError
            in an InvalidBSON error */
-        PyObject *etype, *evalue, *etrace;
-        PyObject *InvalidBSON;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+        PyObject *InvalidBSON = NULL;
 
         PyErr_Fetch(&etype, &evalue, &etrace);
         if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {

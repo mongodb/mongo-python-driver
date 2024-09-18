@@ -31,7 +31,7 @@ struct module_state {
     PyObject* _max_bson_size_str;
     PyObject* _max_message_size_str;
     PyObject* _max_write_batch_size_str;
-    PyObject* _max_split_size_str; 
+    PyObject* _max_split_size_str;
 };
 
 /* See comments about module initialization in _cbsonmodule.c */
