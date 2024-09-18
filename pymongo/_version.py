@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from typing import List, Tuple, Union
 
-__version__ = "4.10.0.dev0"
+__version__ = "4.9.1"
 
 
 def get_version_tuple(version: str) -> Tuple[Union[int, str], ...]:
