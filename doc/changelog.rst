@@ -7,11 +7,18 @@ Changes in Version 4.9.0
 .. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
    PyMongo 4.9 will be the last release to support MongoDB 3.6.
 
+.. warning:: PyMongo 4.9 refactors a large portion of internal APIs to support the new asynchronous API beta.
+   As a result, versions of Motor older than 3.6 are not compatible with PyMongo 4.9.
+   Existing users of these versions must either upgrade to Motor 3.6 and PyMongo 4.9,
+   or cap their PyMongo version to ``< 4.9``.
+   Any applications that use private APIs may also break as a result of these internal changes.
+
 PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
 - Added support for Python 3.13.
-- A new asynchronous API with full asyncio support.
+- A new beta asynchronous API with full asyncio support.
+  This new asynchronous API is a work-in-progress that may change during the beta period before the full release.
 - Added support for In-Use Encryption range queries with MongoDB 8.0.
   Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
   ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
