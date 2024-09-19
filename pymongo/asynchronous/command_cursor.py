@@ -29,6 +29,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
+from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
@@ -77,6 +78,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._address = address
         self._batch_size = batch_size
         self._max_await_time_ms = max_await_time_ms
+        self._timeout = self._collection.database.client.options.timeout
         self._session = session
         self._explicit_session = explicit_session
         self._killed = self._id == 0
@@ -385,6 +387,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
+    @_csot.apply
     async def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
 

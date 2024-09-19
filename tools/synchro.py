@@ -119,6 +119,10 @@ docstring_replacements: dict[tuple[str, str], str] = {
             be passed as options for the create collection command.""",
 }
 
+docstring_removals: set[str] = {
+    ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
+}
+
 type_replacements = {"_Condition": "threading.Condition"}
 
 import_replacements = {"test.synchronous": "test"}
@@ -322,7 +326,12 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                     docstring_replacements[k],  # type: ignore[index]
                 )
 
-    return lines
+        for line in docstring_removals:
+            if line in lines[i]:
+                lines[i] = "DOCSTRING_REMOVED"
+                lines[i + 1] = "DOCSTRING_REMOVED"
+
+    return [line for line in lines if line != "DOCSTRING_REMOVED"]
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

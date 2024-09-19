@@ -36,7 +36,7 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import helpers_shared
+from pymongo import _csot, helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -196,6 +196,7 @@ class Cursor(Generic[_DocumentType]):
         self._explain = False
         self._comment = comment
         self._max_time_ms = max_time_ms
+        self._timeout = self._collection.database.client.options.timeout
         self._max_await_time_ms: Optional[int] = None
         self._max: Optional[Union[dict[Any, Any], _Sort]] = max
         self._min: Optional[Union[dict[Any, Any], _Sort]] = min
@@ -1288,6 +1289,7 @@ class Cursor(Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
+    @_csot.apply
     def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
 
