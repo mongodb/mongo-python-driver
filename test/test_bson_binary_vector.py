@@ -103,7 +103,7 @@ def create_test(case_spec):
 
 def create_tests():
     for filename in _TEST_PATH.glob("*.json"):
-        with codecs.open(filename, encoding="utf-8") as test_file:
+        with codecs.open(str(filename), encoding="utf-8") as test_file:
             test_method = create_test(json.load(test_file))
         setattr(TestBSONBinaryVector, "test_" + filename.stem, test_method)
 
