@@ -421,10 +421,12 @@ class Binary(bytes):
         """
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
+            assert not padding, f"padding does not apply to {dtype=}"
         elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
             format_str = "B"
         elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
             format_str = "f"
+            assert not padding, f"padding does not apply to {dtype=}"
         else:
             raise NotImplementedError("%s not yet supported" % dtype)
 

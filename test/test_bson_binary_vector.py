@@ -77,23 +77,25 @@ def create_test(case_spec):
 
                 # Test BSON to Binary Vector
                 vector_obs = binary_obs.as_vector()
-                self.assertEqual(vector_obs.dtype, dtype_exp)
+                self.assertEqual(vector_obs.dtype, dtype_exp, description)
                 if dtype_alias_exp:
-                    self.assertEqual(vector_obs.dtype, BinaryVectorDtype[dtype_alias_exp])
-                self.assertEqual(vector_obs.data, vector_exp)
-                self.assertEqual(vector_obs.padding, padding_exp)
+                    self.assertEqual(
+                        vector_obs.dtype, BinaryVectorDtype[dtype_alias_exp], description
+                    )
+                self.assertEqual(vector_obs.data, vector_exp, description)
+                self.assertEqual(vector_obs.padding, padding_exp, description)
 
                 # Test Binary Vector to BSON
                 vector_exp = Binary.from_vector(vector_exp, dtype_exp, padding_exp)
                 cB_obs = binascii.hexlify(encode({test_key: vector_exp})).decode().upper()
-                self.assertEqual(cB_obs, canonical_bson_exp)
+                self.assertEqual(cB_obs, canonical_bson_exp, description)
 
                 # Test JSON
-                self.assertEqual(json_util.loads(canonical_extjson_exp), decoded_doc)
-                self.assertEqual(json_util.dumps(decoded_doc), canonical_extjson_exp)
+                self.assertEqual(json_util.loads(canonical_extjson_exp), decoded_doc, description)
+                self.assertEqual(json_util.dumps(decoded_doc), canonical_extjson_exp, description)
 
             else:
-                with self.assertRaises(struct.error):
+                with self.assertRaises(struct.error, msg=description):
                     Binary.from_vector(vector_exp, dtype_exp)
 
     return run_test
