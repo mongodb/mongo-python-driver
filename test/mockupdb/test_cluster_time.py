@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -34,7 +35,7 @@ from pymongo.errors import OperationFailure
 pytestmark = pytest.mark.mockupdb
 
 
-class TestClusterTime(unittest.TestCase):
+class TestClusterTime(PyMongoTestCase):
     def cluster_time_conversation(self, callback, replies, max_wire_version=6):
         cluster_time = Timestamp(0, 0)
         server = MockupDB()
@@ -52,8 +53,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
 
         with going(callback, client):
             for reply in replies:
@@ -118,8 +118,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri, heartbeatFrequencyMS=500)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri, heartbeatFrequencyMS=500)
 
         request = server.receives("ismaster")
         # No $clusterTime in first ismaster, only in subsequent ones

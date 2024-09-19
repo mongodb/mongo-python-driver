@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import unittest
 from collections import namedtuple
+from test import PyMongoTestCase
 
 import pytest
 
@@ -273,7 +274,7 @@ else:
     operations_312 = []
 
 
-class TestOpMsg(unittest.TestCase):
+class TestOpMsg(PyMongoTestCase):
     server: MockupDB
     client: MongoClient
 
@@ -281,7 +282,7 @@ class TestOpMsg(unittest.TestCase):
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster=True, max_wire_version=8)
         cls.server.run()
-        cls.client = MongoClient(cls.server.uri)
+        cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
     @classmethod
     def tearDownClass(cls):

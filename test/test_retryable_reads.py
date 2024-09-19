@@ -43,7 +43,6 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")
@@ -51,19 +50,19 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryabl
 
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
-        client = MongoClient(connect=False)
+        client = self.simple_client(connect=False)
         self.assertEqual(client.options.retry_reads, True)
 
     def test_kwargs(self):
-        client = MongoClient(retryReads=True, connect=False)
+        client = self.simple_client(retryReads=True, connect=False)
         self.assertEqual(client.options.retry_reads, True)
-        client = MongoClient(retryReads=False, connect=False)
+        client = self.simple_client(retryReads=False, connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
     def test_uri(self):
-        client = MongoClient("mongodb://h/?retryReads=true", connect=False)
+        client = self.simple_client("mongodb://h/?retryReads=true", connect=False)
         self.assertEqual(client.options.retry_reads, True)
-        client = MongoClient("mongodb://h/?retryReads=false", connect=False)
+        client = self.simple_client("mongodb://h/?retryReads=false", connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
 
