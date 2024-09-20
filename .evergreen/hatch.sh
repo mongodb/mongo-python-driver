@@ -55,6 +55,8 @@ if ! command -v hatch > /dev/null ; then
     mv hatch .bin
   fi
   rm hatch.bin
+  ls .bin
+  echo $PATH
   hatch --version
 fi
 
