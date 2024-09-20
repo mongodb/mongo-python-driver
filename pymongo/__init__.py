@@ -108,9 +108,9 @@ try:
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
 except Exception as e:
     # PYTHON-4781: Importing asyncio can fail on Windows.
-    import warnings
+    import warnings as _warnings
 
-    warnings.warn(f"Failed to import Async PyMongo: {e}", RuntimeWarning, stacklevel=2)
+    _warnings.warn(f"Failed to import Async PyMongo: {e!r}", ImportWarning, stacklevel=2)
 
 version = __version__
 """Current version of PyMongo."""
