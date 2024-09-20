@@ -2107,6 +2107,8 @@ axes:
         display_name: "RHEL 8 (POWER8)"
         run_on: rhel8-power-small
         batchtime: 10080  # 7 days
+        variables:
+          SKIP_HATCH: true
       - id: rhel8-arm64
         display_name: "RHEL 8 (ARM64)"
         run_on: rhel82-arm64-small

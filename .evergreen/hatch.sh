@@ -31,9 +31,6 @@ if ! command -v hatch > /dev/null ; then
     Linux-aarch64)
       target=aarch64-unknown-linux-gnu
       ;;
-    Linux-ppc64le)
-      target=powerpc64le-unknown-linux-gnu
-      ;;
     CYGWIN_NT*)
       target=x86_64-pc-windows-msvc
       ;;
