@@ -8,8 +8,19 @@ if [ -z "$PYTHON_BINARY" ]; then
     PYTHON_BINARY=$(find_python3)
 fi
 
+# Check if we should skip hatch and run the tests directly.
+if [ -n "$SKIP_HATCH" ]; then
+    ENV_NAME=testenv-$RANDOM
+    createvirtualenv "$PYTHON_BINARY" $ENV_NAME
+    # shellcheck disable=SC2064
+    trap "deactivate; rm -rf $ENV_NAME" EXIT HUP
+    python -m pip install -e ".[test]"
+    bash ./.evergreen/run-tests.sh
+    exit 0
+fi
+
 # Bootstrap hatch if needed.
-if [ -z "$SKIP_HATCH" ] && [ ! command -v hatch &> /dev/null]; then
+if ! command -v hatch > /dev/null ; then
   platform="$(uname -s)-$(uname -m)"
   case $platform in
     Linux-x86_64)
@@ -41,20 +52,4 @@ if [ -z "$SKIP_HATCH" ] && [ ! command -v hatch &> /dev/null]; then
   rm hatch.tar.gz
 fi
 
-# Check if we should skip hatch and run the tests directly.
-if [ -n "$SKIP_HATCH" ]; then
-    ENV_NAME=testenv-$RANDOM
-    createvirtualenv "$PYTHON_BINARY" $ENV_NAME
-    # shellcheck disable=SC2064
-    trap "deactivate; rm -rf $ENV_NAME" EXIT HUP
-    python -m pip install -e ".[test]"
-    run_hatch() {
-      bash ./.evergreen/run-tests.sh
-    }
-else
-    run_hatch() {
-      HATCH_PYTHON="$PYTHON_BINARY" hatch run "$@"
-    }
-fi
-
-run_hatch "${@:1}"
+HATCH_PYTHON="$PYTHON_BINARY" hatch run "$@"
