@@ -58,8 +58,8 @@ def create_test(case_spec):
             dtype_hex_exp = test_case["dtype_hex"]
             dtype_alias_exp = test_case.get("dtype_alias")
             padding_exp = test_case.get("padding", 0)
-            canonical_bson_exp = test_case["canonical_bson"]
-            canonical_extjson_exp = test_case["canonical_extjson"]
+            canonical_bson_exp = test_case.get("canonical_bson")
+            canonical_extjson_exp = test_case.get("canonical_extjson")
             # Convert dtype hex string into bytes
             dtype_exp = BinaryVectorDtype(int(dtype_hex_exp, 16).to_bytes(1, byteorder="little"))
 
@@ -95,8 +95,8 @@ def create_test(case_spec):
                 self.assertEqual(json_util.dumps(decoded_doc), canonical_extjson_exp, description)
 
             else:
-                with self.assertRaises(struct.error, msg=description):
-                    Binary.from_vector(vector_exp, dtype_exp)
+                with self.assertRaises((struct.error, AssertionError), msg=description):
+                    Binary.from_vector(vector_exp, dtype_exp, padding_exp)
 
     return run_test
 

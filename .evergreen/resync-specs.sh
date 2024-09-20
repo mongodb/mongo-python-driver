@@ -77,7 +77,7 @@ do
       cpjson atlas-data-lake-testing/tests/ data_lake
       ;;
     bson-binary-vector|bson_binary_vector)
-      cpjson bson-binary-vector/tests/ bson_binary_vector/test
+      cpjson bson-binary-vector/tests/ bson_binary_vector
       ;;
     bson-corpus|bson_corpus)
       cpjson bson-corpus/tests/ bson_corpus

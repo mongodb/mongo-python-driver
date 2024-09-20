@@ -81,13 +81,11 @@
       "padding": 3,
       "canonical_bson": "1600000005766563746F7200040000000910037F0700",
       "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"EAN/Bw==\", \"subType\": \"09\"}}}"
-    }
-  ],
-  "invalid": [
+    },
     {
       "description": "Overflow Vector INT8",
       "valid": false,
-      "vector": [256],
+      "vector": [128],
       "dtype_hex": "0x03",
       "dtype_alias": "INT8",
       "padding": 0
@@ -103,7 +101,7 @@
     {
       "description": "Underflow Vector INT8",
       "valid": false,
-      "vector": [-1],
+      "vector": [-129],
       "dtype_hex": "0x03",
       "dtype_alias": "INT8",
       "padding": 0
@@ -136,7 +134,7 @@
       "description": "INT8 with float inputs",
       "valid": false,
       "vector": [127.77, 7.77],
-      "dtype_hex": "0x27",
+      "dtype_hex": "0x03",
       "dtype_alias": "INT8",
       "padding": 0
     }
