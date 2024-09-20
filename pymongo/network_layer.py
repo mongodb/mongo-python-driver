@@ -236,12 +236,9 @@ async def async_receive_data(
             task.cancel()
         if len(done) == 0:
             raise socket.timeout("timed out")
-        for task in done:
-            if task == read_task:
-                return read_task.result()
-            else:
-                raise _OperationCancelled("operation cancelled")
-        return None  # type: ignore[return-value]
+        if read_task in done:
+            return read_task.result()
+        raise _OperationCancelled("operation cancelled")
     finally:
         sock.settimeout(sock_timeout)
 
