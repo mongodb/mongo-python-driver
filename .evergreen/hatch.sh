@@ -63,5 +63,5 @@ if [ "${OS:-}" == "Windows_NT" ]; then
   HATCH=".bin/hatch.exe"
 else
   HATCH="./bin/hatch"
-first
+fi
 HATCH_PYTHON="$PYTHON_BINARY" $HATCH run "$@"
