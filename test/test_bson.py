@@ -748,7 +748,7 @@ class TestBSON(unittest.TestCase):
         packed_bit_vec = packed_bit_binary.as_vector()
         assert packed_bit_vec.data == list_vector
         # If we wish to see the bit vector unpacked to its true length, we can
-        unpacked_vec = packed_bit_binary.as_vector(BinaryVectorDtype.INT8)
+        unpacked_vec = packed_bit_binary.as_vector(uncompressed=True)
         assert len(unpacked_vec.data) == 8 * len(list_vector)
         assert set(unpacked_vec.data) == {0, 1}
 
@@ -758,9 +758,7 @@ class TestBSON(unittest.TestCase):
         padding = 3
         padded_vec = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT, padding=padding)
         assert padded_vec.as_vector().data == list_vector
-        assert (
-            len(padded_vec.as_vector(BinaryVectorDtype.INT8).data) == 8 * len(list_vector) - padding
-        )
+        assert len(padded_vec.as_vector(uncompressed=True).data) == 8 * len(list_vector) - padding
 
         # It is worthwhile explicitly showing the values encoded to BSON
         padded_doc = {"padded_vec": padded_vec}
