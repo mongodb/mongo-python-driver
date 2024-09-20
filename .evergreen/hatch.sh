@@ -2,6 +2,8 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 set -x
 
+source .evergreen/scripts/env.sh
+
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
