@@ -63,5 +63,5 @@ export HATCH_PYTHON="$PYTHON_BINARY"
 if [ "${OS:-}" == "Windows_NT" ]; then
   .bin/hatch.exe run "$@"
 else
-  ./bin/hatch" run "$@"
+  ./bin/hatch run "$@"
 fi
