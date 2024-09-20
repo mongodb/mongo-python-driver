@@ -50,6 +50,7 @@ if [ ! -f .bin/hatch ] && [ ! -f .bin/hatch.exe ] ; then
   if [ "${OS:-}" == "Windows_NT" ]; then
     unzip hatch.bin
     mv hatch.exe .bin
+    chmod +x .bin/hatch.exe
     .bin/hatch.exe --version
   else
     tar xfz hatch.bin
