@@ -57,7 +57,7 @@ def create_test(case_spec):
             vector_exp = test_case["vector"]
             dtype_hex_exp = test_case["dtype_hex"]
             dtype_alias_exp = test_case.get("dtype_alias")
-            padding_exp = test_case.get("padding")
+            padding_exp = test_case.get("padding", 0)
             canonical_bson_exp = test_case["canonical_bson"]
             canonical_extjson_exp = test_case["canonical_extjson"]
             # Convert dtype hex string into bytes
