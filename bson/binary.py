@@ -434,62 +434,51 @@ class Binary(bytes):
         data = struct.pack(f"{len(vector)}{format_str}", *vector)
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
-    def as_vector(
-        self, dtype: Optional[BinaryVectorDtype] = None, padding: Optional[int] = 0
-    ) -> BinaryVector:
-        """Create a list of python objects.
+    def as_vector(self, uncompressed: Optional[bool] = False) -> BinaryVector:
+        """From the Binary, create a list of numbers, along with dtype and padding.
 
-        The binary representation was created with a specific dtype and padding.
-        The optional kwargs allow one to view data in other formats,
-        which is particularly useful when one wishes to see binary/bit vectors
-        as INT8, hence with their proper lengths.
 
-        :param dtype: Optional dtype to use instead of self.dtype
-        :param padding: Optional number of bytes to discard instead of self.padding
-        :return: List of numbers.
+        :param uncompressed: If true, return the true mathematical vector.
+            This is only necessary for datatypes where padding is applicable.
+            For example, setting this to True for a PACKED_BIT vector will result
+            in a List[int] of zeros and ones.
+        :return: List of numbers, along with dtype and padding.
 
         .. versionadded:: 4.9
         """
 
         position = 0
-        orig_dtype, orig_padding = struct.unpack_from("<sB", self, position)
+        dtype, padding = struct.unpack_from("<sB", self, position)
         position += 2
-        orig_dtype = BinaryVectorDtype(orig_dtype)
-        dtype = dtype or orig_dtype
-        padding = padding or orig_padding
+        dtype = BinaryVectorDtype(dtype)
         n_values = len(self) - position
 
-        if dtype == BinaryVectorDtype.PACKED_BIT:
-            # data packed as uint8
-            dtype_format = "B"
-            unpacked_uint8s = list(struct.unpack_from(f"{n_values}{dtype_format}", self, position))
-            return BinaryVector(unpacked_uint8s, dtype, padding)
-
-        elif dtype == BinaryVectorDtype.INT8:
-            if orig_dtype == BinaryVectorDtype.PACKED_BIT:
-                # Special case for when wishes to see UNPACKED embedding
-                unpacked_uint8s = list(struct.unpack_from(f"{n_values}B", self, position))
-                bits = []
-                for uint8 in unpacked_uint8s:
-                    bits.extend([int(bit) for bit in f"{uint8:08b}"])
-                if padding and padding > 0:
-                    unpacked_data: list[int] = bits[:-padding]
-                else:
-                    unpacked_data = bits
-                return BinaryVector(unpacked_data, dtype, padding)
-
-            else:
-                dtype_format = "b"
-                format_string = f"{n_values}{dtype_format}"
-                unpacked_data = list(struct.unpack_from(format_string, self, position))
-                return BinaryVector(unpacked_data, dtype, padding)
+        if dtype == BinaryVectorDtype.INT8:
+            dtype_format = "b"
+            format_string = f"{n_values}{dtype_format}"
+            vector = list(struct.unpack_from(format_string, self, position))
+            return BinaryVector(vector, dtype, padding)
 
         elif dtype == BinaryVectorDtype.FLOAT32:
             n_bytes = len(self) - position
             n_values = n_bytes // 4
             assert n_bytes % 4 == 0
-            unpacked_data = list(struct.unpack_from(f"{n_values}f", self, position))
-            return BinaryVector(unpacked_data, dtype, padding)
+            vector = list(struct.unpack_from(f"{n_values}f", self, position))
+            return BinaryVector(vector, dtype, padding)
+
+        elif dtype == BinaryVectorDtype.PACKED_BIT:
+            # data packed as uint8
+            dtype_format = "B"
+            unpacked_uint8s = list(struct.unpack_from(f"{n_values}{dtype_format}", self, position))
+            if not uncompressed:
+                return BinaryVector(unpacked_uint8s, dtype, padding)
+            else:
+                bits = []
+                for uint8 in unpacked_uint8s:
+                    bits.extend([int(bit) for bit in f"{uint8:08b}"])
+                vector = bits[:-padding] if padding else bits
+                return BinaryVector(vector, dtype, padding)
+
         else:
             raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
 
