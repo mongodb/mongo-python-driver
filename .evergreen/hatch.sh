@@ -46,14 +46,15 @@ if ! command -v hatch > /dev/null ; then
       ;;
   esac
   curl -L -o hatch.bin https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target
+  mkdir -p .bin
   if [ "${OS:-}" == "Windows_NT" ]; then
     unzip hatch.bin
+    mv hatch.exe .bin
   else
     tar xfz hatch.bin
+    mv hatch .bin
   fi
   rm hatch.bin
-  mkdir -p .bin
-  mv hatch .bin/
   hatch --version
 fi
 
