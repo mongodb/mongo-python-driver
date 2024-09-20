@@ -45,14 +45,13 @@ if ! command -v hatch > /dev/null ; then
       exit 1
       ;;
   esac
-  curl -L -o hatch.tgz https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target
+  curl -L -o hatch.bin https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target
   if [ "${OS:-}" == "Windows_NT" ]; then
-    unzip hatch.zip
-    rm hatch.zip
+    unzip hatch.bin
   else
-    tar xfz hatch.tgz
-    rm hatch.tgz
+    tar xfz hatch.bin
   fi
+  rm hatch.bin
   mkdir -p .bin
   mv hatch .bin/
   hatch --version
