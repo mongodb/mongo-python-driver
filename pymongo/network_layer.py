@@ -127,7 +127,7 @@ if sys.platform != "win32":
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         fd = conn.fileno()
-        read = 0
+        total_read = 0
 
         def _is_ready(fut: Future) -> None:
             loop.remove_writer(fd)
@@ -136,11 +136,12 @@ if sys.platform != "win32":
                 return
             fut.set_result(None)
 
-        while read < length:
+        while total_read < length:
             try:
-                read += conn.recv_into(mv[read:])
+                read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
+                total_read += read
             except BLOCKING_IO_ERRORS as exc:
                 fd = conn.fileno()
                 # Check for closed socket.
@@ -228,15 +229,19 @@ async def async_receive_data(
         else:
             read_task = asyncio.create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
         tasks = [read_task, cancellation_task]
-        result = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
-        if len(result[1]) == 2:
+        done, pending = await asyncio.wait(
+            tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+        if len(done) == 0:
             raise socket.timeout("timed out")
-        finished = next(iter(result[0]))
-        next(iter(result[1])).cancel()
-        if finished == read_task:
-            return finished.result()  # type: ignore[return-value]
-        else:
-            raise _OperationCancelled("operation cancelled")
+        for task in done:
+            if task == read_task:
+                return read_task.result()
+            else:
+                raise _OperationCancelled("operation cancelled")
+        return None  # type: ignore[return-value]
     finally:
         sock.settimeout(sock_timeout)
 

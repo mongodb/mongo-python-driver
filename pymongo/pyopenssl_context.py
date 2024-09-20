@@ -105,11 +105,16 @@ def _ragged_eof(exc: BaseException) -> bool:
 # https://docs.python.org/3/library/ssl.html#notes-on-non-blocking-sockets
 class _sslConn(_SSL.Connection):
     def __init__(
-        self, ctx: _SSL.Context, sock: Optional[_socket.socket], suppress_ragged_eofs: bool
+        self,
+        ctx: _SSL.Context,
+        sock: Optional[_socket.socket],
+        suppress_ragged_eofs: bool,
+        is_async: bool = False,
     ):
         self.socket_checker = _SocketChecker()
         self.suppress_ragged_eofs = suppress_ragged_eofs
         super().__init__(ctx, sock)
+        self._is_async = is_async
 
     def _call(self, call: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
         timeout = self.gettimeout()
@@ -119,6 +124,8 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
+                if self._is_async:
+                    raise exc
                 # Check for closed socket.
                 if self.fileno() == -1:
                     if timeout and _time.monotonic() - start > timeout:
@@ -381,7 +388,7 @@ class SSLContext:
         """Wrap an existing Python socket connection and return a TLS socket
         object.
         """
-        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
+        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs, True)
         loop = asyncio.get_running_loop()
         if session:
             ssl_conn.set_session(session)
