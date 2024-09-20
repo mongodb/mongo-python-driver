@@ -2121,7 +2121,7 @@ axes:
         variables:
           skip_ECS_auth_test: true
           skip_EC2_auth_test: true
-          skip_web_identity_auth_test: true
+          # skip_web_identity_auth_test: true
           venv_bin_dir: "Scripts"
           # CSOT tests are unreliable on our slow Windows hosts.
           SKIP_CSOT_TESTS: true
