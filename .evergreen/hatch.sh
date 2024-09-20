@@ -22,7 +22,7 @@ if [ -n "$SKIP_HATCH" ]; then
 fi
 
 # Bootstrap hatch if needed.
-if ! command -v hatch > /dev/null ; then
+if [ ! -f .bin/hatch ] && [ ! -f .bin/hatch.exe ] ; then
   platform="$(uname -s)-$(uname -m)"
   case $platform in
     Linux-x86_64)
@@ -50,14 +50,18 @@ if ! command -v hatch > /dev/null ; then
   if [ "${OS:-}" == "Windows_NT" ]; then
     unzip hatch.bin
     mv hatch.exe .bin
+    .bin/hatch.exe --version
   else
     tar xfz hatch.bin
     mv hatch .bin
+    .bin/hatch --version
   fi
   rm hatch.bin
-  ls .bin
-  echo $PATH
-  hatch --version
 fi
 
-HATCH_PYTHON="$PYTHON_BINARY" hatch run "$@"
+if [ "${OS:-}" == "Windows_NT" ]; then
+  HATCH=".bin/hatch.exe"
+else
+  HATCH="./bin/hatch"
+first
+HATCH_PYTHON="$PYTHON_BINARY" $HATCH run "$@"

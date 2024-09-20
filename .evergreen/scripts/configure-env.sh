@@ -11,13 +11,11 @@ fi
 
 PROJECT_DIRECTORY="$(pwd)"
 DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
-BIN_DIR="$PROJECT_DIRECTORY/.bin"
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
-    BIN_DIR=$(cygpath -m $BIN_DIR)
 fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
@@ -41,7 +39,7 @@ export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 export MONGODB_BINARIES="$MONGODB_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-export PATH="$BIN_DIR:$MONGODB_BINARIES:$PATH"
+export PATH="$MONGODB_BINARIES:$PATH"
 # shellcheck disable=SC2154
 export PROJECT="$project"
 export PIP_QUIET=1
