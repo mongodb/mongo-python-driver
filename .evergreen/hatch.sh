@@ -47,9 +47,9 @@ if ! command -v hatch > /dev/null ; then
       ;;
   esac
   curl -L -o hatch.tgz https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target.tar.gz
-  tar xfz hatch.tar.gz
+  tar xfz  hatch.tgz
   mv hatch .bin
-  rm hatch.tar.gz
+  rm  hatch.tgz
 fi
 
 HATCH_PYTHON="$PYTHON_BINARY" hatch run "$@"

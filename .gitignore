@@ -19,6 +19,7 @@ mongocryptd.pid
 .vscode/
 .nova/
 venv/
+.bin
 secrets-export.sh
 libmongocrypt.tar.gz
 libmongocrypt/
