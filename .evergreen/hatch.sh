@@ -26,28 +26,33 @@ if ! command -v hatch > /dev/null ; then
   platform="$(uname -s)-$(uname -m)"
   case $platform in
     Linux-x86_64)
-      target=x86_64-unknown-linux-gnu
+      target=x86_64-unknown-linux-gnu.tar.gz
       ;;
     Linux-aarch64)
-      target=aarch64-unknown-linux-gnu
+      target=aarch64-unknown-linux-gnu.tar.gz
       ;;
     CYGWIN_NT*)
-      target=x86_64-pc-windows-msvc
+      target=x86_64-pc-windows-msvc.zip
       ;;
     Darwin-x86_64)
-      target=x86_64-apple-darwin
+      target=x86_64-apple-darwin.tar.gz
       ;;
     Darwin-arm64)
-      target=aarch64-apple-darwin
+      target=aarch64-apple-darwin.tar.gz
       ;;
     *)
       echo "Unsupported platform: $platform"
       exit 1
       ;;
   esac
-  curl -L -o hatch.tgz https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target.tar.gz
-  tar xfz hatch.tgz
-  rm hatch.tgz
+  curl -L -o hatch.tgz https://github.com/pypa/hatch/releases/download/hatch-v1.12.0/hatch-$target
+  if [ "${OS:-}" == "Windows_NT" ]; then
+    unzip hatch.zip
+    rm hatch.zip
+  else
+    tar xfz hatch.tgz
+    rm hatch.tgz
+  fi
   mkdir -p .bin
   mv hatch .bin/
   hatch --version
