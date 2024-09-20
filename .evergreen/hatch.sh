@@ -59,9 +59,9 @@ if [ ! -f .bin/hatch ] && [ ! -f .bin/hatch.exe ] ; then
   rm hatch.bin
 fi
 
+export HATCH_PYTHON="$PYTHON_BINARY"
 if [ "${OS:-}" == "Windows_NT" ]; then
-  HATCH=".bin/hatch.exe"
+  .bin/hatch.exe run "$@"
 else
-  HATCH="./bin/hatch"
+  ./bin/hatch" run "$@"
 fi
-HATCH_PYTHON="$PYTHON_BINARY" $HATCH run "$@"
