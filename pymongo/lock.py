@@ -84,12 +84,18 @@ class _ALock:
         self.release()
 
 
+def _safe_set_result(fut: asyncio.Future) -> None:
+    # Ensure the future hasn't been cancelled before calling set_result.
+    if not fut.done():
+        fut.set_result(False)
+
+
 class _ACondition:
     __slots__ = ("_condition", "_waiters")
 
     def __init__(self, condition: threading.Condition) -> None:
         self._condition = condition
-        self._waiters = collections.deque()
+        self._waiters: collections.deque = collections.deque()
 
     async def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
         if timeout > 0:
@@ -157,20 +163,7 @@ class _ACondition:
             self.notify(1)
             raise
 
-    async def wait_for(self, predicate):
-        """Wait until a predicate becomes true.
-
-        The predicate should be a callable which result will be
-        interpreted as a boolean value.  The final predicate value is
-        the return value.
-        """
-        result = predicate()
-        while not result:
-            await self.wait()
-            result = predicate()
-        return result
-
-    def notify(self, n=1):
+    def notify(self, n: int = 1) -> None:
         """By default, wake up one coroutine waiting on this condition, if any.
         If the calling coroutine has not acquired the lock when this method
         is called, a RuntimeError is raised.
@@ -191,12 +184,8 @@ class _ACondition:
             if fut.done():
                 continue
 
-            def safe_set_result(fut):
-                if not fut.done():
-                    fut.set_result(False)
-
             try:
-                loop.call_soon_threadsafe(safe_set_result, fut)
+                loop.call_soon_threadsafe(_safe_set_result, fut)
             except RuntimeError:
                 # Loop was closed, ignore.
                 to_remove.append((loop, fut))
@@ -207,7 +196,7 @@ class _ACondition:
         for waiter in to_remove:
             self._waiters.remove(waiter)
 
-    def notify_all(self):
+    def notify_all(self) -> None:
         """Wake up all threads waiting on this condition. This method acts
         like notify(), but wakes up all waiting threads instead of one. If the
         calling thread has not acquired the lock when this method is called,
