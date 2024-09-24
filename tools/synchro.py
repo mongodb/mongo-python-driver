@@ -144,7 +144,17 @@ gridfs_files = [
     _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
 ]
 
-test_files = [_test_base + f for f in listdir(_test_base) if (Path(_test_base) / f).is_file()]
+
+def async_only_test(f: str) -> bool:
+    """Return True for async tests that should not be converted to sync."""
+    return f in ["test_locks.py"]
+
+
+test_files = [
+    _test_base + f
+    for f in listdir(_test_base)
+    if (Path(_test_base) / f).is_file() and not async_only_test(f)
+]
 
 sync_files = [
     _pymongo_dest_base + f
