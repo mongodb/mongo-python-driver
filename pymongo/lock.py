@@ -19,12 +19,14 @@ import os
 import threading
 import time
 import weakref
-from typing import Any, Optional
+from typing import Any, Callable, Optional, TypeVar
 
 _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 
 # References to instances of _create_lock
 _forkable_locks: weakref.WeakSet[threading.Lock] = weakref.WeakSet()
+
+_T = TypeVar("_T")
 
 
 def _create_lock() -> threading.Lock:
@@ -163,6 +165,20 @@ class _ACondition:
             self.notify(1)
             raise
 
+    async def wait_for(self, predicate: Callable[[], _T]) -> _T:
+        """Wait until a predicate becomes true.
+
+        The predicate should be a callable whose result will be
+        interpreted as a boolean value.  The method will repeatedly
+        wait() until it evaluates to true.  The final predicate value is
+        the return value.
+        """
+        result = predicate()
+        while not result:
+            await self.wait()
+            result = predicate()
+        return result
+
     def notify(self, n: int = 1) -> None:
         """By default, wake up one coroutine waiting on this condition, if any.
         If the calling coroutine has not acquired the lock when this method
@@ -203,6 +219,10 @@ class _ACondition:
         a RuntimeError is raised.
         """
         self.notify(len(self._waiters))
+
+    def locked(self) -> bool:
+        """Only needed for tests in test_locks."""
+        return self._condition._lock.locked()  # type: ignore[attr-defined]
 
     def release(self) -> None:
         self._condition.release()
