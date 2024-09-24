@@ -101,6 +101,7 @@ replacements = {
     "default_async": "default",
     "aclose": "close",
     "PyMongo|async": "PyMongo",
+    "PyMongo|c|async": "PyMongo|c",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
 }
