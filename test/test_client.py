@@ -39,7 +39,7 @@ from unittest.mock import patch
 
 import pytest
 
-from bson.binary import *
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -59,7 +59,7 @@ from test import (
     unittest,
 )
 from test.pymongo_mocks import MockClient
-from test.test_binary import TestBinary
+from test.test_binary import TestBinary as BinaryBase
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -1982,9 +1982,8 @@ class TestClient(IntegrationTest):
     def test_dict_hints_create_index(self):
         self.db.t.create_index({"x": pymongo.ASCENDING})
 
-    @client_context.require_connection
     def test_legacy_java_uuid_roundtrip(self):
-        data = TestBinary.java_data
+        data = BinaryBase.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("java_uuid")
@@ -2001,9 +2000,8 @@ class TestClient(IntegrationTest):
             self.assertNotEqual(d["newguid"], d["newguidstring"])
         client_context.client.pymongo_test.drop_collection("java_uuid")
 
-    @client_context.require_connection
     def test_legacy_csharp_uuid_roundtrip(self):
-        data = TestBinary.csharp_data
+        data = BinaryBase.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("csharp_uuid")
@@ -2025,7 +2023,6 @@ class TestClient(IntegrationTest):
         client = self.single_client(uri, connect=False)
         self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
 
-    @client_context.require_connection
     def test_uuid_queries(self):
         db = client_context.client.pymongo_test
         coll = db.test

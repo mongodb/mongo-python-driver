@@ -40,7 +40,7 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 
-from bson.binary import *
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -60,7 +60,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
-from test.test_binary import TestBinary
+from test.test_binary import TestBinary as BinaryBase
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -2024,9 +2024,8 @@ class TestClient(AsyncIntegrationTest):
     async def test_dict_hints_create_index(self):
         await self.db.t.create_index({"x": pymongo.ASCENDING})
 
-    @async_client_context.require_connection
     async def test_legacy_java_uuid_roundtrip(self):
-        data = TestBinary.java_data
+        data = BinaryBase.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
         await async_client_context.client.pymongo_test.drop_collection("java_uuid")
@@ -2043,9 +2042,8 @@ class TestClient(AsyncIntegrationTest):
             self.assertNotEqual(d["newguid"], d["newguidstring"])
         await async_client_context.client.pymongo_test.drop_collection("java_uuid")
 
-    @async_client_context.require_connection
     async def test_legacy_csharp_uuid_roundtrip(self):
-        data = TestBinary.csharp_data
+        data = BinaryBase.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
         await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
@@ -2067,7 +2065,6 @@ class TestClient(AsyncIntegrationTest):
         client = await self.async_single_client(uri, connect=False)
         self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
 
-    @async_client_context.require_connection
     async def test_uuid_queries(self):
         db = async_client_context.client.pymongo_test
         coll = db.test
