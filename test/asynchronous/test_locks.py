@@ -320,7 +320,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
         task = asyncio.create_task(func())
         await asyncio.sleep(0)
         # Task is waiting on the condition, cancel it there.
-        task.cancel(msg="foo")
+        task.cancel(msg="foo")  # type: ignore[call-arg]
         with self.assertRaises(asyncio.CancelledError) as err:
             await task
         self.assertEqual(err.exception.args, ("foo",))
@@ -354,7 +354,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
         cond.notify()
         await asyncio.sleep(0)
         # Task is now trying to re-acquire the lock, cancel it there.
-        task.cancel(msg="foo")
+        task.cancel(msg="foo")  # type: ignore[call-arg]
         cond.release()
         with self.assertRaises(asyncio.CancelledError) as err:
             await task
