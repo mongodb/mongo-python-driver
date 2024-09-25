@@ -59,7 +59,7 @@ from test import (
     unittest,
 )
 from test.pymongo_mocks import MockClient
-from test.test_binary import TestBinary as BinaryBase
+from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -1983,7 +1983,7 @@ class TestClient(IntegrationTest):
         self.db.t.create_index({"x": pymongo.ASCENDING})
 
     def test_legacy_java_uuid_roundtrip(self):
-        data = BinaryBase.java_data
+        data = BinaryData.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("java_uuid")
@@ -2001,7 +2001,7 @@ class TestClient(IntegrationTest):
         client_context.client.pymongo_test.drop_collection("java_uuid")
 
     def test_legacy_csharp_uuid_roundtrip(self):
-        data = BinaryBase.csharp_data
+        data = BinaryData.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("csharp_uuid")
