@@ -238,9 +238,7 @@ async def async_receive_data(
             raise socket.timeout("timed out")
         if read_task in done:
             return read_task.result()
-        elif conn.cancel_context.cancelled:
-            raise _OperationCancelled("operation cancelled")
-        return read_task.result()
+        raise _OperationCancelled("operation cancelled")
     finally:
         sock.settimeout(sock_timeout)
 
