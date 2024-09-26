@@ -117,6 +117,7 @@ class _sslConn(_SSL.Connection):
         self._is_async = is_async
 
     def _call(self, call: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
+        is_async = kwargs.pop("allow_async", True) and self._is_async
         timeout = self.gettimeout()
         if timeout:
             start = _time.monotonic()
@@ -124,7 +125,7 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
-                if self._is_async:
+                if is_async:
                     raise exc
                 # Check for closed socket.
                 if self.fileno() == -1:
@@ -146,6 +147,7 @@ class _sslConn(_SSL.Connection):
                 continue
 
     def do_handshake(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["allow_async"] = False
         return self._call(super().do_handshake, *args, **kwargs)
 
     def recv(self, *args: Any, **kwargs: Any) -> bytes:

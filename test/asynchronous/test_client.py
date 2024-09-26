@@ -1703,6 +1703,7 @@ class TestClient(AsyncIntegrationTest):
                 # No error
                 await client.pymongo_test.test.find_one()
 
+    @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
         client = await self.async_rs_or_single_client(minPoolSize=10)
         await client.admin.command("ping")
@@ -1727,10 +1728,7 @@ class TestClient(AsyncIntegrationTest):
                     await asyncio.sleep(0.001)
 
             def run(self):
-                if _IS_SYNC:
-                    self._run()
-                else:
-                    asyncio.run(self._run())
+                self._run()
 
         t = ResetPoolThread(pool)
         t.start()
