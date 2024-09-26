@@ -250,7 +250,7 @@ def translate_locks(lines: list[str]) -> list[str]:
     lock_lines = [line for line in lines if "_Lock(" in line]
     cond_lines = [line for line in lines if "_Condition(" in line]
     for line in lock_lines:
-        res = re.search(r"_Lock\(([^()]*\(\))\)", line)
+        res = re.search(r"_Lock\(([^()]*\([^()]*\))\)", line)
         if res:
             old = res[0]
             index = lines.index(line)

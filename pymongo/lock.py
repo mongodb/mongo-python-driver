@@ -46,6 +46,11 @@ def _release_locks() -> None:
             lock.release()
 
 
+# TODO: remove this.
+def _Lock(lock: threading.Lock) -> threading.Lock:
+    return lock
+
+
 class _ALock:
     __slots__ = ("_lock",)
 
