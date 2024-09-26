@@ -15,6 +15,7 @@
 """Test retryable writes."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import pprint
 import sys
@@ -71,22 +72,24 @@ _IS_SYNC = False
 
 
 class InsertEventListener(EventListener):
-    async def succeeded(self, event: CommandSucceededEvent) -> None:
+    def succeeded(self, event: CommandSucceededEvent) -> None:
         super().succeeded(event)
         if (
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            await async_client_context.client.admin.command(
-                {
-                    "configureFailPoint": "failCommand",
-                    "mode": {"times": 1},
-                    "data": {
-                        "errorCode": 10107,
-                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                        "failCommands": ["insert"],
-                    },
-                }
+            asyncio.run(
+                async_client_context.client.admin.command(
+                    {
+                        "configureFailPoint": "failCommand",
+                        "mode": {"times": 1},
+                        "data": {
+                            "errorCode": 10107,
+                            "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                            "failCommands": ["insert"],
+                        },
+                    }
+                )
             )
 
 
@@ -372,7 +375,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         # With OP_MSG 3 inserts are one batch. 2 updates another.
         # 2 deletes a third.
         self.assertEqual(len(self.listener.started_events), 6)
-        await self.assertEqual(coll.find_one(), {"_id": 1, "count": 1})
+        self.assertEqual(await coll.find_one(), {"_id": 1, "count": 1})
         # Assert the final result
         expected_result = {
             "writeErrors": [],
@@ -434,7 +437,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertEqual(started[1].command, started[2].command)
             final_txn = session._transaction_id
             self.assertEqual(final_txn, expected_txn)
-        await self.assertEqual(coll.find_one(projection={"_id": True}), {"_id": 1})
+        self.assertEqual(await coll.find_one(projection={"_id": True}), {"_id": 1})
 
     @async_client_context.require_multiple_mongoses
     @async_client_context.require_failCommand_fail_point

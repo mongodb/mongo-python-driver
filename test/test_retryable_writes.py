@@ -15,6 +15,7 @@
 """Test retryable writes."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import pprint
 import sys
@@ -77,16 +78,18 @@ class InsertEventListener(EventListener):
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            client_context.client.admin.command(
-                {
-                    "configureFailPoint": "failCommand",
-                    "mode": {"times": 1},
-                    "data": {
-                        "errorCode": 10107,
-                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                        "failCommands": ["insert"],
-                    },
-                }
+            asyncio.run(
+                client_context.client.admin.command(
+                    {
+                        "configureFailPoint": "failCommand",
+                        "mode": {"times": 1},
+                        "data": {
+                            "errorCode": 10107,
+                            "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                            "failCommands": ["insert"],
+                        },
+                    }
+                )
             )
 
 
