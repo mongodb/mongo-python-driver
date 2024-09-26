@@ -25,7 +25,6 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context, client_knobs, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
-    rs_or_single_client,
     server_name_to_type,
     wait_until,
 )
@@ -279,7 +278,7 @@ class TestSdamMonitoring(IntegrationTest):
         cls.knobs.enable()
         cls.listener = ServerAndTopologyEventListener()
         retry_writes = client_context.supports_transactions()
-        cls.test_client = rs_or_single_client(
+        cls.test_client = cls.unmanaged_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=retry_writes
         )
         cls.coll = cls.test_client[cls.client.db.name].test

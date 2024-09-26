@@ -227,8 +227,9 @@ class Topology:
             warnings.warn(  # type: ignore[call-overload] # noqa: B028
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
-                "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe",
+                "https://www.mongodb.com/docs/languages/"
+                "python/pymongo-driver/current/faq/"
+                "#is-pymongo-fork-safe-",
                 **kwargs,
             )
             with self._lock:

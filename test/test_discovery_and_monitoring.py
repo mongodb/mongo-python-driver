@@ -22,7 +22,7 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, PyMongoTestCase, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
 from test.utils import (
@@ -32,9 +32,7 @@ from test.utils import (
     assertion_context,
     client_context,
     get_pool,
-    rs_or_single_client,
     server_name_to_type,
-    single_client,
     wait_until,
 )
 from unittest.mock import patch
@@ -272,7 +270,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
     def test_ignore_stale_connection_errors(self):
         N_THREADS = 5
         barrier = threading.Barrier(N_THREADS, timeout=30)
-        client = rs_or_single_client(minPoolSize=N_THREADS)
+        client = self.rs_or_single_client(minPoolSize=N_THREADS)
         self.addCleanup(client.close)
 
         # Wait for initial discovery.
@@ -319,7 +317,7 @@ class TestPoolManagement(IntegrationTest):
     def test_pool_unpause(self):
         # This test implements the prose test "Connection Pool Management"
         listener = CMAPHeartbeatListener()
-        client = single_client(
+        client = self.single_client(
             appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
         )
         self.addCleanup(client.close)
@@ -353,7 +351,7 @@ class TestServerMonitoringMode(IntegrationTest):
         super().setUp()
 
     def test_rtt_connection_is_enabled_stream(self):
-        client = rs_or_single_client(serverMonitoringMode="stream")
+        client = self.rs_or_single_client(serverMonitoringMode="stream")
         self.addCleanup(client.close)
         client.admin.command("ping")
 
@@ -373,7 +371,7 @@ class TestServerMonitoringMode(IntegrationTest):
         wait_until(predicate, "find all RTT monitors")
 
     def test_rtt_connection_is_disabled_poll(self):
-        client = rs_or_single_client(serverMonitoringMode="poll")
+        client = self.rs_or_single_client(serverMonitoringMode="poll")
         self.addCleanup(client.close)
         self.assert_rtt_connection_is_disabled(client)
 
@@ -387,7 +385,7 @@ class TestServerMonitoringMode(IntegrationTest):
         ]
         for env in envs:
             with patch.dict("os.environ", env):
-                client = rs_or_single_client(serverMonitoringMode="auto")
+                client = self.rs_or_single_client(serverMonitoringMode="auto")
                 self.addCleanup(client.close)
                 self.assert_rtt_connection_is_disabled(client)
 
@@ -415,7 +413,7 @@ class TCPServer(socketserver.TCPServer):
         self.server_close()
 
 
-class TestHeartbeatStartOrdering(unittest.TestCase):
+class TestHeartbeatStartOrdering(PyMongoTestCase):
     def test_heartbeat_start_ordering(self):
         events = []
         listener = HeartbeatEventsListListener(events)
@@ -423,7 +421,7 @@ class TestHeartbeatStartOrdering(unittest.TestCase):
         server.events = events
         server_thread = threading.Thread(target=server.handle_request_and_shutdown)
         server_thread.start()
-        _c = MongoClient(
+        _c = self.simple_client(
             "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
         )
         server_thread.join()

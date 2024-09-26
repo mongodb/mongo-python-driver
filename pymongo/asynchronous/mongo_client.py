@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import warnings
 import weakref
 from collections import defaultdict
 from typing import (
@@ -175,6 +176,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           False instead of None.
           For more details, see the relevant section of the PyMongo 4.x migration guide:
           :ref:`pymongo4-migration-direct-connection`.
+
+        .. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release.
 
         The client object is thread-safe and has connection-pooling built in.
         If an operation fails because of a network error,
@@ -871,6 +874,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._opened = False
+        self._closed = False
         self._init_background()
 
         if _IS_SYNC and connect:
@@ -1179,6 +1183,21 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param name: the name of the database to get
         """
         return database.AsyncDatabase(self, name)
+
+    def __del__(self) -> None:
+        """Check that this AsyncMongoClient has been closed and issue a warning if not."""
+        try:
+            if self._opened and not self._closed:
+                warnings.warn(
+                    (
+                        f"Unclosed {type(self).__name__} opened at:\n{self._topology_settings._stack}"
+                        f"Call {type(self).__name__}.close() to safely shut down your client and free up resources."
+                    ),
+                    ResourceWarning,
+                    stacklevel=2,
+                )
+        except AttributeError:
+            pass
 
     def _close_cursor_soon(
         self,
@@ -1547,6 +1566,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
+        self._closed = True
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.
@@ -2427,7 +2447,9 @@ class _MongoClientErrorHandler:
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
         if not isinstance(client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(client)}")
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncMongoClient" for cls in type(client).__mro__):
+                raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         self.client = client
         self.server_address = server.description.address

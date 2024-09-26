@@ -7,10 +7,18 @@ Changes in Version 4.9.0
 .. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
    PyMongo 4.9 will be the last release to support MongoDB 3.6.
 
+.. warning:: PyMongo 4.9 refactors a large portion of internal APIs to support the new asynchronous API beta.
+   As a result, versions of Motor older than 3.6 are not compatible with PyMongo 4.9.
+   Existing users of these versions must either upgrade to Motor 3.6 and PyMongo 4.9,
+   or cap their PyMongo version to ``< 4.9``.
+   Any applications that use private APIs may also break as a result of these internal changes.
+
 PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
-- A new asynchronous API with full asyncio support.
+- Added support for Python 3.13.
+- A new beta asynchronous API with full asyncio support.
+  This new asynchronous API is a work-in-progress that may change during the beta period before the full release.
 - Added support for In-Use Encryption range queries with MongoDB 8.0.
   Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
   ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
@@ -42,6 +50,16 @@ PyMongo 4.9 brings a number of improvements including:
 - Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
   when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
   :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
+- Added a warning to unclosed MongoClient instances
+  telling users to explicitly close clients when finished with them to avoid leaking resources.
+  For example:
+
+  .. code-block::
+
+    sys:1: ResourceWarning: Unclosed MongoClient opened at:
+        File "/Users/<user>/my_file.py", line 8, in <module>``
+            client = MongoClient()
+    Call MongoClient.close() to safely shut down your client and free up resources.
 - The default value for ``connect`` in ``MongoClient`` is changed to ``False`` when running on
   unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
   On some FaaS systems, there is a ``fork()`` operation at function
@@ -82,6 +100,10 @@ Unavoidable breaking changes
 - Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
   and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
   Additionally, ``pip`` >= 21.3 is now required for editable installs.
+- We no longer support the ``srv`` extra, since ``dnspython`` is included as a dependency in PyMongo 4.7+.
+  Instead of ``pip install pymongo[srv]``, use ``pip install pymongo``.
+- We no longer support the ``tls`` extra, which was only valid for Python 2.
+  Instead of ``pip install pymongo[tls]``, use ``pip install pymongo``.
 
 Issues Resolved
 ...............

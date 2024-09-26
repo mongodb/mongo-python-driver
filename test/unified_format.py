@@ -55,8 +55,6 @@ from test.utils import (
     parse_collection_options,
     parse_spec_options,
     prepare_spec_arguments,
-    rs_or_single_client,
-    single_client,
     snake_to_camel,
     wait_until,
 )
@@ -574,13 +572,13 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
-            client = rs_or_single_client(**kwargs)
+            client = self.test.rs_or_single_client(**kwargs)
             self[spec["id"]] = client
             self.test.addCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -602,7 +600,7 @@ class EntityMapUtil:
             return
         elif entity_type == "session":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -667,7 +665,7 @@ class EntityMapUtil:
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
-        if not isinstance(client, MongoClient):
+        if type(client).__name__ != "MongoClient":
             self.test.fail(
                 f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
@@ -1115,7 +1113,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             and not client_context.serverless
         ):
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
@@ -1646,7 +1644,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             )
 
-        client = single_client("{}:{}".format(*session._pinned_address))
+        client = self.single_client("{}:{}".format(*session._pinned_address))
         self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 

@@ -2039,6 +2039,19 @@ tasks:
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
 
+    - name: "backport-pr"
+      allowed_requesters: ["commit"]
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
+
 axes:
   # Choice of distro
   - id: platform
@@ -2068,10 +2081,10 @@ axes:
         batchtime: 10080  # 7 days
       - id: rhel8
         display_name: "RHEL 8.x"
-        run_on: rhel87-small
+        run_on: rhel8.8-small
         batchtime: 10080  # 7 days
-      - id: rhel92-fips
-        display_name: "RHEL 9.2 FIPS"
+      - id: rhel9-fips
+        display_name: "RHEL 9 FIPS"
         run_on: rhel92-fips
         batchtime: 10080  # 7 days
       - id: ubuntu-22.04
@@ -2082,24 +2095,24 @@ axes:
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
-      - id: rhel83-zseries
-        display_name: "RHEL 8.3 (zSeries)"
-        run_on: rhel83-zseries-small
+      - id: rhel8-zseries
+        display_name: "RHEL 8 (zSeries)"
+        run_on: rhel8-zseries-small
         batchtime: 10080  # 7 days
         variables:
           SKIP_HATCH: true
-      - id: rhel81-power8
-        display_name: "RHEL 8.1 (POWER8)"
-        run_on: rhel81-power8-small
+      - id: rhel8-power8
+        display_name: "RHEL 8 (POWER8)"
+        run_on: rhel8-power-small
         batchtime: 10080  # 7 days
         variables:
           SKIP_HATCH: true
-      - id: rhel82-arm64
-        display_name: "RHEL 8.2 (ARM64)"
+      - id: rhel8-arm64
+        display_name: "RHEL 8 (ARM64)"
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-      - id: windows-64-vsMulti-small
+      - id: windows
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
@@ -2240,6 +2253,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "/opt/python/3.12/bin/python3"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.13/bin/python3"
       - id: "pypy3.9"
         display_name: "PyPy 3.9"
         variables:
@@ -2272,6 +2289,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/Python312/python.exe"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/Python313/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2296,6 +2317,10 @@ axes:
         display_name: "32-bit Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/32/Python312/python.exe"
+      - id: "3.13"
+        display_name: "32-bit Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python313/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2445,7 +2470,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel92-fips
+      - rhel9-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2522,9 +2547,9 @@ buildvariants:
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      - rhel83-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel81-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel82-arm64 # Added in 4.4.2 (SERVER-48282)
+      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
+      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
+      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2559,7 +2584,7 @@ buildvariants:
   # Only test "noauth" with Python 3.8.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
+    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2581,7 +2606,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
     ssl: "ssl"
@@ -2665,7 +2690,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
+     python-version: ["pypy3.9", "pypy3.10", "3.13"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2673,7 +2698,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
@@ -2681,7 +2706,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version-32-bit"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows-32: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
@@ -2699,7 +2724,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
@@ -2708,7 +2733,7 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
-        platform: windows-64-vsMulti-small
+        platform: windows
         python-version-windows: "*"
         auth-ssl: "*"
       then:
@@ -2770,7 +2795,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-enterprise-auth"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
@@ -2788,7 +2813,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -2882,7 +2907,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: ["3.8", "3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
@@ -2907,7 +2932,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8, macos, windows-64-vsMulti-small ]
+    platform: [ rhel8, macos, windows ]
   display_name: "OIDC Auth ${platform}"
   tasks:
     - name: testoidc_task_group
@@ -2956,7 +2981,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
-    platform: [windows-64-vsMulti-small]
+    platform: [windows]
     python-version-windows: "*"
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
@@ -3013,6 +3038,13 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: "check-import-time"
+
+- name: backport-pr
+  display_name: "Backport PR"
+  run_on:
+    - rhel8.7-small
+  tasks:
+    - name: "backport-pr"
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"

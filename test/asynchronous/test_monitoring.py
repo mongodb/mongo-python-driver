@@ -31,8 +31,6 @@ from test.asynchronous import (
 )
 from test.utils import (
     EventListener,
-    async_rs_or_single_client,
-    async_single_client,
     async_wait_until,
 )
 
@@ -57,7 +55,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     async def _setup_class(cls):
         await super()._setup_class()
         cls.listener = EventListener()
-        cls.client = await async_rs_or_single_client(
+        cls.client = await cls.unmanaged_async_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False
         )
 
@@ -407,7 +405,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     @async_client_context.require_secondaries_count(1)
     async def test_not_primary_error(self):
         address = next(iter(await async_client_context.client.secondaries))
-        client = await async_single_client(*address, event_listeners=[self.listener])
+        client = await self.async_single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         await client.admin.command("ping")
         self.listener.reset()
@@ -1146,7 +1144,7 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
-        cls.client = await async_single_client()
+        cls.client = await cls.unmanaged_async_single_client()
         # Get one (authenticated) socket in the pool.
         await cls.client.pymongo_test.command("ping")
 

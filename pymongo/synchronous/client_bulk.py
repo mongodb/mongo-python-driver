@@ -319,8 +319,6 @@ class _ClientBulk:
                 self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             else:
                 self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
-        finally:
-            bwc.start_time = datetime.datetime.now()
         return reply  # type: ignore[return-value]
 
     def unack_write(
@@ -410,9 +408,7 @@ class _ClientBulk:
                 bwc._fail(request_id, failure, duration)
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
-        finally:
-            bwc.start_time = datetime.datetime.now()
-        return result  # type: ignore[return-value]
+        return reply
 
     def _execute_batch_unack(
         self,

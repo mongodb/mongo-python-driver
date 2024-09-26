@@ -27,7 +27,6 @@ from test import (
 )
 from test.utils import (
     OvertCommandListener,
-    rs_or_single_client,
 )
 from unittest.mock import patch
 
@@ -38,7 +37,6 @@ from pymongo.errors import (
     InvalidOperation,
     NetworkTimeout,
 )
-from pymongo.monitoring import *
 from pymongo.operations import *
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.write_concern import WriteConcern
@@ -97,8 +95,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_batch_splits_if_num_operations_too_large(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         models = []
         for _ in range(self.max_write_batch_size + 1):
@@ -123,8 +120,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_batch_splits_if_ops_payload_too_large(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         models = []
         num_models = int(self.max_message_size_bytes / self.max_bson_object_size + 1)
@@ -157,11 +153,10 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_failCommand_fail_point
     def test_collects_write_concern_errors_across_batches(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             event_listeners=[listener],
             retryWrites=False,
         )
-        self.addCleanup(client.close)
 
         fail_command = {
             "configureFailPoint": "failCommand",
@@ -200,8 +195,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_collects_write_errors_across_batches_unordered(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
         self.addCleanup(collection.drop)
@@ -231,8 +225,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_collects_write_errors_across_batches_ordered(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
         self.addCleanup(collection.drop)
@@ -262,8 +255,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_handles_cursor_requiring_getMore(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
         self.addCleanup(collection.drop)
@@ -304,8 +296,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_standalone
     def test_handles_cursor_requiring_getMore_within_transaction(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
         self.addCleanup(collection.drop)
@@ -348,8 +339,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_failCommand_fail_point
     def test_handles_getMore_error(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
         self.addCleanup(collection.drop)
@@ -403,8 +393,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_returns_error_if_unacknowledged_too_large_insert(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         b_repeated = "b" * self.max_bson_object_size
 
@@ -460,8 +449,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_no_batch_splits_if_new_namespace_is_not_too_large(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         num_models, models = self._setup_namespace_test_models()
         models.append(
@@ -492,8 +480,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_no_serverless
     def test_batch_splits_if_new_namespace_is_too_large(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
 
         num_models, models = self._setup_namespace_test_models()
         c_repeated = "c" * 200
@@ -530,8 +517,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_no_serverless
     def test_returns_error_if_no_writes_can_be_added_to_ops(self):
-        client = rs_or_single_client()
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client()
 
         # Document too large.
         b_repeated = "b" * self.max_message_size_bytes
@@ -554,8 +540,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
             key_vault_namespace="db.coll",
             kms_providers={"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}},
         )
-        client = rs_or_single_client(auto_encryption_opts=opts)
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(auto_encryption_opts=opts)
 
         models = [InsertOne(namespace="db.coll", document={"a": "b"})]
         with self.assertRaises(InvalidOperation) as context:
@@ -580,7 +565,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
     def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
 
-        internal_client = rs_or_single_client(timeoutMS=None)
+        internal_client = self.rs_or_single_client(timeoutMS=None)
         self.addCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
@@ -605,14 +590,13 @@ class TestClientBulkWriteCSOT(IntegrationTest):
                 )
 
             listener = OvertCommandListener()
-            client = rs_or_single_client(
+            client = self.rs_or_single_client(
                 event_listeners=[listener],
                 readConcernLevel="majority",
                 readPreference="primary",
                 timeoutMS=2000,
                 w="majority",
             )
-            self.addCleanup(client.close)
             client.admin.command("ping")  # Init the client first.
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)

@@ -33,7 +33,7 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener, rs_or_single_client
+from test.utils import EventListener
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
@@ -790,7 +790,7 @@ Bye"""
         outfile.readchunk()
 
     def test_grid_in_lazy_connect(self):
-        client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
+        client = self.simple_client("badhost", connect=False, serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = GridIn(fs, file_id=-1, chunk_size=1)
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -801,7 +801,7 @@ Bye"""
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            GridIn((rs_or_single_client(w=0)).pymongo_test.fs)
+            GridIn((self.rs_or_single_client(w=0)).pymongo_test.fs)
 
     def test_survive_cursor_not_found(self):
         # By default the find command returns 101 documents in the first batch.
@@ -809,7 +809,7 @@ Bye"""
         chunk_size = 1024
         data = b"d" * (102 * chunk_size)
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         db = client.pymongo_test
         with GridIn(db.fs, chunk_size=chunk_size) as infile:
             infile.write(data)

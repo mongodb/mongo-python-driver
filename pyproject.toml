@@ -35,13 +35,14 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Typing :: Typed",
 ]
 
 [project.urls]
 Homepage = "https://www.mongodb.org"
-Documentation = "https://pymongo.readthedocs.io"
+Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/"
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 

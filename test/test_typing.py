@@ -68,8 +68,7 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context
-from test.utils import rs_or_single_client
+from test import IntegrationTest, PyMongoTestCase, client_context
 
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
@@ -194,7 +193,7 @@ class TestPymongo(IntegrationTest):
         value.items()
 
     def test_default_document_type(self) -> None:
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.test.test
         doc = {"my": "doc"}
@@ -366,7 +365,7 @@ class TestDecode(unittest.TestCase):
         doc["a"] = 2
 
 
-class TestDocumentType(unittest.TestCase):
+class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
@@ -480,7 +479,7 @@ class TestDocumentType(unittest.TestCase):
     def test_typeddict_find_notrequired(self):
         if NotRequired is None or ImplicitMovie is None:
             raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
-        client: MongoClient[ImplicitMovie] = rs_or_single_client()
+        client: MongoClient[ImplicitMovie] = self.rs_or_single_client()
         coll = client.test.test
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
         out = coll.find_one({})

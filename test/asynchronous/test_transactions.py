@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 from io import BytesIO
+from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
 
@@ -25,8 +26,6 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    async_rs_client,
-    async_single_client,
     wait_until,
 )
 from typing import List
@@ -59,7 +58,18 @@ _IS_SYNC = False
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TestTransactions(AsyncIntegrationTest):
+class AsyncTransactionsBase(AsyncSpecRunner):
+    def maybe_skip_scenario(self, test):
+        super().maybe_skip_scenario(test)
+        if (
+            "secondary" in self.id()
+            and not async_client_context.is_mongos
+            and not async_client_context.has_secondaries
+        ):
+            raise unittest.SkipTest("No secondaries")
+
+
+class TestTransactions(AsyncTransactionsBase):
     RUN_ON_SERVERLESS = True
 
     @async_client_context.require_transactions
@@ -92,8 +102,7 @@ class TestTransactions(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
-        client = await async_rs_client(w=0)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_client(w=0)
         db = client.test
         coll = db.test
         await coll.insert_one({})
@@ -150,12 +159,13 @@ class TestTransactions(AsyncIntegrationTest):
     async def test_unpin_for_next_transaction(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = await async_rs_client(async_client_context.mongos_seeds(), localThresholdMS=1000)
+        client = await self.async_rs_client(
+            async_client_context.mongos_seeds(), localThresholdMS=1000
+        )
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
-        self.addAsyncCleanup(client.close)
         async with client.start_session() as s:
             # Session is pinned to Mongos.
             async with await s.start_transaction():
@@ -178,12 +188,13 @@ class TestTransactions(AsyncIntegrationTest):
     async def test_unpin_for_non_transaction_operation(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = await async_rs_client(async_client_context.mongos_seeds(), localThresholdMS=1000)
+        client = await self.async_rs_client(
+            async_client_context.mongos_seeds(), localThresholdMS=1000
+        )
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
-        self.addAsyncCleanup(client.close)
         async with client.start_session() as s:
             # Session is pinned to Mongos.
             async with await s.start_transaction():
@@ -307,11 +318,10 @@ class TestTransactions(AsyncIntegrationTest):
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
+        client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         await coll.delete_many({})
         listener.reset()
-        self.addAsyncCleanup(client.close)
         self.addAsyncCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
         ops: List[InsertOne[RawBSONDocument]] = [
@@ -336,8 +346,7 @@ class TestTransactions(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_transaction_direct_connection(self):
-        client = await async_single_client()
-        self.addAsyncCleanup(client.close)
+        client = await self.async_single_client()
         coll = client.pymongo_test.test
 
         # Make sure the collection exists.
@@ -393,14 +402,16 @@ class PatchSessionTimeout:
         client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
-class TestTransactionsConvenientAPI(AsyncIntegrationTest):
+class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @classmethod
     async def _setup_class(cls):
         await super()._setup_class()
         cls.mongos_clients = []
         if async_client_context.supports_transactions():
             for address in async_client_context.mongoses:
-                cls.mongos_clients.append(await async_single_client("{}:{}".format(*address)))
+                cls.mongos_clients.append(
+                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
+                )
 
     @classmethod
     async def _tearDown_class(cls):
@@ -450,8 +461,7 @@ class TestTransactionsConvenientAPI(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         async def callback(session):
@@ -479,8 +489,7 @@ class TestTransactionsConvenientAPI(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         async def callback(session):
@@ -514,8 +523,7 @@ class TestTransactionsConvenientAPI(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
-        client = await async_rs_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
 
         async def callback(session):

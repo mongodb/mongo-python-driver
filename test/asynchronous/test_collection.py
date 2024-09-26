@@ -30,6 +30,7 @@ sys.path[0:0] = [""]
 from test import unittest
 from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
     AsyncIntegrationTest,
+    AsyncUnitTest,
     async_client_context,
 )
 from test.utils import (
@@ -37,8 +38,6 @@ from test.utils import (
     EventListener,
     async_get_pool,
     async_is_mongos,
-    async_rs_or_single_client,
-    async_single_client,
     async_wait_until,
     wait_until,
 )
@@ -82,14 +81,20 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = False
 
 
-class TestCollectionNoConnect(unittest.TestCase):
+class TestCollectionNoConnect(AsyncUnitTest):
     """Test Collection features on a client that does not connect."""
 
     db: AsyncDatabase
+    client: AsyncMongoClient
 
     @classmethod
-    def setUpClass(cls):
-        cls.db = AsyncMongoClient(connect=False).pymongo_test
+    async def _setup_class(cls):
+        cls.client = AsyncMongoClient(connect=False)
+        cls.db = cls.client.pymongo_test
+
+    @classmethod
+    async def _tearDown_class(cls):
+        await cls.client.close()
 
     def test_collection(self):
         self.assertRaises(TypeError, AsyncCollection, self.db, 5)
@@ -1819,8 +1824,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         # Insert enough documents to require more than one batch
         await self.db.test.insert_many([{"i": i} for i in range(150)])
 
-        client = await async_rs_or_single_client(maxPoolSize=1)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(maxPoolSize=1)
         pool = await async_get_pool(client)
 
         # Make sure the socket is returned after exhaustion.
@@ -2100,7 +2104,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     async def test_find_one_and_write_concern(self):
         listener = EventListener()
-        db = (await async_single_client(event_listeners=[listener]))[self.db.name]
+        db = (await self.async_single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))
         # default WriteConcern.
