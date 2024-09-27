@@ -122,6 +122,19 @@ class TestResults(unittest.TestCase):
         self.assertEqual(raw_result["n"], result.matched_count)
         self.assertEqual(raw_result["nModified"], result.modified_count)
         self.assertEqual(raw_result["upserted"], result.upserted_id)
+        self.assertEqual(result.did_upsert, False)
+
+        raw_result_upserted = {
+            "n": 1,
+            "nModified": 1,
+            "upserted": [
+                {"index": 5, "_id": 1},
+            ],
+        }
+        self.repr_test(UpdateResult, raw_result_upserted)
+
+        result = UpdateResult(raw_result_upserted, True)
+        self.assertEqual(result.did_upsert, True)
 
         result = UpdateResult(raw_result, False)
         self.assertEqual(raw_result, result.raw_result)

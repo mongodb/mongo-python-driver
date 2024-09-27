@@ -171,9 +171,10 @@ class UpdateResult(_WriteResult):
 
     @property
     def did_upsert(self) -> bool:
-        """Whether or not an upsert took place."""
+        """Whether an upsert took place."""
         assert self.__raw_result is not None
-        return len(self.__raw_result.get("upserted", {})) > 0
+        result = self.__raw_result.get("upserted")
+        return result is not None and len(str(result)) > 0
 
 
 class DeleteResult(_WriteResult):
