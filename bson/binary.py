@@ -263,7 +263,7 @@ class Binary(bytes):
     The second (padding) prescribes the number of bits to ignore in the final byte.
     This is relevant when the element size of the dtype is not a multiple of 8.
 
-    Raises TypeError if subtype` is not an instance of :class:`int`.
+    Raises TypeError if `subtype` is not an instance of :class:`int`.
     Raises ValueError if `subtype` is not in [0, 256).
 
     .. note::
