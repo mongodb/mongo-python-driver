@@ -499,7 +499,7 @@ class TestWriteConcernError(IntegrationTest):
         }
 
     @client_context.require_version_min(4, 0)
-    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    # @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
