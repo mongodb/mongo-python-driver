@@ -172,7 +172,7 @@ class TestRetryableReads(AsyncIntegrationTest):
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
-        client = self.async_rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             async_client_context.mongos_seeds(),
             appName="retryableReadTest",
             event_listeners=[listener],
