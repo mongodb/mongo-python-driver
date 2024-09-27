@@ -2351,7 +2351,9 @@ class TestMongoClientFailover(AsyncMockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
+        await (await c._get_topology()).select_servers(
+            writable_server_selector, _Op.TEST, server_selection_timeout=10
+        )
         self.assertEqual(await c.address, ("a", 1))
 
     async def _test_network_error(self, operation_callback):
