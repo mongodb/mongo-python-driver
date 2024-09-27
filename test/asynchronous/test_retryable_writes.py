@@ -78,18 +78,16 @@ class InsertEventListener(EventListener):
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            asyncio.run(
-                async_client_context.client.admin.command(
-                    {
-                        "configureFailPoint": "failCommand",
-                        "mode": {"times": 1},
-                        "data": {
-                            "errorCode": 10107,
-                            "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                            "failCommands": ["insert"],
-                        },
-                    }
-                )
+            async_client_context.client.admin.command(
+                {
+                    "configureFailPoint": "failCommand",
+                    "mode": {"times": 1},
+                    "data": {
+                        "errorCode": 10107,
+                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                        "failCommands": ["insert"],
+                    },
+                }
             )
 
 
@@ -617,6 +615,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
 
+    @async_client_context.require_sync
     @async_client_context.require_failCommand_fail_point
     @async_client_context.require_replica_set
     @async_client_context.require_version_min(
