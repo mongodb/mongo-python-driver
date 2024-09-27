@@ -508,7 +508,7 @@ class TestWriteConcernError(AsyncIntegrationTest):
         # Ensure collection exists.
         await client.pymongo_test.testcoll.insert_one({})
 
-        with self.fail_point(self.fail_insert):
+        async with self.fail_point(self.fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
                 await client.pymongo_test.testcoll.insert_one({})
             self.assertTrue(cm.exception.has_error_label("RetryableWriteError"))
