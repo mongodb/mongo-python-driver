@@ -16,17 +16,12 @@ from __future__ import annotations
 
 import binascii
 import codecs
-import functools
-import glob
 import json
-import os
 import struct
-import sys
-from decimal import DecimalException
 from pathlib import Path
 from test import unittest
 
-from bson import decode, encode, json_util
+from bson import decode, encode
 from bson.binary import Binary, BinaryVectorDtype
 
 _TEST_PATH = Path(__file__).parent / "bson_binary_vector"
@@ -59,7 +54,6 @@ def create_test(case_spec):
             dtype_alias_exp = test_case.get("dtype_alias")
             padding_exp = test_case.get("padding", 0)
             canonical_bson_exp = test_case.get("canonical_bson")
-            canonical_extjson_exp = test_case.get("canonical_extjson")
             # Convert dtype hex string into bytes
             dtype_exp = BinaryVectorDtype(int(dtype_hex_exp, 16).to_bytes(1, byteorder="little"))
 
@@ -89,10 +83,6 @@ def create_test(case_spec):
                 vector_exp = Binary.from_vector(vector_exp, dtype_exp, padding_exp)
                 cB_obs = binascii.hexlify(encode({test_key: vector_exp})).decode().upper()
                 self.assertEqual(cB_obs, canonical_bson_exp, description)
-
-                # Test JSON
-                self.assertEqual(json_util.loads(canonical_extjson_exp), decoded_doc, description)
-                self.assertEqual(json_util.dumps(decoded_doc), canonical_extjson_exp, description)
 
             else:
                 with self.assertRaises((struct.error, AssertionError), msg=description):

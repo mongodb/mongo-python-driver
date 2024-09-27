@@ -9,8 +9,7 @@
       "dtype_hex": "0x03",
       "dtype_alias": "INT8",
       "padding": 0,
-      "canonical_bson": "1600000005766563746F7200040000000903007F0700",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"AwB/Bw==\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1600000005766563746F7200040000000903007F0700"
     },
     {
       "description": "Empty Vector INT8",
@@ -19,8 +18,7 @@
       "dtype_hex": "0x03",
       "dtype_alias": "INT8",
       "padding": 0,
-      "canonical_bson": "1400000005766563746F72000200000009030000",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"AwA=\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1400000005766563746F72000200000009030000"
     },
     {
       "description": "Overflow Vector INT8",

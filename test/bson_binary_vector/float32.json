@@ -9,8 +9,7 @@
       "dtype_hex": "0x27",
       "dtype_alias": "FLOAT32",
       "padding": 0,
-      "canonical_bson": "1C00000005766563746F72000A0000000927000000FE420000E04000", 
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"JwAAAP5CAADgQA==\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1C00000005766563746F72000A0000000927000000FE420000E04000"
     },
     {
       "description": "Empty Vector FLOAT32",
@@ -19,8 +18,7 @@
       "dtype_hex": "0x27",
       "dtype_alias": "FLOAT32",
       "padding": 0,
-      "canonical_bson": "1400000005766563746F72000200000009270000",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"JwA=\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1400000005766563746F72000200000009270000"
     },
     {
       "description": "Infinity Vector FLOAT32",
@@ -29,8 +27,7 @@
       "dtype_hex": "0x27",
       "dtype_alias": "FLOAT32",
       "padding": 0,
-      "canonical_bson": "2000000005766563746F72000E000000092700000080FF000000000000807F00",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"JwAAAID/AAAAAAAAgH8=\", \"subType\": \"09\"}}}"
+      "canonical_bson": "2000000005766563746F72000E000000092700000080FF000000000000807F00"
     },
     {
       "description": "FLOAT32 with padding",

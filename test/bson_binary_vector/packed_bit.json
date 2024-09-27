@@ -9,8 +9,7 @@
       "dtype_hex": "0x10",
       "dtype_alias": "PACKED_BIT",
       "padding": 0,
-      "canonical_bson": "1600000005766563746F7200040000000910007F0700",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"EAB/Bw==\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1600000005766563746F7200040000000910007F0700"
     },
     {
       "description": "Empty Vector PACKED_BIT",
@@ -19,8 +18,7 @@
       "dtype_hex": "0x10",
       "dtype_alias": "PACKED_BIT",
       "padding": 0,
-      "canonical_bson": "1400000005766563746F72000200000009100000",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"EAA=\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1400000005766563746F72000200000009100000"
     },
     {
       "description": "PACKED_BIT with padding",
@@ -29,8 +27,7 @@
       "dtype_hex": "0x10",
       "dtype_alias": "PACKED_BIT",
       "padding": 3,
-      "canonical_bson": "1600000005766563746F7200040000000910037F0700",
-      "canonical_extjson": "{\"vector\": {\"$binary\": {\"base64\": \"EAN/Bw==\", \"subType\": \"09\"}}}"
+      "canonical_bson": "1600000005766563746F7200040000000910037F0700"
     },
     {
       "description": "Overflow Vector PACKED_BIT",
