@@ -34,7 +34,7 @@ from test.asynchronous import (
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    set_fail_point,
+    async_set_fail_point,
 )
 
 from pymongo.monitoring import (
@@ -167,7 +167,7 @@ class TestRetryableReads(AsyncIntegrationTest):
 
         for mongos in async_client_context.mongos_seeds().split(","):
             client = await self.async_rs_or_single_client(mongos)
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
             self.addAsyncCleanup(client.close)
             mongos_clients.append(client)
 
@@ -186,7 +186,7 @@ class TestRetryableReads(AsyncIntegrationTest):
         # Disable failpoints on each mongos
         for client in mongos_clients:
             fail_command["mode"] = "off"
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
 
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
