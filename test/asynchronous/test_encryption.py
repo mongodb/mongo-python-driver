@@ -706,7 +706,7 @@ class AsyncTestSpec(AsyncSpecRunner):
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
         db = async_client_context.client.get_database(db_name, codec_options=OPTS)
-        coll = await db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
+        await db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
         wc = WriteConcern(w="majority")
         kwargs: Dict[str, Any] = {}
         if json_schema:
