@@ -249,7 +249,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
 
             # There should be no retry when the failpoint is not active.
-            if async_client_context._is_mongos or not async_client_context.test_commands_enabled:
+            if async_client_context.is_mongos or not async_client_context.test_commands_enabled:
                 self.assertEqual(len(commands_started), 1)
                 continue
 
@@ -404,7 +404,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
         )
         self.listener.reset()
-        with self.client.start_session() as session:
+        async with self.client.start_session() as session:
             initial_txn = session._transaction_id
             try:
                 await coll.bulk_write(
@@ -521,7 +521,7 @@ class TestWriteConcernError(AsyncIntegrationTest):
     async def test_RetryableWriteError_error_label_RawBSONDocument(self):
         # using RawBSONDocument should not cause errorLabel parsing to fail
         async with self.fail_point(self.fail_insert):
-            with self.client.start_session() as s:
+            async with self.client.start_session() as s:
                 s._start_retryable_write()
                 result = await self.client.pymongo_test.command(
                     "insert",
@@ -679,7 +679,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             listener.reset()
             topology.select_server = raise_connection_err_select_server
-            with client.start_session() as session:
+            async with client.start_session() as session:
                 kwargs = copy.deepcopy(kwargs)
                 kwargs["session"] = session
                 msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"

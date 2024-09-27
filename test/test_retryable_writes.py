@@ -249,7 +249,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
 
             # There should be no retry when the failpoint is not active.
-            if client_context._is_mongos or not client_context.test_commands_enabled:
+            if client_context.is_mongos or not client_context.test_commands_enabled:
                 self.assertEqual(len(commands_started), 1)
                 continue
 
