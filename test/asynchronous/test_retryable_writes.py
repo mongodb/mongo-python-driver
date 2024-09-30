@@ -35,7 +35,7 @@ from test.utils import (
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    set_fail_point,
+    async_set_fail_point,
 )
 from test.version import Version
 
@@ -452,7 +452,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
         for mongos in async_client_context.mongos_seeds().split(","):
             client = await self.async_rs_or_single_client(mongos)
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
@@ -469,7 +469,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         # Disable failpoints on each mongos
         for client in mongos_clients:
             fail_command["mode"] = "off"
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
 
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
@@ -551,6 +551,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
+    @async_client_context.require_sync
     @async_client_context.require_failCommand_blockConnection
     @async_client_context.require_retryable_writes
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
