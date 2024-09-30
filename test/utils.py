@@ -1157,3 +1157,9 @@ def set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     client.admin.command(cmd)
+
+
+async def async_set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    await client.admin.command(cmd)
