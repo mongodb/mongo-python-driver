@@ -173,8 +173,7 @@ class UpdateResult(_WriteResult):
     def did_upsert(self) -> bool:
         """Whether an upsert took place."""
         assert self.__raw_result is not None
-        result = self.__raw_result.get("upserted")
-        return result is not None and len(str(result)) > 0
+        return "upserted" in self.__raw_result
 
 
 class DeleteResult(_WriteResult):
