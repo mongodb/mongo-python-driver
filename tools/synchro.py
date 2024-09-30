@@ -162,6 +162,7 @@ sync_gridfs_files = [
 converted_tests = [
     "__init__.py",
     "conftest.py",
+    "helpers.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
     "qcheck.py",

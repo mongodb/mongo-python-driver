@@ -27,9 +27,9 @@ from test.asynchronous import (
     AsyncIntegrationTest,
     SkipTest,
     async_client_context,
-    client_knobs,
     unittest,
 )
+from test.asynchronous.helpers import client_knobs
 from test.utils import (
     CMAPListener,
     DeprecationFilter,

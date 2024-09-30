@@ -27,9 +27,9 @@ from test import (
     IntegrationTest,
     SkipTest,
     client_context,
-    client_knobs,
     unittest,
 )
+from test.helpers import client_knobs
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
