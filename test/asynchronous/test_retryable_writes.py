@@ -215,7 +215,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     async def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=False, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
@@ -328,7 +327,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 
@@ -455,7 +453,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         for mongos in async_client_context.mongos_seeds().split(","):
             client = await self.async_rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addAsyncCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
@@ -499,11 +496,10 @@ class TestWriteConcernError(AsyncIntegrationTest):
         }
 
     @async_client_context.require_version_min(4, 0)
-    # @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     async def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
 
         # Ensure collection exists.
         await client.pymongo_test.testcoll.insert_one({})
@@ -564,7 +560,6 @@ class TestPoolPausedError(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addAsyncCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -630,7 +625,6 @@ class TestPoolPausedError(AsyncIntegrationTest):
             retryWrites=True, event_listeners=[cmd_listener]
         )
         await client.test.test.drop()
-        self.addAsyncCleanup(client.close)
         cmd_listener.reset()
         await client.admin.command(
             {
@@ -666,7 +660,6 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 

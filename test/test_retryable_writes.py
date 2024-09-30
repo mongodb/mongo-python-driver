@@ -215,7 +215,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=False, event_listeners=[listener])
-        self.addCleanup(client.close)
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
@@ -328,7 +327,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 
@@ -455,7 +453,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         for mongos in client_context.mongos_seeds().split(","):
             client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
@@ -499,11 +496,10 @@ class TestWriteConcernError(IntegrationTest):
         }
 
     @client_context.require_version_min(4, 0)
-    # @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
 
         # Ensure collection exists.
         client.pymongo_test.testcoll.insert_one({})
@@ -564,7 +560,6 @@ class TestPoolPausedError(IntegrationTest):
         client = self.rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -628,7 +623,6 @@ class TestPoolPausedError(IntegrationTest):
         cmd_listener = InsertEventListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
-        self.addCleanup(client.close)
         cmd_listener.reset()
         client.admin.command(
             {
@@ -664,7 +658,6 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 
