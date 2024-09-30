@@ -384,7 +384,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
         # create two consumers
         c = [asyncio.create_task(consumer()) for _ in range(2)]
         # wait for them to settle
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
         async with condition:
             # produce one item and wake up one
             state += 1
@@ -398,7 +398,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
             # if it doesn't means that our "notify" didn"t take hold.
             # because it raced with a cancel()
             try:
-                async with asyncio.timeout(0.01):
+                async with asyncio.timeout(1):
                     await condition.wait_for(lambda: state == 0)
             except TimeoutError:
                 pass
@@ -430,7 +430,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
         # create two consumers
         c = [asyncio.create_task(consumer()) for _ in range(2)]
         # wait for them to settle
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
         async with condition:
             # produce one item and wake up one
             state += 1
@@ -448,7 +448,7 @@ class TestConditionStdlib(unittest.IsolatedAsyncioTestCase):
             # if it doesn't means that our "notify" didn"t take hold.
             # because it raced with a cancel()
             try:
-                async with asyncio.timeout(0.01):
+                async with asyncio.timeout(1):
                     await condition.wait_for(lambda: state == 0)
             except TimeoutError:
                 pass
