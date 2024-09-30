@@ -444,7 +444,7 @@ class Binary(bytes):
             This is only necessary for datatypes where padding is applicable.
             For example, setting this to True for a PACKED_BIT vector will result
             in a List[int] of zeros and ones.
-        :return: List of numbers, along with dtype and padding.
+        :return: BinaryVector - a list of numbers, along with dtype and padding.
 
         .. versionadded:: 4.10
         """
