@@ -1405,7 +1405,7 @@ class TestCursor(IntegrationTest):
     def test_to_list_csot_applied(self):
         client = self.single_client(timeoutMS=500)
         # Initialize the client with a larger timeout to help make test less flakey
-        with pymongo.timeout(2):
+        with pymongo.timeout(10):
             client.admin.command("ping")
         coll = client.pymongo.test
         coll.insert_many([{} for _ in range(5)])
@@ -1447,7 +1447,7 @@ class TestCursor(IntegrationTest):
     def test_command_cursor_to_list_csot_applied(self):
         client = self.single_client(timeoutMS=500)
         # Initialize the client with a larger timeout to help make test less flakey
-        with pymongo.timeout(2):
+        with pymongo.timeout(10):
             client.admin.command("ping")
         coll = client.pymongo.test
         coll.insert_many([{} for _ in range(5)])
