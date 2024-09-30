@@ -702,7 +702,7 @@ class TestDatabase(IntegrationTest):
             "write_concern": WriteConcern(w=1),
             "read_concern": ReadConcern(level="local"),
         }
-        db2 = db1.with_options(**newopts)  # type: ignore[arg-type]
+        db2 = db1.with_options(**newopts)  # type: ignore[arg-type, call-overload]
         for opt in newopts:
             self.assertEqual(getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
 
