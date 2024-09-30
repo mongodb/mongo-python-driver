@@ -103,6 +103,7 @@ replacements = {
     "PyMongo|async": "PyMongo",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "async_set_fail_point": "set_fail_point",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

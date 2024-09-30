@@ -35,7 +35,7 @@ from test.utils import (
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    async_set_fail_point,
+    set_fail_point,
 )
 from test.version import Version
 
@@ -452,7 +452,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
         for mongos in client_context.mongos_seeds().split(","):
             client = self.rs_or_single_client(mongos)
-            async_set_fail_point(client, fail_command)
+            set_fail_point(client, fail_command)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
@@ -469,7 +469,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         # Disable failpoints on each mongos
         for client in mongos_clients:
             fail_command["mode"] = "off"
-            async_set_fail_point(client, fail_command)
+            set_fail_point(client, fail_command)
 
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
