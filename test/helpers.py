@@ -206,16 +206,16 @@ class client_knobs:
     def __call__(self, func):
         def make_wrapper(f):
             if iscoroutinefunction(f):
-                wraps_async = True
-            else:
-                wraps_async = False
 
-            @wraps(f)
-            async def wrap(*args, **kwargs):
-                with self:
-                    if wraps_async:
+                @wraps(f)
+                async def wrap(*args, **kwargs):
+                    with self:
                         return await f(*args, **kwargs)
-                    else:
+            else:
+
+                @wraps(f)
+                def wrap(*args, **kwargs):
+                    with self:
                         return f(*args, **kwargs)
 
             return wrap
