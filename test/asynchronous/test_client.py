@@ -99,7 +99,7 @@ from pymongo.asynchronous.pool import (
 from pymongo.asynchronous.settings import TOPOLOGY_TYPE
 from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, has_c
 from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -347,7 +347,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "PyMongo|async"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -370,7 +373,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
         # Test appending to driver info.
-        metadata["driver"]["name"] = "PyMongo|async|FooDriver"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
         client = self.simple_client(
             "foo",
@@ -1931,7 +1937,10 @@ class TestClient(AsyncIntegrationTest):
     async def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
-            metadata["driver"]["name"] = "PyMongo|async"
+            if has_c():
+                metadata["driver"]["name"] = "PyMongo|c|async"
+            else:
+                metadata["driver"]["name"] = "PyMongo|async"
             if expected_env is not None:
                 metadata["env"] = expected_env
 

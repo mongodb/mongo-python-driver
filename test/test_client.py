@@ -87,7 +87,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo import event_loggers, message, monitoring
 from pymongo.client_options import ClientOptions
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, has_c
 from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -339,7 +339,10 @@ class ClientUnitTest(UnitTest):
 
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "PyMongo"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c"
+        else:
+            metadata["driver"]["name"] = "PyMongo"
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -362,7 +365,10 @@ class ClientUnitTest(UnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
         # Test appending to driver info.
-        metadata["driver"]["name"] = "PyMongo|FooDriver"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
         client = self.simple_client(
             "foo",
@@ -1889,7 +1895,10 @@ class TestClient(IntegrationTest):
     def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
-            metadata["driver"]["name"] = "PyMongo"
+            if has_c():
+                metadata["driver"]["name"] = "PyMongo|c"
+            else:
+                metadata["driver"]["name"] = "PyMongo"
             if expected_env is not None:
                 metadata["env"] = expected_env
 
