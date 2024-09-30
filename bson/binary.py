@@ -219,7 +219,7 @@ class BinaryVectorDtype(Enum):
 
     Each value is of type bytes with a length of one.
 
-    .. versionadded:: 4.9
+    .. versionadded:: 4.10
     """
 
     INT8 = b"\x03"
@@ -241,7 +241,7 @@ class BinaryVector:
       when a vector element's size is less than a byte
       and the length of the vector is not a multiple of 8.
 
-    .. versionadded:: 4.9
+    .. versionadded:: 4.10
     """
 
     data: Sequence[float | int]
@@ -417,16 +417,18 @@ class Binary(bytes):
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
 
-        .. versionadded:: 4.9
+        .. versionadded:: 4.10
         """
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
-            assert not padding, f"padding does not apply to {dtype=}"
+            if padding:
+                raise ValueError(f"padding does not apply to {dtype=}")
         elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
             format_str = "B"
         elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
             format_str = "f"
-            assert not padding, f"padding does not apply to {dtype=}"
+            if padding:
+                raise ValueError(f"padding does not apply to {dtype=}")
         else:
             raise NotImplementedError("%s not yet supported" % dtype)
 
@@ -444,7 +446,7 @@ class Binary(bytes):
             in a List[int] of zeros and ones.
         :return: List of numbers, along with dtype and padding.
 
-        .. versionadded:: 4.9
+        .. versionadded:: 4.10
         """
 
         position = 0
@@ -462,7 +464,10 @@ class Binary(bytes):
         elif dtype == BinaryVectorDtype.FLOAT32:
             n_bytes = len(self) - position
             n_values = n_bytes // 4
-            assert n_bytes % 4 == 0
+            if n_bytes % 4:
+                raise ValueError(
+                    "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
+                )
             vector = list(struct.unpack_from(f"{n_values}f", self, position))
             return BinaryVector(vector, dtype, padding)
 
