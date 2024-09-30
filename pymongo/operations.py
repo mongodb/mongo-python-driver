@@ -376,6 +376,7 @@ class ReplaceOne(Generic[_DocumentType]):
         else:
             self._hint = hint
 
+        self._sort = sort
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
@@ -390,6 +391,7 @@ class ReplaceOne(Generic[_DocumentType]):
             self._upsert,
             collation=validate_collation_or_none(self._collation),
             hint=self._hint,
+            sort=self._sort,
         )
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
@@ -405,6 +407,7 @@ class ReplaceOne(Generic[_DocumentType]):
             self._upsert,
             collation=validate_collation_or_none(self._collation),
             hint=self._hint,
+            sort=self._sort,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -416,13 +419,15 @@ class ReplaceOne(Generic[_DocumentType]):
                 other._collation,
                 other._hint,
                 other._namespace,
+                other._sort,
             ) == (
                 self._filter,
                 self._doc,
                 self._upsert,
                 self._collation,
-                other._hint,
+                self._hint,
                 self._namespace,
+                self._sort,
             )
         return NotImplemented
 
@@ -431,7 +436,7 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def __repr__(self) -> str:
         if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
                 self.__class__.__name__,
                 self._filter,
                 self._doc,
@@ -439,14 +444,16 @@ class ReplaceOne(Generic[_DocumentType]):
                 self._collation,
                 self._hint,
                 self._namespace,
+                self._sort,
             )
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
             self._upsert,
             self._collation,
             self._hint,
+            self._sort,
         )
 
 
@@ -485,15 +492,13 @@ class _UpdateOp:
             self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
         else:
             self._hint = hint
-        if sort is not None:
-            self._sort = sort
-
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
         self._collation = collation
         self._array_filters = array_filters
         self._namespace = namespace
+        self._sort = sort
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
@@ -505,6 +510,7 @@ class _UpdateOp:
                 other._array_filters,
                 other._hint,
                 other._namespace,
+                other._sort,
             ) == (
                 self._filter,
                 self._doc,
@@ -513,6 +519,7 @@ class _UpdateOp:
                 self._array_filters,
                 self._hint,
                 self._namespace,
+                self._sort,
             )
         return NotImplemented
 
@@ -529,8 +536,8 @@ class _UpdateOp:
                 self._collation,
                 self._array_filters,
                 self._hint,
-                self._sort,
                 self._namespace,
+                self._sort,
             )
         return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
@@ -608,6 +615,7 @@ class UpdateOne(_UpdateOp):
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
+            sort=self._sort,
         )
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
@@ -625,6 +633,7 @@ class UpdateOne(_UpdateOp):
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
+            sort=self._sort,
         )
 
 
