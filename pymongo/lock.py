@@ -46,7 +46,7 @@ def _release_locks() -> None:
             lock.release()
 
 
-# TODO: remove this.
+# Needed only for synchro.py compat.
 def _Lock(lock: threading.Lock) -> threading.Lock:
     return lock
 
