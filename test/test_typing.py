@@ -53,9 +53,9 @@ if TYPE_CHECKING:
         name: str
         year: int
 else:
-    Movie = object
-    NotRequired = object
-    ImplicitMovie = object
+    Movie = dict
+    ImplicitMovie = dict
+    NotRequired = None
 
 
 try:
