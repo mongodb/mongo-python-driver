@@ -574,7 +574,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
                     "errorLabels": ["RetryableWriteError"],
                 },
             }
-            with self.fail_point(fail_command):
+            async with self.fail_point(fail_command):
                 for thread in threads:
                     thread.start()
                 for thread in threads:
