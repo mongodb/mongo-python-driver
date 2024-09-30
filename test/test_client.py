@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import _thread as thread
 import asyncio
+import base64
 import contextlib
 import copy
 import datetime
@@ -31,12 +32,14 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Iterable, Type, no_type_check
+import uuid
+from typing import Any, Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
 
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -56,6 +59,7 @@ from test import (
     unittest,
 )
 from test.pymongo_mocks import MockClient
+from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -1977,6 +1981,75 @@ class TestClient(IntegrationTest):
 
     def test_dict_hints_create_index(self):
         self.db.t.create_index({"x": pymongo.ASCENDING})
+
+    def test_legacy_java_uuid_roundtrip(self):
+        data = BinaryData.java_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
+
+        client_context.client.pymongo_test.drop_collection("java_uuid")
+        db = client_context.client.pymongo_test
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
+
+        coll.insert_many(docs)
+        self.assertEqual(5, coll.count_documents({}))
+        for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        client_context.client.pymongo_test.drop_collection("java_uuid")
+
+    def test_legacy_csharp_uuid_roundtrip(self):
+        data = BinaryData.csharp_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
+
+        client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        db = client_context.client.pymongo_test
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
+
+        coll.insert_many(docs)
+        self.assertEqual(5, coll.count_documents({}))
+        for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        client_context.client.pymongo_test.drop_collection("csharp_uuid")
+
+    def test_uri_to_uuid(self):
+        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
+        client = self.single_client(uri, connect=False)
+        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
+
+    def test_uuid_queries(self):
+        db = client_context.client.pymongo_test
+        coll = db.test
+        coll.drop()
+
+        uu = uuid.uuid4()
+        coll.insert_one({"uuid": Binary(uu.bytes, 3)})
+        self.assertEqual(1, coll.count_documents({}))
+
+        # Test regular UUID queries (using subtype 4).
+        coll = db.get_collection(
+            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        )
+        self.assertEqual(0, coll.count_documents({"uuid": uu}))
+        coll.insert_one({"uuid": uu})
+        self.assertEqual(2, coll.count_documents({}))
+        docs = coll.find({"uuid": uu}).to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(uu, docs[0]["uuid"])
+
+        # Test both.
+        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
+        predicate = {"uuid": {"$in": [uu, uu_legacy]}}
+        self.assertEqual(2, coll.count_documents(predicate))
+        docs = coll.find(predicate).to_list()
+        self.assertEqual(2, len(docs))
+        coll.drop()
 
 
 class TestExhaustCursor(IntegrationTest):

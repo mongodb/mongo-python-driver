@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import _thread as thread
 import asyncio
+import base64
 import contextlib
 import copy
 import datetime
@@ -31,13 +32,15 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Iterable, Type, no_type_check
+import uuid
+from typing import Any, Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -57,6 +60,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
+from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -2019,6 +2023,75 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_dict_hints_create_index(self):
         await self.db.t.create_index({"x": pymongo.ASCENDING})
+
+    async def test_legacy_java_uuid_roundtrip(self):
+        data = BinaryData.java_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+
+    async def test_legacy_csharp_uuid_roundtrip(self):
+        data = BinaryData.csharp_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+
+    async def test_uri_to_uuid(self):
+        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
+        client = await self.async_single_client(uri, connect=False)
+        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
+
+    async def test_uuid_queries(self):
+        db = async_client_context.client.pymongo_test
+        coll = db.test
+        await coll.drop()
+
+        uu = uuid.uuid4()
+        await coll.insert_one({"uuid": Binary(uu.bytes, 3)})
+        self.assertEqual(1, await coll.count_documents({}))
+
+        # Test regular UUID queries (using subtype 4).
+        coll = db.get_collection(
+            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        )
+        self.assertEqual(0, await coll.count_documents({"uuid": uu}))
+        await coll.insert_one({"uuid": uu})
+        self.assertEqual(2, await coll.count_documents({}))
+        docs = await coll.find({"uuid": uu}).to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(uu, docs[0]["uuid"])
+
+        # Test both.
+        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
+        predicate = {"uuid": {"$in": [uu, uu_legacy]}}
+        self.assertEqual(2, await coll.count_documents(predicate))
+        docs = await coll.find(predicate).to_list()
+        self.assertEqual(2, len(docs))
+        await coll.drop()
 
 
 class TestExhaustCursor(AsyncIntegrationTest):
