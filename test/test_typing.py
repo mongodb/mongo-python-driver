@@ -52,6 +52,10 @@ if TYPE_CHECKING:
         _id: NotRequired[ObjectId]
         name: str
         year: int
+else:
+    Movie = object
+    NotRequired = object
+    ImplicitMovie = object
 
 
 try:
