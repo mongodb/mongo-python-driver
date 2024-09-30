@@ -683,7 +683,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
-        sort: Optional[Mapping] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -738,8 +737,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
-        :param sort: Specify which document the operation updates if the query matches
-            multiple documents. The first document matched by the sort order will be updated.
 
         :return: An instance of :class:`~pymongo.results.BulkWriteResult`.
 
@@ -747,9 +744,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
-
-        .. versionchanged:: 4.10
-            Added ``sort`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -765,7 +759,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let, sort=sort)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -1009,14 +1003,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
+        if sort is not None:
+            if not acknowledged and conn.max_wire_version < 25:
+                raise ConfigurationError(
+                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+                )
+            common.validate_is_mapping("sort", sort)
+            update_doc["sort"] = sort
+
         command = {"update": self.name, "ordered": ordered, "updates": [update_doc]}
         if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
-
-        if sort is not None:
-            common.validate_is_mapping("sort", sort)
-            command["sort"] = sort
 
         if comment is not None:
             command["comment"] = comment

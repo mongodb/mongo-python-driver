@@ -118,6 +118,7 @@ class _ClientBulk:
         self.uses_array_filters = False
         self.uses_hint_update = False
         self.uses_hint_delete = False
+        self.uses_sort = False
 
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
@@ -148,6 +149,7 @@ class _ClientBulk:
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -169,6 +171,9 @@ class _ClientBulk:
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
+        if sort is not None:
+            self.uses_sort = True
+            cmd["sort"] = sort
         if multi:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
@@ -184,6 +189,7 @@ class _ClientBulk:
         upsert: Optional[bool] = None,
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -202,6 +208,9 @@ class _ClientBulk:
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
+        if sort is not None:
+            self.uses_sort = True
+            cmd["sort"] = sort
         self.ops.append(("replace", cmd))
         self.namespaces.append(namespace)
         self.total_ops += 1
