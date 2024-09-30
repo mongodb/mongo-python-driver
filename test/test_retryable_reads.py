@@ -97,7 +97,6 @@ class TestPoolPausedError(IntegrationTest):
         client = self.rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -168,7 +167,6 @@ class TestRetryableReads(IntegrationTest):
         for mongos in client_context.mongos_seeds().split(","):
             client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()

@@ -97,7 +97,6 @@ class TestPoolPausedError(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addAsyncCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -168,7 +167,6 @@ class TestRetryableReads(AsyncIntegrationTest):
         for mongos in async_client_context.mongos_seeds().split(","):
             client = await self.async_rs_or_single_client(mongos)
             await async_set_fail_point(client, fail_command)
-            self.addAsyncCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
