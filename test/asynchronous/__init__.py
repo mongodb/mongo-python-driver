@@ -313,7 +313,7 @@ class AsyncClientContext:
                         params = self.cmd_line["parsed"].get("setParameter", {})
                         if params.get("enableTestCommands") == "1":
                             self.test_commands_enabled = True
-                    self.has_ipv6 = await self._server_started_with_ipv6()
+                self.has_ipv6 = await self._server_started_with_ipv6()
 
             self.is_mongos = (await self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
