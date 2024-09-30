@@ -335,6 +335,7 @@ class ReplaceOne(Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         namespace: Optional[str] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a ReplaceOne instance.
 
@@ -353,8 +354,12 @@ class ReplaceOne(Generic[_DocumentType]):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
         :param namespace: (optional) The namespace in which to replace a document.
 
+        .. versionchanged:: 4.10
+            Added ``sort`` option.
         .. versionchanged:: 4.9
            Added the `namespace` option to support `MongoClient.bulk_write`.
         .. versionchanged:: 3.11
@@ -456,6 +461,7 @@ class _UpdateOp:
         "_array_filters",
         "_hint",
         "_namespace",
+        "_sort",
     )
 
     def __init__(
@@ -467,6 +473,7 @@ class _UpdateOp:
         array_filters: Optional[list[Mapping[str, Any]]],
         hint: Optional[_IndexKeyHint],
         namespace: Optional[str],
+        sort: Optional[Mapping[str, Any]],
     ):
         if filter is not None:
             validate_is_mapping("filter", filter)
@@ -478,6 +485,8 @@ class _UpdateOp:
             self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
         else:
             self._hint = hint
+        if sort is not None:
+            self._sort = sort
 
         self._filter = filter
         self._doc = doc
@@ -512,7 +521,7 @@ class _UpdateOp:
 
     def __repr__(self) -> str:
         if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
                 self.__class__.__name__,
                 self._filter,
                 self._doc,
@@ -520,9 +529,10 @@ class _UpdateOp:
                 self._collation,
                 self._array_filters,
                 self._hint,
+                self._sort,
                 self._namespace,
             )
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
@@ -530,6 +540,7 @@ class _UpdateOp:
             self._collation,
             self._array_filters,
             self._hint,
+            self._sort,
         )
 
 
@@ -547,6 +558,7 @@ class UpdateOne(_UpdateOp):
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         namespace: Optional[str] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Represents an update_one operation.
 
@@ -567,8 +579,12 @@ class UpdateOne(_UpdateOp):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
-        :param namespace: (optional) The namespace in which to update a document.
+        :param namespace: The namespace in which to update a document.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
 
+        .. versionchanged:: 4.10
+            Added ``sort`` option.
         .. versionchanged:: 4.9
            Added the `namespace` option to support `MongoClient.bulk_write`.
         .. versionchanged:: 3.11
@@ -580,7 +596,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace)
+        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, sort)
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
@@ -659,7 +675,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace)
+        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, None)
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""

@@ -684,6 +684,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
+        sort: Optional[Mapping] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -738,6 +739,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
 
         :return: An instance of :class:`~pymongo.results.BulkWriteResult`.
 
@@ -745,6 +748,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.10
+            Added ``sort`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -760,7 +766,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _AsyncBulk(self, ordered, bypass_document_validation, comment=comment, let=let)
+        blk = _AsyncBulk(
+            self, ordered, bypass_document_validation, comment=comment, let=let, sort=sort
+        )
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -972,6 +980,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
@@ -1007,6 +1016,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
+
+        if sort is not None:
+            common.validate_is_mapping("sort", sort)
+            command["sort"] = sort
 
         if comment is not None:
             command["comment"] = comment
@@ -1058,6 +1071,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
@@ -1081,6 +1095,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 retryable_write=retryable_write,
                 let=let,
+                sort=sort,
                 comment=comment,
             )
 
@@ -1101,6 +1116,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
@@ -1155,8 +1171,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. "$$var").
         :param comment: A user-provided comment to attach to this
             command.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.10
+           Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
            Added ``comment`` parameter.
@@ -1188,6 +1208,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                sort=sort,
                 comment=comment,
             ),
             write_concern.acknowledged,
@@ -1204,6 +1225,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
@@ -1262,11 +1284,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
         :param comment: A user-provided comment to attach to this
             command.
 
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.10
+           Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
            Added ``comment`` parameter.
@@ -1301,6 +1327,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                sort=sort,
                 comment=comment,
             ),
             write_concern.acknowledged,
