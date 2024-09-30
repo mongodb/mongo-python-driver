@@ -325,6 +325,7 @@ class ReplaceOne(Generic[_DocumentType]):
         "_collation",
         "_hint",
         "_namespace",
+        "_sort",
     )
 
     def __init__(
