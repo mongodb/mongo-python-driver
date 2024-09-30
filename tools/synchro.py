@@ -23,7 +23,7 @@ import re
 from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import]
+from unasync import Rule, unasync_files  # type: ignore[import-not-found]
 
 replacements = {
     "AsyncCollection": "Collection",

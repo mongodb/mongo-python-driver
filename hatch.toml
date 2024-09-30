@@ -13,8 +13,9 @@ features = ["docs","test"]
 test = "sphinx-build -E -b doctest doc ./doc/_build/doctest"
 
 [envs.typing]
-features = ["encryption", "ocsp", "zstd", "aws"]
-dependencies = ["mypy==1.2.0","pyright==1.1.290", "certifi", "typing_extensions"]
+pre-install-commands = [
+  "pip install -q -r requirements/typing.txt",
+]
 [envs.typing.scripts]
 check-mypy = [
     "mypy --install-types --non-interactive bson gridfs tools pymongo",

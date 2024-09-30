@@ -913,7 +913,7 @@ async def _configured_socket(
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
         except _CertificateError:
             ssl_sock.close()
             raise

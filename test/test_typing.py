@@ -34,7 +34,7 @@ from typing import (
     cast,
 )
 
-try:
+if TYPE_CHECKING:
     from typing_extensions import NotRequired, TypedDict
 
     from bson import ObjectId
@@ -49,16 +49,9 @@ try:
         year: int
 
     class ImplicitMovie(TypedDict):
-        _id: NotRequired[ObjectId]  # pyright: ignore[reportGeneralTypeIssues]
+        _id: NotRequired[ObjectId]
         name: str
         year: int
-
-except ImportError:
-    Movie = dict  # type:ignore[misc,assignment]
-    ImplicitMovie = dict  # type: ignore[assignment,misc]
-    MovieWithId = dict  # type: ignore[assignment,misc]
-    TypedDict = None
-    NotRequired = None  # type: ignore[assignment]
 
 
 try:
@@ -233,6 +226,19 @@ class TestPymongo(IntegrationTest):
             return session.with_transaction(
                 execute_transaction, read_preference=ReadPreference.PRIMARY
             )
+
+    def test_with_options(self) -> None:
+        coll: Collection[Dict[str, Any]] = self.coll
+        coll.drop()
+        doc = {"name": "foo", "year": 1982, "other": 1}
+        coll.insert_one(doc)
+
+        coll2 = coll.with_options(codec_options=CodecOptions(document_class=Movie))
+        retrieved = coll2.find_one()
+        assert retrieved is not None
+        assert retrieved["name"] == "foo"
+        # We expect a type error here.
+        assert retrieved["other"] == 1  # type:ignore[typeddict-item]
 
 
 class TestDecode(unittest.TestCase):
@@ -426,7 +432,7 @@ class TestDocumentType(PyMongoTestCase):
         )
         coll.bulk_write(
             [
-                InsertOne({"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+                InsertOne({"_id": ObjectId(), "name": "THX-1138", "year": 1971})  # pyright: ignore
             ]  # No error because it is in-line.
         )
 
@@ -443,7 +449,7 @@ class TestDocumentType(PyMongoTestCase):
         )
         coll.bulk_write(
             [
-                ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+                ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})  # pyright: ignore
             ]  # No error because it is in-line.
         )
 
@@ -566,7 +572,7 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
     def test_typeddict_document_type(self) -> None:
         options: CodecOptions[Movie] = CodecOptions()
         # Suppress: Cannot instantiate type "Type[Movie]".
-        obj = options.document_class(name="a", year=1)  # type: ignore[misc]
+        obj = options.document_class(name="a", year=1)
         assert obj["year"] == 1
         assert obj["name"] == "a"
 
