@@ -4,7 +4,9 @@ Changelog
 Changes in Version 4.10.0
 -------------------------
 
-- Provisional **(BETA)** support for a new Binary BSON subtype used for efficient storage and retrieval of vectors: densely packed arrays of numbers, all of the same type.
+- Provisional **(BETA)** support for a new Binary BSON subtype used for efficient storage and retrieval of vectors:
+  densely packed arrays of numbers, all of the same type.
+  This includes new methods :meth:`~bson.binary.Binary.from_vector` and :meth:`~bson.binary.Binary.as_vector`.
 
 Changes in Version 4.9.0
 -------------------------
