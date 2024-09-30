@@ -181,9 +181,9 @@ converted_tests = [
     "test_logger.py",
     "test_monitoring.py",
     "test_raw_bson.py",
+    "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
-    "test_retryable_writes.py",
 ]
 
 sync_test_files = [
