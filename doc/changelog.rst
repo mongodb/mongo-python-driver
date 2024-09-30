@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Changes in Version 4.10.0
+-------------------------
+
+- Provisional **(BETA)** support for a new Binary BSON subtype used for efficient storage and retrieval of vectors: densely packed arrays of numbers, all of the same type.
+
 Changes in Version 4.9.0
 -------------------------
 
