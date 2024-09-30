@@ -28,6 +28,7 @@ import time
 import traceback
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
 
 try:
     import ipaddress
@@ -204,10 +205,18 @@ class client_knobs:
 
     def __call__(self, func):
         def make_wrapper(f):
+            if iscoroutinefunction(f):
+                wraps_async = True
+            else:
+                wraps_async = False
+
             @wraps(f)
-            def wrap(*args, **kwargs):
+            async def wrap(*args, **kwargs):
                 with self:
-                    return f(*args, **kwargs)
+                    if wraps_async:
+                        return await f(*args, **kwargs)
+                    else:
+                        return f(*args, **kwargs)
 
             return wrap
 
