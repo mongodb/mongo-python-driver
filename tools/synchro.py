@@ -171,16 +171,17 @@ converted_tests = [
     "test_change_stream.py",
     "test_client.py",
     "test_client_bulk_write.py",
+    "test_client_context.py",
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
     "test_grid_file.py",
     "test_logger.py",
+    "test_monitoring.py",
+    "test_raw_bson.py",
     "test_session.py",
     "test_transactions.py",
-    "test_client_context.py",
-    "test_monitoring.py",
 ]
 
 sync_test_files = [
