@@ -231,7 +231,7 @@ class BinaryVectorDtype(Enum):
 DTYPE_FROM_HEX = {key.value: key for key in BinaryVectorDtype}
 
 
-@dataclass(slots=True)
+@dataclass
 class BinaryVector:
     """**(BETA)** Vector of numbers along with metadata for binary interoperability.
 
