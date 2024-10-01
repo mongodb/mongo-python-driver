@@ -21,14 +21,14 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import EventListener
 
 from bson.dbref import DBRef
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.operations import IndexModel
-from pymongo.synchronous.command_cursor import CommandCursor
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class Empty:
@@ -42,8 +42,8 @@ class Empty:
         return Empty()
 
 
-class TestComment(IntegrationTest):
-    def _test_ops(
+class AsyncTestComment(AsyncIntegrationTest):
+    async def _test_ops(
         self,
         helpers,
         already_supported,
@@ -58,18 +58,18 @@ class TestComment(IntegrationTest):
                     listener.reset()
                     kwargs = {"comment": cc}
                     if h == coll.rename:
-                        _ = db.get_collection("temp_temp_temp").drop()
+                        _ = await db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
-                        destruct_coll.insert_one({})
-                        maybe_cursor = destruct_coll.rename(*args, **kwargs)
-                        destruct_coll.drop()
+                        await destruct_coll.insert_one({})
+                        maybe_cursor = await destruct_coll.rename(*args, **kwargs)
+                        await destruct_coll.drop()
                     elif h == db.validate_collection:
                         coll = db.get_collection("test")
-                        coll.insert_one({})
-                        maybe_cursor = db.validate_collection(*args, **kwargs)
+                        await coll.insert_one({})
+                        maybe_cursor = await db.validate_collection(*args, **kwargs)
                     else:
-                        coll.create_index("a")
-                        maybe_cursor = h(*args, **kwargs)
+                        await coll.create_index("a")
+                        maybe_cursor = await h(*args, **kwargs)
                     self.assertIn(
                         "comment",
                         inspect.signature(h).parameters,
@@ -79,8 +79,8 @@ class TestComment(IntegrationTest):
                     self.assertEqual(
                         inspect.signature(h).parameters["comment"].annotation, "Optional[Any]"
                     )
-                    if isinstance(maybe_cursor, CommandCursor):
-                        maybe_cursor.close()
+                    if isinstance(maybe_cursor, AsyncCommandCursor):
+                        await maybe_cursor.close()
                     tested = False
                     # For some reason collection.list_indexes creates two commands and the first
                     # one doesn't contain 'comment'.
@@ -107,11 +107,11 @@ class TestComment(IntegrationTest):
 
         listener.reset()
 
-    @client_context.require_version_min(4, 7, -1)
-    @client_context.require_replica_set
-    def test_database_helpers(self):
+    @async_client_context.require_version_min(4, 7, -1)
+    @async_client_context.require_replica_set
+    async def test_database_helpers(self):
         listener = EventListener()
-        db = self.rs_or_single_client(event_listeners=[listener]).db
+        db = await self.async_rs_or_single_client(event_listeners=[listener]).db
         helpers = [
             (db.watch, []),
             (db.command, ["hello"]),
@@ -122,13 +122,15 @@ class TestComment(IntegrationTest):
             (db.dereference, [DBRef("collection", 1)]),
         ]
         already_supported = [db.command, db.list_collections, db.list_collection_names]
-        self._test_ops(helpers, already_supported, listener, db=db, coll=db.get_collection("test"))
+        await self._test_ops(
+            helpers, already_supported, listener, db=db, coll=db.get_collection("test")
+        )
 
-    @client_context.require_version_min(4, 7, -1)
-    @client_context.require_replica_set
-    def test_client_helpers(self):
+    @async_client_context.require_version_min(4, 7, -1)
+    @async_client_context.require_replica_set
+    async def test_client_helpers(self):
         listener = EventListener()
-        cli = self.rs_or_single_client(event_listeners=[listener])
+        cli = await self.async_rs_or_single_client(event_listeners=[listener])
         helpers = [
             (cli.watch, []),
             (cli.list_databases, []),
@@ -138,12 +140,12 @@ class TestComment(IntegrationTest):
         already_supported = [
             cli.list_databases,
         ]
-        self._test_ops(helpers, already_supported, listener)
+        await self._test_ops(helpers, already_supported, listener)
 
-    @client_context.require_version_min(4, 7, -1)
-    def test_collection_helpers(self):
+    @async_client_context.require_version_min(4, 7, -1)
+    async def test_collection_helpers(self):
         listener = EventListener()
-        db = (self.rs_or_single_client(event_listeners=[listener]))[self.db.name]
+        db = (await self.async_rs_or_single_client(event_listeners=[listener]))[self.db.name]
         coll = db.get_collection("test")
 
         helpers = [
@@ -178,7 +180,7 @@ class TestComment(IntegrationTest):
             coll.find_one_and_delete,
             coll.find_one_and_update,
         ]
-        self._test_ops(helpers, already_supported, listener, coll=coll, db=db)
+        await self._test_ops(helpers, already_supported, listener, coll=coll, db=db)
 
 
 if __name__ == "__main__":
