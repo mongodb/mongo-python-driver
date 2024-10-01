@@ -85,7 +85,7 @@ def create_test(case_spec):
                 self.assertEqual(cB_obs, canonical_bson_exp, description)
 
             else:
-                with self.assertRaises((struct.error, AssertionError), msg=description):
+                with self.assertRaises((struct.error, ValueError), msg=description):
                     Binary.from_vector(vector_exp, dtype_exp, padding_exp)
 
     return run_test
