@@ -626,7 +626,7 @@ async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
         return connected_host_list
 
     try:
-        async_wait_until(lambda: target_host_list == discover(), "connected to all hosts")
+        await async_wait_until(lambda: target_host_list == discover(), "connected to all hosts")
     except AssertionError as exc:
         raise AssertionError(
             f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
