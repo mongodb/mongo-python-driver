@@ -171,7 +171,10 @@ class UpdateResult(_WriteResult):
 
     @property
     def did_upsert(self) -> bool:
-        """Whether an upsert took place."""
+        """Whether an upsert took place.
+
+        .. versionadded:: 4.9
+        """
         assert self.__raw_result is not None
         return "upserted" in self.__raw_result
 
