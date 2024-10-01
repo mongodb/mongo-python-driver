@@ -115,7 +115,7 @@ class AsyncTestComment(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     async def test_database_helpers(self):
         listener = EventListener()
-        db = await self.async_rs_or_single_client(event_listeners=[listener]).db
+        db = (await self.async_rs_or_single_client(event_listeners=[listener])).db
         helpers = [
             (db.watch, []),
             (db.command, ["hello"]),

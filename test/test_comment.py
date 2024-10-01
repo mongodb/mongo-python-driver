@@ -115,7 +115,7 @@ class TestComment(IntegrationTest):
     @client_context.require_replica_set
     def test_database_helpers(self):
         listener = EventListener()
-        db = self.rs_or_single_client(event_listeners=[listener]).db
+        db = (self.rs_or_single_client(event_listeners=[listener])).db
         helpers = [
             (db.watch, []),
             (db.command, ["hello"]),
