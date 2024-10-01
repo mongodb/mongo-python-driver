@@ -26,7 +26,7 @@ except ImportError:
 
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
+from pymongo import MongoClient, has_c
 from pymongo import version as pymongo_version
 from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi, ServerApiVersion
@@ -39,7 +39,11 @@ def _check_handshake_data(request):
     data = request["client"]
 
     assert data["application"] == {"name": "my app"}
-    assert data["driver"] == {"name": "PyMongo", "version": pymongo_version}
+    if has_c():
+        name = "PyMongo|c"
+    else:
+        name = "PyMongo"
+    assert data["driver"] == {"name": name, "version": pymongo_version}
 
     # Keep it simple, just check these fields exist.
     assert "os" in data
