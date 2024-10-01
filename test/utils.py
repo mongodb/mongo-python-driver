@@ -615,10 +615,10 @@ async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
     connected_host_list = {hello["me"]}
 
     # Run hello until we have connected to each host at least once.
-    def discover():
+    async def discover():
         i = 0
         while i < 100 and connected_host_list != target_host_list:
-            hello: dict = client.admin.command(
+            hello: dict = await client.admin.command(
                 HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
             )
             connected_host_list.update([hello["me"]])
@@ -626,7 +626,11 @@ async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
         return connected_host_list
 
     try:
-        await async_wait_until(lambda: target_host_list == discover(), "connected to all hosts")
+
+        async def predicate():
+            return target_host_list == await discover()
+
+        await async_wait_until(predicate, "connected to all hosts")
     except AssertionError as exc:
         raise AssertionError(
             f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
