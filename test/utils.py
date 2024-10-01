@@ -799,16 +799,6 @@ async def async_wait_until(predicate, success_description, timeout=10):
         await asyncio.sleep(interval)
 
 
-def repl_set_step_down(client, **kwargs):
-    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
-    cmd = SON([("replSetStepDown", 1)])
-    cmd.update(kwargs)
-
-    # Unfreeze a secondary to ensure a speedy election.
-    client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
-    client.admin.command(cmd)
-
-
 def is_mongos(client):
     res = client.admin.command(HelloCompat.LEGACY_CMD)
     return res.get("msg", "") == "isdbgrid"

@@ -20,10 +20,10 @@ import sys
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.helpers import async_repl_set_step_down
 from test.utils import (
     CMAPListener,
     async_ensure_all_connected,
-    repl_set_step_down,
 )
 
 from bson import SON
@@ -88,7 +88,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
         for _ in range(batch_size):
             await cursor.next()
         # Force step-down the primary.
-        repl_set_step_down(self.client, replSetStepDown=5, force=True)
+        await async_repl_set_step_down(self.client, replSetStepDown=5, force=True)
         # Get await anext batch of results.
         for _ in range(batch_size):
             await cursor.next()

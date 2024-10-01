@@ -20,10 +20,10 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.helpers import repl_set_step_down
 from test.utils import (
     CMAPListener,
     ensure_all_connected,
-    repl_set_step_down,
 )
 
 from bson import SON
