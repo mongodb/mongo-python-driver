@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from test.asynchronous import AsyncIntegrationTest
+from test.asynchronous import AsyncIntegrationTest, async_client_context
 from test.utils import delay
 
 _IS_SYNC = False
@@ -27,11 +27,13 @@ class TestAsyncConcurrency(AsyncIntegrationTest):
     async def _task(self, client):
         await client.db.test.find_one({"$where": delay(1)})
 
+    # Remove once PYTHON-4636 is merged
+    @async_client_context.require_no_tls
     async def test_concurrency(self):
         tasks = []
         iterations = 5
 
-        client = self.simple_client()
+        client = await self.async_single_client()
         await client.db.test.drop()
         await client.db.test.insert_one({"x": 1})
 
