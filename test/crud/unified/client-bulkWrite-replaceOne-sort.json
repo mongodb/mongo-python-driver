@@ -1,6 +1,6 @@
 {
   "description": "client bulkWrite updateOne-sort",
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.4",
   "runOnRequirements": [
     {
       "minServerVersion": "8.0"
@@ -51,6 +51,9 @@
       ]
     }
   ],
+  "_yamlAnchors": {
+    "namespace": "crud-tests.coll0"
+  },
   "tests": [
     {
       "description": "client bulkWrite replaceOne with sort option",
