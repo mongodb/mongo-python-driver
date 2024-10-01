@@ -105,6 +105,7 @@ replacements = {
     "PyMongo|c|async": "PyMongo|c",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "async_set_fail_point": "set_fail_point",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -174,6 +175,7 @@ sync_gridfs_files = [
 converted_tests = [
     "__init__.py",
     "conftest.py",
+    "helpers.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
     "qcheck.py",
@@ -192,6 +194,8 @@ converted_tests = [
     "test_logger.py",
     "test_monitoring.py",
     "test_raw_bson.py",
+    "test_retryable_reads.py",
+    "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
 ]

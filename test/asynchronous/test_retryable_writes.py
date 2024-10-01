@@ -23,19 +23,19 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
+from test.asynchronous import (
+    AsyncIntegrationTest,
     SkipTest,
-    client_context,
+    async_client_context,
     unittest,
 )
-from test.helpers import client_knobs
+from test.asynchronous.helpers import client_knobs
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    set_fail_point,
+    async_set_fail_point,
 )
 from test.version import Version
 
@@ -43,6 +43,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
@@ -65,10 +66,9 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class InsertEventListener(EventListener):
@@ -78,7 +78,7 @@ class InsertEventListener(EventListener):
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            client_context.client.admin.command(
+            async_client_context.client.admin.command(
                 {
                     "configureFailPoint": "failCommand",
                     "mode": {"times": 1},
@@ -128,43 +128,43 @@ def non_retryable_single_statement_ops(coll):
     ]
 
 
-class IgnoreDeprecationsTest(IntegrationTest):
+class IgnoreDeprecationsTest(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     deprecation_filter: DeprecationFilter
 
     @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.deprecation_filter = DeprecationFilter()
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         cls.deprecation_filter.stop()
-        super()._tearDown_class()
+        await super()._tearDown_class()
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     knobs: client_knobs
 
     @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    async def _setup_class(cls):
+        await super()._setup_class()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
-        cls.client = cls.unmanaged_rs_or_single_client(retryWrites=True)
+        cls.client = await cls.unmanaged_async_rs_or_single_client(retryWrites=True)
         cls.db = cls.client.pymongo_test
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         cls.knobs.disable()
-        cls.client.close()
-        super()._tearDown_class()
+        await cls.client.close()
+        await super()._tearDown_class()
 
-    @client_context.require_no_standalone
-    def test_actionable_error_message(self):
-        if client_context.storage_engine != "mmapv1":
+    @async_client_context.require_no_standalone
+    async def test_actionable_error_message(self):
+        if async_client_context.storage_engine != "mmapv1":
             raise SkipTest("This cluster is not running MMAPv1")
 
         expected_msg = (
@@ -174,7 +174,7 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
         )
         for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
             with self.assertRaisesRegex(OperationFailure, expected_msg):
-                method(*args, **kwargs)
+                await method(*args, **kwargs)
 
 
 class TestRetryableWrites(IgnoreDeprecationsTest):
@@ -182,43 +182,43 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     knobs: client_knobs
 
     @classmethod
-    @client_context.require_no_mmap
-    def _setup_class(cls):
-        super()._setup_class()
+    @async_client_context.require_no_mmap
+    async def _setup_class(cls):
+        await super()._setup_class()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
         cls.listener = OvertCommandListener()
-        cls.client = cls.unmanaged_rs_or_single_client(
+        cls.client = await cls.unmanaged_async_rs_or_single_client(
             retryWrites=True, event_listeners=[cls.listener]
         )
         cls.db = cls.client.pymongo_test
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         cls.knobs.disable()
-        cls.client.close()
-        super()._tearDown_class()
+        await cls.client.close()
+        await super()._tearDown_class()
 
-    def setUp(self):
-        if client_context.is_rs and client_context.test_commands_enabled:
-            self.client.admin.command(
+    async def asyncSetUp(self):
+        if async_client_context.is_rs and async_client_context.test_commands_enabled:
+            await self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "alwaysOn")])
             )
 
-    def tearDown(self):
-        if client_context.is_rs and client_context.test_commands_enabled:
-            self.client.admin.command(
+    async def asyncTearDown(self):
+        if async_client_context.is_rs and async_client_context.test_commands_enabled:
+            await self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "off")])
             )
 
-    def test_supported_single_statement_no_retry(self):
+    async def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(retryWrites=False, event_listeners=[listener])
+        client = await self.async_rs_or_single_client(retryWrites=False, event_listeners=[listener])
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
-            method(*args, **kwargs)
+            await method(*args, **kwargs)
             for event in listener.started_events:
                 self.assertNotIn(
                     "txnNumber",
@@ -226,12 +226,12 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
 
-    @client_context.require_no_standalone
-    def test_supported_single_statement_supported_cluster(self):
+    @async_client_context.require_no_standalone
+    async def test_supported_single_statement_supported_cluster(self):
         for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
-            method(*args, **kwargs)
+            await method(*args, **kwargs)
             commands_started = self.listener.started_events
             self.assertEqual(len(self.listener.succeeded_events), 1, msg)
             first_attempt = commands_started[0]
@@ -248,7 +248,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
 
             # There should be no retry when the failpoint is not active.
-            if client_context.is_mongos or not client_context.test_commands_enabled:
+            if async_client_context.is_mongos or not async_client_context.test_commands_enabled:
                 self.assertEqual(len(commands_started), 1)
                 continue
 
@@ -267,14 +267,14 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
             self.assertEqual(retry_attempt.command["txnNumber"], initial_transaction_id, msg)
 
-    def test_supported_single_statement_unsupported_cluster(self):
-        if client_context.is_rs or client_context.is_mongos:
+    async def test_supported_single_statement_unsupported_cluster(self):
+        if async_client_context.is_rs or async_client_context.is_mongos:
             raise SkipTest("This cluster supports retryable writes")
 
         for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
-            method(*args, **kwargs)
+            await method(*args, **kwargs)
 
             for event in self.listener.started_events:
                 self.assertNotIn(
@@ -283,16 +283,16 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
 
-    def test_unsupported_single_statement(self):
+    async def test_unsupported_single_statement(self):
         coll = self.db.retryable_write_test
-        coll.insert_many([{}, {}])
+        await coll.insert_many([{}, {}])
         coll_w0 = coll.with_options(write_concern=WriteConcern(w=0))
         for method, args, kwargs in non_retryable_single_statement_ops(
             coll
         ) + retryable_single_statement_ops(coll_w0):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
-            method(*args, **kwargs)
+            await method(*args, **kwargs)
             started_events = self.listener.started_events
             self.assertEqual(len(self.listener.succeeded_events), len(started_events), msg)
             self.assertEqual(len(self.listener.failed_events), 0, msg)
@@ -303,7 +303,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
 
-    def test_server_selection_timeout_not_retried(self):
+    async def test_server_selection_timeout_not_retried(self):
         """A ServerSelectionTimeoutError is not retried."""
         listener = OvertCommandListener()
         client = self.simple_client(
@@ -316,17 +316,17 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
             with self.assertRaises(ServerSelectionTimeoutError, msg=msg):
-                method(*args, **kwargs)
+                await method(*args, **kwargs)
             self.assertEqual(len(listener.started_events), 0, msg)
 
-    @client_context.require_replica_set
-    @client_context.require_test_commands
-    def test_retry_timeout_raises_original_error(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_test_commands
+    async def test_retry_timeout_raises_original_error(self):
         """A ServerSelectionTimeoutError on the retry attempt raises the
         original error.
         """
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
+        client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
         topology = client._topology
         select_server = topology.select_server
 
@@ -345,18 +345,18 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             listener.reset()
             topology.select_server = mock_select_server
             with self.assertRaises(ConnectionFailure, msg=msg):
-                method(*args, **kwargs)
+                await method(*args, **kwargs)
             self.assertEqual(len(listener.started_events), 1, msg)
 
-    @client_context.require_replica_set
-    @client_context.require_test_commands
-    def test_batch_splitting(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_test_commands
+    async def test_batch_splitting(self):
         """Test retry succeeds after failures during batch splitting."""
         large = "s" * 1024 * 1024 * 15
         coll = self.db.retryable_write_test
-        coll.delete_many({})
+        await coll.delete_many({})
         self.listener.reset()
-        bulk_result = coll.bulk_write(
+        bulk_result = await coll.bulk_write(
             [
                 InsertOne({"_id": 1, "l": large}),
                 InsertOne({"_id": 2, "l": large}),
@@ -371,7 +371,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         # With OP_MSG 3 inserts are one batch. 2 updates another.
         # 2 deletes a third.
         self.assertEqual(len(self.listener.started_events), 6)
-        self.assertEqual(coll.find_one(), {"_id": 1, "count": 1})
+        self.assertEqual(await coll.find_one(), {"_id": 1, "count": 1})
         # Assert the final result
         expected_result = {
             "writeErrors": [],
@@ -385,14 +385,14 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         }
         self.assertEqual(bulk_result.bulk_api_result, expected_result)
 
-    @client_context.require_replica_set
-    @client_context.require_test_commands
-    def test_batch_splitting_retry_fails(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_test_commands
+    async def test_batch_splitting_retry_fails(self):
         """Test retry fails during batch splitting."""
         large = "s" * 1024 * 1024 * 15
         coll = self.db.retryable_write_test
-        coll.delete_many({})
-        self.client.admin.command(
+        await coll.delete_many({})
+        await self.client.admin.command(
             SON(
                 [
                     ("configureFailPoint", "onPrimaryTransactionalWrite"),
@@ -402,10 +402,10 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             )
         )
         self.listener.reset()
-        with self.client.start_session() as session:
+        async with self.client.start_session() as session:
             initial_txn = session._transaction_id
             try:
-                coll.bulk_write(
+                await coll.bulk_write(
                     [
                         InsertOne({"_id": 1, "l": large}),
                         InsertOne({"_id": 2, "l": large}),
@@ -433,11 +433,11 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertEqual(started[1].command, started[2].command)
             final_txn = session._transaction_id
             self.assertEqual(final_txn, expected_txn)
-        self.assertEqual(coll.find_one(projection={"_id": True}), {"_id": 1})
+        self.assertEqual(await coll.find_one(projection={"_id": True}), {"_id": 1})
 
-    @client_context.require_multiple_mongoses
-    @client_context.require_failCommand_fail_point
-    def test_retryable_writes_in_sharded_cluster_multiple_available(self):
+    @async_client_context.require_multiple_mongoses
+    @async_client_context.require_failCommand_fail_point
+    async def test_retryable_writes_in_sharded_cluster_multiple_available(self):
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -450,42 +450,42 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
         mongos_clients = []
 
-        for mongos in client_context.mongos_seeds().split(","):
-            client = self.rs_or_single_client(mongos)
-            set_fail_point(client, fail_command)
+        for mongos in async_client_context.mongos_seeds().split(","):
+            client = await self.async_rs_or_single_client(mongos)
+            await async_set_fail_point(client, fail_command)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(
-            client_context.mongos_seeds(),
+        client = await self.async_rs_or_single_client(
+            async_client_context.mongos_seeds(),
             appName="retryableWriteTest",
             event_listeners=[listener],
             retryWrites=True,
         )
 
         with self.assertRaises(AutoReconnect):
-            client.t.t.insert_one({"x": 1})
+            await client.t.t.insert_one({"x": 1})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
             fail_command["mode"] = "off"
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
 
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
 
 
-class TestWriteConcernError(IntegrationTest):
+class TestWriteConcernError(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     fail_insert: dict
 
     @classmethod
-    @client_context.require_replica_set
-    @client_context.require_no_mmap
-    @client_context.require_failCommand_fail_point
-    def _setup_class(cls):
-        super()._setup_class()
+    @async_client_context.require_replica_set
+    @async_client_context.require_no_mmap
+    @async_client_context.require_failCommand_fail_point
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.fail_insert = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
@@ -495,31 +495,31 @@ class TestWriteConcernError(IntegrationTest):
             },
         }
 
-    @client_context.require_version_min(4, 0)
+    @async_client_context.require_version_min(4, 0)
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
-    def test_RetryableWriteError_error_label(self):
+    async def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
+        client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
 
         # Ensure collection exists.
-        client.pymongo_test.testcoll.insert_one({})
+        await client.pymongo_test.testcoll.insert_one({})
 
-        with self.fail_point(self.fail_insert):
+        async with self.fail_point(self.fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
-                client.pymongo_test.testcoll.insert_one({})
+                await client.pymongo_test.testcoll.insert_one({})
             self.assertTrue(cm.exception.has_error_label("RetryableWriteError"))
 
-        if client_context.version >= Version(4, 4):
+        if async_client_context.version >= Version(4, 4):
             # In MongoDB 4.4+ we rely on the server returning the error label.
             self.assertIn("RetryableWriteError", listener.succeeded_events[-1].reply["errorLabels"])
 
-    @client_context.require_version_min(4, 4)
-    def test_RetryableWriteError_error_label_RawBSONDocument(self):
+    @async_client_context.require_version_min(4, 4)
+    async def test_RetryableWriteError_error_label_RawBSONDocument(self):
         # using RawBSONDocument should not cause errorLabel parsing to fail
-        with self.fail_point(self.fail_insert):
-            with self.client.start_session() as s:
+        async with self.fail_point(self.fail_insert):
+            async with self.client.start_session() as s:
                 s._start_retryable_write()
-                result = self.client.pymongo_test.command(
+                result = await self.client.pymongo_test.command(
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],
@@ -541,24 +541,24 @@ class InsertThread(threading.Thread):
         self.collection = collection
         self.passed = False
 
-    def run(self):
-        self.collection.insert_one({})
+    async def run(self):
+        await self.collection.insert_one({})
         self.passed = True
 
 
-class TestPoolPausedError(IntegrationTest):
+class TestPoolPausedError(AsyncIntegrationTest):
     # Pools don't get paused in load balanced mode.
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
-    @client_context.require_sync
-    @client_context.require_failCommand_blockConnection
-    @client_context.require_retryable_writes
+    @async_client_context.require_sync
+    @async_client_context.require_failCommand_blockConnection
+    @async_client_context.require_retryable_writes
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
-    def test_pool_paused_error_is_retryable(self):
+    async def test_pool_paused_error_is_retryable(self):
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
-        client = self.rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
         for _ in range(10):
@@ -575,7 +575,7 @@ class TestPoolPausedError(IntegrationTest):
                     "errorLabels": ["RetryableWriteError"],
                 },
             }
-            with self.fail_point(fail_command):
+            async with self.fail_point(fail_command):
                 for thread in threads:
                     thread.start()
                 for thread in threads:
@@ -611,21 +611,23 @@ class TestPoolPausedError(IntegrationTest):
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
 
-    @client_context.require_sync
-    @client_context.require_failCommand_fail_point
-    @client_context.require_replica_set
-    @client_context.require_version_min(
+    @async_client_context.require_sync
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_replica_set
+    @async_client_context.require_version_min(
         6, 0, 0
     )  # the spec requires that this prose test only be run on 6.0+
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
-    def test_returns_original_error_code(
+    async def test_returns_original_error_code(
         self,
     ):
         cmd_listener = InsertEventListener()
-        client = self.rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
-        client.test.test.drop()
+        client = await self.async_rs_or_single_client(
+            retryWrites=True, event_listeners=[cmd_listener]
+        )
+        await client.test.test.drop()
         cmd_listener.reset()
-        client.admin.command(
+        await client.admin.command(
             {
                 "configureFailPoint": "failCommand",
                 "mode": {"times": 1},
@@ -639,9 +641,9 @@ class TestPoolPausedError(IntegrationTest):
             }
         )
         with self.assertRaises(WriteConcernError) as exc:
-            client.test.test.insert_one({"_id": 1})
+            await client.test.test.insert_one({"_id": 1})
         self.assertEqual(exc.exception.code, 91)
-        client.admin.command(
+        await client.admin.command(
             {
                 "configureFailPoint": "failCommand",
                 "mode": "off",
@@ -651,14 +653,14 @@ class TestPoolPausedError(IntegrationTest):
 
 # TODO: Make this a real integration test where we stepdown the primary.
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
-    @client_context.require_replica_set
-    @client_context.require_no_mmap
-    def test_increment_transaction_id_without_sending_command(self):
+    @async_client_context.require_replica_set
+    @async_client_context.require_no_mmap
+    async def test_increment_transaction_id_without_sending_command(self):
         """Test that the txnNumber field is properly incremented, even when
         the first attempt fails before sending the command.
         """
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
+        client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
         topology = client._topology
         select_server = topology.select_server
 
@@ -671,7 +673,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             listener.reset()
             topology.select_server = raise_connection_err_select_server
-            with client.start_session() as session:
+            async with client.start_session() as session:
                 kwargs = copy.deepcopy(kwargs)
                 kwargs["session"] = session
                 msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
@@ -679,7 +681,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
 
                 # Each operation should fail on the first attempt and succeed
                 # on the second.
-                method(*args, **kwargs)
+                await method(*args, **kwargs)
                 self.assertEqual(len(listener.started_events), 1, msg)
                 retry_cmd = listener.started_events[0].command
                 sent_txn_id = retry_cmd["txnNumber"]
