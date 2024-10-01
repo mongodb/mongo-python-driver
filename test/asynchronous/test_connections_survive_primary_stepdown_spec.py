@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     CMAPListener,
-    ensure_all_connected,
+    async_ensure_all_connected,
     repl_set_step_down,
 )
 
@@ -51,7 +51,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
-        ensure_all_connected(cls.client)
+        async_ensure_all_connected(cls.client)
         cls.listener.reset()
 
         cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
