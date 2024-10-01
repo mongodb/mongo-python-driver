@@ -106,7 +106,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
 
     async def run_scenario(self, error_code, retry, pool_status_checker):
         # Set fail point.
-        self.set_fail_point(
+        await self.set_fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": error_code}}
         )
         self.addAsyncCleanup(self.set_fail_point, {"mode": "off"})
