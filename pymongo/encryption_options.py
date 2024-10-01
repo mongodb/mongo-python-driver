@@ -21,7 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 try:
-    import pymongocrypt  # type:ignore[import] # noqa: F401
+    import pymongocrypt  # type:ignore[import-untyped] # noqa: F401
 
     # Check for pymongocrypt>=1.10.
     from pymongocrypt import synchronous as _  # noqa: F401

@@ -33,6 +33,7 @@ from pymongo.common import (
     MAX_POOL_SIZE,
     MIN_POOL_SIZE,
     WAIT_QUEUE_TIMEOUT,
+    has_c,
 )
 
 if TYPE_CHECKING:
@@ -363,6 +364,11 @@ class PoolOptions:
         #    },
         #    'platform': 'CPython 3.8.0|MyPlatform'
         # }
+        if has_c():
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "c",
+            )
         if not is_sync:
             self.__metadata["driver"]["name"] = "{}|{}".format(
                 self.__metadata["driver"]["name"],
