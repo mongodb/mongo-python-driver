@@ -68,7 +68,10 @@ class TestComment(IntegrationTest):
                         coll.insert_one({})
                         maybe_cursor = db.validate_collection(*args, **kwargs)
                     else:
-                        coll.create_index("a")
+                        if iscoroutinefunction(coll.create_index):
+                            coll.create_index("a")
+                        else:
+                            coll.create_index("a")
                         if iscoroutinefunction(h):
                             maybe_cursor = h(*args, **kwargs)
                         else:

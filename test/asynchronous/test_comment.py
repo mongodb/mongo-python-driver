@@ -68,10 +68,11 @@ class AsyncTestComment(AsyncIntegrationTest):
                         await coll.insert_one({})
                         maybe_cursor = await db.validate_collection(*args, **kwargs)
                     else:
-                        coll.create_index("a")
-                        if iscoroutinefunction(h):
+                        if iscoroutinefunction(coll.create_index):
+                            await coll.create_index("a")
                             maybe_cursor = await h(*args, **kwargs)
                         else:
+                            coll.create_index("a")
                             maybe_cursor = h(*args, **kwargs)
                     self.assertIn(
                         "comment",
