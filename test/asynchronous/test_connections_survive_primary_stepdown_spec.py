@@ -51,7 +51,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
-        async_ensure_all_connected(cls.client)
+        await async_ensure_all_connected(cls.client)
         cls.listener.reset()
 
         cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
