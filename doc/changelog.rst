@@ -19,7 +19,6 @@ in this release.
 
 .. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
 
-
 Changes in Version 4.9.0
 -------------------------
 
