@@ -448,7 +448,7 @@ class Binary(bytes):
         """
 
         if self.subtype != VECTOR_SUBTYPE:
-            raise TypeError("Binary object does not have vector subtype 9.")
+            raise ValueError(f"Cannot decode subtype {self.subtype} as a vector.")
 
         position = 0
         dtype, padding = struct.unpack_from("<sB", self, position)
