@@ -18,8 +18,8 @@ env:
   # Changes per repo
   PRODUCT_NAME: PyMongo
   # Changes per branch
-  SILK_ASSET_GROUP: mongodb-python-driver
-  EVERGREEN_PROJECT: mongo-python-driver
+  SILK_ASSET_GROUP: mongodb-python-driver-4.9
+  EVERGREEN_PROJECT: mongo-python-driver-prev-rel
 
 defaults:
   run:
