@@ -24,17 +24,17 @@ from pymongo.errors import AutoReconnect
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
-    PyMongoTestCase,
-    client_context,
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    async_client_context,
     client_knobs,
     unittest,
 )
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    set_fail_point,
+    async_set_fail_point,
 )
 
 from pymongo.monitoring import (
@@ -44,21 +44,21 @@ from pymongo.monitoring import (
     PoolClearedEvent,
 )
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestClientOptions(PyMongoTestCase):
-    def test_default(self):
+class TestClientOptions(AsyncPyMongoTestCase):
+    async def test_default(self):
         client = self.simple_client(connect=False)
         self.assertEqual(client.options.retry_reads, True)
 
-    def test_kwargs(self):
+    async def test_kwargs(self):
         client = self.simple_client(retryReads=True, connect=False)
         self.assertEqual(client.options.retry_reads, True)
         client = self.simple_client(retryReads=False, connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
-    def test_uri(self):
+    async def test_uri(self):
         client = self.simple_client("mongodb://h/?retryReads=true", connect=False)
         self.assertEqual(client.options.retry_reads, True)
         client = self.simple_client("mongodb://h/?retryReads=false", connect=False)
@@ -72,26 +72,26 @@ class FindThread(threading.Thread):
         self.collection = collection
         self.passed = False
 
-    def run(self):
-        self.collection.find_one({})
+    async def run(self):
+        await self.collection.find_one({})
         self.passed = True
 
 
-class TestPoolPausedError(IntegrationTest):
+class TestPoolPausedError(AsyncIntegrationTest):
     # Pools don't get paused in load balanced mode.
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
-    @client_context.require_sync
-    @client_context.require_failCommand_blockConnection
+    @async_client_context.require_sync
+    @async_client_context.require_failCommand_blockConnection
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
-    def test_pool_paused_error_is_retryable(self):
+    async def test_pool_paused_error_is_retryable(self):
         if "PyPy" in sys.version:
             # Tracked in PYTHON-3519
             self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
-        client = self.rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
         for _ in range(10):
@@ -107,7 +107,7 @@ class TestPoolPausedError(IntegrationTest):
                     "errorCode": 91,
                 },
             }
-            with self.fail_point(fail_command):
+            async with self.fail_point(fail_command):
                 for thread in threads:
                     thread.start()
                 for thread in threads:
@@ -145,10 +145,10 @@ class TestPoolPausedError(IntegrationTest):
         self.assertEqual(1, len(failed), msg)
 
 
-class TestRetryableReads(IntegrationTest):
-    @client_context.require_multiple_mongoses
-    @client_context.require_failCommand_fail_point
-    def test_retryable_reads_in_sharded_cluster_multiple_available(self):
+class TestRetryableReads(AsyncIntegrationTest):
+    @async_client_context.require_multiple_mongoses
+    @async_client_context.require_failCommand_fail_point
+    async def test_retryable_reads_in_sharded_cluster_multiple_available(self):
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -161,27 +161,27 @@ class TestRetryableReads(IntegrationTest):
 
         mongos_clients = []
 
-        for mongos in client_context.mongos_seeds().split(","):
-            client = self.rs_or_single_client(mongos)
-            set_fail_point(client, fail_command)
+        for mongos in async_client_context.mongos_seeds().split(","):
+            client = await self.async_rs_or_single_client(mongos)
+            await async_set_fail_point(client, fail_command)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(
-            client_context.mongos_seeds(),
+        client = await self.async_rs_or_single_client(
+            async_client_context.mongos_seeds(),
             appName="retryableReadTest",
             event_listeners=[listener],
             retryReads=True,
         )
 
-        with self.fail_point(fail_command):
+        async with self.fail_point(fail_command):
             with self.assertRaises(AutoReconnect):
-                client.t.t.find_one({})
+                await client.t.t.find_one({})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
             fail_command["mode"] = "off"
-            set_fail_point(client, fail_command)
+            await async_set_fail_point(client, fail_command)
 
         self.assertEqual(len(listener.failed_events), 2)
         self.assertEqual(len(listener.succeeded_events), 0)
