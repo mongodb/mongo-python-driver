@@ -432,7 +432,7 @@ class Binary(bytes):
             raise NotImplementedError("%s not yet supported" % dtype)
 
         metadata = struct.pack("<sB", dtype.value, padding)
-        data = struct.pack(f"{len(vector)}{format_str}", *vector)
+        data = struct.pack(f"<{len(vector)}{format_str}", *vector)
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self) -> BinaryVector:
@@ -454,7 +454,7 @@ class Binary(bytes):
 
         if dtype == BinaryVectorDtype.INT8:
             dtype_format = "b"
-            format_string = f"{n_values}{dtype_format}"
+            format_string = f"<{n_values}{dtype_format}"
             vector = list(struct.unpack_from(format_string, self, position))
             return BinaryVector(vector, dtype, padding)
 
@@ -465,13 +465,16 @@ class Binary(bytes):
                 raise ValueError(
                     "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
                 )
-            vector = list(struct.unpack_from(f"{n_values}f", self, position))
+            dtype_format = "f"
+            format_string = f"<{n_values}{dtype_format}"
+            vector = list(struct.unpack_from(format_string, self, position))
             return BinaryVector(vector, dtype, padding)
 
         elif dtype == BinaryVectorDtype.PACKED_BIT:
             # data packed as uint8
             dtype_format = "B"
-            unpacked_uint8s = list(struct.unpack_from(f"{n_values}{dtype_format}", self, position))
+            format_string = f"<{n_values}{dtype_format}"
+            unpacked_uint8s = list(struct.unpack_from(format_string, self, position))
             return BinaryVector(unpacked_uint8s, dtype, padding)
 
         else:
