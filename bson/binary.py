@@ -439,15 +439,10 @@ class Binary(bytes):
         data = struct.pack(f"{len(vector)}{format_str}", *vector)
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
-    def as_vector(self, uncompressed: bool = False) -> BinaryVector:
+    def as_vector(self) -> BinaryVector:
         """**(BETA)** From the Binary, create a list of numbers, along with dtype and padding.
 
-
-        :param uncompressed: If true, return the true mathematical vector.
-            This is only necessary for datatypes where padding is applicable.
-            For example, setting this to True for a PACKED_BIT vector will result
-            in a List[int] of zeros and ones.
-        :return: BinaryVector - a list of numbers, along with dtype and padding.
+        :return: BinaryVector
 
         .. versionadded:: 4.10
         """
@@ -481,14 +476,7 @@ class Binary(bytes):
             # data packed as uint8
             dtype_format = "B"
             unpacked_uint8s = list(struct.unpack_from(f"{n_values}{dtype_format}", self, position))
-            if not uncompressed:
-                return BinaryVector(unpacked_uint8s, dtype, padding)
-            else:
-                bits = []
-                for uint8 in unpacked_uint8s:
-                    bits.extend([int(bit) for bit in f"{uint8:08b}"])
-                vector = bits[:-padding] if padding else bits
-                return BinaryVector(vector, dtype, padding)
+            return BinaryVector(unpacked_uint8s, dtype, padding)
 
         else:
             raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
