@@ -46,18 +46,6 @@ from pymongo.monitoring import (
 
 _IS_SYNC = True
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    _TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy"
-    )
-else:
-    _TEST_PATH = os.path.join(
-        os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)),
-        "retryable_reads",
-        "legacy",
-    )
-
 
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
