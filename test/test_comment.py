@@ -20,7 +20,7 @@ import inspect
 import sys
 
 sys.path[0:0] = [""]
-
+from asyncio import iscoroutinefunction
 from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener
 
@@ -69,7 +69,10 @@ class TestComment(IntegrationTest):
                         maybe_cursor = db.validate_collection(*args, **kwargs)
                     else:
                         coll.create_index("a")
-                        maybe_cursor = h(*args, **kwargs)
+                        if iscoroutinefunction(h):
+                            maybe_cursor = h(*args, **kwargs)
+                        else:
+                            maybe_cursor = h(*args, **kwargs)
                     self.assertIn(
                         "comment",
                         inspect.signature(h).parameters,
