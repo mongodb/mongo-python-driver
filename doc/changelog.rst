@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 4.10.1
+-------------------------
+
+Version 4.10.1 is a bug fix release.
+
+- Fixed a bug where :meth:`~pymongo.results.UpdateResult.did_upsert` would raise a ``TypeError``.
+- Fixed Binary BSON subtype (9) support on big-endian operating systems (such as zSeries).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40788
+
+
 Changes in Version 4.10.0
 -------------------------
 
