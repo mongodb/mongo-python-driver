@@ -30,6 +30,7 @@ from test.utils import (
 )
 from unittest.mock import patch
 
+import pymongo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     ClientBulkWriteException,
@@ -638,7 +639,9 @@ class TestClientBulkWriteCSOT(IntegrationTest):
                 timeoutMS=2000,
                 w="majority",
             )
-            client.admin.command("ping")  # Init the client first.
+            # Initialize the client with a larger timeout to help make test less flakey
+            with pymongo.timeout(10):
+                client.admin.command("ping")
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, NetworkTimeout)
