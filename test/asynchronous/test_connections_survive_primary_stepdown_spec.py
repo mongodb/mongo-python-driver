@@ -125,23 +125,23 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
     @async_client_context.require_version_min(4, 2, -1)
     @async_client_context.require_test_commands
     async def test_not_primary_keep_connection_pool(self):
-        self.run_scenario(10107, True, self.verify_pool_not_cleared)
+        await self.run_scenario(10107, True, self.verify_pool_not_cleared)
 
     @async_client_context.require_version_min(4, 0, 0)
     @async_client_context.require_version_max(4, 1, 0, -1)
     @async_client_context.require_test_commands
     async def test_not_primary_reset_connection_pool(self):
-        self.run_scenario(10107, False, self.verify_pool_cleared)
+        await self.run_scenario(10107, False, self.verify_pool_cleared)
 
     @async_client_context.require_version_min(4, 0, 0)
     @async_client_context.require_test_commands
     async def test_shutdown_in_progress(self):
-        self.run_scenario(91, False, self.verify_pool_cleared)
+        await self.run_scenario(91, False, self.verify_pool_cleared)
 
     @async_client_context.require_version_min(4, 0, 0)
     @async_client_context.require_test_commands
     async def test_interrupted_at_shutdown(self):
-        self.run_scenario(11600, False, self.verify_pool_cleared)
+        await self.run_scenario(11600, False, self.verify_pool_cleared)
 
 
 if __name__ == "__main__":
