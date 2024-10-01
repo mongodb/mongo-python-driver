@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 4.10.0
+-------------------------
+
+- Added provisional **(BETA)** support for a new Binary BSON subtype (9) used for efficient storage and retrieval of vectors:
+  densely packed arrays of numbers, all of the same type.
+  This includes new methods :meth:`~bson.binary.Binary.from_vector` and :meth:`~bson.binary.Binary.as_vector`.
+- Added C extension use to client metadata, for example: ``{"driver": {"name": "PyMongo|c", "version": "4.10.0"}, ...}``
+- Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
+- Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
+
 Changes in Version 4.9.0
 -------------------------
 

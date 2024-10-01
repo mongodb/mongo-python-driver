@@ -48,7 +48,7 @@ from pymongo.uri_parser import parse_uri
 if HAVE_SSL:
     import ssl
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Enable debug output for uncollectable objects. PyPy does not have set_debug.
 if hasattr(gc, "set_debug"):
@@ -208,9 +208,9 @@ class client_knobs:
     def __call__(self, func):
         def make_wrapper(f):
             @wraps(f)
-            def wrap(*args, **kwargs):
+            async def wrap(*args, **kwargs):
                 with self:
-                    return f(*args, **kwargs)
+                    return await f(*args, **kwargs)
 
             return wrap
 
