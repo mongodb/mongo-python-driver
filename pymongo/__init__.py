@@ -88,8 +88,7 @@ TEXT = "text"
 
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
+from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.cursor import CursorType
 from pymongo.operations import (
     DeleteMany,
@@ -105,18 +104,16 @@ from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
+try:
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
+except Exception as e:
+    # PYTHON-4781: Importing asyncio can fail on Windows.
+    import warnings as _warnings
+
+    _warnings.warn(f"Failed to import Async PyMongo: {e!r}", ImportWarning, stacklevel=2)
+
 version = __version__
 """Current version of PyMongo."""
-
-
-def has_c() -> bool:
-    """Is the C extension installed?"""
-    try:
-        from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
-
-        return True
-    except ImportError:
-        return False
 
 
 def timeout(seconds: Optional[float]) -> ContextManager[None]:
