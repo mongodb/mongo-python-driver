@@ -552,7 +552,6 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_no_serverless
-    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     async def test_upserted_result(self):
         client = await self.async_rs_or_single_client()
 
