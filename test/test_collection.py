@@ -1429,6 +1429,19 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
         self.assertFalse(result.acknowledged)
 
+    def test_update_result(self):
+        db = self.db
+        db.drop_collection("test")
+
+        result = db.test.update_one({"x": 0}, {"$inc": {"x": 1}}, upsert=True)
+        self.assertEqual(result.did_upsert, True)
+
+        result = db.test.update_one({"_id": None, "x": 0}, {"$inc": {"x": 1}}, upsert=True)
+        self.assertEqual(result.did_upsert, True)
+
+        result = db.test.update_one({"_id": None}, {"$inc": {"x": 1}})
+        self.assertEqual(result.did_upsert, False)
+
     def test_update_many(self):
         db = self.db
         db.drop_collection("test")

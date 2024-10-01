@@ -550,6 +550,46 @@ class TestClientBulkWriteCRUD(IntegrationTest):
             "bulk_write does not currently support automatic encryption", context.exception._message
         )
 
+    @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
+    def test_upserted_result(self):
+        client = self.rs_or_single_client()
+
+        collection = client.db["coll"]
+        self.addCleanup(collection.drop)
+        collection.drop()
+
+        models = []
+        models.append(
+            UpdateOne(
+                namespace="db.coll",
+                filter={"_id": "a"},
+                update={"$set": {"x": 1}},
+                upsert=True,
+            )
+        )
+        models.append(
+            UpdateOne(
+                namespace="db.coll",
+                filter={"_id": None},
+                update={"$set": {"x": 1}},
+                upsert=True,
+            )
+        )
+        models.append(
+            UpdateOne(
+                namespace="db.coll",
+                filter={"_id": None},
+                update={"$set": {"x": 1}},
+            )
+        )
+        result = client.bulk_write(models=models, verbose_results=True)
+
+        self.assertEqual(result.upserted_count, 2)
+        self.assertEqual(result.update_results[0].did_upsert, True)
+        self.assertEqual(result.update_results[1].did_upsert, True)
+        self.assertEqual(result.update_results[2].did_upsert, False)
+
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(IntegrationTest):
