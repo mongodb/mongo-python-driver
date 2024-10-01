@@ -70,9 +70,11 @@ class TestComment(IntegrationTest):
                     else:
                         if iscoroutinefunction(coll.create_index):
                             coll.create_index("a")
-                            maybe_cursor = h(*args, **kwargs)
                         else:
                             coll.create_index("a")
+                        if iscoroutinefunction(h):
+                            maybe_cursor = h(*args, **kwargs)
+                        else:
                             maybe_cursor = h(*args, **kwargs)
                     self.assertIn(
                         "comment",
