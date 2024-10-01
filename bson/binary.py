@@ -227,10 +227,6 @@ class BinaryVectorDtype(Enum):
     PACKED_BIT = b"\x10"
 
 
-# Map from bytes to enum value, for decoding.
-DTYPE_FROM_HEX = {key.value: key for key in BinaryVectorDtype}
-
-
 @dataclass
 class BinaryVector:
     """**(BETA)** Vector of numbers along with metadata for binary interoperability.
