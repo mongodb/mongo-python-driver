@@ -850,7 +850,7 @@ def get_validated_options(
             return x
 
         def get_setter_key(x: str) -> str:
-            return options.cased_key(x)  # type: ignore[attr-defined]
+            return options.cased_key(x)
 
     else:
         validated_options = {}
@@ -1060,3 +1060,13 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
 
     def cased_key(self, key: str) -> Any:
         return self.__casedkeys[key.lower()]
+
+
+def has_c() -> bool:
+    """Is the C extension installed?"""
+    try:
+        from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
+
+        return True
+    except ImportError:
+        return False
