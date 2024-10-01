@@ -105,6 +105,7 @@ replacements = {
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
     "async_set_fail_point": "set_fail_point",
+    "async_ensure_all_connected": "ensure_all_connected",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
