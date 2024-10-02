@@ -923,7 +923,7 @@ task_groups:
       - func: make files executable
       - command: ec2.assume_role
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${aws_test_secrets_role}
       - command: subprocess.exec
         params:
           binary: bash
