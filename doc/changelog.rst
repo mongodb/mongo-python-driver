@@ -1,16 +1,106 @@
 Changelog
 =========
 
+Changes in Version 4.10.1
+-------------------------
+
+Version 4.10.1 is a bug fix release.
+
+- Fixed a bug where :meth:`~pymongo.results.UpdateResult.did_upsert` would raise a ``TypeError``.
+- Fixed Binary BSON subtype (9) support on big-endian operating systems (such as zSeries).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40788
+
+
+Changes in Version 4.10.0
+-------------------------
+
+- Added provisional **(BETA)** support for a new Binary BSON subtype (9) used for efficient storage and retrieval of vectors:
+  densely packed arrays of numbers, all of the same type.
+  This includes new methods :meth:`~bson.binary.Binary.from_vector` and :meth:`~bson.binary.Binary.as_vector`.
+- Added C extension use to client metadata, for example: ``{"driver": {"name": "PyMongo|c", "version": "4.10.0"}, ...}``
+- Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
+- Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
+
 Changes in Version 4.9.0
 -------------------------
+
+.. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
+   PyMongo 4.9 will be the last release to support MongoDB 3.6.
+
+.. warning:: PyMongo 4.9 refactors a large portion of internal APIs to support the new asynchronous API beta.
+   As a result, versions of Motor older than 3.6 are not compatible with PyMongo 4.9.
+   Existing users of these versions must either upgrade to Motor 3.6 and PyMongo 4.9,
+   or cap their PyMongo version to ``< 4.9``.
+   Any applications that use private APIs may also break as a result of these internal changes.
 
 PyMongo 4.9 brings a number of improvements including:
 
 - Added support for MongoDB 8.0.
-- A new asynchronous API with full asyncio support.
-- Add support for :attr:`~pymongo.encryption.Algorithm.RANGE` and deprecate
-  :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW`.
+- Added support for Python 3.13.
+- A new beta asynchronous API with full asyncio support.
+  This new asynchronous API is a work-in-progress that may change during the beta period before the full release.
+- Added support for In-Use Encryption range queries with MongoDB 8.0.
+  Added :attr:`~pymongo.encryption.Algorithm.RANGE`.
+  ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
+- Added support for the "delegated" option for the KMIP ``master_key`` in
+  :meth:`~pymongo.encryption.ClientEncryption.create_data_key`.
 - pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
+- Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
+  :class:`~pymongo.command_cursor.CommandCursor`,
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor`,
+  and :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`
+  as an asynchronous-friendly alternative to ``list(cursor)``.
+- Added :meth:`~pymongo.mongo_client.MongoClient.bulk_write` to :class:`~pymongo.mongo_client.MongoClient`
+  and :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`,
+  enabling users to perform insert, update, and delete operations
+  against mixed namespaces in a minimized number of round trips.
+  Please see :doc:`examples/client_bulk` for more information.
+- Added support for the ``namespace`` parameter to the
+  :class:`~pymongo.operations.InsertOne`,
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`,
+  :class:`~pymongo.operations.UpdateMany`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany` operations, so
+  they can be used in the new :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+- Added :func:`repr` support to :class:`bson.tz_util.FixedOffset`.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: unhashable type: 'tzfile'``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a timezone from dateutil.
+- Fixed a bug where PyMongo would raise ``InvalidBSON: date value out of range``
+  when using :attr:`~bson.codec_options.DatetimeConversion.DATETIME_CLAMP` or
+  :attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` with a non-UTC timezone.
+- Added a warning to unclosed MongoClient instances
+  telling users to explicitly close clients when finished with them to avoid leaking resources.
+  For example:
+
+  .. code-block::
+
+    sys:1: ResourceWarning: Unclosed MongoClient opened at:
+        File "/Users/<user>/my_file.py", line 8, in <module>``
+            client = MongoClient()
+    Call MongoClient.close() to safely shut down your client and free up resources.
+- The default value for ``connect`` in ``MongoClient`` is changed to ``False`` when running on
+  unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
+  On some FaaS systems, there is a ``fork()`` operation at function
+  startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
+  `Is PyMongo Fork-Safe`_ for more information.
+
 
 Issues Resolved
 ...............
@@ -18,6 +108,7 @@ Issues Resolved
 See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
+.. _Is PyMongo Fork-Safe : https://www.mongodb.com/docs/languages/python/pymongo-driver/current/faq/#is-pymongo-fork-safe-
 .. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
 
 
@@ -44,6 +135,10 @@ Unavoidable breaking changes
 - Since we are now using ``hatch`` as our build backend, we no longer have a usable ``setup.py`` file
   and require installation using ``pip``.  Attempts to invoke the ``setup.py`` file will raise an exception.
   Additionally, ``pip`` >= 21.3 is now required for editable installs.
+- We no longer support the ``srv`` extra, since ``dnspython`` is included as a dependency in PyMongo 4.7+.
+  Instead of ``pip install pymongo[srv]``, use ``pip install pymongo``.
+- We no longer support the ``tls`` extra, which was only valid for Python 2.
+  Instead of ``pip install pymongo[tls]``, use ``pip install pymongo``.
 
 Issues Resolved
 ...............

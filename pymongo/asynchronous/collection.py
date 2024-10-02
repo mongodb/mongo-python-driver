@@ -35,6 +35,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -48,7 +49,7 @@ from pymongo.asynchronous.aggregation import (
     _CollectionRawAggregationCommand,
 )
 from pymongo.asynchronous.bulk import _AsyncBulk
-from pymongo.asynchronous.change_stream import CollectionChangeStream
+from pymongo.asynchronous.change_stream import AsyncCollectionChangeStream
 from pymongo.asynchronous.command_cursor import (
     AsyncCommandCursor,
     AsyncRawBatchCommandCursor,
@@ -111,8 +112,8 @@ _WriteOp = Union[
 
 class ReturnDocument:
     """An enum used with
-    :meth:`~pymongo.collection.AsyncCollection.find_one_and_replace` and
-    :meth:`~pymongo.collection.AsyncCollection.find_one_and_update`.
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_replace` and
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_update`.
     """
 
     BEFORE = False
@@ -155,7 +156,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is
         not a valid collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
-        :meth:`~pymongo.database.AsyncDatabase.create_collection` for valid
+        :meth:`~pymongo.asynchronous.database.AsyncDatabase.create_collection` for valid
         options.
 
         If `create` is ``True``, `collation` is specified, or any additional
@@ -207,8 +208,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
            Removed the uuid_subtype attribute.
-           :class:`~pymongo.collection.Collection` no longer returns an
-           instance of :class:`~pymongo.collection.Collection` for attribute
+           :class:`~pymongo.asynchronous.collection.AsyncCollection` no longer returns an
+           instance of :class:`~pymongo.asynchronous.collection.AsyncCollection` for attribute
            names with leading underscores. You must use dict-style lookups
            instead::
 
@@ -228,6 +229,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+        from pymongo.asynchronous.database import AsyncDatabase
+
+        if not isinstance(database, AsyncDatabase):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncDatabase" for cls in type(database).__mro__):
+                raise TypeError(f"AsyncDatabase required but given {type(database).__name__}")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -249,7 +256,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if create or kwargs:
             if _IS_SYNC:
                 warnings.warn(
-                    "The `create` and `kwargs` arguments to Collection are deprecated and will be removed in PyMongo 5.0",
+                    "The `create` and `kwargs` arguments to AsyncCollection are deprecated and will be removed in PyMongo 5.0",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -321,10 +328,30 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def database(self) -> AsyncDatabase[_DocumentType]:
-        """The :class:`~pymongo.database.AsyncDatabase` that this
+        """The :class:`~pymongo.asynchronous.database.AsyncDatabase` that this
         :class:`AsyncCollection` is a part of.
         """
         return self._database
+
+    @overload
+    def with_options(
+        self,
+        codec_options: None = None,
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncCollection[_DocumentType]:
+        ...
+
+    @overload
+    def with_options(
+        self,
+        codec_options: bson.CodecOptions[_DocumentTypeArg],
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncCollection[_DocumentTypeArg]:
+        ...
 
     def with_options(
         self,
@@ -332,7 +359,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> AsyncCollection[_DocumentType]:
+    ) -> AsyncCollection[_DocumentType] | AsyncCollection[_DocumentTypeArg]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -346,19 +373,19 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`Collection`
+            default) the :attr:`codec_options` of this :class:`AsyncCollection`
             is used.
         :param read_preference: The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Collection` is used. See :mod:`~pymongo.read_preferences`
+            :class:`AsyncCollection` is used. See :mod:`~pymongo.read_preferences`
             for options.
         :param write_concern: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`Collection`
+            default) the :attr:`write_concern` of this :class:`AsyncCollection`
             is used.
         :param read_concern: An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`Collection`
+            default) the :attr:`read_concern` of this :class:`AsyncCollection`
             is used.
         """
         return AsyncCollection(
@@ -384,7 +411,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     __iter__ = None
 
     def __next__(self) -> NoReturn:
-        raise TypeError(f"'{type(self).__name__}' object is not iterable")
+        raise TypeError("'AsyncCollection' object is not iterable")
 
     next = __next__
 
@@ -393,7 +420,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if "." not in self._name:
             raise TypeError(
                 f"'{type(self).__name__}' object is not callable. If you "
-                "meant to call the '%s' method on a 'Database' "
+                "meant to call the '%s' method on an 'AsyncDatabase' "
                 "object it is failing because no such method "
                 "exists." % self._name
             )
@@ -417,24 +444,24 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
         show_expanded_events: Optional[bool] = None,
-    ) -> CollectionChangeStream[_DocumentType]:
+    ) -> AsyncCollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
+        :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` cursor which
         iterates over changes on this collection.
 
         .. code-block:: python
 
-           async with db.collection.watch() as stream:
+           async with await db.collection.watch() as stream:
                async for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
+        The :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
+        :meth:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -443,11 +470,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                async with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                async with await db.coll.watch([{"$match": {"operationType": "insert"}}]) as stream:
                     async for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
+                # The AsyncChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
                 logging.error("...")
 
@@ -455,7 +482,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         `change streams specification`_.
 
         .. note:: Using this helper method is preferred to directly calling
-            :meth:`~pymongo.collection.AsyncCollection.aggregate` with a
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` with a
             ``$changeStream`` stage, for the purpose of supporting
             resumability.
 
@@ -493,7 +520,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             the specified :class:`~bson.timestamp.Timestamp`. Requires
             MongoDB >= 4.0.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param start_after: The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
@@ -501,7 +528,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+        :return: A :class:`~pymongo.asynchronous.change_stream.AsyncCollectionChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -525,7 +552,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        change_stream = CollectionChangeStream(
+        change_stream = AsyncCollectionChangeStream(
             self,
             pipeline,
             full_document,
@@ -580,7 +607,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param collation` (optional) - An instance of
             :class:`~pymongo.collation.Collation`.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param retryable_write: True if this command is a retryable
             write.
         :param user_fields: Response fields that should be decoded
@@ -689,7 +716,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.DeleteOne`, or
         :class:`~pymongo.operations.DeleteMany`).
 
-          >>> for doc in db.test.find({}):
+          >>> async for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
@@ -699,7 +726,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
           >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
           ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
-          >>> result = db.test.bulk_write(requests)
+          >>> result = await db.test.bulk_write(requests)
           >>> result.inserted_count
           1
           >>> result.deleted_count
@@ -708,7 +735,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_ids
           {2: ObjectId('54f62ee28891e756a6e1abd5')}
-          >>> for doc in db.test.find({}):
+          >>> async for doc in db.test.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
@@ -725,7 +752,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write to opt-out of document level validation. Default is
             ``False``.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param let: Map of parameter names and values. Values must be
@@ -834,7 +861,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write to opt-out of document level validation. Default is
             ``False``.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -903,7 +930,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             write to opt-out of document level validation. Default is
             ``False``.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -1138,11 +1165,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -1247,11 +1274,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -1347,11 +1374,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -1407,10 +1434,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> None:
-        """Alias for :meth:`~pymongo.database.AsyncDatabase.drop_collection`.
+        """Alias for :meth:`~pymongo.asynchronous.database.AsyncDatabase.drop_collection`.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param encrypted_fields: **(BETA)** Document that describes the encrypted fields for
@@ -1565,11 +1592,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -1630,11 +1657,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -1722,7 +1749,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         Raises :class:`TypeError` if any of the arguments are of
         improper type. Returns an instance of
-        :class:`~pymongo.cursor.AsyncCursor` corresponding to this query.
+        :class:`~pymongo.asynchronous.cursor.AsyncCursor` corresponding to this query.
 
         The :meth:`find` method obeys the :attr:`read_preference` of
         this :class:`AsyncCollection`.
@@ -1736,7 +1763,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             always be returned. Use a dict to exclude fields from
             the result (e.g. projection={'_id': False}).
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param skip: the number of documents to omit (from
             the start of the result set) when returning the results
         :param limit: the maximum number of results to
@@ -1772,7 +1799,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :param sort: a list of (key, direction) pairs
             specifying the sort order for this query. See
-            :meth:`~pymongo.cursor.Cursor.sort` for details.
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.sort` for details.
         :param allow_partial_results: if True, mongos will return
             partial results if some shards are down instead of returning an
             error.
@@ -1790,32 +1817,32 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cursor from returning a document more than once because of an
             intervening write operation.
         :param hint: An index, in the same format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.Cursor.hint` on the cursor to tell Mongo the
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.hint` on the cursor to tell Mongo the
             proper index to use for the query.
         :param max_time_ms: Specifies a time limit for a query
             operation. If the specified time is exceeded, the operation will be
             aborted and :exc:`~pymongo.errors.ExecutionTimeout` is raised. Pass
             this as an alternative to calling
-            :meth:`~pymongo.cursor.AsyncCursor.max_time_ms` on the cursor.
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.max_time_ms` on the cursor.
         :param max_scan: **DEPRECATED** - The maximum number of
             documents to scan. Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.AsyncCursor.max_scan` on the cursor.
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.max_scan` on the cursor.
         :param min: A list of field, limit pairs specifying the
             inclusive lower bound for all keys of a specific index in order.
             Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.AsyncCursor.min` on the cursor. ``hint`` must
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.min` on the cursor. ``hint`` must
             also be passed to ensure the query utilizes the correct index.
         :param max: A list of field, limit pairs specifying the
             exclusive upper bound for all keys of a specific index in order.
             Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.Cursor.max` on the cursor. ``hint`` must
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.max` on the cursor. ``hint`` must
             also be passed to ensure the query utilizes the correct index.
         :param comment: A string to attach to the query to help
             interpret and trace the operation in the server logs and in profile
             data. Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.AsyncCursor.comment` on the cursor.
+            :meth:`~pymongo.asynchronous.cursor.AsyncCursor.comment` on the cursor.
         :param allow_disk_use: if True, MongoDB may use temporary
             disk files to store data exceeding the system memory limit while
             processing a blocking sort operation. The option has no effect if
@@ -1834,7 +1861,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           - A :class:`~pymongo.cursor.AsyncCursor` instance created with the
             :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
             exclusive :class:`~socket.socket` connection to MongoDB. If the
-            :class:`~pymongo.cursor.AsyncCursor` is discarded without being
+            :class:`~pymongo.asynchronous.cursor.AsyncCursor` is discarded without being
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
@@ -1893,13 +1920,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         return AsyncCursor(self, *args, **kwargs)
 
-    async def find_raw_batches(
-        self, *args: Any, **kwargs: Any
-    ) -> AsyncRawBatchCursor[_DocumentType]:
+    def find_raw_batches(self, *args: Any, **kwargs: Any) -> AsyncRawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
-        :class:`~pymongo.cursor.AsyncRawBatchCursor`.
+        :class:`~pymongo.asynchronous.cursor.AsyncRawBatchCursor`.
 
         This example demonstrates how to work with raw batches, but in practice
         raw batches should be passed to an external library that can decode
@@ -1907,7 +1932,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :mod:`bson` module.
 
           >>> import bson
-          >>> cursor = await db.test.find_raw_batches()
+          >>> cursor = db.test.find_raw_batches()
           >>> async for batch in cursor:
           ...     print(bson.decode_all(batch))
 
@@ -2069,7 +2094,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             to count in the collection. Can be an empty document to count all
             documents.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: See list of options above.
@@ -2144,7 +2169,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param indexes: A list of :class:`~pymongo.operations.IndexModel`
             instances.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the createIndexes
@@ -2153,7 +2178,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
 
 
-        .. note:: The :attr:`~pymongo.collection.AsyncCollection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
@@ -2181,7 +2206,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param indexes: A list of :class:`~pymongo.operations.IndexModel`
             instances.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param kwargs: optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
         """
@@ -2290,13 +2315,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           option is silently ignored by the server and unique index builds
           using the option will fail if a duplicate value is detected.
 
-        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
         :param keys: a single key or a list of (key, direction)
             pairs specifying the index to create
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: any additional index creation
@@ -2347,13 +2372,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         Raises OperationFailure on an error.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
 
-        .. note:: The :attr:`~pymongo.collection.AsyncCollection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
@@ -2394,7 +2419,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :param index_or_name: index (or name of index) to drop
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the createIndexes
@@ -2402,7 +2427,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
 
 
-        .. note:: The :attr:`~pymongo.collection.AsyncCollection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
 
@@ -2453,17 +2478,17 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
-          >>> async for index in db.test.list_indexes():
+          >>> async for index in await db.test.list_indexes():
           ...     print(index)
           ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
-        :return: An instance of :class:`~pymongo.command_cursor.AsyncCommandCursor`.
+        :return: An instance of :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -2541,14 +2566,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ``"name"`` keys, which are cleaned. Example output might look
         like this:
 
-        >>> db.test.create_index("x", unique=True)
+        >>> await db.test.create_index("x", unique=True)
         'x_1'
-        >>> db.test.index_information()
+        >>> await db.test.index_information()
         {'_id_': {'key': [('_id', 1)]},
          'x_1': {'unique': True, 'key': [('x', 1)]}}
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -2579,11 +2604,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             for.  Only indexes with matching index names will be returned.
             If not given, all search indexes for the current collection
             will be returned.
-        :param session: a :class:`~pymongo.client_session.AsyncClientSession`.
+        :param session: a :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
-        :return: A :class:`~pymongo.command_cursor.AsyncCommandCursor` over the result
+        :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
           set.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
@@ -2633,7 +2658,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             instance or a dictionary with a model "definition"  and optional
             "name".
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the createSearchIndexes
@@ -2659,7 +2684,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Create multiple search indexes for the current collection.
 
         :param models: A list of :class:`~pymongo.operations.SearchIndexModel` instances.
-        :param session: a :class:`~pymongo.client_session.AsyncClientSession`.
+        :param session: a :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the createSearchIndexes
@@ -2716,7 +2741,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :param name: The name of the search index to be deleted.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the dropSearchIndexes
@@ -2752,7 +2777,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param name: The name of the search index to be updated.
         :param definition: The new search index definition.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: optional arguments to the updateSearchIndexes
@@ -2783,12 +2808,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
-        :meth:`~pymongo.database.AsyncDatabase.create_collection` for more
+        :meth:`~pymongo.asynchronous.database.AsyncDatabase.create_collection` for more
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
 
@@ -2874,12 +2899,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
            instead. An example is included in the :ref:`aggregate-examples`
            documentation.
 
-        .. note:: The :attr:`~pymongo.collection.AsyncCollection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: A dict of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -2905,7 +2930,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
 
 
-        :return: A :class:`~pymongo.command_cursor.AsyncCommandCursor` over the result
+        :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
           set.
 
         .. versionchanged:: 4.1
@@ -2928,7 +2953,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
         .. versionchanged:: 3.0
-           The :meth:`aggregate` method always returns a CommandCursor. The
+           The :meth:`aggregate` method always returns an AsyncCommandCursor. The
            pipeline argument must be a list.
 
         .. seealso:: :doc:`/examples/aggregation`
@@ -2958,7 +2983,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Similar to the :meth:`aggregate` method but returns a
-        :class:`~pymongo.cursor.AsyncRawBatchCursor`.
+        :class:`~pymongo.asynchronous.cursor.AsyncRawBatchCursor`.
 
         This example demonstrates how to work with raw batches, but in practice
         raw batches should be passed to an external library that can decode
@@ -3014,14 +3039,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :param new_name: new name for this collection
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
 
-        .. note:: The :attr:`~pymongo.collection.AsyncCollection.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
@@ -3083,14 +3108,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
 
         The :meth:`distinct` method obeys the :attr:`read_preference` of
-        this :class:`Collection`.
+        this :class:`AsyncCollection`.
 
         :param key: name of the field for which we want to get the distinct
             values
         :param filter: A query document that specifies the documents
             from which to retrieve the distinct values.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: See list of options above.
@@ -3261,11 +3286,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             match the query, they are sorted and the first is deleted.
         :param hint: An index to use to support the query predicate
             specified either by its string name, or in the same format as
-            passed to :meth:`~pymongo.collection.AsyncCollection.create_index`
+            passed to :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
             (e.g. ``[('field', ASCENDING)]``). This option is only supported
             on MongoDB 4.4 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -3287,7 +3312,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. warning:: Starting in PyMongo 3.2, this command uses the
            :class:`~pymongo.write_concern.WriteConcern` of this
-           :class:`~pymongo.collection.AsyncCollection` when connected to MongoDB >=
+           :class:`~pymongo.asynchronous.collection.AsyncCollection` when connected to MongoDB >=
            3.2. Note that using an elevated write concern with this command may
            be slower compared to using the default write concern.
 
@@ -3359,11 +3384,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -3387,7 +3412,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. warning:: Starting in PyMongo 3.2, this command uses the
            :class:`~pymongo.write_concern.WriteConcern` of this
-           :class:`~pymongo.collection.AsyncCollection` when connected to MongoDB >=
+           :class:`~pymongo.asynchronous.collection.AsyncCollection` when connected to MongoDB >=
            3.2. Note that using an elevated write concern with this command may
            be slower compared to using the default write concern.
 
@@ -3461,7 +3486,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         The *upsert* option can be used to create the document if it doesn't
         already exist.
 
-          >>> await db.example.delete_many({}).deleted_count
+          >>> (await db.example.delete_many({})).deleted_count
           1
           >>> await db.example.find_one_and_update(
           ...     {'_id': 'userid'},
@@ -3506,11 +3531,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.collection.AsyncCollection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param let: Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
@@ -3534,7 +3559,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. warning:: Starting in PyMongo 3.2, this command uses the
            :class:`~pymongo.write_concern.WriteConcern` of this
-           :class:`~pymongo.collection.AsyncCollection` when connected to MongoDB >=
+           :class:`~pymongo.asynchronous.collection.AsyncCollection` when connected to MongoDB >=
            3.2. Note that using an elevated write concern with this command may
            be slower compared to using the default write concern.
 

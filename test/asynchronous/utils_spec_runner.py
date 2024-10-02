@@ -25,7 +25,6 @@ from test.utils import (
     EventListener,
     OvertCommandListener,
     ServerAndTopologyEventListener,
-    async_rs_client,
     camel_to_snake,
     camel_to_snake_args,
     parse_spec_options,
@@ -101,6 +100,8 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     @classmethod
     async def _tearDown_class(cls):
         cls.knobs.disable()
+        for client in cls.mongos_clients:
+            await client.close()
         await super()._tearDown_class()
 
     def setUp(self):
@@ -527,7 +528,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
                 host = async_client_context.MULTI_MONGOS_LB_URI
             elif async_client_context.is_mongos:
                 host = async_client_context.mongos_seeds()
-        client = await async_rs_client(
+        client = await self.async_rs_client(
             h=host, event_listeners=[listener, pool_listener, server_listener], **client_options
         )
         self.scenario_client = client
@@ -535,7 +536,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         self.pool_listener = pool_listener
         self.server_listener = server_listener
         # Close the client explicitly to avoid having too many threads open.
-        self.addAsyncCleanup(client.aclose)
+        self.addAsyncCleanup(client.close)
 
         # Create session0 and session1.
         sessions = {}

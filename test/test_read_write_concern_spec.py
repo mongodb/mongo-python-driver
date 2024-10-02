@@ -23,14 +23,8 @@ import warnings
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (
-    EventListener,
-    SpecTestCreator,
-    disable_replication,
-    enable_replication,
-    rs_or_single_client,
-)
-from test.utils_spec_runner import SpecRunner
+from test.unified_format import generate_test_classes
+from test.utils import EventListener
 
 from pymongo import DESCENDING
 from pymongo.errors import (
@@ -52,7 +46,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
     def test_omit_default_read_write_concern(self):
         listener = EventListener()
         # Client with default readConcern and writeConcern
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
@@ -105,7 +99,9 @@ class TestReadWriteConcernSpec(IntegrationTest):
     def assertWriteOpsRaise(self, write_concern, expected_exception):
         wc = write_concern.document
         # Set socket timeout to avoid indefinite stalls
-        client = rs_or_single_client(w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000)
+        client = self.rs_or_single_client(
+            w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000
+        )
         db = client.get_database("pymongo_test")
         coll = db.test
 
@@ -168,9 +164,9 @@ class TestReadWriteConcernSpec(IntegrationTest):
     @client_context.require_test_commands
     def test_raise_wtimeout(self):
         self.addCleanup(client_context.client.drop_database, "pymongo_test")
-        self.addCleanup(enable_replication, client_context.client)
+        self.addCleanup(self.enable_replication, client_context.client)
         # Disable replication to guarantee a wtimeout error.
-        disable_replication(client_context.client)
+        self.disable_replication(client_context.client)
         self.assertWriteOpsRaise(WriteConcern(w=client_context.w, wtimeout=1), WTimeoutError)
 
     @client_context.require_failCommand_fail_point
@@ -210,7 +206,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
     @client_context.require_version_min(4, 9)
     def test_write_error_details_exposes_errinfo(self):
         listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         db = client.errinfotest
         self.addCleanup(client.drop_database, "errinfotest")
@@ -321,25 +317,15 @@ def create_tests():
 create_tests()
 
 
-class TestOperation(SpecRunner):
-    # Location of JSON test specifications.
-    TEST_PATH = os.path.join(_TEST_PATH, "operation")
-
-    def get_outcome_coll_name(self, outcome, collection):
-        """Spec says outcome has an optional 'collection.name'."""
-        return outcome["collection"].get("name", collection.name)
-
-
-def create_operation_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = SpecTestCreator(create_operation_test, TestOperation, TestOperation.TEST_PATH)
-test_creator.create_tests()
+# Generate unified tests.
+# PyMongo does not support MapReduce.
+globals().update(
+    generate_test_classes(
+        os.path.join(_TEST_PATH, "operation"),
+        module=__name__,
+        expected_failures=["MapReduce .*"],
+    )
+)
 
 
 if __name__ == "__main__":

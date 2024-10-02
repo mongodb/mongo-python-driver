@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -29,21 +30,22 @@ except ImportError:
 
 from bson import Timestamp
 from pymongo import DeleteMany, InsertOne, MongoClient, UpdateOne
+from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestClusterTime(unittest.TestCase):
-    def cluster_time_conversation(self, callback, replies):
+class TestClusterTime(PyMongoTestCase):
+    def cluster_time_conversation(self, callback, replies, max_wire_version=6):
         cluster_time = Timestamp(0, 0)
         server = MockupDB()
 
-        # First test all commands include $clusterTime with wire version 6.
+        # First test all commands include $clusterTime with max_wire_version.
         _ = server.autoresponds(
             "ismaster",
             {
                 "minWireVersion": 0,
-                "maxWireVersion": 6,
+                "maxWireVersion": max_wire_version,
                 "$clusterTime": {"clusterTime": cluster_time},
             },
         )
@@ -51,8 +53,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
 
         with going(callback, client):
             for reply in replies:
@@ -117,8 +118,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri, heartbeatFrequencyMS=500)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri, heartbeatFrequencyMS=500)
 
         request = server.receives("ismaster")
         # No $clusterTime in first ismaster, only in subsequent ones
@@ -165,6 +165,30 @@ class TestClusterTime(unittest.TestCase):
         self.assertEqual(request["$clusterTime"]["clusterTime"], cluster_time)
         request.reply(reply)
         client.close()
+
+    def test_collection_bulk_error(self):
+        def callback(client: MongoClient[dict]) -> None:
+            with self.assertRaises(OperationFailure):
+                client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
+
+        self.cluster_time_conversation(
+            callback,
+            [{"ok": 0, "errmsg": "mock error"}],
+        )
+
+    def test_client_bulk_error(self):
+        def callback(client: MongoClient[dict]) -> None:
+            with self.assertRaises(OperationFailure):
+                client.bulk_write(
+                    [
+                        InsertOne({}, namespace="db.collection"),
+                        InsertOne({}, namespace="db.collection"),
+                    ]
+                )
+
+        self.cluster_time_conversation(
+            callback, [{"ok": 0, "errmsg": "mock error"}], max_wire_version=25
+        )
 
 
 if __name__ == "__main__":

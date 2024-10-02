@@ -76,6 +76,9 @@ do
     atlas-data-lake-testing|data_lake)
       cpjson atlas-data-lake-testing/tests/ data_lake
       ;;
+    bson-binary-vector|bson_binary_vector)
+      cpjson bson-binary-vector/tests/ bson_binary_vector
+      ;;
     bson-corpus|bson_corpus)
       cpjson bson-corpus/tests/ bson_corpus
       ;;
@@ -136,6 +139,9 @@ do
       ;;
     srv|SRV|initial-dns-seedlist-discovery|srv_seedlist)
       cpjson initial-dns-seedlist-discovery/tests/ srv_seedlist
+      ;;
+    read-write-concern|read_write_concern)
+      cpjson read-write-concern/tests/operation read_write_concern/operation
       ;;
     retryable-reads|retryable_reads)
       cpjson retryable-reads/tests/ retryable_reads

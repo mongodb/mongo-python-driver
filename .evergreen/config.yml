@@ -34,51 +34,14 @@ functions:
     # Applies the subitted patch, if any
     # Deprecated. Should be removed. But still needed for certain agents (ZAP)
     - command: git.apply_patch
-    # Make an evergreen exapanstion file with dynamic values
-    - command: shell.exec
+    # Make an evergreen expansion file with dynamic values
+    - command: subprocess.exec
       params:
+        include_expansions_in_env: ["is_patch", "project", "version_id"]
+        binary: bash
         working_dir: "src"
-        script: |
-           set +x
-           # Get the current unique version of this checkout
-           if [ "${is_patch}" = "true" ]; then
-              CURRENT_VERSION=$(git describe)-patch-${version_id}
-           else
-              CURRENT_VERSION=latest
-           fi
-
-           export DRIVERS_TOOLS="$(dirname $(pwd))/drivers-tools"
-           export PROJECT_DIRECTORY="$(pwd)"
-
-           # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
-           if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-              export DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
-              export PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
-           fi
-
-           export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
-           export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-
-           cat <<EOT > expansion.yml
-           CURRENT_VERSION: "$CURRENT_VERSION"
-           DRIVERS_TOOLS: "$DRIVERS_TOOLS"
-           MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"
-           MONGODB_BINARIES: "$MONGODB_BINARIES"
-           PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
-           PREPARE_SHELL: |
-              set -o errexit
-              export SKIP_LEGACY_SHELL=1
-              export DRIVERS_TOOLS="$DRIVERS_TOOLS"
-              export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
-              export MONGODB_BINARIES="$MONGODB_BINARIES"
-              export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
-
-              export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-              export PATH="$MONGODB_BINARIES:$PATH"
-              export PROJECT="${project}"
-              export PIP_QUIET=1
-           EOT
-
+        args:
+          - .evergreen/scripts/configure-env.sh
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
       params:
@@ -88,14 +51,14 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           rm -rf $DRIVERS_TOOLS
-          if [ "${project}" = "drivers-tools" ]; then
+          if [ "$PROJECT" = "drivers-tools" ]; then
             # If this was a patch build, doing a fresh clone would not actually test the patch
-            cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
+            cp -R ${PROJECT_DIRECTORY}/ ${DRIVERS_TOOLS}
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git ${DRIVERS_TOOLS}
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -129,12 +92,12 @@ functions:
         script: |
           # Download all the task coverage files.
           aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          bash .evergreen/combine-coverage.sh
+        binary: bash
+        args:
+          - .evergreen/combine-coverage.sh
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
@@ -164,7 +127,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           mkdir out_dir
           find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
@@ -266,7 +229,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
 
           # Enable core dumps if enabled on the machine
@@ -325,13 +288,13 @@ functions:
       type: setup
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
     - command: shell.exec
       type: setup
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
           sleep 1
           docker ps
@@ -340,7 +303,7 @@ functions:
     - command: shell.exec
       params:
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           set -o xtrace
           bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
@@ -350,7 +313,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
             MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
@@ -362,7 +325,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           export PYTHON_BINARY=${PYTHON_BINARY}
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-mockupdb
@@ -373,7 +336,7 @@ functions:
        params:
          working_dir: "src"
          script: |
-           ${PREPARE_SHELL}
+           . .evergreen/scripts/env.sh
            set -o xtrace
            PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
 
@@ -385,7 +348,7 @@ functions:
         background: true
         include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           if [ -n "${test_encryption}" ]; then
             ./.evergreen/hatch.sh encryption:setup
           fi
@@ -394,11 +357,10 @@ functions:
       params:
         working_dir: "src"
         shell: bash
-        include_expansions_in_env: ["DRIVERS_ATLAS_LAMBDA_USER", "DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         script: |
           # Disable xtrace
           set +x
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=true
           fi
@@ -435,6 +397,9 @@ functions:
           if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
             export TEST_INDEX_MANAGEMENT=1
           fi
+          if [ -n "${SKIP_CSOT_TESTS}" ]; then
+            export SKIP_CSOT_TESTS=1
+          fi
 
           GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             PYTHON_BINARY=${PYTHON_BINARY} \
@@ -445,6 +410,7 @@ functions:
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
+            SKIP_HATCH=${SKIP_HATCH} \
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
@@ -495,7 +461,7 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
@@ -505,7 +471,7 @@ functions:
         shell: "bash"
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh assume-role
 
   "run aws auth test with aws EC2 credentials":
@@ -519,7 +485,7 @@ functions:
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
@@ -533,7 +499,7 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           # Test with and without AWS_ROLE_SESSION_NAME set.
           .evergreen/run-mongodb-aws-test.sh web-identity
           AWS_ROLE_SESSION_NAME="test" \
@@ -556,7 +522,7 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh env-creds
 
   "run aws auth test with aws credentials and session token as environment variables":
@@ -566,7 +532,7 @@ functions:
         working_dir: "src"
         shell: bash
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           .evergreen/run-mongodb-aws-test.sh session-creds
 
   "run aws ECS auth test":
@@ -580,12 +546,12 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           . aws_setup.sh ecs
-          export MONGODB_BINARIES="${MONGODB_BINARIES}";
+          export MONGODB_BINARIES="$MONGODB_BINARIES";
           export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
           python aws_tester.py ecs
           cd -
@@ -595,9 +561,11 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
-          . .evergreen/hatch.sh encryption:teardown
-          rm -rf $DRIVERS_TOOLS || true
+          . .evergreen/scripts/env.sh
+          if [ -f $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh ]; then
+            . .evergreen/hatch.sh encryption:teardown
+          fi
+          rm -rf ${DRIVERS_TOOLS} || true
           rm -f ./secrets-export.sh || true
 
   "fix absolute paths":
@@ -605,7 +573,7 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
             perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
           done
@@ -615,20 +583,20 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
           done
           # Copy client certificate because symlinks do not work on Windows.
-          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
+          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem $MONGO_ORCHESTRATION_HOME/lib/client.pem
 
   "make files executable":
     - command: shell.exec
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
             chmod +x $i
           done
@@ -638,7 +606,7 @@ functions:
       params:
         script: |
           set +x
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
 
   "install dependencies":
@@ -646,7 +614,7 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           set -o xtrace
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
@@ -677,10 +645,10 @@ functions:
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           TEST_OCSP=1 \
           PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
+          CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
@@ -689,7 +657,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -702,7 +670,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -717,7 +685,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -730,7 +698,7 @@ functions:
       params:
         background: true
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
           . ./activate-ocspvenv.sh
           python ocsp_mock.py \
@@ -772,7 +740,7 @@ functions:
       params:
         shell: "bash"
         script: |
-          ${PREPARE_SHELL}
+          . src/.evergreen/scripts/env.sh
           cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
           if [ -f "./aws_e2e_setup.json" ]; then
             . ./activate-authawsvenv.sh
@@ -786,99 +754,13 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
-  "build release":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          set -o xtrace
-          VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
-
-  "upload release":
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-    - command: archive.targz_pack
-      params:
-        target: "release-files.tgz"
-        source_dir: "src/dist"
-        include:
-          - "*"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: release-files.tgz
-        remote_file: release/${revision}/${task_id}-${execution}-release-files.tar.gz
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|application/gzip}
-        display_name: Release files
-
-  "download and merge releases":
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-    - command: shell.exec
-      params:
-        silent: true
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Download all the task coverage files.
-          aws s3 cp --recursive s3://${bucket_name}/release/${revision}/ release/
-    - command: shell.exec
-      params:
-        shell: "bash"
-        script: |
-          ${PREPARE_SHELL}
-          set -o xtrace
-          # Combine releases into one directory.
-          ls -la release/
-          mkdir releases
-          # Copy old manylinux release first since we want the newer manylinux
-          # wheels to override them.
-          mkdir old_manylinux
-          if mv release/*old_manylinux* old_manylinux; then
-            for REL in old_manylinux/*; do
-              tar zxvf $REL -C releases/
-            done
-          fi
-          for REL in release/*; do
-            tar zxvf $REL -C releases/
-          done
-          # Build source distribution.
-          cd src/
-          /opt/python/3.8/bin/python3 -m pip install build
-          /opt/python/3.8/bin/python3 -m build --sdist .
-          cp dist/* ../releases
-    - command: archive.targz_pack
-      params:
-        target: "release-files-all.tgz"
-        source_dir: "releases/"
-        include:
-          - "*"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: release-files-all.tgz
-        remote_file: release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|application/gzip}
-        display_name: Release files all
-
   "run perf tests":
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         script: |
-          ${PREPARE_SHELL}
+          . .evergreen/scripts/env.sh
           PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
 
   "attach benchmark test results":
@@ -1115,72 +997,6 @@ tasks:
                scan-build --version || true
                genhtml --version || true
                valgrind --version || true
-
-    - name: "release-mac"
-      tags: ["release_tag"]
-      run_on: macos-11
-      commands:
-        - func: "build release"
-          vars:
-              VERSION: "3.12"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.11"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.10"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "build release"
-          vars:
-              VERSION: "3.9"
-              ENSURE_UNIVERSAL2: "1"
-        - func: "upload release"
-        - func: "build release"
-          vars:
-              VERSION: "3.8"
-        - func: "upload release"
-
-    - name: "release-windows"
-      tags: ["release_tag"]
-      run_on: windows-64-vsMulti-small
-      commands:
-        - func: "build release"
-        - func: "upload release"
-
-    - name: "release-manylinux"
-      tags: ["release_tag"]
-      run_on: ubuntu2204-large
-      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
-      commands:
-        - func: "build release"
-        - func: "upload release"
-
-    - name: "release-old-manylinux"
-      tags: ["release_tag"]
-      run_on: ubuntu2204-large
-      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
-      commands:
-        - command: shell.exec
-          type: test
-          params:
-            working_dir: "src"
-            script: |
-              ${PREPARE_SHELL}
-              set -o xtrace
-              .evergreen/build-manylinux.sh BUILD_WITH_TAG
-        - func: "upload release"
-
-    - name: "release-combine"
-      tags: ["release_tag"]
-      run_on: rhel84-small
-      depends_on:
-        - name: "*"
-          variant: ".release_tag"
-          patch_optional: true
-      commands:
-        - func: "download and merge releases"
 
 # Standard test tasks {{{
 
@@ -2039,7 +1855,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            ${PREPARE_SHELL}
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
@@ -2056,7 +1872,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
-            ${PREPARE_SHELL}
+            . src/.evergreen/scripts/env.sh
             cd src
             git add .
             git commit -m "add files"
@@ -2124,9 +1940,10 @@ tasks:
             working_dir: "src"
             shell: "bash"
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/${bucket_name}/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
+              SKIP_SERVERS=1 bash ./.evergreen/setup-encryption.sh
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
 
     - name: testazurekms-task
@@ -2179,6 +1996,17 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-8.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
     - name: "assign-pr-reviewer"
       tags: ["pr"]
       allowed_requesters: ["patch", "github_pr"]
@@ -2189,7 +2017,7 @@ tasks:
             shell: "bash"
             working_dir: src
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               set -x
               export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
               export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
@@ -2205,11 +2033,24 @@ tasks:
             shell: "bash"
             working_dir: src
             script: |
-              ${PREPARE_SHELL}
+              . .evergreen/scripts/env.sh
               set -x
               export BASE_SHA=${revision}
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
+
+    - name: "backport-pr"
+      allowed_requesters: ["commit"]
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
 
 axes:
   # Choice of distro
@@ -2223,6 +2064,8 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
+          # CSOT tests are unreliable on our slow macOS hosts.
+          SKIP_CSOT_TESTS: true
       - id: macos-arm64
         display_name: "macOS Arm64"
         run_on: macos-14-arm64
@@ -2230,16 +2073,18 @@ axes:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           skip_web_identity_auth_test: true
+          # CSOT tests are unreliable on our slow macOS hosts.
+          SKIP_CSOT_TESTS: true
       - id: rhel7
         display_name: "RHEL 7.x"
         run_on: rhel79-small
         batchtime: 10080  # 7 days
       - id: rhel8
         display_name: "RHEL 8.x"
-        run_on: rhel87-small
+        run_on: rhel8.8-small
         batchtime: 10080  # 7 days
-      - id: rhel92-fips
-        display_name: "RHEL 9.2 FIPS"
+      - id: rhel9-fips
+        display_name: "RHEL 9 FIPS"
         run_on: rhel92-fips
         batchtime: 10080  # 7 days
       - id: ubuntu-22.04
@@ -2250,20 +2095,24 @@ axes:
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
         batchtime: 10080  # 7 days
-      - id: rhel83-zseries
-        display_name: "RHEL 8.3 (zSeries)"
-        run_on: rhel83-zseries-small
+      - id: rhel8-zseries
+        display_name: "RHEL 8 (zSeries)"
+        run_on: rhel8-zseries-small
         batchtime: 10080  # 7 days
-      - id: rhel81-power8
-        display_name: "RHEL 8.1 (POWER8)"
-        run_on: rhel81-power8-small
+        variables:
+          SKIP_HATCH: true
+      - id: rhel8-power8
+        display_name: "RHEL 8 (POWER8)"
+        run_on: rhel8-power-small
         batchtime: 10080  # 7 days
-      - id: rhel82-arm64
-        display_name: "RHEL 8.2 (ARM64)"
+        variables:
+          SKIP_HATCH: true
+      - id: rhel8-arm64
+        display_name: "RHEL 8 (ARM64)"
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-      - id: windows-64-vsMulti-small
+      - id: windows
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
@@ -2272,6 +2121,8 @@ axes:
           skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
           venv_bin_dir: "Scripts"
+          # CSOT tests are unreliable on our slow Windows hosts.
+          SKIP_CSOT_TESTS: true
 
   # Test with authentication?
   - id: auth
@@ -2402,6 +2253,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "/opt/python/3.12/bin/python3"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.13/bin/python3"
       - id: "pypy3.9"
         display_name: "PyPy 3.9"
         variables:
@@ -2434,6 +2289,10 @@ axes:
         display_name: "Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/Python312/python.exe"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/Python313/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2458,6 +2317,10 @@ axes:
         display_name: "32-bit Python 3.12"
         variables:
           PYTHON_BINARY: "C:/python/32/Python312/python.exe"
+      - id: "3.13"
+        display_name: "32-bit Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python313/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2607,7 +2470,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel92-fips
+      - rhel9-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2684,9 +2547,9 @@ buildvariants:
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      - rhel83-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel81-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel82-arm64 # Added in 4.4.2 (SERVER-48282)
+      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
+      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
+      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2721,7 +2584,7 @@ buildvariants:
   # Only test "noauth" with Python 3.8.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
+    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2743,7 +2606,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
     ssl: "ssl"
@@ -2827,7 +2690,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
+     python-version: ["pypy3.9", "pypy3.10", "3.13"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2835,7 +2698,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
@@ -2843,7 +2706,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-python-version-32-bit"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows-32: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
@@ -2853,7 +2716,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9", "pypy3.9", "pypy3.10"]
+    python-version: ["3.8", "3.9"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -2861,7 +2724,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
@@ -2870,7 +2733,7 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
-        platform: windows-64-vsMulti-small
+        platform: windows
         python-version-windows: "*"
         auth-ssl: "*"
       then:
@@ -2932,7 +2795,7 @@ buildvariants:
 
 - matrix_name: "tests-windows-enterprise-auth"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
@@ -2950,7 +2813,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -3044,7 +2907,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
-    platform: windows-64-vsMulti-small
+    platform: windows
     python-version-windows: ["3.8", "3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
@@ -3069,7 +2932,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel8, macos, windows-64-vsMulti-small ]
+    platform: [ rhel8, macos, windows ]
   display_name: "OIDC Auth ${platform}"
   tasks:
     - name: testoidc_task_group
@@ -3118,7 +2981,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
-    platform: [windows-64-vsMulti-small]
+    platform: [windows]
     python-version-windows: "*"
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
@@ -3144,7 +3007,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - debian10-small
+    - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3152,7 +3015,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel87-small
+  run_on: debian11-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3176,12 +3039,12 @@ buildvariants:
   tasks:
     - name: "check-import-time"
 
-- name: Release
-  display_name: Release
-  batchtime: 20160 # 14 days
-  tags: ["release_tag"]
+- name: backport-pr
+  display_name: "Backport PR"
+  run_on:
+    - rhel8.7-small
   tasks:
-  - ".release_tag"
+    - name: "backport-pr"
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
@@ -3190,6 +3053,7 @@ buildvariants:
   tasks:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
+     - name: "perf-8.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

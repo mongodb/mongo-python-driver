@@ -29,7 +29,6 @@ from test.utils import (
     camel_to_snake_args,
     parse_spec_options,
     prepare_spec_arguments,
-    rs_client,
 )
 from typing import List
 
@@ -101,6 +100,8 @@ class SpecRunner(IntegrationTest):
     @classmethod
     def _tearDown_class(cls):
         cls.knobs.disable()
+        for client in cls.mongos_clients:
+            client.close()
         super()._tearDown_class()
 
     def setUp(self):
@@ -524,7 +525,7 @@ class SpecRunner(IntegrationTest):
                 host = client_context.MULTI_MONGOS_LB_URI
             elif client_context.is_mongos:
                 host = client_context.mongos_seeds()
-        client = rs_client(
+        client = self.rs_client(
             h=host, event_listeners=[listener, pool_listener, server_listener], **client_options
         )
         self.scenario_client = client

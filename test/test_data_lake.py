@@ -17,18 +17,16 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.crud_v2_format import TestCrudV2
+from test.unified_format import generate_test_classes
 from test.utils import (
     OvertCommandListener,
-    SpecTestCreator,
-    rs_client_noauth,
-    rs_or_single_client,
 )
 
 pytestmark = pytest.mark.data_lake
@@ -65,7 +63,7 @@ class TestDataLakeProse(IntegrationTest):
     # Test killCursors
     def test_1(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         cursor = client[self.TEST_DB][self.TEST_COLLECTION].find({}, batch_size=2)
         next(cursor)
 
@@ -90,40 +88,21 @@ class TestDataLakeProse(IntegrationTest):
 
     # Test no auth
     def test_2(self):
-        client = rs_client_noauth()
+        client = self.rs_client_noauth()
         client.admin.command("ping")
 
     # Test with auth
     def test_3(self):
         for mechanism in ["SCRAM-SHA-1", "SCRAM-SHA-256"]:
-            client = rs_or_single_client(authMechanism=mechanism)
+            client = self.rs_or_single_client(authMechanism=mechanism)
             client[self.TEST_DB][self.TEST_COLLECTION].find_one()
 
 
-class DataLakeTestSpec(TestCrudV2):
-    # Default test database and collection names.
-    TEST_DB = "test"
-    TEST_COLLECTION = "driverdata"
+# Location of JSON test specifications.
+TEST_PATH = Path(__file__).parent / "data_lake/unified"
 
-    @classmethod
-    @client_context.require_data_lake
-    def setUpClass(cls):
-        super().setUpClass()
-
-    def setup_scenario(self, scenario_def):
-        # Spec tests MUST NOT insert data/drop collection for
-        # data lake testing.
-        pass
-
-
-def create_test(scenario_def, test, name):
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-SpecTestCreator(create_test, DataLakeTestSpec, _TEST_PATH).create_tests()
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 if __name__ == "__main__":

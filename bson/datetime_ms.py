@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import calendar
 import datetime
-import functools
 from typing import Any, Union, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
@@ -32,7 +31,7 @@ EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
 _DATETIME_ERROR_SUGGESTION = (
     "(Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO)"
     " or MongoClient(datetime_conversion='DATETIME_AUTO'))."
-    " See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes"
+    " See: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes"
 )
 
 
@@ -114,17 +113,36 @@ class DatetimeMS:
         return self._value
 
 
-# Inclusive and exclusive min and max for timezones.
-# Timezones are hashed by their offset, which is a timedelta
-# and therefore there are more than 24 possible timezones.
-@functools.lru_cache(maxsize=None)
-def _min_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.min.replace(tzinfo=tz))
+def _datetime_to_millis(dtm: datetime.datetime) -> int:
+    """Convert datetime to milliseconds since epoch UTC."""
+    if dtm.utcoffset() is not None:
+        dtm = dtm - dtm.utcoffset()  # type: ignore
+    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
 
 
-@functools.lru_cache(maxsize=None)
-def _max_datetime_ms(tz: datetime.timezone = datetime.timezone.utc) -> int:
-    return _datetime_to_millis(datetime.datetime.max.replace(tzinfo=tz))
+_MIN_UTC = datetime.datetime.min.replace(tzinfo=utc)
+_MAX_UTC = datetime.datetime.max.replace(tzinfo=utc)
+_MIN_UTC_MS = _datetime_to_millis(_MIN_UTC)
+_MAX_UTC_MS = _datetime_to_millis(_MAX_UTC)
+
+
+# Inclusive min and max for timezones.
+def _min_datetime_ms(tz: datetime.tzinfo = utc) -> int:
+    delta = tz.utcoffset(_MIN_UTC)
+    if delta is not None:
+        offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
+    else:
+        offset_millis = 0
+    return max(_MIN_UTC_MS, _MIN_UTC_MS - offset_millis)
+
+
+def _max_datetime_ms(tz: datetime.tzinfo = utc) -> int:
+    delta = tz.utcoffset(_MAX_UTC)
+    if delta is not None:
+        offset_millis = (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
+    else:
+        offset_millis = 0
+    return min(_MAX_UTC_MS, _MAX_UTC_MS - offset_millis)
 
 
 def _millis_to_datetime(
@@ -136,7 +154,7 @@ def _millis_to_datetime(
         or opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP
         or opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO
     ):
-        tz = opts.tzinfo or datetime.timezone.utc
+        tz = opts.tzinfo or utc
         if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
             millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
         elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
@@ -162,10 +180,3 @@ def _millis_to_datetime(
         return DatetimeMS(millis)
     else:
         raise ValueError("datetime_conversion must be an element of DatetimeConversion")
-
-
-def _datetime_to_millis(dtm: datetime.datetime) -> int:
-    """Convert datetime to milliseconds since epoch UTC."""
-    if dtm.utcoffset() is not None:
-        dtm = dtm - dtm.utcoffset()  # type: ignore
-    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)

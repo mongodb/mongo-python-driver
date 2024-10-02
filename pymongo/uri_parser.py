@@ -13,7 +13,10 @@
 # permissions and limitations under the License.
 
 
-"""Tools to parse and validate a MongoDB URI."""
+"""Tools to parse and validate a MongoDB URI.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import re
@@ -143,8 +146,21 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
             )
         host, port = host.split(":", 1)
     if isinstance(port, str):
-        if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError(f"Port must be an integer between 0 and 65535: {port!r}")
+        if not port.isdigit():
+            # Special case check for mistakes like "mongodb://localhost:27017 ".
+            if all(c.isspace() or c.isdigit() for c in port):
+                for c in port:
+                    if c.isspace():
+                        raise ValueError(f"Port contains whitespace character: {c!r}")
+
+            # A non-digit port indicates that the URI is invalid, likely because the password
+            # or username were not escaped.
+            raise ValueError(
+                "Port contains non-digit characters. Hint: username and password must be escaped according to "
+                "RFC 3986, use urllib.parse.quote_plus"
+            )
+        if int(port) > 65535 or int(port) <= 0:
+            raise ValueError("Port must be an integer between 0 and 65535")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:

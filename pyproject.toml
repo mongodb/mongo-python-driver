@@ -35,13 +35,14 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Typing :: Typed",
 ]
 
 [project.urls]
 Homepage = "https://www.mongodb.org"
-Documentation = "https://pymongo.readthedocs.io"
+Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/"
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
@@ -70,10 +71,11 @@ zstd = ["requirements/zstd.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"
-addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
 faulthandler_timeout = 1500
+asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true
 filterwarnings = [
     "error",
@@ -108,6 +110,7 @@ markers = [
     "load_balancer: load balancer tests",
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
+    "default_async: default async test suite",
 ]
 
 [tool.mypy]
@@ -125,7 +128,7 @@ module = ["service_identity.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["pymongo.synchronous.*", "gridfs.synchronous.*"]
+module = ["pymongo.synchronous.*"]
 warn_unused_ignores = false
 disable_error_code = ["unused-coroutine"]
 
@@ -133,6 +136,10 @@ disable_error_code = ["unused-coroutine"]
 module = ["pymongo.asynchronous.*"]
 warn_unused_ignores = false
 
+[[tool.mypy.overrides]]
+module = ["gridfs.synchronous.*"]
+warn_unused_ignores = false
+disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
 target-version = "py37"

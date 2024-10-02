@@ -22,7 +22,7 @@ import threading
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import rs_client, wait_until
+from test.utils import wait_until
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -747,6 +747,7 @@ class TestSampleShellCommands(IntegrationTest):
         done = False
 
         def insert_docs():
+            nonlocal done
             while not done:
                 db.inventory.insert_one({"username": "alice"})
                 db.inventory.delete_one({"username": "alice"})
@@ -760,17 +761,20 @@ class TestSampleShellCommands(IntegrationTest):
             cursor = db.inventory.watch()
             next(cursor)
             # End Changestream Example 1
+            cursor.close()
 
             # Start Changestream Example 2
             cursor = db.inventory.watch(full_document="updateLookup")
             next(cursor)
             # End Changestream Example 2
+            cursor.close()
 
             # Start Changestream Example 3
             resume_token = cursor.resume_token
             cursor = db.inventory.watch(resume_after=resume_token)
             next(cursor)
             # End Changestream Example 3
+            cursor.close()
 
             # Start Changestream Example 4
             pipeline = [
@@ -780,6 +784,7 @@ class TestSampleShellCommands(IntegrationTest):
             cursor = db.inventory.watch(pipeline=pipeline)
             next(cursor)
             # End Changestream Example 4
+            cursor.close()
         finally:
             done = True
             t.join()
@@ -860,6 +865,38 @@ class TestSampleShellCommands(IntegrationTest):
             ]
         )
         # End Aggregation Example 4
+
+    @client_context.require_version_min(4, 4)
+    def test_aggregate_projection_example(self):
+        db = self.db
+
+        # Start Aggregation Projection Example 1
+        db.inventory.find(
+            {},
+            {
+                "_id": 0,
+                "item": 1,
+                "status": {
+                    "$switch": {
+                        "branches": [
+                            {"case": {"$eq": ["$status", "A"]}, "then": "Available"},
+                            {"case": {"$eq": ["$status", "D"]}, "then": "Discontinued"},
+                        ],
+                        "default": "No status found",
+                    }
+                },
+                "area": {
+                    "$concat": [
+                        {"$toString": {"$multiply": ["$size.h", "$size.w"]}},
+                        " ",
+                        "$size.uom",
+                    ]
+                },
+                "reportNumber": {"$literal": 1},
+            },
+        )
+
+        # End Aggregation Projection Example 1
 
     def test_commands(self):
         db = self.db
@@ -1091,7 +1128,7 @@ class TestTransactionExamples(IntegrationTest):
         self.assertEqual(employee["status"], "Inactive")
 
         def MongoClient(_):
-            return rs_client()
+            return self.rs_client()
 
         uriString = None
 
@@ -1183,7 +1220,7 @@ class TestVersionedApiExamples(IntegrationTest):
     def test_versioned_api(self):
         # Versioned API examples
         def MongoClient(_, server_api):
-            return rs_client(server_api=server_api, connect=False)
+            return self.rs_client(server_api=server_api, connect=False)
 
         uri = None
 
@@ -1214,7 +1251,7 @@ class TestVersionedApiExamples(IntegrationTest):
         ):
             self.skipTest("This test needs MongoDB 5.0.2 or newer")
 
-        client = rs_client(server_api=ServerApi("1", strict=True))
+        client = self.rs_client(server_api=ServerApi("1", strict=True))
         client.db.sales.drop()
 
         # Start Versioned API Example 5

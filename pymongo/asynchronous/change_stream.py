@@ -87,13 +87,13 @@ def _resumable(exc: PyMongoError) -> bool:
     return False
 
 
-class ChangeStream(Generic[_DocumentType]):
+class AsyncChangeStream(Generic[_DocumentType]):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.AsyncCollection.watch`,
-    :meth:`pymongo.database.AsyncDatabase.watch`, or
-    :meth:`pymongo.mongo_client.AsyncMongoClient.watch` instead.
+    :meth:`pymongo.asynchronous.collection.AsyncCollection.watch`,
+    :meth:`pymongo.asynchronous.database.AsyncDatabase.watch`, or
+    :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.watch` instead.
 
     .. versionadded:: 3.6
     .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
@@ -166,7 +166,7 @@ class ChangeStream(Generic[_DocumentType]):
     @property
     def _client(self) -> AsyncMongoClient:
         """The client against which the aggregation commands for
-        this ChangeStream will be run.
+        this AsyncChangeStream will be run.
         """
         raise NotImplementedError
 
@@ -204,7 +204,7 @@ class ChangeStream(Generic[_DocumentType]):
         return options
 
     def _aggregation_pipeline(self) -> list[dict[str, Any]]:
-        """Return the full aggregation pipeline for this ChangeStream."""
+        """Return the full aggregation pipeline for this AsyncChangeStream."""
         options = self._change_stream_options()
         full_pipeline: list = [{"$changeStream": options}]
         full_pipeline.extend(self._pipeline)
@@ -238,7 +238,7 @@ class ChangeStream(Generic[_DocumentType]):
     async def _run_aggregation_cmd(
         self, session: Optional[AsyncClientSession], explicit_session: bool
     ) -> AsyncCommandCursor:
-        """Run the full aggregation pipeline for this ChangeStream and return
+        """Run the full aggregation pipeline for this AsyncChangeStream and return
         the corresponding AsyncCommandCursor.
         """
         cmd = self._aggregation_command_class(
@@ -272,11 +272,11 @@ class ChangeStream(Generic[_DocumentType]):
         self._cursor = await self._create_cursor()
 
     async def close(self) -> None:
-        """Close this ChangeStream."""
+        """Close this AsyncChangeStream."""
         self._closed = True
         await self._cursor.close()
 
-    def __aiter__(self) -> ChangeStream[_DocumentType]:
+    def __aiter__(self) -> AsyncChangeStream[_DocumentType]:
         return self
 
     @property
@@ -299,27 +299,27 @@ class ChangeStream(Generic[_DocumentType]):
             try:
                 resume_token = None
                 pipeline = [{'$match': {'operationType': 'insert'}}]
-                async with db.collection.watch(pipeline) as stream:
+                async with await db.collection.watch(pipeline) as stream:
                     async for insert_change in stream:
                         print(insert_change)
                         resume_token = stream.resume_token
             except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
+                # The AsyncChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
                 if resume_token is None:
                     # There is no usable resume token because there was a
-                    # failure during ChangeStream initialization.
+                    # failure during AsyncChangeStream initialization.
                     logging.error('...')
                 else:
-                    # Use the interrupted ChangeStream's resume token to create
-                    # a new ChangeStream. The new stream will continue from the
+                    # Use the interrupted AsyncChangeStream's resume token to create
+                    # a new AsyncChangeStream. The new stream will continue from the
                     # last seen insert change without missing any events.
-                    async with db.collection.watch(
+                    async with await db.collection.watch(
                             pipeline, resume_after=resume_token) as stream:
                         async for insert_change in stream:
                             print(insert_change)
 
-        Raises :exc:`StopIteration` if this ChangeStream is closed.
+        Raises :exc:`StopIteration` if this AsyncChangeStream is closed.
         """
         while self.alive:
             doc = await self.try_next()
@@ -348,10 +348,10 @@ class ChangeStream(Generic[_DocumentType]):
         This method returns the next change document without waiting
         indefinitely for the next change. For example::
 
-            async with db.collection.watch() as stream:
+            async with await db.collection.watch() as stream:
                 while stream.alive:
                     change = await stream.try_next()
-                    # Note that the ChangeStream's resume token may be updated
+                    # Note that the AsyncChangeStream's resume token may be updated
                     # even when no changes are returned.
                     print("Current resume token: %r" % (stream.resume_token,))
                     if change is not None:
@@ -436,18 +436,18 @@ class ChangeStream(Generic[_DocumentType]):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    async def __aenter__(self) -> ChangeStream[_DocumentType]:
+    async def __aenter__(self) -> AsyncChangeStream[_DocumentType]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
 
-class CollectionChangeStream(ChangeStream[_DocumentType]):
+class AsyncCollectionChangeStream(AsyncChangeStream[_DocumentType]):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`pymongo.collection.AsyncCollection.watch` instead.
+    helper method :meth:`pymongo.asynchronous.collection.AsyncCollection.watch` instead.
 
     .. versionadded:: 3.7
     """
@@ -463,11 +463,11 @@ class CollectionChangeStream(ChangeStream[_DocumentType]):
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream[_DocumentType]):
+class AsyncDatabaseChangeStream(AsyncChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`pymongo.database.AsyncDatabase.watch` instead.
+    helper method :meth:`pymongo.asynchronous.database.AsyncDatabase.watch` instead.
 
     .. versionadded:: 3.7
     """
@@ -483,11 +483,11 @@ class DatabaseChangeStream(ChangeStream[_DocumentType]):
         return self._target.client
 
 
-class ClusterChangeStream(DatabaseChangeStream[_DocumentType]):
+class AsyncClusterChangeStream(AsyncDatabaseChangeStream[_DocumentType]):
     """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`pymongo.mongo_client.AsyncMongoClient.watch` instead.
+    helper method :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.watch` instead.
 
     .. versionadded:: 3.7
     """

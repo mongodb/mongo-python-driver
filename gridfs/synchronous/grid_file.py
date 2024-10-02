@@ -1166,22 +1166,6 @@ class GridIn:
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if _IS_SYNC:
-            # For properties of this instance like _buffer, or descriptors set on
-            # the class like filename, use regular __setattr__
-            if name in self.__dict__ or name in self.__class__.__dict__:
-                object.__setattr__(self, name, value)
-            else:
-                # All other attributes are part of the document in db.fs.files.
-                # Store them to be sent to server on close() or if closed, send
-                # them now.
-                self._file[name] = value
-                if self._closed:
-                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
-        else:
-            object.__setattr__(self, name, value)
-
-    def set(self, name: str, value: Any) -> None:
         # For properties of this instance like _buffer, or descriptors set on
         # the class like filename, use regular __setattr__
         if name in self.__dict__ or name in self.__class__.__dict__:
@@ -1192,7 +1176,17 @@ class GridIn:
             # them now.
             self._file[name] = value
             if self._closed:
-                self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+                if _IS_SYNC:
+                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+                else:
+                    raise AttributeError(
+                        "GridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use GridIn.set() instead"
+                    )
+
+    def set(self, name: str, value: Any) -> None:
+        self._file[name] = value
+        if self._closed:
+            self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
     def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
@@ -1386,7 +1380,11 @@ class GridIn:
         return False
 
 
-class GridOut(io.IOBase):
+GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object  # type: Any
+
+
+class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
+
     """Class to read data out of GridFS."""
 
     def __init__(
@@ -1446,6 +1444,8 @@ class GridOut(io.IOBase):
         self._position = 0
         self._file = file_document
         self._session = session
+        if not _IS_SYNC:
+            self.closed = False
 
     _id: Any = _grid_out_property("_id", "The ``'_id'`` value for this file.")
     filename: str = _grid_out_property("filename", "Name of this file.")
@@ -1471,6 +1471,44 @@ class GridOut(io.IOBase):
 
     _file: Any
     _chunk_iter: Any
+
+    if not _IS_SYNC:
+        closed: bool
+
+        def __next__(self) -> bytes:
+            line = self.readline()
+            if line:
+                return line
+            raise StopIteration()
+
+        def to_list(self) -> list[bytes]:
+            return [x for x in self]  # noqa: C416, RUF100
+
+        def readline(self, size: int = -1) -> bytes:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            return self._read_size_or_line(size=size, line=True)
+
+        def readlines(self, size: int = -1) -> list[bytes]:
+            """Read one line or up to `size` bytes from the file.
+
+            :param size: the maximum number of bytes to read
+            """
+            self.open()
+            lines = []
+            remainder = int(self.length) - self._position
+            bytes_read = 0
+            while remainder > 0:
+                line = self._read_size_or_line(line=True)
+                bytes_read += len(line)
+                lines.append(line)
+                remainder = int(self.length) - self._position
+                if 0 < size < bytes_read:
+                    break
+
+            return lines
 
     def open(self) -> None:
         if not self._file:
@@ -1499,6 +1537,7 @@ class GridOut(io.IOBase):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
+        self.open()
         received = len(self._buffer) - self._buffer_pos
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
@@ -1590,18 +1629,11 @@ class GridOut(io.IOBase):
         """
         return self._read_size_or_line(size=size)
 
-    def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
-        """Read one line or up to `size` bytes from the file.
-
-        :param size: the maximum number of bytes to read
-        """
-        return self._read_size_or_line(size=size, line=True)
-
     def tell(self) -> int:
         """Return the current position of this file."""
         return self._position
 
-    def seek(self, pos: int, whence: int = _SEEK_SET) -> int:  # type: ignore[override]
+    def seek(self, pos: int, whence: int = _SEEK_SET) -> int:
         """Set the current position of this file.
 
         :param pos: the position (or offset if using relative
@@ -1664,12 +1696,15 @@ class GridOut(io.IOBase):
         """
         return self
 
-    def close(self) -> None:  # type: ignore[override]
+    def close(self) -> None:
         """Make GridOut more generically file-like."""
         if self._chunk_iter:
             self._chunk_iter.close()
             self._chunk_iter = None
-        super().close()
+        if _IS_SYNC:
+            super().close()
+        else:
+            self.closed = True
 
     def write(self, value: Any) -> NoReturn:
         raise io.UnsupportedOperation("write")
@@ -1877,6 +1912,17 @@ class GridOutCursor(Cursor):
         _disallow_transactions(self.session)
         next_file = super().next()
         return GridOut(self._root_collection, file_document=next_file, session=self.session)
+
+    def to_list(self, length: Optional[int] = None) -> list[GridOut]:
+        """Convert the cursor to a list."""
+        if length is None:
+            return [x for x in self]  # noqa: C416,RUF100
+        if length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        ret = []
+        for _ in range(length):
+            ret.append(self.next())
+        return ret
 
     __next__ = next
 

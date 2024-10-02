@@ -29,6 +29,7 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
+from pymongo import _csot
 from pymongo.asynchronous.cursor import _ConnectionManager
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
@@ -77,6 +78,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._address = address
         self._batch_size = batch_size
         self._max_await_time_ms = max_await_time_ms
+        self._timeout = self._collection.database.client.options.timeout
         self._session = session
         self._explicit_session = explicit_session
         self._killed = self._id == 0
@@ -189,7 +191,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
     @property
     def session(self) -> Optional[AsyncClientSession]:
-        """The cursor's :class:`~pymongo.client_session.AsyncClientSession`, or None.
+        """The cursor's :class:`~pymongo.asynchronous.client_session.AsyncClientSession`, or None.
 
         .. versionadded:: 3.6
         """
@@ -346,6 +348,21 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         else:
             return None
 
+    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+        """Get all or some available documents from the cursor."""
+        if not len(self._data) and not self._killed:
+            await self._refresh()
+        if len(self._data):
+            if total is None:
+                result.extend(self._data)
+                self._data.clear()
+            else:
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())
+            return True
+        else:
+            return False
+
     async def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
@@ -370,8 +387,34 @@ class AsyncCommandCursor(Generic[_DocumentType]):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
-    async def to_list(self) -> list[_DocumentType]:
-        return [x async for x in self]  # noqa: C416,RUF100
+    @_csot.apply
+    async def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
+        """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
+
+        To use::
+
+          >>> await cursor.to_list()
+
+        Or, so read at most n items from the cursor::
+
+          >>> await cursor.to_list(n)
+
+        If the cursor is empty or has no more results, an empty list will be returned.
+
+        .. versionadded:: 4.9
+        """
+        res: list[_DocumentType] = []
+        remaining = length
+        if isinstance(length, int) and length < 1:
+            raise ValueError("to_list() length must be greater than 0")
+        while self.alive:
+            if not await self._next_batch(res, remaining):
+                break
+            if length is not None:
+                remaining = length - len(res)
+                if remaining == 0:
+                    break
+        return res
 
 
 class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
@@ -391,7 +434,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.AsyncCollection.aggregate_raw_batches`
+        see :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`
         instead.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.

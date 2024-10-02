@@ -46,7 +46,7 @@ import tempfile
 import threading
 import time
 import warnings
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 import pytest
 
@@ -61,7 +61,12 @@ from test import client_context, unittest
 
 from bson import decode, encode, json_util
 from gridfs import GridFSBucket
-from pymongo import MongoClient
+from pymongo import (
+    DeleteOne,
+    InsertOne,
+    MongoClient,
+    ReplaceOne,
+)
 
 pytestmark = pytest.mark.perf
 
@@ -390,6 +395,15 @@ class SmallDocInsertTest(TestDocument):
         self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
 
+class SmallDocMixedTest(TestDocument):
+    dataset = "small_doc.json"
+
+    def setUp(self):
+        super().setUp()
+        self.data_size = len(encode(self.document)) * NUM_DOCS * 2
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
+
+
 class TestSmallDocInsertOne(SmallDocInsertTest, unittest.TestCase):
     def do_task(self):
         insert_one = self.corpus.insert_one
@@ -429,9 +443,67 @@ class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
         self.corpus.insert_many(self.documents, ordered=True)
 
 
+class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
+class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        for doc in self.documents:
+            self.models.append(InsertOne(document=doc))
+            self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
+            self.models.append(DeleteOne(filter={}))
+
+    def do_task(self):
+        self.corpus.bulk_write(self.models, ordered=True)
+
+
+class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
+    def setUp(self):
+        super().setUp()
+        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+            self.models.append(
+                ReplaceOne(
+                    namespace="perftest.corpus", filter={}, replacement=doc.copy(), upsert=True
+                )
+            )
+            self.models.append(DeleteOne(namespace="perftest.corpus", filter={}))
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
+
+
 class TestLargeDocBulkInsert(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
+
+
+class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
+    @client_context.require_version_min(8, 0, 0, -24)
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    def do_task(self):
+        self.client.bulk_write(self.models, ordered=True)
 
 
 class GridFsTest(PerformanceTest):

@@ -12,7 +12,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""AsyncConnection pool options for AsyncMongoClient/MongoClient."""
+"""Pool options for AsyncMongoClient/MongoClient.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 import copy
@@ -30,6 +33,7 @@ from pymongo.common import (
     MAX_POOL_SIZE,
     MIN_POOL_SIZE,
     WAIT_QUEUE_TIMEOUT,
+    has_c,
 )
 
 if TYPE_CHECKING:
@@ -328,6 +332,7 @@ class PoolOptions:
         server_api: Optional[ServerApi] = None,
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
+        is_sync: Optional[bool] = True,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -347,6 +352,7 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
+
         if appname:
             self.__metadata["application"] = {"name": appname}
 
@@ -358,10 +364,20 @@ class PoolOptions:
         #    },
         #    'platform': 'CPython 3.8.0|MyPlatform'
         # }
+        if has_c():
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "c",
+            )
+        if not is_sync:
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "async",
+            )
         if driver:
             if driver.name:
                 self.__metadata["driver"]["name"] = "{}|{}".format(
-                    _METADATA["driver"]["name"],
+                    self.__metadata["driver"]["name"],
                     driver.name,
                 )
             if driver.version:

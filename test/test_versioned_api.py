@@ -20,7 +20,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import OvertCommandListener, rs_or_single_client
+from test.utils import OvertCommandListener
 
 from pymongo.server_api import ServerApi, ServerApiVersion
 from pymongo.synchronous.mongo_client import MongoClient
@@ -77,7 +77,7 @@ class TestServerApi(IntegrationTest):
     @client_context.require_version_min(4, 7)
     def test_command_options(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
+        client = self.rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.test.test
         coll.insert_many([{} for _ in range(100)])
@@ -90,7 +90,7 @@ class TestServerApi(IntegrationTest):
     @client_context.require_transactions
     def test_command_options_txn(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
+        client = self.rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.test.test
         coll.insert_many([{} for _ in range(100)])

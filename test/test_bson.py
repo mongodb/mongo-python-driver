@@ -41,6 +41,7 @@ from bson import (
     EPOCH_AWARE,
     DatetimeMS,
     Regex,
+    _array_of_documents_to_buffer,
     _datetime_to_millis,
     decode,
     decode_all,
@@ -48,8 +49,9 @@ from bson import (
     decode_iter,
     encode,
     is_valid,
+    json_util,
 )
-from bson.binary import USER_DEFINED_SUBTYPE, Binary, UuidRepresentation
+from bson.binary import USER_DEFINED_SUBTYPE, Binary, BinaryVectorDtype, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -147,6 +149,9 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
+        helper({"binary packed bit vector": Binary(b"\x10\x00\x7f\x07", 9)})
+        helper({"binary int8 vector": Binary(b"\x03\x00\x7f\x07", 9)})
+        helper({"binary float32 vector": Binary(b"'\x00\x00\x00\xfeB\x00\x00\xe0@", 9)})
         helper(SON([("test dst", datetime.datetime(1993, 4, 4, 2))]))
         helper(SON([("test negative dst", datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
@@ -446,6 +451,20 @@ class TestBSON(unittest.TestCase):
             encode({"test": Binary(b"test", 128)}),
             b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x80\x74\x65\x73\x74\x00",
         )
+        self.assertEqual(
+            encode({"vector_int8": Binary.from_vector([-128, -1, 127], BinaryVectorDtype.INT8)}),
+            b"\x1c\x00\x00\x00\x05vector_int8\x00\x05\x00\x00\x00\t\x03\x00\x80\xff\x7f\x00",
+        )
+        self.assertEqual(
+            encode({"vector_bool": Binary.from_vector([1, 127], BinaryVectorDtype.PACKED_BIT)}),
+            b"\x1b\x00\x00\x00\x05vector_bool\x00\x04\x00\x00\x00\t\x10\x00\x01\x7f\x00",
+        )
+        self.assertEqual(
+            encode(
+                {"vector_float32": Binary.from_vector([-1.1, 1.1e10], BinaryVectorDtype.FLOAT32)}
+            ),
+            b"$\x00\x00\x00\x05vector_float32\x00\n\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
+        )
         self.assertEqual(encode({"test": None}), b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(
             encode({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)}),
@@ -710,9 +729,66 @@ class TestBSON(unittest.TestCase):
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
 
-    # The C extension was segfaulting on unicode RegExs, so we have this test
-    # that doesn't really test anything but the lack of a segfault.
+    def test_vector(self):
+        """Tests of subtype 9"""
+        # We start with valid cases, across the 3 dtypes implemented.
+        # Work with a simple vector that can be interpreted as int8, float32, or ubyte
+        list_vector = [127, 7]
+        # As INT8, vector has length 2
+        binary_vector = Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
+        vector = binary_vector.as_vector()
+        assert vector.data == list_vector
+        # test encoding roundtrip
+        assert {"vector": binary_vector} == decode(encode({"vector": binary_vector}))
+        # test json roundtrip
+        assert binary_vector == json_util.loads(json_util.dumps(binary_vector))
+
+        # For vectors of bits, aka PACKED_BIT type, vector has length 8 * 2
+        packed_bit_binary = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT)
+        packed_bit_vec = packed_bit_binary.as_vector()
+        assert packed_bit_vec.data == list_vector
+
+        # A padding parameter permits vectors of length that aren't divisible by 8
+        # The following ignores the last 3 bits in list_vector,
+        # hence it's length is 8 * len(list_vector) - padding
+        padding = 3
+        padded_vec = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT, padding=padding)
+        assert padded_vec.as_vector().data == list_vector
+        # To visualize how this looks as a binary vector..
+        uncompressed = ""
+        for val in list_vector:
+            uncompressed += format(val, "08b")
+        assert uncompressed[:-padding] == "0111111100000"
+
+        # It is worthwhile explicitly showing the values encoded to BSON
+        padded_doc = {"padded_vec": padded_vec}
+        assert (
+            encode(padded_doc)
+            == b"\x1a\x00\x00\x00\x05padded_vec\x00\x04\x00\x00\x00\t\x10\x03\x7f\x07\x00"
+        )
+        # and dumped to json
+        assert (
+            json_util.dumps(padded_doc)
+            == '{"padded_vec": {"$binary": {"base64": "EAN/Bw==", "subType": "09"}}}'
+        )
+
+        # FLOAT32 is also implemented
+        float_binary = Binary.from_vector(list_vector, BinaryVectorDtype.FLOAT32)
+        assert all(isinstance(d, float) for d in float_binary.as_vector().data)
+
+        # Now some invalid cases
+        for x in [-1, 257]:
+            try:
+                Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
+            except Exception as exc:
+                self.assertTrue(isinstance(exc, struct.error))
+            else:
+                self.fail("Failed to raise an exception.")
+
     def test_unicode_regex(self):
+        """Tests we do not get a segfault for C extension on unicode RegExs.
+        This had been happening.
+        """
         regex = re.compile("revisi\xf3n")
         decode(encode({"regex": regex}))
 
@@ -1019,6 +1095,10 @@ class TestCodecOptions(unittest.TestCase):
         tz = FixedOffset(42, "forty-two")
         self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
         self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
+        self.assertEqual(repr(tz), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')")
+        self.assertEqual(
+            repr(eval(repr(tz))), "FixedOffset(datetime.timedelta(seconds=2520), 'forty-two')"
+        )
 
     def test_codec_options_repr(self):
         r = (
@@ -1247,52 +1327,139 @@ class TestDatetimeConversion(unittest.TestCase):
 
     def test_clamping(self):
         # Test clamping from below and above.
-        opts1 = CodecOptions(
+        opts = CodecOptions(
             datetime_conversion=DatetimeConversion.DATETIME_CLAMP,
             tz_aware=True,
             tzinfo=datetime.timezone.utc,
         )
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1)})
-        dec_below = decode(below, opts1)
+        dec_below = decode(below, opts)
         self.assertEqual(
             dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
         )
 
         above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1)})
-        dec_above = decode(above, opts1)
+        dec_above = decode(above, opts)
         self.assertEqual(
             dec_above["x"],
             datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
         )
 
-    def test_tz_clamping(self):
+    def test_tz_clamping_local(self):
         # Naive clamping to local tz.
-        opts1 = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=False)
+        opts = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=False)
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
 
-        dec_below = decode(below, opts1)
+        dec_below = decode(below, opts)
         self.assertEqual(dec_below["x"], datetime.datetime.min)
 
         above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
-        dec_above = decode(above, opts1)
+        dec_above = decode(above, opts)
         self.assertEqual(
             dec_above["x"],
             datetime.datetime.max.replace(microsecond=999000),
         )
 
-        # Aware clamping.
-        opts2 = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True)
+    def test_tz_clamping_utc(self):
+        # Aware clamping default utc.
+        opts = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True)
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
-        dec_below = decode(below, opts2)
+        dec_below = decode(below, opts)
         self.assertEqual(
             dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
         )
 
         above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
-        dec_above = decode(above, opts2)
+        dec_above = decode(above, opts)
         self.assertEqual(
             dec_above["x"],
             datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
+        )
+
+    def test_tz_clamping_non_utc(self):
+        for tz in [FixedOffset(60, "+1H"), FixedOffset(-60, "-1H")]:
+            opts = CodecOptions(
+                datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
+            )
+            # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
+            try:
+                min_tz = datetime.datetime.min.replace(tzinfo=utc).astimezone(tz)
+            except OverflowError:
+                min_tz = datetime.datetime.min.replace(tzinfo=tz)
+            try:
+                max_tz = datetime.datetime.max.replace(tzinfo=utc, microsecond=999000).astimezone(
+                    tz
+                )
+            except OverflowError:
+                max_tz = datetime.datetime.max.replace(tzinfo=tz, microsecond=999000)
+
+            for in_range in [
+                min_tz,
+                min_tz + datetime.timedelta(milliseconds=1),
+                max_tz - datetime.timedelta(milliseconds=1),
+                max_tz,
+            ]:
+                doc = decode(encode({"x": in_range}), opts)
+                self.assertEqual(doc["x"], in_range)
+
+            for too_low in [
+                DatetimeMS(_datetime_to_millis(min_tz) - 1),
+                DatetimeMS(_datetime_to_millis(min_tz) - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(min_tz) - 1 - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1 - 60 * 60 * 1000),
+            ]:
+                doc = decode(encode({"x": too_low}), opts)
+                self.assertEqual(doc["x"], min_tz)
+
+            for too_high in [
+                DatetimeMS(_datetime_to_millis(max_tz) + 1),
+                DatetimeMS(_datetime_to_millis(max_tz) + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(max_tz) + 1 + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 60 * 60 * 1000),
+                DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1 + 60 * 60 * 1000),
+            ]:
+                doc = decode(encode({"x": too_high}), opts)
+                self.assertEqual(doc["x"], max_tz)
+
+    def test_tz_clamping_non_utc_simple(self):
+        dtm = datetime.datetime(2024, 8, 23)
+        encoded = encode({"d": dtm})
+        self.assertEqual(decode(encoded)["d"], dtm)
+        for conversion in [
+            DatetimeConversion.DATETIME,
+            DatetimeConversion.DATETIME_CLAMP,
+            DatetimeConversion.DATETIME_AUTO,
+        ]:
+            for tz in [FixedOffset(60, "+1H"), FixedOffset(-60, "-1H")]:
+                opts = CodecOptions(datetime_conversion=conversion, tz_aware=True, tzinfo=tz)
+                self.assertEqual(decode(encoded, opts)["d"], dtm.replace(tzinfo=utc).astimezone(tz))
+
+    def test_tz_clamping_non_hashable(self):
+        class NonHashableTZ(FixedOffset):
+            __hash__ = None
+
+        tz = NonHashableTZ(0, "UTC-non-hashable")
+        self.assertRaises(TypeError, hash, tz)
+        # Aware clamping.
+        opts = CodecOptions(
+            datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
+        )
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts)
+        self.assertEqual(dec_below["x"], datetime.datetime.min.replace(tzinfo=tz))
+
+        within = encode({"x": EPOCH_AWARE.astimezone(tz)})
+        dec_within = decode(within, opts)
+        self.assertEqual(dec_within["x"], EPOCH_AWARE.astimezone(tz))
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=tz, microsecond=999000),
         )
 
     def test_datetime_auto(self):
@@ -1361,6 +1528,23 @@ class TestDatetimeConversion(unittest.TestCase):
         small_ms = -2 << 51
         with self.assertRaisesRegex(InvalidBSON, re.compile(re.escape(_DATETIME_ERROR_SUGGESTION))):
             decode(encode({"a": DatetimeMS(small_ms)}))
+
+    def test_array_of_documents_to_buffer(self):
+        doc = dict(a=1)
+        buf = _array_of_documents_to_buffer(encode({"0": doc}))
+        self.assertEqual(buf, encode(doc))
+        buf = _array_of_documents_to_buffer(encode({"0": doc, "1": doc}))
+        self.assertEqual(buf, encode(doc) + encode(doc))
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(encode({"0": doc, "1": doc}) + b"1")
+        buf = encode({"0": doc, "1": doc})
+        buf = buf[:-1] + b"1"
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(buf)
+        # We replace the size of the array with \xff\xff\xff\x00 which is -221 as an int32.
+        buf = b"\x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00"
+        with self.assertRaises(InvalidBSON):
+            _array_of_documents_to_buffer(buf)
 
 
 class TestLongLongToString(unittest.TestCase):

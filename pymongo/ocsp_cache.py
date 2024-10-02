@@ -19,12 +19,28 @@ from __future__ import annotations
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo.lock import _create_lock
 
 if TYPE_CHECKING:
     from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
+
+
+def _next_update(value: OCSPResponse) -> Optional[_datetime]:
+    """Compat helper to return the response's next_update_utc."""
+    # Added in cryptography 43.0.0.
+    if hasattr(value, "next_update_utc"):
+        return value.next_update_utc
+    return value.next_update
+
+
+def _this_update(value: OCSPResponse) -> Optional[_datetime]:
+    """Compat helper to return the response's this_update_utc."""
+    # Added in cryptography 43.0.0.
+    if hasattr(value, "this_update_utc"):
+        return value.this_update_utc
+    return value.this_update
 
 
 class _OCSPCache:
@@ -62,25 +78,30 @@ class _OCSPCache:
             # As per the OCSP protocol, if the response's nextUpdate field is
             # not set, the responder is indicating that newer revocation
             # information is available all the time.
-            if value.next_update is None:
+            next_update = _next_update(value)
+            if next_update is None:
                 self._data.pop(cache_key, None)
                 return
 
+            this_update = _this_update(value)
+            if this_update is None:
+                return
+            now = _datetime.now(tz=timezone.utc)
+            if this_update.tzinfo is None:
+                # Make naive to match cryptography.
+                now = now.replace(tzinfo=None)
             # Do nothing if the response is invalid.
-            if not (
-                value.this_update
-                <= _datetime.now(tz=timezone.utc).replace(tzinfo=None)
-                < value.next_update
-            ):
+            if not (this_update <= now < next_update):
                 return
 
             # Cache new response OR update cached response if new response
             # has longer validity.
             cached_value = self._data.get(cache_key, None)
-            if cached_value is None or (
-                cached_value.next_update is not None
-                and cached_value.next_update < value.next_update
-            ):
+            if cached_value is None:
+                self._data[cache_key] = value
+                return
+            cached_next_update = _next_update(cached_value)
+            if cached_next_update is not None and cached_next_update < next_update:
                 self._data[cache_key] = value
 
     def __getitem__(self, item: OCSPRequest) -> OCSPResponse:
@@ -95,13 +116,15 @@ class _OCSPCache:
             value = self._data[cache_key]
 
             # Return cached response if it is still valid.
-            assert value.this_update is not None
-            assert value.next_update is not None
-            if (
-                value.this_update
-                <= _datetime.now(tz=timezone.utc).replace(tzinfo=None)
-                < value.next_update
-            ):
+            this_update = _this_update(value)
+            next_update = _next_update(value)
+            assert this_update is not None
+            assert next_update is not None
+            now = _datetime.now(tz=timezone.utc)
+            if this_update.tzinfo is None:
+                # Make naive to match cryptography.
+                now = now.replace(tzinfo=None)
+            if this_update <= now < next_update:
                 return value
 
             self._data.pop(cache_key, None)

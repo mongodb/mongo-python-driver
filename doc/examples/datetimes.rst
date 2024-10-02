@@ -98,7 +98,7 @@ out of MongoDB in US/Pacific time:
    >>> aware_times = db.times.with_options(codec_options=CodecOptions(
    ...     tz_aware=True,
    ...     tzinfo=pytz.timezone('US/Pacific')))
-   >>> result = aware_times.find_one()
+   >>> result = aware_times.find_one()['date']
    datetime.datetime(2002, 10, 27, 6, 0,  # doctest: +NORMALIZE_WHITESPACE
                      tzinfo=<DstTzInfo 'US/Pacific' PST-1 day, 16:00:00 STD>)
 

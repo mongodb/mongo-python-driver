@@ -35,7 +35,7 @@ from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
-from pymongo.asynchronous.change_stream import DatabaseChangeStream
+from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
@@ -74,7 +74,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
         `name` is not a valid database name.
 
-        :param client: A :class:`~pymongo.mongo_client.AsyncMongoClient` instance.
+        :param client: A :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` instance.
         :param name: The database name.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
@@ -102,8 +102,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
-           :class:`~pymongo.database.AsyncDatabase` no longer returns an instance
-           of :class:`~pymongo.collection.AsyncCollection` for attribute names
+           :class:`~pymongo.asynchronous.database.AsyncDatabase` no longer returns an instance
+           of :class:`~pymongo.asynchronous.collection.AsyncCollection` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
                db['__my_collection__']
@@ -119,8 +119,15 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             read_concern or client.read_concern,
         )
 
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+
+        if not isinstance(client, AsyncMongoClient):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncMongoClient" for cls in type(client).__mro__):
+                raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         if name != "$external":
             _check_name(name)
@@ -139,13 +146,33 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """The name of this :class:`AsyncDatabase`."""
         return self._name
 
+    @overload
+    def with_options(
+        self,
+        codec_options: None = None,
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncDatabase[_DocumentType]:
+        ...
+
+    @overload
+    def with_options(
+        self,
+        codec_options: bson.CodecOptions[_DocumentTypeArg],
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncDatabase[_DocumentTypeArg]:
+        ...
+
     def with_options(
         self,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> AsyncDatabase[_DocumentType]:
+    ) -> AsyncDatabase[_DocumentType] | AsyncDatabase[_DocumentTypeArg]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -230,10 +257,10 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
     ) -> AsyncCollection[_DocumentType]:
-        """Get a :class:`~pymongo.collection.AsyncCollection` with the given name
+        """Get a :class:`~pymongo.asynchronous.collection.AsyncCollection` with the given name
         and options.
 
-        Useful for creating a :class:`~pymongo.collection.AsyncCollection` with
+        Useful for creating a :class:`~pymongo.asynchronous.collection.AsyncCollection` with
         different codec options, read preference, and/or write concern from
         this :class:`AsyncDatabase`.
 
@@ -307,7 +334,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
     __iter__ = None
 
     def __next__(self) -> NoReturn:
-        raise TypeError("'Database' object is not iterable")
+        raise TypeError("'AsyncDatabase' object is not iterable")
 
     next = __next__
 
@@ -332,12 +359,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
         show_expanded_events: Optional[bool] = None,
-    ) -> DatabaseChangeStream[_DocumentType]:
+    ) -> AsyncDatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
         stage and returns a
-        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
+        :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` cursor which
         iterates over changes on all collections in this database.
 
         Introduced in MongoDB 4.0.
@@ -348,10 +375,10 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                async for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
+        The :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` iterable
         blocks until the next change document is returned or an error is
         raised. If the
-        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
+        :meth:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
         change events are missed. Any error encountered during the resume
@@ -364,7 +391,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     async for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
-                # The ChangeStream encountered an unrecoverable error or the
+                # The AsyncChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
                 logging.error("...")
 
@@ -401,7 +428,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             the specified :class:`~bson.timestamp.Timestamp`. Requires
             MongoDB >= 4.0.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param start_after: The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
@@ -409,7 +436,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             command.
         :param show_expanded_events: Include expanded events such as DDL events like `dropIndexes`.
 
-        :return: A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+        :return: A :class:`~pymongo.asynchronous.change_stream.AsyncDatabaseChangeStream` cursor.
 
         .. versionchanged:: 4.3
            Added `show_expanded_events` parameter.
@@ -430,7 +457,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.md
         """
-        change_stream = DatabaseChangeStream(
+        change_stream = AsyncDatabaseChangeStream(
             self,
             pipeline,
             full_document,
@@ -461,7 +488,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> AsyncCollection[_DocumentType]:
-        """Create a new :class:`~pymongo.collection.AsyncCollection` in this
+        """Create a new :class:`~pymongo.asynchronous.collection.AsyncCollection` in this
         database.
 
         Normally collection creation is automatic. This method should
@@ -488,7 +515,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param collation: An instance of
             :class:`~pymongo.collation.Collation`.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param check_exists: if True (the default), send a listCollections command to
             check if the collection already exists before creation.
         :param kwargs: additional keyword arguments will
@@ -621,19 +648,19 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                    print(operation)
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Database`, except when ``$out`` or ``$merge`` are used, in
+        :class:`AsyncDatabase`, except when ``$out`` or ``$merge`` are used, in
         which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
         is used.
 
         .. note:: This method does not support the 'explain' option. Please
-           use :meth:`~pymongo.database.Database.command` instead.
+           use :meth:`~pymongo.asynchronous.database.AsyncDatabase.command` instead.
 
-        .. note:: The :attr:`~pymongo.database.AsyncDatabase.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.database.AsyncDatabase.write_concern` of
            this collection is automatically applied to this operation.
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param kwargs: extra `aggregate command`_ parameters.
 
         All optional `aggregate command`_ parameters should be passed as
@@ -656,7 +683,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. ``"$$var"``). This option is
             only supported on MongoDB >= 5.0.
 
-        :return: A :class:`~pymongo.command_cursor.AsyncCommandCursor` over the result
+        :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
           set.
 
         .. versionadded:: 3.9
@@ -851,7 +878,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param codec_options: A :class:`~bson.codec_options.CodecOptions`
             instance.
         :param session: A
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: additional keyword arguments will
@@ -952,7 +979,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param codec_options: A :class:`~bson.codec_options.CodecOptions`
           instance.
         :param session: A
-          :class:`~pymongo.client_session.AsyncClientSession`.
+          :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to future getMores for this
           command.
         :param max_await_time_ms: The number of ms to wait for more data on future getMores for this command.
@@ -1082,7 +1109,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """Get a cursor over the collections of this database.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1094,7 +1121,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             options differ by server version.
 
 
-        :return: An instance of :class:`~pymongo.command_cursor.AsyncCommandCursor`.
+        :return: An instance of :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`.
 
         .. versionadded:: 3.6
         """
@@ -1128,7 +1155,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """Get a cursor over the collections of this database.
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1140,7 +1167,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             options differ by server version.
 
 
-        :return: An instance of :class:`~pymongo.command_cursor.AsyncCommandCursor`.
+        :return: An instance of :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor`.
 
         .. versionadded:: 3.6
         """
@@ -1186,7 +1213,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             db.list_collection_names(filter=filter)
 
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param filter:  A query document to filter the list of
             collections returned from the listCollections command.
         :param comment: A user-provided comment to attach to this
@@ -1235,7 +1262,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         :param name_or_collection: the name of a collection to drop or the
             collection object itself
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param encrypted_fields: **(BETA)** Document that describes the encrypted fields for
@@ -1261,7 +1288,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 }
 
 
-        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
+        .. note:: The :attr:`~pymongo.asynchronous.database.AsyncDatabase.write_concern` of
            this database is automatically applied to this operation.
 
         .. versionchanged:: 4.2
@@ -1325,7 +1352,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             of the structure of the collection and the individual
             documents.
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param background: A boolean flag that determines whether
             the command runs in the background. Requires MongoDB 4.4+.
         :param comment: A user-provided comment to attach to this
@@ -1347,7 +1374,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_collection must be an instance of str or Collection")
+            raise TypeError("name_or_collection must be an instance of str or AsyncCollection")
         cmd = {"validate": name, "scandata": scandata, "full": full}
         if comment is not None:
             cmd["comment"] = comment
@@ -1400,12 +1427,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         :param dbref: the reference
         :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`.
+            :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
         :param kwargs: any additional keyword arguments
             are the same as the arguments to
-            :meth:`~pymongo.collection.AsyncCollection.find`.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.find`.
 
 
         .. versionchanged:: 4.1

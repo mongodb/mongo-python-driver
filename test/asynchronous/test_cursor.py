@@ -34,7 +34,7 @@ from test.utils import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,
-    async_rs_or_single_client,
+    delay,
     ignore_deprecations,
     wait_until,
 )
@@ -45,7 +45,7 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import Collation
-from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
+from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
 from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -232,7 +232,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (await async_rs_or_single_client(event_listeners=[listener]))[
+        coll = (await self.async_rs_or_single_client(event_listeners=[listener]))[
             self.db.name
         ].pymongo_test
 
@@ -353,8 +353,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_explain_with_read_concern(self):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
@@ -1261,8 +1260,7 @@ class TestCursor(AsyncIntegrationTest):
         await self.client._process_periodic_tasks()
 
         listener = AllowListEventListener("killCursors")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_close_kills_cursors
 
         # Add some test data.
@@ -1300,8 +1298,7 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_failCommand_appName
     async def test_timeout_kills_cursor_asynchronously(self):
         listener = AllowListEventListener("killCursors")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
@@ -1358,8 +1355,7 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener("find", "getMore")
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
             "test", read_preference=ReadPreference.PRIMARY_PREFERRED
@@ -1380,6 +1376,101 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual("getMore", started[1].command_name)
         self.assertNotIn("$readPreference", started[1].command)
 
+    @async_client_context.require_replica_set
+    async def test_to_list_tailable(self):
+        oplog = self.client.local.oplog.rs
+        last = await oplog.find().sort("$natural", pymongo.DESCENDING).limit(-1).next()
+        ts = last["ts"]
+        # Set maxAwaitTimeMS=1 to speed up the test and avoid blocking on the noop writer.
+        c = oplog.find(
+            {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
+        ).max_await_time_ms(1)
+        self.addAsyncCleanup(c.close)
+        # Wait for the change to be read.
+        docs = []
+        while not docs:
+            docs = await c.to_list()
+        self.assertGreaterEqual(len(docs), 1)
+
+    async def test_to_list_empty(self):
+        c = self.db.does_not_exist.find()
+        docs = await c.to_list()
+        self.assertEqual([], docs)
+
+    async def test_to_list_length(self):
+        coll = self.db.test
+        await coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+        c = coll.find()
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 3)
+
+        c = coll.find(batch_size=2)
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 3)
+        docs = await c.to_list(3)
+        self.assertEqual(len(docs), 2)
+
+    async def test_to_list_csot_applied(self):
+        client = await self.async_single_client(timeoutMS=500)
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(10):
+            await client.admin.command("ping")
+        coll = client.pymongo.test
+        await coll.insert_many([{} for _ in range(5)])
+        cursor = coll.find({"$where": delay(1)})
+        with self.assertRaises(PyMongoError) as ctx:
+            await cursor.to_list()
+        self.assertTrue(ctx.exception.timeout)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addAsyncCleanup(c.close)
+        docs = await c.to_list()
+        self.assertGreaterEqual(len(docs), 0)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list_empty(self):
+        # Set maxAwaitTimeMS=1 to speed up the test.
+        c = await self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        self.addAsyncCleanup(c.close)
+        docs = await c.to_list()
+        self.assertEqual([], docs)
+
+    @async_client_context.require_change_streams
+    async def test_command_cursor_to_list_length(self):
+        db = self.db
+        await db.drop_collection("test")
+        await db.test.insert_many([{"foo": 1}, {"foo": 2}])
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = await db.test.aggregate([pipeline])
+        self.assertEqual(len(await result.to_list()), 2)
+
+        result = await db.test.aggregate([pipeline])
+        self.assertEqual(len(await result.to_list(1)), 1)
+
+    @async_client_context.require_failCommand_blockConnection
+    async def test_command_cursor_to_list_csot_applied(self):
+        client = await self.async_single_client(timeoutMS=500)
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(10):
+            await client.admin.command("ping")
+        coll = client.pymongo.test
+        await coll.insert_many([{} for _ in range(5)])
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 5},
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 1000},
+        }
+        cursor = await coll.aggregate([], batchSize=1)
+        async with self.fail_point(fail_command):
+            with self.assertRaises(PyMongoError) as ctx:
+                await cursor.to_list()
+            self.assertTrue(ctx.exception.timeout)
+
 
 class TestRawBatchCursor(AsyncIntegrationTest):
     async def test_find_raw(self):
@@ -1387,7 +1478,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
-        batches = await (await c.find_raw_batches()).sort("_id").to_list()
+        batches = await c.find_raw_batches().sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1399,11 +1490,11 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
-                    (await client[self.db.name].test.find_raw_batches(session=session)).sort("_id")
+                    client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
@@ -1429,13 +1520,11 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
-            batches = (
-                await (await client[self.db.name].test.find_raw_batches()).sort("_id").to_list()
-            )
+            batches = await client[self.db.name].test.find_raw_batches().sort("_id").to_list()
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1452,11 +1541,11 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
-            batches = await (await db.test.find_raw_batches(session=session)).sort("_id").to_list()
+            batches = await db.test.find_raw_batches(session=session).sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1467,18 +1556,18 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     async def test_explain(self):
         c = self.db.test
         await c.insert_one({})
-        explanation = await (await c.find_raw_batches()).explain()
+        explanation = await c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     async def test_empty(self):
         await self.db.test.drop()
-        cursor = await self.db.test.find_raw_batches()
+        cursor = self.db.test.find_raw_batches()
         with self.assertRaises(StopAsyncIteration):
             await anext(cursor)
 
     async def test_clone(self):
         await self.db.test.insert_one({})
-        cursor = await self.db.test.find_raw_batches()
+        cursor = self.db.test.find_raw_batches()
         # Copy of a RawBatchCursor is also a RawBatchCursor, not a Cursor.
         self.assertIsInstance(await anext(cursor.clone()), bytes)
         self.assertIsInstance(await anext(copy.copy(cursor)), bytes)
@@ -1488,24 +1577,22 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         c = self.db.test
         await c.drop()
         await c.insert_many({"_id": i} for i in range(200))
-        result = b"".join(
-            await (await c.find_raw_batches(cursor_type=CursorType.EXHAUST)).to_list()
-        )
+        result = b"".join(await c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
 
     async def test_server_error(self):
         with self.assertRaises(OperationFailure) as exc:
-            await anext(await self.db.test.find_raw_batches({"x": {"$bad": 1}}))
+            await anext(self.db.test.find_raw_batches({"x": {"$bad": 1}}))
 
         # The server response was decoded, not left raw.
         self.assertIsInstance(exc.exception.details, dict)
 
     async def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            (await self.db.test.find_raw_batches())[0]
+            self.db.test.find_raw_batches()[0]
 
     async def test_collation(self):
-        await anext(await self.db.test.find_raw_batches(collation=Collation("en_US")))
+        await anext(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
     @async_client_context.require_no_mmap  # MMAPv1 does not support read concern
     async def test_read_concern(self):
@@ -1513,17 +1600,17 @@ class TestRawBatchCursor(AsyncIntegrationTest):
             {}
         )
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
-        await anext(await c.find_raw_batches())
+        await anext(c.find_raw_batches())
 
     async def test_monitoring(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
 
         listener.reset()
-        cursor = await c.find_raw_batches(batch_size=4)
+        cursor = c.find_raw_batches(batch_size=4)
 
         # First raw batch of 4 documents.
         await anext(cursor)
@@ -1583,7 +1670,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
@@ -1614,7 +1701,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["aggregate"], "closeConnection": True}}
         ):
@@ -1638,7 +1725,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
             await db.test.distinct("x", {}, session=session)
@@ -1684,7 +1771,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
     async def test_monitoring(self):
         listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
@@ -1728,8 +1815,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     @async_client_context.require_no_mongos
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.aclose)
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.delete_many({})
         await c.insert_many([{"_id": i} for i in range(3)])

@@ -36,6 +36,7 @@ TEST_ARGS="${*:1}"
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
+set +x
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
 
 # Try to source local Drivers Secrets
@@ -47,7 +48,6 @@ else
 fi
 
 if [ "$AUTH" != "noauth" ]; then
-    set +x
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
@@ -68,10 +68,10 @@ if [ "$AUTH" != "noauth" ]; then
         export DB_PASSWORD="pwd123"
     fi
     echo "Added auth, DB_USER: $DB_USER"
-    set -x
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
+    python -m pip install '.[gssapi]'
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
@@ -121,13 +121,13 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+    # Check for libmongocrypt checkout.
+    if [ ! -d "libmongocrypt" ]; then
+        echo "Run encryption setup first!"
+        exit 1
+    fi
 
     python -m pip install '.[encryption]'
-
-    # Setup encryption if necessary.
-    if [ ! -d "libmongocrypt" ]; then
-        bash ./.evergreen/setup-encryption.sh
-    fi
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
@@ -224,6 +224,9 @@ if [ -n "$PERF_TEST" ]; then
     python -m pip install simplejson
     start_time=$(date +%s)
     TEST_SUITES="perf"
+    # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
+    # affects the benchmark results.
+    TEST_ARGS="test/performance/perf_test.py $TEST_ARGS"
 fi
 
 echo "Running $AUTH tests over $SSL with python $(which python)"

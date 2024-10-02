@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import asyncio
 import copy
 import datetime
 import sys
@@ -21,8 +22,17 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, client_knobs, sanitize_cmd, unittest
-from test.utils import EventListener, rs_or_single_client, single_client, wait_until
+from test import (
+    IntegrationTest,
+    client_context,
+    client_knobs,
+    sanitize_cmd,
+    unittest,
+)
+from test.utils import (
+    EventListener,
+    wait_until,
+)
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -31,7 +41,10 @@ from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
+
+_IS_SYNC = True
 
 
 class TestCommandMonitoring(IntegrationTest):
@@ -39,15 +52,17 @@ class TestCommandMonitoring(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.listener = EventListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener], retryWrites=False)
+        cls.client = cls.unmanaged_rs_or_single_client(
+            event_listeners=[cls.listener], retryWrites=False
+        )
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def tearDown(self):
         self.listener.reset()
@@ -171,7 +186,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(cursor.to_list())
 
     def test_find_with_explain(self):
         cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
@@ -230,7 +245,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(self.client.address, succeeded.connection_id)
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(cursor.to_list())
 
     def test_find_options(self):
         query = {
@@ -356,7 +371,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqualReply(expected_result, succeeded.reply)
         finally:
             # Exhaust the cursor to avoid kill cursors.
-            tuple(cursor)
+            tuple(cursor.to_list())
 
     def test_get_more_failure(self):
         address = self.client.address
@@ -390,7 +405,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_secondaries_count(1)
     def test_not_primary_error(self):
         address = next(iter(client_context.client.secondaries))
-        client = single_client(*address, event_listeners=[self.listener])
+        client = self.single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         client.admin.command("ping")
         self.listener.reset()
@@ -451,7 +466,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqualReply(expected_result, succeeded.reply)
 
         self.listener.reset()
-        tuple(cursor)
+        tuple(cursor.to_list())
         self.assertEqual(0, len(self.listener.failed_events))
         for event in self.listener.started_events:
             self.assertTrue(isinstance(event, monitoring.CommandStartedEvent))
@@ -898,7 +913,11 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(succeed.operation_id, operation_id)
             self.assertEqual(1, succeed.reply.get("ok"))
         self.assertEqual(documents, docs)
-        wait_until(lambda: coll.count_documents({}) == 6, "insert documents with w=0")
+
+        def check():
+            return coll.count_documents({}) == 6
+
+        wait_until(check, "insert documents with w=0")
 
     def test_bulk_write(self):
         coll = self.client.pymongo_test.test
@@ -1058,7 +1077,7 @@ class TestCommandMonitoring(IntegrationTest):
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
         self.listener.reset()
-        tuple(self.client.pymongo_test.test.list_indexes())
+        tuple((self.client.pymongo_test.test.list_indexes()).to_list())
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
@@ -1119,21 +1138,21 @@ class TestGlobalListener(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.listener = EventListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
-        cls.client = single_client()
+        cls.client = cls.unmanaged_single_client()
         # Get one (authenticated) socket in the pool.
         cls.client.pymongo_test.command("ping")
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         monitoring._LISTENERS = cls.saved_listeners
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def setUp(self):
         super().setUp()

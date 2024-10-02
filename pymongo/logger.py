@@ -53,6 +53,17 @@ class _ConnectionStatusMessage(str, enum.Enum):
     CHECKEDIN = "Connection checked in"
 
 
+class _SDAMStatusMessage(str, enum.Enum):
+    START_TOPOLOGY = "Starting topology monitoring"
+    STOP_TOPOLOGY = "Stopped topology monitoring"
+    START_SERVER = "Starting server monitoring"
+    STOP_SERVER = "Stopped server monitoring"
+    TOPOLOGY_CHANGE = "Topology description changed"
+    HEARTBEAT_START = "Server heartbeat started"
+    HEARTBEAT_SUCCESS = "Server heartbeat succeeded"
+    HEARTBEAT_FAIL = "Server heartbeat failed"
+
+
 _DEFAULT_DOCUMENT_LENGTH = 1000
 _SENSITIVE_COMMANDS = [
     "authenticate",
@@ -73,6 +84,7 @@ _COMMAND_LOGGER = logging.getLogger("pymongo.command")
 _CONNECTION_LOGGER = logging.getLogger("pymongo.connection")
 _SERVER_SELECTION_LOGGER = logging.getLogger("pymongo.serverSelection")
 _CLIENT_LOGGER = logging.getLogger("pymongo.client")
+_SDAM_LOGGER = logging.getLogger("pymongo.topology")
 _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
@@ -129,7 +141,7 @@ class LogMessage:
         )
 
         is_sensitive_hello = (
-            self._kwargs["commandName"] in _HELLO_COMMANDS and is_speculative_authenticate
+            self._kwargs.get("commandName", None) in _HELLO_COMMANDS and is_speculative_authenticate
         )
 
         return is_sensitive_command or is_sensitive_hello

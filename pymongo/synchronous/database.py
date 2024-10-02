@@ -119,8 +119,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern or client.read_concern,
         )
 
+        from pymongo.synchronous.mongo_client import MongoClient
+
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
+
+        if not isinstance(client, MongoClient):
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "MongoClient" for cls in type(client).__mro__):
+                raise TypeError(f"MongoClient required but given {type(client).__name__}")
 
         if name != "$external":
             _check_name(name)
@@ -139,13 +146,33 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """The name of this :class:`Database`."""
         return self._name
 
+    @overload
+    def with_options(
+        self,
+        codec_options: None = None,
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> Database[_DocumentType]:
+        ...
+
+    @overload
+    def with_options(
+        self,
+        codec_options: bson.CodecOptions[_DocumentTypeArg],
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> Database[_DocumentTypeArg]:
+        ...
+
     def with_options(
         self,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Database[_DocumentType]:
+    ) -> Database[_DocumentType] | Database[_DocumentTypeArg]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -344,8 +371,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. code-block:: python
 
-           async with db.watch() as stream:
-               async for change in stream:
+           with db.watch() as stream:
+               for change in stream:
                    print(change)
 
         The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
@@ -360,8 +387,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-                    async for insert_change in stream:
+                with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
+                    for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
@@ -810,23 +837,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         For example, a command like ``{buildinfo: 1}`` can be sent
         using:
 
-        >>> await db.command("buildinfo")
+        >>> db.command("buildinfo")
         OR
-        >>> await db.command({"buildinfo": 1})
+        >>> db.command({"buildinfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> await db.command("count", collection_name)
+        >>> db.command("count", collection_name)
         OR
-        >>> await db.command({"count": collection_name})
+        >>> db.command({"count": collection_name})
 
         For commands that take additional arguments we can use
         kwargs. So ``{count: collection_name, query: query}`` becomes:
 
-        >>> await db.command("count", collection_name, query=query)
+        >>> db.command("count", collection_name, query=query)
         OR
-        >>> await db.command({"count": collection_name, "query": query})
+        >>> db.command({"count": collection_name, "query": query})
 
         :param command: document representing the command to be issued,
             or the name of the command (for simple commands only).

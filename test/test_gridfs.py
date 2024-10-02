@@ -26,7 +26,7 @@ from unittest.mock import patch
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
+from test.utils import joinall, one
 
 import gridfs
 from bson.binary import Binary
@@ -411,7 +411,7 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(iterate_file(f))
 
     def test_gridfs_lazy_connect(self):
-        client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
+        client = self.single_client("badhost", connect=False, serverSelectionTimeoutMS=10)
         db = client.db
         gfs = gridfs.GridFS(db)
         self.assertRaises(ServerSelectionTimeoutError, gfs.list)
@@ -440,6 +440,12 @@ class TestGridfs(IntegrationTest):
         gout = next(cursor)
         self.assertEqual(b"test2+", gout.read())
         self.assertRaises(StopIteration, cursor.__next__)
+        cursor.rewind()
+        items = cursor.to_list()
+        self.assertEqual(len(items), 2)
+        cursor.rewind()
+        items = cursor.to_list(1)
+        self.assertEqual(len(items), 1)
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 
@@ -486,7 +492,7 @@ class TestGridfs(IntegrationTest):
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            gridfs.GridFS(rs_or_single_client(w=0).pymongo_test)
+            gridfs.GridFS(self.rs_or_single_client(w=0).pymongo_test)
 
     def test_md5(self):
         gin = self.fs.new_file()
@@ -513,7 +519,7 @@ class TestGridfsReplicaSet(IntegrationTest):
         client_context.client.drop_database("gfsreplica")
 
     def test_gridfs_replica_set(self):
-        rsc = rs_client(w=client_context.w, read_preference=ReadPreference.SECONDARY)
+        rsc = self.rs_client(w=client_context.w, read_preference=ReadPreference.SECONDARY)
 
         fs = gridfs.GridFS(rsc.gfsreplica, "gfsreplicatest")
 
@@ -526,7 +532,7 @@ class TestGridfsReplicaSet(IntegrationTest):
 
     def test_gridfs_secondary(self):
         secondary_host, secondary_port = one(self.client.secondaries)
-        secondary_connection = single_client(
+        secondary_connection = self.single_client(
             secondary_host, secondary_port, read_preference=ReadPreference.SECONDARY
         )
 
@@ -541,7 +547,7 @@ class TestGridfsReplicaSet(IntegrationTest):
         # Should detect it's connected to secondary and not attempt to
         # create index.
         secondary_host, secondary_port = one(self.client.secondaries)
-        client = single_client(
+        client = self.single_client(
             secondary_host, secondary_port, read_preference=ReadPreference.SECONDARY, connect=False
         )
 

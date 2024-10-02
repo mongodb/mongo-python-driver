@@ -23,7 +23,7 @@ import re
 from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import]
+from unasync import Rule, unasync_files  # type: ignore[import-not-found]
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -34,14 +34,22 @@ replacements = {
     "AsyncRawBatchCursor": "RawBatchCursor",
     "AsyncRawBatchCommandCursor": "RawBatchCommandCursor",
     "AsyncClientSession": "ClientSession",
+    "AsyncChangeStream": "ChangeStream",
+    "AsyncCollectionChangeStream": "CollectionChangeStream",
+    "AsyncDatabaseChangeStream": "DatabaseChangeStream",
+    "AsyncClusterChangeStream": "ClusterChangeStream",
     "_AsyncBulk": "_Bulk",
+    "_AsyncClientBulk": "_ClientBulk",
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
+    "AsyncBulkTestBase": "BulkTestBase",
+    "AsyncBulkAuthorizationTestBase": "BulkAuthorizationTestBase",
     "anext": "next",
+    "aiter": "iter",
     "_ALock": "_Lock",
     "_ACondition": "_Condition",
     "AsyncGridFS": "GridFS",
@@ -53,6 +61,7 @@ replacements = {
     "_AsyncGridOutChunkIterator": "GridOutChunkIterator",
     "_a_grid_in_property": "_grid_in_property",
     "_a_grid_out_property": "_grid_out_property",
+    "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
@@ -87,13 +96,22 @@ replacements = {
     "asyncAssertRaisesExactly": "assertRaisesExactly",
     "get_async_mock_client": "get_mock_client",
     "aconnect": "_connect",
+    "async-transactions-ref": "transactions-ref",
+    "async-snapshot-reads-ref": "snapshot-reads-ref",
+    "default_async": "default",
     "aclose": "close",
+    "PyMongo|async": "PyMongo",
+    "PyMongo|c|async": "PyMongo|c",
+    "AsyncTestGridFile": "TestGridFile",
+    "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "async_set_fail_point": "set_fail_point",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
     ("MongoClient", "connect"): """If ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
-            on the first operation.""",
+            on the first operation.  The default value is ``False`` when
+            running in a Function-as-a-service environment.""",
     ("Collection", "create"): """If ``True``, force collection
             creation even without options being set.""",
     ("Collection", "session"): """A
@@ -101,6 +119,10 @@ docstring_replacements: dict[tuple[str, str], str] = {
             the create collection command.""",
     ("Collection", "kwargs"): """Additional keyword arguments will
             be passed as options for the create collection command.""",
+}
+
+docstring_removals: set[str] = {
+    ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
 }
 
 type_replacements = {"_Condition": "threading.Condition"}
@@ -124,7 +146,17 @@ gridfs_files = [
     _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
 ]
 
-test_files = [_test_base + f for f in listdir(_test_base) if (Path(_test_base) / f).is_file()]
+
+def async_only_test(f: str) -> bool:
+    """Return True for async tests that should not be converted to sync."""
+    return f in ["test_locks.py"]
+
+
+test_files = [
+    _test_base + f
+    for f in listdir(_test_base)
+    if (Path(_test_base) / f).is_file() and not async_only_test(f)
+]
 
 sync_files = [
     _pymongo_dest_base + f
@@ -142,12 +174,27 @@ sync_gridfs_files = [
 converted_tests = [
     "__init__.py",
     "conftest.py",
+    "helpers.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
+    "qcheck.py",
+    "test_auth.py",
+    "test_auth_spec.py",
+    "test_bulk.py",
+    "test_change_stream.py",
     "test_client.py",
+    "test_client_bulk_write.py",
+    "test_client_context.py",
     "test_collection.py",
     "test_cursor.py",
     "test_database.py",
+    "test_encryption.py",
+    "test_grid_file.py",
+    "test_logger.py",
+    "test_monitoring.py",
+    "test_raw_bson.py",
+    "test_retryable_reads.py",
+    "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
 ]
@@ -209,7 +256,7 @@ def translate_locks(lines: list[str]) -> list[str]:
     lock_lines = [line for line in lines if "_Lock(" in line]
     cond_lines = [line for line in lines if "_Condition(" in line]
     for line in lock_lines:
-        res = re.search(r"_Lock\(([^()]*\(\))\)", line)
+        res = re.search(r"_Lock\(([^()]*\([^()]*\))\)", line)
         if res:
             old = res[0]
             index = lines.index(line)
@@ -265,15 +312,28 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 # This sequence of replacements fixes the grammar issues caused by translating async -> sync
                 if "an Async" in lines[i]:
                     lines[i] = lines[i].replace("an Async", "a Async")
+                if "an 'Async" in lines[i]:
+                    lines[i] = lines[i].replace("an 'Async", "a 'Async")
                 if "An Async" in lines[i]:
                     lines[i] = lines[i].replace("An Async", "A Async")
+                if "An 'Async" in lines[i]:
+                    lines[i] = lines[i].replace("An 'Async", "A 'Async")
                 if "an asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("an asynchronous", "a")
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
+                # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
+                if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
+                    lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")
                 lines[i] = lines[i].replace(k, replacements[k])
             if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
+                if "rsApplyStop" in lines[i]:
+                    lines[i] = lines[i].replace("rsApplyStop", "rsSyncApplyStop")
+        if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
+            lines[i] = lines[i].replace("async ", "")
+        if "await " in lines[i] and "tailable" not in lines[i]:
+            lines[i] = lines[i].replace("await ", "")
     for i in range(len(lines)):
         for k in docstring_replacements:  # type: ignore[assignment]
             if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
@@ -282,7 +342,12 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                     docstring_replacements[k],  # type: ignore[index]
                 )
 
-    return lines
+        for line in docstring_removals:
+            if line in lines[i]:
+                lines[i] = "DOCSTRING_REMOVED"
+                lines[i + 1] = "DOCSTRING_REMOVED"
+
+    return [line for line in lines if line != "DOCSTRING_REMOVED"]
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

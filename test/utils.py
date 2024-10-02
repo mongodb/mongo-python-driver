@@ -565,151 +565,6 @@ class SpecTestCreator:
                     setattr(self._test_class, new_test.__name__, new_test)
 
 
-def _connection_string(h):
-    if h.startswith(("mongodb://", "mongodb+srv://")):
-        return h
-    return f"mongodb://{h!s}"
-
-
-def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
-    """Create a new client over SSL/TLS if necessary."""
-    host = host or client_context.host
-    port = port or client_context.port
-    client_options: dict = client_context.default_client_options.copy()
-    if client_context.replica_set_name and not directConnection:
-        client_options["replicaSet"] = client_context.replica_set_name
-    if directConnection is not None:
-        client_options["directConnection"] = directConnection
-    client_options.update(kwargs)
-
-    uri = _connection_string(host)
-    auth_mech = kwargs.get("authMechanism", "")
-    if client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
-        # Only add the default username or password if one is not provided.
-        res = parse_uri(uri)
-        if (
-            not res["username"]
-            and not res["password"]
-            and "username" not in client_options
-            and "password" not in client_options
-        ):
-            client_options["username"] = db_user
-            client_options["password"] = db_pwd
-    return MongoClient(uri, port, **client_options)
-
-
-async def _async_mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
-    """Create a new client over SSL/TLS if necessary."""
-    host = host or await async_client_context.host
-    port = port or await async_client_context.port
-    client_options: dict = async_client_context.default_client_options.copy()
-    if async_client_context.replica_set_name and not directConnection:
-        client_options["replicaSet"] = async_client_context.replica_set_name
-    if directConnection is not None:
-        client_options["directConnection"] = directConnection
-    client_options.update(kwargs)
-
-    uri = _connection_string(host)
-    auth_mech = kwargs.get("authMechanism", "")
-    if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
-        # Only add the default username or password if one is not provided.
-        res = parse_uri(uri)
-        if (
-            not res["username"]
-            and not res["password"]
-            and "username" not in client_options
-            and "password" not in client_options
-        ):
-            client_options["username"] = db_user
-            client_options["password"] = db_pwd
-    client = AsyncMongoClient(uri, port, **client_options)
-    if client._options.connect:
-        await client.aconnect()
-    return client
-
-
-def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Make a direct connection. Don't authenticate."""
-    return _mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
-
-
-def single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Make a direct connection, and authenticate if necessary."""
-    return _mongo_client(h, p, directConnection=True, **kwargs)
-
-
-def rs_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set. Don't authenticate."""
-    return _mongo_client(h, p, authenticate=False, **kwargs)
-
-
-def rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set and authenticate if necessary."""
-    return _mongo_client(h, p, **kwargs)
-
-
-def rs_or_single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Like rs_or_single_client, but does not authenticate.
-    """
-    return _mongo_client(h, p, authenticate=False, **kwargs)
-
-
-def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[Any]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Authenticates if necessary.
-    """
-    return _mongo_client(h, p, **kwargs)
-
-
-async def async_single_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Make a direct connection. Don't authenticate."""
-    return await _async_mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
-
-
-async def async_single_client(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Make a direct connection, and authenticate if necessary."""
-    return await _async_mongo_client(h, p, directConnection=True, **kwargs)
-
-
-async def async_rs_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Connect to the replica set. Don't authenticate."""
-    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
-
-
-async def async_rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient[dict]:
-    """Connect to the replica set and authenticate if necessary."""
-    return await _async_mongo_client(h, p, **kwargs)
-
-
-async def async_rs_or_single_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Like rs_or_single_client, but does not authenticate.
-    """
-    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
-
-
-async def async_rs_or_single_client(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[Any]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Authenticates if necessary.
-    """
-    return await _async_mongo_client(h, p, **kwargs)
-
-
 def ensure_all_connected(client: MongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a
@@ -1108,20 +963,6 @@ def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
 
 
-def disable_replication(client):
-    """Disable replication on all secondaries."""
-    for host, port in client.secondaries:
-        secondary = single_client(host, port)
-        secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
-
-
-def enable_replication(client):
-    """Enable replication on all secondaries."""
-    for host, port in client.secondaries:
-        secondary = single_client(host, port)
-        secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
-
-
 class ExceptionCatchingThread(threading.Thread):
     """A thread that stores any exception encountered from run()."""
 
@@ -1251,10 +1092,10 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
-        elif c2s == "requests":
+        elif "bulk_write" in opname and (c2s == "requests" or c2s == "models"):
             # Parse each request into a bulk write model.
             requests = []
-            for request in arguments["requests"]:
+            for request in arguments[c2s]:
                 if "name" in request:
                     # CRUD v2 format
                     bulk_model = camel_to_upper_camel(request["name"])
@@ -1266,7 +1107,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
                     bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
                     bulk_arguments = camel_to_snake_args(spec)
                 requests.append(bulk_class(**dict(bulk_arguments)))
-            arguments["requests"] = requests
+            arguments[c2s] = requests
         elif arg_name == "session":
             arguments["session"] = entity_map[arguments["session"]]
         elif opname == "open_download_stream" and arg_name == "id":
@@ -1316,3 +1157,9 @@ def set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     client.admin.command(cmd)
+
+
+async def async_set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    await client.admin.command(cmd)

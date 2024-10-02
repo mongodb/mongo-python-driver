@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -40,7 +41,7 @@ from pymongo.read_preferences import (
 pytestmark = pytest.mark.mockupdb
 
 
-class TestQueryAndReadModeSharded(unittest.TestCase):
+class TestQueryAndReadModeSharded(PyMongoTestCase):
     def test_query_and_read_mode_sharded_op_msg(self):
         """Test OP_MSG sends non-primary $readPreference and never $query."""
         server = MockupDB()
@@ -50,8 +51,7 @@ class TestQueryAndReadModeSharded(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
 
         read_prefs = (
             Primary(),

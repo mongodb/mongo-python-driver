@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Support for automatic client-side field level encryption."""
+"""Support for automatic client-side field level encryption.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 try:
-    import pymongocrypt  # type:ignore[import] # noqa: F401
+    import pymongocrypt  # type:ignore[import-untyped] # noqa: F401
 
     # Check for pymongocrypt>=1.10.
     from pymongocrypt import synchronous as _  # noqa: F401
@@ -67,7 +70,7 @@ class AutoEncryptionOpts:
         users. To configure automatic *decryption* without automatic
         *encryption* set ``bypass_auto_encryption=True``. Explicit
         encryption and explicit decryption is also supported for all users
-        with the :class:`~pymongo.encryption.ClientEncryption` class.
+        with the :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and :class:`~pymongo.encryption.ClientEncryption` classes.
 
         See :ref:`automatic-client-side-encryption` for an example.
 
@@ -235,8 +238,8 @@ class RangeOpts:
 
     def __init__(
         self,
-        sparsity: int,
-        trim_factor: int,
+        sparsity: Optional[int] = None,
+        trim_factor: Optional[int] = None,
         min: Optional[Any] = None,
         max: Optional[Any] = None,
         precision: Optional[int] = None,
@@ -261,7 +264,7 @@ class RangeOpts:
     def document(self) -> dict[str, Any]:
         doc = {}
         for k, v in [
-            ("sparsity", int64.Int64(self.sparsity)),
+            ("sparsity", int64.Int64(self.sparsity) if self.sparsity else None),
             ("trimFactor", self.trim_factor),
             ("precision", self.precision),
             ("min", self.min),

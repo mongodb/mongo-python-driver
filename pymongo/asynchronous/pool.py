@@ -913,7 +913,7 @@ async def _configured_socket(
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
         except _CertificateError:
             ssl_sock.close()
             raise
@@ -992,7 +992,8 @@ class Pool:
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
-        self.lock = _ALock(_create_lock())
+        _lock = _create_lock()
+        self.lock = _ALock(_lock)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1018,7 +1019,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = _ACondition(threading.Condition(self.lock))  # type: ignore[arg-type]
+        self.size_cond = _ACondition(threading.Condition(_lock))
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1026,7 +1027,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = _ACondition(threading.Condition(self.lock))  # type: ignore[arg-type]
+        self._max_connecting_cond = _ACondition(threading.Condition(_lock))
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id

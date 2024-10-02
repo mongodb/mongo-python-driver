@@ -21,7 +21,7 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import client_knobs, unittest
+from test import PyMongoTestCase, client_knobs, unittest
 from test.utils import FunctionCallRecorder, wait_until
 
 import pymongo
@@ -86,7 +86,7 @@ class SrvPollingKnobs:
         self.disable()
 
 
-class TestSrvPolling(unittest.TestCase):
+class TestSrvPolling(PyMongoTestCase):
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
         ("localhost.test.build.10gen.cc", 27018),
@@ -167,7 +167,7 @@ class TestSrvPolling(unittest.TestCase):
 
         # Patch timeouts to ensure short test running times.
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(self.CONNECTION_STRING)
+            client = self.simple_client(self.CONNECTION_STRING)
             self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
             # Patch list of hosts returned by DNS query.
             with SrvPollingKnobs(
@@ -231,7 +231,7 @@ class TestSrvPolling(unittest.TestCase):
             count_resolver_calls=True,
         ):
             # Client uses unpatched method to get initial nodelist
-            client = MongoClient(self.CONNECTION_STRING)
+            client = self.simple_client(self.CONNECTION_STRING)
             # Invalid DNS resolver response should not change nodelist.
             self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
 
@@ -264,8 +264,7 @@ class TestSrvPolling(unittest.TestCase):
             return response
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=0)
-            self.addCleanup(client.close)
+            client = self.simple_client(self.CONNECTION_STRING, srvMaxHosts=0)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
 
@@ -279,8 +278,7 @@ class TestSrvPolling(unittest.TestCase):
             return response
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
-            self.addCleanup(client.close)
+            client = self.simple_client(self.CONNECTION_STRING, srvMaxHosts=2)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
 
@@ -295,8 +293,7 @@ class TestSrvPolling(unittest.TestCase):
             return response
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
-            self.addCleanup(client.close)
+            client = self.simple_client(self.CONNECTION_STRING, srvMaxHosts=2)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 sleep(2 * common.MIN_SRV_RESCAN_INTERVAL)
                 final_topology = set(client.topology_description.server_descriptions())
@@ -305,8 +302,7 @@ class TestSrvPolling(unittest.TestCase):
 
     def test_does_not_flipflop(self):
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=1)
-            self.addCleanup(client.close)
+            client = self.simple_client(self.CONNECTION_STRING, srvMaxHosts=1)
             old = set(client.topology_description.server_descriptions())
             sleep(4 * WAIT_TIME)
             new = set(client.topology_description.server_descriptions())
@@ -323,7 +319,7 @@ class TestSrvPolling(unittest.TestCase):
             return response
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            client = MongoClient(
+            client = self.simple_client(
                 "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname"
             )
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
@@ -340,7 +336,7 @@ class TestSrvPolling(unittest.TestCase):
             min_srv_rescan_interval=WAIT_TIME,
             nodelist_callback=resolver_response,
         ):
-            client = MongoClient(self.CONNECTION_STRING)
+            client = self.simple_client(self.CONNECTION_STRING)
             self.assertRaises(
                 AssertionError, self.assert_nodelist_change, modified, client, timeout=WAIT_TIME / 2
             )

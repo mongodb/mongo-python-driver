@@ -125,10 +125,10 @@ from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentat
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import (
+    _MAX_UTC_MS,
     EPOCH_AWARE,
     DatetimeMS,
     _datetime_to_millis,
-    _max_datetime_ms,
     _millis_to_datetime,
 )
 from bson.dbref import DBRef
@@ -324,7 +324,7 @@ class JSONOptions(_BASE_CLASS):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))  # type:ignore[arg-type]
+        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
@@ -844,7 +844,7 @@ def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
 def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     if (
         json_options.datetime_representation == DatetimeRepresentation.ISO8601
-        and 0 <= int(obj) <= _max_datetime_ms()
+        and 0 <= int(obj) <= _MAX_UTC_MS
     ):
         return _encode_datetime(obj.as_datetime(), json_options)
     elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:

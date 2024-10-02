@@ -30,8 +30,6 @@ from test import IntegrationTest, SkipTest, client_context, connected, unittest
 from test.utils import (
     OvertCommandListener,
     one,
-    rs_client,
-    single_client,
     wait_until,
 )
 from test.version import Version
@@ -58,7 +56,7 @@ from pymongo.write_concern import WriteConcern
 class TestSelections(IntegrationTest):
     @client_context.require_connection
     def test_bool(self):
-        client = single_client()
+        client = self.single_client()
 
         wait_until(lambda: client.address, "discover primary")
         selection = Selection.from_topology_description(client._topology.description)
@@ -128,7 +126,7 @@ class TestReadPreferencesBase(IntegrationTest):
             return None
 
     def assertReadsFrom(self, expected, **kwargs):
-        c = rs_client(**kwargs)
+        c = self.rs_client(**kwargs)
         wait_until(lambda: len(c.nodes - c.arbiters) == client_context.w, "discovered all nodes")
 
         used = self.read_from_which_kind(c)
@@ -139,7 +137,7 @@ class TestSingleSecondaryOk(TestReadPreferencesBase):
     def test_reads_from_secondary(self):
         host, port = next(iter(self.client.secondaries))
         # Direct connection to a secondary.
-        client = single_client(host, port)
+        client = self.single_client(host, port)
         self.assertFalse(client.is_primary)
 
         # Regardless of read preference, we should be able to do
@@ -175,19 +173,21 @@ class TestReadPreferences(TestReadPreferencesBase):
             ReadPreference.SECONDARY_PREFERRED,
             ReadPreference.NEAREST,
         ):
-            self.assertEqual(mode, rs_client(read_preference=mode).read_preference)
+            self.assertEqual(mode, self.rs_client(read_preference=mode).read_preference)
 
-        self.assertRaises(TypeError, rs_client, read_preference="foo")
+        self.assertRaises(TypeError, self.rs_client, read_preference="foo")
 
     def test_tag_sets_validation(self):
         S = Secondary(tag_sets=[{}])
-        self.assertEqual([{}], rs_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual([{}], self.rs_client(read_preference=S).read_preference.tag_sets)
 
         S = Secondary(tag_sets=[{"k": "v"}])
-        self.assertEqual([{"k": "v"}], rs_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual([{"k": "v"}], self.rs_client(read_preference=S).read_preference.tag_sets)
 
         S = Secondary(tag_sets=[{"k": "v"}, {}])
-        self.assertEqual([{"k": "v"}, {}], rs_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual(
+            [{"k": "v"}, {}], self.rs_client(read_preference=S).read_preference.tag_sets
+        )
 
         self.assertRaises(ValueError, Secondary, tag_sets=[])
 
@@ -200,20 +200,22 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_threshold_validation(self):
         self.assertEqual(
-            17, rs_client(localThresholdMS=17, connect=False).options.local_threshold_ms
+            17, self.rs_client(localThresholdMS=17, connect=False).options.local_threshold_ms
         )
 
         self.assertEqual(
-            42, rs_client(localThresholdMS=42, connect=False).options.local_threshold_ms
+            42, self.rs_client(localThresholdMS=42, connect=False).options.local_threshold_ms
         )
 
         self.assertEqual(
-            666, rs_client(localThresholdMS=666, connect=False).options.local_threshold_ms
+            666, self.rs_client(localThresholdMS=666, connect=False).options.local_threshold_ms
         )
 
-        self.assertEqual(0, rs_client(localThresholdMS=0, connect=False).options.local_threshold_ms)
+        self.assertEqual(
+            0, self.rs_client(localThresholdMS=0, connect=False).options.local_threshold_ms
+        )
 
-        self.assertRaises(ValueError, rs_client, localthresholdms=-1)
+        self.assertRaises(ValueError, self.rs_client, localthresholdms=-1)
 
     def test_zero_latency(self):
         ping_times: set = set()
@@ -223,7 +225,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         for ping_time, host in zip(ping_times, self.client.nodes):
             ServerDescription._host_to_round_trip_time[host] = ping_time
         try:
-            client = connected(rs_client(readPreference="nearest", localThresholdMS=0))
+            client = connected(self.rs_client(readPreference="nearest", localThresholdMS=0))
             wait_until(lambda: client.nodes == self.client.nodes, "discovered all nodes")
             host = self.read_from_which_host(client)
             for _ in range(5):
@@ -236,7 +238,7 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
-        self.assertRaises(ConfigurationError, rs_client, tag_sets=[{"dc": "ny"}])
+        self.assertRaises(ConfigurationError, self.rs_client, tag_sets=[{"dc": "ny"}])
 
     def test_primary_preferred(self):
         self.assertReadsFrom("primary", read_preference=ReadPreference.PRIMARY_PREFERRED)
@@ -250,7 +252,9 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_nearest(self):
         # With high localThresholdMS, expect to read from any
         # member
-        c = rs_client(read_preference=ReadPreference.NEAREST, localThresholdMS=10000)  # 10 seconds
+        c = self.rs_client(
+            read_preference=ReadPreference.NEAREST, localThresholdMS=10000
+        )  # 10 seconds
 
         data_members = {self.client.primary} | self.client.secondaries
 
@@ -540,7 +544,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         if client_context.supports_secondary_read_pref:
             cases["secondary"] = Secondary
         listener = OvertCommandListener()
-        client = rs_client(event_listeners=[listener])
+        client = self.rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         client.admin.command("ping")
         for _mode, cls in cases.items():
@@ -667,13 +671,13 @@ class TestMongosAndReadPreference(IntegrationTest):
         else:
             self.fail("mongos accepted invalid staleness")
 
-        coll = single_client(
+        coll = self.single_client(
             readPreference="secondaryPreferred", maxStalenessSeconds=120
         ).pymongo_test.test
         # No error
         coll.find_one()
 
-        coll = single_client(
+        coll = self.single_client(
             readPreference="secondaryPreferred", maxStalenessSeconds=10
         ).pymongo_test.test
         try:
