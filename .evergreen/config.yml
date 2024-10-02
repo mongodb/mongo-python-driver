@@ -511,7 +511,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OIDC_ENV"]
         args:
           - .evergreen/run-mongodb-oidc-test.sh
 
@@ -1846,6 +1846,9 @@ tasks:
     - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
+      - func: "run oidc auth test with test credentials"
+        vars:
+          OIDC_ENV: "k8s"
 
     - name: "oidc-auth-test-azure"
       commands:
