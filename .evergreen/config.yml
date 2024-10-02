@@ -515,6 +515,18 @@ functions:
         args:
           - .evergreen/run-mongodb-oidc-test.sh
 
+  "run oidc k8s auth test":
+    - command: subprocess.exec
+      type: test
+      params:
+        binary: bash
+        working_dir: src
+        env:
+          OIDC_ENV: k8s
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "K8S_VARIANT"]
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
       type: test
@@ -939,15 +951,6 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - task: oidc-auth-test-k8s
-        vars:
-          K8S_VARIANT: eks
-      - task: oidc-auth-test-k8s
-        vars:
-          K8S_VARIANT: gke
-      # AKS testing is currently blocked until 8.0.1 is available in Atlas.
-      # - task: oidc-auth-test-k8s
-      #   vars:
-      #     K8S_VARIANT: aks
 
   - name: testoidc_task_group
     setup_group:
@@ -1909,16 +1912,16 @@ tasks:
 
     - name: "oidc-auth-test-k8s"
       commands:
-      - command: subprocess.exec
-        type: test
-        params:
-          binary: bash
-          working_dir: src
-          env:
-            OIDC_ENV: k8s
-          include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "K8S_VARIANT"]
-          args:
-            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: eks
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: gke
+        # AKS testing is currently blocked until 8.0.1 is available in Atlas.
+        # - func: "run oidc k8s auth test"
+        #   vars:
+        #     K8S_VARIANT: aks
 
     - name: "test-fips-standalone"
       tags: ["fips"]
