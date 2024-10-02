@@ -511,7 +511,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OIDC_ENV"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
           - .evergreen/run-mongodb-oidc-test.sh
 
@@ -914,6 +914,31 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - oidc-auth-test-gcp
+
+  - name: testk8soidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: subprocess.exec
+        params:
+          binary: bash
+          env:
+            GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/setup.sh
+            - local
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-k8s
 
   - name: testoidc_task_group
     setup_group:
@@ -1846,46 +1871,36 @@ tasks:
     - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
-      - func: "run oidc auth test with test credentials"
-        vars:
-          OIDC_ENV: "k8s"
 
     - name: "oidc-auth-test-azure"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
-        params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
-            export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+        binary: bash
+        env:
+          OIDC_ENV: azure
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
-        params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export GCPOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $GCPOIDC_DRIVERS_TAR_FILE HEAD
-            # Define the command to run on the VM.
-            # Ensure that we source the environment file created for us, set up any other variables we need,
-            # and then run our test suite on the vm.
-            export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
+        binary: bash
+        env:
+          OIDC_ENV: gcp
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+
+    - name: "oidc-auth-test-k8s"
+      commands:
+      - command: subprocess.exec
+        type: test
+        binary: bash
+        env:
+          OIDC_ENV: k8s
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
@@ -2953,6 +2968,13 @@ buildvariants:
   run_on: ubuntu2204-small
   tasks:
     - name: testgcpoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+
+- name: testk8soidc-variant
+  display_name: "OIDC Auth K8S"
+  run_on: ubuntu2204-small
+  tasks:
+    - name: testk8soidc_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"
