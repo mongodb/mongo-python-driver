@@ -1908,7 +1908,7 @@ tasks:
           env:
             OIDC_ENV: k8s
             K8S_VARIANT: eks
-          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
