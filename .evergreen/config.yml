@@ -1873,31 +1873,34 @@ tasks:
       commands:
       - command: subprocess.exec
         type: test
-        binary: bash
-        env:
-          OIDC_ENV: azure
-        args:
-          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+        params:
+          binary: bash
+          env:
+            OIDC_ENV: azure
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
       - command: subprocess.exec
         type: test
-        binary: bash
-        env:
-          OIDC_ENV: gcp
-        args:
-          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+        params:
+          binary: bash
+          env:
+            OIDC_ENV: gcp
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "oidc-auth-test-k8s"
       commands:
       - command: subprocess.exec
         type: test
-        binary: bash
-        env:
-          OIDC_ENV: k8s
-        args:
-          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+        params:
+          binary: bash
+          env:
+            OIDC_ENV: k8s
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "test-fips-standalone"
       tags: ["fips"]
