@@ -921,6 +921,9 @@ task_groups:
       - func: prepare resources
       - func: fix absolute paths
       - func: make files executable
+      - command: ec2.assume_role
+        params:
+          role_arn: ${assume_role_arn}
       - command: subprocess.exec
         params:
           binary: bash
