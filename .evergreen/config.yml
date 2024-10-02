@@ -950,7 +950,7 @@ task_groups:
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
-      - task: oidc-auth-test-k8s
+      - oidc-auth-test-k8s
 
   - name: testoidc_task_group
     setup_group:
