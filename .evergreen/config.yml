@@ -1877,6 +1877,7 @@ tasks:
           binary: bash
           env:
             OIDC_ENV: azure
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
@@ -1888,6 +1889,7 @@ tasks:
           binary: bash
           env:
             OIDC_ENV: gcp
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
@@ -1899,6 +1901,7 @@ tasks:
           binary: bash
           env:
             OIDC_ENV: k8s
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
