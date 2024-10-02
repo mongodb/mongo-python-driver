@@ -36,6 +36,36 @@ in this release.
 
 .. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
 
+Changes in Version 4.9.2
+-------------------------
+
+- Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
+- Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
+- Fixed a bug where :meth:`~pymongo.results.UpdateResult.did_upsert` would raise a ``TypeError``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.9.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40732
+
+
+Changes in Version 4.9.1
+-------------------------
+
+-  Add missing documentation about the fact the async API is in beta state.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.9.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40720
+
+
 Changes in Version 4.9.0
 -------------------------
 
