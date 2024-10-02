@@ -1875,6 +1875,7 @@ tasks:
         type: test
         params:
           binary: bash
+          working_dir: src
           env:
             OIDC_ENV: azure
           include_expansions_in_env: ["DRIVERS_TOOLS"]
@@ -1887,6 +1888,7 @@ tasks:
         type: test
         params:
           binary: bash
+          working_dir: src
           env:
             OIDC_ENV: gcp
           include_expansions_in_env: ["DRIVERS_TOOLS"]
@@ -1899,6 +1901,7 @@ tasks:
         type: test
         params:
           binary: bash
+          working_dir: src
           env:
             OIDC_ENV: k8s
           include_expansions_in_env: ["DRIVERS_TOOLS"]
