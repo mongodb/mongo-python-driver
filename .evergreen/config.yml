@@ -1904,6 +1904,7 @@ tasks:
           working_dir: src
           env:
             OIDC_ENV: k8s
+            K8S_VARIANT: eks
           include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
