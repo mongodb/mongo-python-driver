@@ -928,7 +928,6 @@ task_groups:
             GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/setup.sh
-            - local
     teardown_task:
       - command: subprocess.exec
         params:
