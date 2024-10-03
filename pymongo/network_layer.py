@@ -90,12 +90,9 @@ if sys.platform != "win32":
         sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
     ) -> None:
         view = memoryview(buf)
-        fd = sock.fileno()
         sent = 0
 
         def _is_ready(fut: Future) -> None:
-            loop.remove_writer(fd)
-            loop.remove_reader(fd)
             if fut.done():
                 return
             fut.set_result(None)
@@ -111,27 +108,34 @@ if sys.platform != "win32":
                 if isinstance(exc, BLOCKING_IO_READ_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        await fut
+                    finally:
+                        loop.remove_reader(fd)
                 if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
                     fut = loop.create_future()
                     loop.add_writer(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        await fut
+                    finally:
+                        loop.remove_writer(fd)
                 if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
-                    loop.add_writer(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        loop.add_writer(fd, _is_ready, fut)
+                        await fut
+                    finally:
+                        loop.remove_reader(fd)
+                        loop.remove_writer(fd)
 
     async def _async_receive_ssl(
         conn: _sslConn, length: int, loop: AbstractEventLoop
     ) -> memoryview:
         mv = memoryview(bytearray(length))
-        fd = conn.fileno()
         total_read = 0
 
         def _is_ready(fut: Future) -> None:
-            loop.remove_writer(fd)
-            loop.remove_reader(fd)
             if fut.done():
                 return
             fut.set_result(None)
@@ -150,16 +154,26 @@ if sys.platform != "win32":
                 if isinstance(exc, BLOCKING_IO_READ_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        await fut
+                    finally:
+                        loop.remove_reader(fd)
                 if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
                     fut = loop.create_future()
                     loop.add_writer(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        await fut
+                    finally:
+                        loop.remove_writer(fd)
                 if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
-                    loop.add_writer(fd, _is_ready, fut)
-                    await fut
+                    try:
+                        loop.add_writer(fd, _is_ready, fut)
+                        await fut
+                    finally:
+                        loop.remove_reader(fd)
+                        loop.remove_writer(fd)
         return mv
 
 else:
