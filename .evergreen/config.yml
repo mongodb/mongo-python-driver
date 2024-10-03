@@ -1627,7 +1627,7 @@ tasks:
         - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
