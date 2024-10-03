@@ -201,6 +201,8 @@ else:
         while total_read < length:
             try:
                 read = conn.recv_into(mv[total_read:])
+                if read == 0:
+                    raise OSError("connection closed")
             except BLOCKING_IO_ERRORS:
                 await asyncio.sleep(0.5)
                 read = 0
