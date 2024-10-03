@@ -1444,6 +1444,19 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
         self.assertFalse(result.acknowledged)
 
+    async def test_update_result(self):
+        db = self.db
+        await db.drop_collection("test")
+
+        result = await db.test.update_one({"x": 0}, {"$inc": {"x": 1}}, upsert=True)
+        self.assertEqual(result.did_upsert, True)
+
+        result = await db.test.update_one({"_id": None, "x": 0}, {"$inc": {"x": 1}}, upsert=True)
+        self.assertEqual(result.did_upsert, True)
+
+        result = await db.test.update_one({"_id": None}, {"$inc": {"x": 1}})
+        self.assertEqual(result.did_upsert, False)
+
     async def test_update_many(self):
         db = self.db
         await db.drop_collection("test")

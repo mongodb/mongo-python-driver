@@ -599,6 +599,44 @@ def ensure_all_connected(client: MongoClient) -> None:
         )
 
 
+async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
+    """Ensure that the client's connection pool has socket connections to all
+    members of a replica set. Raises ConfigurationError when called with a
+    non-replica set client.
+
+    Depending on the use-case, the caller may need to clear any event listeners
+    that are configured on the client.
+    """
+    hello: dict = await client.admin.command(HelloCompat.LEGACY_CMD)
+    if "setName" not in hello:
+        raise ConfigurationError("cluster is not a replica set")
+
+    target_host_list = set(hello["hosts"] + hello.get("passives", []))
+    connected_host_list = {hello["me"]}
+
+    # Run hello until we have connected to each host at least once.
+    async def discover():
+        i = 0
+        while i < 100 and connected_host_list != target_host_list:
+            hello: dict = await client.admin.command(
+                HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
+            )
+            connected_host_list.update([hello["me"]])
+            i += 1
+        return connected_host_list
+
+    try:
+
+        async def predicate():
+            return target_host_list == await discover()
+
+        await async_wait_until(predicate, "connected to all hosts")
+    except AssertionError as exc:
+        raise AssertionError(
+            f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
+        )
+
+
 def one(s):
     """Get one element of a set"""
     return next(iter(s))
@@ -759,16 +797,6 @@ async def async_wait_until(predicate, success_description, timeout=10):
             raise AssertionError("Didn't ever %s" % success_description)
 
         await asyncio.sleep(interval)
-
-
-def repl_set_step_down(client, **kwargs):
-    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
-    cmd = SON([("replSetStepDown", 1)])
-    cmd.update(kwargs)
-
-    # Unfreeze a secondary to ensure a speedy election.
-    client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
-    client.admin.command(cmd)
 
 
 def is_mongos(client):

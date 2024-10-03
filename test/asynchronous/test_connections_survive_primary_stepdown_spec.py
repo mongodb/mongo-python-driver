@@ -19,58 +19,58 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.helpers import repl_set_step_down
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.helpers import async_repl_set_step_down
 from test.utils import (
     CMAPListener,
-    ensure_all_connected,
+    async_ensure_all_connected,
 )
 
 from bson import SON
 from pymongo import monitoring
+from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.errors import NotPrimaryError
-from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
+class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
     listener: CMAPListener
-    coll: Collection
+    coll: AsyncCollection
 
     @classmethod
-    @client_context.require_replica_set
-    def _setup_class(cls):
-        super()._setup_class()
+    @async_client_context.require_replica_set
+    async def _setup_class(cls):
+        await super()._setup_class()
         cls.listener = CMAPListener()
-        cls.client = cls.unmanaged_rs_or_single_client(
+        cls.client = await cls.unmanaged_async_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
         )
 
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
-        ensure_all_connected(cls.client)
+        await async_ensure_all_connected(cls.client)
         cls.listener.reset()
 
         cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
         cls.coll = cls.db.get_collection("step-down", write_concern=WriteConcern("majority"))
 
     @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
+    async def _tearDown_class(cls):
+        await cls.client.close()
 
-    def setUp(self):
+    async def asyncSetUp(self):
         # Note that all ops use same write-concern as self.db (majority).
-        self.db.drop_collection("step-down")
-        self.db.create_collection("step-down")
+        await self.db.drop_collection("step-down")
+        await self.db.create_collection("step-down")
         self.listener.reset()
 
-    def set_fail_point(self, command_args):
+    async def set_fail_point(self, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
         cmd.update(command_args)
-        self.client.admin.command(cmd)
+        await self.client.admin.command(cmd)
 
     def verify_pool_cleared(self):
         self.assertEqual(self.listener.event_count(monitoring.PoolClearedEvent), 1)
@@ -78,70 +78,70 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     def verify_pool_not_cleared(self):
         self.assertEqual(self.listener.event_count(monitoring.PoolClearedEvent), 0)
 
-    @client_context.require_version_min(4, 2, -1)
-    def test_get_more_iteration(self):
+    @async_client_context.require_version_min(4, 2, -1)
+    async def test_get_more_iteration(self):
         # Insert 5 documents with WC majority.
-        self.coll.insert_many([{"data": k} for k in range(5)])
+        await self.coll.insert_many([{"data": k} for k in range(5)])
         # Start a find operation and retrieve first batch of results.
         batch_size = 2
         cursor = self.coll.find(batch_size=batch_size)
         for _ in range(batch_size):
-            cursor.next()
+            await cursor.next()
         # Force step-down the primary.
-        repl_set_step_down(self.client, replSetStepDown=5, force=True)
-        # Get next batch of results.
+        await async_repl_set_step_down(self.client, replSetStepDown=5, force=True)
+        # Get await anext batch of results.
         for _ in range(batch_size):
-            cursor.next()
+            await cursor.next()
         # Verify pool not cleared.
         self.verify_pool_not_cleared()
         # Attempt insertion to mark server description as stale and prevent a
         # NotPrimaryError on the subsequent operation.
         try:
-            self.coll.insert_one({})
+            await self.coll.insert_one({})
         except NotPrimaryError:
             pass
         # Next insert should succeed on the new primary without clearing pool.
-        self.coll.insert_one({})
+        await self.coll.insert_one({})
         self.verify_pool_not_cleared()
 
-    def run_scenario(self, error_code, retry, pool_status_checker):
+    async def run_scenario(self, error_code, retry, pool_status_checker):
         # Set fail point.
-        self.set_fail_point(
+        await self.set_fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": error_code}}
         )
-        self.addCleanup(self.set_fail_point, {"mode": "off"})
+        self.addAsyncCleanup(self.set_fail_point, {"mode": "off"})
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
-            self.coll.insert_one({"test": 1})
+            await self.coll.insert_one({"test": 1})
         self.assertEqual(exc.exception.details["code"], error_code)  # type: ignore[call-overload]
         # Retry before CMAPListener assertion if retry_before=True.
         if retry:
-            self.coll.insert_one({"test": 1})
+            await self.coll.insert_one({"test": 1})
         # Verify pool cleared/not cleared.
         pool_status_checker()
         # Always retry here to ensure discovery of new primary.
-        self.coll.insert_one({"test": 1})
+        await self.coll.insert_one({"test": 1})
 
-    @client_context.require_version_min(4, 2, -1)
-    @client_context.require_test_commands
-    def test_not_primary_keep_connection_pool(self):
-        self.run_scenario(10107, True, self.verify_pool_not_cleared)
+    @async_client_context.require_version_min(4, 2, -1)
+    @async_client_context.require_test_commands
+    async def test_not_primary_keep_connection_pool(self):
+        await self.run_scenario(10107, True, self.verify_pool_not_cleared)
 
-    @client_context.require_version_min(4, 0, 0)
-    @client_context.require_version_max(4, 1, 0, -1)
-    @client_context.require_test_commands
-    def test_not_primary_reset_connection_pool(self):
-        self.run_scenario(10107, False, self.verify_pool_cleared)
+    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_version_max(4, 1, 0, -1)
+    @async_client_context.require_test_commands
+    async def test_not_primary_reset_connection_pool(self):
+        await self.run_scenario(10107, False, self.verify_pool_cleared)
 
-    @client_context.require_version_min(4, 0, 0)
-    @client_context.require_test_commands
-    def test_shutdown_in_progress(self):
-        self.run_scenario(91, False, self.verify_pool_cleared)
+    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_test_commands
+    async def test_shutdown_in_progress(self):
+        await self.run_scenario(91, False, self.verify_pool_cleared)
 
-    @client_context.require_version_min(4, 0, 0)
-    @client_context.require_test_commands
-    def test_interrupted_at_shutdown(self):
-        self.run_scenario(11600, False, self.verify_pool_cleared)
+    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_test_commands
+    async def test_interrupted_at_shutdown(self):
+        await self.run_scenario(11600, False, self.verify_pool_cleared)
 
 
 if __name__ == "__main__":
