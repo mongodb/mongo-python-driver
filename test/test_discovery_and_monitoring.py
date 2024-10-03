@@ -319,7 +319,7 @@ class TestPoolManagement(IntegrationTest):
     def test_pool_unpause(self):
         # This test implements the prose test "Connection Pool Management"
         listener = CMAPHeartbeatListener()
-        client = self.single_client(
+        _ = self.single_client(
             appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
         )
         # Assert that ConnectionPoolReadyEvent occurs after the first

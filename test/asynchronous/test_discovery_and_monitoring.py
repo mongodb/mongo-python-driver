@@ -320,7 +320,7 @@ class TestPoolManagement(AsyncIntegrationTest):
     async def test_pool_unpause(self):
         # This test implements the prose test "AsyncConnection Pool Management"
         listener = CMAPHeartbeatListener()
-        client = await self.async_single_client(
+        _ = await self.async_single_client(
             appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
         )
         # Assert that AsyncConnectionPoolReadyEvent occurs after the first
