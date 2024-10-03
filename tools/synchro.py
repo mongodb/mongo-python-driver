@@ -43,6 +43,7 @@ replacements = {
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
+    "async_receive_data": "receive_data",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
