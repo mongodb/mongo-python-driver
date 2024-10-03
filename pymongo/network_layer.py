@@ -275,6 +275,40 @@ async def async_receive_data(
         sock.settimeout(sock_timeout)
 
 
+async def _async_receive_data_socket(
+    sock: socket.socket | _sslConn, length: int, deadline: Optional[float]
+) -> memoryview:
+    sock_timeout = sock.gettimeout()
+    timeout: Optional[Union[float, int]]
+    if deadline:
+        # When the timeout has expired perform one final check to
+        # see if the socket is readable. This helps avoid spurious
+        # timeouts on AWS Lambda and other FaaS environments.
+        timeout = max(deadline - time.monotonic(), 0)
+    else:
+        timeout = sock_timeout
+
+    sock.settimeout(0.0)
+    loop = asyncio.get_event_loop()
+    try:
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
+            read_task = asyncio.create_task(_async_receive_ssl(sock, length, loop))  # type: ignore[arg-type]
+        else:
+            read_task = asyncio.create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
+        tasks = [read_task]
+        done, pending = await asyncio.wait(
+            tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+        await asyncio.wait(pending)
+        if read_task in done:
+            return read_task.result()
+        raise socket.timeout("timed out")
+    finally:
+        sock.settimeout(sock_timeout)
+
+
 async def _async_receive(conn: socket.socket, length: int, loop: AbstractEventLoop) -> memoryview:
     mv = memoryview(bytearray(length))
     bytes_read = 0

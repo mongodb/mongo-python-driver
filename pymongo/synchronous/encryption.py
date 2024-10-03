@@ -142,6 +142,32 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         self.opts = opts
         self._spawned = False
 
+    def _async_kms_request(
+        self, kms_context: MongoCryptKmsContext, host, port, opts, message
+    ) -> None:
+        from pymongo.network_layer import _receive_data_socket
+
+        try:
+            conn = _configured_socket((host, port), opts)
+            try:
+                sendall(conn, message)
+                while kms_context.bytes_needed > 0:
+                    # CSOT: update timeout.
+                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = _receive_data_socket(conn, kms_context.bytes_needed)
+                    if not data:
+                        raise OSError("KMS connection closed")
+                    kms_context.feed(data)
+            except BLOCKING_IO_ERRORS:
+                raise socket.timeout("timed out") from None
+            finally:
+                conn.close()
+        except (PyMongoError, MongoCryptError):
+            raise  # Propagate pymongo errors directly.
+        except Exception as error:
+            # Wrap I/O errors in PyMongo exceptions.
+            _raise_connection_failure((host, port), error)
+
     def kms_request(self, kms_context: MongoCryptKmsContext) -> None:
         """Complete a KMS request.
 
@@ -174,20 +200,23 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
         try:
-            conn = _configured_socket((host, port), opts)
-            try:
-                sendall(conn, message)
-                while kms_context.bytes_needed > 0:
-                    # CSOT: update timeout.
-                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = conn.recv(kms_context.bytes_needed)
-                    if not data:
-                        raise OSError("KMS connection closed")
-                    kms_context.feed(data)
-            except BLOCKING_IO_ERRORS:
-                raise socket.timeout("timed out") from None
-            finally:
-                conn.close()
+            if _IS_SYNC:
+                conn = _configured_socket((host, port), opts)
+                try:
+                    sendall(conn, message)
+                    while kms_context.bytes_needed > 0:
+                        # CSOT: update timeout.
+                        conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                        data = conn.recv(kms_context.bytes_needed)
+                        if not data:
+                            raise OSError("KMS connection closed")
+                        kms_context.feed(data)
+                except BLOCKING_IO_ERRORS:
+                    raise socket.timeout("timed out") from None
+                finally:
+                    conn.close()
+            else:
+                return self._async_kms_request(kms_context, host, port, opts, message)
         except (PyMongoError, MongoCryptError):
             raise  # Propagate pymongo errors directly.
         except Exception as error:
