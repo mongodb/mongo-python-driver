@@ -19,6 +19,7 @@ import os
 import threading
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
+    CMAPListener,
     OvertCommandListener,
     get_pool,
     wait_until,
@@ -27,6 +28,7 @@ from test.utils_selection_tests import create_topology
 from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node
+from pymongo.monitoring import ConnectionReadyEvent
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 
@@ -131,19 +133,20 @@ class TestProse(IntegrationTest):
     @client_context.require_multiple_mongoses
     def test_load_balancing(self):
         listener = OvertCommandListener()
+        cmap_listener = CMAPListener()
         # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
         # varying RTTs.
         client = self.rs_client(
             client_context.mongos_seeds(),
             appName="loadBalancingTest",
-            event_listeners=[listener],
+            event_listeners=[listener, cmap_listener],
             localThresholdMS=30000,
             minPoolSize=10,
         )
-        self.addCleanup(client.close)
         wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
-        wait_until(lambda: len(get_pool(client).conns) >= 10, "create 10 connections")
-        # Delay find commands on
+        # Wait for both pools to be populated.
+        cmap_listener.wait_for_event(ConnectionReadyEvent, 20)
+        # Delay find commands on only one mongos.
         delay_finds = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 10000},
@@ -161,7 +164,7 @@ class TestProse(IntegrationTest):
             freqs = self.frequencies(client, listener)
             self.assertLessEqual(freqs[delayed_server], 0.25)
         listener.reset()
-        freqs = self.frequencies(client, listener, n_finds=100)
+        freqs = self.frequencies(client, listener, n_finds=150)
         self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.15)
 
 

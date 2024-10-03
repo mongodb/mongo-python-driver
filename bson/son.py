@@ -68,7 +68,7 @@ class SON(Dict[_Key, _Value]):
         self.update(kwargs)
 
     def __new__(cls: Type[SON[_Key, _Value]], *args: Any, **kwargs: Any) -> SON[_Key, _Value]:
-        instance = super().__new__(cls, *args, **kwargs)  # type: ignore[type-var]
+        instance = super().__new__(cls, *args, **kwargs)
         instance.__keys = []
         return instance
 

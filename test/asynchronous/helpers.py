@@ -49,7 +49,7 @@ from pymongo.uri_parser import parse_uri
 if HAVE_SSL:
     import ssl
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Enable debug output for uncollectable objects. PyPy does not have set_debug.
 if hasattr(gc, "set_debug"):
@@ -151,14 +151,14 @@ def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
     return authdb.command(cmd)
 
 
-def repl_set_step_down(client, **kwargs):
+async def async_repl_set_step_down(client, **kwargs):
     """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
     cmd = SON([("replSetStepDown", 1)])
     cmd.update(kwargs)
 
     # Unfreeze a secondary to ensure a speedy election.
-    client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
-    client.admin.command(cmd)
+    await client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
+    await client.admin.command(cmd)
 
 
 class client_knobs:
@@ -219,9 +219,9 @@ class client_knobs:
     def __call__(self, func):
         def make_wrapper(f):
             @wraps(f)
-            def wrap(*args, **kwargs):
+            async def wrap(*args, **kwargs):
                 with self:
-                    return f(*args, **kwargs)
+                    return await f(*args, **kwargs)
 
             return wrap
 
