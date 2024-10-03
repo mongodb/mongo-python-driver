@@ -206,14 +206,21 @@ else:
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
+        # Backoff starts at 1ms, doubles on timeout up to 512ms, and halves on success
+        # down to 1ms.
+        backoff = 0.001
         while total_read < length:
             try:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
             except BLOCKING_IO_ERRORS:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(backoff)
                 read = 0
+            if read > 0:
+                backoff = max(backoff / 2, 0.001)
+            else:
+                backoff = min(backoff * 2, 0.512)
             total_read += read
         return mv
 
