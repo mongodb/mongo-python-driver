@@ -28,6 +28,99 @@ from pymongo.lock import _create_lock
 _IS_SYNC = False
 
 
+class AsyncPeriodicExecutor:
+    def __init__(
+        self,
+        interval: float,
+        min_interval: float,
+        target: Any,
+        name: Optional[str] = None,
+    ):
+        """Run a target function periodically on a background thread.
+
+        If the target's return value is false, the executor stops.
+
+        :param interval: Seconds between calls to `target`.
+        :param min_interval: Minimum seconds between calls if `wake` is
+            called very often.
+        :param target: A function.
+        :param name: A name to give the underlying thread.
+        """
+        # threading.Event and its internal condition variable are expensive
+        # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
+        # The executor's design is constrained by several Python issues, see
+        # "periodic_executor.rst" in this repository.
+        self._event = False
+        self._interval = interval
+        self._min_interval = min_interval
+        self._target = target
+        self._stopped = False
+        self._task: Optional[asyncio.Task] = None
+        self._name = name
+        self._skip_sleep = False
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
+
+    def open(self) -> None:
+        """Start. Multiple calls have no effect."""
+        self._stopped = False
+        started = self._task and not self._task.done()
+
+        if not started:
+            self._task = asyncio.get_event_loop().create_task(self._run(), name=self._name)
+
+    def close(self, dummy: Any = None) -> None:
+        """Stop. To restart, call open().
+
+        The dummy parameter allows an executor's close method to be a weakref
+        callback; see monitor.py.
+        """
+        self._stopped = True
+
+    async def join(self, timeout: Optional[int] = None) -> None:
+        if self._task is not None:
+            try:
+                await asyncio.wait_for(self._task, timeout=timeout)
+            except asyncio.TimeoutError:
+                # Task timed out
+                pass
+            except asyncio.exceptions.CancelledError:
+                # Task was already finished, or not yet started.
+                pass
+
+    def wake(self) -> None:
+        """Execute the target function soon."""
+        self._event = True
+
+    def update_interval(self, new_interval: int) -> None:
+        self._interval = new_interval
+
+    def skip_sleep(self) -> None:
+        self._skip_sleep = True
+
+    async def _run(self) -> None:
+        while not self._stopped:
+            try:
+                if not await self._target():
+                    self._stopped = True
+                    break
+            except BaseException:
+                self._stopped = True
+                raise
+
+            if self._skip_sleep:
+                self._skip_sleep = False
+            else:
+                deadline = time.monotonic() + self._interval
+                while not self._stopped and time.monotonic() < deadline:
+                    await asyncio.sleep(self._min_interval)
+                    if self._event:
+                        break  # Early wake.
+
+            self._event = False
+
+
 class PeriodicExecutor:
     def __init__(
         self,
@@ -149,99 +242,6 @@ class PeriodicExecutor:
                     self._stopped = True
                     self._thread_will_exit = True
 
-                raise
-
-            if self._skip_sleep:
-                self._skip_sleep = False
-            else:
-                deadline = time.monotonic() + self._interval
-                while not self._stopped and time.monotonic() < deadline:
-                    await asyncio.sleep(self._min_interval)
-                    if self._event:
-                        break  # Early wake.
-
-            self._event = False
-
-
-class AsyncPeriodicExecutor:
-    def __init__(
-        self,
-        interval: float,
-        min_interval: float,
-        target: Any,
-        name: Optional[str] = None,
-    ):
-        """Run a target function periodically on a background thread.
-
-        If the target's return value is false, the executor stops.
-
-        :param interval: Seconds between calls to `target`.
-        :param min_interval: Minimum seconds between calls if `wake` is
-            called very often.
-        :param target: A function.
-        :param name: A name to give the underlying thread.
-        """
-        # threading.Event and its internal condition variable are expensive
-        # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
-        # The executor's design is constrained by several Python issues, see
-        # "periodic_executor.rst" in this repository.
-        self._event = False
-        self._interval = interval
-        self._min_interval = min_interval
-        self._target = target
-        self._stopped = False
-        self._task: Optional[asyncio.Task] = None
-        self._name = name
-        self._skip_sleep = False
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
-
-    def open(self) -> None:
-        """Start. Multiple calls have no effect."""
-        self._stopped = False
-        started = self._task and not self._task.done()
-
-        if not started:
-            self._task = asyncio.get_event_loop().create_task(self._run(), name=self._name)
-
-    def close(self, dummy: Any = None) -> None:
-        """Stop. To restart, call open().
-
-        The dummy parameter allows an executor's close method to be a weakref
-        callback; see monitor.py.
-        """
-        self._stopped = True
-
-    async def join(self, timeout: Optional[int] = None) -> None:
-        if self._task is not None:
-            try:
-                await asyncio.wait_for(self._task, timeout=timeout)
-            except asyncio.TimeoutError:
-                # Task timed out
-                pass
-            except asyncio.exceptions.CancelledError:
-                # Task was already finished, or not yet started.
-                pass
-
-    def wake(self) -> None:
-        """Execute the target function soon."""
-        self._event = True
-
-    def update_interval(self, new_interval: int) -> None:
-        self._interval = new_interval
-
-    def skip_sleep(self) -> None:
-        self._skip_sleep = True
-
-    async def _run(self) -> None:
-        while not self._stopped:
-            try:
-                if not await self._target():
-                    self._stopped = True
-                    break
-            except BaseException:
-                self._stopped = True
                 raise
 
             if self._skip_sleep:

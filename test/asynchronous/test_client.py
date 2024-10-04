@@ -73,7 +73,6 @@ from test.utils import (
     is_greenthread_patched,
     lazy_client_trial,
     one,
-    async_wait_until,
 )
 
 import bson
@@ -942,7 +941,9 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(client_two, client)
 
     async def test_getters(self):
-        await async_wait_until(lambda: async_client_context.nodes == self.client.nodes, "find all nodes")
+        await async_wait_until(
+            lambda: async_client_context.nodes == self.client.nodes, "find all nodes"
+        )
 
     async def test_list_databases(self):
         cmd_docs = (await self.client.admin.command("listDatabases"))["databases"]

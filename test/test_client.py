@@ -1041,14 +1041,21 @@ class TestClient(IntegrationTest):
         self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertFalse(kc_thread and kc_thread.is_alive())
-
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertFalse(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertFalse(kc_task and not kc_task.done())
         # Using the client should open topology and start the thread.
         client.admin.command("ping")
         self.assertTrue(client._topology._opened)
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertTrue(kc_thread and kc_thread.is_alive())
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertTrue(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertTrue(kc_task and not kc_task.done())
 
     def test_close_does_not_open_servers(self):
         client = self.rs_client(connect=False)
