@@ -37,7 +37,6 @@ from test.utils import (
     EventListener,
     ExceptionCatchingThread,
     async_wait_until,
-    wait_until,
 )
 
 from bson import DBRef

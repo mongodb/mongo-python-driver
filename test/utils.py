@@ -789,7 +789,10 @@ async def async_wait_until(predicate, success_description, timeout=10):
     start = time.time()
     interval = min(float(timeout) / 100, 0.1)
     while True:
-        retval = await predicate()
+        if iscoroutinefunction(predicate):
+            retval = await predicate()
+        else:
+            retval = predicate()
         if retval:
             return retval
 
