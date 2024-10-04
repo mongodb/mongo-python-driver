@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import logging
 import time
@@ -76,7 +77,7 @@ class MonitorBase:
             await monitor._run()  # type:ignore[attr-defined]
             return True
 
-        executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.AsyncPeriodicExecutor(
             interval=interval, min_interval=min_interval, target=target, name=name
         )
 
@@ -112,9 +113,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    def join(self, timeout: Optional[int] = None) -> None:
+    async def join(self, timeout: Optional[int] = None) -> None:
         """Wait for the monitor to stop."""
-        self._executor.join(timeout)
+        await self._executor.join(timeout)
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -521,14 +522,21 @@ def _shutdown_monitors() -> None:
     monitor = None
 
 
-def _shutdown_resources() -> None:
+async def _shutdown_resources() -> None:
     # _shutdown_monitors/_shutdown_executors may already be GC'd at shutdown.
     shutdown = _shutdown_monitors
     if shutdown:  # type:ignore[truthy-function]
         shutdown()
     shutdown = _shutdown_executors
     if shutdown:  # type:ignore[truthy-function]
-        shutdown()
+        await shutdown()
 
 
-atexit.register(_shutdown_resources)
+def _run_shutdown_resources():
+    if _IS_SYNC:
+        _shutdown_resources()
+    else:
+        asyncio.run(_shutdown_resources())
+
+
+atexit.register(_run_shutdown_resources)

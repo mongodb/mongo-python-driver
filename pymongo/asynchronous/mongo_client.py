@@ -909,7 +909,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await AsyncMongoClient._process_periodic_tasks(client)
             return True
 
-        executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.AsyncPeriodicExecutor(
             interval=common.KILL_CURSOR_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,

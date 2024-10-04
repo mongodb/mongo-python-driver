@@ -15,6 +15,7 @@
 """Represent MongoClient's configuration."""
 from __future__ import annotations
 
+import asyncio
 import threading
 import traceback
 from typing import Any, Collection, Optional, Type, Union
@@ -67,7 +68,7 @@ class TopologySettings:
         self._pool_class: Type[Pool] = pool_class or pool.Pool
         self._pool_options: PoolOptions = pool_options or PoolOptions()
         self._monitor_class: Type[monitor.Monitor] = monitor_class or monitor.Monitor
-        self._condition_class: Type[threading.Condition] = condition_class or threading.Condition
+        self._condition_class: Type[asyncio.Condition] = condition_class or asyncio.Condition
         self._local_threshold_ms = local_threshold_ms
         self._server_selection_timeout = server_selection_timeout
         self._server_selector = server_selector
@@ -106,7 +107,7 @@ class TopologySettings:
         return self._monitor_class
 
     @property
-    def condition_class(self) -> Type[threading.Condition]:
+    def condition_class(self) -> Type[asyncio.Condition]:
         return self._condition_class
 
     @property
