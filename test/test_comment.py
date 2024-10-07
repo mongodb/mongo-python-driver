@@ -58,7 +58,7 @@ class TestComment(IntegrationTest):
                     listener.reset()
                     kwargs = {"comment": cc}
                     if h == coll.rename:
-                        _ = db.get_collection("temp_temp_temp").drop()
+                        db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
                         destruct_coll.insert_one({})
                         maybe_cursor = destruct_coll.rename(*args, **kwargs)
@@ -68,11 +68,11 @@ class TestComment(IntegrationTest):
                         coll.insert_one({})
                         maybe_cursor = db.validate_collection(*args, **kwargs)
                     else:
-                        if iscoroutinefunction(coll.create_index):
+                        if not _IS_SYNC and isinstance(coll, Empty):
                             coll.create_index("a")
                         else:
                             coll.create_index("a")
-                        if iscoroutinefunction(h):
+                        if not _IS_SYNC and iscoroutinefunction(h):
                             maybe_cursor = h(*args, **kwargs)
                         else:
                             maybe_cursor = h(*args, **kwargs)

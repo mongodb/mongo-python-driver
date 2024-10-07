@@ -58,7 +58,7 @@ class AsyncTestComment(AsyncIntegrationTest):
                     listener.reset()
                     kwargs = {"comment": cc}
                     if h == coll.rename:
-                        _ = await db.get_collection("temp_temp_temp").drop()
+                        await db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
                         await destruct_coll.insert_one({})
                         maybe_cursor = await destruct_coll.rename(*args, **kwargs)
@@ -68,11 +68,11 @@ class AsyncTestComment(AsyncIntegrationTest):
                         await coll.insert_one({})
                         maybe_cursor = await db.validate_collection(*args, **kwargs)
                     else:
-                        if iscoroutinefunction(coll.create_index):
-                            await coll.create_index("a")
-                        else:
+                        if not _IS_SYNC and isinstance(coll, Empty):
                             coll.create_index("a")
-                        if iscoroutinefunction(h):
+                        else:
+                            await coll.create_index("a")
+                        if not _IS_SYNC and iscoroutinefunction(h):
                             maybe_cursor = await h(*args, **kwargs)
                         else:
                             maybe_cursor = h(*args, **kwargs)
