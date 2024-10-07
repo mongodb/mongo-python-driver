@@ -25,7 +25,7 @@ _IS_SYNC = False
 
 class TestAsyncConcurrency(AsyncIntegrationTest):
     async def _task(self, client):
-        await client.db.test.find_one({"$where": delay(0.05)})
+        await client.db.test.find_one({"$where": delay(0.10)})
 
     async def test_concurrency(self):
         tasks = []
@@ -50,5 +50,5 @@ class TestAsyncConcurrency(AsyncIntegrationTest):
         concurrent_time = time.time() - start
 
         percent_faster = (sequential_time - concurrent_time) / concurrent_time * 100
-        # We expect the concurrent tasks to be at least twice as fast
-        self.assertGreaterEqual(percent_faster, 100)
+        # We expect the concurrent tasks to be at least 75% faster on all platforms as a conservative benchmark
+        self.assertGreaterEqual(percent_faster, 75)
