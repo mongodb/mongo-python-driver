@@ -37,6 +37,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
+from pymongo.auth_oidc_shared import _get_k8s_token
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -84,6 +85,10 @@ class OIDCTestBase(PyMongoTestCase):
             opts = parse_uri(self.uri_single)["options"]
             token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
             return _get_gcp_response(token_aud, username)["access_token"]
+        elif ENVIRON == "k8s":
+            return _get_k8s_token()
+        else:
+            raise ValueError(f"Unknown ENVIRON: {ENVIRON}")
 
     @contextmanager
     def fail_point(self, command_args):
