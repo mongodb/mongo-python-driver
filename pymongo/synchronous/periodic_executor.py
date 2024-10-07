@@ -28,7 +28,7 @@ from pymongo.lock import _create_lock
 _IS_SYNC = True
 
 
-class PeriodicExecutor:
+class SyncPeriodicExecutor:
     def __init__(
         self,
         interval: float,

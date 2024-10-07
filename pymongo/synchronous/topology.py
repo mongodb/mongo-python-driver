@@ -355,10 +355,13 @@ class Topology:
             # change, or for a timeout. We won't miss any changes that
             # came after our most recent apply_selector call, since we've
             # held the lock until now.
-            try:
-                asyncio.wait_for(self._condition.wait(), common.MIN_HEARTBEAT_INTERVAL)
-            except asyncio.TimeoutError:
-                pass
+            if _IS_SYNC:
+                self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+            else:
+                try:
+                    asyncio.wait_for(self._condition.wait(), common.MIN_HEARTBEAT_INTERVAL)
+                except asyncio.TimeoutError:
+                    pass
             self._description.check_compatible()
             now = time.monotonic()
             server_descriptions = self._description.apply_selector(
@@ -656,10 +659,13 @@ class Topology:
         """Wake all monitors, wait for at least one to check its server."""
         with self._lock:
             self._request_check_all()
-            try:
-                asyncio.wait_for(self._condition.wait(), wait_time)
-            except TimeoutError:
-                pass
+            if _IS_SYNC:
+                self._condition.wait(wait_time)
+            else:
+                try:
+                    asyncio.wait_for(self._condition.wait(), wait_time)
+                except TimeoutError:
+                    pass
 
     def data_bearing_servers(self) -> list[ServerDescription]:
         """Return a list of all data-bearing servers.
