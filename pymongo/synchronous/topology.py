@@ -173,7 +173,7 @@ class Topology:
         self._closed = False
         _lock = _create_lock()
         self._lock = _Lock(_lock)
-        self._condition = self._settings.condition_class(_lock)  # type: ignore[arg-type]
+        self._condition = self._settings.condition_class(_lock)
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
