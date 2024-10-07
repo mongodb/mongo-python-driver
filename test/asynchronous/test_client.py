@@ -2542,7 +2542,7 @@ class TestClientPool(AsyncMockClientTest):
         self.assertEqual(await c.address, ("a", 1))
         self.assertEqual(await c.arbiters, {("c", 3)})
         # Assert that we create 2 and only 2 pooled connections.
-        listener.wait_for_event(monitoring.ConnectionReadyEvent, 2)
+        listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 2)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 2)
         # Assert that we do not create connections to arbiters.
         arbiter = c._topology.get_server_by_address(("c", 3))

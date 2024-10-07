@@ -98,6 +98,12 @@ class BaseListener:
         """Wait for a number of events to be published, or fail."""
         wait_until(lambda: self.event_count(event) >= count, f"find {count} {event} event(s)")
 
+    async def async_wait_for_event(self, event, count):
+        """Wait for a number of events to be published, or fail."""
+        await async_wait_until(
+            lambda: self.event_count(event) >= count, f"find {count} {event} event(s)"
+        )
+
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):

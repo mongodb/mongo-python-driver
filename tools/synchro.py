@@ -109,6 +109,7 @@ replacements = {
     "async_ensure_all_connected": "ensure_all_connected",
     "async_repl_set_step_down": "repl_set_step_down",
     "AsyncPeriodicExecutor(": "PeriodicExecutor(",
+    "async_wait_for_event": "wait_for_event",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
