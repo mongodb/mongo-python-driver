@@ -23,7 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo.lock import _create_lock
+from pymongo.lock import _ALock, _create_lock
 
 _IS_SYNC = False
 
@@ -152,7 +152,7 @@ class PeriodicExecutor:
         self._name = name
         self._skip_sleep = False
         self._thread_will_exit = False
-        self._lock = _create_lock()
+        self._lock = _ALock(_create_lock())
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"

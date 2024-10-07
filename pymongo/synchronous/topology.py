@@ -40,7 +40,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import _create_lock
+from pymongo.lock import _create_lock, _Lock
 from pymongo.logger import (
     _SDAM_LOGGER,
     _SERVER_SELECTION_LOGGER,
@@ -171,8 +171,9 @@ class Topology:
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        self._lock = _create_lock()
-        self._condition = self._settings.condition_class(self._lock)  # type: ignore[arg-type]
+        _lock = _create_lock()
+        self._lock = _Lock(_lock)
+        self._condition = self._settings.condition_class(_lock)  # type: ignore[arg-type]
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None

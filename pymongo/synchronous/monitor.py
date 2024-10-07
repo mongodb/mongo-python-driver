@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import logging
 import time
@@ -532,11 +531,5 @@ def _shutdown_resources() -> None:
         shutdown()
 
 
-def _run_shutdown_resources():
-    if _IS_SYNC:
-        _shutdown_resources()
-    else:
-        asyncio.run(_shutdown_resources())
-
-
-atexit.register(_run_shutdown_resources)
+if _IS_SYNC:
+    atexit.register(_shutdown_resources)

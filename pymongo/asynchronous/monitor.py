@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import logging
 import time
@@ -522,21 +521,15 @@ def _shutdown_monitors() -> None:
     monitor = None
 
 
-async def _shutdown_resources() -> None:
+def _shutdown_resources() -> None:
     # _shutdown_monitors/_shutdown_executors may already be GC'd at shutdown.
     shutdown = _shutdown_monitors
     if shutdown:  # type:ignore[truthy-function]
         shutdown()
     shutdown = _shutdown_executors
     if shutdown:  # type:ignore[truthy-function]
-        await shutdown()
+        shutdown()
 
 
-def _run_shutdown_resources():
-    if _IS_SYNC:
-        _shutdown_resources()
-    else:
-        asyncio.run(_shutdown_resources())
-
-
-atexit.register(_run_shutdown_resources)
+if _IS_SYNC:
+    atexit.register(_shutdown_resources)
