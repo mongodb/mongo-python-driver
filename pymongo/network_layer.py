@@ -277,7 +277,9 @@ async def async_receive_data(
         sock.settimeout(sock_timeout)
 
 
-async def _async_receive_data_socket(sock: socket.socket | _sslConn, length: int) -> memoryview:
+async def async_receive_data_socket(
+    sock: Union[socket.socket, _sslConn], length: int
+) -> memoryview:
     sock_timeout = sock.gettimeout()
     timeout = sock_timeout
 
@@ -286,8 +288,9 @@ async def _async_receive_data_socket(sock: socket.socket | _sslConn, length: int
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             return await asyncio.wait_for(
-                _async_receive_ssl(sock, length, loop, once=True), timeout=timeout
-            )  # type: ignore[arg-type]
+                _async_receive_ssl(sock, length, loop, once=True),  # type: ignore[arg-type]
+                timeout=timeout,
+            )
         else:
             return await asyncio.wait_for(_async_receive(sock, length, loop), timeout=timeout)  # type: ignore[arg-type]
     except asyncio.TimeoutError as err:

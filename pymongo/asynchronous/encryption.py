@@ -143,9 +143,14 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         self._spawned = False
 
     async def _async_kms_request(
-        self, kms_context: MongoCryptKmsContext, host, port, opts, message
+        self,
+        kms_context: MongoCryptKmsContext,
+        host: str,
+        port: Optional[int],
+        opts: PoolOptions,
+        message: bytes,
     ) -> None:
-        from pymongo.network_layer import _async_receive_data_socket
+        from pymongo.network_layer import async_receive_data_socket  # type: ignore[attr-defined]
 
         try:
             conn = await _configured_socket((host, port), opts)
@@ -154,7 +159,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = await _async_receive_data_socket(conn, kms_context.bytes_needed)
+                    data = await async_receive_data_socket(conn, kms_context.bytes_needed)
                     kms_context.feed(data)
             except OSError as err:
                 raise OSError("KMS connection closed") from err
