@@ -1345,7 +1345,7 @@ class TestCursor(AsyncIntegrationTest):
             with self.assertRaises(ExecutionTimeout):
                 await cursor.next()
 
-        assertCursorKilled()
+        await assertCursorKilled()
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__

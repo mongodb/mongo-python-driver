@@ -356,7 +356,7 @@ class Topology:
             # came after our most recent apply_selector call, since we've
             # held the lock until now.
             if _IS_SYNC:
-                self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+                await self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
             else:
                 try:
                     await asyncio.wait_for(self._condition.wait(), common.MIN_HEARTBEAT_INTERVAL)
@@ -662,7 +662,7 @@ class Topology:
         async with self._lock:
             self._request_check_all()
             if _IS_SYNC:
-                self._condition.wait(wait_time)
+                await self._condition.wait(wait_time)
             else:
                 try:
                     await asyncio.wait_for(self._condition.wait(), wait_time)
