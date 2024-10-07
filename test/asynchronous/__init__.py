@@ -466,11 +466,12 @@ class AsyncClientContext:
                 if not self.connected:
                     pair = await self.pair
                     raise SkipTest(f"Cannot connect to MongoDB on {pair}")
-                if iscoroutinefunction(condition) and await condition():
-                    if wraps_async:
-                        return await f(*args, **kwargs)
-                    else:
-                        return f(*args, **kwargs)
+                if iscoroutinefunction(condition):
+                    if await condition():
+                        if wraps_async:
+                            return await f(*args, **kwargs)
+                        else:
+                            return f(*args, **kwargs)
                 elif condition():
                     if wraps_async:
                         return await f(*args, **kwargs)

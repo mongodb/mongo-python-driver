@@ -180,13 +180,11 @@ class AsyncSpecTestCreator:
 
     async def should_run_on(self, scenario_def):
         run_on = scenario_def.get("runOn", [])
-        print(f"RUN_ON: {run_on}")
         if not run_on:
             # Always run these tests.
             return True
 
         for req in run_on:
-            print(f"REQ: {req}")
             if (
                 await self.valid_topology(req)
                 and self.min_server_version(req)
@@ -194,10 +192,7 @@ class AsyncSpecTestCreator:
                 and self.valid_auth_enabled(req)
                 and self.serverless_ok(req)
             ):
-                print(f"REQ passes: {req}")
                 return True
-            else:
-                print(f"REQ fails: {req}")
         return False
 
     def ensure_run_on(self, scenario_def, method):
@@ -206,7 +201,7 @@ class AsyncSpecTestCreator:
         async def predicate():
             return await self.should_run_on(scenario_def)
 
-        return async_client_context._require(lambda: predicate, "runOn not satisfied", method)
+        return async_client_context._require(predicate, "runOn not satisfied", method)
 
     def tests(self, scenario_def):
         """Allow CMAP spec test to override the location of test."""
