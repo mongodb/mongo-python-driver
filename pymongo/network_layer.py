@@ -130,7 +130,7 @@ if sys.platform != "win32":
                         loop.remove_writer(fd)
 
     async def _async_receive_ssl(
-        conn: _sslConn, length: int, loop: AbstractEventLoop
+        conn: _sslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
@@ -145,6 +145,8 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
+                if once:
+                    return mv[:read]
                 total_read += read
             except BLOCKING_IO_ERRORS as exc:
                 fd = conn.fileno()
@@ -275,36 +277,21 @@ async def async_receive_data(
         sock.settimeout(sock_timeout)
 
 
-async def _async_receive_data_socket(
-    sock: socket.socket | _sslConn, length: int, deadline: Optional[float]
-) -> memoryview:
+async def _async_receive_data_socket(sock: socket.socket | _sslConn, length: int) -> memoryview:
     sock_timeout = sock.gettimeout()
-    timeout: Optional[Union[float, int]]
-    if deadline:
-        # When the timeout has expired perform one final check to
-        # see if the socket is readable. This helps avoid spurious
-        # timeouts on AWS Lambda and other FaaS environments.
-        timeout = max(deadline - time.monotonic(), 0)
-    else:
-        timeout = sock_timeout
+    timeout = sock_timeout
 
     sock.settimeout(0.0)
     loop = asyncio.get_event_loop()
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
-            read_task = asyncio.create_task(_async_receive_ssl(sock, length, loop))  # type: ignore[arg-type]
+            return await asyncio.wait_for(
+                _async_receive_ssl(sock, length, loop, once=True), timeout=timeout
+            )  # type: ignore[arg-type]
         else:
-            read_task = asyncio.create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
-        tasks = [read_task]
-        done, pending = await asyncio.wait(
-            tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.wait(pending)
-        if read_task in done:
-            return read_task.result()
-        raise socket.timeout("timed out")
+            return await asyncio.wait_for(_async_receive(sock, length, loop), timeout=timeout)  # type: ignore[arg-type]
+    except asyncio.TimeoutError as err:
+        raise socket.timeout("timed out") from err
     finally:
         sock.settimeout(sock_timeout)
 
