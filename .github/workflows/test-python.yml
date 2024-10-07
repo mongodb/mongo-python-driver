@@ -72,7 +72,7 @@ jobs:
             pip install hatch
           fi
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.10.0
+        uses: supercharge/mongodb-github-action@1.11.0
         with:
           mongodb-version: 6.0
       - name: Run tests
@@ -94,7 +94,7 @@ jobs:
         run: |
           pip install -U hatch pip
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.10.0
+        uses: supercharge/mongodb-github-action@1.11.0
         with:
           mongodb-version: '8.0.0-rc4'
       - name: Run tests
@@ -201,7 +201,7 @@ jobs:
             # Test sdist on lowest supported Python
             python-version: '3.8'
         - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@1.10.0
+          uses: supercharge/mongodb-github-action@1.11.0
         - name: Run connect test from sdist
           shell: bash
           run: |
