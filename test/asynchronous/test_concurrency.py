@@ -25,7 +25,7 @@ _IS_SYNC = False
 
 class TestAsyncConcurrency(AsyncIntegrationTest):
     async def _task(self, client):
-        await client.db.test.find_one({"$where": delay(0.10)})
+        await client.db.test.find_one({"$where": delay(0.20)})
 
     async def test_concurrency(self):
         tasks = []
