@@ -117,8 +117,6 @@ async def command(
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
-    if name == "listCollections":
-        print(f"Running {name} now!")
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -135,7 +133,7 @@ async def command(
 
     publish = listeners is not None and listeners.enabled_for_commands
     if name == "listCollections":
-        print(f"Publishing is {publish}!")
+        print(f"Publishing is {publish} listeners: {listeners}!")
     start = datetime.datetime.now()
     if publish:
         speculative_hello = _is_speculative_authenticate(name, spec)
