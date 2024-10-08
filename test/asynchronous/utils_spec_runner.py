@@ -537,6 +537,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
                     self.check_result(expected_result, result)
 
     async def run_operations(self, sessions, collection, ops, in_with_transaction=False):
+        print(f"Running operations: {ops}")
         for op in ops:
             await self._run_op(sessions, collection, op, in_with_transaction)
 
