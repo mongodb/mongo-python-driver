@@ -886,6 +886,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_document_type("document", document)
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
             document["_id"] = ObjectId()  # type: ignore[index]
+        print("Running insert_one")
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(

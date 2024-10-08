@@ -117,6 +117,8 @@ async def command(
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
+    if name == "insertOne":
+        print(f"Running insertOne with {spec}")
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
