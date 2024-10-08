@@ -85,7 +85,7 @@ def make_server_description(server, hosts):
         if field in server:
             hello_response[field] = server[field]
 
-    hello_response.setdefault("maxWireVersion", 6)
+    hello_response.setdefault("maxWireVersion", 7)
 
     # Sets _last_update_time to now.
     sd = ServerDescription(
