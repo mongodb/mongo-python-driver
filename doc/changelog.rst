@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Changes in Version 4.11.0
+-------------------------
+
+.. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
+
 Changes in Version 4.10.1
 -------------------------
 
