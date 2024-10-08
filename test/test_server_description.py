@@ -118,7 +118,7 @@ class TestServerDescription(unittest.TestCase):
                 "maxBsonObjectSize": 2,
                 "maxWriteBatchSize": 3,
                 "minWireVersion": 4,
-                "maxWireVersion": 5,
+                "maxWireVersion": 25,
                 "setName": "rs",
             }
         )
@@ -130,7 +130,7 @@ class TestServerDescription(unittest.TestCase):
         self.assertEqual(2, s.max_bson_size)
         self.assertEqual(3, s.max_write_batch_size)
         self.assertEqual(4, s.min_wire_version)
-        self.assertEqual(5, s.max_wire_version)
+        self.assertEqual(25, s.max_wire_version)
 
     def test_default_max_message_size(self):
         s = parse_hello_response({"ok": 1, HelloCompat.LEGACY_CMD: True, "maxBsonObjectSize": 2})

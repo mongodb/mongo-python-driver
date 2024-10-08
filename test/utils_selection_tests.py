@@ -26,7 +26,7 @@ from test.pymongo_mocks import DummyMonitor
 from test.utils import MockPool, parse_read_preference
 
 from bson import json_util
-from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
+from pymongo.common import HEARTBEAT_FREQUENCY, MIN_SUPPORTED_WIRE_VERSION, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.hello import Hello, HelloCompat
 from pymongo.operations import _Op
@@ -85,7 +85,7 @@ def make_server_description(server, hosts):
         if field in server:
             hello_response[field] = server[field]
 
-    hello_response.setdefault("maxWireVersion", 7)
+    hello_response.setdefault("maxWireVersion", MIN_SUPPORTED_WIRE_VERSION)
 
     # Sets _last_update_time to now.
     sd = ServerDescription(

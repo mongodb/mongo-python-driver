@@ -133,7 +133,7 @@ class TestSingleServerTopology(TopologyTest):
                     HelloCompat.LEGACY_CMD: True,
                     "hosts": ["a"],
                     "setName": "rs",
-                    "maxWireVersion": 7,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 },
             ),
             (
@@ -144,12 +144,17 @@ class TestSingleServerTopology(TopologyTest):
                     "secondary": True,
                     "hosts": ["a"],
                     "setName": "rs",
-                    "maxWireVersion": 7,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 },
             ),
             (
                 SERVER_TYPE.Mongos,
-                {"ok": 1, HelloCompat.LEGACY_CMD: True, "msg": "isdbgrid", "maxWireVersion": 7},
+                {
+                    "ok": 1,
+                    HelloCompat.LEGACY_CMD: True,
+                    "msg": "isdbgrid",
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
+                },
             ),
             (
                 SERVER_TYPE.RSArbiter,
@@ -159,14 +164,28 @@ class TestSingleServerTopology(TopologyTest):
                     "arbiterOnly": True,
                     "hosts": ["a"],
                     "setName": "rs",
-                    "maxWireVersion": 7,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 },
             ),
-            (SERVER_TYPE.Standalone, {"ok": 1, HelloCompat.LEGACY_CMD: True, "maxWireVersion": 7}),
+            (
+                SERVER_TYPE.Standalone,
+                {
+                    "ok": 1,
+                    HelloCompat.LEGACY_CMD: True,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
+                },
+            ),
             # A "slave" in a master-slave deployment.
             # This replication type was removed in MongoDB
             # 4.0.
-            (SERVER_TYPE.Standalone, {"ok": 1, HelloCompat.LEGACY_CMD: False, "maxWireVersion": 7}),
+            (
+                SERVER_TYPE.Standalone,
+                {
+                    "ok": 1,
+                    HelloCompat.LEGACY_CMD: False,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
+                },
+            ),
         ]:
             t = create_mock_topology(direct_connection=True)
 
@@ -213,7 +232,10 @@ class TestSingleServerTopology(TopologyTest):
         class TestMonitor(Monitor):
             def _check_with_socket(self, *args, **kwargs):
                 if available:
-                    return (Hello({"ok": 1, "maxWireVersion": 7}), round_trip_time)
+                    return (
+                        Hello({"ok": 1, "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION}),
+                        round_trip_time,
+                    )
                 else:
                     raise AutoReconnect("mock monitor error")
 
@@ -531,7 +553,7 @@ class TestMultiServerTopology(TopologyTest):
                 "setName": "rs",
                 "hosts": ["a"],
                 "minWireVersion": 1,
-                "maxWireVersion": 7,
+                "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
             },
         )
 
@@ -607,7 +629,7 @@ class TestMultiServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 "setName": "rs",
                 "hosts": ["a", "b"],
-                "maxWireVersion": 7,
+                "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 "maxWriteBatchSize": 1,
             },
         )
@@ -621,7 +643,7 @@ class TestMultiServerTopology(TopologyTest):
                 "secondary": True,
                 "setName": "rs",
                 "hosts": ["a", "b"],
-                "maxWireVersion": 7,
+                "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 "maxWriteBatchSize": 2,
             },
         )
@@ -638,7 +660,7 @@ class TestMultiServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 "setName": "rs",
                 "hosts": ["a", "b"],
-                "maxWireVersion": 7,
+                "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 "maxWriteBatchSize": 2,
             },
         )
@@ -735,7 +757,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, *args, **kwargs):
                 hello_count[0] += 1
                 if hello_count[0] == 1:
-                    return Hello({"ok": 1, "maxWireVersion": 7}), 0
+                    return Hello({"ok": 1, "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION}), 0
                 else:
                     raise AutoReconnect("mock monitor error")
 
@@ -757,7 +779,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, *args, **kwargs):
                 hello_count[0] += 1
                 if hello_count[0] in (1, 3):
-                    return Hello({"ok": 1, "maxWireVersion": 7}), 0
+                    return Hello({"ok": 1, "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION}), 0
                 else:
                     raise AutoReconnect(f"mock monitor error #{hello_count[0]}")
 
