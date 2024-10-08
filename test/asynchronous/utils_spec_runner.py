@@ -653,6 +653,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
             await db.create_collection(coll_name, write_concern=wc)
 
     async def run_scenario(self, scenario_def, test):
+        print("RUNNING NOW")
         self.maybe_skip_scenario(test)
 
         # Kill all sessions before and after each test to prevent an open
@@ -668,6 +669,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
             await c[database_name][collection_name].distinct("x")
 
         # Configure the fail point before creating the client.
+        print(f"failPoint: {'failPoint' in test}")
         if "failPoint" in test:
             fp = test["failPoint"]
             await self.set_fail_point(fp)
