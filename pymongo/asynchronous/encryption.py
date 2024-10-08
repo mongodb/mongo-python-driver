@@ -18,6 +18,7 @@ from __future__ import annotations
 import contextlib
 import enum
 import socket
+import traceback
 import uuid
 import weakref
 from copy import deepcopy
@@ -239,7 +240,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
-        print("Calling collection_info")
+        print(f"Calling collection_info {traceback.print_stack()}")
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
