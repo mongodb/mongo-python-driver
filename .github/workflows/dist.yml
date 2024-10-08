@@ -53,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
-          python-version: 3.8
+          python-version: 3.9
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
@@ -79,13 +79,12 @@ jobs:
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: "cp38-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
+          CIBW_BUILD: "cp39-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
         if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
         run: |
-          ls wheelhouse/*cp38*.whl
           ls wheelhouse/*cp39*.whl
           ls wheelhouse/*cp310*.whl
           ls wheelhouse/*cp311*.whl
@@ -109,7 +108,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           # Build sdist on lowest supported Python
-          python-version: '3.8'
+          python-version: '3.9'
 
       - name: Build SDist
         run: |

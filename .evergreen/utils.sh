@@ -4,8 +4,8 @@ set -o xtrace
 
 find_python3() {
     PYTHON=""
-    # Add a fallback system python3 if it is available and Python 3.8+.
-    if is_python_38 "$(command -v python3)"; then
+    # Add a fallback system python3 if it is available and Python 3.9+.
+    if is_python_39 "$(command -v python3)"; then
         PYTHON="$(command -v python3)"
     fi
     # Find a suitable toolchain version, if available.
@@ -14,23 +14,23 @@ find_python3() {
         if [ -d "/Library/Frameworks/Python.Framework/Versions/3.10" ]; then
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
         # macos 10.14
-        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.8" ]; then
-            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.8/bin/python3"
+        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.9" ]; then
+            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3"
         fi
     elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        PYTHON="C:/python/Python38/python.exe"
+        PYTHON="C:/python/Python39/python.exe"
     else
-        # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.8+.
-        if [ -f "/opt/python/3.8/bin/python3" ]; then
-            PYTHON="/opt/python/3.8/bin/python3"
-        elif is_python_38 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
+        # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
+        if [ -f "/opt/python/3.9/bin/python3" ]; then
+            PYTHON="/opt/python/3.9/bin/python3"
+        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v4/bin/python3"
-        elif is_python_38 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v3/bin/python3"
         fi
     fi
     if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python3.8+ installed!"
+        echo "Cannot test without python3.9+ installed!"
         exit 1
     fi
     echo "$PYTHON"
@@ -96,15 +96,15 @@ testinstall () {
     fi
 }
 
-# Function that returns success if the provided Python binary is version 3.8 or later
+# Function that returns success if the provided Python binary is version 3.9 or later
 # Usage:
-# is_python_38 /path/to/python
+# is_python_39 /path/to/python
 # * param1: Python binary
-is_python_38() {
+is_python_39() {
     if [ -z "$1" ]; then
         return 1
-    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 8))"; then
-        # runs when sys.version_info[:2] >= (3, 8)
+    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 9))"; then
+        # runs when sys.version_info[:2] >= (3, 9)
         return 0
     else
         return 1
