@@ -535,7 +535,6 @@ class AsyncConnection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            print(f"Calling command for {spec}")
             return await command(
                 self,
                 dbname,
