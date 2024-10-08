@@ -816,6 +816,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ) -> None:
             if bypass_doc_val:
                 command["bypassDocumentValidation"] = True
+            print("Running _insert_command")
 
             result = await conn.command(
                 self._database.name,
