@@ -81,7 +81,7 @@ class SyncPeriodicExecutor:
     def join(self, timeout: Optional[int] = None) -> None:
         if self._task is not None:
             try:
-                asyncio.wait_for(self._task, timeout=timeout)
+                asyncio.wait_for(self._task, timeout=timeout)  # type-ignore: [arg-type]
             except asyncio.TimeoutError:
                 # Task timed out
                 pass

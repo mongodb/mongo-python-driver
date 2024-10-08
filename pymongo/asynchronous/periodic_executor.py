@@ -81,7 +81,7 @@ class AsyncPeriodicExecutor:
     async def join(self, timeout: Optional[int] = None) -> None:
         if self._task is not None:
             try:
-                await asyncio.wait_for(self._task, timeout=timeout)
+                await asyncio.wait_for(self._task, timeout=timeout)  # type-ignore: [arg-type]
             except asyncio.TimeoutError:
                 # Task timed out
                 pass
@@ -274,7 +274,7 @@ def _on_executor_deleted(ref: weakref.ReferenceType[PeriodicExecutor]) -> None:
     _EXECUTORS.remove(ref)
 
 
-async def _shutdown_executors() -> None:
+def _shutdown_executors() -> None:
     if _EXECUTORS is None:
         return
 
@@ -291,6 +291,6 @@ async def _shutdown_executors() -> None:
     for ref in executors:
         executor = ref()
         if executor:
-            await executor.join(1)
+            executor.join(1)
 
     executor = None

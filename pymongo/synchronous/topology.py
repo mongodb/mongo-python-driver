@@ -359,7 +359,9 @@ class Topology:
                 self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
             else:
                 try:
-                    asyncio.wait_for(self._condition.wait(), common.MIN_HEARTBEAT_INTERVAL)
+                    asyncio.wait_for(
+                        self._condition.wait(), common.MIN_HEARTBEAT_INTERVAL
+                    )  # type-ignore: [arg-type]
                 except asyncio.TimeoutError:
                     pass
             self._description.check_compatible()
@@ -663,8 +665,8 @@ class Topology:
                 self._condition.wait(wait_time)
             else:
                 try:
-                    asyncio.wait_for(self._condition.wait(), wait_time)
-                except TimeoutError:
+                    asyncio.wait_for(self._condition.wait(), wait_time)  # type-ignore: [arg-type]
+                except asyncio.TimeoutError:
                     pass
 
     def data_bearing_servers(self) -> list[ServerDescription]:
