@@ -1014,33 +1014,6 @@ tasks:
             TOPOLOGY: "server"
         - func: "run doctests"
 
-    - name: "test-3.6-standalone"
-      tags: ["3.6", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-3.6-replica_set"
-      tags: ["3.6", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-3.6-sharded_cluster"
-      tags: ["3.6", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
     - name: "test-4.0-standalone"
       tags: ["4.0", "standalone"]
       commands:
@@ -2186,10 +2159,6 @@ axes:
   - id: mongodb-version
     display_name: "MongoDB"
     values:
-      - id: "3.6"
-        display_name: "MongoDB 3.6"
-        variables:
-          VERSION: "3.6"
       - id: "4.0"
         display_name: "MongoDB 4.0"
         variables:
@@ -2490,7 +2459,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-    - ".3.6"
 
 - matrix_name: "test-macos-arm64"
   matrix_spec:
@@ -2562,7 +2530,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-    - ".3.6"
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
@@ -2657,19 +2624,22 @@ buildvariants:
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
     - "test-latest-standalone"
+    - "test-8.0-standalone"
+    - "test-7.0-standalone"
+    - "test-6.0-standalone"
     - "test-5.0-standalone"
     - "test-4.4-standalone"
     - "test-4.2-standalone"
+    - "test-4.0-standalone"
   rules:
-    # Server versions 3.6 and 4.0 support snappy and zlib.
+    # Server version 4.0 supports snappy and zlib but not zstd.
     - if:
         python-version: "*"
         c-extensions: "*"
-        compression: ["snappy", "zlib"]
+        compression: ["zstd"]
       then:
-        add_tasks:
+        remove_tasks:
           - "test-4.0-standalone"
-          - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-green-framework-rhel8"
   matrix_spec:
@@ -2734,7 +2704,7 @@ buildvariants:
   matrix_spec:
     platform: rhel8
     storage-engine: "*"
-    python-version: 3.9
+    python-version: "3.9"
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
@@ -2751,7 +2721,6 @@ buildvariants:
           - "test-4.4-standalone"
           - "test-4.2-standalone"
           - "test-4.0-standalone"
-          - "test-3.6-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
         platform: rhel8
@@ -2761,8 +2730,6 @@ buildvariants:
         add_tasks:
           - "test-4.0-standalone"
           - "test-4.0-replica_set"
-          - "test-3.6-standalone"
-          - "test-3.6-replica_set"
 
 # enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.9.
 - matrix_name: "test-disableTestCommands"
@@ -2881,6 +2848,9 @@ buildvariants:
   tasks:
     # Versioned API was introduced in MongoDB 4.7
     - "test-latest-standalone"
+    - "test-8.0-standalone"
+    - "test-7.0-standalone"
+    - "test-6.0-standalone"
     - "test-5.0-standalone"
 
 - matrix_name: "ocsp-test"

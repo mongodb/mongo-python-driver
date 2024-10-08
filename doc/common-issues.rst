@@ -6,14 +6,14 @@ Also see the :ref:`TLSErrors` section.
 Server reports wire version X, PyMongo requires Y
 -------------------------------------------------
 
-When one attempts to connect to a <=3.4 version server, PyMongo will throw the following error::
+When one attempts to connect to a <=3.6 version server, PyMongo will throw the following error::
 
   >>> client.admin.command('ping')
   ...
-  pymongo.errors.ConfigurationError: Server at localhost:27017 reports wire version 5, but this version of PyMongo requires at least 6 (MongoDB 3.6).
+  pymongo.errors.ConfigurationError: Server at localhost:27017 reports wire version 6, but this version of PyMongo requires at least 7 (MongoDB 4.0).
 
 This is caused by the driver being too new for the server it is being run against.
-To resolve this issue either upgrade your database to version >= 3.6 or downgrade to PyMongo 3.x which supports MongoDB >= 2.6.
+To resolve this issue either upgrade your database to version >= 4.0 or downgrade to an early version of PyMongo which supports MongoDB < 4.0.
 
 
 'Cursor' object has no attribute '_Cursor__killed'
