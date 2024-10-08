@@ -696,6 +696,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         client = await self.async_rs_client(
             h=host, event_listeners=[listener, pool_listener, server_listener], **client_options
         )
+        print(f"Client created with listeners {client.options.event_listeners}")
         self.scenario_client = client
         self.listener = listener
         self.pool_listener = pool_listener
