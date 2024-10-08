@@ -99,7 +99,7 @@ class _SrvResolver:
             raise ConfigurationError(str(exc)) from None
         if len(results) > 1:
             raise ConfigurationError("Only one TXT record is supported")
-        return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")
+        return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")  # type: ignore[attr-defined]
 
     def _resolve_uri(self, encapsulate_errors: bool) -> resolver.Answer:
         try:
@@ -121,7 +121,8 @@ class _SrvResolver:
 
         # Construct address tuples
         nodes = [
-            (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port) for res in results
+            (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)  # type: ignore[attr-defined]
+            for res in results
         ]
 
         # Validate hosts
