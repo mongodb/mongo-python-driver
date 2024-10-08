@@ -117,6 +117,7 @@ async def command(
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
+    print(f"Running {name} now!")
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
