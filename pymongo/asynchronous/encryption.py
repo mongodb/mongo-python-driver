@@ -239,6 +239,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: The first document from the listCollections command response as BSON.
         """
+        print("Calling collection_info")
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
