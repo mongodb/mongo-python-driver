@@ -2567,7 +2567,10 @@ class _ClientConnectionRetryable(Generic[T]):
             try:
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
                     print(f"Retryable read for {self._operation}")
-                return await self._read() if self._is_read else await self._write()
+                res = await self._read() if self._is_read else await self._write()
+                if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                    print(f"Result for {self._operation}: {res}")
+                return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
