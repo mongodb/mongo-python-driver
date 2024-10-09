@@ -26,6 +26,7 @@ except ImportError:
 
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
 
@@ -44,7 +45,11 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
 
         hosts = [server.address_string for server in (primary, secondary)]
         primary_response = OpReply(
-            ismaster=True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
+            ismaster=True,
+            setName="rs",
+            hosts=hosts,
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         primary.autoresponds("ismaster", primary_response)
         secondary.autoresponds(
@@ -54,7 +59,7 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
             setName="rs",
             hosts=hosts,
             minWireVersion=2,
-            maxWireVersion=6,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
 
         client = MongoClient(primary.uri, replicaSet="rs")
