@@ -97,9 +97,8 @@ the "MongoDB Challenge-Response" protocol::
 Default Authentication Mechanism
 --------------------------------
 
-If no mechanism is specified, PyMongo automatically SCRAM-SHA-1 when connected
-to MongoDB 3.6 and negotiates the mechanism to use (SCRAM-SHA-1
-or SCRAM-SHA-256) when connected to MongoDB 4.0+.
+If no mechanism is specified, PyMongo automatically negotiates the mechanism to use (SCRAM-SHA-1
+or SCRAM-SHA-256) with the MongoDB server.
 
 Default Database and "authSource"
 ---------------------------------
