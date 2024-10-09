@@ -1252,8 +1252,6 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 
 async def async_setup():
-    global async_client_context
-    async_client_context = AsyncClientContext()
     await async_client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")

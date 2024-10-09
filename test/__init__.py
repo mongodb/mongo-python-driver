@@ -1234,8 +1234,6 @@ class MockClientTest(UnitTest):
 
 
 def setup():
-    global client_context
-    client_context = ClientContext()
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
