@@ -2579,6 +2579,8 @@ class _ClientConnectionRetryable(Generic[T]):
                 # A ServerSelectionTimeoutError error indicates that there may
                 # be a persistent outage. Attempting to retry in this case will
                 # most likely be a waste of time.
+                if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                    print(f"Raising timeout error for {self._operation}")
                 raise
             except PyMongoError as exc:
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
@@ -2619,6 +2621,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         await self._session._unpin()
                     if not retryable_write_error_exc or self._is_not_eligible_for_retry():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                            if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                                print(f"Raising error for {self._operation}")
                             raise self._last_error from exc
                         else:
                             if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
