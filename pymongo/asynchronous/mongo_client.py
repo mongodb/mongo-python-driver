@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import traceback
 import warnings
 import weakref
 from collections import defaultdict
@@ -2580,7 +2581,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 # be a persistent outage. Attempting to retry in this case will
                 # most likely be a waste of time.
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                    print(f"Raising timeout error for {self._operation}")
+                    print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                 raise
             except PyMongoError as exc:
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
@@ -2595,20 +2596,20 @@ class _ClientConnectionRetryable(Generic[T]):
                             and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
                         ):
                             if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                                print(f"Raising error for {self._operation}")
+                                print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                             raise
                         self._retrying = True
                         self._last_error = exc
                     else:
                         if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                            print(f"Raising error for {self._operation}")
+                            print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                         raise
 
                 # Specialized catch on write operation
                 if not self._is_read:
                     if not self._retryable:
                         if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                            print(f"Raising error for {self._operation}")
+                            print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         retryable_write_error_exc = isinstance(
@@ -2622,11 +2623,11 @@ class _ClientConnectionRetryable(Generic[T]):
                     if not retryable_write_error_exc or self._is_not_eligible_for_retry():
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                                print(f"Raising error for {self._operation}")
+                                print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                             raise self._last_error from exc
                         else:
                             if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                                print(f"Raising error for {self._operation}")
+                                print(f"Raising error for {self._operation} at {traceback.print_stack(limit=1)}")
                             raise
                     if self._bulk:
                         self._bulk.retrying = True
