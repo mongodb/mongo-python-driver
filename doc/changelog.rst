@@ -1,6 +1,26 @@
 Changelog
 =========
 
+Changes in Version 4.11.0
+-------------------------
+
+.. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
+.. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
+   Driver support for MongoDB 3.6 reached end of life in April 2024.
+
+PyMongo 4.11 brings a number of changes including:
+
+- Dropped support for Python 3.8.
+- Dropped support for MongoDB 3.6.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.11 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
+
 Changes in Version 4.10.1
 -------------------------
 
