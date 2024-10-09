@@ -68,7 +68,7 @@ class SyncPeriodicExecutor:
         started = self._task and not self._task.done()
 
         if not started:
-            self._task = asyncio.get_event_loop().create_task(self._run(), name=self._name)
+            self._task = asyncio.get_event_loop().create_task(self._run(), name=self._name)  # type: ignore[func-returns-value]
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().
