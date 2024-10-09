@@ -2721,7 +2721,9 @@ class _ClientConnectionRetryable(Generic[T]):
 
         :return: Output for func()'s call
         """
+        print(f"Calling _read for {self._func.__name__}")
         self._server = await self._get_server()
+        print(f"Got server for _read for {self._func.__name__}")
         assert self._read_pref is not None, "Read Preference required on read calls"
         async with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
