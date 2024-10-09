@@ -651,63 +651,16 @@ functions:
           CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+          bash ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
 
-  run-valid-ocsp-server:
-    - command: shell.exec
+  "run-ocsp-server":
+    - command: subprocess.exec
       params:
         background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
-          -p 8100 -v
-  run-revoked-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
-          -p 8100 \
-          -v \
-          --fault revoked
-  run-valid-delegate-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
-          -p 8100 -v
-  run-revoked-delegate-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
-          -p 8100 \
-          -v \
-          --fault revoked
+        binary: bash
+        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "run load-balancer":
     - command: shell.exec
@@ -1360,9 +1313,10 @@ tasks:
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: "valid"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1374,9 +1328,10 @@ tasks:
     - name: test-ocsp-rsa-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: "revoked"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1388,9 +1343,10 @@ tasks:
     - name: test-ocsp-rsa-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1402,9 +1358,10 @@ tasks:
     - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1427,9 +1384,10 @@ tasks:
     - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1452,9 +1410,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1466,9 +1425,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1480,9 +1440,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1494,9 +1455,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1508,9 +1470,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1522,9 +1485,10 @@ tasks:
     - name: test-ocsp-ecdsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1536,9 +1500,10 @@ tasks:
     - name: test-ocsp-ecdsa-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1550,9 +1515,10 @@ tasks:
     - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1564,9 +1530,10 @@ tasks:
     - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1589,9 +1556,10 @@ tasks:
     - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1614,9 +1582,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1628,9 +1597,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1642,9 +1612,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1656,9 +1627,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1670,9 +1642,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
