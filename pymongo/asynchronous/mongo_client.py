@@ -2586,7 +2586,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 raise
             except PyMongoError as exc:
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                    print(f"Error for {self._operation}: {exc}")
+                    print(f"Error for {self._operation}: {exc}, {traceback.print_exception(exc)}")
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
@@ -2726,8 +2726,8 @@ class _ClientConnectionRetryable(Generic[T]):
         """
         print(f"Calling _read for {self._func.__name__}")
         self._server = await self._get_server()
-        print(f"Got server for _read for {self._func.__name__}")
         assert self._read_pref is not None, "Read Preference required on read calls"
+        print(f"Got server for _read for {self._func.__name__}")
         async with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
             read_pref,
