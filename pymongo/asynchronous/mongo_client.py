@@ -2592,15 +2592,21 @@ class _ClientConnectionRetryable(Generic[T]):
                             isinstance(exc, OperationFailure)
                             and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
                         ):
+                            if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                                print(f"Raising error for {self._operation}")
                             raise
                         self._retrying = True
                         self._last_error = exc
                     else:
+                        if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                            print(f"Raising error for {self._operation}")
                         raise
 
                 # Specialized catch on write operation
                 if not self._is_read:
                     if not self._retryable:
+                        if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                            print(f"Raising error for {self._operation}")
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         retryable_write_error_exc = isinstance(
@@ -2615,6 +2621,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
+                            if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                                print(f"Raising error for {self._operation}")
                             raise
                     if self._bulk:
                         self._bulk.retrying = True
