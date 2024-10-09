@@ -1143,6 +1143,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 conn, session, read_preference=read_preference, **kwargs
             )
 
+        print("Calling _list_collections_helper _cmd")
         return await self._client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
         )
