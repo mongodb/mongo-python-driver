@@ -72,7 +72,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          if [ "${{ matrix.python-version }}" == "3.13" || "${{ matrix.python-version }}" == "3.13t" ]; then
+          if [[ "${{ matrix.python-version }}" == "3.13" || "${{ matrix.python-version }}" == "3.13t" ]]; then
             pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
           else
