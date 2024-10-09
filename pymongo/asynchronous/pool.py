@@ -835,10 +835,10 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            print(f"Socket timeout: {timeout}")
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
+            print(f"Socket: {sock}, {sock.timeout}")
             sock.connect(sa)
             return sock
         except OSError as e:
