@@ -859,6 +859,12 @@ class ClientContext:
 client_context = ClientContext()
 
 
+def recreate_client_context():
+    global client_context
+    client_context = ClientContext()
+    client_context.init()
+
+
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)

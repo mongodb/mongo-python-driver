@@ -861,6 +861,12 @@ class AsyncClientContext:
 async_client_context = AsyncClientContext()
 
 
+async def recreate_client_context():
+    global async_client_context
+    async_client_context = AsyncClientContext()
+    await async_client_context.init()
+
+
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)

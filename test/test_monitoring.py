@@ -413,6 +413,7 @@ class TestCommandMonitoring(IntegrationTest):
         try:
             client.pymongo_test.test.find_one_and_delete({})
         except NotPrimaryError as exc:
+            print("an error was raised")
             error = exc.errors
         started = self.listener.started_events[0]
         failed = self.listener.failed_events[0]
