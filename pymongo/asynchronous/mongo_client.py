@@ -2691,10 +2691,12 @@ class _ClientConnectionRetryable(Generic[T]):
 
         :return: Output for func()'s call
         """
+        print(f"Calling _write for {self._func.__name__}")
         try:
             max_wire_version = 0
             is_mongos = False
             self._server = await self._get_server()
+            print(f"Got server for _write for {self._func.__name__}")
             async with self._client._checkout(self._server, self._session) as conn:
                 max_wire_version = conn.max_wire_version
                 sessions_supported = (
@@ -2710,6 +2712,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._retryable = False
                 return await self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
+            print(f"Got error for _write for {self._func.__name__}")
             if not self._retryable:
                 raise
             # Add the RetryableWriteError label, if applicable.
