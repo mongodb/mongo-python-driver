@@ -2732,6 +2732,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
+            print(f"Got conn for _read for {self._func.__name__}")
             if self._retrying and not self._retryable:
                 self._check_last_error()
             return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
