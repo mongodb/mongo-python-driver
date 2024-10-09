@@ -862,6 +862,9 @@ async_client_context = AsyncClientContext()
 
 
 async def recreate_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to recreate a client context
+        return
     global async_client_context
     await async_teardown()
     async_client_context = AsyncClientContext()

@@ -860,6 +860,9 @@ client_context = ClientContext()
 
 
 def recreate_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to recreate a client context
+        return
     global client_context
     teardown()
     client_context = ClientContext()
