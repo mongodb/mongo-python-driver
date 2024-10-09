@@ -1082,7 +1082,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             AsyncCollection[MutableMapping[str, Any]],
             self.get_collection("$cmd", read_preference=read_preference),
         )
-        print("Calling list_collections")
+        print("Calling _list_collections")
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
         async with self._client._tmp_session(session, close=False) as tmp_session:
@@ -1126,6 +1126,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
+        print("Calling _list_collections_helper")
         if filter is not None:
             kwargs["filter"] = filter
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -1172,6 +1173,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
+        print("Calling list_collections")
         return await self._list_collections_helper(session, filter, comment, **kwargs)
 
     async def _list_collection_names(
