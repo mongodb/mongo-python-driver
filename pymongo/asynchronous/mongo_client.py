@@ -2565,8 +2565,8 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                if self._operation == _Op.LIST_COLLECTIONS:
-                    print("Retryable read for list_collections")
+                if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                    print(f"Retryable read for {self._operation}")
                 return await self._read() if self._is_read else await self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
@@ -2578,8 +2578,8 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
-                if self._operation == _Op.LIST_COLLECTIONS:
-                    print(f"Error for list_collections: {exc}")
+                if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
+                    print(f"Error for {self._operation}: {exc}")
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
