@@ -58,7 +58,7 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, uri_parser
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
@@ -91,7 +91,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import client_session, database, periodic_executor
+from pymongo.synchronous import client_session, database
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession

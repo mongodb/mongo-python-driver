@@ -27,8 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, helpers_shared
-from pymongo.asynchronous import periodic_executor
+from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool
