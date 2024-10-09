@@ -2565,6 +2565,8 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
+                if self._operation == _Op.LIST_COLLECTIONS:
+                    print("Retryable read for list_collections")
                 return await self._read() if self._is_read else await self._write()
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
