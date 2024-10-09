@@ -842,6 +842,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             return sock
         except OSError as e:
             err = e
+            print(f"Socket err: {e}")
             sock.close()
 
     if err is not None:
