@@ -498,7 +498,8 @@ class AsyncSpecRunner(AsyncIntegrationTest):
 
     def allowable_errors(self, op):
         """Allow encryption spec to override expected error classes."""
-        return (PyMongoError,)
+        # return (PyMongoError,)
+        return ()
 
     async def _run_op(self, sessions, collection, op, in_with_transaction):
         expected_result = op.get("result")
