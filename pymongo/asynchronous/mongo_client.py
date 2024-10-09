@@ -2578,6 +2578,8 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
+                if self._operation == _Op.LIST_COLLECTIONS:
+                    print(f"Error for list_collections: {exc}")
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
