@@ -2206,10 +2206,6 @@ axes:
     values:
       # Note: always display platform with python-version to avoid ambiguous display names.
       # Linux
-      - id: "3.8"
-        display_name: "Python 3.8"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.8/bin/python3"
       - id: "3.9"
         display_name: "Python 3.9"
         variables:
@@ -2242,10 +2238,6 @@ axes:
   - id: python-version-windows
     display_name: "Python"
     values:
-      - id: "3.8"
-        display_name: "Python 3.8"
-        variables:
-          PYTHON_BINARY: "C:/python/Python38/python.exe"
       - id: "3.9"
         display_name: "Python 3.9"
         variables:
@@ -2270,10 +2262,8 @@ axes:
   - id: python-version-windows-32
     display_name: "Python"
     values:
-      - id: "3.8"
-        display_name: "32-bit Python 3.8"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python38/python.exe"
+
+
       - id: "3.9"
         display_name: "32-bit Python 3.9"
         variables:
@@ -2554,10 +2544,10 @@ buildvariants:
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
-  # Only test "noauth" with Python 3.8.
+  # Only test "noauth" with Python 3.9.
   exclude_spec:
     platform: rhel8
-    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
+    python-version: ["3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2689,7 +2679,7 @@ buildvariants:
   matrix_spec:
     platform: rhel7
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9"]
+    python-version: ["3.9"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -2712,12 +2702,12 @@ buildvariants:
       then:
         add_tasks: *encryption-server-versions
 
-# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.8.
+# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.9.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
     platform: rhel8
     storage-engine: "*"
-    python-version: 3.8
+    python-version: 3.9
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
@@ -2747,12 +2737,12 @@ buildvariants:
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
 
-# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.8.
+# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.9.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
     platform: rhel8
     disableTestCommands: "*"
-    python-version: "3.8"
+    python-version: "3.9"
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
      - ".latest"
@@ -2778,7 +2768,7 @@ buildvariants:
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
     platform: rhel8
-    python-version: "3.8"
+    python-version: "3.9"
   display_name: "Search Index Helpers ${platform}"
   tasks:
      - name: "test_atlas_task_group_search_indexes"
@@ -2786,7 +2776,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -2798,7 +2788,7 @@ buildvariants:
 - matrix_name: "mockupdb-tests"
   matrix_spec:
     platform: rhel8
-    python-version: 3.8
+    python-version: 3.9
   display_name: "MockupDB Tests"
   tasks:
      - name: "mockupdb"
@@ -2806,7 +2796,7 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: rhel8
-    python-version: ["3.8"]
+    python-version: ["3.9"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"
@@ -2846,7 +2836,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-22.04
-    python-version: ["3.8", "3.10"]
+    python-version: ["3.9", "3.10"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2856,7 +2846,7 @@ buildvariants:
 - matrix_name: "stable-api-tests"
   matrix_spec:
     platform: rhel8
-    python-version: ["3.8", "3.10"]
+    python-version: ["3.9", "3.10"]
     auth: "auth"
     versionedApi: "*"
   display_name: "Versioned API ${versionedApi} ${python-version}"
@@ -2869,7 +2859,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: rhel8
-    python-version: ["3.8", "3.10", "pypy3.9", "pypy3.10"]
+    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2881,7 +2871,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows
-    python-version-windows: ["3.8", "3.10"]
+    python-version-windows: ["3.9", "3.10"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
     auth: "noauth"
     ssl: "ssl"

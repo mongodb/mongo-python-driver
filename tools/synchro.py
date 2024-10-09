@@ -43,6 +43,7 @@ replacements = {
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
+    "async_receive_data": "receive_data",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
@@ -105,6 +106,8 @@ replacements = {
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
     "async_set_fail_point": "set_fail_point",
+    "async_ensure_all_connected": "ensure_all_connected",
+    "async_repl_set_step_down": "repl_set_step_down",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -186,6 +189,7 @@ converted_tests = [
     "test_client_bulk_write.py",
     "test_client_context.py",
     "test_collection.py",
+    "test_connections_survive_primary_stepdown_spec.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
