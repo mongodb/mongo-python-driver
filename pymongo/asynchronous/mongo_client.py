@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import threading
 import traceback
 import warnings
 import weakref
@@ -2567,7 +2568,7 @@ class _ClientConnectionRetryable(Generic[T]):
             self._check_last_error(check_csot=True)
             try:
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
-                    print(f"Retryable read for {self._operation}")
+                    print(f"{threading.current_thread().name} -- Retryable read for {self._operation}")
                 res = await self._read() if self._is_read else await self._write()
                 if self._operation in (_Op.LIST_COLLECTIONS, _Op.INSERT):
                     print(f"Result for {self._operation}: {res}")

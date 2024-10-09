@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import threading
 import time
 from typing import (
     TYPE_CHECKING,
@@ -135,7 +136,7 @@ async def command(
 
     publish = listeners is not None and listeners.enabled_for_commands
     if name == "listCollections":
-        print(f"Publishing is {publish} listeners: {listeners} {listeners.enabled_for_commands if listeners is not None else 'NONE'}!")
+        print(f"{threading.current_thread().name} -- Publishing is {publish} listeners: {listeners} {listeners.enabled_for_commands if listeners is not None else 'NONE'}!")
     start = datetime.datetime.now()
     if publish:
         speculative_hello = _is_speculative_authenticate(name, spec)
