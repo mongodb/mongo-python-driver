@@ -1133,7 +1133,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
 
-        async def _cmd(
+        async def _cmd_list_collections(
             session: Optional[AsyncClientSession],
             _server: Server,
             conn: AsyncConnection,
@@ -1145,7 +1145,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         print("Calling _list_collections_helper _cmd")
         return await self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+            _cmd_list_collections, read_pref, session, operation=_Op.LIST_COLLECTIONS
         )
 
     async def list_collections(
