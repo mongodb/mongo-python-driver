@@ -1960,20 +1960,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
-        # XXX: "ns missing" checks can be removed when we drop support for
-        # MongoDB 3.0, see SERVER-17051.
         res = await self._command(
             conn,
             cmd,
             read_preference=read_preference,
-            allowable_errors=["ns missing"],
             codec_options=self._write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
             session=session,
         )
-        if res.get("errmsg", "") == "ns missing":
-            return 0
         return int(res["n"])
 
     async def _aggregate_one_result(

@@ -29,7 +29,7 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
@@ -43,7 +43,11 @@ class TestGetmoreSharded(PyMongoTestCase):
         for server in servers:
             server.subscribe(q.put)
             server.autoresponds(
-                "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+                "ismaster",
+                ismaster=True,
+                msg="isdbgrid",
+                minWireVersion=2,
+                maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
             )
             server.run()
             self.addCleanup(server.stop)

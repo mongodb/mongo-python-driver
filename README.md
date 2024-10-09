@@ -14,7 +14,7 @@ a native Python driver for MongoDB. The `gridfs` package is a
 [gridfs](https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.rst/)
 implementation on top of `pymongo`.
 
-PyMongo supports MongoDB 3.6, 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0.
+PyMongo supports MongoDB 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0.
 
 ## Support / Feedback
 
