@@ -861,8 +861,9 @@ client_context = ClientContext()
 
 def recreate_client_context():
     global client_context
+    teardown()
     client_context = ClientContext()
-    client_context.init()
+    setup()
 
 
 class PyMongoTestCase(unittest.TestCase):
@@ -1233,6 +1234,8 @@ class MockClientTest(UnitTest):
 
 
 def setup():
+    global client_context
+    client_context = ClientContext()
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")

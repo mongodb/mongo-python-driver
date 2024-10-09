@@ -863,8 +863,9 @@ async_client_context = AsyncClientContext()
 
 async def recreate_client_context():
     global async_client_context
+    await async_teardown()
     async_client_context = AsyncClientContext()
-    await async_client_context.init()
+    await async_setup()
 
 
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
@@ -1251,6 +1252,8 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 
 async def async_setup():
+    global async_client_context
+    async_client_context = AsyncClientContext()
     await async_client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
