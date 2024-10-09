@@ -110,7 +110,7 @@
             "listCollections"
           ],
           "blockConnection": true,
-          "blockTimeMS": 100
+          "blockTimeMS": 60
         }
       },
       "clientOptions": {
