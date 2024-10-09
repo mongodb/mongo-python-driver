@@ -72,9 +72,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          if [[ "${{ matrix.python-version }}" == "3.13" || "${{ matrix.python-version }}" == "3.13t" ]]; then
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
+          elif [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            # Hatch can't be installed on 3.13t, use pytest directly.
+            pip install .
+            pip install -r requirements/test.txt
           else
             pip install hatch
           fi
@@ -84,7 +88,11 @@ jobs:
           mongodb-version: 6.0
       - name: Run tests
         run: |
-          hatch run test:test
+          if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            pytest -v --durations=5 --maxfail=10
+          else
+            hatch run test:test
+          fi
 
   doctest:
     runs-on: ubuntu-latest
