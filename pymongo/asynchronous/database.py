@@ -1082,6 +1082,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             AsyncCollection[MutableMapping[str, Any]],
             self.get_collection("$cmd", read_preference=read_preference),
         )
+        print("Calling list_collections")
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
         async with self._client._tmp_session(session, close=False) as tmp_session:
