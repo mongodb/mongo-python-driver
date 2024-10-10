@@ -29,13 +29,14 @@ except ImportError:
 
 
 from bson import SON
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
 
 class TestListIndexes(PyMongoTestCase):
     def test_list_indexes_command(self):
-        server = MockupDB(auto_ismaster={"maxWireVersion": 6})
+        server = MockupDB(auto_ismaster={"maxWireVersion": MIN_SUPPORTED_WIRE_VERSION})
         server.run()
         self.addCleanup(server.stop)
         client = self.simple_client(server.uri)

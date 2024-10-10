@@ -30,13 +30,16 @@ except ImportError:
 
 from bson import Timestamp
 from pymongo import DeleteMany, InsertOne, MongoClient, UpdateOne
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
 
 
 class TestClusterTime(PyMongoTestCase):
-    def cluster_time_conversation(self, callback, replies, max_wire_version=6):
+    def cluster_time_conversation(
+        self, callback, replies, max_wire_version=MIN_SUPPORTED_WIRE_VERSION
+    ):
         cluster_time = Timestamp(0, 0)
         server = MockupDB()
 
@@ -110,7 +113,7 @@ class TestClusterTime(PyMongoTestCase):
         cluster_time = Timestamp(0, 0)
         reply = {
             "minWireVersion": 0,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
             "$clusterTime": {"clusterTime": cluster_time},
         }
 

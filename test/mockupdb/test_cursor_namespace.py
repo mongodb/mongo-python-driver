@@ -29,6 +29,7 @@ except ImportError:
 
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
@@ -39,7 +40,7 @@ class TestCursorNamespace(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
+        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 7})
         cls.server.run()
         cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
@@ -95,7 +96,7 @@ class TestKillCursorsNamespace(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
+        cls.server = MockupDB(auto_ismaster={"maxWireVersion": MIN_SUPPORTED_WIRE_VERSION})
         cls.server.run()
         cls.client = cls.unmanaged_simple_client(cls.server.uri)
 

@@ -35,6 +35,7 @@ except ImportError:
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
 from pymongo.topology_description import TOPOLOGY_TYPE
 
@@ -57,7 +58,7 @@ def create_slave_ok_single_test(mode, server_type, ismaster, operation):
     def test(self):
         ismaster_with_version = ismaster.copy()
         ismaster_with_version["minWireVersion"] = 2
-        ismaster_with_version["maxWireVersion"] = 6
+        ismaster_with_version["maxWireVersion"] = MIN_SUPPORTED_WIRE_VERSION
         self.server.autoresponds("ismaster", **ismaster_with_version)
         self.assertIn(
             operation.op_type, ("always-use-secondary", "may-use-secondary", "must-use-primary")

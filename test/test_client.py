@@ -87,7 +87,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo import event_loggers, message, monitoring
 from pymongo.client_options import ClientOptions
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, has_c
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -1671,6 +1671,7 @@ class TestClient(IntegrationTest):
                 # No error
                 client.pymongo_test.test.find_one()
 
+    @client_context.require_sync
     def test_reset_during_update_pool(self):
         client = self.rs_or_single_client(minPoolSize=10)
         client.admin.command("ping")
@@ -1695,10 +1696,7 @@ class TestClient(IntegrationTest):
                     time.sleep(0.001)
 
             def run(self):
-                if _IS_SYNC:
-                    self._run()
-                else:
-                    asyncio.run(self._run())
+                self._run()
 
         t = ResetPoolThread(pool)
         t.start()
@@ -2413,8 +2411,8 @@ class TestMongoClientFailover(MockClientTest):
             self.addCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
-            c.set_wire_version_range("a:1", 2, 6)
-            c.set_wire_version_range("b:2", 2, 7)
+            c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
+            c.set_wire_version_range("b:2", 2, MIN_SUPPORTED_WIRE_VERSION + 1)
             (c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
@@ -2438,7 +2436,7 @@ class TestMongoClientFailover(MockClientTest):
             sd_b = server_b.description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(2, sd_b.min_wire_version)
-            self.assertEqual(7, sd_b.max_wire_version)
+            self.assertEqual(MIN_SUPPORTED_WIRE_VERSION + 1, sd_b.max_wire_version)
 
     def test_network_error_on_query(self):
         def callback(client):
