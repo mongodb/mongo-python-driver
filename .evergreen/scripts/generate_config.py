@@ -43,7 +43,7 @@ class Host:
 
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
-HOSTS["macos"] = Host("macos", "macos-14", "MacOS")
+HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 
 
 # Helper functions.

@@ -2934,7 +2934,7 @@ buildvariants:
 - name: ocsp-test-macos-v4.4-py3.9
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test MacOS v4.4 py3.9
+  display_name: OCSP test macOS v4.4 py3.9
   run_on:
     - macos-14
   batchtime: 20160
@@ -2947,7 +2947,7 @@ buildvariants:
 - name: ocsp-test-macos-v8.0-py3.13
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test MacOS v8.0 py3.13
+  display_name: OCSP test macOS v8.0 py3.13
   run_on:
     - macos-14
   batchtime: 20160
