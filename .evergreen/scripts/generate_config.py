@@ -12,7 +12,9 @@ from __future__ import annotations
 from itertools import product
 
 from shrub.v3.evg_build_variant import BuildVariant
+from shrub.v3.evg_project import EvgProject
 from shrub.v3.evg_task import EvgTaskRef
+from shrub.v3.shrub_service import ShrubService
 
 # Top level variables.
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
@@ -89,9 +91,9 @@ for version in ALL_VERSIONS:
     python = ALL_PYTHONS[len(variants) % len(ALL_PYTHONS)]
     host = "rhel8"
     if version in ["rapid", "latest"]:
-        display_name = f"OCSP test RHEL8 {version}"
+        display_name = f"OCSP test RHEL8 {python} {version}"
     else:
-        display_name = f"OCSP test RHEL8 v{version}"
+        display_name = f"OCSP test RHEL8 {python} v{version}"
     variant = create_variant(
         [".ocsp"],
         display_name,
@@ -108,11 +110,12 @@ for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
     task_names = [".ocsp-rsa !.ocsp-staple"]
     expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     batchtime = BATCHTIME_WEEK * 2
-    display_name = f"OCSP test {host} v{version}"
+    python = CPYTHONS[0]
+    display_name = f"OCSP test {host} {python} v{version}"
     variant = create_variant(
         task_names,
         display_name,
-        python=CPYTHONS[0],
+        python=python,
         host=host,
         expansions=expansions,
         batchtime=batchtime,
@@ -120,5 +123,5 @@ for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
     variants.append(variant)
 
 # Generate OCSP config.
-# project = EvgProject(tasks=None, buildvariants=variants)
-# print(ShrubService.generate_yaml(project))
+project = EvgProject(tasks=None, buildvariants=variants)
+print(ShrubService.generate_yaml(project))  # noqa: T201
