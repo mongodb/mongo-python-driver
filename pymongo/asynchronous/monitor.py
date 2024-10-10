@@ -136,9 +136,13 @@ class Monitor(MonitorBase):
         The Topology is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
+        if _IS_SYNC:
+            name = "pymongo_server_monitor_thread"
+        else:
+            name = "pymongo_server_monitor_task"
         super().__init__(
             topology,
-            "pymongo_server_monitor_task",
+            name,
             topology_settings.heartbeat_frequency,
             common.MIN_HEARTBEAT_INTERVAL,
         )
