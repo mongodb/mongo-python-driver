@@ -59,14 +59,10 @@ class TestComment(IntegrationTest):
                     )
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
-                    tested = False
-                    # For some reason collection.list_indexes creates two commands and the first
-                    # one doesn't contain 'comment'.
-                    for i in listener.started_events:
-                        if cc == i.command.get("comment", ""):
-                            self.assertEqual(cc, i.command["comment"])
-                            tested = True
-                    self.assertTrue(tested)
+
+                    cmd = listener.started_events[0]
+                    self.assertEqual(cc, cmd.command.get("comment"), msg=cmd)
+
                     if h.__name__ != "aggregate_raw_batches":
                         self.assertIn(
                             ":param comment:",
