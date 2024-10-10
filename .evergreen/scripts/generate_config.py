@@ -9,16 +9,10 @@
 # Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
 from __future__ import annotations
 
-import os
-import sys
 from itertools import product
-from pathlib import Path
 
 from shrub.v3.evg_build_variant import BuildVariant
-from shrub.v3.evg_command import FunctionCall
-from shrub.v3.evg_project import EvgProject
-from shrub.v3.evg_task import EvgTask, EvgTaskRef
-from shrub.v3.shrub_service import ShrubService
+from shrub.v3.evg_task import EvgTaskRef
 
 # Top level variables.
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
@@ -80,58 +74,11 @@ def get_python_binary(python, host):
     raise ValueError(f"no match found for {python} on {host}")
 
 
-def write_output(project: EvgProject, target: str) -> str:
-    HERE = Path(__file__).resolve().parent
-    with open(HERE.parent / "generated_configs" / target, "w") as fid:
-        fid.write(ShrubService.generate_yaml(project))
-
-
 ##############
 # OCSP
 ##############
 
-
-def create_ocsp_task(file_name, server_type):
-    algo = file_name.split("-")[0]
-
-    # Create ocsp server call.
-    vars = dict(OCSP_ALGORITHM=algo, SERVER_TYPE=server_type)
-    server_func = FunctionCall(func="run-ocsp-server", vars=vars)
-
-    # Create bootstrap function call.
-    vars = dict(ORCHESTRATION_FILE=file_name)
-    bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=vars)
-
-    # Create test function call.
-    should_succeed = "true" if "valid" in server_type else "false"
-    vars = dict(OCSP_ALGORITHM=algo, OCSP_TLS_SHOULD_SUCCEED=should_succeed)
-    test_func = FunctionCall(func="run tests", vars=vars)
-
-    # Handle tags.
-    tags = ["ocsp", f"ocsp-{algo}"]
-    if "mustStaple" in file_name:
-        tags.append("ocsp-staple")
-
-    # Create task.
-    name = file_name.replace(".json", "")
-    task_name = f"test-ocsp-{server_type}-{name}"
-    commands = [server_func, bootstrap_func, test_func]
-    return EvgTask(name=task_name, tags=tags, commands=commands)
-
-
-tasks = []
-
-# Create OCSP tasks.
-if not os.environ.get("DRIVERS_TOOLS"):
-    print("Set DRIVERS_TOOLS environment variable!")  # noqa: T201
-    sys.exit(1)
-config = Path(os.environ["DRIVERS_TOOLS"]) / ".evergreen/orchestration/configs/servers"
-for path in config.glob("*ocsp*"):
-    for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
-        task = create_ocsp_task(path.name, server_type)
-        tasks.append(task)
-
-# Create build variants.
+# Create OCSP build variants.
 variants = []
 
 # OCSP tests on rhel8 with rotating CPython versions.
@@ -174,5 +121,4 @@ for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
 
 # Generate OCSP config.
 # project = EvgProject(tasks=None, buildvariants=variants)
-# write_output(project, "ocsp.yaml")
 # print(ShrubService.generate_yaml(project))
