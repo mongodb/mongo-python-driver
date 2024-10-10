@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
-    recreate_client_context,
+    reset_client_context,
     unittest,
 )
 from test.asynchronous.helpers import async_repl_set_step_down
@@ -65,7 +65,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
     @classmethod
     async def _tearDown_class(cls):
         await cls.client.close()
-        await recreate_client_context()
+        await reset_client_context()
 
     async def asyncSetUp(self):
         # Note that all ops use same write-concern as self.db (majority).

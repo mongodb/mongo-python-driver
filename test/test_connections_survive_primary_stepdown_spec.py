@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from test import (
     IntegrationTest,
     client_context,
-    recreate_client_context,
+    reset_client_context,
     unittest,
 )
 from test.helpers import repl_set_step_down
@@ -65,7 +65,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     @classmethod
     def _tearDown_class(cls):
         cls.client.close()
-        recreate_client_context()
+        reset_client_context()
 
     def setUp(self):
         # Note that all ops use same write-concern as self.db (majority).
