@@ -126,7 +126,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
     expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     base_display = "OCSP test"
 
-    # OCSP tests on rhel8 with all server v4.4+ and all python versions.
+    # OCSP tests on rhel8 with all servers v4.4+ and all python versions.
     versions = [v for v in ALL_VERSIONS if v != "4.0"]
     for version, python in zip_cycle(versions, ALL_PYTHONS):
         host = "rhel8"
