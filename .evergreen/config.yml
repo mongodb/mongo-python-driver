@@ -2827,6 +2827,19 @@ buildvariants:
     - "test-5.0-standalone"
 
 # OCSP test matrix.
+- name: ocsp-test-rhel8-v4.4-py3.9
+  tasks:
+    - name: .ocsp
+  display_name: OCSP test RHEL8 v4.4 py3.9
+  run_on:
+    - rhel87-small
+  batchtime: 20160
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TOPOLOGY: server
+    VERSION: "4.4"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
 - name: ocsp-test-rhel8-v5.0-py3.10
   tasks:
     - name: .ocsp

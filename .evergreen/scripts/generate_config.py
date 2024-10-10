@@ -129,7 +129,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
     base_display = "OCSP test"
 
     # OCSP tests on rhel8 with all server and python versions.
-    versions = [v for v in ALL_VERSIONS if v != "4.4"]
+    versions = [v for v in ALL_VERSIONS if v != "4.0"]
     for version, python in get_pairs(versions, ALL_PYTHONS):
         # OCSP is not supported until v4.4.
         if version == "4.0":
