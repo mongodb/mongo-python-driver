@@ -148,6 +148,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
             [".ocsp-rsa !.ocsp-staple"],
             get_display_name(base_display, host, version, python),
             python=CPYTHONS[0] if version == "4.4" else CPYTHONS[-1],
+            version=version,
             host=host,
             expansions=expansions,
             batchtime=batchtime,
