@@ -866,9 +866,9 @@ def reset_client_context():
     if _IS_SYNC:
         # sync tests don't need to recreate a client context
         return
-    teardown()
-    client_context.reset()
-    setup()
+    client_context.client.close()
+    client_context.client = None
+    client_context._init_client()
 
 
 class PyMongoTestCase(unittest.TestCase):

@@ -23,7 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo.lock import _ALock, _create_lock
+from pymongo.lock import _create_lock
 
 _IS_SYNC = False
 

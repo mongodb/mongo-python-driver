@@ -138,7 +138,7 @@ class Monitor(MonitorBase):
         """
         super().__init__(
             topology,
-            "pymongo_server_monitor_thread",
+            "pymongo_server_monitor_task",
             topology_settings.heartbeat_frequency,
             common.MIN_HEARTBEAT_INTERVAL,
         )

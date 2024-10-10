@@ -868,9 +868,9 @@ async def reset_client_context():
     if _IS_SYNC:
         # sync tests don't need to recreate a client context
         return
-    await async_teardown()
-    async_client_context.reset()
-    await async_setup()
+    await async_client_context.client.close()
+    async_client_context.client = None
+    await async_client_context._init_client()
 
 
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
