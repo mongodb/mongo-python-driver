@@ -127,9 +127,6 @@ class AsyncClientContext:
             server_api = ServerApi(MONGODB_API_VERSION)
             self.default_client_options["server_api"] = server_api
 
-    def reset(self):
-        self.__init__()
-
     @property
     def client_options(self):
         """Return the MongoClient options for creating a duplicate client."""
@@ -866,7 +863,7 @@ async_client_context = AsyncClientContext()
 
 async def reset_client_context():
     if _IS_SYNC:
-        # sync tests don't need to recreate a client context
+        # sync tests don't need to reset a client context
         return
     await async_client_context.client.close()
     async_client_context.client = None
