@@ -73,14 +73,9 @@ if sys.version_info >= (3, 10):
     iter = builtins.iter
 else:
 
-    def next(cls: Any, default: Any) -> Any:
+    def next(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
-        try:
-            return cls.__next__()
-        except StopIteration:
-            if default:
-                return default
-            raise
+        return cls.__next__()
 
     def iter(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""

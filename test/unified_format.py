@@ -179,7 +179,10 @@ class NonLazyCursor:
     @classmethod
     def create(cls, find_cursor, client):
         cursor = cls(find_cursor, client)
-        cursor.first_result = next(cursor.find_cursor, None)
+        try:
+            cursor.first_result = next(cursor.find_cursor)
+        except StopIteration:
+            cursor.first_result = None
         return cursor
 
     @property

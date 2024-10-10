@@ -73,14 +73,9 @@ if sys.version_info >= (3, 10):
     aiter = builtins.aiter
 else:
 
-    async def anext(cls: Any, default: Any) -> Any:
+    async def anext(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""
-        try:
-            return await cls.__anext__()
-        except StopAsyncIteration:
-            if default:
-                return default
-            raise
+        return await cls.__anext__()
 
     def aiter(cls: Any) -> Any:
         """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#anext."""

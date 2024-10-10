@@ -179,7 +179,10 @@ class NonLazyCursor:
     @classmethod
     async def create(cls, find_cursor, client):
         cursor = cls(find_cursor, client)
-        cursor.first_result = await anext(cursor.find_cursor, None)
+        try:
+            cursor.first_result = await anext(cursor.find_cursor)
+        except StopAsyncIteration:
+            cursor.first_result = None
         return cursor
 
     @property
