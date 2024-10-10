@@ -23,13 +23,6 @@ ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
-ALL_WIN_PYTHONS = CPYTHONS.copy()
-ALL_WIN_PYTHONS = ALL_WIN_PYTHONS + [f"32-bit {p}" for p in ALL_WIN_PYTHONS]
-AUTHS = ["noauth", "auth"]
-SSLS = ["nossl", "ssl"]
-AUTH_SSLS = list(product(AUTHS, SSLS))
-TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
-C_EXTS = ["without c extensions", "with c extensions"]
 BATCHTIME_WEEK = 10080
 HOSTS = dict()
 
@@ -55,6 +48,7 @@ def create_variant(
     host: str | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
+    """Create a build variant for the given inputs."""
     task_refs = [EvgTaskRef(name=n) for n in task_names]
     kwargs.setdefault("expansions", dict())
     expansions = kwargs.pop("expansions")
@@ -75,6 +69,7 @@ def create_variant(
 
 
 def get_python_binary(python: str, host: str) -> str:
+    """Get the appropriate python binary given a python version and host"""
     if host == "win64":
         is_32 = python.startswith("32-bit")
         if is_32:
@@ -94,7 +89,8 @@ def get_python_binary(python: str, host: str) -> str:
     raise ValueError(f"no match found for python {python} on {host}")
 
 
-def get_display(base: str, host: str, version: str, python: str) -> str:
+def get_display_name(base: str, host: str, version: str, python: str) -> str:
+    """Get the display name of a variant."""
     if version not in ["rapid", "latest"]:
         version = f"v{version}"
     if not python.startswith("pypy"):
@@ -103,12 +99,18 @@ def get_display(base: str, host: str, version: str, python: str) -> str:
 
 
 def get_pairs(versions: list[str], pythons: list[str]) -> str:
+    """Get pairs of versions and pythons, ensuring that we hit all of each.
+    The shorter list will repeat until the full length of the longer list.
+    """
     values = []
+    i = 0
     for version, python in zip_longest(versions, pythons):
         if version is None:
-            values.append((versions[0], python))
+            values.append((versions[i % len(versions)], python))
+            i += 1
         elif python is None:
-            values.append((version, pythons[0]))
+            values.append((version, pythons[i % len(pythons)]))
+            i += 1
         else:
             values.append((version, python))
     return values
@@ -137,7 +139,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         host = "rhel8"
         variant = create_variant(
             [".ocsp"],
-            get_display(base_display, host, version, python),
+            get_display_name(base_display, host, version, python),
             python=python,
             batchtime=batchtime,
             host=host,
@@ -146,9 +148,8 @@ def create_ocsp_variants() -> list[BuildVariant]:
         variants.append(variant)
 
     # OCSP tests on Windows and MacOS.
+    # MongoDB servers on these hosts do not staple OCSP responses and only support RSA.
     for host, version in product(["win64", "macos"], ["4.4", "8.0"]):
-        # MongoDB servers do not staple OCSP responses and only support RSA.
-        task_names = [".ocsp-rsa !.ocsp-staple"]
         expansions = base_expansions.copy()
         expansions["VERSION"] = version
         if version == "4.4":
@@ -156,8 +157,8 @@ def create_ocsp_variants() -> list[BuildVariant]:
         else:
             python = CPYTHONS[-1]
         variant = create_variant(
-            task_names,
-            get_display(base_display, host, version, python),
+            [".ocsp-rsa !.ocsp-staple"],
+            get_display_name(base_display, host, version, python),
             python=python,
             host=host,
             expansions=expansions,
