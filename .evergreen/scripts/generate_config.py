@@ -113,7 +113,7 @@ for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
     task_names = [".ocsp-rsa !.ocsp-staple"]
     expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     batchtime = BATCHTIME_WEEK * 2
-    if version == 4.4:
+    if version == "4.4":
         python = CPYTHONS[0]
     else:
         python = CPYTHONS[-1]
