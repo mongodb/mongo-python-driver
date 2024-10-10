@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import product, zip_longest
+from itertools import cycle, product, zip_longest
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
@@ -69,7 +69,7 @@ def create_variant(
 
 
 def get_python_binary(python: str, host: str) -> str:
-    """Get the appropriate python binary given a python version and host"""
+    """Get the appropriate python binary given a python version and host."""
     if host == "win64":
         is_32 = python.startswith("32-bit")
         if is_32:
@@ -98,22 +98,11 @@ def get_display_name(base: str, host: str, version: str, python: str) -> str:
     return f"{base} {HOSTS[host].display_name} {version} {python}"
 
 
-def get_pairs(versions: list[str], pythons: list[str]) -> str:
-    """Get pairs of versions and pythons, ensuring that we hit all of each.
-    The shorter list will repeat until the full length of the longer list.
-    """
-    values = []
-    i = 0
-    for version, python in zip_longest(versions, pythons):
-        if version is None:
-            values.append((versions[i % len(versions)], python))
-            i += 1
-        elif python is None:
-            values.append((version, pythons[i % len(pythons)]))
-            i += 1
-        else:
-            values.append((version, python))
-    return values
+def zip_cycle(*iterables, empty_default=None):
+    """Get all combinations of the inputs, cycling over the shorter list(s)."""
+    cycles = [cycle(i) for i in iterables]
+    for _ in zip_longest(*iterables):
+        yield tuple(next(i, empty_default) for i in cycles)
 
 
 ##############
@@ -130,7 +119,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
 
     # OCSP tests on rhel8 with all server v4.4+ and python versions.
     versions = [v for v in ALL_VERSIONS if v != "4.0"]
-    for version, python in get_pairs(versions, ALL_PYTHONS):
+    for version, python in zip_cycle(versions, ALL_PYTHONS):
         expansions = base_expansions.copy()
         expansions["VERSION"] = version
         host = "rhel8"
