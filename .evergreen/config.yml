@@ -2827,23 +2827,10 @@ buildvariants:
     - "test-5.0-standalone"
 
 # OCSP test matrix.
-- name: ocsp-test-rhel8-v4.0-py3.9
+- name: ocsp-test-rhel8-v4.4-py3.9
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 v4.0 py3.9
-  run_on:
-    - rhel87-small
-  batchtime: 20160
-  expansions:
-    VERSION: "4.0"
-    AUTH: noauth
-    SSL: ssl
-    TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: ocsp-test-rhel8-v4.4-py3.10
-  tasks:
-    - name: .ocsp
-  display_name: OCSP test RHEL8 v4.4 py3.10
+  display_name: OCSP test RHEL8 v4.4 py3.9
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2852,11 +2839,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: ocsp-test-rhel8-v5.0-py3.11
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: ocsp-test-rhel8-v5.0-py3.10
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 v5.0 py3.11
+  display_name: OCSP test RHEL8 v5.0 py3.10
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2865,11 +2852,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: ocsp-test-rhel8-v6.0-py3.12
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: ocsp-test-rhel8-v6.0-py3.11
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 v6.0 py3.12
+  display_name: OCSP test RHEL8 v6.0 py3.11
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2878,11 +2865,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: ocsp-test-rhel8-v7.0-py3.13
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: ocsp-test-rhel8-v7.0-py3.12
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 v7.0 py3.13
+  display_name: OCSP test RHEL8 v7.0 py3.12
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2891,11 +2878,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: ocsp-test-rhel8-v8.0-pypy3.9
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: ocsp-test-rhel8-v8.0-py3.13
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 v8.0 pypy3.9
+  display_name: OCSP test RHEL8 v8.0 py3.13
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2904,11 +2891,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: ocsp-test-rhel8-rapid-pypy3.10
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: ocsp-test-rhel8-rapid-pypy3.9
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 rapid pypy3.10
+  display_name: OCSP test RHEL8 rapid pypy3.9
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2917,11 +2904,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: ocsp-test-rhel8-latest-py3.9
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+- name: ocsp-test-rhel8-latest-pypy3.10
   tasks:
     - name: .ocsp
-  display_name: OCSP test RHEL8 latest py3.9
+  display_name: OCSP test RHEL8 latest pypy3.10
   run_on:
     - rhel87-small
   batchtime: 20160
@@ -2930,11 +2917,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: ocsp-test-win64-v4.4-py3.9
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+- name: ocsp-test-win64-v4.4-py3.13
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test Win64 v4.4 py3.9
+  display_name: OCSP test Win64 v4.4 py3.13
   run_on:
     - windows-64-vsMulti-small
   batchtime: 20160
@@ -2943,11 +2930,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: C:/python/Python39/python.exe
-- name: ocsp-test-win64-v8.0-py3.9
+    PYTHON_BINARY: C:/python/Python313/python.exe
+- name: ocsp-test-win64-v8.0-py3.13
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test Win64 v8.0 py3.9
+  display_name: OCSP test Win64 v8.0 py3.13
   run_on:
     - windows-64-vsMulti-small
   batchtime: 20160
@@ -2956,11 +2943,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: C:/python/Python39/python.exe
-- name: ocsp-test-macos-v4.4-py3.9
+    PYTHON_BINARY: C:/python/Python313/python.exe
+- name: ocsp-test-macos-v4.4-py3.13
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test macOS v4.4 py3.9
+  display_name: OCSP test macOS v4.4 py3.13
   run_on:
     - macos-14
   batchtime: 20160
@@ -2969,11 +2956,11 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-- name: ocsp-test-macos-v8.0-py3.9
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: ocsp-test-macos-v8.0-py3.13
   tasks:
     - name: .ocsp-rsa !.ocsp-staple
-  display_name: OCSP test macOS v8.0 py3.9
+  display_name: OCSP test macOS v8.0 py3.13
   run_on:
     - macos-14
   batchtime: 20160
@@ -2982,7 +2969,7 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TOPOLOGY: server
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:

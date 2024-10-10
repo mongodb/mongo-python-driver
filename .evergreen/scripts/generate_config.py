@@ -85,6 +85,9 @@ variants = []
 
 # OCSP tests on rhel8 with rotating CPython versions.
 for version in ALL_VERSIONS:
+    # OCSP is not supported until v4.4.
+    if version == "4.0":
+        continue
     task_refs = [EvgTaskRef(name=".ocsp")]
     expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     batchtime = BATCHTIME_WEEK * 2
@@ -104,13 +107,16 @@ for version in ALL_VERSIONS:
     )
     variants.append(variant)
 
-# OCSP tests on Windows and MacOS with lowest CPython version.
+# OCSP tests on Windows and MacOS.
 for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
     # MongoDB servers do not staple OCSP responses and only support RSA.
     task_names = [".ocsp-rsa !.ocsp-staple"]
     expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     batchtime = BATCHTIME_WEEK * 2
-    python = CPYTHONS[0]
+    if version == 4.4:
+        python = CPYTHONS[0]
+    else:
+        python = CPYTHONS[-1]
     display_name = f"OCSP test {host} v{version} {python}"
     variant = create_variant(
         task_names,
