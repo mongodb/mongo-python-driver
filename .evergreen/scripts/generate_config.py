@@ -91,9 +91,9 @@ for version in ALL_VERSIONS:
     python = ALL_PYTHONS[len(variants) % len(ALL_PYTHONS)]
     host = "rhel8"
     if version in ["rapid", "latest"]:
-        display_name = f"OCSP test RHEL8 {python} {version}"
+        display_name = f"OCSP test RHEL8 {version} {python}"
     else:
-        display_name = f"OCSP test RHEL8 {python} v{version}"
+        display_name = f"OCSP test RHEL8 v{version} {python}"
     variant = create_variant(
         [".ocsp"],
         display_name,
@@ -111,7 +111,7 @@ for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
     expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     batchtime = BATCHTIME_WEEK * 2
     python = CPYTHONS[0]
-    display_name = f"OCSP test {host} {python} v{version}"
+    display_name = f"OCSP test {host} v{version} {python}"
     variant = create_variant(
         task_names,
         display_name,
