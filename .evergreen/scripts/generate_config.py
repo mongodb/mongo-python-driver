@@ -144,7 +144,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
     # OCSP tests on Windows and MacOS.
     # MongoDB servers on these hosts do not staple OCSP responses and only support RSA.
     for host, version in product(["win64", "macos"], ["4.4", "8.0"]):
-        python = (CPYTHONS[0] if version == "4.4" else CPYTHONS[-1],)
+        python = CPYTHONS[0] if version == "4.4" else CPYTHONS[-1]
         variant = create_variant(
             [".ocsp-rsa !.ocsp-staple"],
             get_display_name(base_display, host, version, python),
