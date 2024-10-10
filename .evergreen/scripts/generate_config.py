@@ -135,9 +135,9 @@ def create_ocsp_variants() -> list[BuildVariant]:
             get_display_name(base_display, host, version, python),
             python=python,
             version=version,
-            batchtime=batchtime,
             host=host,
             expansions=expansions,
+            batchtime=batchtime,
         )
         variants.append(variant)
 
