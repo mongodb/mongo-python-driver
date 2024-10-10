@@ -36,7 +36,7 @@ class AsyncPeriodicExecutor:
         target: Any,
         name: Optional[str] = None,
     ):
-        """Run a target function periodically on a background thread.
+        """Run a target function periodically on a background task.
 
         If the target's return value is false, the executor stops.
 
@@ -44,12 +44,8 @@ class AsyncPeriodicExecutor:
         :param min_interval: Minimum seconds between calls if `wake` is
             called very often.
         :param target: A function.
-        :param name: A name to give the underlying thread.
+        :param name: A name to give the underlying task.
         """
-        # threading.Event and its internal condition variable are expensive
-        # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
-        # The executor's design is constrained by several Python issues, see
-        # "periodic_executor.rst" in this repository.
         self._event = False
         self._interval = interval
         self._min_interval = min_interval
