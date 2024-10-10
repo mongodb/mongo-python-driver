@@ -152,7 +152,7 @@ class PeriodicExecutor:
         self._name = name
         self._skip_sleep = False
         self._thread_will_exit = False
-        self._lock = _ALock(_create_lock())
+        self._lock = _create_lock()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
@@ -224,21 +224,21 @@ class PeriodicExecutor:
     def skip_sleep(self) -> None:
         self._skip_sleep = True
 
-    async def _should_stop(self) -> bool:
-        async with self._lock:
+    def _should_stop(self) -> bool:
+        with self._lock:
             if self._stopped:
                 self._thread_will_exit = True
                 return True
             return False
 
-    async def _run(self) -> None:
-        while not await self._should_stop():
+    def _run(self) -> None:
+        while not self._should_stop():
             try:
-                if not await self._target():
+                if not self._target():
                     self._stopped = True
                     break
             except BaseException:
-                async with self._lock:
+                with self._lock:
                     self._stopped = True
                     self._thread_will_exit = True
 
@@ -249,7 +249,7 @@ class PeriodicExecutor:
             else:
                 deadline = time.monotonic() + self._interval
                 while not self._stopped and time.monotonic() < deadline:
-                    await asyncio.sleep(self._min_interval)
+                    time.sleep(self._min_interval)
                     if self._event:
                         break  # Early wake.
 
