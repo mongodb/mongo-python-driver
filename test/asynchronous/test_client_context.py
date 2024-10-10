@@ -61,6 +61,13 @@ class TestAsyncClientContext(AsyncUnitTest):
 
         self.assertEqual(sys.getdefaultencoding(), os.environ["SETDEFAULTENCODING"])
 
+    def test_free_threading_is_enabled(self):
+        if "free-threading build" not in sys.version:
+            raise SkipTest("this test requires the Python free-threading build")
+
+        # If the GIL is enabled then pymongo or one of our deps does not support free-threading.
+        self.assertFalse(sys._is_gil_enabled())  # type: ignore[attr-defined]
+
 
 if __name__ == "__main__":
     unittest.main()

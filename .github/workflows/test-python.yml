@@ -51,11 +51,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.9", "pypy-3.9", "3.13"]
+        python-version: ["3.9", "pypy-3.9", "3.13", "3.13t"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
+      - if: ${{ matrix.python-version == '3.13t' }}
+        name: Setup free-threaded Python
+        uses: deadsnakes/action@v3.2.0
+        with:
+          python-version: 3.13
+          nogil: true
+      - if: ${{ matrix.python-version != '3.13t' }}
+        name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -65,9 +72,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          if [ "${{ matrix.python-version }}" == "3.13" ]; then
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
+          elif [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            # Hatch can't be installed on 3.13t, use pytest directly.
+            pip install .
+            pip install -r requirements/test.txt
           else
             pip install hatch
           fi
@@ -77,7 +88,11 @@ jobs:
           mongodb-version: 6.0
       - name: Run tests
         run: |
-          hatch run test:test
+          if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            pytest -v --durations=5 --maxfail=10
+          else
+            hatch run test:test
+          fi
 
   doctest:
     runs-on: ubuntu-latest
