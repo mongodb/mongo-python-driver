@@ -18,7 +18,10 @@ from shrub.v3.evg_project import EvgProject
 from shrub.v3.evg_task import EvgTaskRef
 from shrub.v3.shrub_service import ShrubService
 
-# Top level variables.
+##############
+# Globals
+##############
+
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
@@ -39,24 +42,31 @@ HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 
 
-# Helper functions.
+##############
+# Helpers
+##############
+
+
 def create_variant(
     task_names: list[str],
     display_name: str,
     *,
     python: str | None = None,
+    version: str | None = None,
     host: str | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
     """Create a build variant for the given inputs."""
     task_refs = [EvgTaskRef(name=n) for n in task_names]
     kwargs.setdefault("expansions", dict())
-    expansions = kwargs.pop("expansions")
+    expansions = kwargs.pop("expansions", dict()).copy()
     host = host or "rhel8"
     run_on = [HOSTS[host].run_on]
     name = display_name.replace(" ", "-").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
+    if version:
+        expansions["VERSION"] = version
     expansions = expansions or None
     return BuildVariant(
         name=name,
@@ -106,27 +116,25 @@ def zip_cycle(*iterables, empty_default=None):
 
 
 ##############
-# OCSP
+# Variants
 ##############
 
 
-# Create OCSP build variants.
 def create_ocsp_variants() -> list[BuildVariant]:
     variants = []
     batchtime = BATCHTIME_WEEK * 2
-    base_expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
+    expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     base_display = "OCSP test"
 
-    # OCSP tests on rhel8 with all server v4.4+ and python versions.
+    # OCSP tests on rhel8 with all server v4.4+ and all python versions.
     versions = [v for v in ALL_VERSIONS if v != "4.0"]
     for version, python in zip_cycle(versions, ALL_PYTHONS):
-        expansions = base_expansions.copy()
-        expansions["VERSION"] = version
         host = "rhel8"
         variant = create_variant(
             [".ocsp"],
             get_display_name(base_display, host, version, python),
             python=python,
+            version=version,
             batchtime=batchtime,
             host=host,
             expansions=expansions,
@@ -136,16 +144,10 @@ def create_ocsp_variants() -> list[BuildVariant]:
     # OCSP tests on Windows and MacOS.
     # MongoDB servers on these hosts do not staple OCSP responses and only support RSA.
     for host, version in product(["win64", "macos"], ["4.4", "8.0"]):
-        expansions = base_expansions.copy()
-        expansions["VERSION"] = version
-        if version == "4.4":
-            python = CPYTHONS[0]
-        else:
-            python = CPYTHONS[-1]
         variant = create_variant(
             [".ocsp-rsa !.ocsp-staple"],
             get_display_name(base_display, host, version, python),
-            python=python,
+            python=CPYTHONS[0] if version == "4.4" else CPYTHONS[-1],
             host=host,
             expansions=expansions,
             batchtime=batchtime,
@@ -155,6 +157,9 @@ def create_ocsp_variants() -> list[BuildVariant]:
     return variants
 
 
-# Generate OCSP config.
+##################
+# Generate Config
+##################
+
 project = EvgProject(tasks=None, buildvariants=create_ocsp_variants())
 print(ShrubService.generate_yaml(project))  # noqa: T201
