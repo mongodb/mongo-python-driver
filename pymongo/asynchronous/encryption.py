@@ -183,8 +183,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     if _IS_SYNC:
                         data = conn.recv(kms_context.bytes_needed)
                     else:
-                        from pymongo.network_layer import (
-                            async_receive_data_socket,  # type: ignore[attr-defined]
+                        from pymongo.network_layer import (  # type: ignore[attr-defined]
+                            async_receive_data_socket,
                         )
 
                         data = await async_receive_data_socket(conn, kms_context.bytes_needed)

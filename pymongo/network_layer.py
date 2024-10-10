@@ -145,6 +145,7 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
+                # KMS responses update their expected size after the first batch, stop reading after one loop
                 if once:
                     return mv[:read]
                 total_read += read
