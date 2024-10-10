@@ -9,7 +9,9 @@
 # Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
 from __future__ import annotations
 
-from itertools import product
+from dataclasses import dataclass
+from itertools import product, zip_longest
+from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
 from shrub.v3.evg_project import EvgProject
@@ -18,7 +20,7 @@ from shrub.v3.shrub_service import ShrubService
 
 # Top level variables.
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-CPYTHONS = ["py3.9", "py3.10", "py3.11", "py3.12", "py3.13"]
+CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 ALL_WIN_PYTHONS = CPYTHONS.copy()
@@ -29,16 +31,35 @@ AUTH_SSLS = list(product(AUTHS, SSLS))
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["without c extensions", "with c extensions"]
 BATCHTIME_WEEK = 10080
-HOSTS = dict(rhel8="rhel87-small", Win64="windows-64-vsMulti-small", macOS="macos-14")
+HOSTS = dict()
+
+
+@dataclass
+class Host:
+    name: str
+    run_on: str
+    display_name: str
+
+
+HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
+HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
+HOSTS["macos"] = Host("macos", "macos-14", "MacOS")
 
 
 # Helper functions.
-def create_variant(task_names, display_name, *, python=None, host=None, **kwargs):
+def create_variant(
+    task_names: list[str],
+    display_name: str,
+    *,
+    python: str | None = None,
+    host: str | None = None,
+    **kwargs: Any,
+) -> BuildVariant:
     task_refs = [EvgTaskRef(name=n) for n in task_names]
     kwargs.setdefault("expansions", dict())
     expansions = kwargs.pop("expansions")
     host = host or "rhel8"
-    run_on = [HOSTS[host]]
+    run_on = [HOSTS[host].run_on]
     name = display_name.replace(" ", "-").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
@@ -53,81 +74,100 @@ def create_variant(task_names, display_name, *, python=None, host=None, **kwargs
     )
 
 
-def get_python_binary(python, host):
-    if host.lower() == "win64":
+def get_python_binary(python: str, host: str) -> str:
+    if host == "win64":
         is_32 = python.startswith("32-bit")
         if is_32:
             _, python = python.split()
-            base = "C:/python/32/"
+            base = "C:/python/32"
         else:
-            base = "C:/python/"
-        middle = python.replace("py", "Python").replace(".", "")
-        return base + middle + "/python.exe"
+            base = "C:/python"
+        python = python.replace(".", "")
+        return f"{base}/Python{python}/python.exe"
 
-    if host.lower() == "rhel8":
-        if python.startswith("pypy"):
-            return f"/opt/python/{python}/bin/python3"
-        return f"/opt/python/{python[2:]}/bin/python3"
+    if host == "rhel8":
+        return f"/opt/python/{python}/bin/python3"
 
-    if host.lower() == "macos":
-        ver = python.replace("py", "")
-        return f"/Library/Frameworks/Python.Framework/Versions/{ver}/bin/python3"
+    if host == "macos":
+        return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
-    raise ValueError(f"no match found for {python} on {host}")
+    raise ValueError(f"no match found for python {python} on {host}")
+
+
+def get_display(base: str, host: str, version: str, python: str) -> str:
+    if version not in ["rapid", "latest"]:
+        version = f"v{version}"
+    if not python.startswith("pypy"):
+        python = f"py{python}"
+    return f"{base} {HOSTS[host].display_name} {version} {python}"
+
+
+def get_pairs(versions: list[str], pythons: list[str]) -> str:
+    values = []
+    for version, python in zip_longest(versions, pythons):
+        if version is None:
+            values.append((versions[0], python))
+        elif python is None:
+            values.append((version, pythons[0]))
+        else:
+            values.append((version, python))
+    return values
 
 
 ##############
 # OCSP
 ##############
 
+
 # Create OCSP build variants.
-variants = []
-
-# OCSP tests on rhel8 with rotating CPython versions.
-for version in ALL_VERSIONS:
-    # OCSP is not supported until v4.4.
-    if version == "4.0":
-        continue
-    task_refs = [EvgTaskRef(name=".ocsp")]
-    expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
+def create_ocsp_variants() -> list[BuildVariant]:
+    variants = []
     batchtime = BATCHTIME_WEEK * 2
-    python = ALL_PYTHONS[len(variants) % len(ALL_PYTHONS)]
-    host = "rhel8"
-    if version in ["rapid", "latest"]:
-        display_name = f"OCSP test RHEL8 {version} {python}"
-    else:
-        display_name = f"OCSP test RHEL8 v{version} {python}"
-    variant = create_variant(
-        [".ocsp"],
-        display_name,
-        python=python,
-        batchtime=batchtime,
-        host=host,
-        expansions=expansions,
-    )
-    variants.append(variant)
+    base_expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
+    base_display = "OCSP test"
 
-# OCSP tests on Windows and MacOS.
-for host, version in product(["Win64", "macOS"], ["4.4", "8.0"]):
-    # MongoDB servers do not staple OCSP responses and only support RSA.
-    task_names = [".ocsp-rsa !.ocsp-staple"]
-    expansions = dict(VERSION=version, AUTH="noauth", SSL="ssl", TOPOLOGY="server")
-    batchtime = BATCHTIME_WEEK * 2
-    if version == "4.4":
-        python = CPYTHONS[0]
-    else:
-        python = CPYTHONS[-1]
-    display_name = f"OCSP test {host} v{version} {python}"
-    variant = create_variant(
-        task_names,
-        display_name,
-        python=python,
-        host=host,
-        expansions=expansions,
-        batchtime=batchtime,
-    )
-    variants.append(variant)
+    # OCSP tests on rhel8 with all server and python versions.
+    versions = [v for v in ALL_VERSIONS if v != "4.4"]
+    for version, python in get_pairs(versions, ALL_PYTHONS):
+        # OCSP is not supported until v4.4.
+        if version == "4.0":
+            continue
+        expansions = base_expansions.copy()
+        expansions["VERSION"] = version
+        host = "rhel8"
+        variant = create_variant(
+            [".ocsp"],
+            get_display(base_display, host, version, python),
+            python=python,
+            batchtime=batchtime,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    # OCSP tests on Windows and MacOS.
+    for host, version in product(["win64", "macos"], ["4.4", "8.0"]):
+        # MongoDB servers do not staple OCSP responses and only support RSA.
+        task_names = [".ocsp-rsa !.ocsp-staple"]
+        expansions = base_expansions.copy()
+        expansions["VERSION"] = version
+        if version == "4.4":
+            python = CPYTHONS[0]
+        else:
+            python = CPYTHONS[-1]
+        variant = create_variant(
+            task_names,
+            get_display(base_display, host, version, python),
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        variants.append(variant)
+
+    return variants
+
 
 # Generate OCSP config.
-project = EvgProject(tasks=None, buildvariants=variants)
+project = EvgProject(tasks=None, buildvariants=create_ocsp_variants())
 print(ShrubService.generate_yaml(project))  # noqa: T201
