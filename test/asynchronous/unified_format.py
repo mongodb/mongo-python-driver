@@ -767,7 +767,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = await target.list_collections(*args, **kwargs)
-        return list(cursor)
+        return await cursor.to_list()
 
     async def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.
