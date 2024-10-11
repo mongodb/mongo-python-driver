@@ -189,6 +189,7 @@ converted_tests = [
     "test_client_bulk_write.py",
     "test_client_context.py",
     "test_collection.py",
+    "test_command_logging.py",
     "test_common.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_cursor.py",
