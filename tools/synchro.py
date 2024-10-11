@@ -205,6 +205,7 @@ converted_tests = [
     "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
+    "unified_format.py",
 ]
 
 sync_test_files = [
