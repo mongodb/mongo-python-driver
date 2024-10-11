@@ -20,7 +20,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, connected, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 
 from bson.binary import PYTHON_LEGACY, STANDARD, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
@@ -28,13 +28,13 @@ from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestCommon(IntegrationTest):
-    def test_uuid_representation(self):
+class TestCommon(AsyncIntegrationTest):
+    async def test_uuid_representation(self):
         coll = self.db.uuid
-        coll.drop()
+        await coll.drop()
 
         # Test property
         self.assertEqual(UuidRepresentation.UNSPECIFIED, coll.codec_options.uuid_representation)
@@ -44,52 +44,52 @@ class TestCommon(IntegrationTest):
         # Insert as binary subtype 3
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         legacy_opts = coll.codec_options
-        coll.insert_one({"uu": uu})
-        self.assertEqual(uu, (coll.find_one({"uu": uu}))["uu"])  # type: ignore
+        await coll.insert_one({"uu": uu})
+        self.assertEqual(uu, (await coll.find_one({"uu": uu}))["uu"])  # type: ignore
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
-        self.assertEqual(None, coll.find_one({"uu": uu}))
+        self.assertEqual(None, await coll.find_one({"uu": uu}))
         uul = Binary.from_uuid(uu, PYTHON_LEGACY)
-        self.assertEqual(uul, (coll.find_one({"uu": uul}))["uu"])  # type: ignore
+        self.assertEqual(uul, (await coll.find_one({"uu": uul}))["uu"])  # type: ignore
 
         # Test count_documents
-        self.assertEqual(0, coll.count_documents({"uu": uu}))
+        self.assertEqual(0, await coll.count_documents({"uu": uu}))
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(1, coll.count_documents({"uu": uu}))
+        self.assertEqual(1, await coll.count_documents({"uu": uu}))
 
         # Test delete
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=STANDARD))
-        coll.delete_one({"uu": uu})
-        self.assertEqual(1, coll.count_documents({}))
+        await coll.delete_one({"uu": uu})
+        self.assertEqual(1, await coll.count_documents({}))
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        coll.delete_one({"uu": uu})
-        self.assertEqual(0, coll.count_documents({}))
+        await coll.delete_one({"uu": uu})
+        self.assertEqual(0, await coll.count_documents({}))
 
         # Test update_one
-        coll.insert_one({"_id": uu, "i": 1})
+        await coll.insert_one({"_id": uu, "i": 1})
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=STANDARD))
-        coll.update_one({"_id": uu}, {"$set": {"i": 2}})
+        await coll.update_one({"_id": uu}, {"$set": {"i": 2}})
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(1, (coll.find_one({"_id": uu}))["i"])  # type: ignore
-        coll.update_one({"_id": uu}, {"$set": {"i": 2}})
-        self.assertEqual(2, (coll.find_one({"_id": uu}))["i"])  # type: ignore
+        self.assertEqual(1, (await coll.find_one({"_id": uu}))["i"])  # type: ignore
+        await coll.update_one({"_id": uu}, {"$set": {"i": 2}})
+        self.assertEqual(2, (await coll.find_one({"_id": uu}))["i"])  # type: ignore
 
         # Test Cursor.distinct
-        self.assertEqual([2], coll.find({"_id": uu}).distinct("i"))
+        self.assertEqual([2], await coll.find({"_id": uu}).distinct("i"))
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=STANDARD))
-        self.assertEqual([], coll.find({"_id": uu}).distinct("i"))
+        self.assertEqual([], await coll.find({"_id": uu}).distinct("i"))
 
         # Test findAndModify
-        self.assertEqual(None, coll.find_one_and_update({"_id": uu}, {"$set": {"i": 5}}))
+        self.assertEqual(None, await coll.find_one_and_update({"_id": uu}, {"$set": {"i": 5}}))
         coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(2, (coll.find_one_and_update({"_id": uu}, {"$set": {"i": 5}}))["i"])
-        self.assertEqual(5, (coll.find_one({"_id": uu}))["i"])  # type: ignore
+        self.assertEqual(2, (await coll.find_one_and_update({"_id": uu}, {"$set": {"i": 5}}))["i"])
+        self.assertEqual(5, (await coll.find_one({"_id": uu}))["i"])  # type: ignore
 
         # Test command
         self.assertEqual(
             5,
             (
-                self.db.command(
+                await self.db.command(
                     "findAndModify",
                     "uuid",
                     update={"$set": {"i": 6}},
@@ -101,7 +101,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(
             6,
             (
-                self.db.command(
+                await self.db.command(
                     "findAndModify",
                     "uuid",
                     update={"$set": {"i": 7}},
@@ -110,11 +110,11 @@ class TestCommon(IntegrationTest):
             )["value"]["i"],
         )
 
-    def test_write_concern(self):
-        c = self.rs_or_single_client(connect=False)
+    async def test_write_concern(self):
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)
 
-        c = self.rs_or_single_client(connect=False, w=2, wTimeoutMS=1000)
+        c = await self.async_rs_or_single_client(connect=False, w=2, wTimeoutMS=1000)
         wc = WriteConcern(w=2, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
 
@@ -132,51 +132,53 @@ class TestCommon(IntegrationTest):
         self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 
-    def test_mongo_client(self):
-        pair = client_context.pair
-        m = self.rs_or_single_client(w=0)
+    async def test_mongo_client(self):
+        pair = await async_client_context.pair
+        m = await self.async_rs_or_single_client(w=0)
         coll = m.pymongo_test.write_concern_test
-        coll.drop()
+        await coll.drop()
         doc = {"_id": ObjectId()}
-        coll.insert_one(doc)
-        self.assertTrue(coll.insert_one(doc))
+        await coll.insert_one(doc)
+        self.assertTrue(await coll.insert_one(doc))
         coll = coll.with_options(write_concern=WriteConcern(w=1))
         with self.assertRaises(OperationFailure):
-            coll.insert_one(doc)
+            await coll.insert_one(doc)
 
-        m = self.rs_or_single_client()
+        m = await self.async_rs_or_single_client()
         coll = m.pymongo_test.write_concern_test
         new_coll = coll.with_options(write_concern=WriteConcern(w=0))
-        self.assertTrue(new_coll.insert_one(doc))
+        self.assertTrue(await new_coll.insert_one(doc))
         with self.assertRaises(OperationFailure):
-            coll.insert_one(doc)
+            await coll.insert_one(doc)
 
-        m = self.rs_or_single_client(
-            f"mongodb://{pair}/", replicaSet=client_context.replica_set_name
+        m = await self.async_rs_or_single_client(
+            f"mongodb://{pair}/", replicaSet=async_client_context.replica_set_name
         )
 
         coll = m.pymongo_test.write_concern_test
         with self.assertRaises(OperationFailure):
-            coll.insert_one(doc)
-        m = self.rs_or_single_client(
-            f"mongodb://{pair}/?w=0", replicaSet=client_context.replica_set_name
+            await coll.insert_one(doc)
+        m = await self.async_rs_or_single_client(
+            f"mongodb://{pair}/?w=0", replicaSet=async_client_context.replica_set_name
         )
 
         coll = m.pymongo_test.write_concern_test
-        coll.insert_one(doc)
+        await coll.insert_one(doc)
 
         # Equality tests
-        direct = connected(self.single_client(w=0))
-        direct2 = connected(self.single_client(f"mongodb://{pair}/?w=0", **self.credentials))
+        direct = await connected(await self.async_single_client(w=0))
+        direct2 = await connected(
+            await self.async_single_client(f"mongodb://{pair}/?w=0", **self.credentials)
+        )
         self.assertEqual(direct, direct2)
         self.assertFalse(direct != direct2)
 
-    def test_validate_boolean(self):
-        self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+    async def test_validate_boolean(self):
+        await self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
+            await self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":

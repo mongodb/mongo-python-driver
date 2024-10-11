@@ -30,7 +30,7 @@ except ImportError:
 
 from operations import operations  # type: ignore[import]
 
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_type import SERVER_TYPE
@@ -50,7 +50,9 @@ class TestResetAndRequestCheck(PyMongoTestCase):
 
         def responder(request):
             self.ismaster_time = time.time()
-            return request.ok(ismaster=True, minWireVersion=2, maxWireVersion=6)
+            return request.ok(
+                ismaster=True, minWireVersion=2, maxWireVersion=MIN_SUPPORTED_WIRE_VERSION
+            )
 
         self.server.autoresponds("ismaster", responder)
         self.server.run()

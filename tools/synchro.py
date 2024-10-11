@@ -156,7 +156,7 @@ gridfs_files = [
 
 def async_only_test(f: str) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in ["test_locks.py"]
+    return f in ["test_locks.py", "test_concurrency.py"]
 
 
 test_files = [
@@ -192,7 +192,9 @@ converted_tests = [
     "test_client.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
+    "test_collation.py",
     "test_collection.py",
+    "test_common.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_cursor.py",
     "test_database.py",

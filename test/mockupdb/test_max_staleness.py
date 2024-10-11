@@ -26,7 +26,7 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
@@ -34,7 +34,9 @@ pytestmark = pytest.mark.mockupdb
 class TestMaxStalenessMongos(PyMongoTestCase):
     def test_mongos(self):
         mongos = MockupDB()
-        mongos.autoresponds("ismaster", maxWireVersion=6, ismaster=True, msg="isdbgrid")
+        mongos.autoresponds(
+            "ismaster", maxWireVersion=MIN_SUPPORTED_WIRE_VERSION, ismaster=True, msg="isdbgrid"
+        )
         mongos.run()
         self.addCleanup(mongos.stop)
 
