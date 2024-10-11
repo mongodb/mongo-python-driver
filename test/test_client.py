@@ -1978,7 +1978,6 @@ class TestClient(IntegrationTest):
         )
 
     def test_handshake_09_container_with_provider(self):
-        # No FaaS metadata should be present.
         self._test_handshake(
             {
                 ENV_VAR_K8S: "1",
@@ -1986,7 +1985,12 @@ class TestClient(IntegrationTest):
                 "AWS_REGION": "us-east-1",
                 "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "256",
             },
-            {"container": {"orchestrator": "kubernetes"}},
+            {
+                "container": {"orchestrator": "kubernetes"},
+                "name": "aws.lambda",
+                "region": "us-east-1",
+                "memory_mb": 256,
+            },
         )
 
     def test_dict_hints(self):

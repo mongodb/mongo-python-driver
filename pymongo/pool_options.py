@@ -179,39 +179,37 @@ def _getenv_int(key: str) -> Optional[int]:
 def _metadata_env() -> dict[str, Any]:
     env: dict[str, Any] = {}
     container = get_container_env_info()
-    # Don't populate FaaS metadata if a container is present.
     if container:
         env["container"] = container
-    else:
-        # Skip if multiple (or no) envs are matched.
-        if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
-            return env
-        if _is_lambda():
-            env["name"] = "aws.lambda"
-            region = os.getenv("AWS_REGION")
-            if region:
-                env["region"] = region
-            memory_mb = _getenv_int("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
-            if memory_mb is not None:
-                env["memory_mb"] = memory_mb
-        elif _is_azure_func():
-            env["name"] = "azure.func"
-        elif _is_gcp_func():
-            env["name"] = "gcp.func"
-            region = os.getenv("FUNCTION_REGION")
-            if region:
-                env["region"] = region
-            memory_mb = _getenv_int("FUNCTION_MEMORY_MB")
-            if memory_mb is not None:
-                env["memory_mb"] = memory_mb
-            timeout_sec = _getenv_int("FUNCTION_TIMEOUT_SEC")
-            if timeout_sec is not None:
-                env["timeout_sec"] = timeout_sec
-        elif _is_vercel():
-            env["name"] = "vercel"
-            region = os.getenv("VERCEL_REGION")
-            if region:
-                env["region"] = region
+    # Skip if multiple (or no) envs are matched.
+    if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
+        return env
+    if _is_lambda():
+        env["name"] = "aws.lambda"
+        region = os.getenv("AWS_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+    elif _is_azure_func():
+        env["name"] = "azure.func"
+    elif _is_gcp_func():
+        env["name"] = "gcp.func"
+        region = os.getenv("FUNCTION_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("FUNCTION_MEMORY_MB")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+        timeout_sec = _getenv_int("FUNCTION_TIMEOUT_SEC")
+        if timeout_sec is not None:
+            env["timeout_sec"] = timeout_sec
+    elif _is_vercel():
+        env["name"] = "vercel"
+        region = os.getenv("VERCEL_REGION")
+        if region:
+            env["region"] = region
     return env
 
 
