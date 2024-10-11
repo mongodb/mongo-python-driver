@@ -25,14 +25,13 @@ from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.utils import (
     CMAPListener,
-    SpecTestCreator,
     camel_to_snake,
     client_context,
     get_pool,
     get_pools,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunnerThread
+from test.utils_spec_runner import SpecRunnerThread, SpecTestCreator
 
 from bson.objectid import ObjectId
 from bson.son import SON
