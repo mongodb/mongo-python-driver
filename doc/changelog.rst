@@ -12,6 +12,8 @@ PyMongo 4.11 brings a number of changes including:
 
 - Dropped support for Python 3.8.
 - Dropped support for MongoDB 3.6.
+- Added support for free-threaded Python with the GIL disabled. For more information see:
+  `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
 
 Issues Resolved
 ...............
