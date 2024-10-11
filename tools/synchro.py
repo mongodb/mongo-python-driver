@@ -105,6 +105,8 @@ replacements = {
     "PyMongo|c|async": "PyMongo|c",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "AsyncTestSpec": "TestSpec",
+    "AsyncSpecTestCreator": "SpecTestCreator",
     "async_set_fail_point": "set_fail_point",
     "async_ensure_all_connected": "ensure_all_connected",
     "async_repl_set_step_down": "repl_set_step_down",
@@ -204,6 +206,7 @@ converted_tests = [
     "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
+    "unified_format.py",
 ]
 
 sync_test_files = [

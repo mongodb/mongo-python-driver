@@ -130,7 +130,7 @@ if sys.platform != "win32":
                         loop.remove_writer(fd)
 
     async def _async_receive_ssl(
-        conn: _sslConn, length: int, loop: AbstractEventLoop
+        conn: _sslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
@@ -145,6 +145,9 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
+                # KMS responses update their expected size after the first batch, stop reading after one loop
+                if once:
+                    return mv[:read]
                 total_read += read
             except BLOCKING_IO_ERRORS as exc:
                 fd = conn.fileno()
@@ -271,6 +274,28 @@ async def async_receive_data(
         if read_task in done:
             return read_task.result()
         raise _OperationCancelled("operation cancelled")
+    finally:
+        sock.settimeout(sock_timeout)
+
+
+async def async_receive_data_socket(
+    sock: Union[socket.socket, _sslConn], length: int
+) -> memoryview:
+    sock_timeout = sock.gettimeout()
+    timeout = sock_timeout
+
+    sock.settimeout(0.0)
+    loop = asyncio.get_event_loop()
+    try:
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
+            return await asyncio.wait_for(
+                _async_receive_ssl(sock, length, loop, once=True),  # type: ignore[arg-type]
+                timeout=timeout,
+            )
+        else:
+            return await asyncio.wait_for(_async_receive(sock, length, loop), timeout=timeout)  # type: ignore[arg-type]
+    except asyncio.TimeoutError as err:
+        raise socket.timeout("timed out") from err
     finally:
         sock.settimeout(sock_timeout)
 

@@ -21,11 +21,11 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    SpecTestCreator,
     get_pool,
     wait_until,
 )
 from test.utils_selection_tests import create_topology
+from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node
 from pymongo.monitoring import ConnectionReadyEvent
