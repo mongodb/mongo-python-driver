@@ -190,6 +190,7 @@ converted_tests = [
     "test_client_context.py",
     "test_collation.py",
     "test_collection.py",
+    "test_command_monitoring.py",
     "test_common.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_cursor.py",
