@@ -1023,6 +1023,9 @@ static PyModuleDef_Slot _cmessage_slots[] = {
 #ifdef Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED
     {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
 #endif
+#if PY_VERSION_HEX >= 0x030D0000
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
     {0, NULL},
 };
 

@@ -689,6 +689,8 @@ class TestSpec(SpecRunner):
             self.skipTest("PYTHON-3706 flaky test on Windows/macOS")
         if "type=symbol" in desc:
             self.skipTest("PyMongo does not support the symbol type")
+        if "timeoutms applied to listcollections to get collection schema" in desc and not _IS_SYNC:
+            self.skipTest("PYTHON-4844 flaky test on async")
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""
