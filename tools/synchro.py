@@ -195,6 +195,7 @@ converted_tests = [
     "test_common.py",
     "test_connection_logging.py",
     "test_connections_survive_primary_stepdown_spec.py",
+    "test_crud_unified.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
