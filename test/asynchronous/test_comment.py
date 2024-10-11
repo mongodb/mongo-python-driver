@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 from asyncio import iscoroutinefunction
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from bson.dbref import DBRef
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
@@ -84,7 +84,7 @@ class AsyncTestComment(AsyncIntegrationTest):
     @async_client_context.require_version_min(4, 7, -1)
     @async_client_context.require_replica_set
     async def test_database_helpers(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (await self.async_rs_or_single_client(event_listeners=[listener])).db
         helpers = [
             (db.watch, []),
@@ -101,7 +101,7 @@ class AsyncTestComment(AsyncIntegrationTest):
     @async_client_context.require_version_min(4, 7, -1)
     @async_client_context.require_replica_set
     async def test_client_helpers(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         cli = await self.async_rs_or_single_client(event_listeners=[listener])
         helpers = [
             (cli.watch, []),
@@ -116,7 +116,7 @@ class AsyncTestComment(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(4, 7, -1)
     async def test_collection_helpers(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (await self.async_rs_or_single_client(event_listeners=[listener]))[self.db.name]
         coll = db.get_collection("test")
 
