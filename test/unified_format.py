@@ -763,7 +763,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = target.list_collections(*args, **kwargs)
-        return list(cursor)
+        return cursor.to_list()
 
     def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.

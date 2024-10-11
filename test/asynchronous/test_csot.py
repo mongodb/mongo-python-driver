@@ -21,14 +21,14 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.unified_format import generate_test_classes
 
 import pymongo
 from pymongo import _csot
 from pymongo.errors import PyMongoError
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -40,71 +40,71 @@ else:
 globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 
-class TestCSOT(IntegrationTest):
+class TestCSOT(AsyncIntegrationTest):
     RUN_ON_SERVERLESS = True
     RUN_ON_LOAD_BALANCER = True
 
-    def test_timeout_nested(self):
+    async def test_timeout_nested(self):
         coll = self.db.coll
         self.assertEqual(_csot.get_timeout(), None)
         self.assertEqual(_csot.get_deadline(), float("inf"))
         self.assertEqual(_csot.get_rtt(), 0.0)
         with pymongo.timeout(10):
-            coll.find_one()
+            await coll.find_one()
             self.assertEqual(_csot.get_timeout(), 10)
             deadline_10 = _csot.get_deadline()
 
             # Capped at the original 10 deadline.
             with pymongo.timeout(15):
-                coll.find_one()
+                await coll.find_one()
                 self.assertEqual(_csot.get_timeout(), 15)
                 self.assertEqual(_csot.get_deadline(), deadline_10)
 
             # Should be reset to previous values
             self.assertEqual(_csot.get_timeout(), 10)
             self.assertEqual(_csot.get_deadline(), deadline_10)
-            coll.find_one()
+            await coll.find_one()
 
             with pymongo.timeout(5):
-                coll.find_one()
+                await coll.find_one()
                 self.assertEqual(_csot.get_timeout(), 5)
                 self.assertLess(_csot.get_deadline(), deadline_10)
 
             # Should be reset to previous values
             self.assertEqual(_csot.get_timeout(), 10)
             self.assertEqual(_csot.get_deadline(), deadline_10)
-            coll.find_one()
+            await coll.find_one()
 
         # Should be reset to previous values
         self.assertEqual(_csot.get_timeout(), None)
         self.assertEqual(_csot.get_deadline(), float("inf"))
         self.assertEqual(_csot.get_rtt(), 0.0)
 
-    @client_context.require_change_streams
-    def test_change_stream_can_resume_after_timeouts(self):
+    @async_client_context.require_change_streams
+    async def test_change_stream_can_resume_after_timeouts(self):
         coll = self.db.test
-        coll.insert_one({})
-        with coll.watch() as stream:
+        await coll.insert_one({})
+        async with await coll.watch() as stream:
             with pymongo.timeout(0.1):
                 with self.assertRaises(PyMongoError) as ctx:
-                    stream.next()
+                    await stream.next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
                 with self.assertRaises(PyMongoError) as ctx:
-                    stream.try_next()
+                    await stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
             # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
-            if client_context.version < (4, 0):
-                stream.try_next()
-            coll.insert_one({})
+            if async_client_context.version < (4, 0):
+                await stream.try_next()
+            await coll.insert_one({})
             with pymongo.timeout(10):
-                self.assertTrue(stream.next())
+                self.assertTrue(await stream.next())
             self.assertTrue(stream.alive)
             # Timeout applies to entire next() call, not only individual commands.
             with pymongo.timeout(0.5):
                 with self.assertRaises(PyMongoError) as ctx:
-                    stream.next()
+                    await stream.next()
                 self.assertTrue(ctx.exception.timeout)
             self.assertTrue(stream.alive)
         self.assertFalse(stream.alive)
