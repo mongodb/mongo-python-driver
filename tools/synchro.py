@@ -188,6 +188,7 @@ converted_tests = [
     "test_client.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
+    "test_collation.py",
     "test_collection.py",
     "test_comment.py",
     "test_common.py",
