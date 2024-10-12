@@ -39,7 +39,6 @@ from test.utils import (
     async_get_pool,
     async_is_mongos,
     async_wait_until,
-    wait_until,
 )
 
 from bson import encode
@@ -1022,7 +1021,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"y": 1}, bypass_document_validation=True)
         await db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        await async_wait_until(lambda: db_w0.test.find_one({"x": 1}), "find w:0 replaced document")
+        async def predicate():
+            return await db_w0.test.find_one({"x": 1})
+
+        await async_wait_until(predicate, "find w:0 replaced document")
 
     async def test_update_bypass_document_validation(self):
         db = self.db
@@ -1870,7 +1872,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await cur.close()
         cur = None
         # Wait until the background thread returns the socket.
-        wait_until(lambda: pool.active_sockets == 0, "return socket")
+        await async_wait_until(lambda: pool.active_sockets == 0, "return socket")
         # The socket should be discarded.
         self.assertEqual(0, len(pool.conns))
 

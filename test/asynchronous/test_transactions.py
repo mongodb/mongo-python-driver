@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    wait_until,
+    async_wait_until,
 )
 from typing import List
 
@@ -162,7 +162,7 @@ class TestTransactions(AsyncTransactionsBase):
         client = await self.async_rs_client(
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
@@ -191,7 +191,7 @@ class TestTransactions(AsyncTransactionsBase):
         client = await self.async_rs_client(
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})

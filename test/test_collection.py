@@ -1009,7 +1009,10 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"y": 1}, bypass_document_validation=True)
         db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        wait_until(lambda: db_w0.test.find_one({"x": 1}), "find w:0 replaced document")
+        def predicate():
+            return db_w0.test.find_one({"x": 1})
+
+        wait_until(predicate, "find w:0 replaced document")
 
     def test_update_bypass_document_validation(self):
         db = self.db

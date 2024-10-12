@@ -27,8 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, helpers_shared
-from pymongo.asynchronous import periodic_executor
+from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -185,7 +184,7 @@ class Topology:
             async def target() -> bool:
                 return process_events_queue(weak)
 
-            executor = periodic_executor.PeriodicExecutor(
+            executor = periodic_executor.AsyncPeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
                 min_interval=common.MIN_HEARTBEAT_INTERVAL,
                 target=target,
@@ -742,7 +741,7 @@ class Topology:
         if self._publish_server or self._publish_tp:
             # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
-            self.__events_executor.join(1)
+            await self.__events_executor.join(1)
             process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
 
     @property

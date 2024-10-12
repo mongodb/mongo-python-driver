@@ -22,14 +22,13 @@ import time
 import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
-from pymongo import common
+from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
-from pymongo.asynchronous import periodic_executor
-from pymongo.asynchronous.periodic_executor import _shutdown_executors
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
+from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -76,7 +75,7 @@ class MonitorBase:
             await monitor._run()  # type:ignore[attr-defined]
             return True
 
-        executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.AsyncPeriodicExecutor(
             interval=interval, min_interval=min_interval, target=target, name=name
         )
 
@@ -112,9 +111,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    def join(self, timeout: Optional[int] = None) -> None:
+    async def join(self, timeout: Optional[int] = None) -> None:
         """Wait for the monitor to stop."""
-        self._executor.join(timeout)
+        await self._executor.join(timeout)
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -139,7 +138,7 @@ class Monitor(MonitorBase):
         """
         super().__init__(
             topology,
-            "pymongo_server_monitor_thread",
+            "pymongo_server_monitor_task",
             topology_settings.heartbeat_frequency,
             common.MIN_HEARTBEAT_INTERVAL,
         )
@@ -250,7 +249,7 @@ class Monitor(MonitorBase):
             except (OperationFailure, NotPrimaryError) as exc:
                 # Update max cluster time even when hello fails.
                 details = cast(Mapping[str, Any], exc.details)
-                self._topology.receive_cluster_time(details.get("$clusterTime"))
+                await self._topology.receive_cluster_time(details.get("$clusterTime"))
                 raise
         except ReferenceError:
             raise
@@ -434,7 +433,7 @@ class _RttMonitor(MonitorBase):
         """
         super().__init__(
             topology,
-            "pymongo_server_rtt_thread",
+            "pymongo_server_rtt_task",
             topology_settings.heartbeat_frequency,
             common.MIN_HEARTBEAT_INTERVAL,
         )
@@ -531,4 +530,5 @@ def _shutdown_resources() -> None:
         shutdown()
 
 
-atexit.register(_shutdown_resources)
+if _IS_SYNC:
+    atexit.register(_shutdown_resources)

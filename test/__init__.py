@@ -859,6 +859,15 @@ class ClientContext:
 client_context = ClientContext()
 
 
+def reset_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to reset a client context
+        return
+    client_context.client.close()
+    client_context.client = None
+    client_context._init_client()
+
+
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)

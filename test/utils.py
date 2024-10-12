@@ -98,6 +98,12 @@ class BaseListener:
         """Wait for a number of events to be published, or fail."""
         wait_until(lambda: self.event_count(event) >= count, f"find {count} {event} event(s)")
 
+    async def async_wait_for_event(self, event, count):
+        """Wait for a number of events to be published, or fail."""
+        await async_wait_until(
+            lambda: self.event_count(event) >= count, f"find {count} {event} event(s)"
+        )
+
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):
@@ -789,7 +795,10 @@ async def async_wait_until(predicate, success_description, timeout=10):
     start = time.time()
     interval = min(float(timeout) / 100, 0.1)
     while True:
-        retval = await predicate()
+        if iscoroutinefunction(predicate):
+            retval = await predicate()
+        else:
+            retval = predicate()
         if retval:
             return retval
 

@@ -59,8 +59,8 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, uri_parser
-from pymongo.asynchronous import client_session, database, periodic_executor
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
+from pymongo.asynchronous import client_session, database
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
@@ -908,7 +908,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await AsyncMongoClient._process_periodic_tasks(client)
             return True
 
-        executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.AsyncPeriodicExecutor(
             interval=common.KILL_CURSOR_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,
