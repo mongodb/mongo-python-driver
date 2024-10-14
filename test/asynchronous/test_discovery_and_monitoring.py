@@ -78,8 +78,8 @@ async def create_mock_topology(uri, monitor_class=DummyMonitor):
     load_balanced = None
     if "replicaset" in parsed_uri["options"]:
         replica_set_name = parsed_uri["options"]["replicaset"]
-    if "directAsyncConnection" in parsed_uri["options"]:
-        direct_connection = parsed_uri["options"]["directAsyncConnection"]
+    if "directConnection" in parsed_uri["options"]:
+        direct_connection = parsed_uri["options"]["directConnection"]
     if "loadBalanced" in parsed_uri["options"]:
         load_balanced = parsed_uri["options"]["loadBalanced"]
 
@@ -216,6 +216,8 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
+            if self._testMethodName == "test_single_direct_connection_external_ip":
+                print("here")
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     await got_hello(c, common.partition_node(response[0]), response[1])
