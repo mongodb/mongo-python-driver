@@ -310,6 +310,8 @@ class Connection:
         self.connect_rtt = 0.0
         self._client_id = pool._client_id
         self.creation_time = time.monotonic()
+        # For gossiping $clusterTime from the connection handshake to the client.
+        self._cluster_time = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -1307,6 +1309,9 @@ class Pool:
                 self.active_contexts.discard(conn.cancel_context)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
+
+        if handler:
+            handler.client._topology.receive_cluster_time(conn._cluster_time)
 
         return conn
 

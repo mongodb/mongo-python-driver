@@ -250,27 +250,9 @@ class Monitor(MonitorBase):
         self._conn_id = None
         start = time.monotonic()
         try:
-<<<<<<< HEAD
-            try:
-                return self._check_once()
-            except (OperationFailure, NotPrimaryError) as exc:
-                # Update max cluster time even when hello fails.
-                details = cast(Mapping[str, Any], exc.details)
-                self._topology.receive_cluster_time(details.get("$clusterTime"))
-                raise
+            return self._check_once()
         except asyncio.CancelledError:
             raise
-||||||| parent of 14c8432bc (PYTHON-4579 Stop gossiping $clusterTime on SDAM connections)
-            try:
-                return self._check_once()
-            except (OperationFailure, NotPrimaryError) as exc:
-                # Update max cluster time even when hello fails.
-                details = cast(Mapping[str, Any], exc.details)
-                self._topology.receive_cluster_time(details.get("$clusterTime"))
-                raise
-=======
-            return self._check_once()
->>>>>>> 14c8432bc (PYTHON-4579 Stop gossiping $clusterTime on SDAM connections)
         except ReferenceError:
             raise
         except Exception as error:
