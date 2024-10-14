@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
       - name: Install Python dependencies
@@ -51,11 +51,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ["3.8", "pypy-3.9", "3.13"]
+        python-version: ["3.9", "pypy-3.9", "3.13", "3.13t"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
+      - if: ${{ matrix.python-version == '3.13t' }}
+        name: Setup free-threaded Python
+        uses: deadsnakes/action@v3.2.0
+        with:
+          python-version: 3.13
+          nogil: true
+      - if: ${{ matrix.python-version != '3.13t' }}
+        name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -65,19 +72,27 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          if [ "${{ matrix.python-version }}" == "3.13" ]; then
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
+          elif [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            # Hatch can't be installed on 3.13t, use pytest directly.
+            pip install .
+            pip install -r requirements/test.txt
           else
             pip install hatch
           fi
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.10.0
+        uses: supercharge/mongodb-github-action@1.11.0
         with:
           mongodb-version: 6.0
       - name: Run tests
         run: |
-          hatch run test:test
+          if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+            pytest -v --durations=5 --maxfail=10
+          else
+            hatch run test:test
+          fi
 
   doctest:
     runs-on: ubuntu-latest
@@ -87,14 +102,14 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
           pip install -U hatch pip
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.10.0
+        uses: supercharge/mongodb-github-action@1.11.0
         with:
           mongodb-version: '8.0.0-rc4'
       - name: Run tests
@@ -111,7 +126,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build docs on lowest supported Python for furo
-          python-version: '3.8'
+          python-version: '3.9'
       - name: Install dependencies
         run: |
           pip install -U pip hatch
@@ -129,7 +144,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build docs on lowest supported Python for furo
-          python-version: '3.8'
+          python-version: '3.9'
       - name: Install dependencies
         run: |
           pip install -U pip hatch
@@ -142,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.8", "3.11"]
+        python: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -167,7 +182,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: '3.8'
+          python-version: '3.9'
       - name: Build SDist
         shell: bash
         run: |
@@ -199,9 +214,9 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: '3.8'
+            python-version: '3.9'
         - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@1.10.0
+          uses: supercharge/mongodb-github-action@1.11.0
         - name: Run connect test from sdist
           shell: bash
           run: |

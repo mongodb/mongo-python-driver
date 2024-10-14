@@ -180,10 +180,20 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = conn.recv(kms_context.bytes_needed)
+                    if _IS_SYNC:
+                        data = conn.recv(kms_context.bytes_needed)
+                    else:
+                        from pymongo.network_layer import (  # type: ignore[attr-defined]
+                            async_receive_data_socket,
+                        )
+
+                        data = await async_receive_data_socket(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
+            # Async raises an OSError instead of returning empty bytes
+            except OSError as err:
+                raise OSError("KMS connection closed") from err
             except BLOCKING_IO_ERRORS:
                 raise socket.timeout("timed out") from None
             finally:

@@ -207,7 +207,7 @@ static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
  *
  * Returns a new ref */
 static PyObject* _error(char* name) {
-    PyObject* error;
+    PyObject* error = NULL;
     PyObject* errors = PyImport_ImportModule("bson.errors");
     if (!errors) {
         return NULL;
@@ -279,7 +279,7 @@ static PyObject* datetime_from_millis(long long millis) {
      * micros = diff * 1000                       111000
      * Resulting in datetime(1, 1, 1, 1, 1, 1, 111000) -- the expected result
      */
-    PyObject* datetime;
+    PyObject* datetime = NULL;
     int diff = (int)(((millis % 1000) + 1000) % 1000);
     int microseconds = diff * 1000;
     Time64_T seconds = (millis - diff) / 1000;
@@ -294,7 +294,7 @@ static PyObject* datetime_from_millis(long long millis) {
                                           timeinfo.tm_sec,
                                           microseconds);
     if(!datetime) {
-        PyObject *etype, *evalue, *etrace;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
 
         /*
         * Calling _error clears the error state, so fetch it first.
@@ -350,8 +350,8 @@ static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
         return NULL;
     }
 
-    PyObject* dt;
-    PyObject* ll_millis;
+    PyObject* dt = NULL;
+    PyObject* ll_millis = NULL;
 
     if (!(ll_millis = PyLong_FromLongLong(millis))){
         return NULL;
@@ -1790,7 +1790,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* result;
     unsigned char check_keys;
     unsigned char top_level = 1;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     PyObject* raw_bson_document_bytes_obj;
@@ -2512,8 +2512,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
      * Wrap any non-InvalidBSON errors in InvalidBSON.
      */
     if (PyErr_Occurred()) {
-        PyObject *etype, *evalue, *etrace;
-        PyObject *InvalidBSON;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+        PyObject *InvalidBSON = NULL;
 
         /*
          * Calling _error clears the error state, so fetch it first.
@@ -2585,8 +2585,8 @@ static int _element_to_dict(PyObject* self, const char* string,
     if (!*name) {
         /* If NULL is returned then wrap the UnicodeDecodeError
            in an InvalidBSON error */
-        PyObject *etype, *evalue, *etrace;
-        PyObject *InvalidBSON;
+        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+        PyObject *InvalidBSON = NULL;
 
         PyErr_Fetch(&etype, &evalue, &etrace);
         if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {
@@ -2620,7 +2620,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     /* TODO: Support buffer protocol */
     char* string;
     PyObject* bson;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     unsigned position;
     unsigned max;
@@ -2732,7 +2732,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     int32_t size;
     Py_ssize_t total_size;
     const char* string;
-    PyObject* bson;
+    PyObject* bson = NULL;
     codec_options_t options;
     PyObject* result = NULL;
     PyObject* options_obj;
@@ -3184,6 +3184,9 @@ static PyModuleDef_Slot _cbson_slots[] = {
     {Py_mod_exec, _cbson_exec},
 #if defined(Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED)
     {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
+#endif
+#if PY_VERSION_HEX >= 0x030D0000
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL},
 };

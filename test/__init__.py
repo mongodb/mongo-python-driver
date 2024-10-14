@@ -464,11 +464,12 @@ class ClientContext:
                 if not self.connected:
                     pair = self.pair
                     raise SkipTest(f"Cannot connect to MongoDB on {pair}")
-                if iscoroutinefunction(condition) and condition():
-                    if wraps_async:
-                        return f(*args, **kwargs)
-                    else:
-                        return f(*args, **kwargs)
+                if iscoroutinefunction(condition):
+                    if condition():
+                        if wraps_async:
+                            return f(*args, **kwargs)
+                        else:
+                            return f(*args, **kwargs)
                 elif condition():
                     if wraps_async:
                         return f(*args, **kwargs)

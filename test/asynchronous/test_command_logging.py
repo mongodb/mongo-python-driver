@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run the connection logging unified format spec tests."""
+"""Run the command monitoring unified format spec tests."""
 from __future__ import annotations
 
 import os
@@ -22,15 +22,15 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_logging")
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "command_logging")
 else:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "connection_logging")
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "command_logging")
 
 
 globals().update(
@@ -39,7 +39,6 @@ globals().update(
         module=__name__,
     )
 )
-
 
 if __name__ == "__main__":
     unittest.main()

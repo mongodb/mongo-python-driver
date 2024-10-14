@@ -28,6 +28,7 @@ except ImportError:
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient, ReadPreference
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import (
     _MONGOS_MODES,
     make_read_preference,
@@ -41,7 +42,11 @@ class TestMongosCommandReadMode(unittest.TestCase):
     def test_aggregate(self):
         server = MockupDB()
         server.autoresponds(
-            "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            ismaster=True,
+            msg="isdbgrid",
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         self.addCleanup(server.stop)
         server.run()
@@ -76,7 +81,11 @@ def create_mongos_read_mode_test(mode, operation):
         self.addCleanup(server.stop)
         server.run()
         server.autoresponds(
-            "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            ismaster=True,
+            msg="isdbgrid",
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
 
         pref = make_read_preference(read_pref_mode_from_name(mode), tag_sets=None)

@@ -263,7 +263,12 @@ class TestClusterTimeComparison(unittest.TestCase):
             got_hello(
                 t,
                 ("host", 27017),
-                {"ok": 1, "minWireVersion": 0, "maxWireVersion": 6, "$clusterTime": new},
+                {
+                    "ok": 1,
+                    "minWireVersion": 0,
+                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
+                    "$clusterTime": new,
+                },
             )
 
             actual = t.max_cluster_time()

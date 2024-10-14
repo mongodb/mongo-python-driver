@@ -1,5 +1,5 @@
 mypy==1.11.2
-pyright==1.1.382.post1
+pyright==1.1.383
 typing_extensions
 -r ./encryption.txt
 -r ./ocsp.txt
