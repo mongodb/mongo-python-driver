@@ -139,11 +139,6 @@ elif OIDC_ENV == "gcp":
     }
 
 
-def interrupt_loop():
-    global IS_INTERRUPTED
-    IS_INTERRUPTED = True
-
-
 def with_metaclass(meta, *bases):
     """Create a base class with a metaclass.
 
