@@ -29,7 +29,6 @@ import traceback
 import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
-from test.asynchronous.test_bulk import AsyncBulkTestBase
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
 
@@ -211,11 +210,10 @@ class TestClientOptions(AsyncPyMongoTestCase):
 class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
     """Base class for encryption integration tests."""
 
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @async_client_context.require_version_min(4, 2, -1)
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
 
     def assertEncrypted(self, val):
         self.assertIsInstance(val, Binary)
@@ -430,10 +428,9 @@ class TestEncryptedBulkWrite(AsyncBulkTestBase, AsyncEncryptionIntegrationTest):
 
 
 class TestClientMaxWireVersion(AsyncIntegrationTest):
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
     @async_client_context.require_version_max(4, 0, 99)
     async def test_raise_max_wire_version_error(self):
@@ -818,17 +815,16 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
         "local": None,
     }
 
-    @classmethod
     @unittest.skipUnless(
         any([all(AWS_CREDS.values()), all(AZURE_CREDS.values()), all(GCP_CREDS.values())]),
         "No environment credentials are set",
     )
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.listener = OvertCommandListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
-        await cls.client.db.coll.drop()
-        cls.vault = await create_key_vault(cls.client.keyvault.datakeys)
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.listener = OvertCommandListener()
+        self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
+        await self.client.db.coll.drop()
+        self.vault = await create_key_vault(self.client.keyvault.datakeys)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {
@@ -846,24 +842,21 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
             }
         }
         opts = AutoEncryptionOpts(
-            cls.KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas, kms_tls_options=KMS_TLS_OPTS
+            self.KMS_PROVIDERS,
+            "keyvault.datakeys",
+            schema_map=schemas,
+            kms_tls_options=KMS_TLS_OPTS,
         )
-        cls.client_encrypted = await cls.unmanaged_async_rs_or_single_client(
+        self.client_encrypted = await self.async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
-        cls.client_encryption = cls.unmanaged_create_client_encryption(
-            cls.KMS_PROVIDERS, "keyvault.datakeys", cls.client, OPTS, kms_tls_options=KMS_TLS_OPTS
+        self.client_encryption = self.create_client_encryption(
+            self.KMS_PROVIDERS, "keyvault.datakeys", self.client, OPTS, kms_tls_options=KMS_TLS_OPTS
         )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.vault.drop()
-        await cls.client.close()
-        await cls.client_encrypted.close()
-        await cls.client_encryption.close()
-
-    def setUp(self):
         self.listener.reset()
+
+    async def asyncTearDown(self) -> None:
+        await self.vault.drop()
 
     async def run_test(self, provider_name):
         # Create data key.
@@ -1011,10 +1004,9 @@ class TestViews(AsyncEncryptionIntegrationTest):
 
 
 class TestCorpus(AsyncEncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
     @staticmethod
     def kms_providers():
@@ -1188,12 +1180,11 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
     client_encrypted: AsyncMongoClient
     listener: OvertCommandListener
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         db = async_client_context.client.db
-        cls.coll = db.coll
-        await cls.coll.drop()
+        self.coll = db.coll
+        await self.coll.drop()
         # Configure the encrypted 'db.coll' collection via jsonSchema.
         json_schema = json_data("limits", "limits-schema.json")
         await db.create_collection(
@@ -1211,17 +1202,14 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
         await coll.insert_one(json_data("limits", "limits-key.json"))
 
         opts = AutoEncryptionOpts({"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys")
-        cls.listener = OvertCommandListener()
-        cls.client_encrypted = await cls.unmanaged_async_rs_or_single_client(
-            auto_encryption_opts=opts, event_listeners=[cls.listener]
+        self.listener = OvertCommandListener()
+        self.client_encrypted = await self.async_rs_or_single_client(
+            auto_encryption_opts=opts, event_listeners=[self.listener]
         )
-        cls.coll_encrypted = cls.client_encrypted.db.coll
+        self.coll_encrypted = self.client_encrypted.db.coll
 
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.coll_encrypted.drop()
-        await cls.client_encrypted.close()
-        await super()._tearDown_class()
+    async def asyncTearDown(self) -> None:
+        await self.coll_encrypted.drop()
 
     async def test_01_insert_succeeds_under_2MiB(self):
         doc = {"_id": "over_2mib_under_16mib", "unencrypted": "a" * _2_MiB}
@@ -1285,15 +1273,12 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
 class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
     """Prose tests for creating data keys with a custom endpoint."""
 
-    @classmethod
     @unittest.skipUnless(
         any([all(AWS_CREDS.values()), all(AZURE_CREDS.values()), all(GCP_CREDS.values())]),
         "No environment credentials are set",
     )
-    async def _setup_class(cls):
-        await super()._setup_class()
-
-    def setUp(self):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         kms_providers = {
             "aws": AWS_CREDS,
             "azure": AZURE_CREDS,
@@ -1321,10 +1306,6 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
         )
         self._kmip_host_error = None
         self._invalid_host_error = None
-
-    async def asyncTearDown(self):
-        await self.client_encryption.close()
-        await self.client_encryption_invalid.close()
 
     async def run_test_expected_success(self, provider_name, master_key):
         data_key_id = await self.client_encryption.create_data_key(
@@ -1501,6 +1482,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
     client: AsyncMongoClient
 
     async def asyncSetUp(self):
+        self.client = self.simple_client()
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         await create_key_vault(keyvault, self.DEK)
 
@@ -1559,13 +1541,12 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
 
 
 class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
-    async def _setup_class(cls):
-        cls.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
-        cls.DEK = json_data(BASE, "custom", "azure-dek.json")
-        cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        self.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
+        self.DEK = json_data(BASE, "custom", "azure-dek.json")
+        self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
@@ -1585,13 +1566,12 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegratio
 
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
-    async def _setup_class(cls):
-        cls.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
-        cls.DEK = json_data(BASE, "custom", "gcp-dek.json")
-        cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        self.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
+        self.DEK = json_data(BASE, "custom", "gcp-dek.json")
+        self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
@@ -3089,17 +3069,11 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     mongocryptd_client: AsyncMongoClient
     MONGOCRYPTD_PORT = 27020
 
-    @classmethod
     @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
-    async def _setup_class(cls):
-        await super()._setup_class()
-        start_mongocryptd(cls.MONGOCRYPTD_PORT)
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await super()._tearDown_class()
-
     async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        start_mongocryptd(self.MONGOCRYPTD_PORT)
+
         self.listener = OvertCommandListener()
         self.mongocryptd_client = self.simple_client(
             f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]

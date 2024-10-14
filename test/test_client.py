@@ -129,13 +129,8 @@ class ClientUnitTest(UnitTest):
 
     client: MongoClient
 
-    @classmethod
-    def _setup_class(cls):
-        cls.client = cls.unmanaged_rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
+    def setUp(self) -> None:
+        self.client = self.rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):

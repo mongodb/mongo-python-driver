@@ -1638,10 +1638,6 @@ class TestRawBatchCursor(IntegrationTest):
 
 
 class TestRawBatchCommandCursor(IntegrationTest):
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-
     def test_aggregate_raw(self):
         c = self.db.test
         c.drop()

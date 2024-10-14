@@ -133,34 +133,27 @@ class IgnoreDeprecationsTest(IntegrationTest):
     RUN_ON_SERVERLESS = True
     deprecation_filter: DeprecationFilter
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.deprecation_filter = DeprecationFilter()
+    def setUp(self) -> None:
+        super().setUp()
+        self.deprecation_filter = DeprecationFilter()
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.deprecation_filter.stop()
-        super()._tearDown_class()
+    def tearDown(self) -> None:
+        self.deprecation_filter.stop()
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     knobs: client_knobs
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self) -> None:
+        super().setUp()
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-        cls.client = cls.unmanaged_rs_or_single_client(retryWrites=True)
-        cls.db = cls.client.pymongo_test
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
+        self.client = self.rs_or_single_client(retryWrites=True)
+        self.db = self.client.pymongo_test
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.knobs.disable()
-        cls.client.close()
-        super()._tearDown_class()
+    def tearDown(self) -> None:
+        self.knobs.disable()
 
     @client_context.require_no_standalone
     def test_actionable_error_message(self):
@@ -181,26 +174,16 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     listener: OvertCommandListener
     knobs: client_knobs
 
-    @classmethod
     @client_context.require_no_mmap
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self) -> None:
+        super().setUp()
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-        cls.listener = OvertCommandListener()
-        cls.client = cls.unmanaged_rs_or_single_client(
-            retryWrites=True, event_listeners=[cls.listener]
-        )
-        cls.db = cls.client.pymongo_test
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
+        self.listener = OvertCommandListener()
+        self.client = self.rs_or_single_client(retryWrites=True, event_listeners=[self.listener])
+        self.db = self.client.pymongo_test
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.knobs.disable()
-        cls.client.close()
-        super()._tearDown_class()
-
-    def setUp(self):
         if client_context.is_rs and client_context.test_commands_enabled:
             self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "alwaysOn")])
@@ -211,6 +194,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "off")])
             )
+        self.knobs.disable()
 
     def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
@@ -480,13 +464,12 @@ class TestWriteConcernError(IntegrationTest):
     RUN_ON_SERVERLESS = True
     fail_insert: dict
 
-    @classmethod
     @client_context.require_replica_set
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.fail_insert = {
+    def setUp(self) -> None:
+        super().setUp()
+        self.fail_insert = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
             "data": {

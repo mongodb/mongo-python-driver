@@ -130,15 +130,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     client: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        cls.client = await cls.unmanaged_async_rs_or_single_client(
+    async def asyncSetUp(self) -> None:
+        self.client = await self.async_rs_or_single_client(
             connect=False, serverSelectionTimeoutMS=100
         )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
