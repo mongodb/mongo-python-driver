@@ -28,7 +28,8 @@ else # Set up virtualenv before installing hatch
 
     # Ensure hatch does not write to user or global locations.
     touch hatch_config.toml
-    export HATCH_CONFIG=$(pwd)/hatch_config.toml
+    HATCH_CONFIG=$(pwd)/hatch_config.toml
+    export HATCH_CONFIG
     hatch config restore
     hatch config set dirs.data ".hatch/data"
     hatch config set dirs.cache ".hatch/cache"
