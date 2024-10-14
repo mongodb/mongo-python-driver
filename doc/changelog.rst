@@ -1,6 +1,93 @@
 Changelog
 =========
 
+Changes in Version 4.11.0
+-------------------------
+
+.. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
+.. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
+   Driver support for MongoDB 3.6 reached end of life in April 2024.
+
+PyMongo 4.11 brings a number of changes including:
+
+- Dropped support for Python 3.8.
+- Dropped support for MongoDB 3.6.
+- Added support for free-threaded Python with the GIL disabled. For more information see:
+  `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.11 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
+
+Changes in Version 4.10.1
+-------------------------
+
+Version 4.10.1 is a bug fix release.
+
+- Fixed a bug where :meth:`~pymongo.results.UpdateResult.did_upsert` would raise a ``TypeError``.
+- Fixed Binary BSON subtype (9) support on big-endian operating systems (such as zSeries).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40788
+
+
+Changes in Version 4.10.0
+-------------------------
+
+- Added provisional **(BETA)** support for a new Binary BSON subtype (9) used for efficient storage and retrieval of vectors:
+  densely packed arrays of numbers, all of the same type.
+  This includes new methods :meth:`~bson.binary.Binary.from_vector` and :meth:`~bson.binary.Binary.as_vector`.
+- Added C extension use to client metadata, for example: ``{"driver": {"name": "PyMongo|c", "version": "4.10.0"}, ...}``
+- Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
+- Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.10 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
+
+Changes in Version 4.9.2
+-------------------------
+
+- Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
+- Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
+- Fixed a bug where :meth:`~pymongo.results.UpdateResult.did_upsert` would raise a ``TypeError``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.9.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40732
+
+
+Changes in Version 4.9.1
+-------------------------
+
+-  Add missing documentation about the fact the async API is in beta state.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.9.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.9.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40720
+
+
 Changes in Version 4.9.0
 -------------------------
 

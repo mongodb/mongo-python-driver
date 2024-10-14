@@ -29,6 +29,7 @@ except ImportError:
 
 
 from bson.objectid import ObjectId
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
@@ -74,7 +75,7 @@ class TestRetryableErrorCodeCatch(PyMongoTestCase):
         server = MockupDB()
         server.run()
         self.addCleanup(server.stop)
-        server.autoresponds("ismaster", maxWireVersion=6)
+        server.autoresponds("ismaster", maxWireVersion=MIN_SUPPORTED_WIRE_VERSION)
 
         client = self.simple_client(server.uri)
 

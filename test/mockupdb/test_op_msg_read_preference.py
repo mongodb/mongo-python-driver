@@ -30,7 +30,8 @@ except ImportError:
 
 from operations import operations  # type: ignore[import]
 
-from pymongo import MongoClient, ReadPreference
+from pymongo import ReadPreference
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import (
     _MONGOS_MODES,
     make_read_preference,
@@ -66,7 +67,7 @@ class TestOpMsgMongos(OpMsgReadPrefBase):
             "ismaster": True,
             "msg": "isdbgrid",  # Mongos.
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary = MockupDB(auto_ismaster=auto_ismaster)
         cls.primary.run()
@@ -93,7 +94,7 @@ class TestOpMsgReplicaSet(OpMsgReadPrefBase):
             "setName": "rs",
             "hosts": hosts,
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary.autoresponds(CommandBase("ismaster"), primary_ismaster)
         secondary_ismaster = copy.copy(primary_ismaster)
@@ -134,7 +135,7 @@ class TestOpMsgSingle(OpMsgReadPrefBase):
         auto_ismaster = {
             "ismaster": True,
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary = MockupDB(auto_ismaster=auto_ismaster)
         cls.primary.run()

@@ -146,13 +146,33 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         """The name of this :class:`AsyncDatabase`."""
         return self._name
 
+    @overload
+    def with_options(
+        self,
+        codec_options: None = None,
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncDatabase[_DocumentType]:
+        ...
+
+    @overload
+    def with_options(
+        self,
+        codec_options: bson.CodecOptions[_DocumentTypeArg],
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> AsyncDatabase[_DocumentTypeArg]:
+        ...
+
     def with_options(
         self,
         codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> AsyncDatabase[_DocumentType]:
+    ) -> AsyncDatabase[_DocumentType] | AsyncDatabase[_DocumentTypeArg]:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference

@@ -44,8 +44,7 @@ from pymongo.monitoring import (
     PoolClearedEvent,
 )
 
-# Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")
+_IS_SYNC = True
 
 
 class TestClientOptions(PyMongoTestCase):
@@ -83,6 +82,7 @@ class TestPoolPausedError(IntegrationTest):
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
+    @client_context.require_sync
     @client_context.require_failCommand_blockConnection
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
@@ -94,7 +94,6 @@ class TestPoolPausedError(IntegrationTest):
         client = self.rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -165,7 +164,6 @@ class TestRetryableReads(IntegrationTest):
         for mongos in client_context.mongos_seeds().split(","):
             client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()

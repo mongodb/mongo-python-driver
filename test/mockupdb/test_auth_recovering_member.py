@@ -25,7 +25,7 @@ try:
 except ImportError:
     _HAVE_MOCKUPDB = False
 
-from pymongo import MongoClient
+from pymongo import common
 from pymongo.errors import ServerSelectionTimeoutError
 
 pytestmark = pytest.mark.mockupdb
@@ -39,7 +39,7 @@ class TestAuthRecoveringMember(PyMongoTestCase):
             "ismaster",
             {
                 "minWireVersion": 2,
-                "maxWireVersion": 6,
+                "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
                 "ismaster": False,
                 "secondary": False,
                 "setName": "rs",
