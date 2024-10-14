@@ -18,7 +18,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import SkipTest, UnitTest, client_context, unittest
+from test.synchronous import SkipTest, UnitTest, client_context, unittest
 
 _IS_SYNC = True
 

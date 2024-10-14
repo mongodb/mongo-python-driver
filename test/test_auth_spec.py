@@ -20,7 +20,7 @@ import json
 import os
 import sys
 import warnings
-from test import PyMongoTestCase
+from test.synchronous import PyMongoTestCase
 
 sys.path[0:0] = [""]
 

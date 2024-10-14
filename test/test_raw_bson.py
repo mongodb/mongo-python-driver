@@ -19,7 +19,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.synchronous import IntegrationTest, client_context, unittest
 
 from bson import Code, DBRef, decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation

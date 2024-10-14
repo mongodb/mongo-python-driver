@@ -44,7 +44,7 @@ from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
-from test import (
+from test.synchronous import (
     HAVE_IPADDRESS,
     IntegrationTest,
     MockClientTest,
@@ -58,7 +58,7 @@ from test import (
     remove_all_users,
     unittest,
 )
-from test.pymongo_mocks import MockClient
+from test.synchronous.pymongo_mocks import MockClient
 from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,

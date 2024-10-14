@@ -23,7 +23,8 @@ from pymongo.synchronous.command_cursor import CommandCursor
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import unittest
+from test.synchronous import IntegrationTest, client_context
 from test.test_custom_types import DECIMAL_CODECOPTS
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,

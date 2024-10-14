@@ -24,7 +24,7 @@ from pymongo.errors import AutoReconnect
 
 sys.path[0:0] = [""]
 
-from test import (
+from test.synchronous import (
     IntegrationTest,
     PyMongoTestCase,
     client_context,

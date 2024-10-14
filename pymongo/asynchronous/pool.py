@@ -65,7 +65,11 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.lock import _ACondition, _ALock, _create_lock
+from pymongo.lock import (
+    _async_cond_wait,
+    _async_create_condition,
+    _async_create_lock,
+)
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -206,11 +210,6 @@ def _raise_connection_failure(
         raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error
-
-
-async def _cond_wait(condition: _ACondition, deadline: Optional[float]) -> bool:
-    timeout = deadline - time.monotonic() if deadline else None
-    return await condition.wait(timeout)
 
 
 def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
@@ -992,8 +991,9 @@ class Pool:
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
-        _lock = _create_lock()
-        self.lock = _ALock(_lock)
+        self.lock = _async_create_lock()
+        self.size_cond = _async_create_condition(self.lock, threading.Condition)
+        self._max_connecting_cond = _async_create_condition(self.lock, threading.Condition)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1019,7 +1019,6 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = _ACondition(threading.Condition(_lock))
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1027,7 +1026,6 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = _ACondition(threading.Condition(_lock))
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
@@ -1456,7 +1454,8 @@ class Pool:
         async with self.size_cond:
             self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
-                if not await _cond_wait(self.size_cond, deadline):
+                timeout = deadline - time.monotonic() if deadline else None
+                if not await _async_cond_wait(self.size_cond, timeout):
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
@@ -1479,7 +1478,8 @@ class Pool:
                 async with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
-                        if not await _cond_wait(self._max_connecting_cond, deadline):
+                        timeout = deadline - time.monotonic() if deadline else None
+                        if not await _async_cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self._max_connecting:

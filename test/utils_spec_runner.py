@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import threading
 from collections import abc
-from test import IntegrationTest, client_context, client_knobs
+from test.synchronous import IntegrationTest, client_context, client_knobs
 from test.utils import (
     CMAPListener,
     CompareType,

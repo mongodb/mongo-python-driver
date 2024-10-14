@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from test import pytest_conf, setup, teardown
+from test import pytest_conf
+from test.synchronous import setup, teardown
 
 import pytest
 

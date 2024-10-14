@@ -19,6 +19,7 @@ import contextlib
 import weakref
 from functools import partial
 from test import client_context
+from test.synchronous import client_context
 
 from pymongo import MongoClient, common
 from pymongo.errors import AutoReconnect, NetworkTimeout

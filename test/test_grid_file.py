@@ -21,7 +21,7 @@ import io
 import sys
 import zipfile
 from io import BytesIO
-from test import (
+from test.synchronous import (
     IntegrationTest,
     UnitTest,
     client_context,

@@ -27,11 +27,11 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test import (  # TODO: fix sync imports in PYTHON-4528
+from test import unittest
+from test.synchronous import (  # TODO: fix sync imports in PYTHON-4528
     IntegrationTest,
     UnitTest,
     client_context,
-    unittest,
 )
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,

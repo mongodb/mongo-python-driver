@@ -19,13 +19,13 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import (
+from test.synchronous import (
     IntegrationTest,
     client_context,
     reset_client_context,
     unittest,
 )
-from test.helpers import repl_set_step_down
+from test.synchronous.helpers import repl_set_step_down
 from test.utils import (
     CMAPListener,
     ensure_all_connected,

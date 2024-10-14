@@ -29,7 +29,7 @@ import pymongo
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.synchronous import IntegrationTest, client_context, unittest
 from test.utils import (
     AllowListEventListener,
     EventListener,

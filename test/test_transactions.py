@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import sys
 from io import BytesIO
-from test.utils_spec_runner import SpecRunner
+from test.synchronous.utils_spec_runner import SpecRunner
 
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.synchronous import IntegrationTest, client_context, unittest
 from test.utils import (
     OvertCommandListener,
     wait_until,

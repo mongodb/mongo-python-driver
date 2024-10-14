@@ -23,7 +23,7 @@ from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
-from test import (
+from test.synchronous import (
     IntegrationTest,
     PyMongoTestCase,
     SkipTest,
