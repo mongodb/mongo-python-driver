@@ -15,6 +15,7 @@
 """Test the topology module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import socketserver
 import sys
@@ -58,7 +59,15 @@ from pymongo.uri_parser import parse_uri
 _IS_SYNC = True
 
 # Location of JSON test specifications.
-SDAM_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
+if _IS_SYNC:
+    SDAM_PATH = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring"
+    )
+else:
+    SDAM_PATH = os.path.join(
+        os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)),
+        "discovery_and_monitoring",
+    )
 
 
 def create_mock_topology(uri, monitor_class=DummyMonitor):
@@ -206,6 +215,8 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
+            if self._testMethodName == "test_single_direct_connection_external_ip":
+                print("here")
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     got_hello(c, common.partition_node(response[0]), response[1])

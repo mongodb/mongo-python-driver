@@ -15,6 +15,7 @@
 """Test the topology module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import socketserver
 import sys
@@ -23,7 +24,7 @@ import threading
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
-from test.pymongo_mocks import DummyMonitor
+from test.asynchronous.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
@@ -59,7 +60,15 @@ from pymongo.uri_parser import parse_uri
 _IS_SYNC = False
 
 # Location of JSON test specifications.
-SDAM_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
+if _IS_SYNC:
+    SDAM_PATH = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring"
+    )
+else:
+    SDAM_PATH = os.path.join(
+        os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)),
+        "discovery_and_monitoring",
+    )
 
 
 async def create_mock_topology(uri, monitor_class=DummyMonitor):
@@ -92,7 +101,7 @@ async def got_hello(topology, server_address, hello_response):
     await topology.on_change(server_description)
 
 
-def got_app_error(topology, app_error):
+async def got_app_error(topology, app_error):
     server_address = common.partition_node(app_error["address"])
     server = topology.get_server_by_address(server_address)
     error_type = app_error["type"]
@@ -120,7 +129,7 @@ def got_app_error(topology, app_error):
         else:
             raise AssertionError(f"Unknown when field {when}")
 
-        topology.handle_error(
+        await topology.handle_error(
             server_address,
             _ErrorContext(e, max_wire_version, generation, completed_handshake, None),
         )
@@ -207,12 +216,14 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
+            if self._testMethodName == "test_single_direct_connection_external_ip":
+                print("here")
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
-                    got_hello(c, common.partition_node(response[0]), response[1])
+                    await got_hello(c, common.partition_node(response[0]), response[1])
 
                 for app_error in phase.get("applicationErrors", []):
-                    got_app_error(c, app_error)
+                    await got_app_error(c, app_error)
 
                 check_outcome(self, c, phase["outcome"])
 
@@ -369,7 +380,7 @@ class TestServerMonitoringMode(AsyncIntegrationTest):
                         return False
             return True
 
-        wait_until(predicate, "find all RTT monitors")
+        await async_wait_until(predicate, "find all RTT monitors")
 
     async def test_rtt_connection_is_disabled_poll(self):
         client = await self.async_rs_or_single_client(serverMonitoringMode="poll")
