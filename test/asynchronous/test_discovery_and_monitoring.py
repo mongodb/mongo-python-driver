@@ -216,8 +216,6 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
-            if self._testMethodName == "test_single_direct_connection_external_ip":
-                print("here")
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     await got_hello(c, common.partition_node(response[0]), response[1])
