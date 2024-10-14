@@ -215,8 +215,6 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
-            if self._testMethodName == "test_single_direct_connection_external_ip":
-                print("here")
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     got_hello(c, common.partition_node(response[0]), response[1])
@@ -263,12 +261,7 @@ class TestClusterTimeComparison(unittest.TestCase):
             got_hello(
                 t,
                 ("host", 27017),
-                {
-                    "ok": 1,
-                    "minWireVersion": 0,
-                    "maxWireVersion": common.MIN_SUPPORTED_WIRE_VERSION,
-                    "$clusterTime": new,
-                },
+                {"ok": 1, "minWireVersion": 0, "maxWireVersion": 6, "$clusterTime": new},
             )
 
             actual = t.max_cluster_time()
