@@ -217,7 +217,7 @@ def create_server_variants() -> list[BuildVariant]:
     for prefix, base, (auth, ssl), sync in product(
         ["", "32-bit "], MIN_MAX_PYTHON, AUTH_SSLS, SYNCS
     ):
-        python = f"{prefix} {base}"
+        python = f"{prefix}{base}"
         test_suite = "default" if sync == "sync" else "default_async"
         expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
         display_name = get_display_name("Test", host, python=python, **expansions)

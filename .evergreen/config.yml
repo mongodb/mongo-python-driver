@@ -2761,7 +2761,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default
-    PYTHON_BINARY: C:/python/Python 39/python.exe
+    PYTHON_BINARY: C:/python/Python39/python.exe
 - name: test-win64-py-3.9-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2772,7 +2772,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default_async
-    PYTHON_BINARY: C:/python/Python 39/python.exe
+    PYTHON_BINARY: C:/python/Python39/python.exe
 - name: test-win64-py-3.9-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2783,7 +2783,7 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default
-    PYTHON_BINARY: C:/python/Python 39/python.exe
+    PYTHON_BINARY: C:/python/Python39/python.exe
 - name: test-win64-py-3.9-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2794,7 +2794,7 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default_async
-    PYTHON_BINARY: C:/python/Python 39/python.exe
+    PYTHON_BINARY: C:/python/Python39/python.exe
 - name: test-win64-py-3.13-auth-ssl-sync
   tasks:
     - name: .sharded_cluster
@@ -2805,7 +2805,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default
-    PYTHON_BINARY: C:/python/Python 313/python.exe
+    PYTHON_BINARY: C:/python/Python313/python.exe
 - name: test-win64-py-3.13-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2816,7 +2816,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default_async
-    PYTHON_BINARY: C:/python/Python 313/python.exe
+    PYTHON_BINARY: C:/python/Python313/python.exe
 - name: test-win64-py-3.13-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2827,7 +2827,7 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default
-    PYTHON_BINARY: C:/python/Python 313/python.exe
+    PYTHON_BINARY: C:/python/Python313/python.exe
 - name: test-win64-py-3.13-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2838,7 +2838,7 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default_async
-    PYTHON_BINARY: C:/python/Python 313/python.exe
+    PYTHON_BINARY: C:/python/Python313/python.exe
 
 # Server tests for Windows (32-bit).
 - name: test-win64-32-bit-py3.9-auth-ssl-sync
