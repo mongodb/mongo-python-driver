@@ -2417,7 +2417,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.9-auth-ssl
+- name: test-rhel8-py3.9-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2427,14 +2427,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.9 Auth SSL
+  display_name: Test RHEL8 py3.9 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.9-auth-ssl
+- name: test-rhel8-py3.9-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2444,7 +2444,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.9 Auth SSL
+  display_name: Test RHEL8 py3.9 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2468,7 +2468,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: test-rhel8-py3.10-auth-ssl
+- name: test-rhel8-py3.10-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2478,14 +2478,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.10 Auth SSL
+  display_name: Test RHEL8 py3.10 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: test-rhel8-py3.10-auth-ssl
+- name: test-rhel8-py3.10-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2495,7 +2495,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.10 Auth SSL
+  display_name: Test RHEL8 py3.10 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2519,7 +2519,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: test-rhel8-py3.11-auth-ssl
+- name: test-rhel8-py3.11-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2529,14 +2529,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.11 Auth SSL
+  display_name: Test RHEL8 py3.11 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: test-rhel8-py3.11-auth-ssl
+- name: test-rhel8-py3.11-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2546,7 +2546,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.11 Auth SSL
+  display_name: Test RHEL8 py3.11 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2570,7 +2570,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: test-rhel8-py3.12-auth-ssl
+- name: test-rhel8-py3.12-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2580,14 +2580,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.12 Auth SSL
+  display_name: Test RHEL8 py3.12 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: test-rhel8-py3.12-auth-ssl
+- name: test-rhel8-py3.12-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2597,7 +2597,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.12 Auth SSL
+  display_name: Test RHEL8 py3.12 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2621,7 +2621,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-py3.13-auth-ssl
+- name: test-rhel8-py3.13-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2631,14 +2631,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.13 Auth SSL
+  display_name: Test RHEL8 py3.13 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-py3.13-auth-ssl
+- name: test-rhel8-py3.13-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2648,7 +2648,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 py3.13 Auth SSL
+  display_name: Test RHEL8 py3.13 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2672,7 +2672,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: test-rhel8-pypy3.9-auth-ssl
+- name: test-rhel8-pypy3.9-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2682,14 +2682,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 pypy3.9 Auth SSL
+  display_name: Test RHEL8 pypy3.9 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: test-rhel8-pypy3.9-auth-ssl
+- name: test-rhel8-pypy3.9-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2699,7 +2699,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 pypy3.9 Auth SSL
+  display_name: Test RHEL8 pypy3.9 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2723,7 +2723,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: test-rhel8-pypy3.10-auth-ssl
+- name: test-rhel8-pypy3.10-noauth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2733,14 +2733,14 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 pypy3.10 Auth SSL
+  display_name: Test RHEL8 pypy3.10 NoAuth NoSSL
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: test-rhel8-pypy3.10-auth-ssl
+- name: test-rhel8-pypy3.10-auth-nossl
   tasks:
     - name: .4.0
     - name: .4.4
@@ -2750,7 +2750,7 @@ buildvariants:
     - name: .8.0
     - name: .rapid
     - name: .latest
-  display_name: Test RHEL8 pypy3.10 Auth SSL
+  display_name: Test RHEL8 pypy3.10 Auth NoSSL
   run_on:
     - rhel87-small
   expansions:
@@ -2945,7 +2945,7 @@ buildvariants:
     - name: .latest .sharded_cluster
   display_name: Test macOS (arm) py3.9 Auth SSL
   run_on:
-    - macos-14-arm65
+    - macos-14-arm64
   expansions:
     AUTH: auth
     ssl: ssl
@@ -2962,7 +2962,7 @@ buildvariants:
     - name: .latest .sharded_cluster
   display_name: Test macOS (arm) py3.10 Auth SSL
   run_on:
-    - macos-14-arm65
+    - macos-14-arm64
   expansions:
     AUTH: auth
     ssl: ssl
@@ -2979,7 +2979,7 @@ buildvariants:
     - name: .latest .sharded_cluster
   display_name: Test macOS (arm) py3.11 Auth SSL
   run_on:
-    - macos-14-arm65
+    - macos-14-arm64
   expansions:
     AUTH: auth
     ssl: ssl
@@ -2996,7 +2996,7 @@ buildvariants:
     - name: .latest .sharded_cluster
   display_name: Test macOS (arm) py3.12 Auth SSL
   run_on:
-    - macos-14-arm65
+    - macos-14-arm64
   expansions:
     AUTH: auth
     ssl: ssl
@@ -3013,7 +3013,7 @@ buildvariants:
     - name: .latest .sharded_cluster
   display_name: Test macOS (arm) py3.13 Auth SSL
   run_on:
-    - macos-14-arm65
+    - macos-14-arm64
   expansions:
     AUTH: auth
     ssl: ssl

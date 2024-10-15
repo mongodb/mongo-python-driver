@@ -41,7 +41,7 @@ class Host:
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
-HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm65", "macOS (arm)")
+HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS (arm)")
 
 
 ##############
@@ -116,7 +116,7 @@ def get_display_name(base: str, host: str, **kwargs) -> str:
                 else:
                     name = f"py{value}"
         elif key in DISPLAY_LOOKUP:
-            name = DISPLAY_LOOKUP[key]
+            name = DISPLAY_LOOKUP[value]
         else:
             raise ValueError(f"Missing display handling for {key}")
         display_name = f"{display_name} {name}"
