@@ -2401,114 +2401,132 @@ axes:
 
 buildvariants:
 # Server Tests for RHEL8.
-- name: test-rhel8-py3.9-auth-ssl
+- name: test-rhel8-py3.9-auth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.9 Auth SSL
+  display_name: Test RHEL8 py3.9 Auth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: auth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.9-noauth-ssl
+  tags: [coverage_tag]
+- name: test-rhel8-py3.9-noauth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.9 NoAuth SSL
+  display_name: Test RHEL8 py3.9 NoAuth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.9-noauth-nossl
+  tags: [coverage_tag]
+- name: test-rhel8-py3.9-noauth-nossl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.9 NoAuth NoSSL
+  display_name: Test RHEL8 py3.9 NoAuth NoSSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.13-auth-ssl
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-auth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.13 Auth SSL
+  display_name: Test RHEL8 py3.13 Auth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: auth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-py3.13-noauth-ssl
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-noauth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.13 NoAuth SSL
+  display_name: Test RHEL8 py3.13 NoAuth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-py3.13-noauth-nossl
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-noauth-nossl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 py3.13 NoAuth NoSSL
+  display_name: Test RHEL8 py3.13 NoAuth NoSSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-pypy3.10-auth-ssl
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-auth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 pypy3.10 Auth SSL
+  display_name: Test RHEL8 pypy3.10 Auth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: auth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: test-rhel8-pypy3.10-noauth-ssl
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-noauth-ssl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 pypy3.10 NoAuth SSL
+  display_name: Test RHEL8 pypy3.10 NoAuth SSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: ssl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: test-rhel8-pypy3.10-noauth-nossl
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-noauth-nossl-cov
   tasks:
     - name: .standalone
     - name: .replica_set
     - name: .sharded_cluster
-  display_name: Test RHEL8 pypy3.10 NoAuth NoSSL
+  display_name: Test RHEL8 pypy3.10 NoAuth NoSSL cov
   run_on:
     - rhel87-small
   expansions:
     AUTH: noauth
     SSL: nossl
+    COVERAGE: coverage
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [coverage_tag]
 - name: test-rhel8-py3.10-auth-ssl
   tasks:
     - name: .standalone

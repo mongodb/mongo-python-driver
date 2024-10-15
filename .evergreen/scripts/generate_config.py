@@ -35,6 +35,7 @@ DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),
     test_suites=dict(default="Sync", default_async="Async"),
+    coverage=dict(coverage="cov"),
 )
 HOSTS = dict()
 
@@ -200,13 +201,14 @@ def create_server_variants() -> list[BuildVariant]:
     host = "rhel8"
     for python, (auth, ssl) in product([*MIN_MAX_PYTHON, PYPYS[-1]], AUTH_SSLS):
         display_name = f"Test {host}"
-        expansions = dict(AUTH=auth, SSL=ssl)
+        expansions = dict(AUTH=auth, SSL=ssl, COVERAGE="coverage")
         display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
             [f".{t}" for t in TOPOLOGIES],
             display_name,
             python=python,
             host=host,
+            tags=["coverage_tag"],
             expansions=expansions,
         )
         variants.append(variant)
