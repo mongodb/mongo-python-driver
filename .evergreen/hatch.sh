@@ -34,8 +34,8 @@ else # Set up virtualenv before installing hatch
     fi
     export HATCH_CONFIG
     hatch config restore
-    hatch config set dirs.data ".hatch/data"
-    hatch config set dirs.cache ".hatch/cache"
+    hatch config set dirs.data "$(pwd)/.hatch/data"
+    hatch config set dirs.cache "$(pwd)/.hatch/cache"
 
     run_hatch() {
       python -m hatch run "$@"
