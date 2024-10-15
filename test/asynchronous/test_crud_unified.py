@@ -1,4 +1,4 @@
-# Copyright 2023-present MongoDB, Inc.
+# Copyright 2021-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run the connection logging unified format spec tests."""
+"""Test the CRUD unified spec tests."""
 from __future__ import annotations
 
 import os
@@ -24,22 +24,16 @@ sys.path[0:0] = [""]
 from test import unittest
 from test.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_logging")
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "crud", "unified")
 else:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "connection_logging")
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "crud", "unified")
 
-
-globals().update(
-    generate_test_classes(
-        _TEST_PATH,
-        module=__name__,
-    )
-)
-
+# Generate unified tests.
+globals().update(generate_test_classes(_TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
 
 if __name__ == "__main__":
     unittest.main()
