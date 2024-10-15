@@ -409,6 +409,7 @@ functions:
             AUTH=${AUTH} \
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+            TEST_SUITES=${TEST_SUITES} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             SKIP_HATCH=${SKIP_HATCH} \
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
@@ -2399,6 +2400,470 @@ axes:
         batchtime: 10080  # 7 days
 
 buildvariants:
+# Server Tests for RHEL8.
+- name: test-rhel8-py3.9-auth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.9 Auth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.9-noauth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.9 NoAuth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.9-noauth-nossl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.9 NoAuth NoSSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-auth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.13 Auth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-noauth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.13 NoAuth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.13-noauth-nossl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.13 NoAuth NoSSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-auth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 pypy3.10 Auth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-noauth-ssl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 pypy3.10 NoAuth SSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-pypy3.10-noauth-nossl-cov
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Test RHEL8 pypy3.10 NoAuth NoSSL cov
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    COVERAGE: coverage
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [coverage_tag]
+- name: test-rhel8-py3.10-auth-ssl
+  tasks:
+    - name: .standalone
+  display_name: Test RHEL8 py3.10 Auth SSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: test-rhel8-py3.11-noauth-ssl
+  tasks:
+    - name: .replica_set
+  display_name: Test RHEL8 py3.11 NoAuth SSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: test-rhel8-py3.12-noauth-nossl
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test RHEL8 py3.12 NoAuth NoSSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: test-rhel8-pypy3.9-auth-ssl
+  tasks:
+    - name: .standalone
+  display_name: Test RHEL8 pypy3.9 Auth SSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+
+# Server tests for MacOS.
+- name: test-macos-py3.9-auth-ssl-sync
+  tasks:
+    - name: .standalone
+  display_name: Test macOS py3.9 Auth SSL Sync
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-py3.9-auth-ssl-async
+  tasks:
+    - name: .standalone
+  display_name: Test macOS py3.9 Auth SSL Async
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-py3.13-noauth-ssl-sync
+  tasks:
+    - name: .replica_set
+  display_name: Test macOS py3.13 NoAuth SSL Sync
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-py3.13-noauth-ssl-async
+  tasks:
+    - name: .replica_set
+  display_name: Test macOS py3.13 NoAuth SSL Async
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-py3.9-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 NoAuth NoSSL Sync
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 NoAuth NoSSL Async
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+
+# Server tests for macOS Arm64.
+- name: test-macos-arm64-py3.9-auth-ssl-sync
+  tasks:
+    - name: .standalone
+  display_name: Test macOS Arm64 py3.9 Auth SSL Sync
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-arm64-py3.9-auth-ssl-async
+  tasks:
+    - name: .standalone
+  display_name: Test macOS Arm64 py3.9 Auth SSL Async
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-arm64-py3.13-noauth-ssl-sync
+  tasks:
+    - name: .replica_set
+  display_name: Test macOS Arm64 py3.13 NoAuth SSL Sync
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-arm64-py3.13-noauth-ssl-async
+  tasks:
+    - name: .replica_set
+  display_name: Test macOS Arm64 py3.13 NoAuth SSL Async
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-arm64-py3.9-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS Arm64 py3.9 NoAuth NoSSL Sync
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+- name: test-macos-arm64-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS Arm64 py3.9 NoAuth NoSSL Async
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
+
+# Server tests for Windows.
+- name: test-win64-py3.9-auth-ssl-sync
+  tasks:
+    - name: .standalone
+  display_name: Test Win64 py3.9 Auth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win64-py3.9-auth-ssl-async
+  tasks:
+    - name: .standalone
+  display_name: Test Win64 py3.9 Auth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win64-py3.13-noauth-ssl-sync
+  tasks:
+    - name: .replica_set
+  display_name: Test Win64 py3.13 NoAuth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win64-py3.13-noauth-ssl-async
+  tasks:
+    - name: .replica_set
+  display_name: Test Win64 py3.13 NoAuth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win64-py3.9-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py3.9 NoAuth NoSSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win64-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py3.9 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win32-py3.9-auth-ssl-sync
+  tasks:
+    - name: .standalone
+  display_name: Test Win32 py3.9 Auth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+
+# Server tests for Win32.
+- name: test-win32-py3.9-auth-ssl-async
+  tasks:
+    - name: .standalone
+  display_name: Test Win32 py3.9 Auth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win32-py3.13-noauth-ssl-sync
+  tasks:
+    - name: .replica_set
+  display_name: Test Win32 py3.13 NoAuth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win32-py3.13-noauth-ssl-async
+  tasks:
+    - name: .replica_set
+  display_name: Test Win32 py3.13 NoAuth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win32-py3.9-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win32 py3.9 NoAuth NoSSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+- name: test-win32-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win32 py3.9 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -2408,44 +2873,6 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - "test-fips-standalone"
-
-- matrix_name: "test-macos"
-  matrix_spec:
-    platform:
-      # MacOS introduced SSL support with MongoDB >= 3.2.
-      # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos
-    auth: "*"
-    ssl: "*"
-  exclude_spec:
-    # No point testing with SSL without auth.
-    - platform: macos
-      auth: "noauth"
-      ssl: "ssl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-
-- matrix_name: "test-macos-arm64"
-  matrix_spec:
-    platform:
-      - macos-arm64
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
 
 - matrix_name: "test-macos-encryption"
   matrix_spec:
@@ -2485,24 +2912,6 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".6.0"
-
-- matrix_name: "tests-python-version-rhel8-test-ssl"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: "*"
-    coverage: "*"
-  display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
-  tasks: &all-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
@@ -2580,7 +2989,16 @@ buildvariants:
      auth-ssl: "*"
      coverage: "*"
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
-  tasks: *all-server-versions
+  tasks: &all-server-versions
+    - ".rapid"
+    - ".latest"
+    - ".8.0"
+    - ".7.0"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
 
 - matrix_name: "tests-python-version-rhel8-compression"
   matrix_spec:
@@ -2627,22 +3045,6 @@ buildvariants:
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-windows-python-version"
-  matrix_spec:
-    platform: windows
-    python-version-windows: "*"
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-windows-python-version-32-bit"
-  matrix_spec:
-    platform: windows
-    python-version-windows-32: "*"
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
   tasks: *all-server-versions
 
 - matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
