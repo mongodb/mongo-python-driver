@@ -27,6 +27,7 @@ CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 BATCHTIME_WEEK = 10080
+DISPLAY_LOOKUP = dict(ssl="SSL", nossl="NoSSL", auth="Auth", noauth="NoAuth")
 HOSTS = dict()
 
 
@@ -40,6 +41,7 @@ class Host:
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
+HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm65", "macOS (arm)")
 
 
 ##############
@@ -93,19 +95,32 @@ def get_python_binary(python: str, host: str) -> str:
     if host == "rhel8":
         return f"/opt/python/{python}/bin/python3"
 
-    if host == "macos":
+    if host in ["macos", "macos-arm64"]:
         return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
     raise ValueError(f"no match found for python {python} on {host}")
 
 
-def get_display_name(base: str, host: str, version: str, python: str) -> str:
+def get_display_name(base: str, host: str, **kwargs) -> str:
     """Get the display name of a variant."""
-    if version not in ["rapid", "latest"]:
-        version = f"v{version}"
-    if not python.startswith("pypy"):
-        python = f"py{python}"
-    return f"{base} {HOSTS[host].display_name} {version} {python}"
+    display_name = f"{base} {HOSTS[host].display_name}"
+    for key, value in kwargs.items():
+        name = value
+        if key == "version":
+            if value not in ["rapid", "latest"]:
+                name = f"v{value}"
+        elif key == "python":
+            if not value.startswith("pypy"):
+                if value.startswith("32-bit "):
+                    name = "32-bit py" + value.split()[-1]
+                else:
+                    name = f"py{value}"
+        elif key in DISPLAY_LOOKUP:
+            name = DISPLAY_LOOKUP[key]
+        else:
+            raise ValueError(f"Missing display handling for {key}")
+        display_name = f"{display_name} {name}"
+    return display_name
 
 
 def zip_cycle(*iterables, empty_default=None):
@@ -159,9 +174,55 @@ def create_ocsp_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_server_variants() -> list[BuildVariant]:
+    AUTH_SSLS = [("auth", "ssl"), ("noauth", "nossl"), ("auth", "nossl")]
+    variants = []
+
+    host = "rhel8"
+    for python, auth_ssl in product(ALL_PYTHONS, AUTH_SSLS):
+        auth, ssl = auth_ssl
+        display_name = f"Test {host}"
+        display_name = get_display_name("Test", host, python=python, auth=auth, ssl=ssl)
+        expansions = dict(AUTH=auth, SSL=ssl)
+        variant = create_variant(
+            [f".{v}" for v in ALL_VERSIONS],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    for host, python in product(["win64", "macos", "macos-arm64"], CPYTHONS):
+        expansions = dict(AUTH="auth", ssl="ssl")
+        display_name = get_display_name("Test", host, python=python, auth="auth", ssl="ssl")
+        variant = create_variant(
+            [f".{v} .sharded_cluster" for v in ALL_VERSIONS],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    for python in ["32-bit " + p for p in CPYTHONS]:
+        host = "win64"
+        expansions = dict(AUTH="auth", ssl="ssl")
+        display_name = get_display_name("Test", host, python=python, auth="auth", ssl="ssl")
+        variant = create_variant(
+            [f".{v} .sharded_cluster" for v in ALL_VERSIONS],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-project = EvgProject(tasks=None, buildvariants=create_ocsp_variants())
+project = EvgProject(tasks=None, buildvariants=create_server_variants())
 print(ShrubService.generate_yaml(project))  # noqa: T201
