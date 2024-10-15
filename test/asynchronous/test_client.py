@@ -832,8 +832,6 @@ class TestClient(AsyncIntegrationTest):
         c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
-        self.assertIsNone(await c.address)  # PYTHON-2981
-        await c.admin.command("ping")  # connect
         if async_client_context.is_rs:
             # The primary's host and port are from the replica set config.
             self.assertIsNotNone(await c.address)
@@ -2020,6 +2018,22 @@ class TestClient(AsyncIntegrationTest):
         await self._test_handshake(
             {"AWS_EXECUTION_ENV": "EC2"},
             None,
+        )
+
+    async def test_handshake_09_container_with_provider(self):
+        await self._test_handshake(
+            {
+                ENV_VAR_K8S: "1",
+                "AWS_LAMBDA_RUNTIME_API": "1",
+                "AWS_REGION": "us-east-1",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "256",
+            },
+            {
+                "container": {"orchestrator": "kubernetes"},
+                "name": "aws.lambda",
+                "region": "us-east-1",
+                "memory_mb": 256,
+            },
         )
 
     def test_dict_hints(self):

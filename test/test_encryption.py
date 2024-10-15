@@ -29,6 +29,8 @@ import traceback
 import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
+from test.test_bulk import BulkTestBase
+from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
 
@@ -57,7 +59,6 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
-    SpecTestCreator,
     TopologyEventListener,
     camel_to_snake_args,
     is_greenthread_patched,
@@ -621,130 +622,132 @@ AWS_TEMP_NO_SESSION_CREDS = {
 KMS_TLS_OPTS = {"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}}
 
 
-if _IS_SYNC:
-    # TODO: Add synchronous SpecRunner (https://jira.mongodb.org/browse/PYTHON-4700)
-    class TestSpec(SpecRunner):
-        @classmethod
-        @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-        def setUpClass(cls):
-            super().setUpClass()
+class TestSpec(SpecRunner):
+    @classmethod
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def _setup_class(cls):
+        super()._setup_class()
 
-        def parse_auto_encrypt_opts(self, opts):
-            """Parse clientOptions.autoEncryptOpts."""
-            opts = camel_to_snake_args(opts)
-            kms_providers = opts["kms_providers"]
-            if "aws" in kms_providers:
-                kms_providers["aws"] = AWS_CREDS
-                if not any(AWS_CREDS.values()):
-                    self.skipTest("AWS environment credentials are not set")
-            if "awsTemporary" in kms_providers:
-                kms_providers["aws"] = AWS_TEMP_CREDS
-                del kms_providers["awsTemporary"]
-                if not any(AWS_TEMP_CREDS.values()):
-                    self.skipTest("AWS Temp environment credentials are not set")
-            if "awsTemporaryNoSessionToken" in kms_providers:
-                kms_providers["aws"] = AWS_TEMP_NO_SESSION_CREDS
-                del kms_providers["awsTemporaryNoSessionToken"]
-                if not any(AWS_TEMP_NO_SESSION_CREDS.values()):
-                    self.skipTest("AWS Temp environment credentials are not set")
-            if "azure" in kms_providers:
-                kms_providers["azure"] = AZURE_CREDS
-                if not any(AZURE_CREDS.values()):
-                    self.skipTest("Azure environment credentials are not set")
-            if "gcp" in kms_providers:
-                kms_providers["gcp"] = GCP_CREDS
-                if not any(AZURE_CREDS.values()):
-                    self.skipTest("GCP environment credentials are not set")
-            if "kmip" in kms_providers:
-                kms_providers["kmip"] = KMIP_CREDS
-                opts["kms_tls_options"] = KMS_TLS_OPTS
-            if "key_vault_namespace" not in opts:
-                opts["key_vault_namespace"] = "keyvault.datakeys"
-            if "extra_options" in opts:
-                opts.update(camel_to_snake_args(opts.pop("extra_options")))
+    def parse_auto_encrypt_opts(self, opts):
+        """Parse clientOptions.autoEncryptOpts."""
+        opts = camel_to_snake_args(opts)
+        kms_providers = opts["kms_providers"]
+        if "aws" in kms_providers:
+            kms_providers["aws"] = AWS_CREDS
+            if not any(AWS_CREDS.values()):
+                self.skipTest("AWS environment credentials are not set")
+        if "awsTemporary" in kms_providers:
+            kms_providers["aws"] = AWS_TEMP_CREDS
+            del kms_providers["awsTemporary"]
+            if not any(AWS_TEMP_CREDS.values()):
+                self.skipTest("AWS Temp environment credentials are not set")
+        if "awsTemporaryNoSessionToken" in kms_providers:
+            kms_providers["aws"] = AWS_TEMP_NO_SESSION_CREDS
+            del kms_providers["awsTemporaryNoSessionToken"]
+            if not any(AWS_TEMP_NO_SESSION_CREDS.values()):
+                self.skipTest("AWS Temp environment credentials are not set")
+        if "azure" in kms_providers:
+            kms_providers["azure"] = AZURE_CREDS
+            if not any(AZURE_CREDS.values()):
+                self.skipTest("Azure environment credentials are not set")
+        if "gcp" in kms_providers:
+            kms_providers["gcp"] = GCP_CREDS
+            if not any(AZURE_CREDS.values()):
+                self.skipTest("GCP environment credentials are not set")
+        if "kmip" in kms_providers:
+            kms_providers["kmip"] = KMIP_CREDS
+            opts["kms_tls_options"] = KMS_TLS_OPTS
+        if "key_vault_namespace" not in opts:
+            opts["key_vault_namespace"] = "keyvault.datakeys"
+        if "extra_options" in opts:
+            opts.update(camel_to_snake_args(opts.pop("extra_options")))
 
-            opts = dict(opts)
-            return AutoEncryptionOpts(**opts)
+        opts = dict(opts)
+        return AutoEncryptionOpts(**opts)
 
-        def parse_client_options(self, opts):
-            """Override clientOptions parsing to support autoEncryptOpts."""
-            encrypt_opts = opts.pop("autoEncryptOpts", None)
-            if encrypt_opts:
-                opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
+    def parse_client_options(self, opts):
+        """Override clientOptions parsing to support autoEncryptOpts."""
+        encrypt_opts = opts.pop("autoEncryptOpts", None)
+        if encrypt_opts:
+            opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
 
-            return super().parse_client_options(opts)
+        return super().parse_client_options(opts)
 
-        def get_object_name(self, op):
-            """Default object is collection."""
-            return op.get("object", "collection")
+    def get_object_name(self, op):
+        """Default object is collection."""
+        return op.get("object", "collection")
 
-        def maybe_skip_scenario(self, test):
-            super().maybe_skip_scenario(test)
-            desc = test["description"].lower()
-            if (
-                "timeoutms applied to listcollections to get collection schema" in desc
-                and sys.platform in ("win32", "darwin")
-            ):
-                self.skipTest("PYTHON-3706 flaky test on Windows/macOS")
-            if "type=symbol" in desc:
-                self.skipTest("PyMongo does not support the symbol type")
+    def maybe_skip_scenario(self, test):
+        super().maybe_skip_scenario(test)
+        desc = test["description"].lower()
+        if (
+            "timeoutms applied to listcollections to get collection schema" in desc
+            and sys.platform in ("win32", "darwin")
+        ):
+            self.skipTest("PYTHON-3706 flaky test on Windows/macOS")
+        if "type=symbol" in desc:
+            self.skipTest("PyMongo does not support the symbol type")
+        if "timeoutms applied to listcollections to get collection schema" in desc and not _IS_SYNC:
+            self.skipTest("PYTHON-4844 flaky test on async")
 
-        def setup_scenario(self, scenario_def):
-            """Override a test's setup."""
-            key_vault_data = scenario_def["key_vault_data"]
-            encrypted_fields = scenario_def["encrypted_fields"]
-            json_schema = scenario_def["json_schema"]
-            data = scenario_def["data"]
-            coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
-            coll.delete_many({})
-            if key_vault_data:
-                coll.insert_many(key_vault_data)
+    def setup_scenario(self, scenario_def):
+        """Override a test's setup."""
+        key_vault_data = scenario_def["key_vault_data"]
+        encrypted_fields = scenario_def["encrypted_fields"]
+        json_schema = scenario_def["json_schema"]
+        data = scenario_def["data"]
+        coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
+        coll.delete_many({})
+        if key_vault_data:
+            coll.insert_many(key_vault_data)
 
-            db_name = self.get_scenario_db_name(scenario_def)
-            coll_name = self.get_scenario_coll_name(scenario_def)
-            db = client_context.client.get_database(db_name, codec_options=OPTS)
-            coll = db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
-            wc = WriteConcern(w="majority")
-            kwargs: Dict[str, Any] = {}
-            if json_schema:
-                kwargs["validator"] = {"$jsonSchema": json_schema}
-                kwargs["codec_options"] = OPTS
-            if not data:
-                kwargs["write_concern"] = wc
-            if encrypted_fields:
-                kwargs["encryptedFields"] = encrypted_fields
-            db.create_collection(coll_name, **kwargs)
-            coll = db[coll_name]
-            if data:
-                # Load data.
-                coll.with_options(write_concern=wc).insert_many(scenario_def["data"])
+        db_name = self.get_scenario_db_name(scenario_def)
+        coll_name = self.get_scenario_coll_name(scenario_def)
+        db = client_context.client.get_database(db_name, codec_options=OPTS)
+        db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
+        wc = WriteConcern(w="majority")
+        kwargs: Dict[str, Any] = {}
+        if json_schema:
+            kwargs["validator"] = {"$jsonSchema": json_schema}
+            kwargs["codec_options"] = OPTS
+        if not data:
+            kwargs["write_concern"] = wc
+        if encrypted_fields:
+            kwargs["encryptedFields"] = encrypted_fields
+        db.create_collection(coll_name, **kwargs)
+        coll = db[coll_name]
+        if data:
+            # Load data.
+            coll.with_options(write_concern=wc).insert_many(scenario_def["data"])
 
-        def allowable_errors(self, op):
-            """Override expected error classes."""
-            errors = super().allowable_errors(op)
-            # An updateOne test expects encryption to error when no $ operator
-            # appears but pymongo raises a client side ValueError in this case.
-            if op["name"] == "updateOne":
-                errors += (ValueError,)
-            return errors
+    def allowable_errors(self, op):
+        """Override expected error classes."""
+        errors = super().allowable_errors(op)
+        # An updateOne test expects encryption to error when no $ operator
+        # appears but pymongo raises a client side ValueError in this case.
+        if op["name"] == "updateOne":
+            errors += (ValueError,)
+        return errors
 
-    def create_test(scenario_def, test, name):
-        @client_context.require_test_commands
-        def run_scenario(self):
-            self.run_scenario(scenario_def, test)
 
-        return run_scenario
+def create_test(scenario_def, test, name):
+    @client_context.require_test_commands
+    def run_scenario(self):
+        self.run_scenario(scenario_def, test)
 
-    test_creator = SpecTestCreator(create_test, TestSpec, os.path.join(SPEC_PATH, "legacy"))
-    test_creator.create_tests()
+    return run_scenario
 
-    if _HAVE_PYMONGOCRYPT:
-        globals().update(
-            generate_test_classes(
-                os.path.join(SPEC_PATH, "unified"),
-                module=__name__,
-            )
+
+test_creator = SpecTestCreator(create_test, TestSpec, os.path.join(SPEC_PATH, "legacy"))
+test_creator.create_tests()
+
+if _HAVE_PYMONGOCRYPT:
+    globals().update(
+        generate_test_classes(
+            os.path.join(SPEC_PATH, "unified"),
+            module=__name__,
         )
+    )
 
 # Prose Tests
 ALL_KMS_PROVIDERS = {

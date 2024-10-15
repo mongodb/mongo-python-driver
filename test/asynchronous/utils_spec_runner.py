@@ -15,8 +15,12 @@
 """Utilities for testing driver specs."""
 from __future__ import annotations
 
+import asyncio
 import functools
+import os
 import threading
+import unittest
+from asyncio import iscoroutinefunction
 from collections import abc
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs
 from test.utils import (
@@ -24,6 +28,7 @@ from test.utils import (
     CompareType,
     EventListener,
     OvertCommandListener,
+    ScenarioDict,
     ServerAndTopologyEventListener,
     camel_to_snake,
     camel_to_snake_args,
@@ -32,11 +37,12 @@ from test.utils import (
 )
 from typing import List
 
-from bson import ObjectId, decode, encode
+from bson import ObjectId, decode, encode, json_util
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
+from gridfs.asynchronous.grid_file import AsyncGridFSBucket
 from pymongo.asynchronous import client_session
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
@@ -81,6 +87,161 @@ class SpecRunnerThread(threading.Thread):
                 except Exception as exc:
                     self.exc = exc
                     self.stop()
+
+
+class AsyncSpecTestCreator:
+    """Class to create test cases from specifications."""
+
+    def __init__(self, create_test, test_class, test_path):
+        """Create a TestCreator object.
+
+        :Parameters:
+          - `create_test`: callback that returns a test case. The callback
+            must accept the following arguments - a dictionary containing the
+            entire test specification (the `scenario_def`), a dictionary
+            containing the specification for which the test case will be
+            generated (the `test_def`).
+          - `test_class`: the unittest.TestCase class in which to create the
+            test case.
+          - `test_path`: path to the directory containing the JSON files with
+            the test specifications.
+        """
+        self._create_test = create_test
+        self._test_class = test_class
+        self.test_path = test_path
+
+    def _ensure_min_max_server_version(self, scenario_def, method):
+        """Test modifier that enforces a version range for the server on a
+        test case.
+        """
+        if "minServerVersion" in scenario_def:
+            min_ver = tuple(int(elt) for elt in scenario_def["minServerVersion"].split("."))
+            if min_ver is not None:
+                method = async_client_context.require_version_min(*min_ver)(method)
+
+        if "maxServerVersion" in scenario_def:
+            max_ver = tuple(int(elt) for elt in scenario_def["maxServerVersion"].split("."))
+            if max_ver is not None:
+                method = async_client_context.require_version_max(*max_ver)(method)
+
+        if "serverless" in scenario_def:
+            serverless = scenario_def["serverless"]
+            if serverless == "require":
+                serverless_satisfied = async_client_context.serverless
+            elif serverless == "forbid":
+                serverless_satisfied = not async_client_context.serverless
+            else:  # unset or "allow"
+                serverless_satisfied = True
+            method = unittest.skipUnless(
+                serverless_satisfied, "Serverless requirement not satisfied"
+            )(method)
+
+        return method
+
+    @staticmethod
+    async def valid_topology(run_on_req):
+        return await async_client_context.is_topology_type(
+            run_on_req.get("topology", ["single", "replicaset", "sharded", "load-balanced"])
+        )
+
+    @staticmethod
+    def min_server_version(run_on_req):
+        version = run_on_req.get("minServerVersion")
+        if version:
+            min_ver = tuple(int(elt) for elt in version.split("."))
+            return async_client_context.version >= min_ver
+        return True
+
+    @staticmethod
+    def max_server_version(run_on_req):
+        version = run_on_req.get("maxServerVersion")
+        if version:
+            max_ver = tuple(int(elt) for elt in version.split("."))
+            return async_client_context.version <= max_ver
+        return True
+
+    @staticmethod
+    def valid_auth_enabled(run_on_req):
+        if "authEnabled" in run_on_req:
+            if run_on_req["authEnabled"]:
+                return async_client_context.auth_enabled
+            return not async_client_context.auth_enabled
+        return True
+
+    @staticmethod
+    def serverless_ok(run_on_req):
+        serverless = run_on_req["serverless"]
+        if serverless == "require":
+            return async_client_context.serverless
+        elif serverless == "forbid":
+            return not async_client_context.serverless
+        else:  # unset or "allow"
+            return True
+
+    async def should_run_on(self, scenario_def):
+        run_on = scenario_def.get("runOn", [])
+        if not run_on:
+            # Always run these tests.
+            return True
+
+        for req in run_on:
+            if (
+                await self.valid_topology(req)
+                and self.min_server_version(req)
+                and self.max_server_version(req)
+                and self.valid_auth_enabled(req)
+                and self.serverless_ok(req)
+            ):
+                return True
+        return False
+
+    def ensure_run_on(self, scenario_def, method):
+        """Test modifier that enforces a 'runOn' on a test case."""
+
+        async def predicate():
+            return await self.should_run_on(scenario_def)
+
+        return async_client_context._require(predicate, "runOn not satisfied", method)
+
+    def tests(self, scenario_def):
+        """Allow CMAP spec test to override the location of test."""
+        return scenario_def["tests"]
+
+    async def _create_tests(self):
+        for dirpath, _, filenames in os.walk(self.test_path):
+            dirname = os.path.split(dirpath)[-1]
+
+            for filename in filenames:
+                with open(os.path.join(dirpath, filename)) as scenario_stream:  # noqa: ASYNC101, RUF100
+                    # Use tz_aware=False to match how CodecOptions decodes
+                    # dates.
+                    opts = json_util.JSONOptions(tz_aware=False)
+                    scenario_def = ScenarioDict(
+                        json_util.loads(scenario_stream.read(), json_options=opts)
+                    )
+
+                test_type = os.path.splitext(filename)[0]
+
+                # Construct test from scenario.
+                for test_def in self.tests(scenario_def):
+                    test_name = "test_{}_{}_{}".format(
+                        dirname,
+                        test_type.replace("-", "_").replace(".", "_"),
+                        str(test_def["description"].replace(" ", "_").replace(".", "_")),
+                    )
+
+                    new_test = await self._create_test(scenario_def, test_def, test_name)
+                    new_test = self._ensure_min_max_server_version(scenario_def, new_test)
+                    new_test = self.ensure_run_on(scenario_def, new_test)
+
+                    new_test.__name__ = test_name
+                    setattr(self._test_class, new_test.__name__, new_test)
+
+    def create_tests(self):
+        if _IS_SYNC:
+            self._create_tests()
+        else:
+            asyncio.run(self._create_tests())
 
 
 class AsyncSpecRunner(AsyncIntegrationTest):
@@ -278,7 +439,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         if object_name == "gridfsbucket":
             # Only create the GridFSBucket when we need it (for the gridfs
             # retryable reads tests).
-            obj = GridFSBucket(database, bucket_name=collection.name)
+            obj = AsyncGridFSBucket(database, bucket_name=collection.name)
         else:
             objects = {
                 "client": database.client,
@@ -306,7 +467,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
             args.update(arguments)
             arguments = args
 
-        result = cmd(**dict(arguments))
+        if not _IS_SYNC and iscoroutinefunction(cmd):
+            result = await cmd(**dict(arguments))
+        else:
+            result = cmd(**dict(arguments))
         # Cleanup open change stream cursors.
         if name == "watch":
             self.addAsyncCleanup(result.close)
@@ -582,7 +746,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
                 read_preference=ReadPreference.PRIMARY,
                 read_concern=ReadConcern("local"),
             )
-            actual_data = await (await outcome_coll.find(sort=[("_id", 1)])).to_list()
+            actual_data = await outcome_coll.find(sort=[("_id", 1)]).to_list()
 
             # The expected data needs to be the left hand side here otherwise
             # CompareType(Binary) doesn't work.
