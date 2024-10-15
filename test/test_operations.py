@@ -69,7 +69,7 @@ class TestSearchIndexModel(TestOperationsBase):
     """Test SearchIndexModel features."""
 
     def test_repr(self):
-        self.assertRepr(SearchIndexModel("hello", key=1))
+        self.assertRepr(SearchIndexModel({"hello": "hello"}, key=1))
 
 
 if __name__ == "__main__":
