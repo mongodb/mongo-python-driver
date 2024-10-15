@@ -478,55 +478,42 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 # Ensure collection exists
                 await db.create_collection(coll_name, write_concern=wc, **opts)
 
-    @classmethod
-    async def _setup_class(cls):
+    async def asyncSetUp(self):
         # super call creates internal client cls.client
-        await super()._setup_class()
+        await super().asyncSetUp()
         # process file-level runOnRequirements
-        run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
-        if not await cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
+        run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
+        if not await self.should_run_on(run_on_spec):
+            raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
         if async_client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
-                cls.TEST_PATH
+            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
+                self.TEST_PATH
             ):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
         # Handle mongos_clients for transactions tests.
-        cls.mongos_clients = []
+        self.mongos_clients = []
         if (
             async_client_context.supports_transactions()
             and not async_client_context.load_balancer
             and not async_client_context.serverless
         ):
             for address in async_client_context.mongoses:
-                cls.mongos_clients.append(
-                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
-                )
+                self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(
+        self.knobs = client_knobs(
             heartbeat_frequency=0.1,
             min_heartbeat_interval=0.1,
             kill_cursor_frequency=0.1,
             events_queue_frequency=0.1,
         )
-        cls.knobs.enable()
+        self.knobs.enable()
 
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.knobs.disable()
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
-
-    async def asyncSetUp(self):
-        await super().asyncSetUp()
         # process schemaVersion
         # note: we check major schema version during class generation
-        # note: we do this here because we cannot run assertions in setUpClass
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
         self.assertLessEqual(
             version,
@@ -536,6 +523,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+
+    async def asyncTearDown(self):
+        self.knobs.disable()
+        for client in self.mongos_clients:
+            await client.close()
+        await super().asyncTearDown()
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here

@@ -1191,7 +1191,6 @@ class AsyncMockClientTest(AsyncUnitTest):
         await super().asyncSetUp()
 
         self.client_knobs = client_knobs(heartbeat_frequency=0.001, min_heartbeat_interval=0.001)
-
         self.client_knobs.enable()
 
     async def asyncTearDown(self) -> None:
