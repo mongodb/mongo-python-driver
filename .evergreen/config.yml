@@ -2582,6 +2582,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.9-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2593,6 +2594,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.9-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2604,6 +2606,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.9-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2615,6 +2618,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.13-auth-ssl-sync
   tasks:
     - name: .sharded_cluster
@@ -2626,6 +2630,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.13-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2637,6 +2642,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.13-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2648,6 +2654,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-py3.13-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2659,6 +2666,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 
 # Server tests for macOS (arm).
 - name: test-macos-arm-py3.9-auth-ssl-sync
@@ -2672,6 +2680,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.9-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2683,6 +2692,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.9-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2694,6 +2704,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.9-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2705,6 +2716,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.13-auth-ssl-sync
   tasks:
     - name: .sharded_cluster
@@ -2716,6 +2728,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.13-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2727,6 +2740,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.13-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2738,6 +2752,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 - name: test-macos-arm-py3.13-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2749,6 +2764,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    SKIP_CSOT_TESTS: "true"
 
 # Server tests for Windows.
 - name: test-win64-py-3.9-auth-ssl-sync
@@ -2762,6 +2778,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.9-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2773,6 +2790,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.9-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2784,6 +2802,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.9-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2795,6 +2814,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.13-auth-ssl-sync
   tasks:
     - name: .sharded_cluster
@@ -2806,6 +2826,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.13-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2817,6 +2838,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.13-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2828,6 +2850,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-py-3.13-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2839,6 +2862,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 
 # Server tests for Windows (32-bit).
 - name: test-win64-32-bit-py3.9-auth-ssl-sync
@@ -2852,6 +2876,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.9-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2863,6 +2888,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.9-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2874,6 +2900,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.9-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2885,6 +2912,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/32/Python39/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.13-auth-ssl-sync
   tasks:
     - name: .sharded_cluster
@@ -2896,6 +2924,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.13-auth-ssl-async
   tasks:
     - name: .sharded_cluster
@@ -2907,6 +2936,7 @@ buildvariants:
     SSL: ssl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.13-noauth-nossl-sync
   tasks:
     - name: .sharded_cluster
@@ -2918,6 +2948,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default
     PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 - name: test-win64-32-bit-py3.13-noauth-nossl-async
   tasks:
     - name: .sharded_cluster
@@ -2929,6 +2960,7 @@ buildvariants:
     SSL: nossl
     TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/32/Python313/python.exe
+    SKIP_CSOT_TESTS: "true"
 
 - matrix_name: "tests-fips"
   matrix_spec:

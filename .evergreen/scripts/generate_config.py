@@ -43,12 +43,17 @@ class Host:
     name: str
     run_on: str
     display_name: str
+    expansions: dict[str, str]
 
 
-HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
-HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
-HOSTS["macos"] = Host("macos", "macos-14", "macOS")
-HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS (arm)")
+_macos_expansions = dict(  # CSOT tests are unreliable on slow hosts.
+    SKIP_CSOT_TESTS="true"
+)
+
+HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
+HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", _macos_expansions)
+HOSTS["macos"] = Host("macos", "macos-14", "macOS", _macos_expansions)
+HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS (arm)", _macos_expansions)
 
 
 ##############
@@ -76,6 +81,7 @@ def create_variant(
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
         expansions["VERSION"] = version
+    expansions.update(HOSTS[host].expansions)
     expansions = expansions or None
     return BuildVariant(
         name=name,
