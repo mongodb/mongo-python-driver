@@ -28,7 +28,8 @@ PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
-AUTH_SSLS = [("auth", "ssl"), ("noauth", "nossl")]
+AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
+TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
@@ -52,8 +53,9 @@ _macos_expansions = dict(  # CSOT tests are unreliable on slow hosts.
 
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", _macos_expansions)
+HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", _macos_expansions)
 HOSTS["macos"] = Host("macos", "macos-14", "macOS", _macos_expansions)
-HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS (arm)", _macos_expansions)
+HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", _macos_expansions)
 
 
 ##############
@@ -76,7 +78,7 @@ def create_variant(
     expansions = kwargs.pop("expansions", dict()).copy()
     host = host or "rhel8"
     run_on = [HOSTS[host].run_on]
-    name = display_name.replace(" ", "-").replace("(", "").replace(")", "").lower()
+    name = display_name.replace(" ", "-").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
@@ -95,10 +97,8 @@ def create_variant(
 
 def get_python_binary(python: str, host: str) -> str:
     """Get the appropriate python binary given a python version and host."""
-    if host == "win64":
-        is_32 = python.startswith("32-bit")
-        if is_32:
-            _, python = python.split()
+    if host in ["win64", "win32"]:
+        if host == "win32":
             base = "C:/python/32"
         else:
             base = "C:/python"
@@ -124,10 +124,7 @@ def get_display_name(base: str, host: str, **kwargs) -> str:
                 name = f"v{value}"
         elif key == "python":
             if not value.startswith("pypy"):
-                if value.startswith("32-bit "):
-                    name = "32-bit py" + value.split()[-1]
-                else:
-                    name = f"py{value}"
+                name = f"py{value}"
         elif key.lower() in DISPLAY_LOOKUP:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
@@ -141,6 +138,15 @@ def zip_cycle(*iterables, empty_default=None):
     cycles = [cycle(i) for i in iterables]
     for _ in zip_longest(*iterables):
         yield tuple(next(i, empty_default) for i in cycles)
+
+
+def generate_yaml(tasks=None, variants=None):
+    """Generate the yaml for a given set of tasks and variants."""
+    project = EvgProject(tasks=tasks, buildvariants=variants)
+    out = ShrubService.generate_yaml(project)
+    # Dedent by two spaces to match what we use in config.yml
+    lines = [line[2:] for line in out.splitlines()]
+    print("\n".join(lines))  # noqa: T201
 
 
 ##############
@@ -190,13 +196,14 @@ def create_ocsp_variants() -> list[BuildVariant]:
 def create_server_variants() -> list[BuildVariant]:
     variants = []
 
+    # Run the full matrix on linux with min and max CPython, and latest pypy.
     host = "rhel8"
-    for python, (auth, ssl) in product(ALL_PYTHONS, AUTH_SSLS):
+    for python, (auth, ssl) in product([*MIN_MAX_PYTHON, PYPYS[-1]], AUTH_SSLS):
         display_name = f"Test {host}"
         expansions = dict(AUTH=auth, SSL=ssl)
         display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [".sharded_cluster", ".standalone", ".replica_set"],
+            [f".{t}" for t in TOPOLOGIES],
             display_name,
             python=python,
             host=host,
@@ -204,14 +211,15 @@ def create_server_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    for host, python, (auth, ssl), sync in product(
-        ["macos", "macos-arm64"], MIN_MAX_PYTHON, AUTH_SSLS, SYNCS
+    # Test the rest of the pythons on linux.
+    for python, (auth, ssl), topology in zip_cycle(
+        CPYTHONS[1:-1] + PYPYS[:-1], AUTH_SSLS, TOPOLOGIES
     ):
-        test_suite = "default" if sync == "sync" else "default_async"
-        expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
+        display_name = f"Test {host}"
+        expansions = dict(AUTH=auth, SSL=ssl)
         display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [".sharded_cluster"],
+            [f".{topology}"],
             display_name,
             python=python,
             host=host,
@@ -219,22 +227,23 @@ def create_server_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    host = "win64"
-    for prefix, base, (auth, ssl), sync in product(
-        ["", "32-bit "], MIN_MAX_PYTHON, AUTH_SSLS, SYNCS
-    ):
-        python = f"{prefix}{base}"
-        test_suite = "default" if sync == "sync" else "default_async"
-        expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
-        display_name = get_display_name("Test", host, python=python, **expansions)
-        variant = create_variant(
-            [".sharded_cluster"],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
+    # Test a subset on each of the other platforms.
+    for host in ("macos", "macos-arm64", "win64", "win32"):
+        for (python, (auth, ssl), topology), sync in product(
+            zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
+        ):
+            test_suite = "default" if sync == "sync" else "default_async"
+            expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
+            display_name = get_display_name("Test", host, python=python, **expansions)
+            variant = create_variant(
+                [f".{topology}"],
+                display_name,
+                python=python,
+                host=host,
+                expansions=expansions,
+            )
+            variants.append(variant)
+
     return variants
 
 
@@ -242,5 +251,4 @@ def create_server_variants() -> list[BuildVariant]:
 # Generate Config
 ##################
 
-project = EvgProject(tasks=None, buildvariants=create_server_variants())
-print(ShrubService.generate_yaml(project))  # noqa: T201
+generate_yaml(variants=create_server_variants())
